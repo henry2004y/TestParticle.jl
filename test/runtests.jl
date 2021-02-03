@@ -1,4 +1,4 @@
-using TestParticle, Meshes
+using TestParticle, Meshes, DifferentialEquations
 using Test
 
 "Convert from spherical coordinates vector to Cartesian vector."
@@ -14,6 +14,11 @@ end
 function getB(xu)
    BMoment = [0.0, 0.0, 7.94e22]
    TestParticle.dipole(xu[1:3], BMoment)
+end
+
+"Initial state perturbation for EnsembleProblem."
+function prob_func(prob, i, repeat)
+   remake(prob, u0=rand()*prob.u0)
 end
 
 @testset "TestParticle.jl" begin
@@ -41,13 +46,24 @@ end
 
       param = prepare(mesh, E, B)
       tspan = (0.0,1.0)
-      sol = simulate(param, stateinit, tspan)
+      trace! = trace_numeric!
+
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+
+      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
 
       x = getindex.(sol.u, 1)
       y = getindex.(sol.u, 2)
       z = getindex.(sol.u, 3)
 
       @test length(x) == 8 && x[end] ≈ 0.8540967226885379
+
+      trajectories = 10
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+      ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
+      sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+         trajectories=trajectories, save_idxs=[1,2,3])
+      #@test
    end
 
    @testset "analytical field" begin
@@ -66,7 +82,11 @@ end
 
       param = prepare(getE, getB)
       tspan = (0.0,1.0)
-      sol = simulate(param, stateinit, tspan, isAnalytic=true)
+      trace! = trace_analytic!
+
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+
+      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
 
       x = getindex.(sol.u, 1)
       y = getindex.(sol.u, 2)
