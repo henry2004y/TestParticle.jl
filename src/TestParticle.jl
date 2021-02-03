@@ -10,13 +10,16 @@ export prepare, simulate
 include("constants.jl")
 
 """
-    simulate(param, stateinit, tspan)
+    simulate(param, stateinit, tspan; isAnalytic=false, isSingle=true,
+       trajectories=1)
 
 Trace particle starting at `stateinit` through a static EM field during `tspan`
 and return a ODESolution. The particle parameters and interpolated EM field are
-given in `param`.
+given in `param`. If `isSingle` is false or `trajectories` is larger than 1,
+then multiple particles are being traced.
 """
-function simulate(param, stateinit, tspan; isAnalytic=false)
+function simulate(param, stateinit, tspan; isAnalytic=false, isSingle=true,
+   trajectories=1)
 
    if !isAnalytic
       derivatives! = derivatives_numeric!
@@ -24,9 +27,21 @@ function simulate(param, stateinit, tspan; isAnalytic=false)
       derivatives! = derivatives_analytic!
    end
 
-   prob = ODEProblem(derivatives!, stateinit, tspan, param)
+   if isSingle && trajectories == 1
+      prob = ODEProblem(derivatives!, stateinit, tspan, param)
 
-   sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+   else
+      prob = ODEProblem(derivatives!, stateinit, tspan, param)
+      ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
+      sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+         trajectories=trajectories, save_idxs=[1,2,3])
+   end
+   return sol
+end
+
+function prob_func(prob, i, repeat)
+   remake(prob, u0=rand()*prob.u0)
 end
 
 """
