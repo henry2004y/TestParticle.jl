@@ -41,34 +41,35 @@ function prepare(grid, E, B; species="proton")
       Bz = @view B[3,:,:,:]
    end
 
-   itp = interpolate(Ex, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(Ex, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpEx = scale(itp, gridx, gridy, gridz)
 
-   itp = interpolate(Ey, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(Ey, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpEy = scale(itp, gridx, gridy, gridz)
 
-   itp = interpolate(Ez, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(Ez, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpEz = scale(itp, gridx, gridy, gridz)
 
-   itp = interpolate(Bx, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(Bx, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpBx = scale(itp, gridx, gridy, gridz)
 
-   itp = interpolate(By, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(By, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpBy = scale(itp, gridx, gridy, gridz)
 
-   itp = interpolate(Bz, BSpline(Cubic(Line(OnGrid()))))
+   itp = extrapolate(interpolate(Bz, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpBz = scale(itp, gridx, gridy, gridz)
 
    q, m, (interpEx, interpEy, interpEz), (interpBx, interpBy, interpBz)
 end
 
 """
-    prepare(E, B, species="proton")
+    prepare(E, B; species="proton", q=1.0, m=1.0)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` and
-analytic EM field functions. 
+analytic EM field functions. Prescribed `species` are "electron" and "proton";
+other species can be manually specified with `species="other"`, `q` and `m`.
 """
-function prepare(E, B; species="proton")
+function prepare(E, B; species="proton", q=1.0, m=1.0)
 
    if species == "proton"
       q = qᵢ
@@ -81,14 +82,14 @@ function prepare(E, B; species="proton")
    q, m, E, B
 end
 
-# ODE equations for charged particle moving in static numerical EM field.
+"ODE equations for charged particle moving in static numerical EM field."
 function trace_numeric!(dy, y, p, t)
    q, m, interpE, interpB = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(getE(y, interpE) + y[4:6] × getB(y, interpB))
 end
 
-# ODE equations for charged particle moving in static analytical EM field.
+"ODE equations for charged particle moving in static analytical EM field."
 function trace_analytic!(dy, y, p, t)
    q, m, E, B = p
    dy[1:3] = y[4:6]
@@ -109,18 +110,6 @@ function getB(xu, interpB)
    u = @view xu[4:6]
 
    [interpB[1](x...), interpB[2](x...), interpB[3](x...)]
-end
-
-"Calculates the magnetic field from a dipole with magnetic moment `M` at `r`."
-function dipole(rIn, M)
-   x, y, z = rIn
-   r = sqrt(x^2 + y^2 + z^2)
-   Coef = μ₀/(4*π*r^5)
-
-   B = [3*x^2-r^2 3*x*y     3*x*z;
-        3*y*x     3*y^2-r^2 3*y*z;
-        3*z*x     3*z*y     3*z^2-r^2
-       ] * M * Coef
 end
 
 end
