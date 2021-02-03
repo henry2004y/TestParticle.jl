@@ -1,24 +1,11 @@
-using TestParticle, Meshes, DifferentialEquations
+using TestParticle, Meshes, DifferentialEquations, Random
 using Test
 
-"Convert from spherical coordinates vector to Cartesian vector."
-function sph2cart(r, ϕ, θ)
-   r*[sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
-end
-
-"Analytic electirc field function for testing."
-function getE(xu)
-   [0.0, 0.0, 0.0]
-end
-
-function getB(xu)
-   BMoment = [0.0, 0.0, 7.94e22]
-   TestParticle.dipole(xu[1:3], BMoment)
-end
+include("dipole.jl")
 
 "Initial state perturbation for EnsembleProblem."
 function prob_func(prob, i, repeat)
-   remake(prob, u0=rand()*prob.u0)
+   remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
 end
 
 @testset "TestParticle.jl" begin
@@ -63,7 +50,12 @@ end
       ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
       sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
          trajectories=trajectories, save_idxs=[1,2,3])
-      #@test
+
+      x = getindex.(sol.u[10].u, 1)
+      y = getindex.(sol.u[10].u, 2)
+      z = getindex.(sol.u[10].u, 3)
+      
+      @test x[7] ≈ 0.09615629718624641 rtol=1e-6
    end
 
    @testset "analytical field" begin
