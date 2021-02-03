@@ -31,7 +31,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -39,7 +39,7 @@ end
       u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
       stateinit = [x0..., u0...]
 
-      param = prepare(grid, E, B)
+      param = prepare(mesh, E, B)
       tspan = (0.0,1.0)
       sol = simulate(param, stateinit, tspan)
 
