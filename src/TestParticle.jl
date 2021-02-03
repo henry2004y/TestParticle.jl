@@ -1,48 +1,12 @@
 module TestParticle
 
-using DifferentialEquations
 using LinearAlgebra: norm,  ×
 using Meshes
 using Interpolations
 
-export prepare, simulate
+export prepare, trace_numeric!, trace_analytic!
 
 include("constants.jl")
-
-"""
-    simulate(param, stateinit, tspan; isAnalytic=false, isSingle=true,
-       trajectories=1)
-
-Trace particle starting at `stateinit` through a static EM field during `tspan`
-and return a ODESolution. The particle parameters and interpolated EM field are
-given in `param`. If `isSingle` is false or `trajectories` is larger than 1,
-then multiple particles are being traced.
-"""
-function simulate(param, stateinit, tspan; isAnalytic=false, isSingle=true,
-   trajectories=1)
-
-   if !isAnalytic
-      derivatives! = derivatives_numeric!
-   else
-      derivatives! = derivatives_analytic!
-   end
-
-   if isSingle && trajectories == 1
-      prob = ODEProblem(derivatives!, stateinit, tspan, param)
-
-      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
-   else
-      prob = ODEProblem(derivatives!, stateinit, tspan, param)
-      ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
-      sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
-         trajectories=trajectories, save_idxs=[1,2,3])
-   end
-   return sol
-end
-
-function prob_func(prob, i, repeat)
-   remake(prob, u0=rand()*prob.u0)
-end
 
 """
     prepare(grid, E, B, species="proton")
@@ -118,14 +82,14 @@ function prepare(E, B; species="proton")
 end
 
 # ODE equations for charged particle moving in static numerical EM field.
-function derivatives_numeric!(dy, y, p, t)
+function trace_numeric!(dy, y, p, t)
    q, m, interpE, interpB = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(getE(y, interpE) + y[4:6] × getB(y, interpB))
 end
 
 # ODE equations for charged particle moving in static analytical EM field.
-function derivatives_analytic!(dy, y, p, t)
+function trace_analytic!(dy, y, p, t)
    q, m, E, B = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(E(y) + y[4:6] × (B(y[1:3])))
