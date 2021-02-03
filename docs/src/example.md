@@ -8,3 +8,6 @@ Tracing proton in a uniform EM field in z
 
 Tracing electron and proton in a uniform EM field (real physical parameters)
 ![](../figures/electron_ion_uniformEM.png)
+
+Tracing electrons in a uniform EM field
+![](../figures/electrons_uniformEM.png)
