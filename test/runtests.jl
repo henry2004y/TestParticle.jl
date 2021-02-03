@@ -92,6 +92,6 @@ end
       y = getindex.(sol.u, 2)
       z = getindex.(sol.u, 3)
 
-      @test length(x) == 300 && x[end] ≈ 1.2592311352654776e7
+      @test x[300] ≈ 1.2592311352654776e7 rtol=1e-6
    end
 end
