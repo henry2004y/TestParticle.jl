@@ -6,7 +6,7 @@ using Interpolations
 
 export prepare, trace_numeric!, trace_analytic!
 
-include("constants.jl")
+include("utility/utility.jl")
 
 """
     prepare(grid, E, B, species="proton")

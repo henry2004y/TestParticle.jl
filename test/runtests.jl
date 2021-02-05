@@ -1,8 +1,6 @@
 using TestParticle, Meshes, DifferentialEquations, Random
 using Test
 
-include("dipole.jl")
-
 "Initial state perturbation for EnsembleProblem."
 function prob_func(prob, i, repeat)
    remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
@@ -67,12 +65,12 @@ end
       Rₑ = TestParticle.Rₑ     
 
       # initial velocity, [m/s]
-      v₀ = sph2cart(c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, π/4)
+      v₀ = TestParticle.sph2cart(c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, π/4)
       # initial position, [m]
-      r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
+      r₀ = TestParticle.sph2cart(2.5*Rₑ, 0.0, π/2)
       stateinit = [r₀..., v₀...]
 
-      param = prepare(getE, getB)
+      param = prepare(TestParticle.Dipole.getE, TestParticle.Dipole.getB)
       tspan = (0.0,1.0)
       trace! = trace_analytic!
 
