@@ -4,7 +4,6 @@ notifications:
   email: false
 julia:
   - 1.5
-  - nightly
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - travis_wait 15 julia --project --color=yes --check-bounds=yes -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test( ; coverage=true)';
@@ -20,8 +19,6 @@ cache:
     - ~/.julia/artifacts
 jobs:
   fast_finish: true
-  allow_failures:
-    - julia: nightly
   exclude:
     - arch: x86
       os: osx
