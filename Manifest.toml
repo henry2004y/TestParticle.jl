@@ -135,9 +135,9 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[Meshes]]
 deps = ["CircularArrays", "Distances", "IterTools", "LinearAlgebra", "NearestNeighbors", "Random", "RecipesBase", "ReferenceFrameRotations", "SimpleTraits", "SpecialFunctions", "StaticArrays", "StatsBase", "Tables"]
-git-tree-sha1 = "ef8d8229dcec6c40a27441a52a8ec421af7851c6"
+git-tree-sha1 = "bfe44480081e5c26737f9145cc84f49a7894213d"
 uuid = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
-version = "0.9.0"
+version = "0.10.0"
 
 [[Missings]]
 deps = ["DataAPI"]
