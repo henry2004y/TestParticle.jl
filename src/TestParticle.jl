@@ -41,22 +41,28 @@ function prepare(grid, E, B; species="proton")
       Bz = @view B[3,:,:,:]
    end
 
-   itp = extrapolate(interpolate(Ex, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ex,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpEx = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Ey, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ey,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpEy = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Ez, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ez,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpEz = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Bx, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Bx,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpBx = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(By, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(By,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpBy = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Bz, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Bz,
+      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpBz = scale(itp, gridx, gridy, gridz)
 
    q, m, (interpEx, interpEy, interpEz), (interpBx, interpBy, interpBz)
