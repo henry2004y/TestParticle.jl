@@ -3,6 +3,7 @@
 include("constants.jl")
 include("current_sheet.jl")
 include("dipole.jl")
+include("confinement.jl")
 
 "Convert from spherical to Cartesian coordinates vector."
 function sph2cart(r, ϕ, θ)

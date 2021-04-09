@@ -4,7 +4,7 @@ using LinearAlgebra: norm,  ×
 using Meshes
 using Interpolations
 
-export prepare, trace_numeric!, trace_analytic!
+export prepare, trace_numeric!, trace_analytic!, trace_analytic_relativistic!
 
 include("utility/utility.jl")
 
@@ -100,6 +100,15 @@ function trace_analytic!(dy, y, p, t)
    q, m, E, B = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(E(y) + y[4:6] × (B(y[1:3])))
+end
+
+"ODE equations for relativistic charged particle moving in static analytical EM
+field."
+function trace_analytic_relativistic!(dy, y, p, t)
+   q, m, E, B = p
+   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
+   dy[1:3] = y[4:6]
+   dy[4:6] = q/m*γInv*(E(y) + y[4:6] × (B(y[1:3])))
 end
 
 # Return eletric field at a given location.
