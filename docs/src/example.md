@@ -1,5 +1,9 @@
 # Examples
 
+Multiple [demonstrations](https://github.com/henry2004y/TestParticle.jl/tree/master/src/examples) are provided.
+
+## Gallery
+
 Tracing in a Earth-like magnetic dipole field for protons at 50 keV
 ![](../figures/ion_trajectory_dipole.png)
 
@@ -15,4 +19,8 @@ Tracing electron and proton in a uniform EM field (real physical parameters)
 Tracing electrons in a uniform EM field
 ![](../figures/electrons_uniformEM.png)
 
-Scripts for generating these figures can be found in [examples](https://github.com/henry2004y/TestParticle.jl/tree/master/src/examples).
+Tracing relativistic electron in a [magnetic bottle](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
+![](../figures/electron_magnetic_bottle.png)
+
+Tracing relativistic proton in a [Tokamak](https://en.wikipedia.org/wiki/Tokamak)
+![](../figures/ion_tokamak.png)

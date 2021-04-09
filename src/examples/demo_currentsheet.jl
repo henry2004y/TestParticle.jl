@@ -6,6 +6,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
+import TestParticle.CurrentSheet: getB_CS_harris
 using DifferentialEquations
 using PyPlot
 using Statistics: mean
@@ -35,18 +36,10 @@ function _set_axes_radius(ax, origin, radius)
    ax.set_zlim3d([z - radius[3], z + radius[3]])
 end
 
-
-m = TestParticle.mᵢ
-q = TestParticle.qᵢ
-c = TestParticle.c
-Rₑ = TestParticle.Rₑ
-
 ## Obtain field
 
 # Harris current sheet parameters in SI units
 const B₀, L = 20e-9, 0.4Rₑ
-
-include("../utility/current_sheet.jl")
 
 function getB(xu)
    getB_CS_harris(xu[1:3], B₀, L)
@@ -58,6 +51,11 @@ end
 
 ## Initialize particles
 
+m = TestParticle.mᵢ
+q = TestParticle.qᵢ
+c = TestParticle.c
+Rₑ = TestParticle.Rₑ
+
 Ek = 5e7 # [eV]
 
 # initial velocity, [m/s]
@@ -67,7 +65,7 @@ r₀ = [-5.0Rₑ, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
 param = prepare(getE, getB)
-tspan = (0.0,10.0)
+tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace_analytic!, stateinit, tspan, param)
 
