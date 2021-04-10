@@ -12,6 +12,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
+Elliptic = "1.0"
 Interpolations = "0.13"
 Meshes = "0.12"
 julia = "1"
