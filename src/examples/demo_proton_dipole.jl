@@ -43,6 +43,7 @@ z = getindex.(sol.u,3) / Rₑ
 
 ## Visualization
 
+using3D()
 fig = plt.figure()
 ax = fig.gca(projection="3d")
 

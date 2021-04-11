@@ -25,12 +25,12 @@ It would take you some time to figure out which algorithm works for your problem
 - Tracing electrons in a uniform EM field
 ![](../figures/electrons_uniformEM.png)
 
-- Tracing relativistic electron in a [magnetic bottle](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
+- Tracing relativistic electron close to the speed of light in a [magnetic bottle](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 ![](../figures/electron_magnetic_bottle.png)
 
 - Tracing relativistic proton in a [Tokamak](https://en.wikipedia.org/wiki/Tokamak)[^1]
 ![](../figures/ion_tokamak.png)
-As you can see from the trajectory, this proton will escape after a certain time. 
+As you can see from the trajectory, this proton will escape after a certain time.
 
 
 [^1]: A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.

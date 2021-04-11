@@ -77,6 +77,7 @@ sol = solve(prob, AB3(); dt=2e-11, save_idxs=[1,2,3])
 
 ## Visualization
 
+using3D()
 fig = plt.figure(figsize=(10,6))
 ax = fig.gca(projection="3d")
 
@@ -91,12 +92,24 @@ for i in 0:17
    ax.plot(y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color="k")
 end
 
+# Plot Tokamak
+u = range(0, 2π, length=100)
+v = range(0, 2π, length=100)
+
+U = [y for _ in u, y in v]
+V = [x for x in u, _ in v]
+
+X = @. (a + b + (a - 0.05)*cos(U)) * cos(V)
+Y = @. (a + b + (a - 0.05)*cos(U)) * sin(V)
+Z = @. (a - 0.05) * sin(U)
+
+ax.plot_surface(X, Y, Z, alpha=0.1)
+
 ax.legend()
 title("Particle trajectory in Tokamak")
 xlabel("x [m]")
 ylabel("y [m]")
 zlabel("z [m]")
-
 
 xMin, xMax = -4, 4
 yMin, yMax = -4, 4
@@ -105,7 +118,6 @@ zMin, zMax = -4, 4
 xlim(xMin, xMax)
 ylim(yMin, yMax)
 zlim(zMin, zMax)
-
 
 set_axes_equal(ax)
 
