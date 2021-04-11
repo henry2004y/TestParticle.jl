@@ -73,6 +73,7 @@ sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
 
 ## Visualization
 
+using3D()
 fig = plt.figure(figsize=(10,6))
 ax = fig.gca(projection="3d")
 
@@ -107,4 +108,4 @@ end
 ax.set_box_aspect([2,5,1])
 set_axes_equal(ax)
 
-savefig("test.png", bbox_inches="tight")
+#savefig("test.png", bbox_inches="tight")

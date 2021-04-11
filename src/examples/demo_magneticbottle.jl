@@ -85,6 +85,7 @@ sol = solve(prob, AB3(); dt=1.5e-12, save_idxs=[1,2,3])
 
 ## Visualization
 
+using3D()
 fig = plt.figure(figsize=(10,6))
 ax = fig.gca(projection="3d")
 
