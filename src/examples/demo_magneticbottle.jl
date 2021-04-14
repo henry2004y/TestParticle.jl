@@ -72,7 +72,7 @@ stateinit = [r₀..., v₀...]
 # accelerate particles, so that γ remains constant. However, we are not doing
 # that here since it is not generally true in the EM field.
 
-param = prepare(getE, getB; species="electron")
+param = prepare(getE, getB; species=Electron)
 tspan = (0.0, 3e-7)
 
 prob = ODEProblem(trace_analytic_relativistic!, stateinit, tspan, param)

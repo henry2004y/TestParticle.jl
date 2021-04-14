@@ -12,3 +12,5 @@ In order to do this, the functions provides by this package aim at working seaml
 * For some unknown reasons, the results from analytic dipole field are not exactly the same under Linux, Mac and Windows.
 
 * Plot.jl is really bad at 3D related plotting. I would hope Makie.jl performs better.
+
+* The current API for including a external force term like gravity and pressure gradient is ok, but can be made more elegant.

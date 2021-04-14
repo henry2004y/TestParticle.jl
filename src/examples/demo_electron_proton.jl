@@ -34,10 +34,10 @@ x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
 
-param_electron = prepare(grid, E, B, species="electron")
+param_electron = prepare(grid, E, B, species=Electron)
 tspan_electron = (0.0, 15.0)
 
-param_proton = prepare(grid, E, B, species="proton")
+param_proton = prepare(grid, E, B, species=Proton)
 tspan_proton = (0.0, 10.0)
 
 ## Solve for the trajectories

@@ -5,7 +5,6 @@
 ```@autodocs
 Modules = [TestParticle]
 Private = false
-Order = [:function]
 ```
 
 ## Private types and methods
