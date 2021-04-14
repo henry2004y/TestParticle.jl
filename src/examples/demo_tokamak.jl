@@ -64,7 +64,7 @@ v₀ = [-0.1, -0.15, 0.0] .* c
 r₀ = [2.3, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(getE, getB; species="proton")
+param = prepare(getE, getB; species=Proton)
 tspan = (0.0, 1e-6)
 
 prob = ODEProblem(trace_analytic_relativistic!, stateinit, tspan, param)
