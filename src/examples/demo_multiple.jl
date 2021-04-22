@@ -40,7 +40,7 @@ u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
    
 param = prepare(mesh, E, B, species=Electron)
-tspan = (0.0,15.0)
+tspan = (0.0, 15.0)
 
 trajectories = 10
 
