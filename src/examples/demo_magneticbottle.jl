@@ -80,7 +80,7 @@ prob = ODEProblem(trace_analytic_relativistic!, stateinit, tspan, param)
 @printf "Speed = %6.4f %s\n" √(v₀[1]^2+v₀[2]^2+v₀[3]^2)/c*100 "% speed of light"
 @printf "Energy = %6.4f MeV\n" (1/√(1-(v₀[1]/c)^2-(v₀[2]/c)^2-(v₀[3]/c)^2)-1)*m*c^2/abs(q)/1e6
 
-# Default Tsit5() does not work in this case!
+# Default Tsit5() and many solvers does not work in this case!
 sol = solve(prob, AB3(); dt=1.5e-12, save_idxs=[1,2,3])
 
 ## Visualization
