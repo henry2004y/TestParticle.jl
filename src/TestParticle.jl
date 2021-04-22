@@ -143,6 +143,9 @@ end
 field."
 function trace_numeric_relativistic!(dy, y, p, t)
    q, m, E, B = p
+   if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
+      throw(ArgumentError("Particle faster than the speed of light!"))
+   end
    γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*γInv*(getE(y, interpE) + y[4:6] × getB(y, interpB))
@@ -167,6 +170,10 @@ end
 field."
 function trace_analytic_relativistic!(dy, y, p, t)
    q, m, E, B = p
+
+   if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
+      throw(ArgumentError("Particle faster than the speed of light!"))
+   end
    γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*γInv*(E(y) + y[4:6] × (B(y[1:3])))
