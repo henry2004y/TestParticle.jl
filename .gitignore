@@ -2,4 +2,5 @@
 *.jl.cov
 *.jl.mem
 test*
+*.out
 /docs/build/

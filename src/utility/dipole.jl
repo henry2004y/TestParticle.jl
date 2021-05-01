@@ -29,10 +29,8 @@ end
 """
     fieldline(L, ϕ, nP)
 
-Creates points on one field line of the magnetic field from a dipole.
-In a centered dipole magnetic field model, the path along a given L shell can be
-described as
-r = L*cos²λ,
+Creates points on one field line of the magnetic field from a dipole. In a centered dipole
+magnetic field model, the path along a given L shell can be described as r = L*cos²λ,
 where r is the radial distance (in planetary radii) to a point on the line,
 λ is its co-latitude, and L is the L-shell of interest.
 """

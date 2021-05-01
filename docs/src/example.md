@@ -1,6 +1,6 @@
 # Examples
 
-Multiple [demonstrations](https://github.com/henry2004y/TestParticle.jl/tree/master/src/examples) are provided.
+Multiple [demonstrations](https://github.com/henry2004y/TestParticle.jl/tree/master/examples) are provided.
 
 ## Choice of numerical algorithm
 
