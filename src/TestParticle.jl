@@ -44,16 +44,13 @@ function getinterp(A, gridx, gridy, gridz)
    Ay = @view A[2,:,:,:]
    Az = @view A[3,:,:,:]
 
-   itp = extrapolate(interpolate(Ax,
-      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpx = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Ay,
-      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpy = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Az,
-      BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Az, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
    interpz = scale(itp, gridx, gridy, gridz)
 
    interpx, interpy, interpz
@@ -62,8 +59,8 @@ end
 """
     prepare(grid, E, B; species=Proton)
 
-Return a tuple consists of particle charge, mass for a prescribed `species` and
-interpolated EM field functions. 
+Return a tuple consists of particle charge, mass for a prescribed `species` and interpolated
+EM field functions. 
 """
 function prepare(grid::CartesianGrid, E, B; species=Proton, q=1.0, m=1.0)
 
@@ -80,8 +77,8 @@ end
 """
     prepare(grid, E, B, F; species=Proton, q=1.0, m=1.0)
 
-Return a tuple consists of particle charge, mass for a prescribed `species`,
-analytic EM field functions, and external force `F`.
+Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
+and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0)
 
@@ -100,9 +97,9 @@ end
 """
     prepare(E, B; species=Proton, q=1.0, m=1.0)
 
-Return a tuple consists of particle charge, mass for a prescribed `species` and
-analytic EM field functions. Prescribed `species` are `Electron` and `Proton`;
-other species can be manually specified with `species=Ion/User`, `q` and `m`.
+Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
+and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
+`Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
 """
 function prepare(E, B; species=Proton, q=1.0, m=1.0)
 
@@ -114,8 +111,8 @@ end
 """
     prepare(E, B, F; species=Proton, q=1.0, m=1.0)
 
-Return a tuple consists of particle charge, mass for a prescribed `species`,
-analytic EM field functions, and external force `F`.
+Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
+and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(E, B, F; species=Proton, q=1.0, m=1.0)
    t = prepare(E, B; species, q, m)
@@ -135,12 +132,10 @@ external force field."
 function trace_numeric_full!(dy, y, p, t)
    q, m, interpE, interpB, interpF = p
    dy[1:3] = y[4:6]
-   dy[4:6] = (q*(getE(y, interpE) + y[4:6] × getB(y, interpB)) + 
-      getF(t, interpF)) / m
+   dy[4:6] = (q*(getE(y, interpE) + y[4:6] × getB(y, interpB)) + getF(t, interpF)) / m
 end
 
-"ODE equations for relativistic charged particle moving in static numerical EM
-field."
+"ODE equations for relativistic charged particle moving in static numerical EM field."
 function trace_numeric_relativistic!(dy, y, p, t)
    q, m, E, B = p
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
@@ -158,16 +153,15 @@ function trace_analytic!(dy, y, p, t)
    dy[4:6] = q/m*(E(y) + y[4:6] × (B(y[1:3])))
 end
 
-"ODE equations for charged particle moving in static analytical EM field and
-external force field."
+"ODE equations for charged particle moving in static analytical EM field and external force
+field."
 function trace_analytic_full!(dy, y, p, t)
    q, m, E, B, F = p
    dy[1:3] = y[4:6]
    dy[4:6] = (q*(E(y) + y[4:6] × (B(y[1:3]))) + F) / m
 end
 
-"ODE equations for relativistic charged particle moving in static analytical EM
-field."
+"ODE equations for relativistic charged particle moving in static analytical EM field."
 function trace_analytic_relativistic!(dy, y, p, t)
    q, m, E, B = p
 
