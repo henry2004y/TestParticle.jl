@@ -1,7 +1,10 @@
 module Dipole
 # Magnetic dipole field.
 
+export getE, getB, dipole, fieldline
+
 import ..μ₀, ..BMoment_Earth
+import ..sph2cart
 
 "Analytic electric field function for testing."
 function getE(xu)

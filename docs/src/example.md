@@ -1,6 +1,7 @@
 # Examples
 
 Multiple [demonstrations](https://github.com/henry2004y/TestParticle.jl/tree/master/examples) are provided.
+For all the tracing methods, we provide both an inplace version (with `!` at the end of the function name) and a non-inplace version using StaticArrays. The non-inplace version requires the initial conditions to be static a static vector. Use them at your convenience.
 
 ## Choice of numerical algorithm
 

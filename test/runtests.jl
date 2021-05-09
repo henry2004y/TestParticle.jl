@@ -1,4 +1,4 @@
-using TestParticle, Meshes, DifferentialEquations, Random
+using TestParticle, Meshes, OrdinaryDiffEq, StaticArrays, Random
 using Test
 
 "Initial state perturbation for EnsembleProblem."
@@ -30,12 +30,12 @@ end
       stateinit = [x0..., u0...]
 
       param = prepare(mesh, E, B)
-      tspan = (0.0,1.0)
+      tspan = (0.0, 1.0)
       trace! = trace_numeric!
 
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
-      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
       x = getindex.(sol.u, 1)
       y = getindex.(sol.u, 2)
@@ -54,9 +54,26 @@ end
       z = getindex.(sol.u[10].u, 3)
       
       @test x[7] ≈ 0.09615629718624641 rtol=1e-6
+
+      stateinit = SA[x0..., u0...]
+
+      param = prepare(mesh, E, B)
+      tspan = (0.0, 1.0)
+      trace = trace_numeric
+
+      prob = ODEProblem(trace, stateinit, tspan, param)
+
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+
+      x = getindex.(sol.u, 1)
+      y = getindex.(sol.u, 2)
+      z = getindex.(sol.u, 3)
+
+      @test length(x) == 8 && x[end] ≈ 0.8540967226885379
    end
 
    @testset "analytical field" begin
+      # in-place version
       Ek = 5e7 # [eV]
 
       m = TestParticle.mᵢ
@@ -71,17 +88,28 @@ end
       stateinit = [r₀..., v₀...]
 
       param = prepare(TestParticle.Dipole.getE, TestParticle.Dipole.getB)
-      tspan = (0.0,1.0)
+      tspan = (0.0, 1.0)
+      
       trace! = trace_analytic!
-
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
-      sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
       x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
 
       @test x[300] ≈ 1.2592311352654776e7 rtol=1e-6
+
+      # static array version (results not identical with above: maybe some bugs?)
+      stateinit = SA[r₀..., v₀...]
+
+      trace = trace_analytic
+      prob = ODEProblem(trace, stateinit, tspan, param)
+
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+
+      x = getindex.(sol.u, 1)
+
+      @test x[306] ≈ 1.2588844644203672e7 rtol=1e-6
+
    end
 end
