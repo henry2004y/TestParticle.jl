@@ -6,7 +6,8 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using Meshes, DifferentialEquations
+using Meshes
+using OrdinaryDiffEq
 using Plots
 
 "Initial state perturbation for EnsembleProblem."

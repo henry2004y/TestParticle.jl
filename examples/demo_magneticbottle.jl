@@ -6,36 +6,12 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-import TestParticle.MagneticConfinement: getB_Bottle
-using DifferentialEquations
+using TestParticle.MagneticConfinement: getB_Bottle
+using OrdinaryDiffEq
+using StaticArrays
 using PyPlot
 using Statistics: mean
 using Printf
-
-"""
-    set_axes_equal(ax)
-
-Set 3D plot axes to equal scale.
-Make axes of 3D plot have equal scale so that spheres appear as spheres and
-cubes as cubes. Required since `ax.axis('equal')` and `ax.set_aspect('equal')`
-don't work on 3D.
-"""
-function set_axes_equal(ax)
-   limits = zeros(2,3)
-   limits[:,1] .= ax.get_xlim3d()
-   limits[:,2] .= ax.get_ylim3d()
-   limits[:,3] .= ax.get_zlim3d()
-   origin = mean(limits, dims=1)
-   radius = @. 0.5 * max(abs(limits[2,:] - limits[1,:]))
-   _set_axes_radius(ax, origin, radius)
-end
-
-function _set_axes_radius(ax, origin, radius)
-   x, y, z = origin
-   ax.set_xlim3d([x - radius[1], x + radius[1]])
-   ax.set_ylim3d([y - radius[2], y + radius[2]])
-   ax.set_zlim3d([z - radius[3], z + radius[3]])
-end
 
 ## Obtain field
 
@@ -50,11 +26,11 @@ const b = 4.0 # radius of central coil
 
 
 function getB(xu)
-   getB_Bottle(xu[1], xu[2], xu[3], distance, a, b, I1*N1, I2*N2)
+   SVector{3}(getB_Bottle(xu[1], xu[2], xu[3], distance, a, b, I1*N1, I2*N2))
 end
 
 function getE(xu)
-   [0.0, 0.0, 0.0]
+   SA[0.0, 0.0, 0.0]
 end
 
 ## Initialize particles
@@ -120,6 +96,6 @@ xlim(xMin, xMax)
 ylim(yMin, yMax)
 zlim(zMin, zMax)
 
-set_axes_equal(ax)
+TestParticle.set_axes_equal(ax)
 
 #savefig("test.png", bbox_inches="tight")

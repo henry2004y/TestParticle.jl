@@ -3,7 +3,8 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using Meshes, DifferentialEquations
+using Meshes
+using OrdinaryDiffEq
 using Plots
 
 ## Initialize grid and field
@@ -45,8 +46,8 @@ tspan_proton = (0.0, 10.0)
 prob_e = ODEProblem(trace_numeric!, stateinit, tspan_electron, param_electron)
 prob_p = ODEProblem(trace_numeric!, stateinit, tspan_proton, param_proton)
 
-sol_e = solve(prob_e; save_idxs=[1,2,3], alg_hints=[:nonstiff])
-sol_p = solve(prob_p; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+sol_e = solve(prob_e, Tsit5(); save_idxs=[1,2,3])
+sol_p = solve(prob_p, Tsit5(); save_idxs=[1,2,3])
 
 ## Visualization
 

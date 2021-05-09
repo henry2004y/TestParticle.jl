@@ -6,47 +6,23 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-import TestParticle.CurrentSheet: getB_CS_harris
-using DifferentialEquations
+using TestParticle.CurrentSheet: getB_CS_harris
+using OrdinaryDiffEq
+using StaticArrays
 using PyPlot
 using Statistics: mean
-
-"""
-    set_axes_equal(ax)
-
-Set 3D plot axes to equal scale.
-Make axes of 3D plot have equal scale so that spheres appear as spheres and
-cubes as cubes. Required since `ax.axis('equal')` and `ax.set_aspect('equal')`
-don't work on 3D.
-"""
-function set_axes_equal(ax)
-   limits = zeros(2,3)
-   limits[:,1] .= ax.get_xlim3d()
-   limits[:,2] .= ax.get_ylim3d()
-   limits[:,3] .= ax.get_zlim3d()
-   origin = mean(limits, dims=1)
-   radius = @. 0.5 * max(abs(limits[2,:] - limits[1,:]))
-   _set_axes_radius(ax, origin, radius)
-end
-
-function _set_axes_radius(ax, origin, radius)
-   x, y, z = origin
-   ax.set_xlim3d([x - radius[1], x + radius[1]])
-   ax.set_ylim3d([y - radius[2], y + radius[2]])
-   ax.set_zlim3d([z - radius[3], z + radius[3]])
-end
 
 ## Obtain field
 
 # Harris current sheet parameters in SI units
-const B₀, L = 20e-9, 0.4Rₑ
+const B₀, L = 20e-9, 0.4TestParticle.Rₑ
 
 function getB(xu)
-   getB_CS_harris(xu[1:3], B₀, L)
+   SVector{3}(getB_CS_harris(xu[1:3], B₀, L))
 end
 
 function getE(xu)
-   [0.0, 0.0, 0.0]
+   SA[0.0, 0.0, 0.0]
 end
 
 ## Initialize particles
@@ -59,7 +35,7 @@ Rₑ = TestParticle.Rₑ
 Ek = 5e7 # [eV]
 
 # initial velocity, [m/s]
-v₀ = [c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]
+v₀ = [c*√(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]
 # initial position, [m]
 r₀ = [-5.0Rₑ, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
@@ -69,7 +45,7 @@ tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace_analytic!, stateinit, tspan, param)
 
-sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
 ## Visualization
 
@@ -77,7 +53,10 @@ using3D()
 fig = plt.figure(figsize=(10,6))
 ax = fig.gca(projection="3d")
 
-ax.plot(sol[1,:]./Rₑ,sol[2,:]./Rₑ, sol[3,:]./Rₑ, label="50 MeV proton, B0 = 20 nT")
+n = 100 # number of timepoints
+ts = range(tspan..., length=n)
+ax.plot(sol(ts, idxs=1)./Rₑ,sol(ts, idxs=2)./Rₑ, sol(ts, idxs=3)./Rₑ,
+   label="50 MeV proton, B0 = 20 nT")
 
 ax.legend()
 title("Particle trajectory near the Harris current sheet")
@@ -106,6 +85,6 @@ for s = 1:3
 end
 
 ax.set_box_aspect([2,5,1])
-set_axes_equal(ax)
+TestParticle.set_axes_equal(ax)
 
 #savefig("test.png", bbox_inches="tight")

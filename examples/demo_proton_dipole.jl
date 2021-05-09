@@ -6,14 +6,15 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using DifferentialEquations
+using OrdinaryDiffEq
 using PyPlot
 
 Rₑ = TestParticle.Rₑ
 
 ## Obtain field
 
-include("../utility/dipole.jl")
+using TestParticle.Dipole
+using TestParticle: sph2cart
 
 ## Initialize particles
 
@@ -31,11 +32,11 @@ r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
 stateinit = [r₀..., v₀...]
 
 param = prepare(getE, getB)
-tspan = (0.0,2.0)
+tspan = (0.0, 2.0)
 
 prob = ODEProblem(trace_analytic!, stateinit, tspan, param)
 
-sol = solve(prob; save_idxs=[1,2,3], alg_hints=[:nonstiff])
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
 x = getindex.(sol.u,1) / Rₑ
 y = getindex.(sol.u,2) / Rₑ
