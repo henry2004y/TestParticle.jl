@@ -5,7 +5,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle.MagneticConfinement: getB_Tokamak
+using TestParticle: getB_Tokamak
 using OrdinaryDiffEq
 using StaticArrays
 using PyPlot
@@ -22,7 +22,7 @@ const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
 function getB(xu)
-   SVector{3}(getB_Tokamak(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
+   SVector{3}(getB_tokamak(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 end
 
 function getE(xu)

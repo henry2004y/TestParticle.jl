@@ -6,7 +6,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle.CurrentSheet: getB_CS_harris
+using TestParticle: getB_CS_harris
 using OrdinaryDiffEq
 using StaticArrays
 using PyPlot
