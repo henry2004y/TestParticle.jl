@@ -4,7 +4,7 @@ CurrentModule = TestParticle
 
 # TestParticle
 
-Test particle tracing in a static electromagnetic field.
+Test particle tracer in a static electromagnetic field.
 
 This package supports charged particle tracing in analytic/numerical relativistic/non-relativistic
 * electric and magnetic field;
@@ -14,10 +14,12 @@ All tracing are done in 3D. For a numerical field, the mesh is constructed with 
 For an analytical field, the user is responsible for providing the function for calculating the field at a given spatial location.
 The actual tracing is done through [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
 
-## Usage
+## Installation
 
-
+```julia
+] add TestParticle
+```
 
 ## Acknowledgement
 
-Nothing can be done such easily without the support of the Julia community. I appreciate all the contributions from developers around the world.
+Nothing can be done such easily without the support of the Julia community. We appreciate all the contributions from developers around the world.
