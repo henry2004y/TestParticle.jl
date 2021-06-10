@@ -5,9 +5,9 @@ For all the tracing methods, we provide both an inplace version (with `!` at the
 
 ## Choice of numerical algorithm
 
-By default DifferentialEquations.jl applies `Tsit5` to a general ODE problem.
+By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
 However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
-It would take you some time to figure out which algorithm works for your problem!
+Take you some time to figure out which algorithm works for your problem!
 
 ## Gallery
 
