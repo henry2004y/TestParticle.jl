@@ -6,17 +6,10 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
+using TestParticle: getB_dipole, getE_dipole, sph2cart, Rₑ
 using OrdinaryDiffEq
 using PyPlot
 
-Rₑ = TestParticle.Rₑ
-
-## Obtain field
-
-using TestParticle.Dipole
-using TestParticle: sph2cart
-
-## Initialize particles
 
 Ek = 5e7 # [eV]
 
@@ -30,8 +23,8 @@ v₀ = sph2cart(c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, π/4)
 # initial position, [m]
 r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
 stateinit = [r₀..., v₀...]
-
-param = prepare(getE, getB)
+# obtain field
+param = prepare(getE_dipole, getB_dipole)
 tspan = (0.0, 2.0)
 
 prob = ODEProblem(trace_analytic!, stateinit, tspan, param)

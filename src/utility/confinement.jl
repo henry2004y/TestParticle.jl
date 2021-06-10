@@ -1,11 +1,9 @@
-module MagneticConfinement
 # Magnetic field topology in fusion research.
 
 using Elliptic, SpecialFunctions
-import ..μ₀
 
 """
-    getB_Bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
+    getB_bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
 
 Get magnetic field from a magnetic bottle.
 Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
@@ -19,7 +17,7 @@ Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
 - `I2::Float`: current in the central solenoid times number of windings in the
 central loop.
 """
-function getB_Bottle(x, y, z, distance, a, b, I1, I2)
+function getB_bottle(x, y, z, distance, a, b, I1, I2)
    
    r = √(x^2 + y^2) # distance from z-axis
    
@@ -64,7 +62,7 @@ function getB_Bottle(x, y, z, distance, a, b, I1, I2)
 end
 
 """
-    getB_Tokamak(x, y, z, a, b, ICoils, IPlasma)
+    getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
 
 Get the magnetic field from a Tokamak topology consists of 16 coils.
 Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/blob/master/Simulation2.m
@@ -75,7 +73,7 @@ Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/
 - `ICoil::Float`: current in the coil times number of windings.
 - `IPlasma::Float`: current of the plasma?
 """
-function getB_Tokamak(x, y, z, a, b, ICoils, IPlasma)
+function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
 
    a *= 2 
 
@@ -144,6 +142,4 @@ function getB_Tokamak(x, y, z, a, b, ICoils, IPlasma)
       Bz += Bz_plasma
    end
    [Bx, By, Bz]
-end
-
 end

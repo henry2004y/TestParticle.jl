@@ -1,4 +1,3 @@
-module CurrentSheet
 # Current sheet model.
 
 """
@@ -10,6 +9,4 @@ and sheet length `L`.
 function getB_CS_harris(r, B₀, L)
    x = r[1]
    [0.0, 0.0, B₀ * tanh(x/L)]
-end
-
 end

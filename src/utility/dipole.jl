@@ -1,18 +1,12 @@
-module Dipole
 # Magnetic dipole field.
 
-export getE, getB, dipole, fieldline
-
-import ..μ₀, ..BMoment_Earth
-import ..sph2cart
-
 "Analytic electric field function for testing."
-function getE(xu)
+function getE_dipole(xu)
    [0.0, 0.0, 0.0]
 end
 
 "Analytic magnetic field function for testing. Return in SI unit."
-function getB(xu)
+function getB_dipole(xu)
    BMoment = BMoment_Earth
    dipole(xu[1:3], BMoment)
 end
@@ -49,6 +43,4 @@ function fieldline(ϕ::Float64, L::Float64=2.5, nP::Int=100)
    end
 
    (x,y,z)
-end
-
 end

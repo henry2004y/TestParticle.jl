@@ -87,7 +87,7 @@ end
       r₀ = TestParticle.sph2cart(2.5*Rₑ, 0.0, π/2)
       stateinit = [r₀..., v₀...]
 
-      param = prepare(TestParticle.Dipole.getE, TestParticle.Dipole.getB)
+      param = prepare(TestParticle.getE_dipole, TestParticle.getB_dipole)
       tspan = (0.0, 1.0)
       
       trace! = trace_analytic!

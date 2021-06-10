@@ -6,7 +6,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle.MagneticConfinement: getB_Bottle
+using TestParticle: getB_bottle
 using OrdinaryDiffEq
 using StaticArrays
 using PyPlot
