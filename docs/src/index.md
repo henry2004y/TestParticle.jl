@@ -7,6 +7,7 @@ CurrentModule = TestParticle
 Test particle tracer in a static electromagnetic field.
 
 This package supports charged particle tracing in analytic/numerical relativistic/non-relativistic
+
 * electric and magnetic field;
 * body force field.
 
