@@ -401,7 +401,97 @@ The magnetic mirror was first proposed by Enrico Fermi as a mechanism for the ac
 
 ## Nonuniform E Field
 
+Now we let the magnetic field be uniform and the electric field be nonuniform. For simplicity, we assume ``\mathbf{E}`` to be in the x direction and to vary sinusoidally in the x direction:
+
+```math
+\mathbf{E} \equiv E_0 (\cos kx)\widehat{x}
+```
+
+This field distribution has a wavelength ``\lambda = 2\pi / k``, and is the result of a sinusoidal distribution of charges, which we need not specify. In practice, such a charge distribution can arise in a plasma during a wave motion. The equation of motion is
+
+```math
+m\frac{d\mathbf{v}}{dt} = q[\mathbf{E}(x) + \mathbf{v}\times\mathbf{B}]
+```
+
+whose transverse components are
+
+```math
+\begin{aligned}
+\dot{v}_x &= \frac{qB}{m}v_y + \frac{q}{m}E_x(x) \\
+\dot{v}_y &= -\frac{qB}{m}v_x
+\end{aligned}
+```
+
+```math
+\begin{aligned}
+\ddot{v}_x &= -\omega_c^2 v_x \pm \omega_c \frac{\dot{E}_x}{B} \\
+\ddot{v}_y &= -\omega_c^2 v_y -\omega_c^2\frac{E_x(x)}{B}
+\end{aligned}
+```
+
+Here ``E_x(x)`` is the electric field at the position of the particle. To evaluate this, we need to know the particle’s orbit, which we are trying to solve for in the first place. If the electric field is weak, we may, as an approximation, use the *undisturbed orbit* to evaluate ``E_x(x)``. The orbit in the absence of the E field was given before
+
+```math
+x = x_0 + r_L\sin \omega_c t
+```
+
+so we have
+
+```math
+\ddot{v}_y = -\omega_c^2 v_y -\omega_c^2\frac{E_0}{B}\cos k (x_0 + r_L \sin\omega_c t)
+```
+
+Anticipating the result, we look for a solution which is the sum of a gyration at ``\omega_c`` and a steady drift ``\mathbf{v}_E``. Since we are interested in finding an expression for ``v_E``, we take out the gyratory motion by averaging over a cycle.
+The ``v_x`` component then gives ``\bar{v}_x = 0``.[^question] In the ``v_y`` component, the oscillating term ``\ddot{v}_y`` clearly averages to zero, and we have
+
+[^question]: I am kind of lost here. Probably the logic here is that first we assume the solution has an additional steady drift, so we let ``\ddot{v}_y = 0``? Check Y.Y's note.
+
+```math
+\bar{\ddot{v}_y} = 0 = -\omega_c^2 \bar{v}_y -\omega_c^2\frac{E_0}{B}\bar{\cos k (x_0 + r_L \sin\omega_c t)}
+```
+
+Expanding the cosine, we have
+
+```math
+\cos k (x_0 + r_L \sin\omega_c t) = \cos(kx_0) \cos(kr_L \sin\omega_c t) - \sin(kx_0) \sin(kr_L \sin\omega_c t)
+```
+
+It will suffice to treat the small Larmor radius case, ``kr_L \ll 1``. The Taylor expansions allow us to write
+
+```math
+\cos k (x_0 + r_L \sin\omega_c t) \approx \cos(kx_0)\big( 1 - \frac{1}{2}k^2r_L^2 \sin^2\omega_c t \big) - \sin(kx_0)k r_L \sin\omega_c t
+```
+
+The last term vanishes upon averaging over time, and it gives
+
+```math
+\bar{v}_y = -\frac{E_0}{B}\cos(kx_0)\big( 1 - \frac{1}{4}k^2r_L^2 \big) = -\frac{E_x(x_0)}{B}\big( 1 - \frac{1}{4}k^2r_L^2 \big)
+```
+
+Thus the usual ``\mathbf{E}\times\mathbf{B}`` drift is modified by the inhomogeneity to read
+
+```math
+\mathbf{v}_E = \frac{\mathbf{E}\times\mathbf{B}}{B^2}\big( 1 - \frac{1}{4}k^2r_L^2 \big)
+```
+
+The physical reason for this is easy to see. An ion with its guiding center at a maximum of ``\mathbf{E}`` actually spends a good deal of its time in regions of weaker ``\mathbf{E}``. Its average drift, therefore, is less than E/B evaluated at the guiding center. In a linearly varying ``\mathbf{E}`` field, the ion would be in a stronger field on one side of the orbit and in a
+field weaker by the same amount on the other side; the correction to ``\mathbf{v}_E`` then cancels out. From this it is clear that the correction term depends on the *second derivative* of ``\mathbf{E}``. For the sinusoidal distribution we assumed, the second derivative is always negative with respect to ``\mathbf{E}``. For an arbitrary variation of ``\mathbf{E}``, we need only replace ``ik`` by ``\nabla`` and write the drift as
+
+```math
+\mathbf{v}_E = \Big( 1 + \frac{1}{4}r_L^2\nabla^2 \Big) \frac{\mathbf{E}\times\mathbf{B}}{B^2}
+```
+
+The second term is called the *finite-Larmor-radius effect*. What is the significance of this correction? Since ``r_L`` is much larger for ions than for electrons, ``\mathbf{v}_E`` is no longer independent of species. If a density clump occurs in a plasma, an electric field can cause the ions and electrons to separate, generating another electric field. If there is a feedback mechanism that causes the second electric field to enhance the first one, ``\mathbf{E}`` grows indefinitely, and the plasma is unstable. Such an instability, called a *drift instability*, is one type of plasma instabilities. The grad-B drift, of course, is also a finite-Larmor-radius effect and also causes charges to separate. However, ``\mathbf{v}_{\nabla B} \propto kr_L`` whereas the correction term above is proportional to ``k^2 r_L^2``. The nonuniform-E-field effect, therefore, is important at relatively large k, or small scale lengths of the inhomogeneity. For this reason, drift instabilities belong to a more general class called *microinstabilities*.
+
 ## Time-Varying E Field
+
+Let us now take ``\mathbf{E}`` and ``\mathbf{B}`` to be uniform in space but varying in time. First, consider the case in which ``\mathbf{E}`` alone varies sinusoidally in time, and let it lie along the x axis:
+
+```math
+\mathbf{E} = E_0 e^{i\omega t}\widehat{x}
+```
+
+Since ``\dot{E}_x = i\omega E_x``, we can write 
 
 ## Time-Varying B Field
 
