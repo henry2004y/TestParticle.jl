@@ -94,7 +94,7 @@ or
 v_z = \frac{qE_z}{m}t + v_{z0}
 ```
 
-This is a straightforward acceleration along \\( \mathbf{B} \\). The transverse components are
+This is a straightforward acceleration along ``\mathbf{B}``. The transverse components are
 
 ```math
 \begin{aligned}
@@ -103,15 +103,301 @@ This is a straightforward acceleration along \\( \mathbf{B} \\). The transverse 
 \end{aligned}
 ```
 
+Differentiating, we have (for constant ``\mathbf{E}``)
+
+```math
+\begin{aligned}
+\ddot{v}_x =  \\
+\ddot{v}_y = 
+\end{aligned}
+```
+
+We can write this as
+
+```math
+\frac{d^2}{dt^2}\Big( v_y + \frac{E_x}{B} \Big) = -\omega_c^2\Big( v_y + \frac{E_x}{B} \Big)
+```
+
+so that it reduces to the previous case if we replace ``v_y`` by ``v_y + (E_x/B)``. The velocity solution is then replaced by
+
+```math
+\begin{aligned}
+v_x = v_\perp e^{i\omega_c t} \\
+v_y = \pm v_\perp e^{i\omega_c t} - \frac{E_x}{B}
+\end{aligned}
+```
+
+The Larmor motion is the same as before, but there is superimposed a drift ``\mathbf{v}_{gc}`` of the guiding center in the -y direction (for ``E_x > 0``).
+
+To obtain a general formula for ``\mathbf{v}_{gc}``, we can solve the momentum equation in vector form. We may omit the ``m d\mathbf{v}/dt`` term, since this term gives only the circular motion at ``\omega_c``, which we already know about. Then the momeumtum equation becomes
+
+```math
+\mathbf{E} + \mathbf{v}\times\mathbf{B} = 0
+```
+
+Taking the cross product with ``\mathbf{B}``, we have
+
+```math
+\mathbf{E}\times\mathbf{B} = \mathbf{B}\times(\mathbf{v}\times\mathbf{B}) = \mathbf{v}B^2 - \mathbf{B}(\mathbf{v}\cdot\mathbf{B})
+```
+
+The transverse components of this equation are
+
+```math
+\mathbf{v}_{gc} = \mathbf{E}\times\mathbf{B}/B^2 \equiv \mathbf{v}_E
+```
+
+We define this to be ``\mathbf{v}_E``, the electric field drift of the guiding center. In magnitude, this drift is
+
+```math
+v_E = \frac{E(V/m)}{B(tesla)}\frac{m}{sec}
+```
+
+It is important to note that ``\mathbf{v}_E`` is independent of q, m, and ``v_\perp``. The reason is obvious from the following physical picture. In the first half-cycle of the ion’s orbit, it gains energy from the electric field and increases in ``v_\perp`` and, hence, in ``r_L``. In the second half-cycle, it loses energy and decreases in ``r_L``. This difference in ``r_L`` on the left and right sides of the orbit causes the drift ``v_E``. A negative electron gyrates in the opposite direction but also gains energy in the opposite direction; it ends up drifting in the same direction as an ion. For particles of the same velocity but different mass, the lighter one will have smaller ``r_L`` and hence drift less per cycle. However, its gyration frequency is also larger, and the two effects exactly cancel. Two particles of the same mass but different energy would have the same ``\omega_c``. The slower one will have smaller ``r_L`` and hence gain less energy from ``\mathbf{E}`` in a half-cycle. However, for less energetic particles the fractional change in ``r_L`` for a given change in energy is larger, and these two effects cancel.
+
+The three-dimensional orbit in space is therefore a slanted helix with changing pitch.
+
 ### Gravitational Field
+
+The foregoing result can be applied to other forces by replacing ``q\mathbf{E}`` in the equation of motion by a general force ``\mathbf{F}``. The guiding center drift caused by ``\mathbf{F}`` is then
+
+```math
+\mathbf{v}_f = \frac{1}{q}\frac{\mathbf{F]\times\mathbf{B}}}{B^2}
+```
+
+In particular, if ``\mathbf{F}`` is the force of gravity ``m\mathbf{g}``, there is a drift
+
+```math
+\mathbf{v}_g = \frac{m}{q}\frac{\mathbf{g]\times\mathbf{B}}}{B^2}
+```
+
+This is similar to the drift ``\mathbf{v}_E`` in that it is perpendicular to both the force and ``\mathbf{B}``, but it differs in one important respect. The drift ``\mathbf{v}_g`` changes sign with the particle’s charge. Under a gravitational force, ions and electrons drift in opposite directions, so there is a net current density in the plasma given by
+
+```math
+\mathbf{j} = n(M+m)\frac{\mathbf{g}\times\mathbf{B}}{B^2}
+```
+
+The physical reason for this drift is again the change in Larmor radius as the particle gains and loses energy in the gravitational field. Now the electrons gyrate in the opposite sense to the ions, but the force on them is in the same direction, so the drift is in the opposite direction. The magnitude of ``\mathbf{v}_g`` is usually negligible, but when the lines of force (i.e. magnetic field lines) are curved, there is an effective gravitational force due to centrifugal force. This force, which is not negligible, is independent of mass; this is why we did not stress the m dependence of the drift here. Centrifugal force is the basis of a plasma instability called the “gravitational” instability, which has nothing to do with real gravity.
 
 ## Nonuniform B Field
 
+Now that the concept of a guiding center drift is firmly established, we can discuss the motion of particles in inhomogeneous fields — ``\mathbf{E}`` and ``\mathbf{B}`` fields which vary in space or time. For uniform fields we were able to obtain exact expressions for the guiding center drifts. As soon as we introduce inhomogeneity, the problem becomes too complicated to solve exactly. To get an approximate answer, it is customary to expand in the small ratio ``r_L/L``, where L is the scale length of the inhomogeneity. This type of theory, called *orbit theory*, can become extremely involved. We shall examine only the simplest cases, where only one inhomogeneity occurs at a time.
+
 ### ∇B ⊥ B: Grad-B Drift
+
+Here the magnetic field lines are straight, but their density increases, say, in the y direction. We can anticipate the result by using our simple physical picture. The gradient in |B| causes the Larmor radius to be larger at the bottom of the orbit than at the top, and this should lead to a drift, in opposite directions for ions and electrons, perpendicular to both B and ``\nabla B``. The drift velocity should obviously be proportional to ``r_L/L`` and to ``v_\perp``.
+
+Consider the Lorentz force ``\mathbf{F] = q\mathbf{v}\times\mathbf{B]``, averaged over a gyration. Clearly, ``\bar{F}_x = 0``, since the particle spends as much time moving up as down. We wish to calculate ``\bar{F}_y``, in an approximate fashion, by using the *undisturbed orbit* of the particle to find the average. The undisturbed orbit is given by the solution in the first section for a uniform ``\mathbf{B}`` field. Taking the real part of the solution for ``v_x`` and ``y``, we have
+
+```math
+F_y = -q v_x B_z(y) = -q v_\perp(\cos \omega_c t) \Big[ B_0 \pm r_L(\cos\omega_c t )\frac{\partial B}{\partial y} \Big]
+```
+
+where we have made a Taylor expansion of ``\mathbf{B}`` field about the point ``x_0=0, y_0=0``
+
+```math
+\begin{aligned}
+\mathbf{B} &= \mathbf{B}_0 + (\mathbf{r}\cdot\nabla)\mathbf{B} + ... \\
+Bz &= B_0 + y(\partial B_z/\partial y) + ...
+\end{aligned}
+```
+
+This expansion of course requires ``r_L / L \ll 1``, where L is the length scale of ``\partial Bz/\partial y``. The first term above averages to zero in a gyration, and the average of ``\cos^2 \omega_c t`` is ``1/2``, so that
+
+```math
+\bar{F}_y = \mp q v_\perp r_L \frac{1}{2}\frac{\partial B}{\partial y}
+```
+
+The guiding center drift velocity is then
+
+```math
+\mathbf{v}_{gc} = \frac{1}{q}\frac{\mathbf{F}\times\mathbf{B}}{B^2} = \frac{1}{q}\frac{\bar{F}_y}{|B|}\widehat{x} = \mp \frac{v_\perp r_L}{B}\frac{1}{2} \frac{\partial B}{\partial y} \widehat{x}
+```
+
+where we have used the formula shown previously. Since the choice of the y axis was arbitrary, this can be generalized to
+
+```math
+\mathbf{v}_{\nabla B} = \pm v_\perp r_L \frac{\mathbf{B}\times \nabla B}{B^2}
+```
+
+This has all the dependences we expected from the physical picture; only the factor ``\frac{1}{2}`` (arising from the averaging) was not predicted. Note that the ``\pm`` stands for the sign of the charge, and lightface ``B`` stands for ``|B|``. The quantity ``\mathbf{v}_{\nabla B}`` is called the *grad-B drift*; it is in opposite directions for ions and electrons and causes a current transverse to ``\mathbf{B}``. An exact calculation of ``\mathbf{v}_{\nabla B}`` would require using the exact orbit, including the drift, in the averaging process.
 
 ### Curved B: Curvature Drift
 
+Here we assume the magnetic field lines to be curved with a constant radius of curvature ``R_c``, and we take ``|B|`` to be constant. Such a field does not obey Maxwell’s equations in a vacuum, so in practice the grad-B drift will always be added to the
+effect derived here. A guiding center drift arises from the centrifugal force felt by the particles as they move along the field lines in their thermal motion. If ``v_\parallel^2`` denotes the average square of the component of random velocity along ``\mathbf{B}``, the average centrifugal force is
+
+```math
+\mathbf{F}_{cf} = \frac{mv_\parallel^2}{R_c}\widehat{r} = mv_\parallel^2\frac{\mathbf{R}_c}{R_c^2}
+```
+
+According to the guiding center drift formula, this gives rise to a drift
+
+```math
+\mathbf{v}_{R} = \frac{1}{q}\frac{\mathbf{F}_{cf}\times\mathbf{B}}{B^2} = \frac{mv_\parallel^2}{qB^2}\frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2}
+```
+
+The drift ``\mathbf{v}_R`` is called the *curvature drift*.
+
+We must now compute the grad-B drift which accompanies this when the decrease of ``|B|`` with radius is taken into account. In a vacuum, we have ``\nabla\times\mathbf{B} = 0``. In the cylindrical coordinates, ``\nabla\times\mathbf{B}`` only has a ``z`` component, since ``\mathbf{B}`` has only a ``\theta`` component and ``\nabla B`` only an ``r`` component. We then have
+
+```math
+(\nabla\times\mathbf{B})_z = \frac{1}{r}\frac{\partial}{\partial r}(rB_\theta) = 0,\, B\propto \frac{1}{r}
+```
+
+Thus
+
+```math
+|B| \propto \frac{1}{R_c},\, \frac{\nabla B}{B} = - \frac{\mathbf{R}_c}{R_c^2}
+```
+
+Using the expression of the grad-B drift, we have
+
+```math
+\mathbf{v}_{\nabla B} = \mp \frac{1}{2}\frac{v_\perp r_L}{B^2}\frac{B}\times |B| \frac{\mathbf{R}_c}{R_c^2} = \pm \frac{1}{2}\frac{v_\perp^2}{\omega_c}\frac{\mathbf{R}_c\times\mathbf{B}}{R_c^2 B} = \frac{1}{2}\frac{m}{q}v_\perp^2\frac{\mathbf{R}_c\times\mathbf{B}}{R_c^2 B^2}
+```
+
+Adding this to ``\mathbf{v}_R`` , we have the total drift in a curved vacuum field:
+
+```math
+\mathbf{v}_R + \mathbf{v}_{\nabla B} = \frac{m}{q}\frac{\mathbf{R}_c\times\mathbf{B}}{R_c^2 B^2}\Big( v_\parallel^2 + \frac{1}{2}v_\perp^2 \Big)
+```
+
+It is unfortunate that these drifts add. This means that if one bends a magnetic field into a torus for the purpose of confining a thermonuclear plasma, the particles will drift out of the torus no matter how one juggles the temperatures and magnetic fields.
+
+For a Maxwellian distribution, ``\bar{v_\parallel^2}`` and ``\frac{1}{2}\bar{v_\perp^2}`` are each equal to ``k_B T/m``, since ``v_\perp`` involves two degrees of freedom. Then the average curved-field drift can be written as
+
+```math
+\bar{\mathbf{v}}_{R+\nabla B} = \pm \frac{v_{th}^2}{R_c\omega_c}\widehat{y} = \pm\frac{\bar{r}_L}{R_c}v_{th}\widehat{y}
+```
+
+where ``\widehat{y}`` here is the direction of ``\widehat{R}_c\times\mathbf{B}``. This shows that ``\bar{\mathbf{v}}_{R+\nabla B}`` depends on the charge of the species but not on its mass.
+
 ### ∇B ∥ B: Magnetic Mirrors
+
+Now we consider a magnetic field which is pointed primarily in the z direction and whose magnitude varies in the z direction. Let the field be axisymmetric, with ``B_\theta = 0`` and ``\partial/\partial\theta = 0``. Since the magnetic field lines converge and diverge, there is necessarily a component ``B_r``. We wish to show that this gives rise to a force which can trap a particle in a magnetic field.
+
+We can obtain ``B_r`` from ``\nabla\cdot\mathbf{B} = 0``:
+
+```math
+\frac{1}{r}\frac{\partial}{\partial r}(rB_r) + \frac{\partial B_z}{\partial z} = 0
+```
+
+If ``\partial \mathbf{B}_z/partial z`` is given at ``r=0`` and does not vary much with r, we have approximately
+
+```math
+\begin{aligned}
+rB_r &= -\int_0^r r\frac{\partial B_z}{\partial z}dr \simeq -\frac{1}{2}r^2 \Big[ \frac{\partial \mathbf{B}_z}{\partial z} \Big]_{r=0} \\
+B_r &= -\frac{1}{2}r \Big[ \frac{\partial \mathbf{B}_z}{\partial z} \Big]_{r=0}
+\end{aligned}
+```
+
+The variation of ``|B|`` with r causes a grad-B drift of guiding centers about the axis of symmetry, but there is no radial grad-B drift, because ``\partial B/\partial \theta = 0``. The components of the Lorentz force are
+
+```math
+\begin{aligned}
+F_r &= q(\underbrace{v_\theta B_z}_{\textcircled{\small{1}}} - v_z \cancel{B_\theta}) \\
+F_\theta &= q(\underbrace{-v_r B_z}_{\textcircled{\small{2}}} + \underbrace{v_z B_r}_{\textcircled{\small{3}}}) \\
+F_z &= q(v_r \cancel{B}_\theta - \underbrace{v_\theta B_r}_{\textcircled{\small{4}}})
+\end{aligned}
+```
+
+Two terms vanish if ``B_\theta = 0``, and terms 1 and 2 give rise to the usual Larmor gyration. Term 3 vanishes on the axis; when it does not vanish, this azimuthal force causes a drift in the radial direction. This drift merely makes the guiding centers follow the magnetic field lines. Term 4 is the one we are interested in. Using the expression of ``B_r``, we have
+
+```math
+F_z = \frac{1}{2}q v_\theta r \frac{\partial B_z}{\partial z}
+```
+
+We must now average over one gyration. For simplicity, consider a particle whose guiding center lies on the axis. Then ``v_\theta`` is a constant during a gyration; depending on the sign of q, ``v_\theta`` is ``\mp v_\perp``. Since ``r = r_L`` , the average force is
+
+```math
+\bar{F}_z = \mp \frac{1}{2}q v_\perp r_L \frac{\partial B_z}{\partial z} = \mp \frac{1}{2}q\frac{v_\perp^2}{\omega_c} \frac{\partial B_z}{\partial z} = -\frac{1}{2}\frac{mv_\perp^2}{B}
+```
+
+We define the *magnetic moment* of the gyrating particle to be
+
+```math
+\mu \equiv \frac{1}{2}mv_\perp^2 / B
+```
+
+so that
+
+```math
+\bar{F}_z = -\mu \frac{\partial B_z}{\partial z}
+```
+
+This is a specific example of the force on a diamagnetic particle, which in general can be written
+
+```math
+\mathbf{F}_\parallel = -\mu\frac{\partial B}{\partial \mathbf{s}} = -\mu\nabla_\parallel B
+```
+
+where ``d\mathbf{s}`` is a line element along ``\mathbf{B}``. Note that the definition of magnetic moment here is the same as the
+usual definition for the magnetic moment of a current loop with area A and current I: ``\mu = IA``. In the case of a singly charged ion, I is generated by a charge e coming around ``\omega_c / 2\pi`` times a second: ``I = e\omega_c/2\pi``. The area A is ``\pi r_L^2 = \pi r_L^2/\omega_c^2``. Thus
+
+```math
+\mu = \frac{e\omega_c}{2\pi}\frac{\pi r_L^2}{\omega_c^2} = \frac{1}{2}\frac{v_\perp^2 e}{\omega_c} = \frac{1}{2}\frac{mv_\perp^2}{B}
+```
+
+As the particle moves into regions of stronger or weaker B, its Larmor radius changes, but *μ remains invariant*. To prove this, consider the component of the equation of motion along ``\mathbf{B}``:
+
+```math
+m\frac{dv_\parallel}{dt} = -\mu \frac{\partial B}{\partial s}
+```
+
+Multiplying by ``v_\parallel`` on the left and its equivalent ``ds/dt`` on the right, we have
+
+```math
+mv_\parallel]frac{dv_\parallel}{dt} = \frac{d}{dt}\Big( \frac{1}{2}mv_\parallel^2 \Big) = -\mu\frac{\partial B}{\partial s}\frac{ds}{dt} = -\mu\frac{dB}{dt}
+```
+
+Here dB/dt is the variation of B as seen by the particle; B itself is constant. The particle’s energy must be conserved, so we have
+
+```math
+\frac{d}{dt}\Big( \frac{1}{2}mv_\parallel^2 + \frac{1}{2}mv_\perp^2 \Big) = \frac{d}{dt}\Big( \frac{1}{2}mv_\parallel^2 + \mu B \Big) = 0
+```
+
+With the previous equation this becomes
+
+```math
+-\mu\frac{dB}{dt} + \frac{d}{dt}(\mu B) = 0
+```
+
+so that
+
+```math
+\frac{d\mu}{dt} = 0
+```
+
+The invariance of ``\mu`` is the basis for one of the primary schemes for plasma confinement: the *magnetic mirror*. As a particle moves from a weak-field region to a strong-field region in the course of its thermal motion, it sees an increasing B, and therefore its ``v_\perp`` must increase in order to keep μ constant. Since its total energy must remain constant, ``v_\parallel`` must necessarily decrease. If B is high enough in the “throat” of the mirror, ``v_\parallel`` eventually becomes zero; and the particle is “reflected” back to the weak-field region. It is, of course, the force ``\mathbf{F}_\parallel`` which causes the reflection. The nonuniform field of a simple pair of coil form two magnetic mirrors between which a plasma can be trapped. This effect works on both ions and electrons.
+
+The trapping is not perfect, however. For instance, a particle with ``v_\perp = 0`` will have no magnetic moment and will not feel any force along ``\mathbf{B}``. A particle with small ``v_\perp / v_'parallel`` at the midplane (``B = B_0``) will also escape if the maximum field ``B_m`` is not large enough. For given ``B_0`` and ``B_m``, which particles will escape? A particle with ``v_\perp = v_{\perp 0}`` and ``v_\parallel = v_{\parallel 0}`` at the midplane will have ``v_\perp = v_\perp^\prime`` and ``v_\parallel = 0`` at its turning point. Let the field be ``B^\prime`` there. Then the invariants of ``\mu`` yields 
+
+```math
+\frac{1}{2}\frac{mv_{\perp 0}^2}{B_0} = \frac{1}{2}\frac{m{v_{\perp 0}^{\prime}}^2}{B^\prime}
+```
+
+Conservation of energy requires
+
+```math
+{v_{\perp 0}^{\prime}}^2 = v_{\perp 0}^2 + v_{\parallel 0}^2 \equiv v_0^2
+```
+
+Combining the above two equations, we find
+
+```math
+\frac{B_0}{B^\prime} = \frac{v_{\perp 0}^2}{{v_{\perp}^{\prime}}^2} \equiv \sin^2 \theta
+```
+
+where ``\theta`` is the pitch angle of the orbit in the weak-field region. Particles with smaller θ will mirror in regions of higher B. If θ is too small, ``B^\prime`` exceeds ``B_m``; and the particles does not mirror at all. Replacing ``B^\prime`` by ``B_m``, we see that the smallest ``\theta`` of a confined particle is given by
+
+```math
+\sin^2 \theta_m = \frac{B_0}{B_m} \equiv \frac{1}{R_m}
+```
+
+where ``R_m`` is the *mirror ratio*. It defines the boundary of a region in velocity space in the shape of a cone, called a *loss cone*. Particles lying within the loss cone are not confined. Consequently, a mirror-confined plasma is never isotropic. Note that the loss cone is independent of q or m. Without collisions, both ions and electrons are equally well confined. When collisions occur, particles are lost when they change their pitch angle in a collision and are scattered into the loss cone. Generally, electrons are lost more easily because they have a higher collision frequency.
+
+The magnetic mirror was first proposed by Enrico Fermi as a mechanism for the acceleration of cosmic rays. Protons bouncing between magnetic mirrors approaching each other at high velocity could gain energy at each bounce. How such mirrors could arise is another story. A further example of the mirror effect is the confinement of particles in the Van Allen belts. The magnetic field of the earth, being strong at the poles and weak at the equator, forms a natural mirror with rather large ``R_m``.
 
 ## Nonuniform E Field
 
