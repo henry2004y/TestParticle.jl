@@ -283,7 +283,7 @@ We can obtain ``B_r`` from ``\nabla\cdot\mathbf{B} = 0``:
 \frac{1}{r}\frac{\partial}{\partial r}(rB_r) + \frac{\partial B_z}{\partial z} = 0
 ```
 
-If ``\partial \mathbf{B}_z/partial z`` is given at ``r=0`` and does not vary much with r, we have approximately
+If ``\partial \mathbf{B}_z/\partial z`` is given at ``r=0`` and does not vary much with r, we have approximately
 
 ```math
 \begin{aligned}
@@ -305,13 +305,13 @@ F_z &= q(v_r \cancel{B}_\theta - \underbrace{v_\theta B_r}_{\textcircled{\small{
 Two terms vanish if ``B_\theta = 0``, and terms 1 and 2 give rise to the usual Larmor gyration. Term 3 vanishes on the axis; when it does not vanish, this azimuthal force causes a drift in the radial direction. This drift merely makes the guiding centers follow the magnetic field lines. Term 4 is the one we are interested in. Using the expression of ``B_r``, we have
 
 ```math
-F_z = \frac{1}{2}q v_\theta r \frac{\partial B_z}{\partial z}
+F_z = \frac{1}{2}q v_\theta r_L \frac{\partial B_z}{\partial z}
 ```
 
 We must now average over one gyration. For simplicity, consider a particle whose guiding center lies on the axis. Then ``v_\theta`` is a constant during a gyration; depending on the sign of q, ``v_\theta`` is ``\mp v_\perp``. Since ``r = r_L`` , the average force is
 
 ```math
-\bar{F}_z = \mp \frac{1}{2}q v_\perp r_L \frac{\partial B_z}{\partial z} = \mp \frac{1}{2}q\frac{v_\perp^2}{\omega_c} \frac{\partial B_z}{\partial z} = -\frac{1}{2}\frac{mv_\perp^2}{B}
+\bar{F}_z = \mp \frac{1}{2}q v_\perp r_L \frac{\partial B_z}{\partial z} = \mp \frac{1}{2}q\frac{v_\perp^2}{\omega_c} \frac{\partial B_z}{\partial z} = -\frac{1}{2}\frac{mv_\perp^2}{B} \frac{\partial B_z}{\partial z}
 ```
 
 We define the *magnetic moment* of the gyrating particle to be
