@@ -52,8 +52,8 @@ Integrating once again, we have
 
 ```math
 \begin{aligned}
-x - x_0 = -i\frac{v_\perp}{\omega_c}e^{i\omega_c t} \\
-y - y_0 = \pm i\frac{v_\perp}{\omega_c}e^{i\omega_c t}
+x - x_0 &= -i\frac{v_\perp}{\omega_c}e^{i\omega_c t} \\
+y - y_0 &= \pm i\frac{v_\perp}{\omega_c}e^{i\omega_c t}
 \end{aligned}
 ```
 
@@ -67,8 +67,8 @@ Taking the real part of the positions, we have
 
 ```math
 \begin{aligned}
-x - x_0 = r_L\sin\omega_c t \\
-y - y_0 = \pm r_L \cos\omega_c t
+x - x_0 &= r_L\sin\omega_c t \\
+y - y_0 &= \pm r_L \cos\omega_c t
 \end{aligned}
 ```
 
@@ -98,8 +98,8 @@ This is a straightforward acceleration along ``\mathbf{B}``. The transverse comp
 
 ```math
 \begin{aligned}
-\frac{dv_x}{dt} = \frac{q}{m}E_x \pm \omega_c v_y \\
-\frac{dv_y}{dt} = 0 \mp \omega_c v_x
+\frac{dv_x}{dt} &= \frac{q}{m}E_x \pm \omega_c v_y \\
+\frac{dv_y}{dt} &= 0 \mp \omega_c v_x
 \end{aligned}
 ```
 
@@ -107,8 +107,8 @@ Differentiating, we have (for constant ``\mathbf{E}``)
 
 ```math
 \begin{aligned}
-\ddot{v}_x =  \\
-\ddot{v}_y = 
+\ddot{v}_x = -\omega_c^2 v_x \\
+\ddot{v}_y = \mp \omega_c \Big( \frac{q}{m}E_x \pm \omega_c v_y \Big) = -\omega_c^2 \Big( v_y + \frac{E_x}{B} \Big)
 \end{aligned}
 ```
 
@@ -122,8 +122,8 @@ so that it reduces to the previous case if we replace ``v_y`` by ``v_y + (E_x/B)
 
 ```math
 \begin{aligned}
-v_x = v_\perp e^{i\omega_c t} \\
-v_y = \pm v_\perp e^{i\omega_c t} - \frac{E_x}{B}
+v_x &= v_\perp e^{i\omega_c t} \\
+v_y &= \pm v_\perp e^{i\omega_c t} - \frac{E_x}{B}
 \end{aligned}
 ```
 
@@ -162,13 +162,13 @@ The three-dimensional orbit in space is therefore a slanted helix with changing 
 The foregoing result can be applied to other forces by replacing ``q\mathbf{E}`` in the equation of motion by a general force ``\mathbf{F}``. The guiding center drift caused by ``\mathbf{F}`` is then
 
 ```math
-\mathbf{v}_f = \frac{1}{q}\frac{\mathbf{F]\times\mathbf{B}}}{B^2}
+\mathbf{v}_f = \frac{1}{q}\frac{\mathbf{F}\times\mathbf{B}}}{B^2}
 ```
 
 In particular, if ``\mathbf{F}`` is the force of gravity ``m\mathbf{g}``, there is a drift
 
 ```math
-\mathbf{v}_g = \frac{m}{q}\frac{\mathbf{g]\times\mathbf{B}}}{B^2}
+\mathbf{v}_g = \frac{m}{q}\frac{\mathbf{g}\times\mathbf{B}}}{B^2}
 ```
 
 This is similar to the drift ``\mathbf{v}_E`` in that it is perpendicular to both the force and ``\mathbf{B}``, but it differs in one important respect. The drift ``\mathbf{v}_g`` changes sign with the particle’s charge. Under a gravitational force, ions and electrons drift in opposite directions, so there is a net current density in the plasma given by
@@ -187,7 +187,7 @@ Now that the concept of a guiding center drift is firmly established, we can dis
 
 Here the magnetic field lines are straight, but their density increases, say, in the y direction. We can anticipate the result by using our simple physical picture. The gradient in |B| causes the Larmor radius to be larger at the bottom of the orbit than at the top, and this should lead to a drift, in opposite directions for ions and electrons, perpendicular to both B and ``\nabla B``. The drift velocity should obviously be proportional to ``r_L/L`` and to ``v_\perp``.
 
-Consider the Lorentz force ``\mathbf{F] = q\mathbf{v}\times\mathbf{B]``, averaged over a gyration. Clearly, ``\bar{F}_x = 0``, since the particle spends as much time moving up as down. We wish to calculate ``\bar{F}_y``, in an approximate fashion, by using the *undisturbed orbit* of the particle to find the average. The undisturbed orbit is given by the solution in the first section for a uniform ``\mathbf{B}`` field. Taking the real part of the solution for ``v_x`` and ``y``, we have
+Consider the Lorentz force ``\mathbf{F} = q\mathbf{v}\times\mathbf{B}``, averaged over a gyration. Clearly, ``\bar{F}_x = 0``, since the particle spends as much time moving up as down. We wish to calculate ``\bar{F}_y``, in an approximate fashion, by using the *undisturbed orbit* of the particle to find the average. The undisturbed orbit is given by the solution in the first section for a uniform ``\mathbf{B}`` field. Taking the real part of the solution for ``v_x`` and ``y``, we have
 
 ```math
 F_y = -q v_x B_z(y) = -q v_\perp(\cos \omega_c t) \Big[ B_0 \pm r_L(\cos\omega_c t )\frac{\partial B}{\partial y} \Big]
@@ -348,7 +348,7 @@ m\frac{dv_\parallel}{dt} = -\mu \frac{\partial B}{\partial s}
 Multiplying by ``v_\parallel`` on the left and its equivalent ``ds/dt`` on the right, we have
 
 ```math
-mv_\parallel]frac{dv_\parallel}{dt} = \frac{d}{dt}\Big( \frac{1}{2}mv_\parallel^2 \Big) = -\mu\frac{\partial B}{\partial s}\frac{ds}{dt} = -\mu\frac{dB}{dt}
+mv_\parallel \frac{dv_\parallel}{dt} = \frac{d}{dt}\Big( \frac{1}{2}mv_\parallel^2 \Big) = -\mu\frac{\partial B}{\partial s}\frac{ds}{dt} = -\mu\frac{dB}{dt}
 ```
 
 Here dB/dt is the variation of B as seen by the particle; B itself is constant. The particle’s energy must be conserved, so we have
@@ -491,9 +491,129 @@ Let us now take ``\mathbf{E}`` and ``\mathbf{B}`` to be uniform in space but var
 \mathbf{E} = E_0 e^{i\omega t}\widehat{x}
 ```
 
-Since ``\dot{E}_x = i\omega E_x``, we can write 
+Since ``\dot{E}_x = i\omega E_x``, we can write the velocity x-component equation as
+
+```math
+\ddot{v}_x = -\omega_c^2 \Big( v_x \mp \frac{i\omega}{\omega_c}\frac{\tilde{E}_x}{B} \Big)
+```
+
+Let us define
+
+```math
+\begin{aligned}
+\tilde{v}_p &\equiv \pm \frac{i\omega}{\omega_c}\frac{\tilde{E}_x}{B} \\
+\tilde{v}_E &\equiv \frac{\tilde{E}_x}{B}
+\end{aligned}
+```
+
+where the tilde has been added merely to emphasize that the drift is oscillating. The plus (minus) sign, as usual, denotes positive (negative) ``q``. Now the x and y velocity component equations can be written as
+
+```math
+\begin{aligned}
+\ddot{v}_x &= -\omega_c^2(v_x - \tilde{v}_p) \\
+\ddot{v}_y &= -\omega_c^2(v_y - \tilde{v}_E)
+\end{aligned}
+```
+
+By analogy with the derivation in the case of a uniform EM field, we try a solution which is the sum of a drift and a
+gyratory motion:
+
+```math
+\begin{aligned}
+v_x &= v_\perp e^{i\omega_c t} + \tilde{v}_p \\
+v_y &= \pm i v_\perp e^{i\omega_c t} + \tilde{v}_E
+\end{aligned}
+```
+
+If we now differentiate twice with respect to time, we find
+
+```math
+\begin{aligned}
+\ddot{v}_x &= -\omega_c^2 v_x + (\omega_c^2 - \omega^2)\tilde{v}_p \\
+\ddot{v}_y &= -\omega_c^2 v_y + (\omega_c^2 - \omega^2)\tilde{v}_E
+\end{aligned}
+```
+
+This is **not** the same as the previous expressions right above unless ``\omega^2 \ll \omega_c^2``. If we now make the assumption
+that ``\mathbf{E}`` varies slowly, so that ``\omega^2 \ll \omega_c^2``, then there we have the approximate solution.
+
+The solution of velocities in x and y tells us that the guiding center motion has two components. The y component, perpendicular to ``\mathbf{B}`` and ``\mathbf{E}``, is the usual ``\mathbf{E}\times\mathbf{B}`` drift, except that ``v_E`` now oscillates slowly at the frequency ``\omega``. The x component, a new drift *along the direction of* ``\mathbf{E}``, is called the *polarization drift*. By replacing ``i\omega`` with ``\partial/partial t``, we can generalize the expression of ``v_p`` and define the polarization drift as
+
+```math
+\mathbf{v}_p = \pm \frac{1}{\omega_c B}\frac{d\mathbf{E}}{dt}
+```
+
+Since ``\mathbf{v}_p`` is in opposite directions for ions and electrons, there is a *polarization current*; for Z = 1, this is
+
+```math
+\mathbf{j}_p = ne(v_{ip} - v_{ep}) = \frac{ne}{eB^2}(M+m)\frac{d\mathbf{E}}{dt} = \frac{\rho}{B}\frac{d\mathbf{E}}{dt}
+```
+
+where ``\rho`` is the mass density.
+
+The physical reason for the polarization current is simple. Consider an ion at rest in a magnetic field. If a field ``\mathbf{E}`` is suddenly applied, the first thing the ion does is to move in the direction of ``\mathbf{E}``. Only after picking up a velocity ``\mathbf{v} does the ion feel a Lorentz force ``e\mathbf{v}\times\mathbf{B}`` and begin to move perpendicular to both fields. If
+``\mathbf{E}`` is now kept constant, there is no further ``\mathbf{v}_p`` drift but only a ``\mathbf{v}_E`` drift. However, if ``\mathbf{E}`` is reversed, there is again a momentary drift, this time to the left. Thus ``\mathbf{v}_p`` is a startup drift due to inertia and occurs only in the first half-cycle of each gyration during which ``\mathbf{E}`` changes. Consequently, ``\mathbf{v}_p`` goes to zero when ``\omega/\omega_c \ll 1``.
+
+The polarization effect in a plasma is similar to that in a solid dielectric, where ``\mathbf{D} = \epsilon_0\mathbf{E} + \mathbf{P}``. The dipoles in a plasma are ions and electrons separated by a distance ``r_L``. But since ions and electrons can move around to preserve quasineutrality, the application of a steady ``\mathbf{E}`` field does not result in a polarization field ``\mathbf{P}``. However, if ``\mathbf{E}`` oscillates, an oscillating current ``\mathbf{j}_p`` results from the lag due to the ion inertia.
 
 ## Time-Varying B Field
+
+Finally, we allow the magnetic field to vary in time. Since the Lorentz force is always perpendicular to ``\mathbf{v}``, a magnetic field itself cannot impart energy to a charged particle. However, associated with ``\mathbf{B}`` is an electric field given by
+
+```math
+\nabla\times\mathbf{E} = -\dot{\mathbf{B}}
+```
+
+and this can accelerate the particles. We can no longer assume the fields to be completely uniform. Let ``\mathbf{v}_\perp = d\mathbf{l}/dt`` be the transverse velocity, ``\mathbf{l}`` being the element of the path along a particle trajectory (with ``v_\parallel`` neglected). Taking the scalar product of the equation of motion with ``\mathbf{v}_\perp``, we have
+
+```math
+\frac{d}{dt}\Big( \frac{1}{2}mv_\perp^2 \Big) = q\mathbf{E}\cdot\mathbf{v}_\perp = q\mathbf{E}\cdot\frac{d\mathbf{l}}{dt}
+```
+
+The change in one gyration is obtained by integrating over one period:
+
+```math
+\delta \Big( \frac{1}{2}mv_\perp^2  \Big) = \int_0^{2\pi/\omega_c}q\mathbf{E}\cdot\frac{d\mathbf{l}}{dt}dt
+```
+
+If the field changes slowly, we can replace the time integral by a line integral over the unperturbed orbit:
+
+```math
+\delta \Big( \frac{1}{2}mv_\perp^2  \Big) = \oint q\mathbf{E}\cdot d\mathbf{l} = q\int_s (\nabla\times\mathbf{E})\cdot d\mathbf{S} = -q \int_s\dot{\mathbf{B}}\cdot d\mathbf{S}
+```
+
+Here ``\mathbf{S}`` is the surface enclosed by the Larmor orbit and has a direction given by the right-hand rule when the fingers point in the direction of ``\mathbf{v}``. Since the plasma is diamagnetic, we have ``\mathbf{B}\cdot d\mathbf{S}<0`` for ions and ``\mathbf{B}\cdot d\mathbf{S}>0`` for electrons. Then
+
+```math
+\delta \Big( \frac{1}{2}mv_\perp^2  \Big) = \pm q \dot{B}\pi r_L^2 = \pm q \pi\dot{B}]frac{v_\perp^2}{\omega_c}\frac{m}{\pm qB} = \frac{\frac{1}{2}mv_\perp^2}{B}\cdot \frac{2\pi \dot{B}}{\omega_c}
+```
+
+The quantity ``\frac{2\pi\dot{B}}{\omega_c} = \frac{\dot{B}}{\omega_c}`` is just the change ``\delta B`` during one period of gyration. Thus
+
+```math
+\delta \Big( \frac{1}{2}mv_\perp^2  \Big) = \mu \delta B
+```
+
+Since the left-hand-side is ``\delta(\mu B)``, we have the desired result
+
+```math
+\delta \mu = 0
+```
+
+*The magnetic moment is invariant in slowly varying magnetic fields.*
+
+As the B field varies in strength, the Larmor orbits expand and contract, and the particles lose and gain transverse energy. This exchange of energy between the particles and the field is described very simply by the invariant of magnetic moment. The invariance of ``\mu`` allows us to prove easily the following well-known theorem:
+> The magnetic flux through a Larmor orbit is constant.
+
+The flux ``\Phi`` is given by ``BS``, with ``S = \pi r_L^2``. Thus
+
+```math
+\Phi = B\pi\frac{v_\perp^2}{\omega_c^2} = B\pi\frac{v_\perp^2 m^2}{q^2 B^2} = \frac{2\pi m}{q^2}\frac{\frac{1}{2}mv_\perp^2}{B} = \frac{2\pi m}{q^2}\mu
+```
+
+Therefore, ``\Phi`` is constant if ``\mu`` is constant.
+
+This property is used in a method of plasma heating known as *adiabatic compression*. A plasma is injected into a sequence of magnetic mirrors and by keep increasing the magnetic field in subsequent mirrors we can increase the plasma velocities.
 
 ## Summary of Guiding Center Drifts
 
