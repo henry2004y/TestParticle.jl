@@ -617,6 +617,56 @@ This property is used in a method of plasma heating known as *adiabatic compress
 
 ## Summary of Guiding Center Drifts
 
+General force:
+
+```math
+\mathbf{v}_f = \frac{1}{q}\frac{\mathbf{F}\times\mathbf{B}}{B^2}
+```
+
+Electric field:
+
+```math
+\mathbf{v}_E = \frac{\mathbf{E}\times\mathbf{B}}{B^2}
+```
+
+Gravitational field:
+
+```math
+\mathbf{v}_g = \frac{m}{q}\frac{\mathbf{g}\times\mathbf{B}}{B^2}
+```
+
+Nonuniform electric field:
+
+```math
+\mathbf{v}_E = \Big( 1+\frac{1}{4}r_L^2 \nabla^2 \Big)\frac{\mathbf{E}\times\mathbf{B}}{B^2}
+```
+
+Nonuniform magnetic field:
+
+Grad-B:
+
+```math
+\mathbf{v}_{\nabla B} = \pm \frac{1}{2}v_\perp r_L\frac{\mathbf{B}\times\nabla B}{B^2}
+```
+
+Curvature drift:
+
+```math
+\mathbf{v}_R = \frac{mv_\parallel^2}{q}\frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2}
+```
+
+Curved vacuum field:
+
+```math
+\mathbf{v}_R + \mathbf{v}_{\nabla B} = \frac{m}{q}\Big( v_\parallel^2 + \frac{1}{2}v_\perp^2 \Big) \frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2}
+```
+
+Polarization drift:
+
+```math
+\mathbf{v}_p = \pm \frac{1}{\omega_c B}\frac{d\mathbf{E}}{dt}
+```
+
 ## Adiabatic Invariants
 
 ### The First Adiabatic Invariant
