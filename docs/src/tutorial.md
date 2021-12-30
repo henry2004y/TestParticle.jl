@@ -661,16 +661,142 @@ Curved vacuum field:
 \mathbf{v}_R + \mathbf{v}_{\nabla B} = \frac{m}{q}\Big( v_\parallel^2 + \frac{1}{2}v_\perp^2 \Big) \frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2}
 ```
 
-Polarization drift:
+Polarization drift:[^time-varying]
 
 ```math
 \mathbf{v}_p = \pm \frac{1}{\omega_c B}\frac{d\mathbf{E}}{dt}
 ```
 
+[^time-varying]: In common test particle models, we assume static EM fields, so the polarization drift as well as adiabatic heating is not present. However, it is easily achieveable here in this package.
+
 ## Adiabatic Invariants
+
+It is well known in classical mechanics that whenever a system has a periodic motion, the action integral ``\oint p dq`` taken over a period is a constant of the motion. Here ``p`` and ``q`` are the generalized momentum and coordinate which repeat themselves in the motion. If a slow change is made in the system, so that the motion is not quite periodic, the constant of the motion does not change and is then called an *adiabatic invariant*. By slow here we mean slow compared with the period of motion, so that the integral ``\oint p dq`` is well defined even though it is strictly no longer an integral over a closed path. Adiabatic invariants play an important role in plasma physics; they allow us to obtain simple answers in many instances involving
+complicated motions. There are three adiabatic invariants, each corresponding to a different type of periodic motion.
 
 ### The First Adiabatic Invariant
 
+We have already met the quantity
+
+```math
+\mu = mv_\perp^2 / 2B
+```
+
+and have proved its invariance in spatially and temporally varying ``\mathbf{B}`` fields. The periodic motion involved, of course, is the Larmor gyration. If we take ``p`` to be angular momentum ``mv_perp r`` and ``dq`` to be the coordinate ``d\theta``, the action integral becomes
+
+```math
+\oint p dq = \oint mv_\perp r d\theta = 2\pi r_L m v_\perp = 2\pi \frac{mv_\perp^2}{\omega_c} = 4\pi \frac{m}{|q|}\mu
+```
+
+Thus μ is a constant of the motion as long as ``q/m`` is not changed. We have proved the invariance of μ only with the implicit assumption ``\omega/\omega_c \ll 1``, where ``\omega`` is a frequency characterizing the rate of change of ``\mathbf{B}`` as seen by the particle. A proof exists, however, that μ is invariant even when ``\omega/\omega_c \le q``. In theorists’ language, μ is
+invariant “to all orders in an expansion in ω/ω c .” What this means in practice is that μ remains much more nearly constant than ``\mathbf{B}`` does during one period of gyration.
+
+It is just as important to know when an adiabatic invariant does *not* exist as to know when it does. Adiabatic invariance of μ is violated when ω is not small compared with ``\omega_c`` . We give three examples of this.
+
+* *Magnetic Pumping*. If the strength of ``\mathbf{B}`` in a mirror confinement system is varied sinusoidally, the particles’ ``v_\perp`` would oscillate; but there would be no gain of energy in the long run. However, if the particles make collisions, the
+invariance of μ is violated, and the plasma can be heated. In particular, a particle making a collision during the compression phase can transfer part of its gyration energy into ``v_\parallel`` energy, and this is not taken out again in the expansion
+phase.
+
+* *Cyclotron Heating*. Now imagine that the ``\mathbf{B}`` field is oscillated at the frequency ``\omega_c``. The induced electric field will then rotate in phase with some of the particles and accelerate their Larmor motion continuously. The condition ``\omega\ll \omega_c`` is violated, μ is not conserved, and the plasma can be heated.
+
+* *Magnetic Cusps*. If the current in one of the coils in a simple magnetic mirror system is reversed, a magnetic cusp is formed. This configuration has, in addition to the usual mirrors, a spindle-cusp mirror extending over ``360^o`` in azimuth. A plasma confined in a cusp device is supposed to have better stability properties than that in an ordinary mirror. Unfortunately, the loss-cone losses are larger because of the additional loss region; and the particle motion is nonadiabatic. Since the ``\mathbf{B}`` field vanishes at the center of symmetry, ``\omega_c`` is zero there; and μ is not preserved. The local Larmor radius near the center is larger than the device. Because of this, the adiabatic invariant μ does not guarantee that particles outside a loss cone will stay outside after passing through the nonadiabatic region. Fortunately, there is in this case another invariant: the
+canonical angular momentum ``p_\theta = mrv_\theta - erA_\theta``. This ensures that there will be a population of particles trapped indefinitely until they make a collision.
+
 ### The Second Adiabatic Invariant
 
+Consider a particle trapped between two magnetic mirrors: it bounces between them and therefore has a periodic motion at the “bounce frequency”. A constant of this motion is given by ``\oint mv_\parallel ds``, where ``ds`` is an element of path length (of the guiding center) along a field line. However, since the guiding center drifts across field lines, the motion is not exactly periodic, and the constant of the motion becomes an adiabatic invariant. This is called the *longitudinal invariant* ``J`` and is
+defined for a half-cycle between the two turning points
+
+```math
+J = \int_a^b v_\parallel ds
+```
+
+We shall prove that ``J`` is invariant in a static, nonuniform B field; the result is also true for a slowly time-varying B field.
+
+Before embarking on this somewhat lengthy proof, let us consider an example of the type of problem in which a theorem on the invariance of ``J`` would be useful. As we have already seen, the earth’s magnetic field mirror-traps charged particles, which slowly drift in longitude around the earth. If the magnetic field were perfectly symmetric, the particle would eventually drift back to the same magnetic field line. However, the actual field is distorted by such effects as the solar wind. In that case, will a particle ever come back to the same magnetic field line? Since the particle’s energy is conserved and is equal to ``\frac{1}{2} mv_\perp^2`` at the turning point, the invariance of μ indicates that ``|B|`` remains the same at the turning point. However, upon drifting back to the same longitude, a particle may find itself on another magnetic field line at a different altitude. This cannot happen if ``J`` is conserved. ``J`` determines the length of the field lines between turning points, and no two lines
+have the same length between points with the same ``|B|``. Consequently, the particle returns to the same magnetic field line even in a slightly asymmetric field.
+
+To prove the invariance of ``J``, we first consider the invariance of ``v_\parallel \delta s``, where ``\delta s`` is a segment of the path along ``\mathbf{B}``. Because of guiding center drifts, a particle on ``s`` will find itself on another magnetic field line ``\delta s^\prime`` after a time ``\Delta t``. The length of ``\delta s^\prime`` is defined by passing planes perpendicular to ``\mathbf{B}`` through the end points of ``\delta s``. The length of ``\delta s`` is obviously proportional to the radius of curvature:
+
+```math
+\frac{\delta s}{R_c} = \frac{\delta s^\prime}{R_c^\prime}
+```
+
+so that
+
+```math
+\frac{\delta s^\prime - \delta s}{\Delta t \delta s} = \frac{R_c^\prime - R_c}{\Delta t R_c}
+```
+
+The "radial" component of ``\mathbf{v}_{gc}`` is just
+
+```math
+\mathbf{v}_{gc}\cdot \frac{\mathbf{R}_c}{R_c} = \frac{R_c^\prime - R_c}{\Delta t}
+```
+
+The guiding center drift in curved vacuum field is
+
+```math
+\mathbf{v}_{gc} = \mathbf{v}_R + \mathbf{v}_{\nabla B} = \pm \frac{1}{2}v_\perp r_L\frac{\mathbf{B}\times\nabla B}{B^2} + \frac{mv_\parallel^2}{q}\frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2}
+```
+
+The curvature drift has no component along ``\mathbf{R}_c``. Using the above three equations, we have
+
+```math
+\frac{1}{\delta s}\frac{d}{dt}\delta s = \mathbf{v}_{gs} \cdot \frac{\mathbf{R}_c}{R_c^2} = \frac{1}{2}\frac{m}{q}\frac{v_\perp^2}{B^3}(\mathbf{B}\times\nabla B)\cdot\frac{\mathbf{R}_c}{R_c^2}
+```
+
+This is the rate of change of ``\delta s`` as seen by the particle. We must now get the rate of change of ``v_\parallel`` as seen by the particle. The parallel and perpendicular energies are defined by
+
+```math
+W \equiv \frac{1}{2}mv_\parallel^2 + \frac{1}{2}mv_\parallel^2 = \frac{1}{2}mv_\parallel^2 + \mu B \equiv W_\parallel + W_\perp
+```
+
+Thus ``v_\parallel`` can be written
+
+```math
+v_\parallel = \big[ \frac{2}{m}(W - \mu B) \big]^{1/2}
+```
+
+Here W and μ are constant, and only B varies. Therefore,
+
+```math
+\frac{\dot{v}_\parallel}{v_\parallel} = -\frac{1}{2}\frac{\mu\dot{B}}{W - \mu B} = -\frac{1}{2}\frac{\mu \dot{B}}{W_\parallel} = -\frac{\mu\dot{B}}{mv_\parallel^2}
+```
+
+Since B was assumed static, ``\dot{B}`` is not zero only because of the guiding center motion:
+
+```math
+\dot{B} = \frac{dB}{d\mathbf{r}}\cdot\frac{d\mathbf{r}}{dt} = \mathbf{v}_{gc}\cdot\nabla B = \frac{mv_\parallel^2}{q}\frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2} \cdot\nabla B 
+```
+
+Now we have
+
+```math
+\frac{\dot{v}_\parallel}{v_\parallel} = -\frac{\mu}{q}\frac{(\mathbf{R}_c\times\mathbf{B})\cdot\nabla B}{R_c^2 B^2} = -\frac{1}{2}\frac{m}{q}\frac{v_\perp^2}{B} \frac{(\mathbf{R}_c\times\mathbf{B})\cdot\nabla B}{R_c^2 B^2}
+```
+
+The fractional change in ``v_\parallel \delta s`` is
+
+```math
+\frac{1}{v_\parallel \delta s}\frac{d}{dt}(v_\parallel \delta s) = \frac{1}{\delta s}\frac{d\delta s}{dt} + \frac{1}{v_\parallel}\frac{dv_\parallel}{dt}
+```
+
+From the previous derivations we see that the these two terms cancel, so that
+
+```math
+v_\parallel \delta s = \textrm{constant}
+```
+
+This is not exactly the same as saying that ``J`` is constant, however. In taking the integral of ``v_\parallel \delta s``, between the turning points, it may be that the turning points on ``\delta s^\prime`` do not coincide with the intersections of the perpendicular planes. However, any error in ``J`` arising from such a discrepancy is negligible because near the turning points, ``v_\parallel`` is nearly zero. Consequently, we have proved
+
+```math
+J = \int_a^b v_\parallel ds = \textrm{constant}
+```
+
+An example of the violation of J invariance is given by a plasma heating scheme called *transit-time magnetic pumping*. Suppose an oscillating current is applied to the coils of a mirror system so that the mirrors alternately approach and withdraw from each other near the bounce frequency. Those particles that have the right bounce frequency will always see an approaching mirror and will therefore gain ``v_\parallel``. ``J`` is not conserved in this case because the change of ``\mathbf{B}`` occurs on a time scale not long compared with the bounce time.
+
 ### The Third Adiabatic Invariant
+
+Referring again to the earth dipole case, we see that the slow drift of a guiding center around the earth constitutes a third type of periodic motion. The adiabatic invariant connected with this turns out to be the total magnetic flux ``\Phi`` enclosed by the drift surface. It is almost obvious that, as ``\mathbf{B}`` varies, the particle will stay on a surface such that the total
+number of magnetic field lines enclosed remains constant. This invariant, ``\Phi``, has few applications because most fluctuations of ``\mathbf{B}`` occur on a time scale short compared with the drift period. As an example of the violation of ``\Phi`` invariance, we can cite some recent work on the excitation of hydromagnetic waves in the ionosphere. These waves have a long period comparable to the drift time of a particle around the earth. The particles can therefore encounter the wave in the same phase each time around. If the phase is right, the wave can be excited by the conversion of particle drift energy to wave energy.
