@@ -1,3 +1,8 @@
+# Tracing charged particle in the structured SWMF outputs from MHD-EPIC simulation.
+# For more details about the format, please checkout Batsrus.jl.
+#
+# Hongyang Zhou, hyzhou@umich.edu
+
 using Statistics: mean
 using Batsrus
 using TestParticle
