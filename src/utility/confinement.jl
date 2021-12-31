@@ -18,9 +18,9 @@ Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
 central loop.
 """
 function getB_bottle(x, y, z, distance, a, b, I1, I2)
-   
+
    r = √(x^2 + y^2) # distance from z-axis
-   
+
    # 1st loop
    z₁ = z + 0.5*distance
    k = √(4*r*a / (z₁^2 + (a + r)^2) )
@@ -38,7 +38,7 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
    Br2 = μ₀*z₂*I1/(2π*r*√(z₂^2+(a+r)^2))*((z₂^2+r^2+a^2)/(z₂^2+(r-a)^2)*E - K)
    Bx2 = Br2 * x / r
    By2 = Br2 * y / r
-   
+
    # central loop
    z₃ = z
    k = √(4*r*b / (z₃^2 + (b+r)^2) )
@@ -47,7 +47,7 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
    Br3 = μ₀*z₃*I2/(2π*r*√(z₃^2+(b+r)^2))*((z₃^2+r^2+b^2)/(z₃^2+(r-b)^2)*E - K)
    Bx3 = Br3 * x / r
    By3 = Br3 * y / r
-   
+
    # total magnetic field
    if x == 0.0 && y == 0.0
       Bx = 0.0
@@ -75,10 +75,10 @@ Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/
 """
 function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
 
-   a *= 2 
+   a *= 2
 
    Bx, By, Bz = 0.0, 0.0, 0.0
-   
+
    # magnetic field of the coils
    for i = 0:15
       θ = π/16 + i*π/8 # angle between the i-th coil and the x-axis
@@ -92,24 +92,24 @@ function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
          r1 = √(r1_^2 + z^2)
          z1 = y
       end
- 
+
       k = √(4r1*a / (z1^2 + (a + r1)^2))
-   
+
       K, E = ellipke(k)
       # Bz1_ is the magnetic field in the coil frame
       Bz1_ = μ₀*ICoils/(2π*√(z1^2+(a+r1)^2))*((a^2-z1^2-r1^2)/(z1^2+(r1-a)^2)*E+K)
       # Br1_ is the magnetic field in the coil frame
       Br1_ = μ₀*z1*ICoils/(2π*r1*√(z1^2+(a+r1)^2))*((z1^2+r1^2+a^2)/(z1^2+(r1-a)^2)*E-K)
       # normal coordinates
-      Bx1 = -sin(θ)*Bz1_ + Br1_*r1_/r1*cos(θ) 
+      Bx1 = -sin(θ)*Bz1_ + Br1_*r1_/r1*cos(θ)
       By1 = cos(θ)*Bz1_ + sin(θ)*Br1_*r1_/r1
       Bz1 = Br1_ * z / r1
-   
+
       # add the field of a single coil to the total field
       Bx += Bx1
       By += By1
       Bz += Bz1
-       
+
       if abs(Bx) < 5e-12
          Bx = 0.0
       end
@@ -118,7 +118,7 @@ function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
       end
       if abs(Bz) < 5e-12
          Bz = 0.0
-      end 
+      end
    end
 
    # magnetic field of the plasma current
@@ -127,7 +127,7 @@ function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
    # distance to centre of plasma ring
    distance = √( z^2 + (x - (a + b)*cos(ϕ))^2 + (y - (a + b)*sin(ϕ))^2 )
    I2_r_plasma = IPlasma * erf(distance/(σ*√2))
-   
+
    r = hypot(x, y)
    k = √(4r*(a+b)/(z^2+((a+b)+r)^2))
    K, E = ellipke(k)
@@ -135,7 +135,7 @@ function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
    Br_plasma = μ₀*z*I2_r_plasma/(2π*r*√(z^2+(b+r)^2))*((z^2+r^2+(a+b)^2)/(z^2+(r-(a+b))^2)*E-K)
    Bx_plasma = Br_plasma*x/r
    By_plasma = Br_plasma*y/r
-   
+
    if distance > 0.0001
       Bx += Bx_plasma
       By += By_plasma
