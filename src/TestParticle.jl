@@ -1,26 +1,29 @@
 module TestParticle
 
-using LinearAlgebra: norm,  ×
+using LinearAlgebra: norm, ×
 using Meshes
 using Interpolations
 using StaticArrays
 
 export prepare, trace_numeric!, trace_analytic!, trace_analytic_relativistic!
 export trace_numeric, trace_analytic, trace_analytic_relativistic
-export Proton, Electron, Ion
+export Proton, Electron, Ion, User
 
 include("utility/utility.jl")
 
+"""
+Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
+"""
 @enum Species Proton Electron Ion User
 
-function getchargemass(species, q, m)
+function getchargemass(species::Species, q, m)
 
    if species == Proton
       q = qᵢ
       m = mᵢ
    elseif species == Electron
       q = qₑ
-      m = mₑ 
+      m = mₑ
    end
    q, m
 end
@@ -30,7 +33,7 @@ function makegrid(grid)
    gridmin = coordinates(minimum(grid))
    gridmax = coordinates(maximum(grid))
    Δx = spacing(grid)
-   
+
    gridx = range(gridmin[1], gridmax[1], step=Δx[1])
    gridy = range(gridmin[2], gridmax[2], step=Δx[2])
    gridz = range(gridmin[3], gridmax[3], step=Δx[3])
@@ -59,17 +62,17 @@ function getinterp(A, gridx, gridy, gridz)
 end
 
 """
-    prepare(grid, E, B; species=Proton)
+    prepare(grid, E, B; species=Proton) -> (q, m, E, B)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` and interpolated
-EM field functions. 
+EM field functions.
 """
-function prepare(grid::CartesianGrid, E, B; species=Proton, q=1.0, m=1.0)
+function prepare(grid::CartesianGrid, E, B; species::Species=Proton, q=1.0, m=1.0)
 
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
-   
+
    interpEx, interpEy, interpEz = getinterp(E, gridx, gridy, gridz)
    interpBx, interpBy, interpBz = getinterp(B, gridx, gridy, gridz)
 
@@ -77,12 +80,12 @@ function prepare(grid::CartesianGrid, E, B; species=Proton, q=1.0, m=1.0)
 end
 
 """
-    prepare(grid, E, B, F; species=Proton, q=1.0, m=1.0)
+    prepare(grid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, analytic EM field functions, and external force `F`.
 """
-function prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0)
+function prepare(grid::CartesianGrid, E, B, F; species::Species=Proton, q=1.0, m=1.0)
 
    q, m = getchargemass(species, q, m)
 
@@ -91,19 +94,19 @@ function prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0)
    interpEx, interpEy, interpEz = getinterp(E, gridx, gridy, gridz)
    interpBx, interpBy, interpBz = getinterp(B, gridx, gridy, gridz)
    interpFx, interpFy, interpFz = getinterp(F, gridx, gridy, gridz)
-   
+
    q, m, (interpEx, interpEy, interpEz), (interpBx, interpBy, interpBz),
    (interpFx, interpFy, interpFz)
 end
 
 """
-    prepare(E, B; species=Proton, q=1.0, m=1.0)
+    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q, m, E, B)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
 `Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
 """
-function prepare(E, B; species=Proton, q=1.0, m=1.0)
+function prepare(E, B; species::Species=Proton, q=1.0, m=1.0)
 
    q, m = getchargemass(species, q, m)
 
@@ -111,12 +114,12 @@ function prepare(E, B; species=Proton, q=1.0, m=1.0)
 end
 
 """
-    prepare(E, B, F; species=Proton, q=1.0, m=1.0)
+    prepare(E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, analytic EM field functions, and external force `F`.
 """
-function prepare(E, B, F; species=Proton, q=1.0, m=1.0)
+function prepare(E, B, F; species::Species=Proton, q=1.0, m=1.0)
    t = prepare(E, B; species, q, m)
    push!(t, F)
    t
@@ -157,7 +160,7 @@ function trace_numeric_relativistic!(dy, y, p, t)
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
+   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*γInv*(getE(y, interpE) + y[4:6] × getB(y, interpB))
 end
@@ -167,7 +170,7 @@ function trace_numeric_relativistic(y, p, t)
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
+   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
    dx, dy, dz = y[4:6]
    dux, duy, duz = q/m*γInv*(getE(y, interpE) + y[4:6] × getB(y, interpB))
    SVector{6}(dx, dy, dz, dux, duy, duz)
@@ -175,7 +178,7 @@ end
 
 "ODE equations for charged particle moving in static analytical EM field."
 function trace_analytic!(dy, y, p, t)
-   q, m, E, B = p 
+   q, m, E, B = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(E(y) + y[4:6] × (B(y[1:3])))
 end
@@ -209,7 +212,7 @@ function trace_analytic_relativistic!(dy, y, p, t)
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
+   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*γInv*(E(y) + y[4:6] × (B(y[1:3])))
 end
@@ -220,7 +223,7 @@ function trace_analytic_relativistic(y, p, t)
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2) 
+   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
    dx, dy, dz = y[4:6]
    dux, duy, duz = q/m*γInv*(E(y) + y[4:6] × (B(y[1:3])))
    SVector{6}(dx, dy, dz, dux, duy, duz)
