@@ -11,20 +11,26 @@ Take you some time to figure out which algorithm works for your problem!
 
 ## Gallery
 
-- Tracing proton in a uniform EM field in z
+- Tracing proton in a uniform EM field
 ![](../figures/ion_uniformEM.png)
+
+The electric field is parallel to the magnetic field in z direction, so the motion consists of a cyclotron gyration and an acceleration along z.
 
 - Tracing electrons in a uniform EM field
 ![](../figures/electrons_uniformEM.png)
 
-- Tracing electron and proton in a uniform EM field (real physical parameters), [source](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_electron_proton.jl)
+- Tracing electron and proton in the same uniform EM field (real physical parameters), [source](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_electron_proton.jl)
 ![](../figures/electron_ion_uniformEM.png)
+
+Due to the fact that ``m_p / m_e \doteq 1836``, the proton gyro-radius is 1800 times larger than the electron, if they start with the same velocity as in this case. In more common cases we would compare electrons and protons with the same energy, and their gyro-radii differ by a factor of ``\sqrt{m_p/m_e} \sim 40``.
 
 - Tracing in a magnetic dipole field corresponds to a Harris current sheet with strength 20 nT and width 0.4 Re for protons at 50 keV, [source](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_currentsheet.jl)
 ![](../figures/ion_trajectory_current_sheet.png)
 
 - Tracing in a Earth-like magnetic dipole field for protons at 50 keV, [source](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_proton_dipole.jl)
 ![](../figures/ion_trajectory_dipole.png)
+
+This is a combination of grad-B drift, curvature drift, and the bounce motion between mirror points.
 
 - Tracing relativistic electron close to the speed of light in a [magnetic bottle](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles), [source](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_magneticbottle.jl)
 ![](../figures/electron_magnetic_bottle.png)
