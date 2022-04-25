@@ -681,7 +681,7 @@ We have already met the quantity
 \mu = mv_\perp^2 / 2B
 ```
 
-and have proved its invariance in spatially and temporally varying ``\mathbf{B}`` fields. The periodic motion involved, of course, is the Larmor gyration. If we take ``p`` to be angular momentum ``mv_perp r`` and ``dq`` to be the coordinate ``d\theta``, the action integral becomes
+and have proved its invariance in spatially and temporally varying ``\mathbf{B}`` fields. The periodic motion involved, of course, is the Larmor gyration. If we take ``p`` to be angular momentum ``mv_\perp r`` and ``dq`` to be the coordinate ``d\theta``, the action integral becomes
 
 ```math
 \oint p dq = \oint mv_\perp r d\theta = 2\pi r_L m v_\perp = 2\pi \frac{mv_\perp^2}{\omega_c} = 4\pi \frac{m}{|q|}\mu
