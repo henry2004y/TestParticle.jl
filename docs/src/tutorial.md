@@ -537,7 +537,7 @@ If we now differentiate twice with respect to time, we find
 This is **not** the same as the previous expressions right above unless ``\omega^2 \ll \omega_c^2``. If we now make the assumption
 that ``\mathbf{E}`` varies slowly, so that ``\omega^2 \ll \omega_c^2``, then there we have the approximate solution.
 
-The solution of velocities in x and y tells us that the guiding center motion has two components. The y component, perpendicular to ``\mathbf{B}`` and ``\mathbf{E}``, is the usual ``\mathbf{E}\times\mathbf{B}`` drift, except that ``v_E`` now oscillates slowly at the frequency ``\omega``. The x component, a new drift *along the direction of* ``\mathbf{E}``, is called the *polarization drift*. By replacing ``i\omega`` with ``\partial/partial t``, we can generalize the expression of ``v_p`` and define the polarization drift as
+The solution of velocities in x and y tells us that the guiding center motion has two components. The y component, perpendicular to ``\mathbf{B}`` and ``\mathbf{E}``, is the usual ``\mathbf{E}\times\mathbf{B}`` drift, except that ``v_E`` now oscillates slowly at the frequency ``\omega``. The x component, a new drift *along the direction of* ``\mathbf{E}``, is called the *polarization drift*. By replacing ``i\omega`` with ``\partial/\partial t``, we can generalize the expression of ``v_p`` and define the polarization drift as
 
 ```math
 \mathbf{v}_p = \pm \frac{1}{\omega_c B}\frac{d\mathbf{E}}{dt}
