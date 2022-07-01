@@ -156,7 +156,7 @@ end
 
 "ODE equations for relativistic charged particle moving in static numerical EM field."
 function trace_numeric_relativistic!(dy, y, p, t)
-   q, m, E, B = p
+   q, m, interpE, interpB = p
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
@@ -166,7 +166,7 @@ function trace_numeric_relativistic!(dy, y, p, t)
 end
 
 function trace_numeric_relativistic(y, p, t)
-   q, m, E, B = p
+   q, m, interpE, interpB = p
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
