@@ -5,7 +5,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle: getB_Tokamak
+using TestParticle: getB_tokamak
 using OrdinaryDiffEq
 using StaticArrays
 using PyPlot
