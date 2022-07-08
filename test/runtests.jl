@@ -31,7 +31,6 @@ end
 
       param = prepare(mesh, E, B)
       tspan = (0.0, 1.0)
-      trace! = trace_numeric!
 
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
@@ -59,7 +58,6 @@ end
 
       param = prepare(mesh, E, B)
       tspan = (0.0, 1.0)
-      trace = trace_numeric
 
       prob = ODEProblem(trace, stateinit, tspan, param)
 
@@ -90,7 +88,6 @@ end
       param = prepare(TestParticle.getE_dipole, TestParticle.getB_dipole)
       tspan = (0.0, 1.0)
       
-      trace! = trace_analytic!
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
@@ -102,7 +99,6 @@ end
       # static array version (results not identical with above: maybe some bugs?)
       stateinit = SA[r₀..., v₀...]
 
-      trace = trace_analytic
       prob = ODEProblem(trace, stateinit, tspan, param)
 
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
