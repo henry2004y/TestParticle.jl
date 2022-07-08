@@ -74,14 +74,14 @@ end
 Return a tuple consists of particle charge, mass for a prescribed `species` and interpolated
 EM field functions.
 """
-function prepare(grid::CartesianGrid, E, B; species::Species=Proton, q=1.0, m=1.0)
+function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton, q=1.0, m=1.0) where {TE, TB}
 
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
 
-   E = getinterp(E, gridx, gridy, gridz)
-   B = getinterp(B, gridx, gridy, gridz)
+   E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz) : E
+   B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz) : B
 
    q, m, E, B
 end
@@ -92,15 +92,15 @@ end
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, analytic EM field functions, and external force `F`.
 """
-function prepare(grid::CartesianGrid, E, B, F; species::Species=Proton, q=1.0, m=1.0)
+function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton, q=1.0, m=1.0) where {TE, TB, TF}
 
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
 
-   E = getinterp(E, gridx, gridy, gridz)
-   B = getinterp(B, gridx, gridy, gridz)
-   F = getinterp(F, gridx, gridy, gridz)
+   E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz) : E
+   B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz) : B
+   F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz) : F
 
    q, m, E, B, F
 end
