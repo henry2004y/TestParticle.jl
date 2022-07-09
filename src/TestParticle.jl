@@ -5,8 +5,8 @@ using Meshes
 using Interpolations
 using StaticArrays
 
-export prepare, trace!, trace_relativistic!
-export trace, trace_relativistic
+export prepare, trace!, trace_relativistic!, trace_full!
+export trace, trace_relativistic, trace_full
 export Proton, Electron, Ion, User
 
 include("utility/utility.jl")
@@ -144,13 +144,13 @@ field."
 function trace_full!(dy, y, p, t)
    q, m, E, B, F = p
    dy[1:3] = y[4:6]
-   dy[4:6] = (q*(E(y) + y[4:6] × (B(y[1:3]))) + F) / m
+   dy[4:6] = (q*(E(y) + y[4:6] × (B(y[1:3]))) + F(y)) / m
 end
 
 function trace_full(y, p, t)
    q, m, E, B, F = p
    dx, dy, dz = y[4:6]
-   dux, duy, duz = (q*(E(y) + y[4:6] × (B(y[1:3]))) + F) / m
+   dux, duy, duz = (q*(E(y) + y[4:6] × (B(y[1:3]))) + F(y)) / m
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
