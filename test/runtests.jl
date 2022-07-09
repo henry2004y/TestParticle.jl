@@ -114,9 +114,12 @@ end
       y = range(-10, 10, length=20)
       z = range(-10, 10, length=25)
       B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
+      F = fill(0.0, 3, length(x), length(y), length(z)) # [N]
 
-      B[3,:,:,:] .= 10e-9
-      E_field(r) = SA[0, 0, 5e-10]
+      B[3,:,:,:] .= 1e-11
+      E_field(r) = SA[0, 5e-11, 0]  # [V/M]
+      F[1,:,:,:] .= 9.10938356e-42
+
 
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
@@ -127,13 +130,13 @@ end
          (Δx, Δy, Δz))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
-      u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
+      u0 = [0.0, 1.0, 0.0] # initial velocity, [m/s]
       stateinit = [x0..., u0...]
 
-      param = prepare(mesh, E_field, B)
+      param = prepare(mesh, E_field, B, F; species=Electron)
       tspan = (0.0, 1.0)
 
-      prob = ODEProblem(trace!, stateinit, tspan, param)
+      prob = ODEProblem(trace_full!, stateinit, tspan, param)
 
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
@@ -141,6 +144,6 @@ end
       y = getindex.(sol.u, 2)
       z = getindex.(sol.u, 3)
 
-      @test length(x) == 8 && x[end] ≈ 0.8540967226885379
+      @test x[end] ≈ 1.5324506965560782 && y[end] ≈ -2.8156470047903706
    end
 end
