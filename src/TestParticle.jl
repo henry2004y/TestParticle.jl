@@ -17,7 +17,6 @@ Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 @enum Species Proton Electron Ion User
 
 function getchargemass(species::Species, q, m)
-
    if species == Proton
       q = qᵢ
       m = mᵢ
@@ -29,7 +28,6 @@ function getchargemass(species::Species, q, m)
 end
 
 function makegrid(grid)
-
    gridmin = coordinates(minimum(grid))
    gridmax = coordinates(maximum(grid))
    Δx = spacing(grid)
@@ -42,7 +40,6 @@ function makegrid(grid)
 end
 
 function getinterp(A, gridx, gridy, gridz)
-
    @assert size(A,1) == 3 && ndims(A) == 4 "Only support 3D force field!"
 
    Ax = @view A[1,:,:,:]
@@ -75,7 +72,6 @@ Return a tuple consists of particle charge, mass for a prescribed `species` and 
 EM field functions.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton, q=1.0, m=1.0) where {TE, TB}
-
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
@@ -93,7 +89,6 @@ Return a tuple consists of particle charge, mass for a prescribed `species` of c
 and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton, q=1.0, m=1.0) where {TE, TB, TF}
-
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
@@ -113,7 +108,6 @@ and mass `m` and analytic EM field functions. Prescribed `species` are `Electron
 `Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
 """
 function prepare(E, B; species::Species=Proton, q=1.0, m=1.0)
-
    q, m = getchargemass(species, q, m)
 
    q, m, E, B
@@ -183,5 +177,4 @@ function trace_relativistic(y, p, t)
    dux, duy, duz = q/m*γInv*(E(y) + y[4:6] × (B(y[1:3])))
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
-
 end
