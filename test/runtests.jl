@@ -109,7 +109,7 @@ end
 
    end
 
-   @testset "mixed fields" begin
+   @testset "mixed type fields" begin
       x = range(-10, 10, length=15)
       y = range(-10, 10, length=20)
       z = range(-10, 10, length=25)
