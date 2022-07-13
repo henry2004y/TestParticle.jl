@@ -6,3 +6,5 @@ test*
 /docs/build/
 Manifest.toml
 report.md
+/.benchmarkci
+/benchmark/*.json
