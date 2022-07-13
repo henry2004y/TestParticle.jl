@@ -5,3 +5,4 @@ test*
 *.out
 /docs/build/
 Manifest.toml
+report.md
