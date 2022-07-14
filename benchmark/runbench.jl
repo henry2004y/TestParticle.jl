@@ -1,3 +1,5 @@
+# run this script will generate a benchmark report named report.md
+
 using PkgBenchmark
 
 current = BenchmarkConfig(juliacmd = `julia -O3`)
