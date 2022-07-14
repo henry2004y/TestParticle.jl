@@ -5,3 +5,7 @@ test*
 *.out
 /docs/build/
 Manifest.toml
+report.md
+/.benchmarkci
+/benchmark/*.json
+/.vscode
