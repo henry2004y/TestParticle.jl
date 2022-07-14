@@ -36,12 +36,12 @@ stateinit = [x0..., u0...]
 
 param_analytic = prepare(E_analytic, B_analytic)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_analytic) # in place
-prob_oop = ODEProblem(trace, stateinit, tspan, param_analytic) # out of place
+prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_analytic) # out of place
 SUITE["trace"]["analytic field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
 SUITE["trace"]["analytic field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
 
 param_numeric = prepare(mesh, E_numeric, B_numeric)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_numeric) # in place
-prob_oop = ODEProblem(trace, stateinit, tspan, param_numeric) # out of place
+prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_numeric) # out of place
 SUITE["trace"]["numerical field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
 SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])

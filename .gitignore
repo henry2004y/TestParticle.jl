@@ -8,3 +8,4 @@ Manifest.toml
 report.md
 /.benchmarkci
 /benchmark/*.json
+/.vscode
