@@ -5,8 +5,8 @@ using Meshes
 using Interpolations
 using StaticArrays
 
-export prepare, trace!, trace_relativistic!, trace_full!
-export trace, trace_relativistic, trace_full
+export prepare, trace!, trace_relativistic!
+export trace, trace_relativistic
 export Proton, Electron, Ion, User
 
 include("utility/utility.jl")
@@ -94,6 +94,10 @@ Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 (f::AbstractField{false})(xu, t) = f.field_function(xu)
 (f::AbstractField{false})(xu) = f.field_function(xu)
 
+"The types of parameter tuple for full test particle problem and normal test particle problem, respectively."
+FullTPTuple = Tuple{Float64, Float64, AbstractField, AbstractField, AbstractField}
+TPTuple = Tuple{Float64, Float64, AbstractField, AbstractField}
+
 """
     prepare(grid, E, B; species=Proton) -> (q, m, E, B)
 
@@ -151,19 +155,22 @@ Return a tuple consists of particle charge, mass for a prescribed `species` of c
 and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(E, B, F; species::Species=Proton, q=1.0, m=1.0)
-   t = prepare(E, B; species, q, m)
-   push!(t, Field(F))
-   t
+   q, m = getchargemass(species, q, m)
+   B = Field(B)
+   E = Field(E)
+   F = Field(F)
+
+   q, m, E, B, F
 end
 
 "ODE equations for charged particle moving in static EM field."
-function trace!(dy, y, p, t)
+function trace!(dy, y, p::TPTuple, t)
    q, m, E, B = p
    dy[1:3] = y[4:6]
    dy[4:6] = q/m*(E(y, t) + y[4:6] × (B(y, t)))
 end
 
-function trace(y, p, t)
+function trace(y, p::TPTuple, t)
    q, m, E, B = p
    dx, dy, dz = y[4:6]
    dux, duy, duz = q/m*(E(y, t) + y[4:6] × (B(y, t)))
@@ -172,13 +179,13 @@ end
 
 "ODE equations for charged particle moving in static EM field and external force
 field."
-function trace_full!(dy, y, p, t)
+function trace!(dy, y, p::FullTPTuple, t)
    q, m, E, B, F = p
    dy[1:3] = y[4:6]
    dy[4:6] = (q*(E(y, t) + y[4:6] × (B(y, t))) + F(y, t)) / m
 end
 
-function trace_full(y, p, t)
+function trace(y, p::FullTPTuple, t)
    q, m, E, B, F = p
    dx, dy, dz = y[4:6]
    dux, duy, duz = (q*(E(y, t) + y[4:6] × (B(y, t))) + F(y, t)) / m
@@ -186,7 +193,7 @@ function trace_full(y, p, t)
 end
 
 "ODE equations for relativistic charged particle moving in static EM field."
-function trace_relativistic!(dy, y, p, t)
+function trace_relativistic!(dy, y, p::TPTuple, t)
    q, m, E, B = p
 
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
@@ -197,7 +204,7 @@ function trace_relativistic!(dy, y, p, t)
    dy[4:6] = q/m*γInv*(E(y, t) + y[4:6] × (B(y, t)))
 end
 
-function trace_relativistic(y, p, t)
+function trace_relativistic(y, p::TPTuple, t)
    q, m, E, B = p
 
    if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
