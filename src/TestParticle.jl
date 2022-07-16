@@ -166,14 +166,16 @@ end
 "ODE equations for charged particle moving in static EM field."
 function trace!(dy, y, p::TPTuple, t)
    q, m, E, B = p
-   dy[1:3] = y[4:6]
-   dy[4:6] = q/m*(E(y, t) + y[4:6] × (B(y, t)))
+   v = @view y[4:6]
+   dy[1:3] = v
+   dy[4:6] = q/m*(E(y, t) + v × (B(y, t)))
 end
 
 function trace(y, p::TPTuple, t)
    q, m, E, B = p
-   dx, dy, dz = y[4:6]
-   dux, duy, duz = q/m*(E(y, t) + y[4:6] × (B(y, t)))
+   v = @view y[4:6]
+   dx, dy, dz = v
+   dux, duy, duz = q/m*(E(y, t) + v × (B(y, t)))
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
@@ -181,14 +183,16 @@ end
 field."
 function trace!(dy, y, p::FullTPTuple, t)
    q, m, E, B, F = p
-   dy[1:3] = y[4:6]
-   dy[4:6] = (q*(E(y, t) + y[4:6] × (B(y, t))) + F(y, t)) / m
+   v = @view y[4:6]
+   dy[1:3] = v
+   dy[4:6] = (q*(E(y, t) + v × (B(y, t))) + F(y, t)) / m
 end
 
 function trace(y, p::FullTPTuple, t)
    q, m, E, B, F = p
-   dx, dy, dz = y[4:6]
-   dux, duy, duz = (q*(E(y, t) + y[4:6] × (B(y, t))) + F(y, t)) / m
+   v = @view y[4:6]
+   dx, dy, dz = v
+   dux, duy, duz = (q*(E(y, t) + v × (B(y, t))) + F(y, t)) / m
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
@@ -200,8 +204,9 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
    γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
-   dy[1:3] = y[4:6]
-   dy[4:6] = q/m*γInv*(E(y, t) + y[4:6] × (B(y, t)))
+   v = @view y[4:6]
+   dy[1:3] = v
+   dy[4:6] = q/m*γInv*(E(y, t) + v × (B(y, t)))
 end
 
 function trace_relativistic(y, p::TPTuple, t)
@@ -211,8 +216,9 @@ function trace_relativistic(y, p::TPTuple, t)
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
    γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
-   dx, dy, dz = y[4:6]
-   dux, duy, duz = q/m*γInv*(E(y, t) + y[4:6] × (B(y, t)))
+   v = @view y[4:6]
+   dx, dy, dz = v
+   dux, duy, duz = q/m*γInv*(E(y, t) + v × (B(y, t)))
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 end
