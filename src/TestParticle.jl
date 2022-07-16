@@ -85,6 +85,7 @@ abstract type AbstractField{itd} end
 
 struct Field{itd, F} <: AbstractField{itd}
    field_function::F
+   Field{itd, F}(field_function::F) where {itd, F} = isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
 end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
