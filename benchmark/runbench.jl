@@ -3,5 +3,7 @@
 using PkgBenchmark
 
 current = BenchmarkConfig(juliacmd = `julia -O3`)
-result = benchmarkpkg("TestParticle", current; retune=true)
+baseline = BenchmarkConfig(id = "master", juliacmd = `julia -O3`)
+# result = benchmarkpkg("TestParticle", current; retune=true)
+result = judge("TestParticle", current, baseline; retune=true)
 export_markdown("report.md", result)
