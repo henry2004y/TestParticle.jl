@@ -1,4 +1,5 @@
 using TestParticle, Meshes, OrdinaryDiffEq, StaticArrays, Random
+using TestParticle: Field
 using Test
 
 "Initial state perturbation for EnsembleProblem."
@@ -136,7 +137,7 @@ end
       param = prepare(mesh, E_field, B, F; species=Electron)
       tspan = (0.0, 1.0)
 
-      prob = ODEProblem(trace_full!, stateinit, tspan, param)
+      prob = ODEProblem(trace!, stateinit, tspan, param)
 
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
@@ -145,5 +146,70 @@ end
       z = getindex.(sol.u, 3)
 
       @test x[end] ≈ 1.5324506965560782 && y[end] ≈ -2.8156470047903706
+   end
+
+   @testset "time-independent fields" begin
+      x = range(-10, 10, length=15)
+      y = range(-10, 10, length=20)
+      z = range(-10, 10, length=25)
+      F = fill(0.0, 3, length(x), length(y), length(z)) # [N]
+
+      B_field(r, t) = SA[0, 0, 1e-11*cos(2π*t)] # [T]
+      E_field(r, t) = SA[5e-11*sin(2π*t), 0, 0]  # [V/M]
+      F[2,:,:,:] .= 9.10938356e-42
+
+      Δx = x[2] - x[1]
+      Δy = y[2] - y[1]
+      Δz = z[2] - z[1]
+
+      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+         (x[1], y[1], z[1]),
+         (Δx, Δy, Δz))
+
+      x0 = [0.0, 0.0, 0.0] # initial position, [m]
+      u0 = [0.0, 1.0, 1.0] # initial velocity, [m/s]
+      stateinit = [x0..., u0...]
+
+      param = prepare(mesh, E_field, B_field, F; species=Electron)
+      tspan = (0.0, 1.0)
+
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+
+      x = getindex.(sol.u, 1)
+      y = getindex.(sol.u, 2)
+      z = getindex.(sol.u, 3)
+
+      @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+
+      F_field(r) = SA[0, 9.10938356e-42, 0] # [N]
+
+      param = prepare(E_field, B_field, F_field; species=Electron)
+      _, _, _, _, F = param
+
+      @test F(x0)[2] ≈ 9.10938356e-42
+
+      stateinit = SA[x0..., u0...]
+
+      prob = ODEProblem(trace, stateinit, tspan, param)
+      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+
+      x = getindex.(sol.u, 1)
+      y = getindex.(sol.u, 2)
+      z = getindex.(sol.u, 3)
+
+      @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+   end
+
+   @testset "Exceptions" begin
+      E_field(r, t) = SA[5e-11*sin(2π*t), 0, 0] 
+      E = Field(E_field)
+
+      @test_throws ArgumentError E([0, 0, 0])
+
+      F_field(r, v, t) = SA[r, v, t]
+
+      @test_throws ArgumentError Field(F_field)
    end
 end
