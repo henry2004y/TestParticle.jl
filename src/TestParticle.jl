@@ -87,22 +87,22 @@ abstract type AbstractField{itd} end
 """
     Field{itd, F} <: AbstractField{itd}
 
-A presentation of a field function `f`, defined by:
+A representation of a field function `f`, defined by:
 
-time independent field
+time-independent field
 ```math
 \\mathbf{F} = F(\\mathbf{x}),
 ```
 
-time dependent field
+time-dependent field
 ```math
 \\mathbf{F} = F(\\mathbf{x}, t).
 ```
 
 # Arguments
-- `field_function::Function`: The function of field.
-- `itd::Bool`: istimedependent, whether the field function is time dependent.
-- `F`: The type of field_function.
+- `field_function::Function`: the function of field.
+- `itd::Bool`: whether the field function is time dependent.
+- `F`: the type of `field_function`.
 """
 struct Field{itd, F} <: AbstractField{itd}
    field_function::F
