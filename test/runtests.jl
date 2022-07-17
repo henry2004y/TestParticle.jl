@@ -190,6 +190,8 @@ end
 
       @test F(x0)[2] ≈ 9.10938356e-42
 
+      stateinit = SA[x0..., u0...]
+
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
