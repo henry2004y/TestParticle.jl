@@ -65,6 +65,7 @@ function getinterp(A, gridx, gridy, gridz)
    return Field(get_field)
 end
 
+# judge whether the field function is time dependent
 function is_time_dependent(f)
    itp_param_number = 2
    numargs = [length(m.sig.parameters)-1 for m in methods(f)]
@@ -83,6 +84,26 @@ end
 
 abstract type AbstractField{itd} end
 
+"""
+    Field{itd, F} <: AbstractField{itd}
+
+A presentation of a field function `f`, defined by:
+
+time independent field
+```math
+\\mathbf{F} = F(\\mathbf{x}),
+```
+
+time dependent field
+```math
+\\mathbf{F} = F(\\mathbf{x}, t).
+```
+
+# Arguments
+- `field_function::Function`: The function of field.
+- `itd::Bool`: istimedependent, whether the field function is time dependent.
+- `F`: The type of field_function.
+"""
 struct Field{itd, F} <: AbstractField{itd}
    field_function::F
    Field{itd, F}(field_function::F) where {itd, F} = isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
@@ -95,8 +116,10 @@ Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 (f::AbstractField{false})(xu, t) = f.field_function(xu)
 (f::AbstractField{false})(xu) = f.field_function(xu)
 
-"The types of parameter tuple for full test particle problem and normal test particle problem, respectively."
+"The type of parameter tuple for full test particle problem."
 FullTPTuple = Tuple{Float64, Float64, AbstractField, AbstractField, AbstractField}
+
+"The type of parameter tuple for normal test particle problem."
 TPTuple = Tuple{Float64, Float64, AbstractField, AbstractField}
 
 """
@@ -120,7 +143,7 @@ end
     prepare(grid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
-and mass `m`, analytic EM field functions, and external force `F`.
+and mass `m`, interpolated EM field functions, and external force `F`.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton, q=1.0, m=1.0) where {TE, TB, TF}
    q, m = getchargemass(species, q, m)
@@ -164,7 +187,11 @@ function prepare(E, B, F; species::Species=Proton, q=1.0, m=1.0)
    q, m, E, B, F
 end
 
-"ODE equations for charged particle moving in static EM field."
+"""
+    trace!(dy, y, p::TPTuple, t)
+
+ODE equations for charged particle moving in static EM field with in-place form.
+"""
 function trace!(dy, y, p::TPTuple, t)
    q, m, E, B = p
    v = @view y[4:6]
@@ -172,6 +199,11 @@ function trace!(dy, y, p::TPTuple, t)
    dy[4:6] = q/m*(E(y, t) + v × (B(y, t)))
 end
 
+"""
+    trace(y, p::TPTuple, t) -> SVector{6, Float64}
+
+ODE equations for charged particle moving in static EM field with out-of-place form.
+"""
 function trace(y, p::TPTuple, t)
    q, m, E, B = p
    v = @view y[4:6]
@@ -180,8 +212,12 @@ function trace(y, p::TPTuple, t)
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
-"ODE equations for charged particle moving in static EM field and external force
-field."
+"""
+    trace!(dy, y, p::FullTPTuple, t)
+
+ODE equations for charged particle moving in static EM field and external force
+field with in-place form.
+"""
 function trace!(dy, y, p::FullTPTuple, t)
    q, m, E, B, F = p
    v = @view y[4:6]
@@ -189,6 +225,12 @@ function trace!(dy, y, p::FullTPTuple, t)
    dy[4:6] = (q*(E(y, t) + v × (B(y, t))) + F(y, t)) / m
 end
 
+"""
+    trace(y, p::FullTPTuple, t) -> SVector{6, Float64}
+
+ODE equations for charged particle moving in static EM field and external force
+field with out-of-place form.
+"""
 function trace(y, p::FullTPTuple, t)
    q, m, E, B, F = p
    v = @view y[4:6]
@@ -197,7 +239,11 @@ function trace(y, p::FullTPTuple, t)
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
-"ODE equations for relativistic charged particle moving in static EM field."
+"""
+    trace_relativistic!(dy, y, p::TPTuple, t)
+
+ODE equations for relativistic charged particle moving in static EM field with in-place form.
+"""
 function trace_relativistic!(dy, y, p::TPTuple, t)
    q, m, E, B = p
 
@@ -210,6 +256,11 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
    dy[4:6] = q/m*γInv*(E(y, t) + v × (B(y, t)))
 end
 
+"""
+    trace_relativistic(y, p::TPTuple, t) -> SVector{6, Float64}
+
+ODE equations for relativistic charged particle moving in static EM field with out-of-place form.
+"""
 function trace_relativistic(y, p::TPTuple, t)
    q, m, E, B = p
 
