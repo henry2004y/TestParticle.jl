@@ -4,4 +4,4 @@
 [![Build Status](https://img.shields.io/github/workflow/status/henry2004y/TestParticle.jl/CI)](https://github.com/henry2004y/TestParticle.jl/actions)
 [![Coverage](https://codecov.io/gh/henry2004y/TestParticle.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/henry2004y/TestParticle.jl)
 
-Test particle tracing in a static electromagnetic field.
+This package provides test particle tracing in an analytic or numerical electromagnetic field via [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/).
