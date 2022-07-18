@@ -4,8 +4,10 @@ on:
   pull_request:
     branches:
       - master
+      - '!compathelper/**'
     paths-ignore:
       - 'README.md'
+      - 'test/**'
 
 jobs:
   Benchmark:
