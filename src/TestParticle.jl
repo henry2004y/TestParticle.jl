@@ -239,6 +239,19 @@ function trace(y, p::FullTPTuple, t)
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
+const FTLError = """
+Particle faster than the speed of light!
+
+If the initial velocity is slower than light and 
+adaptive timestepping of the solver is turned on, it 
+is better to set a small initial stepsize (dt) or 
+maximum dt for adaptive timestepping (dtmax).
+
+More details about the keywords of initial stepsize 
+can be found in this documentation page:
+https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Stepsize-Control
+"""
+
 """
     trace_relativistic!(dy, y, p::TPTuple, t)
 
@@ -249,7 +262,7 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 
    u2 = y[4]^2 + y[5]^2 + y[6]^2
    if u2 ≥ c^2
-      throw(ArgumentError("Particle faster than the speed of light!"))
+      throw(DomainError(u2, FTLError))
    end
 
    γInv = √(1.0 - u2/c^2)
@@ -268,7 +281,7 @@ function trace_relativistic(y, p::TPTuple, t)
 
    u2 = y[4]^2 + y[5]^2 + y[6]^2
    if u2 ≥ c^2
-      throw(ArgumentError("Particle faster than the speed of light!"))
+      throw(DomainError(u2, FTLError))
    end
 
    γInv = √(1.0 - u2/c^2)
