@@ -1,5 +1,5 @@
 using TestParticle, Meshes, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field
+using TestParticle: Field, qₑ, mₑ, c
 using Test
 
 "Initial state perturbation for EnsembleProblem."
@@ -211,5 +211,40 @@ end
       F_field(r, v, t) = SA[r, v, t]
 
       @test_throws ArgumentError Field(F_field)
+   end
+
+   @testset "relativistic particle" begin
+      B_field(xu) = SA[0, 0, 0.01]
+      function E_field(xu)
+         Ex = 0<=xu[1]<=100 ? -1e5 : 0.0
+         Ey = 0<=xu[2]<=100 ? -1e5 : 0.0
+         return SA[Ex, Ey, 0.0]
+      end
+
+      # calculate the energy [eV] of a electron
+      function cal_energy(sol)
+         v = sol.u[end][4:6]
+         v = sqrt(sum(v.^2))
+         γ = 1/sqrt(1-(v/c)^2)
+         return -(γ-1)*mₑ*c^2/qₑ
+      end
+
+      x0 = [10.0, 10.0, 0.0] # initial position, [m]
+      u0 = [0.0, 0.0, 0.0] # initial velocity, [m/s]
+      tspan = (0.0, 2e-7)
+      stateinit = [x0..., u0...]
+      param = prepare(E_field, B_field; species=Electron)
+
+      prob = ODEProblem(trace_relativistic! , stateinit, tspan, param)
+      sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
+      x = sol.u[end][1:3]
+
+      @test cal_energy(sol)/(x[1]+x[2]-20) ≈ 1e5
+
+      prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
+      sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
+      x = sol.u[end][1:3]
+
+      @test cal_energy(sol)/(x[1]+x[2]-20) ≈ 1e5
    end
 end
