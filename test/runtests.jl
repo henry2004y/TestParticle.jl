@@ -211,6 +211,18 @@ end
       F_field(r, v, t) = SA[r, v, t]
 
       @test_throws ArgumentError Field(F_field)
+
+      x0 = [10.0, 10.0, 0.0] # initial position, [m]
+      u0 = [1e10, 0.0, 0.0] # initial velocity, [m/s]
+      tspan = (0.0, 2e-7)
+      stateinit = [x0..., u0...]
+      param = prepare(E_field, E_field; species=Electron)
+
+      prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
+      @test_throws DomainError solve(prob, Tsit5())
+
+      prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
+      @test_throws DomainError solve(prob, Tsit5())
    end
 
    @testset "relativistic particle" begin
@@ -235,7 +247,7 @@ end
       stateinit = [x0..., u0...]
       param = prepare(E_field, B_field; species=Electron)
 
-      prob = ODEProblem(trace_relativistic! , stateinit, tspan, param)
+      prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
       sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
       x = sol.u[end][1:3]
 
