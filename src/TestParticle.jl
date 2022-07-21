@@ -247,13 +247,15 @@ ODE equations for relativistic charged particle moving in static EM field with i
 function trace_relativistic!(dy, y, p::TPTuple, t)
    q, m, E, B = p
 
-   if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
+   u2 = y[4]^2 + y[5]^2 + y[6]^2
+   if u2 ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
+
+   γInv = √(1.0 - u2/c^2)
    v = @view y[4:6]
    dy[1:3] = v
-   dy[4:6] = q/m*γInv*(E(y, t) + v × (B(y, t)))
+   dy[4:6] = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
 end
 
 """
@@ -264,13 +266,15 @@ ODE equations for relativistic charged particle moving in static EM field with o
 function trace_relativistic(y, p::TPTuple, t)
    q, m, E, B = p
 
-   if y[4]*y[4] + y[5]*y[5] + y[6]*y[6] ≥ c^2
+   u2 = y[4]^2 + y[5]^2 + y[6]^2
+   if u2 ≥ c^2
       throw(ArgumentError("Particle faster than the speed of light!"))
    end
-   γInv = √(1.0 - (y[4]*y[4] + y[5]*y[5] + y[6]*y[6])/c^2)
+
+   γInv = √(1.0 - u2/c^2)
    v = @view y[4:6]
    dx, dy, dz = v
-   dux, duy, duz = q/m*γInv*(E(y, t) + v × (B(y, t)))
+   dux, duy, duz = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 end
