@@ -236,7 +236,7 @@ end
       # calculate the energy [eV] of a electron
       function cal_energy(sol)
          v = sol.u[end][4:6]
-         v = sqrt(sum(v.^2))
+         v = hypot(v...)
          γ = 1/sqrt(1-(v/c)^2)
          return -(γ-1)*mₑ*c^2/qₑ
       end
