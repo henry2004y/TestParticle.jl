@@ -251,12 +251,14 @@ end
       sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
       x = sol.u[end][1:3]
 
-      @test cal_energy(sol)/(x[1]+x[2]-20) ≈ 1e5
+      # Test whether the kinetic energy [eV] of the electron
+      # is equal to the electric potential energy gained.
+      @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
 
       prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
       sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
       x = sol.u[end][1:3]
 
-      @test cal_energy(sol)/(x[1]+x[2]-20) ≈ 1e5
+      @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
    end
 end
