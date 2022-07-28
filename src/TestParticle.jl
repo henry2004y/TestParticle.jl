@@ -292,4 +292,5 @@ function trace_relativistic(y, p::TPTuple, t)
    dux, duy, duz = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
+
 end
