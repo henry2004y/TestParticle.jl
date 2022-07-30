@@ -11,6 +11,7 @@ include("constants.jl")
 include("current_sheet.jl")
 include("dipole.jl")
 include("confinement.jl")
+include("recipes.jl")
 
 """
     set_axes_equal(ax)
