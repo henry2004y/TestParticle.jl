@@ -6,6 +6,6 @@ using SciMLBase: AbstractODESolution
 include("typerecipes.jl")
 include("interactive.jl")
 
-export orbit
+export orbit, monitor
 
 end # module TestParticleMakie
