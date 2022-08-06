@@ -1,5 +1,20 @@
 # interactive plots
 
+"""
+    orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
+
+A plot recipe for plotting orbit or other figures related to six phase space coordinates and time.
+
+# Arguments:
+- `sol::AbstractODESolution`: a solution returned by solver.
+- `vars`: a argument used to choose the variables to be plotted.
+- `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
+- `to_3d::Bool`: whether to force the points to be plotted in 3d. If the switch is on, the order of coordinates will be rearranged for correctly plotted as 3d points.
+- `interactive::Bool`: whether to show the figure in interactive mode.
+
+## vars
+`vars` can be a Integer, Function, Tuple and Array.
+"""
 function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
     if vars === nothing 
         vars = [(1, 2, 3)]
@@ -61,6 +76,19 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
 end
 
 
+"""
+    monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
+
+A plot recipe for monitor the orbit of a particle and other physics quantities.
+
+# Arguments:
+- `sol::AbstractODESolution`: a solution returned by solver.
+- `vars`: a argument used to choose the variables to be plotted.
+- `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
+
+## vars
+`vars` can only be a Array.
+"""
 function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     if vars === nothing 
         vars = [4, 5, 6]
@@ -114,5 +142,5 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
         lines!(axs[i], sol, vars=var, tspan=tspan)
     end
 
-    fig
+    return fig
 end

@@ -6,6 +6,7 @@ Makie.plottype(sol::AbstractODESolution, arg...; kw...) = Lines
 # prescribe the keyword arguments for the plot function
 Makie.used_attributes(::Makie.PlotFunc, ::AbstractODESolution, arg...; kw...) = (:vars, :tspan, :to_3d)
 
+# conversion from ODESolution to Point set
 function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false)
     # calculate the time span
     t_min, t_max = get_tspan(sol, tspan)
@@ -33,6 +34,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
         throw(ArgumentError("Invalid variable type."))
     end
 
+    # maybe the step can be decided by user
     t_step = (t_max - t_min) / 1e4
     t = collect(t_min:t_step:t_max)
     u = sol.(t)
@@ -48,12 +50,14 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
         elseif x == 0
             push!(points, t)
         elseif 1<=x<=6
+            # the variable maybe a phase space coordinate
             push!(points, getindex.(u, x))
         else
             throw(ArgumentError("The dimension is out of range."))
         end
     end
 
+    # when to_3d=true, convert 2d points to 3d, and rearrange the order
     if to_3d & (dim == 2)
         diff = setdiff([1, 2, 3], var)
         if length(diff) > 1
