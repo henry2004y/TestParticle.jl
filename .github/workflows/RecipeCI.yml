@@ -1,0 +1,54 @@
+name: TestParticleMakie CI
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - master
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - master
+    tags: '*'
+env:
+  JULIA_NUM_THREADS: 2
+jobs:
+  test:
+    name: TestParticleMakie Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1' # automatically expands to the latest stable 1.x release of Julia
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v1
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"dev . ./TestParticleMakie"
+      - name: Run the tests
+        continue-on-error: true
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("TestParticleMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
