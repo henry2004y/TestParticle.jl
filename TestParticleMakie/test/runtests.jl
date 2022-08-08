@@ -24,6 +24,9 @@ sol = solve(prob, Vern6(); save_idxs=[1,2,3,4,5,6])
     fig, ax, plt = lines(sol, vars=[1, 2], to_3d=true)
     @test plt isa Lines
 
+    fig, ax, plt = lines(sol, vars=[(1, 2), 3])
+    @test plt isa Lines
+
     @test_throws ArgumentError lines(sol, vars="x")
 
     @test_throws ArgumentError lines(sol, vars=["x", "y"])

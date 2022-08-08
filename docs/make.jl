@@ -1,4 +1,5 @@
 using TestParticle
+using TestParticleMakie
 using Documenter
 
 makedocs(;
