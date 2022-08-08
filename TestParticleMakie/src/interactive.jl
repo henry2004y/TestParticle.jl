@@ -22,7 +22,7 @@ If the length of the tuple is 3, it will be converted to 3d
 If you want to plot a function of time, position or velocity, you can define a function firstly. The arguments of the function must be a 7-dimensional array, the elements of which is corrspending to the phase space coordinates and time at a certain time respectively, and the return value must be a Number. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
-orbit(sol, vars=(1, Eₖ))
+orbit(sol, vars=(0, Eₖ))
 ```
 This command will plot the kinetic energy as a function of x. For simplicity, the above two forms are equivalent to
 ```julia
@@ -34,7 +34,7 @@ And those forms can be written in a `vars` for plotting multipule lines at one t
 orbit(sol, vars=[1, (1, 2), Eₖ])
 ```
 
-There are some more complicated usages. If a tuple contains lists, they will be expanded automaticly. For example,
+There are some more complicated usages. If a tuple contains lists, they will be expanded automatically. For example,
 ```julia
 orbit(sol, vars=(0, [1, 2, 3]))
 orbit(sol, vars=([1, 2, 3], [4, 5, 6]))
@@ -126,7 +126,7 @@ A plot recipe for monitor the orbit of a particle and other physics quantities.
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
 
 ## vars
-The usage of `vars` for this function is different from those in `orbit`. It can only be a list which length is equal to 3, and the type of its elements must be Integer or Function. The form of function is same as those prescribed by `orbit`. For example,
+The usage of `vars` for this function is different from those in `orbit`. It can only be a list and its length is equal to 3. The type of its elements must be Integer or Function. The form of function is same as those prescribed by `orbit`. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 monitor(sol, vars=[1, 2, Eₖ])

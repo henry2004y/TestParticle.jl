@@ -15,7 +15,8 @@ makedocs(;
         "Home" => "index.md",
         "Example" => "example.md",
         "API" => "api.md",
-        "Tutorial" => "tutorial.md"
+        "Tutorial" => "tutorial.md",
+        "Plot Functions" => "plotfunctions.md"
     ],
 )
 
