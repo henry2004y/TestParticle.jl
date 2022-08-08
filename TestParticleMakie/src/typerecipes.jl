@@ -13,6 +13,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
 
     # the type of vars must be Tuple, Number, Function or AbstractArray
     # but it will not be handled properly when its type belong to AbstractArray
+    # This piece of code was inspired by Armavica and its [PR](https://github.com/SciML/DiffEqBase.jl/pull/15) in DiffEqBase.jl.
     if vars === nothing
         # default figure is the orbit
         var = (1, 2, 3)
