@@ -3,7 +3,7 @@
 ## Public APIs
 
 ```@autodocs
-Modules = [TestParticle]
+Modules = [TestParticle, TestParticleMakie]
 Private = false
 ```
 
