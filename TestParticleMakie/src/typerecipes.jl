@@ -50,7 +50,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
         elseif x == 0
             push!(points, t)
         elseif 1<=x<=6
-            # the variable maybe a phase space coordinate
+            # the variable must be a phase space coordinate
             push!(points, getindex.(u, x))
         else
             throw(ArgumentError("The dimension is out of range."))
