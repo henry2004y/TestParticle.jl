@@ -7,13 +7,43 @@ A plot recipe for plotting orbit or other figures related to six phase space coo
 
 # Arguments:
 - `sol::AbstractODESolution`: a solution returned by solver.
-- `vars`: a argument used to choose the variables to be plotted.
+- `vars`: a argument used to choose the variables to be plotted. Default value is [(1, 2, 3)]
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
 - `to_3d::Bool`: whether to force the points to be plotted in 3d. If the switch is on, the order of coordinates will be rearranged for correctly plotted as 3d points.
 - `interactive::Bool`: whether to show the figure in interactive mode.
 
 ## vars
-`vars` can be a Integer, Function, Tuple and Array.
+`vars` can be a Integer, Function, Tuple and Array. The basic form for `vars` is Tuple. For example, if you want to plot the variable `x` as a function of time or the orbit of a particle, you can use it like this:
+```julia
+orbit(sol, vars=(0, 1))
+orbit(sol, vars=(1, 2, 3))
+```
+If the length of the tuple is 3, it will be converted to 3d 
+If you want to plot a function of time, position or velocity, you can define a function firstly. The arguments of the function must be a 7-dimensional array, the elements of which is corrspending to the phase space coordinates and time at a certain time respectively, and the return value must be a Number. For example,
+```julia
+Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
+orbit(sol, vars=(1, Eₖ))
+```
+This command will plot the kinetic energy as a function of x. For simplicity, the above two forms are equivalent to
+```julia
+orbit(sol, vars=Eₖ)
+orbit(sol, vars=1)
+```
+And those forms can be written in a `vars` for plotting multipule lines at one time. For example,
+```julia
+orbit(sol, vars=[1, (1, 2), Eₖ])
+```
+
+There are some more complicated usages. If a tuple contains lists, they will be expanded automaticly. For example,
+```julia
+orbit(sol, vars=(0, [1, 2, 3]))
+orbit(sol, vars=([1, 2, 3], [4, 5, 6]))
+```
+are equivalent to
+```julia
+orbit(sol, vars=[(0, 1), (0, 2), (0, 3)])
+orbit(sol, vars=[(1, 4), (2, 5), (3, 6)])
+```
 """
 function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
     if vars === nothing 
@@ -21,16 +51,20 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
     elseif isa(vars, Tuple)
         if isa(vars[1], AbstractArray)
             if isa(vars[2], AbstractArray)
+                # for example, ([1, 2, 3], [4, 5, 6]) -> [(1, 4), (2, 5), (3, 6)]
                 vars = collect(zip(vars[1], vars[2]))
             elseif isa(vars[2], Integer) | isa(vars[2], Function)
+                # for example, ([1, 3], 2) -> [(1, 2), (3, 2)]
                 vars = [(var, vars[2]) for var in vars[1]]
             else
                 throw(ArgumentError("Invalid variable type."))
             end
         else
             if isa(vars[2], AbstractArray)
+                # for example, (1, [4, 5, 6]) -> [(1, 4), (1, 5), (1, 6)]
                 vars = [(vars[1], var) for var in vars[2]]
             elseif isa(vars[2], Integer) | isa(vars[2], Function)
+                # for example, (1, 2) -> [(1, 2)]
                 vars = [vars]
             else
                 throw(ArgumentError("Invalid variable type."))
@@ -39,6 +73,7 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
     elseif isa(vars, AbstractArray)
         nothing
     else
+        # The validity of vars will be checked in the `convert_arguments` function.
         vars = [vars]
     end
 
@@ -47,15 +82,18 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
         ax = Axis(fig[1, 1:2])
         dim = 2
     else
+        # LScene can be zoomed, but Axis3 cannot do the same thing.
         ax = LScene(fig[1, 1])
         dim = 3
-        # ax = Axis(fig[1, 1:2], aspect=:data)
+        # ax = Axis3(fig[1, 1:2], aspect=:data)
     end
 
     if interactive
         t_min, t_max = get_tspan(sol, tspan)
         step = (t_max - t_min) / 1e3
+        # the minimum of the range cannot be t_min.
         time = SliderGrid(fig[2, 1], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = "{:.3f}s", startvalue = t_max))
+        # convert tspan to an Observable
         tspan = lift(time.sliders[1].value) do t
             (t_min, t)
         end
@@ -71,6 +109,7 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
         label = "(" * get_label(var) * ")"
         lines!(ax, sol, vars=var, tspan=tspan, to_3d=to_3d, label=label)
     end
+    # Axis3 cannot displays legend correctly
     axislegend(ax)
     return fig
 end
@@ -83,14 +122,19 @@ A plot recipe for monitor the orbit of a particle and other physics quantities.
 
 # Arguments:
 - `sol::AbstractODESolution`: a solution returned by solver.
-- `vars`: a argument used to choose the variables to be plotted.
+- `vars`: a argument used to choose the variables to be plotted. Default value is [4, 5, 6]
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
 
 ## vars
-`vars` can only be a Array.
+The usage of `vars` for this function is different from those in `orbit`. It can only be a list which length is equal to 3, and the type of its elements must be Integer or Function. The form of function is same as those prescribed by `orbit`. For example,
+```julia
+Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
+monitor(sol, vars=[1, 2, Eₖ])
+```
 """
 function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     if vars === nothing 
+        # default subplots are vx, vy and vz
         vars = [4, 5, 6]
     end
     @assert isa(vars, AbstractArray)
@@ -105,8 +149,10 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     step = (t_max - t_min) / 1e3
 
     time = SliderGrid(fig[5, 1:6], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = "{:.3f}s", startvalue = t_max))
-    frame = SliderGrid(fig[4, 1:4], (label="Speed", range=range(1, stop=500, step=1), format = "{:d} frames/s", startvalue = 100))
+    # a shorter time for one frame seems useless
+    frame = SliderGrid(fig[4, 1:4], (label="Speed", range=range(1, stop=200, step=1), format = "{:d} frames/s", startvalue = 100))
     tspan = lift(time.sliders[1].value) do t
+        # According to the documentation of Makie, Axis3 have the method `autolimits!` but not.
         autolimits!.(axs)
         # autolimits!(ax1)
         (t_min, t)
@@ -124,6 +170,7 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     on(run_button.clicks) do n; isrunning[] = !isrunning[]; end
     on(run_button.clicks) do n
         t = time.sliders[1]
+        # first run should start from the beginning
         if first_time
             t.value[] = t_min+step
             first_time = !first_time
@@ -132,6 +179,7 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
             t.value[] += step
             sleep(1/frame.sliders[1].value[])
             reset_limits!(ax1)
+            # ensure the window is still alive
             isopen(ax1.scene) || break
         end
     end
