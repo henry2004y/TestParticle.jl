@@ -5,36 +5,38 @@
 
 A plot recipe for plotting orbit or other figures related to six phase space coordinates and time.
 
-# Arguments:
-- `sol::AbstractODESolution`: a solution returned by solver.
-- `vars`: a argument used to choose the variables to be plotted. Default value is [(1, 2, 3)]
+# Arguments
+- `sol::AbstractODESolution`: the solution returned by the ODE solver.
+
+# Keywords
+- `vars`: the argument used to choose variables to be plotted. Default value is [(1, 2, 3)].
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
-- `to_3d::Bool`: whether to force the points to be plotted in 3d. If the switch is on, the order of coordinates will be rearranged for correctly plotted as 3d points.
+- `to_3d::Bool`: whether to force the points to be plotted in 3d. If `true`, the order of coordinates will be rearranged for plotting as 3d points.
 - `interactive::Bool`: whether to show the figure in interactive mode.
 
 ## vars
-`vars` can be a Integer, Function, Tuple and Array. The basic form for `vars` is Tuple. For example, if you want to plot the variable `x` as a function of time or the orbit of a particle, you can use it like this:
+`vars` can be an Integer, Function, Tuple and Array. The basic form for `vars` is Tuple. For example, if you want to plot the variable `x` as a function of time or the orbit of a particle, you can use it like this:
 ```julia
 orbit(sol, vars=(0, 1))
 orbit(sol, vars=(1, 2, 3))
 ```
-If the length of the tuple is 3, it will be converted to 3d 
-If you want to plot a function of time, position or velocity, you can define a function firstly. The arguments of the function must be a 7-dimensional array, the elements of which is corrspending to the phase space coordinates and time at a certain time respectively, and the return value must be a Number. For example,
+If the length of the tuple is 3, it will be converted to 3d.
+If you want to plot a function of time, position or velocity, you can first define a function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the time and phase space coordinates, and the return value must be a Number. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 orbit(sol, vars=(0, Eₖ))
 ```
-This command will plot the kinetic energy as a function of x. For simplicity, the above two forms are equivalent to
+This command will plot the kinetic energy as a function of x. The above form is equivalent to
 ```julia
 orbit(sol, vars=Eₖ)
 orbit(sol, vars=1)
 ```
-And those forms can be written in a `vars` for plotting multipule lines at one time. For example,
+Plotting multiple lines at one time are supported by providing a tuple of indexes. For example,
 ```julia
 orbit(sol, vars=[1, (1, 2), Eₖ])
 ```
 
-There are some more complicated usages. If a tuple contains lists, they will be expanded automatically. For example,
+There are some more advanced usages. If a tuple contains vectors, they will be expanded automatically. For example,
 ```julia
 orbit(sol, vars=(0, [1, 2, 3]))
 orbit(sol, vars=([1, 2, 3], [4, 5, 6]))
@@ -120,13 +122,15 @@ end
 
 A plot recipe for monitor the orbit of a particle and other physics quantities.
 
-# Arguments:
-- `sol::AbstractODESolution`: a solution returned by solver.
-- `vars`: a argument used to choose the variables to be plotted. Default value is [4, 5, 6]
+# Arguments
+- `sol::AbstractODESolution`: the solution returned by the ODE solver.
+
+# Keywords
+- `vars`: the argument used to choose the variables to be plotted. Default value is [4, 5, 6].
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
 
 ## vars
-The usage of `vars` for this function is different from those in `orbit`. It can only be a list and its length is equal to 3. The type of its elements must be Integer or Function. The form of function is same as those prescribed by `orbit`. For example,
+The usage of `vars` for this function is different from those in [`orbit`](@ref). It can only be a list and its length is equal to 3. The type of its elements must be Integer or Function. The form of a function is the same as those prescribed by `orbit`. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 monitor(sol, vars=[1, 2, Eₖ])
@@ -139,7 +143,6 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     end
     @assert isa(vars, AbstractArray)
     @assert length(vars) == 3
-
 
     fig = Figure()
     ax1 = Axis3(fig[1:3, 1:3], aspect=:data)
