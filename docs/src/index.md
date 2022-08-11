@@ -20,7 +20,8 @@ The single particle motions are the basics in understanding the test particle me
 ## Installation
 
 ```julia
-] add TestParticle
+julia> ]
+pkg> add TestParticle
 ```
 
 ## Usage
