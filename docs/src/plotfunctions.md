@@ -11,7 +11,7 @@ Without other arguments, it will plot the 3d orbit of this particle. Other types
 plot(sol, vars=(0, 1))  # 0 represents time, 1 represents x
 plot(sol, vars=(1, 2, 3))
 ```
-If you want to plot a function of time, position or velocity, you can first define the function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the time and phase space coordinates, and the return value must be a Number. For example,
+If you want to plot a function of time, position or velocity, you can first define the function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the phase space coordinates and time, and the return value must be a Number. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 lines(sol, vars=(0, Eₖ))
@@ -64,6 +64,12 @@ monitor(sol, vars=[1, 2, Eₖ])
 ```
 
 #### Interactive components
+```@raw html
+<video width="75%" height="auto" controls loop>
+<source src="https://raw.githubusercontent.com/TCLiuu/TestParticleResource/master/videos/monitor.mp4?raw=true" type="video/mp4">
+</video>
+```
+
 ![](../figures/monitor_example.png)
 
 After first click of the `run` button, the evolution of the orbit will be displayed from the beginning. For other times, it will start from the time set by the time slider. The functionality of `reset` button is the same as above.
