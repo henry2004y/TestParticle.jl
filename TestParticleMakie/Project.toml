@@ -10,3 +10,4 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 [compat]
 Makie = "0.17"
 julia = "1.6"
+SciMLBase = "1"
