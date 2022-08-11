@@ -21,7 +21,7 @@ orbit(sol, vars=(0, 1))
 orbit(sol, vars=(1, 2, 3))
 ```
 If the length of the tuple is 3, it will be converted to 3d.
-If you want to plot a function of time, position or velocity, you can first define a function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the time and phase space coordinates, and the return value must be a Number. For example,
+If you want to plot a function of time, position or velocity, you can first define a function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the phase space coordinates and time, and the return value must be a Number. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 orbit(sol, vars=(0, Eₖ))
