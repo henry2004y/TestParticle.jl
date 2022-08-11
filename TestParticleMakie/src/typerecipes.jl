@@ -82,12 +82,11 @@ end
 
 
 # get the minimum and maximum values of the time span
-function get_tspan(sol::AbstractODESolution, tspan)
+function get_tspan(sol::AbstractODESolution, tspan::Union{Tuple, Nothing})
     if tspan === nothing
         t_min = sol.t[1]
         t_max = sol.t[end]
     else
-        @assert isa(tspan, Tuple)
         t_min = tspan[1] < sol.t[1] ? sol.t[1] : tspan[1]
         t_max = tspan[2] > sol.t[end] ? sol.t[end] : tspan[2]
     end
