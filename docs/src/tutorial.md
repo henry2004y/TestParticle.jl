@@ -442,9 +442,9 @@ so we have
 ```
 
 Anticipating the result, we look for a solution which is the sum of a gyration at ``\omega_c`` and a steady drift ``\mathbf{v}_E``. Since we are interested in finding an expression for ``v_E``, we take out the gyratory motion by averaging over a cycle.
-The ``v_x`` component then gives ``\bar{v}_x = 0``.[^question] In the ``v_y`` component, the oscillating term ``\ddot{v}_y`` clearly averages to zero, and we have
+The ``v_x`` component then gives ``\bar{v}_x = 0``.[^1] In the ``v_y`` component, the oscillating term ``\ddot{v}_y`` clearly averages to zero, and we have
 
-[^question]: I am kind of lost here. Probably the logic here is that first we assume the solution has an additional steady drift, so we let ``\ddot{v}_y = 0``? Check Y.Y's note.
+[^1]: I am kind of lost here. Probably the logic here is that first we assume the solution has an additional steady drift, so we let ``\ddot{v}_y = 0``? Check Y.Y's note.
 
 ```math
 \bar{\ddot{v}_y} = 0 = -\omega_c^2 \bar{v}_y -\omega_c^2\frac{E_0}{B}\bar{\cos k (x_0 + r_L \sin\omega_c t)}
@@ -660,13 +660,13 @@ Curved vacuum field:
 \mathbf{v}_R + \mathbf{v}_{\nabla B} = \frac{m}{q}\Big( v_\parallel^2 + \frac{1}{2}v_\perp^2 \Big) \frac{\mathbf{R}_c \times\mathbf{B}}{R_c^2 B^2}
 ```
 
-Polarization drift:[^time-varying]
+Polarization drift:[^2]
 
 ```math
 \mathbf{v}_p = \pm \frac{1}{\omega_c B}\frac{d\mathbf{E}}{dt}
 ```
 
-[^time-varying]: In common test particle models, we assume static EM fields, so the polarization drift as well as adiabatic heating is not present. However, it is easily achieveable here in this package.
+[^2]: In common test particle models, we assume static EM fields, so the polarization drift as well as adiabatic heating is not present. However, it is easily achieveable here in this package.
 
 ## Adiabatic Invariants
 
