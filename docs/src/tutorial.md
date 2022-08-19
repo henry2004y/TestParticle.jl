@@ -33,7 +33,7 @@ This describes a simple harmonic oscillator at the *cyclotron frequency*, which 
 By the convention we have chosen, ``\omega_c`` is always nonnegative. The solution of velocity is then
 
 ```math
-v_{x,y} = v_\perp \exp(\pm i \omega t + i\delta_{x,y})
+v_{x,y} = v_\perp \exp(\pm i \omega_c t + i\delta_{x,y})
 ```
 
 The ``\pm`` denote the sign of q. We may choose the phase ``\delta`` so that
@@ -129,7 +129,7 @@ v_y &= \pm v_\perp e^{i\omega_c t} - \frac{E_x}{B}
 
 The Larmor motion is the same as before, but there is superimposed a drift ``\mathbf{v}_{gc}`` of the guiding center in the -y direction (for ``E_x > 0``).
 
-To obtain a general formula for ``\mathbf{v}_{gc}``, we can solve the momentum equation in vector form. We may omit the ``m d\mathbf{v}/dt`` term, since this term gives only the circular motion at ``\omega_c``, which we already know about. Then the momeumtum equation becomes
+To obtain a general formula for ``\mathbf{v}_{gc}``, we can solve the momentum equation in vector form. We may omit the ``m d\mathbf{v}/dt`` term, since this term gives only the circular motion at ``\omega_c``, which we already know about. Then the momentum equation becomes
 
 ```math
 \mathbf{E} + \mathbf{v}\times\mathbf{B} = 0
@@ -150,7 +150,7 @@ The transverse components of this equation are
 We define this to be ``\mathbf{v}_E``, the electric field drift of the guiding center. In magnitude, this drift is
 
 ```math
-v_E = \frac{E(V/m)}{B(tesla)}\frac{m}{sec}
+v_E = \frac{E(\text{V/m})}{B(\text{tesla})}\frac{\text{m}}{\text{sec}}
 ```
 
 It is important to note that ``\mathbf{v}_E`` is independent of q, m, and ``v_\perp``. The reason is obvious from the following physical picture. In the first half-cycle of the ion’s orbit, it gains energy from the electric field and increases in ``v_\perp`` and, hence, in ``r_L``. In the second half-cycle, it loses energy and decreases in ``r_L``. This difference in ``r_L`` on the left and right sides of the orbit causes the drift ``v_E``. A negative electron gyrates in the opposite direction but also gains energy in the opposite direction; it ends up drifting in the same direction as an ion. For particles of the same velocity but different mass, the lighter one will have smaller ``r_L`` and hence drift less per cycle. However, its gyration frequency is also larger, and the two effects exactly cancel. Two particles of the same mass but different energy would have the same ``\omega_c``. The slower one will have smaller ``r_L`` and hence gain less energy from ``\mathbf{E}`` in a half-cycle. However, for less energetic particles the fractional change in ``r_L`` for a given change in energy is larger, and these two effects cancel.
