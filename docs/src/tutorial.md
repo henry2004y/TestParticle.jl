@@ -546,7 +546,7 @@ The solution of velocities in x and y tells us that the guiding center motion ha
 Since ``\mathbf{v}_p`` is in opposite directions for ions and electrons, there is a *polarization current*; for Z = 1, this is
 
 ```math
-\mathbf{j}_p = ne(v_{ip} - v_{ep}) = \frac{ne}{eB^2}(M+m)\frac{d\mathbf{E}}{dt} = \frac{\rho}{B}\frac{d\mathbf{E}}{dt}
+\mathbf{j}_p = ne(v_{ip} - v_{ep}) = \frac{ne}{eB^2}(M+m)\frac{d\mathbf{E}}{dt} = \frac{\rho}{B^2}\frac{d\mathbf{E}}{dt}
 ```
 
 where ``\rho`` is the mass density.
