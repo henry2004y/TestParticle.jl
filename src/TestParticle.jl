@@ -2,10 +2,11 @@ module TestParticle
 
 using LinearAlgebra: norm, ×
 using Meshes
-using Interpolations
+using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Periodic,
+   scale
 using StaticArrays
 
-export prepare, trace!, trace_relativistic!
+export prepare, trace!, trace_relativistic!, trace_normalized!, trace2d_normalized!
 export trace, trace_relativistic
 export Proton, Electron, Ion, User
 
@@ -27,7 +28,7 @@ function getchargemass(species::Species, q, m)
    q, m
 end
 
-function makegrid(grid)
+function makegrid(grid::CartesianGrid{3, T}) where T
    gridmin = coordinates(minimum(grid))
    gridmax = coordinates(maximum(grid))
    Δx = spacing(grid)
@@ -39,6 +40,17 @@ function makegrid(grid)
    gridx, gridy, gridz
 end
 
+function makegrid(grid::CartesianGrid{2, T}) where T
+   gridmin = coordinates(minimum(grid))
+   gridmax = coordinates(maximum(grid))
+   Δx = spacing(grid)
+
+   gridx = range(gridmin[1], gridmax[1], step=Δx[1])
+   gridy = range(gridmin[2], gridmax[2], step=Δx[2])
+
+   gridx, gridy
+end
+
 function getinterp(A, gridx, gridy, gridz)
    @assert size(A,1) == 3 && ndims(A) == 4 "Only support 3D force field!"
 
@@ -46,18 +58,45 @@ function getinterp(A, gridx, gridy, gridz)
    Ay = @view A[2,:,:,:]
    Az = @view A[3,:,:,:]
 
-   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpx = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpy = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Az, BSpline(Cubic(Interpolations.Line(OnGrid())))), NaN)
+   itp = extrapolate(interpolate(Az, BSpline(Cubic(Line(OnGrid())))), NaN)
    interpz = scale(itp, gridx, gridy, gridz)
 
    # Return field value at a given location.
    function get_field(xu)
       r = @view xu[1:3]
+
+      return SA[interpx(r...), interpy(r...), interpz(r...)]
+   end
+
+   return Field(get_field)
+end
+
+function getinterp(A, gridx, gridy)
+   @assert size(A,1) == 3 && ndims(A) == 3 "Only support 2D force field!"
+
+   Ax = @view A[1,:,:]
+   Ay = @view A[2,:,:]
+   Az = @view A[3,:,:]
+
+   # The most common boundary condition for 2D is periodic.
+   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+   interpx = scale(itp, gridx, gridy)
+
+   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+   interpy = scale(itp, gridx, gridy)
+
+   itp = extrapolate(interpolate(Az, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+   interpz = scale(itp, gridx, gridy)
+
+   # Return field value at a given location.
+   function get_field(xu)
+      r = @view xu[1:2]
 
       return SA[interpx(r...), interpy(r...), interpz(r...)]
    end
@@ -291,6 +330,34 @@ function trace_relativistic(y, p::TPTuple, t)
    dx, dy, dz = v
    dux, duy, duz = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
    SVector{6}(dx, dy, dz, dux, duy, duz)
+end
+
+"""
+    trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
+
+Normalized ODE equations for charged particle moving in static EM field with in-place form.
+`y` is a five element vector (x, y, vx, vy, vz). Periodic boundary is applied for z.
+"""
+function trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
+   Ω, E, B = p
+   v = @view y[3:5]
+
+   dy[1] = v[1]
+   dy[2] = v[2]
+   dy[3:5] = Ω*(E(y, t) + v × B(y, t))
+end
+
+"""
+    trace_normalized!(dy, y, p::TPNormalizedTuple, t)
+
+Normalized ODE equations for charged particle moving in static EM field with in-place form.
+"""
+function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
+   Ω, E, B = p
+   v = @view y[4:6]
+
+   dy[1:3] = v
+   dy[4:6] = Ω*(E(y, t) + v × B(y, t))
 end
 
 end

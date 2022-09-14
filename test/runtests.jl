@@ -35,11 +35,9 @@ end
 
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
 
       @test length(x) == 8 && x[end] ≈ 0.8540967226885379
 
@@ -47,11 +45,9 @@ end
       prob = ODEProblem(trace!, stateinit, tspan, param)
       ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
       sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
-         trajectories=trajectories, save_idxs=[1,2,3])
+         trajectories=trajectories, save_idxs=[1])
 
       x = getindex.(sol.u[10].u, 1)
-      y = getindex.(sol.u[10].u, 2)
-      z = getindex.(sol.u[10].u, 3)
       
       @test x[7] ≈ 0.09615629718624641 rtol=1e-6
 
@@ -62,11 +58,9 @@ end
 
       prob = ODEProblem(trace, stateinit, tspan, param)
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
 
       @test length(x) == 8 && x[end] ≈ 0.8540967226885379
    end
@@ -91,7 +85,7 @@ end
       
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
 
@@ -102,7 +96,7 @@ end
 
       prob = ODEProblem(trace, stateinit, tspan, param)
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
 
@@ -121,7 +115,6 @@ end
       E_field(r) = SA[0, 5e-11, 0]  # [V/M]
       F[1,:,:,:] .= 9.10938356e-42
 
-
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
@@ -139,11 +132,10 @@ end
 
       prob = ODEProblem(trace!, stateinit, tspan, param)
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Tsit5(); save_idxs=[1,2])
 
       x = getindex.(sol.u, 1)
       y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
 
       @test x[end] ≈ 1.5324506965560782 && y[end] ≈ -2.8156470047903706
    end
@@ -260,5 +252,71 @@ end
       x = sol.u[end][1:3]
 
       @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+   end
+
+   @testset "normalized field" begin
+      # 3D
+      x = range(-10, 10, length=15)
+      y = range(-10, 10, length=20)
+      z = range(-10, 10, length=25)
+      B = fill(0.0, 3, length(x), length(y), length(z)) # [B₀]
+      E = fill(0.0, 3, length(x), length(y), length(z)) # [v₀B₀]
+
+      B₀ = 10e-9
+
+      B[3,:,:,:] .= 1.0
+
+      Δx = x[2] - x[1]
+      Δy = y[2] - y[1]
+      Δz = z[2] - z[1]
+
+      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+         (x[1], y[1], z[1]),
+         (Δx, Δy, Δz))
+
+      x0 = [0.0, 0.0, 0.0] # initial position, [m]
+      u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
+      stateinit = [x0..., u0...]
+
+      param = prepare(mesh, E, B, B₀; species=Proton)
+      tspan = (0.0, 1.0)
+
+      prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+
+      sol = solve(prob, Tsit5(); save_idxs=[1])
+
+      x = getindex.(sol.u, 1)
+
+      @test length(x) == 8 && x[end] ≈ 0.8540967226941674
+
+      # 2D
+      x = range(-10, 10, length=15)
+      y = range(-10, 10, length=20)
+      B = fill(0.0, 3, length(x), length(y)) # [B₀]
+      E = fill(0.0, 3, length(x), length(y)) # [v₀B₀]
+
+      B₀ = 10e-9
+
+      B[3,:,:,:] .= 1.0
+
+      Δx = x[2] - x[1]
+      Δy = y[2] - y[1]
+
+      mesh = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
+
+      x0 = [0.0, 0.0] # initial position [l₀]
+      u0 = [1.0, 0.0, 0.0] # initial velocity [l₀/t₀]
+      stateinit = [x0..., u0...]
+
+      param = prepare(mesh, E, B, B₀; species=Proton)
+      tspan = (0.0, 1.0)
+
+      prob = ODEProblem(trace2d_normalized!, stateinit, tspan, param)
+
+      sol = solve(prob, Tsit5(); save_idxs=[1])
+
+      x = getindex.(sol.u, 1)
+
+      @test length(x) == 8 && x[end] ≈ 0.8540967195469715
    end
 end
