@@ -296,11 +296,11 @@ end
       x = range(-10, 10, length=15)
       y = range(-10, 10, length=20)
       B = fill(0.0, 3, length(x), length(y)) # [B₀]
-      E = fill(0.0, 3, length(x), length(y)) # [v₀B₀]
+      E = fill(0.0, 3, length(x), length(y)) # [E₀]
 
       B₀ = 10e-9
 
-      B[3,:,:,:] .= 1.0
+      B[3,:,:] .= 1.0
 
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
