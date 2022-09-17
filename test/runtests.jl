@@ -254,7 +254,7 @@ end
       @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
    end
 
-   @testset "normalized field" begin
+   @testset "normalized fields" begin
       # Basic scales: length l₀ [m], time t₀ [s], magnetic field B₀ [T]
       # Derived scales: velocity v₀ = l₀/t₀ [m/s], electric field E₀ = v₀B₀ [V/m]
 
@@ -307,14 +307,14 @@ end
 
       mesh = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
 
-      x0 = [0.0, 0.0] # initial position [l₀]
+      x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
 
       param = prepare(mesh, E, B, B₀; species=Proton)
       tspan = (0.0, 1.0)
 
-      prob = ODEProblem(trace2d_normalized!, stateinit, tspan, param)
+      prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
       sol = solve(prob, Tsit5(); save_idxs=[1])
 

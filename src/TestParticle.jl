@@ -6,7 +6,7 @@ using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Pe
    scale
 using StaticArrays
 
-export prepare, trace!, trace_relativistic!, trace_normalized!, trace2d_normalized!
+export prepare, trace!, trace_relativistic!, trace_normalized!
 export trace, trace_relativistic
 export Proton, Electron, Ion, User
 
@@ -363,24 +363,11 @@ function trace_relativistic(y, p::TPTuple, t)
 end
 
 """
-    trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
-
-Normalized ODE equations for charged particle moving in static EM field with in-place form.
-`y` is a five-element vector (x, y, vx, vy, vz). Periodic boundary is applied for z.
-"""
-function trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
-   Ω, E, B = p
-   v = @view y[3:5]
-
-   dy[1] = v[1]
-   dy[2] = v[2]
-   dy[3:5] = Ω*(E(y, t) + v × B(y, t))
-end
-
-"""
     trace_normalized!(dy, y, p::TPNormalizedTuple, t)
 
 Normalized ODE equations for charged particle moving in static EM field with in-place form.
+If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
+the extrapolation function provided by Interpolations.jl.
 """
 function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    Ω, E, B = p
