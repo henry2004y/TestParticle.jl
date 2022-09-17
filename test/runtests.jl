@@ -255,8 +255,8 @@ end
    end
 
    @testset "normalized field" begin
-      # Basic units: length l₀, time t₀, magnetic field B₀
-      # Derived units: velocity v₀ = l₀/t₀, electric field E₀ = v₀B₀
+      # Basic scales: length l₀ [m], time t₀ [s], magnetic field B₀ [T]
+      # Derived scales: velocity v₀ = l₀/t₀ [m/s], electric field E₀ = v₀B₀ [V/m]
 
       # 3D
       x = range(-10, 10, length=15)
