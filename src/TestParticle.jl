@@ -366,7 +366,7 @@ end
     trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
 
 Normalized ODE equations for charged particle moving in static EM field with in-place form.
-`y` is a five element vector (x, y, vx, vy, vz). Periodic boundary is applied for z.
+`y` is a five-element vector (x, y, vx, vy, vz). Periodic boundary is applied for z.
 """
 function trace2d_normalized!(dy, y, p::TPNormalizedTuple, t)
    Ω, E, B = p

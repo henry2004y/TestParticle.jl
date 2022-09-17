@@ -255,12 +255,15 @@ end
    end
 
    @testset "normalized field" begin
+      # Basic units: length l₀, time t₀, magnetic field B₀
+      # Derived units: velocity v₀ = l₀/t₀, electric field E₀ = v₀B₀
+
       # 3D
       x = range(-10, 10, length=15)
       y = range(-10, 10, length=20)
       z = range(-10, 10, length=25)
       B = fill(0.0, 3, length(x), length(y), length(z)) # [B₀]
-      E = fill(0.0, 3, length(x), length(y), length(z)) # [v₀B₀]
+      E = fill(0.0, 3, length(x), length(y), length(z)) # [E₀]
 
       B₀ = 10e-9
 
@@ -274,8 +277,8 @@ end
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
-      x0 = [0.0, 0.0, 0.0] # initial position, [m]
-      u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
+      x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+      u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
 
       param = prepare(mesh, E, B, B₀; species=Proton)
@@ -305,7 +308,7 @@ end
       mesh = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
 
       x0 = [0.0, 0.0] # initial position [l₀]
-      u0 = [1.0, 0.0, 0.0] # initial velocity [l₀/t₀]
+      u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
 
       param = prepare(mesh, E, B, B₀; species=Proton)
