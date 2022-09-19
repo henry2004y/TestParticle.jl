@@ -27,7 +27,7 @@ m\dot{v}_x = qB v_y,\, m\dot{v}_y = -qB v_x,\, m\dot{v}_z = 0, \\
 This describes a simple harmonic oscillator at the *cyclotron frequency*, which we define to be
 
 ```math
-\omega_c \equiv \frac{| q | B}{m}s
+\omega_c \equiv \frac{| q | B}{m}
 ```
 
 By the convention we have chosen, ``\omega_c`` is always nonnegative. The solution of velocity is then
