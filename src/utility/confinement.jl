@@ -62,7 +62,7 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
 end
 
 """
-    getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
+    getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
 
 Get the magnetic field from a Tokamak topology consists of 16 coils.
 Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/blob/master/Simulation2.m
@@ -73,7 +73,7 @@ Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/
 - `ICoil::Float`: current in the coil times number of windings.
 - `IPlasma::Float`: current of the plasma?
 """
-function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
+function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
 
    a *= 2
 
@@ -141,5 +141,36 @@ function getB_tokamak(x, y, z, a, b, ICoils, IPlasma)
       By += By_plasma
       Bz += Bz_plasma
    end
+   [Bx, By, Bz]
+end
+
+
+"""
+    getB_tokamak_profile(x, y, z, q_profile, a, R₀, Bζ0)
+
+Reconstruct the magnetic field distribution from a safe factor(q) profile.
+The formulations are from the book "Tokamak 4th Edition" by John Wesson.
+# Arguments
+- `x,y,z::Float`: location in [m].
+- `q_profile::Function`: profile of q. The variable of this function must be the normalized radius.
+- `a::Float`: minor radius [m].
+- `R₀::Float`: major radius [m].
+- `Bζ0::Float`: toroidal magnetic field on axis [T].
+"""
+function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, q_profile,
+                              a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
+   R = hypot(x, y)
+   r = hypot(R-R₀, z)
+   if r > a
+      throw(OverflowError("out of vacuum vessel"))
+   end
+   θ = atan(z, R-R₀)
+   Bζ = Bζ0*R₀/R
+   Bθ = r*Bζ/R₀/q_profile(r/a)
+   ζ = atan(y, x)
+
+   Bx = -Bζ*sin(ζ) - Bθ*sin(θ)*cos(ζ)
+   By = Bζ*cos(ζ) - Bθ*sin(θ)*sin(ζ)
+   Bz = Bθ*cos(θ)
    [Bx, By, Bz]
 end
