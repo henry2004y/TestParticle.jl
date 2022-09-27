@@ -35,8 +35,13 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
         throw(ArgumentError("Invalid variable type."))
     end
 
+    # when the gyrofrequency is too large, the characteristic step should be adjusted.
+    len = 5*length(sol)*abs((t_max-t_min)/(sol.t[end]-sol.t[1]))
+    if len < 1000
+        len = 1000
+    end
     # maybe the step can be decided by user
-    t_step = (t_max - t_min) / 1e4
+    t_step = (t_max - t_min) / len
     t = collect(t_min:t_step:t_max)
     u = sol.(t)
     # the structure of subarray: [x, y, z, vx, vy, vz, t]
