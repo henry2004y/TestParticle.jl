@@ -1,10 +1,11 @@
 module TestParticle
 
 using LinearAlgebra: norm, ×
-using Meshes
+using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Periodic,
    scale
 using StaticArrays
+using SnoopPrecompile
 
 export prepare, trace!, trace_relativistic!, trace_normalized!
 export trace, trace_relativistic
@@ -376,5 +377,7 @@ function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    dy[1:3] = v
    dy[4:6] = Ω*(E(y, t) + v × B(y, t))
 end
+
+include("precompile.jl")
 
 end
