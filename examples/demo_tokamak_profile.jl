@@ -36,7 +36,7 @@ tspan = (0.0, 4e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=2e-11)
-fig = orbit(sol)
+fig1 = orbit(sol)
 
 nθ = LinRange(0, 2π, 30)
 nζ = LinRange(0, 2π, 30)
@@ -47,13 +47,15 @@ points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
 faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
 tor_mesh = GeometryBasics.Mesh(points, faces)
 # plot a surface of the tokamak
-wireframe!(fig[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+wireframe!(fig1[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+# fig1[0, 0] = Label(fig1, "passing particle")
+Label(fig1[1, 1, Top()], "passing particle", padding = (0, 0, 10, 0), textsize = 22)
 
-display(fig)
+display(fig1)
 
 # initial velocity for trapped particle
 v₀ = [0.0, 1.15, 5.1] .* 1e6
-# initial position, [m]. where q≈2, (2, 1) flux surface.
+# initial position, [m]. where q≈1, (1, 1) flux surface.
 r₀ = [6.6494, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
@@ -62,10 +64,10 @@ tspan = (0.0, 4e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=1e-11)
-fig = orbit(sol)
+fig2 = orbit(sol)
 
-wireframe!(fig[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+wireframe!(fig2[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+Label(fig2[1, 1, Top()], "trapped particle", padding = (0, 0, 10, 0), textsize = 22)
 
 # banana orbit
-display(fig)
-
+display(GLMakie.Screen(), fig2)
