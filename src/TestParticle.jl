@@ -378,6 +378,55 @@ function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    dy[4:6] = Ω*(E(y, t) + v × B(y, t))
 end
 
+"""
+    guiding_center(xu, param::Union{TPTuple, FullTPTuple})
+
+Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
+Reference: https://en.wikipedia.org/wiki/Guiding_center
+
+A simple definition:
+```math
+\\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{v}\\times\\mathbf{B}}{qB}
+```
+"""
+function guiding_center(xu, param::Union{TPTuple, FullTPTuple})
+   q, m, _, B_field = param
+   t = xu[end]
+   v = @view xu[4:6]
+   Bv = B_field(xu, t)
+   B = hypot(Bv...)
+   # unit vector along B
+   b = Bv./B
+   # the vector of Larmor radius
+   ρ = (b×v)./(q*B/m)
+   X = xu[1:3] - ρ
+   return X
+end
+
+"""
+    get_gc(param::Union{TPTuple, FullTPTuple})
+
+Get three function for plotting the orbit of guiding center.
+
+For example:
+```julia
+param = prepare(E, B; species=Proton)
+gc = get_gc(params)
+# The definitions of stateinit, tspan, E and B are ignored.
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern7(); dt=2e-11)
+
+orbit(sol, vars=gc)
+```
+"""
+function get_gc(param::Union{TPTuple, FullTPTuple})
+   gc_x(xu) = getindex(guiding_center(xu, param), 1)
+   gc_y(xu) = getindex(guiding_center(xu, param), 2)
+   gc_z(xu) = getindex(guiding_center(xu, param), 3)
+   # Because of the design of the keyword 'vars', three coordinates must be divided into three functions.
+   return (gc_x, gc_y, gc_z)
+end
+
 include("precompile.jl")
 
 end

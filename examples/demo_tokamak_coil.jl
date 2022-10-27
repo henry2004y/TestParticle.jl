@@ -5,7 +5,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle: getB_tokamak
+using TestParticle: getB_tokamak_coil
 using OrdinaryDiffEq
 using StaticArrays
 using PyPlot
@@ -22,7 +22,7 @@ const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
 function getB(xu)
-   SVector{3}(getB_tokamak(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
+   SVector{3}(getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 end
 
 function getE(xu)
@@ -43,7 +43,7 @@ stateinit = [r₀..., v₀...]
 param = prepare(getE, getB; species=Proton)
 tspan = (0.0, 1e-6)
 
-prob = ODEProblem(trace_analytic_relativistic!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 
 @printf "Speed = %6.4f %s\n" √(v₀[1]^2+v₀[2]^2+v₀[3]^2)/c*100 "% speed of light"
 @printf "Energy = %6.4f MeV\n" (1/√(1-(v₀[1]/c)^2-(v₀[2]/c)^2-(v₀[3]/c)^2)-1)*m*c^2/abs(q)/1e6
@@ -57,7 +57,7 @@ sol = solve(prob, Tsit5(); dt=2e-11, save_idxs=[1,2,3])
 
 using3D()
 fig = plt.figure(figsize=(10,6))
-ax = fig.gca(projection="3d")
+ax = fig.add_subplot(projection="3d")
 
 ax.plot(sol[1,:], sol[2,:], sol[3,:], label="proton")
 
