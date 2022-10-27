@@ -93,8 +93,11 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
     if interactive
         t_min, t_max = get_tspan(sol, tspan)
         step = (t_max - t_min) / 1e3
+        # Makie does not support the flag 'g' or 'G'.
+        # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
+        time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
         # the minimum of the range cannot be t_min.
-        time = SliderGrid(fig[2, 1], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = "{:.3f}s", startvalue = t_max))
+        time = SliderGrid(fig[2, 1], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = time_format, startvalue = t_max))
         # convert tspan to an Observable
         tspan = lift(time.sliders[1].value) do t
             (t_min, t)
@@ -151,7 +154,10 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     t_min, t_max = get_tspan(sol, tspan)
     step = (t_max - t_min) / 1e3
 
-    time = SliderGrid(fig[5, 1:6], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = "{:.3f}s", startvalue = t_max))
+    # Makie does not support the flag 'g' or 'G'.
+    # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
+    time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
+    time = SliderGrid(fig[5, 1:6], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = time_format, startvalue = t_max))
     # a shorter time for one frame seems useless
     frame = SliderGrid(fig[4, 1:4], (label="Speed", range=range(1, stop=200, step=1), format = "{:d} frames/s", startvalue = 100))
     tspan = lift(time.sliders[1].value) do t
