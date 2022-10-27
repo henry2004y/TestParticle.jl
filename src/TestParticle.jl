@@ -1,10 +1,11 @@
 module TestParticle
 
 using LinearAlgebra: norm, ×
-using Meshes
+using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Periodic,
    scale
 using StaticArrays
+using SnoopPrecompile
 
 export prepare, trace!, trace_relativistic!, trace_normalized!
 export trace, trace_relativistic
@@ -425,5 +426,7 @@ function get_gc(param::Union{TPTuple, FullTPTuple})
    # Because of the design of the keyword 'vars', three coordinates must be divided into three functions.
    return (gc_x, gc_y, gc_z)
 end
+
+include("precompile.jl")
 
 end
