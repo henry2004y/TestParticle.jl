@@ -1,7 +1,7 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
-authors = ["Hongyang Zhou <hyzhou@umich.edu> and contributors"]
-version = "0.1.0"
+authors = ["Hongyang Zhou <hyzhou@umich.edu>, and contributors"]
+version = "0.2.0"
 
 [deps]
 Elliptic = "b305315f-e792-5b7a-8f41-49f472929428"
