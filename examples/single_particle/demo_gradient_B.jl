@@ -1,5 +1,6 @@
-# magnetic field gradient drift
-# More theoretical details can be found in F.F.Chen's Introduction to Plasma Physics and Controlled Fusion.
+# Magnetic field gradient drift
+# More theoretical details can be found in Introduction to Plasma Physics and Controlled 
+# Fusion, F. F. Chen.
 
 using TestParticle
 using TestParticle: get_gc
@@ -24,13 +25,12 @@ abs_B(x) = norm(grad_B(x))
 function trace_gc!(dx, x, p, t)
     q, m, E, B, sol = p
     xu = sol(t)
-    xp = @view xu[1:3]
     gradient_B = gradient(abs_B, x)
     Bv = B(x)
     b = normalize(Bv)
-    v_para = (xu[4:6]⋅b).*b
-    v_perp = xu[4:6] - v_para
-    dx[1:3] = m*norm(v_perp)^2*(Bv×gradient_B)/(2*q*norm(Bv)^3) + (E(x)×Bv)/norm(Bv)^2 + v_para
+    v_par = (xu[4:6]⋅b).*b
+    v_perp = xu[4:6] - v_par
+    dx[1:3] = m*norm(v_perp)^2*(Bv×gradient_B)/(2*q*norm(Bv)^3) + (E(x)×Bv)/norm(Bv)^2+v_par
 end
 
 x0 = [1.0, 0, 0]
@@ -48,6 +48,7 @@ sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
 
 gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 # numeric result and analytic result
-# The orbit of guiding center includes some high order terms, it is different from the formula of
-# magnetic field gradient drift of some textbooks which just preserves the first order term.
+# The orbit of guiding center includes some high order terms, it is different from the
+# formula of magnetic field gradient drift of some textbooks which just preserves the first
+# order term.
 orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])

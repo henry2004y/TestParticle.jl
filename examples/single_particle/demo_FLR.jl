@@ -1,5 +1,6 @@
-# finite Larmor radius effect
-# More theoretical details can be found in F.F.Chen's Introduction to Plasma Physics and Controlled Fusion.
+# Finite Larmor radius effect
+# More theoretical details can be found in Introduction to Plasma Physics and Controlled 
+# Fusion, F. F. Chen.
 
 using TestParticle
 using TestParticle: get_gc
@@ -27,15 +28,15 @@ function trace_gc!(dx, x, p, t)
     xp = @view xu[1:3]
     Bv = B(xp)
     b = normalize(Bv)
-    v_para = (xu[4:6]⋅b).*b  # (v⋅b)b
-    v_perp = xu[4:6] - v_para
+    v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
+    v_perp = xu[4:6] - v_par
     r4 = (m*norm(v_perp)/q/norm(Bv))^2/4
     EB(x) = (E(x)×B(x))/norm(B(x))^2
-    # dx[1:3] = EB(xp) + v_para
-    dx[1:3] = EB(x) + r4*laplace.(EB, Vec3(x...)) + v_para
+    # dx[1:3] = EB(xp) + v_par
+    dx[1:3] = EB(x) + r4*laplace.(EB, Vec3(x...)) + v_par
 
     # more accurate
-    # dx[1:3] = besselj0(0.3*m*norm(v_perp)/q/norm(Bv))*EB(x) + v_para
+    # dx[1:3] = besselj0(0.3*m*norm(v_perp)/q/norm(Bv))*EB(x) + v_par
 end
 
 x0 = [1.0, 0, 0]
