@@ -1,6 +1,7 @@
 # Magnetic field topology in fusion research.
 
-using Elliptic, SpecialFunctions
+using Elliptic: ellipke
+using SpecialFunctions: erf
 
 """
     getB_bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
