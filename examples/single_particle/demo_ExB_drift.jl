@@ -1,5 +1,6 @@
 # E×B drift
-# More theoretical details can be found in F.F.Chen's Introduction to Plasma Physics and Controlled Fusion.
+# More theoretical details can be found in Introduction to Plasma Physics and Controlled 
+# Fusion, F. F. Chen and Computational Plasma Physics, Toshi Tajima.
 
 using TestParticle
 using TestParticle: get_gc
@@ -23,9 +24,9 @@ function trace_gc!(dx, x, p, t)
     xu = sol(t)
     Bv = B(x)
     b = normalize(Bv)
-    v_para = (xu[4:6]⋅b).*b
+    v_par = (xu[4:6]⋅b).*b
     B2 = sum(Bv.^2)
-    dx[1:3] = (E(x)×Bv)/B2 + v_para
+    dx[1:3] = (E(x)×Bv)/B2 + v_par
 end
 
 x0 = [1.0, 0, 0]

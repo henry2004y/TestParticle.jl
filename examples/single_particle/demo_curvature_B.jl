@@ -1,5 +1,6 @@
-# magnetic field curvature drift
-# More theoretical details can be found in F.F.Chen's Introduction to Plasma Physics and Controlled Fusion.
+# Magnetic field curvature drift
+# More theoretical details can be found in Introduction to Plasma Physics and Controlled 
+# Fusion, F. F. Chen and Computational Plasma Physics, Toshi Tajima.
 
 using TestParticle
 using TestParticle: get_gc
@@ -8,7 +9,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using GLMakie
-using ForwardDiff: gradient
+using ForwardDiff: gradient, jacobian
 
 function curved_B(x)
     # satisify ∇⋅B=0
@@ -28,14 +29,16 @@ abs_B(x) = norm(curved_B(x))  # |B|
 function trace_gc!(dx, x, p, t)
     q, m, E, B, sol = p
     xu = sol(t)
-    xp = @view xu[1:3]
     gradient_B = gradient(abs_B, x)  # ∇|B|
     Bv = B(x)
     b = normalize(Bv)
-    v_para = (xu[4:6]⋅b).*b  # (v⋅b)b
-    v_perp = xu[4:6] - v_para
-    dx[1:3] = m*(0.5*norm(v_perp)^2+0*norm(v_para)^2)*(Bv×gradient_B)/(q*norm(Bv)^3) + (E(x)×Bv)/norm(Bv)^2 + 
-                v_para  # (m/q)*(v∥^2+0.5*v⟂^2)*(B×∇B)/B^3 + (E×B)/B^2 + v∥
+    v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
+    v_perp = xu[4:6] - v_par
+    Ω = q*norm(Bv)/m
+    κ = jacobian(B, x)*Bv  # B⋅∇B
+    # v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
+    dx[1:3] = norm(v_perp)^2*(Bv×gradient_B)/(2*Ω*norm(Bv)^2) + 
+                norm(v_par)^2*(Bv×κ)/Ω/norm(Bv)^3 + (E(x)×Bv)/norm(Bv)^2 + v_par
 end
 
 x0 = [1.0, 0, 0]
