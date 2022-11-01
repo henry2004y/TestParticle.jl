@@ -1,15 +1,13 @@
 name: TestParticleMakie CI
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
+    paths:
+      - 'TestParticleMakie/**'
     branches:
       - master
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
+    paths:
+      - 'TestParticleMakie/**'
     branches:
       - master
     tags: '*'
@@ -50,7 +48,7 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - uses: julia-actions/julia-processcoverage@v1
         with:
-          directories: src,TestParticleMakie/src
+          directories: TestParticleMakie/src
       - uses: codecov/codecov-action@v2
         with:
           file: lcov.info

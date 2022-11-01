@@ -15,7 +15,7 @@ All tracing are performed in 3D, as is the nature for the fields. For a numerica
 For an analytical field, the user is responsible for providing the function for calculating the field at a given spatial location.
 The actual tracing is done through [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl), thanks to the ODE system of the equations of motion.
 
-The single particle motions are the basics in understanding the test particle method. Check the complete [tutorial](@ref) taken from Chapter Two of Introduction to Plasma Physics by F.F.Chen.
+The single particle motions are the basics in understanding the test particle method. Check the complete [Tutorial](@ref) taken from Chapter Two of Introduction to Plasma Physics by F.F.Chen.
 
 ## Installation
 
