@@ -4,6 +4,23 @@ What makes plasmas particularly difficult to analyze is the fact that the densit
 
 Here we assume that the EM fields are prescribed and not affected by the charged particles. The materials here closely follows F.F.Chen's [Introduction to Plasma Physics and Controlled Fusion](https://link.springer.com/book/10.1007/978-3-319-22309-4).
 
+In all examples we assume the following packages are loaded:
+
+```@example tutorial
+using JSServe: Page # hide
+Page(exportable=true, offline=true) # hide
+```
+
+```@example tutorial
+using TestParticle
+using TestParticle: get_gc
+using TestParticleMakie
+using OrdinaryDiffEq
+using StaticArrays
+using LinearAlgebra
+import WGLMakie as Mke
+```
+
 ## Uniform E and B Fields
 
 ### E=0
@@ -157,6 +174,45 @@ It is important to note that ``\mathbf{v}_E`` is independent of q, m, and ``v_\p
 
 The three-dimensional orbit in space is therefore a slanted helix with changing pitch.
 
+```@example tutorial
+function uniform_B(x)
+    return SA[0, 0, 1e-8]
+end
+
+function uniform_E(x)
+    return SA[1e-9, 0, 0]
+end
+
+# trace the orbit of the guiding center
+function trace_gc!(dx, x, p, t)
+    _, _, E, B, sol = p
+    xu = sol(t)
+    Bv = B(x)
+    b = normalize(Bv)
+    v_par = (xu[4:6]⋅b).*b
+    B2 = sum(Bv.^2)
+    dx[1:3] = (E(x)×Bv)/B2 + v_par
+end
+
+x0 = [1.0, 0, 0]
+v0 = [0.0, 1.0, 0.1]
+stateinit = [x0..., v0...]
+tspan = (0, 20)
+# E×B drift
+param = prepare(uniform_E, uniform_B, species=Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+
+gc = get_gc(param)
+gc_x0 = [gc_i(stateinit) for gc_i in gc]
+prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+
+gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
+# numeric result and analytic result
+orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+```
+
 ### Gravitational Field
 
 The foregoing result can be applied to other forces by replacing ``q\mathbf{E}`` in the equation of motion by a general force ``\mathbf{F}``. The guiding center drift caused by ``\mathbf{F}`` is then
@@ -222,6 +278,52 @@ where we have used the formula shown previously. Since the choice of the y axis 
 
 This has all the dependences we expected from the physical picture; only the factor ``\frac{1}{2}`` (arising from the averaging) was not predicted. Note that the ``\pm`` stands for the sign of the charge, and lightface ``B`` stands for ``|B|``. The quantity ``\mathbf{v}_{\nabla B}`` is called the *grad-B drift*; it is in opposite directions for ions and electrons and causes a current transverse to ``\mathbf{B}``. An exact calculation of ``\mathbf{v}_{\nabla B}`` would require using the exact orbit, including the drift, in the averaging process.
 
+```@example tutorial
+using ForwardDiff: gradient
+
+function grad_B(x)
+    return SA[0, 0, 1e-8+1e-9 *x[2]]
+end
+
+function uniform_E(x)
+    return SA[1e-9, 0, 0]
+end
+
+abs_B(x) = norm(grad_B(x))
+
+# trace the orbit of the guiding center
+function trace_gc!(dx, x, p, t)
+    q, m, E, B, sol = p
+    xu = sol(t)
+    gradient_B = gradient(abs_B, x)
+    Bv = B(x)
+    b = normalize(Bv)
+    v_par = (xu[4:6]⋅b).*b
+    v_perp = xu[4:6] - v_par
+    dx[1:3] = m*norm(v_perp)^2*(Bv×gradient_B)/(2*q*norm(Bv)^3) + (E(x)×Bv)/norm(Bv)^2+v_par
+end
+
+x0 = [1.0, 0, 0]
+v0 = [0.0, 1.0, 0.1]
+stateinit = [x0..., v0...]
+tspan = (0, 20)
+param = prepare(uniform_E, grad_B, species=Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+
+gc = get_gc(param)
+gc_x0 = [gc_i(stateinit) for gc_i in gc]
+prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+
+gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
+# numeric result and analytic result
+# The orbit of guiding center includes some high order terms, which is different from the
+# formula of magnetic field gradient drift of some textbooks that just preserves the first
+# order term.
+orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+```
+
 ### Curved B: Curvature Drift
 
 Here we assume the magnetic field lines to be curved with a constant radius of curvature ``R_c``, and we take ``|B|`` to be constant. Such a field does not obey Maxwell’s equations in a vacuum, so in practice the grad-B drift will always be added to the
@@ -272,6 +374,60 @@ For a Maxwellian distribution, ``\bar{v_\parallel^2}`` and ``\frac{1}{2}\bar{v_\
 ```
 
 where ``\widehat{y}`` here is the direction of ``\widehat{R}_c\times\mathbf{B}``. This shows that ``\bar{\mathbf{v}}_{R+\nabla B}`` depends on the charge of the species but not on its mass.
+
+```@example tutorial
+using ForwardDiff: gradient, jacobian
+
+function curved_B(x)
+    # satisify ∇⋅B=0
+    # B_θ = 1/r => ∂B_θ/∂θ = 0
+    θ = atan(x[3]/(x[1]+3))
+    r = hypot(x[1]+3, x[3])
+    return SA[-1e-7*sin(θ)/r, 0, 1e-7*cos(θ)/r]
+end
+
+function zero_E(x)
+    return SA[0, 0, 0]
+end
+
+abs_B(x) = norm(curved_B(x))  # |B|
+
+# trace the orbit of the guiding center
+function trace_gc!(dx, x, p, t)
+    q, m, E, B, sol = p
+    xu = sol(t)
+    gradient_B = gradient(abs_B, x)  # ∇|B|
+    Bv = B(x)
+    b = normalize(Bv)
+    v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
+    v_perp = xu[4:6] - v_par
+    Ω = q*norm(Bv)/m
+    κ = jacobian(B, x)*Bv  # B⋅∇B
+    # v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
+    dx[1:3] = norm(v_perp)^2*(Bv×gradient_B)/(2*Ω*norm(Bv)^2) + 
+                norm(v_par)^2*(Bv×κ)/Ω/norm(Bv)^3 + (E(x)×Bv)/norm(Bv)^2 + v_par
+end
+
+x0 = [1.0, 0, 0]
+v0 = [0.0, 1.0, 0.1]
+stateinit = [x0..., v0...]
+tspan = (0, 40)
+# E×B drift
+param = prepare(zero_E, curved_B, species=Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+
+gc = get_gc(param)
+gc_x0 = [gc_i(stateinit) for gc_i in gc]
+prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+
+gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
+# numeric result and analytic result
+# similar to the magnetic field gradient drift
+# analytic calculation should include both of the gradient drift and the curvature drift
+orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+```
 
 ### ∇B ∥ B: Magnetic Mirrors
 
@@ -483,6 +639,55 @@ field weaker by the same amount on the other side; the correction to ``\mathbf{v
 
 The second term is called the *finite-Larmor-radius effect*. What is the significance of this correction? Since ``r_L`` is much larger for ions than for electrons, ``\mathbf{v}_E`` is no longer independent of species. If a density clump occurs in a plasma, an electric field can cause the ions and electrons to separate, generating another electric field. If there is a feedback mechanism that causes the second electric field to enhance the first one, ``\mathbf{E}`` grows indefinitely, and the plasma is unstable. Such an instability, called a *drift instability*, is one type of plasma instabilities. The grad-B drift, of course, is also a finite-Larmor-radius effect and also causes charges to separate. However, ``\mathbf{v}_{\nabla B} \propto kr_L`` whereas the correction term above is proportional to ``k^2 r_L^2``. The nonuniform-E-field effect, therefore, is important at relatively large k, or small scale lengths of the inhomogeneity. For this reason, drift instabilities belong to a more general class called *microinstabilities*.
 
+```@example tutorial
+using Tensors: laplace
+import Tensors: Vec as Vec3
+# using SpecialFunctions
+
+function uniform_B(x)
+    return SA[0, 0, 1e-8]
+end
+
+function nonuniform_E(x)
+    return SA[1e-9*cos(0.3*x[1]), 0, 0]
+end
+
+# trace the orbit of the guiding center
+function trace_gc!(dx, x, p, t)
+    q, m, E, B, sol = p
+    xu = sol(t)
+    xp = @view xu[1:3]
+    Bv = B(xp)
+    b = normalize(Bv)
+    v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
+    v_perp = xu[4:6] - v_par
+    r4 = (m*norm(v_perp)/q/norm(Bv))^2/4
+    EB(x) = (E(x)×B(x))/norm(B(x))^2
+    # dx[1:3] = EB(xp) + v_par
+    dx[1:3] = EB(x) + r4*laplace.(EB, Vec3(x...)) + v_par
+
+    # more accurate
+    # dx[1:3] = besselj0(0.3*m*norm(v_perp)/q/norm(Bv))*EB(x) + v_par
+end
+
+x0 = [1.0, 0, 0]
+v0 = [0.0, 1.0, 0.1]
+stateinit = [x0..., v0...]
+tspan = (0, 20)
+param = prepare(nonuniform_E, uniform_B, species=Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+
+gc = get_gc(param)
+gc_x0 = [gc_i(stateinit) for gc_i in gc]
+prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+
+gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
+# numeric result and analytic result
+orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+```
+
 ## Time-Varying E Field
 
 Let us now take ``\mathbf{E}`` and ``\mathbf{B}`` to be uniform in space but varying in time. First, consider the case in which ``\mathbf{E}`` alone varies sinusoidally in time, and let it lie along the x axis:
@@ -554,6 +759,29 @@ where ``\rho`` is the mass density.
 The physical reason for the polarization current is simple. Consider an ion at rest in a magnetic field. If a field ``\mathbf{E}`` is suddenly applied, the first thing the ion does is to move in the direction of ``\mathbf{E}``. Only after picking up a velocity ``\mathbf{v}`` does the ion feel a Lorentz force ``e\mathbf{v}\times\mathbf{B}`` and begin to move perpendicular to both fields. If ``\mathbf{E}`` is now kept constant, there is no further ``\mathbf{v}_p`` drift but only a ``\mathbf{v}_E`` drift. However, if ``\mathbf{E}`` is reversed, there is again a momentary drift, this time to the left. Thus ``\mathbf{v}_p`` is a startup drift due to inertia and occurs only in the first half-cycle of each gyration during which ``\mathbf{E}`` changes. Consequently, ``\mathbf{v}_p`` goes to zero when ``\omega/\omega_c \ll 1``.
 
 The polarization effect in a plasma is similar to that in a solid dielectric, where ``\mathbf{D} = \epsilon_0\mathbf{E} + \mathbf{P}``. The dipoles in a plasma are ions and electrons separated by a distance ``r_L``. But since ions and electrons can move around to preserve quasineutrality, the application of a steady ``\mathbf{E}`` field does not result in a polarization field ``\mathbf{P}``. However, if ``\mathbf{E}`` oscillates, an oscillating current ``\mathbf{j}_p`` results from the lag due to the ion inertia.
+
+```@example tutorial
+function uniform_B(x)
+    return SA[0, 0, 1e-8]
+end
+
+function time_varying_E(x, t)
+    return SA[0, 1e-9*0.1*t, 0]
+end
+
+x0 = [1.0, 0, 0]
+v0 = [0.0, 1.0, 0.1]
+stateinit = [x0..., v0...]
+tspan = (0, 100)
+param = prepare(time_varying_E, uniform_B, species=Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+gc = get_gc(param)
+v_perp(xu) = hypot(xu[4], xu[5])
+gc_y = gc[2]
+# polarization drift
+monitor(sol, vars=[v_perp, 2, gc_y])
+```
 
 ## Time-Varying B Field
 
