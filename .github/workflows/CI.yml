@@ -5,12 +5,14 @@ on:
       - master
     paths-ignore:
       - 'README.md'
+      - 'examples/**'
   push:
     branches:
       - master
     tags: '*'
     paths-ignore:
       - 'README.md'
+      - 'examples/**'
 env:
   JULIA_NUM_THREADS: 1
 jobs:
