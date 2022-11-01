@@ -8,6 +8,9 @@ on:
     paths-ignore:
       - 'README.md'
       - 'test/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'TestParticleMakie/**'
 
 jobs:
   Benchmark:
