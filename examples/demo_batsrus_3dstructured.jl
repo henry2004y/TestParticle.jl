@@ -75,7 +75,7 @@ tspan_proton = (0.0, 10.0)
 trajectories = 5
 
 #=
-prob_e = ODEProblem(trace_numeric!, stateinit_e, tspan_electron, param_electron)
+prob_e = ODEProblem(trace!, stateinit_e, tspan_electron, param_electron)
 ensemble_prob = EnsembleProblem(prob_e, prob_func=prob_func)
 sol_e = solve(prob_e, Tsit5(); save_idxs=[1,2,3], alg_hints=[:nonstiff])
 sol_e = solve(ensemble_prob, Tsit5(), EnsembleThreads();
@@ -83,7 +83,7 @@ sol_e = solve(ensemble_prob, Tsit5(), EnsembleThreads();
 =#
 
 
-prob_p = ODEProblem(trace_numeric!, stateinit_p, tspan_proton, param_proton)
+prob_p = ODEProblem(trace!, stateinit_p, tspan_proton, param_proton)
 ensemble_prob = EnsembleProblem(prob_p, prob_func=prob_func)
 #sol_p = solve(prob_p; save_idxs=[1,2,3], alg_hints=[:nonstiff])
 sol_p = solve(ensemble_prob, AutoTsit5(Rosenbrock23()), EnsembleThreads();

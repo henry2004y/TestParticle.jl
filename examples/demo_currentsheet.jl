@@ -43,7 +43,7 @@ stateinit = [r₀..., v₀...]
 param = prepare(getE, getB)
 tspan = (0.0, 10.0)
 
-prob = ODEProblem(trace_analytic!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 
 sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 

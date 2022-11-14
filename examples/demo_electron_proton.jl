@@ -43,8 +43,8 @@ tspan_proton = (0.0, 10.0)
 
 ## Solve for the trajectories
 
-prob_e = ODEProblem(trace_numeric!, stateinit, tspan_electron, param_electron)
-prob_p = ODEProblem(trace_numeric!, stateinit, tspan_proton, param_proton)
+prob_e = ODEProblem(trace!, stateinit, tspan_electron, param_electron)
+prob_p = ODEProblem(trace!, stateinit, tspan_proton, param_proton)
 
 sol_e = solve(prob_e, Tsit5(); save_idxs=[1,2,3])
 sol_p = solve(prob_p, Tsit5(); save_idxs=[1,2,3])

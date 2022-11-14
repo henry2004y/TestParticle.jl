@@ -47,7 +47,7 @@ trajectories = 10
 
 ## Solve for the trajectories
 
-prob = ODEProblem(trace_numeric!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
 sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
    trajectories=trajectories, save_idxs=[1,2,3])
