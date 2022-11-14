@@ -29,12 +29,18 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
       stateinit = [x0..., u0...]
-
-      param = prepare(mesh, E, B)
       tspan = (0.0, 1.0)
 
+      param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
+      sol = solve(prob, Tsit5(); save_idxs=[1])
 
+      x = getindex.(sol.u, 1)
+
+      @test length(x) == 8 && x[end] ≈ 0.8540967226885379
+
+      param = prepare(mesh, E, B)
+      prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
@@ -52,12 +58,10 @@ end
       @test x[7] ≈ 0.09615629718624641 rtol=1e-6
 
       stateinit = SA[x0..., u0...]
-
-      param = prepare(mesh, E, B)
       tspan = (0.0, 1.0)
 
+      param = prepare(mesh, E, B)
       prob = ODEProblem(trace, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
@@ -79,12 +83,10 @@ end
       # initial position, [m]
       r₀ = TestParticle.sph2cart(2.5*Rₑ, 0.0, π/2)
       stateinit = [r₀..., v₀...]
+      tspan = (0.0, 1.0)
 
       param = prepare(TestParticle.getE_dipole, TestParticle.getB_dipole)
-      tspan = (0.0, 1.0)
-      
       prob = ODEProblem(trace!, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
@@ -95,7 +97,6 @@ end
       stateinit = SA[r₀..., v₀...]
 
       prob = ODEProblem(trace, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
@@ -126,12 +127,10 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [0.0, 1.0, 0.0] # initial velocity, [m/s]
       stateinit = [x0..., u0...]
-
-      param = prepare(mesh, E_field, B, F; species=Electron)
       tspan = (0.0, 1.0)
 
+      param = prepare(mesh, E_field, B, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1,2])
 
       x = getindex.(sol.u, 1)
@@ -161,12 +160,10 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [0.0, 1.0, 1.0] # initial velocity, [m/s]
       stateinit = [x0..., u0...]
-
-      param = prepare(mesh, E_field, B_field, F; species=Electron)
       tspan = (0.0, 1.0)
 
+      param = prepare(mesh, E_field, B_field, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
       x = getindex.(sol.u, 1)
@@ -206,10 +203,10 @@ end
 
       x0 = [10.0, 10.0, 0.0] # initial position, [m]
       u0 = [1e10, 0.0, 0.0] # initial velocity, [m/s]
-      tspan = (0.0, 2e-7)
       stateinit = [x0..., u0...]
-      param = prepare(E_field, E_field; species=Electron)
+      tspan = (0.0, 2e-7)
 
+      param = prepare(E_field, E_field; species=Electron)
       prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
       @test_throws DomainError solve(prob, Tsit5())
 
@@ -237,12 +234,12 @@ end
       u0 = [0.0, 0.0, 0.0] # initial velocity, [m/s]
       tspan = (0.0, 2e-7)
       stateinit = [x0..., u0...]
-      param = prepare(E_field, B_field; species=Electron)
 
+      param = prepare(E_field, B_field; species=Electron)
       prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
       sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
-      x = sol.u[end][1:3]
 
+      x = sol.u[end][1:3]
       # Test whether the kinetic energy [eV] of the electron
       # is equal to the electric potential energy gained.
       @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
@@ -280,12 +277,10 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
-
-      param = prepare(mesh, E, B, B₀; species=Proton)
       tspan = (0.0, 1.0)
 
+      param = prepare(mesh, E, B, B₀; species=Proton)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
@@ -310,12 +305,10 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
-
-      param = prepare(mesh, E, B, B₀; species=Proton)
       tspan = (0.0, 1.0)
 
+      param = prepare(mesh, E, B, B₀; species=Proton)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
