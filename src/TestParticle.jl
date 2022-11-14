@@ -168,23 +168,31 @@ TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
 
 """
     prepare(grid::CartesianGrid, E, B; species=Proton) -> (q, m, E, B)
-    prepare(grid::CartesianGrid, E, B, B₀::Real; species=Proton) -> (Ω, E, B)
-    prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
-    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q, m, E, B)
-    prepare(E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` and interpolated
 EM field functions.
 
+    prepare(grid::CartesianGrid, E, B, B₀::Real; species=Proton) -> (Ω, E, B)
+
 Return a tuple consists of gyrofrequency for normalization and interpolated EM field
 functions given magnetic field scale B₀ in Tesla.
+
+    prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, interpolated EM field functions, and external force `F`.
 
+    prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B) -> (q, m, E, B)
+
+Direct range input for uniform grid in 3D is also accepted.
+
+    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q, m, E, B)
+
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
 `Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
+
+    prepare(E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, analytic EM field functions, and external force `F`.
@@ -201,7 +209,7 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
       E = TE <: AbstractArray ? getinterp(E, gridx, gridy) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)      
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)
    end
 
    q, m, E, B
@@ -220,7 +228,7 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
       E = TE <: AbstractArray ? getinterp(E, gridx, gridy) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)      
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)
    end
 
    Ω, E, B
@@ -238,6 +246,17 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Prot
    F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz) : Field(F)
 
    q, m, E, B, F
+end
+
+function prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E::TE, B::TB;
+   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0) where {TE, TB}
+
+   q, m = getchargemass(species, q, m)
+
+   E = TE <: AbstractArray ? getinterp(E, x, y, z) : Field(E)
+   B = TB <: AbstractArray ? getinterp(B, x, y, z) : Field(B)
+
+   q, m, E, B
 end
 
 function prepare(E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
@@ -310,12 +329,12 @@ end
 const FTLError = """
 Particle faster than the speed of light!
 
-If the initial velocity is slower than light and 
-adaptive timestepping of the solver is turned on, it 
-is better to set a small initial stepsize (dt) or 
+If the initial velocity is slower than light and
+adaptive timestepping of the solver is turned on, it
+is better to set a small initial stepsize (dt) or
 maximum dt for adaptive timestepping (dtmax).
 
-More details about the keywords of initial stepsize 
+More details about the keywords of initial stepsize
 can be found in this documentation page:
 https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Stepsize-Control
 """
