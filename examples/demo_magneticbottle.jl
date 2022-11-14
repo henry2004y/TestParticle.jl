@@ -51,7 +51,7 @@ stateinit = [r₀..., v₀...]
 param = prepare(getE, getB; species=Electron)
 tspan = (0.0, 3e-7)
 
-prob = ODEProblem(trace_analytic_relativistic!, stateinit, tspan, param)
+prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
 
 @printf "Speed = %6.4f %s\n" √(v₀[1]^2+v₀[2]^2+v₀[3]^2)/c*100 "% speed of light"
 @printf "Energy = %6.4f MeV\n" (1/√(1-(v₀[1]/c)^2-(v₀[2]/c)^2-(v₀[3]/c)^2)-1)*m*c^2/abs(q)/1e6

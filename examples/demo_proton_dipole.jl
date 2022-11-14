@@ -27,7 +27,7 @@ stateinit = [r₀..., v₀...]
 param = prepare(getE_dipole, getB_dipole)
 tspan = (0.0, 2.0)
 
-prob = ODEProblem(trace_analytic!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 
 sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
