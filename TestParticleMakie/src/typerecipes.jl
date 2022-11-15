@@ -4,23 +4,25 @@
 Makie.plottype(sol::AbstractODESolution, arg...; kw...) = Lines
 
 # prescribe the keyword arguments for the plot function
-Makie.used_attributes(::Makie.PlotFunc, ::AbstractODESolution, arg...; kw...) = (:vars, :tspan, :to_3d)
+Makie.used_attributes(::Makie.PlotFunc, ::AbstractODESolution, arg...; kw...) =
+    (:vars, :tspan, :to_3d)
 
 # conversion from ODESolution to Point set
-function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false)
+function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
+    vars=nothing, tspan=nothing, to_3d::Bool=false)
     # calculate the time span
     t_min, t_max = get_tspan(sol, tspan)
 
-    # the type of vars must be Tuple, Number, Function or AbstractArray
-    # but it will not be handled properly when its type belong to AbstractArray
-    # This piece of code was inspired by Armavica and its [PR](https://github.com/SciML/DiffEqBase.jl/pull/15) in DiffEqBase.jl.
+    # The type of vars must be Tuple, Number, Function or AbstractArray, but it will not be
+    # handled properly when its type belong to AbstractArray. Inspired by Armavica and
+    # [PR](https://github.com/SciML/DiffEqBase.jl/pull/15) in DiffEqBase.jl.
     if vars === nothing
         # default figure is the orbit
         var = (1, 2, 3)
     elseif isa(vars, Integer) | isa(vars, Function)
         var = (0, vars)
     elseif isa(vars, AbstractArray)
-        # Makie cannot handle multipule lines properly.
+        # Makie cannot handle multiple lines properly.
         @warn "This function can only plot one line at a time. Only the first tuple or number in vars will be plotted."
         if isa(vars[1], Tuple)
             var = vars[1]
@@ -35,7 +37,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
         throw(ArgumentError("Invalid variable type."))
     end
 
-    # when the gyrofrequency is too large, the characteristic step should be adjusted.
+    # When the gyrofrequency is too large, the characteristic step should be adjusted.
     len = 5*length(sol)*abs((t_max-t_min)/(sol.t[end]-sol.t[1]))
     if len < 1000
         len = 1000
@@ -86,7 +88,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution; vars=n
 end
 
 
-# get the minimum and maximum values of the time span
+# Get the minimum and maximum values of the time span
 function get_tspan(sol::AbstractODESolution, tspan::Union{Tuple, Nothing})
     if tspan === nothing
         t_min = sol.t[1]
@@ -95,6 +97,7 @@ function get_tspan(sol::AbstractODESolution, tspan::Union{Tuple, Nothing})
         t_min = tspan[1] < sol.t[1] ? sol.t[1] : tspan[1]
         t_max = tspan[2] > sol.t[end] ? sol.t[end] : tspan[2]
     end
+
     return t_min, t_max
 end
 
