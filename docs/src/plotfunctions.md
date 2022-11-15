@@ -2,6 +2,20 @@
 
 Before using the plot recipes of `Testparticle.jl`, you need to install the package `TestParticleMakie.jl` and import it via `using TestParticleMakie`. All plot recipes depend on `Makie.jl`.
 
+## Convention
+
+By convention, we use integers to represent the 7 dimensions in the input argument `vars` for all plotting methods:
+
+| Component | Meaning |
+|-----------|---------|
+| 0         | time    |
+| 1         | x       |
+| 2         | y       |
+| 3         | z       |
+| 4         | vx      |
+| 5         | vy      |
+| 6         | vz      |
+
 ## Basic usage
 
 The simplest usage is directly calling the `plot` or `lines` function provided by `Makie`. For example,
@@ -33,12 +47,36 @@ lines(sol, vars=1)
 
 When the independent variable is not explicitly given, it will be set as time by default.
 
-Because of the restriction of `Makie.jl`, `plot` and `lines` function cannot plot multiple lines at one call. If you want to plot multiple lines in a figure, you can use `plot!`, `lines!` or the another plot recipe `orbit`.
+Because of the restriction of `Makie.jl`, `plot` and `lines` function cannot plot multiple lines at one call. If you want to plot multiple quantities in one figure, you may consider using `plot!`, `lines!` or the another plot recipe `orbit`.
 
 You can choose the plotting time span via the keyword argument `tspan`. For example,
 
 ```julia
 lines(sol, tspan=(0, 1))
+```
+
+If the default axis or labels are too small, you can first create the customized figure and axis, and then plot inside:
+
+```julia
+f = Figure(resolution = (1200, 800), fontsize = 18)
+ax = Axis3(f[1, 1],
+    title = "Particle trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    zlabel = "Z",
+)
+
+plot!(sol)
+```
+
+Currently we do not directly support plotting multiple particle trajectories saved as the type `EnsembleSolution`. However, plotting multiple trajectories can be done with a simple loop:
+
+```julia
+f = Figure()
+ax = Axis3(f[1, 1])
+for s in sol
+    plot!(s)
+end
 ```
 
 ## Advanced usage
@@ -47,7 +85,7 @@ There are two plot recipes, which are more powerful than just using `plot` or `l
 
 ### `orbit`
 
-The basic usages are the same as other functions described above and we just need to change the function name to `orbit`. Multiple lines can be plotted at one time with this function. For example,
+The basic usages of `orbit` are the same as other functions described above with the same arguments. Multiple quantities from one particle solution can be plotted in the same axis. For example,
 
 ```julia
 orbit(sol, vars=[1, (1, 2), Eₖ])
