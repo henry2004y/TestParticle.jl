@@ -11,17 +11,22 @@ A plot recipe for plotting orbit or other figures related to six phase space coo
 # Keywords
 - `vars`: the argument used to choose variables to be plotted. Default value is [(1, 2, 3)].
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
-- `to_3d::Bool`: whether to force the points to be plotted in 3d. If `true`, the order of coordinates will be rearranged for plotting as 3d points.
+- `to_3d::Bool`: whether to force the points to be plotted in 3d. If `true`, the order of
+coordinates will be rearranged for plotting as 3d points.
 - `interactive::Bool`: whether to show the figure in interactive mode.
 
 ## vars
-`vars` can be an Integer, Function, Tuple and Array. The basic form for `vars` is Tuple. For example, if you want to plot the variable `x` as a function of time or the orbit of a particle, you can use it like this:
+`vars` can be an Integer, Function, Tuple and Array. The basic form for `vars` is Tuple.
+For example, if you want to plot the variable `x` as a function of time or the orbit of a
+particle, you can use it like this:
 ```julia
 orbit(sol, vars=(0, 1))
 orbit(sol, vars=(1, 2, 3))
 ```
 If the length of the tuple is 3, it will be converted to 3d.
-If you want to plot a function of time, position or velocity, you can first define a function. The arguments of the function must be a 7-dimensional array, the elements of which correspond to the phase space coordinates and time, and the return value must be a Number. For example,
+To plot a function of time, position or velocity, you can first define the function. The
+arguments of the function must be a 7-dimensional array, the elements of which correspond to
+the phase space coordinates and time, and the return value must be a Number. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 orbit(sol, vars=(0, Eₖ))
@@ -36,7 +41,8 @@ Plotting multiple lines at one time are supported by providing a tuple of indexe
 orbit(sol, vars=[1, (1, 2), Eₖ])
 ```
 
-There are some more advanced usages. If a tuple contains vectors, they will be expanded automatically. For example,
+There are some more advanced usages. If a tuple contains vectors, they will be expanded
+automatically. For example,
 ```julia
 orbit(sol, vars=(0, [1, 2, 3]))
 orbit(sol, vars=([1, 2, 3], [4, 5, 6]))
@@ -97,7 +103,11 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
         # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
         time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
         # the minimum of the range cannot be t_min.
-        time = SliderGrid(fig[2, 1], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = time_format, startvalue = t_max))
+        time = SliderGrid(fig[2, 1],
+            (label="Time",
+             range=range(t_min+step, stop=t_max, step=step),
+             format=time_format,
+             startvalue=t_max))
         # convert tspan to an Observable
         tspan = lift(time.sliders[1].value) do t
             (t_min, t)
@@ -133,7 +143,9 @@ A plot recipe for monitor the orbit of a particle and other physics quantities.
 - `tspan::Tuple`: the span of time to be plotted. For example, tspan = (0, 1).
 
 ## vars
-The usage of `vars` for this function is different from those in [`orbit`](@ref). It can only be a list and its length is equal to 3. The type of its elements must be Integer or Function. The form of a function is the same as those prescribed by `orbit`. For example,
+The usage of `vars` for this function is different from those in [`orbit`](@ref). It can
+only be a list and its length is equal to 3. The type of its elements must be Integer or
+Function. The form of a function is the same as those prescribed by `orbit`. For example,
 ```julia
 Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 monitor(sol, vars=[1, 2, Eₖ])
@@ -149,7 +161,8 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
 
     fig = Figure()
     ax1 = Axis3(fig[1:3, 1:3], aspect=:data)
-    axs = [Axis(fig[i, 4:6], ylabel=get_label(x), xlabel=get_label(0)) for (i, x) in enumerate(vars)]
+    axs = [Axis(fig[i, 4:6], ylabel=get_label(x), xlabel=get_label(0))
+        for (i, x) in enumerate(vars)]
 
     t_min, t_max = get_tspan(sol, tspan)
     step = (t_max - t_min) / 1e3
@@ -157,11 +170,19 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     # Makie does not support the flag 'g' or 'G'.
     # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
     time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
-    time = SliderGrid(fig[5, 1:6], (label="Time", range=range(t_min+step, stop=t_max, step=step), format = time_format, startvalue = t_max))
+    time = SliderGrid(fig[5, 1:6],
+        (label="Time",
+         range=range(t_min+step, stop=t_max, step=step),
+         format=time_format,
+         startvalue=t_max))
     # a shorter time for one frame seems useless
-    frame = SliderGrid(fig[4, 1:4], (label="Speed", range=range(1, stop=200, step=1), format = "{:d} frames/s", startvalue = 100))
+    frame = SliderGrid(fig[4, 1:4],
+        (label="Speed",
+         range=range(1, stop=200, step=1),
+         format="{:d} frames/s",
+         startvalue=100))
     tspan = lift(time.sliders[1].value) do t
-        # According to the documentation of Makie, Axis3 have the method `autolimits!` but not.
+        # According to the doc of Makie, Axis3 have the method `autolimits!` but not.
         autolimits!.(axs)
         # autolimits!(ax1)
         (t_min, t)
