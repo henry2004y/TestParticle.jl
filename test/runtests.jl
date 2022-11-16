@@ -7,15 +7,6 @@ function prob_func(prob, i, repeat)
    remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
 end
 
-"Test callback method for domain checking."
-function isoutofdomain(u, p, t)
-   if hypot(u[1], u[2], u[3]) > 0.8
-      return true
-   else
-      return false
-   end
-end
-
 @testset "TestParticle.jl" begin
    @testset "numerical field" begin
       x = range(-10, 10, length=15)
@@ -42,12 +33,11 @@ end
 
       param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=true)
+      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
 
       x = getindex.(sol.u, 1)
-      @show length(x)
-      @show x[end]
-      @test length(x) == 28 && x[end] ≈ 0.7388945226814018
+      # There are numerical differences on x86 and ARM platforms!
+      @test x[end] ≈ 0.7388945226814018
 
       param = prepare(mesh, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
