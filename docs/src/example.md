@@ -3,11 +3,17 @@
 Multiple [demonstrations](https://github.com/henry2004y/TestParticle.jl/tree/master/examples) are provided.
 For all the tracing methods, we provide both an inplace version (with `!` at the end of the function name) and a non-inplace version using StaticArrays. The non-inplace version requires the initial conditions to be static a static vector. Use them at your convenience.
 
-## Choice of numerical algorithm
+## Choice of Numerical Algorithm
 
 By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
 However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
-Take you some time to figure out which algorithm works for your problem!
+Take time to figure out which algorithms work for your problem!
+
+## Out of Domain Detection
+
+`isoutofdomain` is a keyword argument of `solve` that specifies a function `isoutofdomain(u,p,t)` where, when it returns true, it will reject the timestep. This is useful for setting the tracing domain without manually modifying the field values.
+
+More information can be found in the [common solver options](https://diffeq.sciml.ai/stable/basics/common_solver_opts/).
 
 ## Gallery
 
