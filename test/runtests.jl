@@ -42,10 +42,11 @@ end
 
       param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
+      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=true)
 
       x = getindex.(sol.u, 1)
-
+      @show length(x)
+      @show x[end]
       @test length(x) == 28 && x[end] ≈ 0.7388945226814018
 
       param = prepare(mesh, E, B)
