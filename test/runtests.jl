@@ -7,6 +7,15 @@ function prob_func(prob, i, repeat)
    remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
 end
 
+"Test boundary check method."
+function isoutofdomain(u, p, t)
+   if hypot(u[1], u[2], u[3]) > 0.8
+      return true
+   else
+      return false
+   end
+end
+
 @testset "TestParticle.jl" begin
    @testset "numerical field" begin
       x = range(-10, 10, length=15)
