@@ -9,6 +9,13 @@ By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
 However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
 Take you some time to figure out which algorithm works for your problem!
 
+## Multiple particles tracing
+
+There are two ways to trace multiple particles simultaneously:
+
+1. Extracting the solution in a loop with varying initial conditions. See an example [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_multiple.jl).
+2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that currently the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field.
+
 ## Gallery
 
 - Tracing proton in a uniform EM field
