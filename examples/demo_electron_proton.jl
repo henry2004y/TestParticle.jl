@@ -28,9 +28,6 @@ grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
 
 ## Initialize particles
 
-isAnalytic = false
-trajectories = 1
-
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
