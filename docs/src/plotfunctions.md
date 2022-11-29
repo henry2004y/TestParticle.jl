@@ -1,6 +1,6 @@
 # Plot Functions
 
-Before using the plot recipes of `Testparticle.jl`, you need to install the package `TestParticleMakie.jl` and import it via `using TestParticleMakie`. All plot recipes depend on `Makie.jl`.
+Before using the plot recipes of `Testparticle.jl`, you need to install the package [`TestParticleMakie.jl`](https://github.com/henry2004y/TestParticle.jl/tree/master/TestParticleMakie) and import it via `using TestParticleMakie`. All plot recipes depend on `Makie.jl`.
 
 ## Convention
 
