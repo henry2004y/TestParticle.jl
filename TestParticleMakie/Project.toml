@@ -1,7 +1,7 @@
 name = "TestParticleMakie"
 uuid = "815e1cc4-5742-45dc-845d-1cec70514f1a"
 authors = ["TCLiuu <liutc@mail.nankai.edu.cn>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
