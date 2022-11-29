@@ -6,7 +6,7 @@
 # Hongyang Zhou, hyzhou@umich.edu
 
 using TestParticle
-using TestParticle: getB_dipole, getE_dipole, sph2cart, Rₑ
+using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, Rₑ
 using OrdinaryDiffEq
 using PyPlot
 
