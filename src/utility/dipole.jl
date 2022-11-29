@@ -32,7 +32,6 @@ where r is the radial distance (in planetary radii) to a point on the line,
 λ is its co-latitude, and L is the L-shell of interest.
 """
 function fieldline(ϕ::Float64, L::Float64=2.5, nP::Int=100)
-
    xyz = [ sph2cart(L*sin(θ)^2,ϕ,θ) for θ in range(-π,stop=π,length=nP) ]
    x = Vector{Float64}(undef,length(xyz))
    y = Vector{Float64}(undef,length(xyz))
