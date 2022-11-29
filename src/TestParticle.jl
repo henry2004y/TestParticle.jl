@@ -53,7 +53,7 @@ function makegrid(grid::CartesianGrid{2, T}) where T
 end
 
 function getinterp(A, gridx, gridy, gridz)
-   @assert size(A,1) == 3 && ndims(A) == 4 "Only support 3D force field!"
+   @assert size(A,1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ax = @view A[1,:,:,:]
    Ay = @view A[2,:,:,:]
@@ -79,7 +79,7 @@ function getinterp(A, gridx, gridy, gridz)
 end
 
 function getinterp(A, gridx, gridy)
-   @assert size(A,1) == 3 && ndims(A) == 3 "Only support 2D force field!"
+   @assert size(A,1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
 
    Ax = @view A[1,:,:]
    Ay = @view A[2,:,:]
@@ -115,7 +115,8 @@ function is_time_dependent(f)
          return false
       else
          name = nameof(f)
-         throw(ArgumentError("All methods for the field function $name had too many arguments."))
+         throw(ArgumentError(
+            "All methods for the field function $name had too many arguments."))
       end
    else
       return true
