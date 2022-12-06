@@ -1,5 +1,6 @@
-using TestParticle, Meshes, OrdinaryDiffEq, StaticArrays, Random
+using TestParticle, OrdinaryDiffEq, StaticArrays, Random
 using TestParticle: Field, qₑ, mₑ, c
+using Meshes: CartesianGrid
 using Test
 
 "Initial state perturbation for EnsembleProblem."
@@ -17,6 +18,18 @@ function isoutofdomain(u, p, t)
 end
 
 @testset "TestParticle.jl" begin
+   @testset "sampling" begin
+      Random.seed!(1234)
+      u0 = [0.0, 0.0, 0.0]
+      uth = 1.0
+      vdf = Maxwellian(u0, uth)
+      v = sample(vdf, 2)
+      @test sum(v) == 0.5383742610785328
+      B = [1.0, 2.0, 3.0]
+      vdf = BiMaxwellian(u0, uth, uth, B)
+      @test vdf.uthpar == 1.0
+   end
+
    @testset "numerical field" begin
       x = range(-10, 10, length=15)
       y = range(-10, 10, length=20)

@@ -7,9 +7,10 @@ using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Pe
 using StaticArrays
 using SnoopPrecompile
 
-export prepare, trace!, trace_relativistic!, trace_normalized!
-export trace, trace_relativistic
+export prepare, sample
+export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
 export Proton, Electron, Ion, User
+export Maxwellian, BiMaxwellian
 
 include("utility/utility.jl")
 
@@ -17,6 +18,42 @@ include("utility/utility.jl")
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 """
 @enum Species Proton Electron Ion User
+
+"""
+Abstract type for velocity distribution functions.
+"""
+abstract type VDF end
+
+"""
+Type for Maxwellian velocity distributions.
+"""
+struct Maxwellian{T<:AbstractFloat} <: VDF
+   "Bulk speed"
+   u0::Vector{T}
+   "Thermal speed"
+   uth::T
+end
+
+"""
+Type for BiMaxwellian velocity distributions.
+"""
+struct BiMaxwellian{T<:AbstractFloat, U} <: VDF
+   "Bulk speed"
+   u0::Vector{T}
+   "Parallel thermal speed"
+   uthpar::T
+   "Perpendicular thermal speed"
+   uthperp::T
+   "Unit magnetic field vector"
+   b0::Vector{U}
+
+   function BiMaxwellian(u0::Vector{T}, upar::T, uperp::T, B::Vector{U}) where
+      {T <: AbstractFloat, U <: AbstractFloat}
+      @assert length(B) == 3 "The magnetic field vector must have length 3!"
+      b0 = B ./ hypot(B...)
+      new{T, U}(u0, upar, uperp, b0)
+   end
+end
 
 function getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
    if species == Proton
@@ -166,6 +203,24 @@ TPTuple = Tuple{Float64, Float64, AbstractField, AbstractField}
 
 "The type of parameter tuple for normalized test particle problem."
 TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
+
+"""
+    sample(vdf::Maxwellian, nparticles::Int)
+
+Sample velocities from a Maxwellian distribution `vdf` with `npoints`.
+
+    sample(vdf::BiMaxwellian, nparticles::Int)
+
+Sample velocities from a BiMaxwellian distribution `vdf` with `npoints`.
+"""
+function sample(vdf::Maxwellian, nparticles::Int)
+   sqr2 = typeof(vdf.uth)(√2)
+   # Conversion from thermal speed to std
+   σ = vdf.uth / sqr2
+   v = σ .* randn(typeof(vdf.uth), 3, nparticles) .+ vdf.u0
+
+   v
+end
 
 """
     prepare(grid::CartesianGrid, E, B; species=Proton) -> (q, m, E, B)

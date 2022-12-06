@@ -19,6 +19,8 @@
       (x[1], y[1], z[1]),
       (Δx, Δy, Δz))
 
+   vdf = Maxwellian([0.0, 0.0, 0.0], 1.0)
+   v = sample(vdf, 2)
    # numerical field
    param = prepare(x, y, z, E, B)
    param = prepare(mesh, E, B)
