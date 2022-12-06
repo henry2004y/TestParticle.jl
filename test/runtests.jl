@@ -100,7 +100,7 @@ end
 
       x = getindex.(sol.u, 1)
 
-      @test x[300] ≈ 1.2592311352654776e7 rtol=1e-6
+      @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
       stateinit = SA[r₀..., v₀...]
@@ -110,8 +110,7 @@ end
 
       x = getindex.(sol.u, 1)
 
-      @test x[306] ≈ 1.2588844644203672e7 rtol=1e-6
-
+      @test x[306] ≈ 1.2440619301099773e7 rtol=1e-6
    end
 
    @testset "mixed type fields" begin
