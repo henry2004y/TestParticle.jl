@@ -20,6 +20,7 @@
       (Δx, Δy, Δz))
 
    # numerical field
+   param = prepare(x, y, z, E, B)
    param = prepare(mesh, E, B)
    # analytical field
    param = prepare(getE_dipole, getB_dipole)
