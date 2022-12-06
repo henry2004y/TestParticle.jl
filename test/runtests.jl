@@ -110,7 +110,7 @@ end
 
       x = getindex.(sol.u, 1)
 
-      @test x[306] ≈ 1.2440619301099773e7 rtol=1e-6
+      @test x[306] ≈ 1.2440619301099773e7 rtol=1e-5
    end
 
    @testset "mixed type fields" begin
