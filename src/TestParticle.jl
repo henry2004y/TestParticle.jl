@@ -29,28 +29,33 @@ abstract type VDF end
 Type for Maxwellian velocity distributions.
 """
 struct Maxwellian{T<:AbstractFloat} <: VDF
-   "Bulk speed"
+   "Bulk velocity"
    u0::Vector{T}
    "Thermal speed"
    uth::T
+
+   function Maxwellian(u0::Vector{T}, uth::T) where T
+      @assert length(u0) == 3 "Bulk velocity must have length 3!"
+      new{T}(u0, uth)
+   end
 end
 
 """
 Type for BiMaxwellian velocity distributions.
 """
 struct BiMaxwellian{T<:AbstractFloat, U} <: VDF
-   "Bulk speed"
+   "Bulk velocity"
    u0::Vector{T}
    "Parallel thermal speed"
    uthpar::T
    "Perpendicular thermal speed"
    uthperp::T
-   "Unit magnetic field vector"
+   "Unit magnetic field"
    b0::Vector{U}
 
    function BiMaxwellian(u0::Vector{T}, upar::T, uperp::T, B::Vector{U}) where
       {T <: AbstractFloat, U <: AbstractFloat}
-      @assert length(B) == 3 "The magnetic field vector must have length 3!"
+      @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
       b0 = B ./ hypot(B...)
       new{T, U}(u0, upar, uperp, b0)
    end
