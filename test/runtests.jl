@@ -19,15 +19,17 @@ end
 
 @testset "TestParticle.jl" begin
    @testset "sampling" begin
-      Random.seed!(1234)
       u0 = [0.0, 0.0, 0.0]
       uth = 1.0
       vdf = Maxwellian(u0, uth)
+      Random.seed!(1234)
       v = sample(vdf, 2)
       @test sum(v) == 0.5383742610785328
-      B = [1.0, 2.0, 3.0]
+      B = [1.0, 0.0, 0.0]
       vdf = BiMaxwellian(u0, uth, uth, B)
-      @test vdf.uthpar == 1.0
+      Random.seed!(1234)
+      v = sample(vdf, 2)
+      @test sum(v) == 0.5429092742594825
    end
 
    @testset "numerical field" begin
@@ -76,7 +78,7 @@ end
          trajectories=trajectories, save_idxs=[1])
 
       x = getindex.(sol.u[10].u, 1)
-      
+
       @test x[7] ≈ 0.09615629718624641 rtol=1e-6
 
       stateinit = SA[x0..., u0...]
@@ -98,7 +100,7 @@ end
       m = TestParticle.mᵢ
       q = TestParticle.qᵢ
       c = TestParticle.c
-      Rₑ = TestParticle.Rₑ     
+      Rₑ = TestParticle.Rₑ
 
       # initial velocity, [m/s]
       v₀ = TestParticle.sph2cart(c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, π/4)
@@ -213,7 +215,7 @@ end
    end
 
    @testset "Exceptions" begin
-      E_field(r, t) = SA[5e-11*sin(2π*t), 0, 0] 
+      E_field(r, t) = SA[5e-11*sin(2π*t), 0, 0]
       E = Field(E_field)
 
       @test_throws ArgumentError E([0, 0, 0])

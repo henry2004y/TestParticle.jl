@@ -1,9 +1,10 @@
 module TestParticle
 
-using LinearAlgebra: norm, ×
+using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Periodic,
    scale
+using Distributions: Normal, MvNormal
 using StaticArrays
 using SnoopPrecompile
 
@@ -220,6 +221,38 @@ function sample(vdf::Maxwellian, nparticles::Int)
    v = σ .* randn(typeof(vdf.uth), 3, nparticles) .+ vdf.u0
 
    v
+end
+
+function sample(vdf::BiMaxwellian{T, U}, nparticles::Int) where {T, U}
+   sqr2 = T(√2)
+   # Conversion from thermal speed to std
+   σpar = vdf.uthpar / sqr2
+   σperp = vdf.uthperp / sqr2
+   # Transform to Cartesian grid
+   v = fill(vdf.u0, (3, nparticles))
+   vrand = σpar .* randn(T, nparticles)
+   vrand = reshape(vrand, 1, nparticles)
+   vpar = repeat(vrand, outer=3)
+   @inbounds for i in 1:3, ip in 1:nparticles
+      vpar[i,ip] = vpar[i,ip]*vdf.b0[i] + vdf.u0[i]
+   end
+   # Sample vectors on a 2D plane
+   μ = zeros(T, 2)
+   σ = [σperp 0; 0 σperp]
+   d = MvNormal(μ, σ)
+   vrand = rand(d, nparticles)
+
+   vperp = zeros(T, (3, nparticles))
+   # Rotate vectors to be perpendicular to b̂
+   k = SVector{3, T}(0, 0, 1)
+   axis = vdf.b0 × k::SVector{3, T}
+   θ = acos(vdf.b0 ⋅ k)
+   R = get_rotation_matrix(axis, θ)
+   @inbounds for ip in 1:nparticles
+      vperp[:,ip] = R * SA[vrand[1,ip], vrand[2,ip], 0]
+   end
+
+   v = vpar .+ vperp
 end
 
 """

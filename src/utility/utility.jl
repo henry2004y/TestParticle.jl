@@ -31,3 +31,29 @@ function set_axes_equal(ax)
    ax.set_ylim3d([y - radius[2], y + radius[2]])
    ax.set_zlim3d([z - radius[3], z + radius[3]])
 end
+
+"""
+    get_rotation_matrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
+
+Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in
+radians.
+Reference: [Rotation matrix from axis and angle](https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle)
+
+# Example
+
+```julia
+using LinearAlgebra
+v = [-0.5, 1.0, 1.0]
+v̂ = normalize(v)
+θ = deg2rad(-74)
+R = get_rotation_matrix(v̂, θ)
+```
+"""
+function get_rotation_matrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
+   sinθ, cosθ = sincos(eltype(v)(θ))
+   tmp = 1 - cosθ
+   m =  @SMatrix [
+        cosθ+v[1]^2*tmp         v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
+        v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp         v[2]*v[3]*tmp-v[1]*sinθ;
+        v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
+end
