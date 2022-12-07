@@ -213,24 +213,22 @@ TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
 """
     sample(vdf::Maxwellian, nparticles::Int)
 
-Sample velocities from a Maxwellian distribution `vdf` with `npoints`.
+Sample velocities from a [`Maxwellian`](@ref) distribution `vdf` with `npoints`.
 
     sample(vdf::BiMaxwellian, nparticles::Int)
 
-Sample velocities from a BiMaxwellian distribution `vdf` with `npoints`.
+Sample velocities from a [`BiMaxwellian`](@ref) distribution `vdf` with `npoints`.
 """
 function sample(vdf::Maxwellian, nparticles::Int)
    sqr2 = typeof(vdf.uth)(√2)
-   # Conversion from thermal speed to std
+   # Convert from thermal speed to std
    σ = vdf.uth / sqr2
    v = σ .* randn(typeof(vdf.uth), 3, nparticles) .+ vdf.u0
-
-   v
 end
 
 function sample(vdf::BiMaxwellian{T, U}, nparticles::Int) where {T, U}
    sqr2 = T(√2)
-   # Conversion from thermal speed to std
+   # Convert from thermal speed to std
    σpar = vdf.uthpar / sqr2
    σperp = vdf.uthperp / sqr2
    # Transform to Cartesian grid
@@ -242,8 +240,8 @@ function sample(vdf::BiMaxwellian{T, U}, nparticles::Int) where {T, U}
       vpar[i,ip] = vpar[i,ip]*vdf.b0[i] + vdf.u0[i]
    end
    # Sample vectors on a 2D plane
-   μ = zeros(T, 2)
-   σ = [σperp 0; 0 σperp]
+   μ = zeros(SVector{2,T})
+   σ = SA[σperp 0; 0 σperp]
    d = MvNormal(μ, σ)
    vrand = rand(d, nparticles)
 
