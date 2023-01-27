@@ -1,7 +1,7 @@
 # TestParticle.jl
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://henry2004y.github.io/TestParticle.jl/dev)
-[![Build Status](https://img.shields.io/github/workflow/status/henry2004y/TestParticle.jl/CI)](https://github.com/henry2004y/TestParticle.jl/actions)
+[![Build Status](https://github.com/henry2004y/TestParticle.jl/workflows/CI/badge.svg)](https://github.com/henry2004y/TestParticle.jl/actions?query=workflow%3ACI+branch%3Amaster)
 [![Coverage](https://codecov.io/gh/henry2004y/TestParticle.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/henry2004y/TestParticle.jl)
 
 This package provides test particle tracing in an analytic or numerical electromagnetic field via [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/).
