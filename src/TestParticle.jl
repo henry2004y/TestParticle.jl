@@ -102,13 +102,13 @@ function getinterp(A, gridx, gridy, gridz)
    Ay = @view A[2,:,:,:]
    Az = @view A[3,:,:,:]
 
-   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = interpolate(Ax, BSpline(Cubic(Line(OnGrid()))))
    interpx = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = interpolate(Ay, BSpline(Cubic(Line(OnGrid()))))
    interpy = scale(itp, gridx, gridy, gridz)
 
-   itp = extrapolate(interpolate(Az, BSpline(Cubic(Line(OnGrid())))), NaN)
+   itp = interpolate(Az, BSpline(Cubic(Line(OnGrid()))))
    interpz = scale(itp, gridx, gridy, gridz)
 
    # Return field value at a given location.
