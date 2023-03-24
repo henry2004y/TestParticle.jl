@@ -2,8 +2,8 @@ module TestParticle
 
 using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
-using Interpolations: interpolate, extrapolate, BSpline, Cubic, Line, OnGrid, Periodic,
-   scale
+using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
+   Line, OnGrid, Periodic
 using Distributions: Normal, MvNormal
 using StaticArrays
 using SnoopPrecompile
@@ -95,21 +95,30 @@ function makegrid(grid::CartesianGrid{2, T}) where T
    gridx, gridy
 end
 
-function getinterp(A, gridx, gridy, gridz)
+function getinterp(A, gridx, gridy, gridz, order::Int=1)
    @assert size(A,1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ax = @view A[1,:,:,:]
    Ay = @view A[2,:,:,:]
    Az = @view A[3,:,:,:]
 
-   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Line(OnGrid())))), NaN)
-   interpx = scale(itp, gridx, gridy, gridz)
+   if order == 1
+      itpx = extrapolate(interpolate(Ax, BSpline(Linear())), NaN)
+      itpy = extrapolate(interpolate(Ay, BSpline(Linear())), NaN)
+      itpz = extrapolate(interpolate(Az, BSpline(Linear())), NaN)
+   elseif order == 2
+      itpx = extrapolate(interpolate(Ax, BSpline(Quadratic())), NaN)
+      itpy = extrapolate(interpolate(Ay, BSpline(Quadratic())), NaN)
+      itpz = extrapolate(interpolate(Az, BSpline(Quadratic())), NaN)
+   elseif order == 3
+      itpx = extrapolate(interpolate(Ax, BSpline(Cubic(Line(OnGrid())))), NaN)
+      itpy = extrapolate(interpolate(Ay, BSpline(Cubic(Line(OnGrid())))), NaN)
+      itpz = extrapolate(interpolate(Az, BSpline(Cubic(Line(OnGrid())))), NaN)
+   end
 
-   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Line(OnGrid())))), NaN)
-   interpy = scale(itp, gridx, gridy, gridz)
-
-   itp = extrapolate(interpolate(Az, BSpline(Cubic(Line(OnGrid())))), NaN)
-   interpz = scale(itp, gridx, gridy, gridz)
+   interpx = scale(itpx, gridx, gridy, gridz)
+   interpy = scale(itpy, gridx, gridy, gridz)
+   interpz = scale(itpz, gridx, gridy, gridz)
 
    # Return field value at a given location.
    function get_field(xu)
@@ -121,7 +130,7 @@ function getinterp(A, gridx, gridy, gridz)
    return Field(get_field)
 end
 
-function getinterp(A, gridx, gridy)
+function getinterp(A, gridx, gridy, order::Int=1)
    @assert size(A,1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
 
    Ax = @view A[1,:,:]
@@ -129,14 +138,23 @@ function getinterp(A, gridx, gridy)
    Az = @view A[3,:,:]
 
    # The most common boundary condition for 2D is periodic.
-   itp = extrapolate(interpolate(Ax, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
-   interpx = scale(itp, gridx, gridy)
+   if order == 1
+      itpx = extrapolate(interpolate(Ax, BSpline(Linear())), Periodic())
+      itpy = extrapolate(interpolate(Ay, BSpline(Linear())), Periodic())
+      itpz = extrapolate(interpolate(Az, BSpline(Linear())), Periodic())
+   elseif order == 2
+      itpx = extrapolate(interpolate(Ax, BSpline(Quadratic())), Periodic())
+      itpy = extrapolate(interpolate(Ay, BSpline(Quadratic())), Periodic())
+      itpz = extrapolate(interpolate(Az, BSpline(Quadratic())), Periodic())
+   elseif order == 3
+      itpx = extrapolate(interpolate(Ax, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+      itpy = extrapolate(interpolate(Ay, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+      itpz = extrapolate(interpolate(Az, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
+   end
 
-   itp = extrapolate(interpolate(Ay, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
-   interpy = scale(itp, gridx, gridy)
-
-   itp = extrapolate(interpolate(Az, BSpline(Cubic(Periodic(OnGrid())))), Periodic())
-   interpz = scale(itp, gridx, gridy)
+   interpx = scale(itpx, gridx, gridy)
+   interpy = scale(itpy, gridx, gridy)
+   interpz = scale(itpz, gridx, gridy)
 
    # Return field value at a given location.
    function get_field(xu)
@@ -290,63 +308,63 @@ Return a tuple consists of particle charge, mass for a prescribed `species` of c
 and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0) where {TE, TB}
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB}
 
    q, m = getchargemass(species, q, m)
 
    if embeddim(grid) == 3
       gridx, gridy, gridz = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : Field(E)
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : Field(B)
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order) : Field(E)
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order) : Field(B)
    end
 
    q, m, E, B
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0) where {TE, TB}
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB}
 
    q, m = getchargemass(species, q, m)
    Ω = q*B₀/m
 
    if embeddim(grid) == 3
       gridx, gridy, gridz = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : Field(E)
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : Field(B)
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy) : Field(E)
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order) : Field(E)
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order) : Field(B)
    end
 
    Ω, E, B
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0) where {TE, TB, TF}
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB, TF}
 
    q, m = getchargemass(species, q, m)
 
    gridx, gridy, gridz = makegrid(grid)
 
-   E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz) : Field(E)
-   B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz) : Field(B)
-   F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz) : Field(F)
+   E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : Field(E)
+   B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : Field(B)
+   F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz, order) : Field(F)
 
    q, m, E, B, F
 end
 
 function prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E::TE, B::TB;
-   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0) where {TE, TB}
+   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB}
 
    q, m = getchargemass(species, q, m)
 
-   E = TE <: AbstractArray ? getinterp(E, x, y, z) : Field(E)
-   B = TB <: AbstractArray ? getinterp(B, x, y, z) : Field(B)
+   E = TE <: AbstractArray ? getinterp(E, x, y, z, order) : Field(E)
+   B = TB <: AbstractArray ? getinterp(B, x, y, z, order) : Field(B)
 
    q, m, E, B
 end
