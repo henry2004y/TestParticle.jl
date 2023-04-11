@@ -58,10 +58,18 @@ end
       param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
-
-      x = getindex.(sol.u, 1)
       # There are numerical differences on x86 and ARM platforms!
-      @test x[end] ≈ 0.7388945226814018
+      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
+      # Because the field is uniform, the order of interpolation does not matter.
+      param = prepare(x, y, z, E, B; order=2)
+      prob = remake(prob; p=param)
+      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
+      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
+
+      param = prepare(x, y, z, E, B; order=3)
+      prob = remake(prob; p=param)
+      sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
+      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
 
       param = prepare(mesh, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -334,8 +342,21 @@ end
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
-      x = getindex.(sol.u, 1)
+      xs = getindex.(sol.u, 1)
+      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
 
-      @test length(x) == 8 && x[end] ≈ 0.8540967195469715
+      # Because the field is uniform, the order of interpolation does not matter.
+      param = prepare(mesh, E, B, B₀; order=2)
+      prob = remake(prob; p=param)
+      sol = solve(prob, Tsit5(); save_idxs=[1])
+      xs = getindex.(sol.u, 1)
+      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
+
+      # Because the field is uniform, the order of interpolation does not matter.
+      param = prepare(mesh, E, B, B₀; order=3)
+      prob = remake(prob; p=param)
+      sol = solve(prob, Tsit5(); save_idxs=[1])
+      xs = getindex.(sol.u, 1)
+      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
    end
 end

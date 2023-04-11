@@ -4,22 +4,17 @@ using Elliptic: ellipke
 using SpecialFunctions: erf
 
 """
-    getB_bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
+    getB_mirror(x, y, z, distance, a, I1) -> Vector{Float}
 
-Get magnetic field from a magnetic bottle.
-Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
+Get magnetic field from a magnetic mirror generated from two coils.
 
 # Arguments
-- `x,y,z::Float`: location in [m].
+- `x,y,z::Float`: center location in [m].
 - `distance::Float`: distance between solenoids in [m].
 - `a::Float`: radius of each side coil in [m].
-- `b::Float`: radius of central coil in [m].
 - `I1::Float`: current in the solenoid times number of windings in side coils.
-- `I2::Float`: current in the central solenoid times number of windings in the
-central loop.
 """
-function getB_bottle(x, y, z, distance, a, b, I1, I2)
-
+function getB_mirror(x, y, z, distance, a, I1)
    r = √(x^2 + y^2) # distance from z-axis
 
    # 1st loop
@@ -40,6 +35,39 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
    Bx2 = Br2 * x / r
    By2 = Br2 * y / r
 
+   # total magnetic field
+   if x == 0.0 && y == 0.0
+      Bx = 0.0
+      By = 0.0
+      Bz = Bz1 + Bz2
+   else
+      Bx = Bx1 + Bx2
+      By = By1 + By2
+      Bz = Bz1 + Bz2
+   end
+   [Bx, By, Bz]
+end
+
+"""
+    getB_bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
+
+Get magnetic field from a magnetic bottle.
+Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
+
+# Arguments
+- `x,y,z::Float`: center location in [m].
+- `distance::Float`: distance between solenoids in [m].
+- `a::Float`: radius of each side coil in [m].
+- `b::Float`: radius of central coil in [m].
+- `I1::Float`: current in the solenoid times number of windings in side coils.
+- `I2::Float`: current in the central solenoid times number of windings in the
+central loop.
+"""
+function getB_bottle(x, y, z, distance, a, b, I1, I2)
+   r = √(x^2 + y^2) # distance from z-axis
+
+   B = getB_mirror(x, y, z, distance, a, I1)
+
    # central loop
    z₃ = z
    k = √(4*r*b / (z₃^2 + (b+r)^2) )
@@ -51,15 +79,14 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
 
    # total magnetic field
    if x == 0.0 && y == 0.0
-      Bx = 0.0
-      By = 0.0
-      Bz = Bz1 + Bz2 + Bz3
+      B[3] += Bz3
    else
-      Bx = Bx1 + Bx2 + Bx3
-      By = By1 + By2 + By3
-      Bz = Bz1 + Bz2 + Bz3
+      B[1] += Bx3
+      B[2] += By3
+      B[3] += Bz3
    end
-   [Bx, By, Bz]
+
+   B
 end
 
 """
@@ -75,7 +102,6 @@ Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/
 - `IPlasma::Float`: current of the plasma?
 """
 function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
-
    a *= 2
 
    Bx, By, Bz = 0.0, 0.0, 0.0
@@ -142,6 +168,7 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
       By += By_plasma
       Bz += Bz_plasma
    end
+
    [Bx, By, Bz]
 end
 
@@ -173,5 +200,6 @@ function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFlo
    Bx = -Bζ*sin(ζ) - Bθ*sin(θ)*cos(ζ)
    By = Bζ*cos(ζ) - Bθ*sin(θ)*sin(ζ)
    Bz = Bθ*cos(θ)
+
    [Bx, By, Bz]
 end
