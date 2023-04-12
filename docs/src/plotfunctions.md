@@ -109,7 +109,7 @@ orbit(sol, vars=[(1, 4), (2, 5), (3, 6)])
 
 #### Interactive components
 
-![](../figures/orbit_example.png)
+![](figures/orbit_example.png)
 
 The slider can control the time span, and the maximum of time span will be displayed on the right of the slider.
 
@@ -132,7 +132,7 @@ monitor(sol, vars=[1, 2, Eₖ])
 </video>
 ```
 
-![](../figures/monitor_example.png)
+![](figures/monitor_example.png)
 
 After first click of the `run` button, the evolution of the orbit will be displayed from the beginning. For other times, it will start from the time set by the time slider. The functionality of `reset` button is the same as above.
 
