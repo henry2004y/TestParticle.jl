@@ -19,8 +19,8 @@ function getB_mirror(x, y, z, distance, a, I1)
 
    # 1st loop
    z₁ = z + 0.5*distance
-   k = √(4*r*a / (z₁^2 + (a + r)^2) )
-   K, E = ellipke(k)
+   k2 = (4*r*a / (z₁^2 + (a + r)^2) )
+   K, E = ellipke(k2)
    Bz1 = μ₀*I1 / (2π*√(z₁^2+(a+r)^2)) * ((a^2-z₁^2-r^2)/(z₁^2+(r-a)^2)*E + K)
    Br1 = μ₀*z₁*I1/(2π*r*√(z₁^2+(a+r)^2))*((z₁^2+r^2+a^2)/(z₁^2+(r-a)^2)*E - K)
    Bx1 = Br1 * x / r
@@ -28,8 +28,8 @@ function getB_mirror(x, y, z, distance, a, I1)
 
    # 2nd loop
    z₂ = z - 0.5*distance
-   k = √(4*r*a / (z₂^2 + (a + r)^2) )
-   K, E = ellipke(k)
+   k2 = (4*r*a / (z₂^2 + (a + r)^2) )
+   K, E = ellipke(k2)
    Bz2 = μ₀*I1 / (2π*√(z₂^2+(a+r)^2)) * ((a^2-z₂^2-r^2)/(z₂^2+(r-a)^2)*E + K)
    Br2 = μ₀*z₂*I1/(2π*r*√(z₂^2+(a+r)^2))*((z₂^2+r^2+a^2)/(z₂^2+(r-a)^2)*E - K)
    Bx2 = Br2 * x / r
