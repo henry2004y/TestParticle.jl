@@ -9,7 +9,7 @@ using SpecialFunctions: erf
 Get magnetic field from a magnetic mirror generated from two coils.
 
 # Arguments
-- `x,y,z::Float`: center location in [m].
+- `x,y,z::Float`: particle coordinates in [m].
 - `distance::Float`: distance between solenoids in [m].
 - `a::Float`: radius of each side coil in [m].
 - `I1::Float`: current in the solenoid times number of windings in side coils.
@@ -19,8 +19,8 @@ function getB_mirror(x, y, z, distance, a, I1)
 
    # 1st loop
    z₁ = z + 0.5*distance
-   k = √(4*r*a / (z₁^2 + (a + r)^2) )
-   K, E = ellipke(k)
+   k2 = 4*r*a / (z₁^2 + (a + r)^2)
+   K, E = ellipke(k2)
    Bz1 = μ₀*I1 / (2π*√(z₁^2+(a+r)^2)) * ((a^2-z₁^2-r^2)/(z₁^2+(r-a)^2)*E + K)
    Br1 = μ₀*z₁*I1/(2π*r*√(z₁^2+(a+r)^2))*((z₁^2+r^2+a^2)/(z₁^2+(r-a)^2)*E - K)
    Bx1 = Br1 * x / r
@@ -28,8 +28,8 @@ function getB_mirror(x, y, z, distance, a, I1)
 
    # 2nd loop
    z₂ = z - 0.5*distance
-   k = √(4*r*a / (z₂^2 + (a + r)^2) )
-   K, E = ellipke(k)
+   k2 = 4*r*a / (z₂^2 + (a + r)^2)
+   K, E = ellipke(k2)
    Bz2 = μ₀*I1 / (2π*√(z₂^2+(a+r)^2)) * ((a^2-z₂^2-r^2)/(z₂^2+(r-a)^2)*E + K)
    Br2 = μ₀*z₂*I1/(2π*r*√(z₂^2+(a+r)^2))*((z₂^2+r^2+a^2)/(z₂^2+(r-a)^2)*E - K)
    Bx2 = Br2 * x / r
@@ -55,7 +55,7 @@ Get magnetic field from a magnetic bottle.
 Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
 
 # Arguments
-- `x,y,z::Float`: center location in [m].
+- `x,y,z::Float`: particle coordinates in [m].
 - `distance::Float`: distance between solenoids in [m].
 - `a::Float`: radius of each side coil in [m].
 - `b::Float`: radius of central coil in [m].
@@ -70,8 +70,8 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
 
    # central loop
    z₃ = z
-   k = √(4*r*b / (z₃^2 + (b+r)^2) )
-   K, E = ellipke(k)
+   k2 = 4*r*b / (z₃^2 + (b+r)^2)
+   K, E = ellipke(k2)
    Bz3 = μ₀*I2 / (2π*√(z₃^2+(b+r)^2)) * ((b^2-z₃^2-r^2)/(z₃^2+(r-b)^2)*E + K)
    Br3 = μ₀*z₃*I2/(2π*r*√(z₃^2+(b+r)^2))*((z₃^2+r^2+b^2)/(z₃^2+(r-b)^2)*E - K)
    Bx3 = Br3 * x / r
