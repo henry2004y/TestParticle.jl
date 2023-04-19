@@ -1,0 +1,12 @@
+{
+   "order": [
+     "demo_Buniform_Ezero.jl",
+     "demo_ExB_drift.jl",
+     "demo_gravity_drift.jl",
+     "demo_gradient_B.jl",
+     "demo_curvature_B.jl",
+     "demo_FLR.jl",
+     "demo_polarization_drift.jl",
+     "demo_magneticmirror.jl"
+   ]
+}

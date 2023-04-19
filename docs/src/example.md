@@ -50,4 +50,4 @@ As you can see from the trajectory, this proton will escape after a certain time
 [^1]: A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
 
 - Tracing protons in the simulated EM field near Ganymede from MHD-EPIC
-![](../figures/proton_ganymede_mhdepic.png)
+![](figures/proton_ganymede_mhdepic.png)

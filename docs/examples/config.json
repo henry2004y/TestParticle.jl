@@ -1,0 +1,9 @@
+{
+   "theme": "grid",
+   "order": [
+     "single_particle"
+   ],
+   "properties": {
+     "notebook": "false"
+   }
+}
