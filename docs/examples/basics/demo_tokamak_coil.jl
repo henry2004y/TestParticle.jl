@@ -1,20 +1,31 @@
-# Tracing charged particle in Tokamak.
+# ---
+# title: Coil Tokamak
+# id: demo_tokamak_coil
+# date: 2023-04-20
+# author: "[Hongyang Zhou](https://github.com/henry2004y)"
+# julia: 1.9.0
+# description: Tracing protons in a Tokamak
+# ---
+
 # This example shows how to trace protons in a stationary magnetic field that
-# corresponds to a Tokamak.
-#
-# Hongyang Zhou, hyzhou@umich.edu
+# corresponds to a [Tokamak](https://en.wikipedia.org/wiki/Tokamak) represented by a circle of coils.
+# A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
+
+using JSServe: Page # hide
+Page(exportable=true, offline=true) # hide
 
 using TestParticle
 using TestParticle: getB_tokamak_coil
 using OrdinaryDiffEq
 using StaticArrays
-using PyPlot
 using Statistics: mean
 using Printf
+using TestParticleMakie
+using WGLMakie
 
-## Obtain field
+### Obtain field
 
-# Magnetic bottle parameters in SI units
+## Magnetic bottle parameters in SI units
 const ICoil = 80. # current in the coil
 const N = 15000 # number of windings
 const IPlasma = 1e6 # current in the plasma
@@ -29,14 +40,14 @@ function getE(xu)
    SA[0.0, 0.0, 0.0]
 end
 
-## Initialize particles
+### Initialize particles
 m = TestParticle.mᵢ
 q = TestParticle.qᵢ
 c = TestParticle.c
 
-# initial velocity, [m/s]
+## initial velocity, [m/s]
 v₀ = [-0.1, -0.15, 0.0] .* c
-# initial position, [m]
+## initial position, [m]
 r₀ = [2.3, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
@@ -48,29 +59,34 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 @printf "Speed = %6.4f %s\n" √(v₀[1]^2+v₀[2]^2+v₀[3]^2)/c*100 "% speed of light"
 @printf "Energy = %6.4f MeV\n" (1/√(1-(v₀[1]/c)^2-(v₀[2]/c)^2-(v₀[3]/c)^2)-1)*m*c^2/abs(q)/1e6
 
-# Default Tsit5() alone does not work in this case! You need to set a maximum
-# timestep to maintain stability, or choose a different algorithm as well.
-# The sample figure in the gallery is generated with AB3() and dt=2e-11.
+## Default Tsit5() alone does not work in this case! You need to set a maximum
+## timestep to maintain stability, or choose a different algorithm as well.
+## The sample figure in the gallery is generated with AB3() and dt=2e-11.
 sol = solve(prob, Tsit5(); dt=2e-11, save_idxs=[1,2,3])
 
-## Visualization
+### Visualization
 
-using3D()
-fig = plt.figure(figsize=(10,6))
-ax = fig.add_subplot(projection="3d")
+f = Figure()
+ax = Axis3(f[1, 1],
+   title = "Particle trajectory in Tokamak",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data,
+)
 
-ax.plot(sol[1,:], sol[2,:], sol[3,:], label="proton")
+plot!(sol, label="proton")
 
-# Plot coils
+## Plot coils
 θ = range(0, 2π, length=201)
 y = a * cos.(θ)
 z = a * sin.(θ)
 for i in 0:17
    ϕ = i*π/9
-   ax.plot(y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color="k")
+   plot!(y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color=(:red, 0.3))
 end
 
-# Plot Tokamak
+## Plot Tokamak
 u = range(0, 2π, length=100)
 v = range(0, 2π, length=100)
 
@@ -81,22 +97,6 @@ X = @. (a + b + (a - 0.05)*cos(U)) * cos(V)
 Y = @. (a + b + (a - 0.05)*cos(U)) * sin(V)
 Z = @. (a - 0.05) * sin(U)
 
-ax.plot_surface(X, Y, Z, alpha=0.1)
+wireframe!(ax, X, Y, Z, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 
-ax.legend()
-title("Particle trajectory in Tokamak")
-xlabel("x [m]")
-ylabel("y [m]")
-zlabel("z [m]")
-
-xMin, xMax = -4, 4
-yMin, yMax = -4, 4
-zMin, zMax = -4, 4
-
-xlim(xMin, xMax)
-ylim(yMin, yMax)
-zlim(zMin, zMax)
-
-TestParticle.set_axes_equal(ax)
-
-#savefig("test.png", bbox_inches="tight")
+f

@@ -2,13 +2,20 @@
 
 What makes plasmas particularly difficult to analyze is the fact that the densities fall in an intermediate range. Fluids like water are so dense that the motions of individual molecules do not have to be considered. Collisions dominate, and the simple equations of ordinary fluid dynamics suffice. At the other extreme in very low-density devices, only single-particle trajectories need to be considered; collective effects are often unimportant. Plasma behaves sometimes like fluids, and sometimes like a collection of individual particles. The first step in learning how to deal with this schizophrenic personality is to understand how single particles behave in electric and magnetic fields.
 
-Here we assume that the EM fields are prescribed and not affected by the charged particles. The materials here closely follows F.F.Chen's [Introduction to Plasma Physics and Controlled Fusion](https://link.springer.com/book/10.1007/978-3-319-22309-4).
-For more complete notes corresponding to each case, please check out [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html).
+Here we assume that the EM fields are prescribed and not affected by the charged particles. References can be found in classic textbooks like [Introduction to Plasma Physics and Controlled Fusion](https://link.springer.com/book/10.1007/978-3-319-22309-4) by F.F.Chen, and [Fundamentals of Plasma Physics](https://doi.org/10.1017/CBO9780511807183) by Paul Bellan. For more complete notes corresponding to the derivation online, please check out [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html).
 
+## Choice of numerical algorithms
 
-### ∇B ∥ B: Magnetic Mirrors
+By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
+However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
+Take you some time to figure out which algorithm works for your problem!
 
-![](figures/electron_magnetic_bottle.png)
+## Multiple particles tracing
+
+There are two ways to trace multiple particles simultaneously:
+
+1. Extracting the solution in a loop with varying initial conditions. See the example [demo_ensemble](@ref).
+2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that currently the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field.
 
 ## Summary of Guiding Center Drifts
 

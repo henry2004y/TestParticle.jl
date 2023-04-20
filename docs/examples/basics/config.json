@@ -10,7 +10,11 @@
      "demo_FLR.jl",
      "demo_polarization_drift.jl",
      "demo_magneticmirror.jl",
+     "demo_magneticbottle.jl",
      "demo_proton_dipole.jl",
-     "demo_currentsheet.jl"
+     "demo_currentsheet.jl",
+     "demo_ensemble.jl",
+     "demo_tokamak_coil.jl",
+     "demo_tokamak_profile.jl"
    ]
 }

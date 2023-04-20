@@ -1,8 +1,16 @@
-# Tracing charged particle in the structured SWMF outputs from MHD-EPIC simulation.
-# For more details about the format, please checkout Batsrus.jl.
-#
-# Hongyang Zhou, hyzhou@umich.edu
+# ---
+# title: Converting to VTK
+# id: demo_convertvtk
+# date: 2023-02-25
+# author: "[Hongyang Zhou](https://github.com/henry2004y)"
+# julia: 1.8.5
+# description: This demo shows how to trace particles from structured SWMF outputs
+# ---
 
+This example shows how to trace charged particles in the structured SWMF outputs from an MHD-EPIC simulation of Ganymede.
+For more details about the field file format, please checkout [Batsrus.jl](https://github.com/henry2004y/Batsrus.jl).
+
+```julia
 using Statistics: mean
 using Batsrus
 using TestParticle
@@ -69,7 +77,7 @@ stateinit_p = [x[xc_], y[yc_], z[zc_], Uix[xc_,yc_,zc_], Uiy[xc_,yc_,zc_], Uiz[x
 
 param_electron = prepare(grid, E, B, species=Electron)
 tspan_electron = (0.0, 0.1)
-   
+
 param_proton = prepare(grid, E, B, species=Proton)
 tspan_proton = (0.0, 10.0)
 trajectories = 5
@@ -142,3 +150,6 @@ ax.set_box_aspect([1.17,4,4])
 TestParticle.set_axes_equal(ax)
 
 #plotdata(data, "bz", plotmode="contbar", cut="y", cutPlaneIndex=40, level=20)
+```
+
+![](../../figures/proton_ganymede_mhdepic.png)

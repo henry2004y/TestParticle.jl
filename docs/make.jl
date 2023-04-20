@@ -21,10 +21,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        #"Example" => "example.md",
+        "Tutorial" => "tutorial.md",
         "Examples" => demos,
         "API" => "api.md",
-        #"Tutorial" => "tutorial.md",
         "Plot Functions" => "plotfunctions.md"
     ],
 )

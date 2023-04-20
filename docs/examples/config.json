@@ -1,7 +1,8 @@
 {
    "theme": "grid",
    "order": [
-     "basics"
+     "basics",
+     "simulations"
    ],
    "properties": {
      "notebook": "false"

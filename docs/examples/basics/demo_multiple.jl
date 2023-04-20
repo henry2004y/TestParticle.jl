@@ -19,12 +19,6 @@ using Random
 ## For reproducible results
 Random.seed!(1234)
 
-struct Trajectory{T<:AbstractFloat}
-   x::Vector{T}
-   y::Vector{T}
-   z::Vector{T}
-end
-
 function trace(x, y, z, E, B; trajectories::Int=10)
    ## Initialize particles
    x0 = [0.0, 0.0, 0.0] # initial position, [m]
@@ -35,8 +29,8 @@ function trace(x, y, z, E, B; trajectories::Int=10)
    tspan = (0.0, 15.0)
 
    prob = ODEProblem(trace!, stateinit, tspan, param)
-   ## Trajectory container
-   sols = Vector{Trajectory}(undef, trajectories)
+
+   sols = Vector{ODESolution}(undef, trajectories)
    ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
    vdf = Maxwellian([0.0, 0.0, 0.0], 1.0)
    v = sample(vdf, trajectories)
@@ -45,10 +39,7 @@ function trace(x, y, z, E, B; trajectories::Int=10)
       prob = remake(prob; u0=[x0..., v[:,i]...])
 
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
-      x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
-      sols[i] = Trajectory(x, y, z)
+      sols[i] = sol
    end
 
    return sols
@@ -83,7 +74,7 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i].x, sols[i].y, sols[i].z, label="$i")
+   lines!(ax, sols[i], label="$i")
 end
 
 f

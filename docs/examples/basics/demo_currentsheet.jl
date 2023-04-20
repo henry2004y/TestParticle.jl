@@ -8,7 +8,7 @@
 # ---
 
 # This example shows how to trace protons in a stationary magnetic field that corresponds to
-# the 1D Harris current sheet.
+# the 1D Harris current sheet defined by a reference strength and width.
 # Reference: https://en.wikipedia.org/wiki/Current_sheet
 
 using JSServe: Page # hide
@@ -41,7 +41,7 @@ m = TestParticle.mᵢ
 q = TestParticle.qᵢ
 c = TestParticle.c
 Rₑ = TestParticle.Rₑ
-## initial particle energy,[eV]
+## initial particle energy, [eV]
 Ek = 5e7
 ## initial velocity, [m/s]
 v₀ = [c*√(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]

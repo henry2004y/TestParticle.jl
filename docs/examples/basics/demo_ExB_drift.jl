@@ -7,7 +7,7 @@
 # description: Simple ExB drift demonstration using Makie
 # ---
 
-# This example demonstrates a single proton motion under uniform E and B fields.
+# This example demonstrates a single proton motion under uniform E and B fields. The electric field is parallel to the magnetic field in the z-direction, so the motion consists of a cyclotron gyration and an acceleration along z. On top of that, particles also exhibit a ExB drift in the direction perpendicular to both E and B field.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen and Computational Plasma Physics, Toshi Tajima.
 
 using JSServe: Page # hide
@@ -47,7 +47,7 @@ tspan = (0, 20)
 ## E×B drift
 param = prepare(uniform_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+sol = solve(prob, Tsit5())
 
 gc = get_gc(param)
 gc_x0 = [gc_i(stateinit) for gc_i in gc]

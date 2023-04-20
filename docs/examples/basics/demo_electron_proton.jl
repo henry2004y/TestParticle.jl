@@ -7,7 +7,8 @@
 # description: Simple particle trajectories under uniform B and zero E
 # ---
 
-# This example demonstrates tracing a single proton and electron motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration.
+# This example demonstrates tracing a single proton and electron motion under a uniform B field in real physical parameters. The E field is assumed to be zero such that there is no particle acceleration.
+# Due to the fact that ``m_p / m_e \doteq 1836``, the proton gyro-radius is 1800 times larger than the electron, if they start with the same velocity as in this case. In more common cases we would compare electrons and protons with the same energy, and their gyro-radii differ by a factor of ``\sqrt{m_p/m_e} \sim 40``.
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
@@ -59,6 +60,10 @@ sol_p = solve(prob_p, Tsit5(); save_idxs=[1,2,3])
 
 ### Visualization
 
-plot(sol_e, color=:tomato, label="electron")
+f = Figure()
+Axis3(f[1,1], aspect = :data)
+plot!(sol_e, color=:tomato, label="electron")
 plot!(sol_p, color=:deepskyblue3, label="proton")
 axislegend()
+
+f
