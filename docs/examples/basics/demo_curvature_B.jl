@@ -21,7 +21,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient, jacobian
-import WGLMakie as WM
+using WGLMakie
 
 function curved_B(x)
     ## satisify ∇⋅B=0

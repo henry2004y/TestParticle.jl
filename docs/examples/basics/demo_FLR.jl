@@ -18,7 +18,7 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-import WGLMakie as WM
+using WGLMakie
 using Tensors: laplace
 import Tensors: Vec as Vec3
 ## using SpecialFunctions

@@ -18,7 +18,7 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-import WGLMakie as WM
+using WGLMakie
 
 function B(x)
     return SA[0.0, 1e-8, 0.0]
@@ -41,4 +41,4 @@ param = prepare(E, B, F, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 ## drift in x-direction + free fall in z-direction
-WM.plot(sol)
+plot(sol)

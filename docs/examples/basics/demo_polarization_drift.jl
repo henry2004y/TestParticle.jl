@@ -19,7 +19,7 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-import WGLMakie as WM
+using WGLMakie
 
 function uniform_B(x)
     return SA[0, 0, 1e-8]

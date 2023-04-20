@@ -1,15 +1,18 @@
 # ---
 # title: Magnetic mirror
 # id: demo_magnetic_mirror
-# date: 2023-04-19
+# date: 2023-04-20
 # author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.9.0
 # description: Charged particle in the magnetic mirror
 # ---
 
-# Tracing charged particle in the magnetic mirror.
 # This example demonstrates the particle motion trajectory in a magnetic mirror
 # and also illustrates the conservation of magnetic moment.
+# From the third figure on the right, it can be seen that the zero-order quantity of
+# magnetic moment is conserved, but its high-order part is not conserved under this definition
+# of magnetic moment and oscillates rapidly. We can observe from this the oscillation
+# characteristics of magnetic moments at different levels.
 #
 # This example is based on `demo_magneticbottle.jl`.
 
@@ -23,7 +26,7 @@ using StaticArrays
 using LinearAlgebra
 using TestParticleMakie
 using Printf
-import WGLMakie as WM
+using WGLMakie
 
 ### Obtain field
 
@@ -80,13 +83,10 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Default Tsit5() and many solvers does not work in this case!
 ## AB4() has better performance in maintaining magnetic moment conservation compared to AB3().
-sol_non = solve(prob, AB4(); dt=3e-9, save_idxs=[1,2,3,4,5,6])
+sol_non = solve(prob, AB4(); dt=3e-9)
 
 ### Visualization
-## From the third figure on the right, it can be seen that the zero-order quantity of
-## magnetic moment is conserved, but its high-order part is not conserved under this definition
-## of magnetic moment and oscillates rapidly. We can observe from this the oscillation
-## characteristics of magnetic moments at different levels.
+
 f = monitor(sol_non, vars=[absB, v_perp, mu])
 
 ## Plot coils
@@ -95,9 +95,9 @@ x = a.*cos.(θ)
 y = a.*sin.(θ)
 z = fill(distance/2, size(x))
 ax = f[1:3,1:3]
-WM.lines!(ax, x, y, z, color=:red)
+lines!(ax, x, y, z, color=:red)
 z = fill(-distance/2, size(x))
-WM.lines!(ax, x, y, z, color=:red)
+lines!(ax, x, y, z, color=:red)
 
 ## # The distribution of magnetic field along the z-axis or x-axis
 ## Bz(z) = hypot(getB(SA[0.0, 0.0, z])...)
@@ -106,7 +106,7 @@ WM.lines!(ax, x, y, z, color=:red)
 ## x = collect(-0.99*a:0.01:0.99*a)
 ## # Ba = Bz.(z)
 ## Ba = Bx.(x)
-## # WM.lines(z, Ba, color=:red)
-## WM.lines(x, Ba, color=:red)
+## # lines(z, Ba, color=:red)
+## lines(x, Ba, color=:red)
 
 f

@@ -18,7 +18,7 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-import WGLMakie as WM
+using WGLMakie
 
 function uniform_B(x)
     return SA[0.0, 0.0, 1e-8]
@@ -35,6 +35,6 @@ tspan = (0, 18)
 
 param = prepare(uniform_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+sol = solve(prob, Tsit5())
 
-WM.plot(sol)
+plot(sol)
