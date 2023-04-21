@@ -1,7 +1,7 @@
 # ---
-# title: Converting to VTK
-# id: demo_convertvtk
-# date: 2023-02-25
+# title: Tracing particle from PIC
+# id: demo_pic
+# date: 2023-04-21
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.8.5
 # description: This demo shows how to trace particles from structured SWMF outputs
