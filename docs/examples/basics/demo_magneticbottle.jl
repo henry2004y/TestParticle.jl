@@ -9,7 +9,10 @@
 
 # This example shows how to trace non-relativistic and relativistic electrons in a
 # stationary magnetic field that corresponds to a magnetic bottle.
-# Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
+# Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
+
+using JSServe: Page # hide
+Page(exportable=true, offline=true) # hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -54,7 +57,7 @@ stateinit = [r₀..., v₀...]
 ## that here since it is not generally true in the EM field.
 
 param = prepare(getE, getB; species=Electron)
-tspan = (0.0, 1e-4)
+tspan = (0.0, 1e-5)
 
 prob_rel = ODEProblem(trace_relativistic!, stateinit, tspan, param)
 prob_non = ODEProblem(trace!, stateinit, tspan, param)
@@ -62,8 +65,8 @@ prob_non = ODEProblem(trace!, stateinit, tspan, param)
 vratio = √(v₀[1]^2+v₀[2]^2+v₀[3]^2)/c
 E = (1 / √(1 - vratio^2) - 1)*m*c^2/abs(q)/1e6
 
-v_str = @sprintf "Speed = %4.2f %s" vratio*100 "% speed of light"
-e_str = @sprintf "Energy = %6.4f MeV" E
+v_str = @sprintf "V = %4.2f %s" vratio*100 "% c"
+e_str = @sprintf "E = %6.4f MeV" E
 
 println(v_str)
 println(e_str)
@@ -77,11 +80,11 @@ sol_non = solve(prob_non, AB4(); dt=3e-9)
 f = Figure()
 ax1 = Axis3(f[1, 1];
    aspect = :data,
-   title = "Relativistic electron, "*v_str*", "*e_str
+   title = "Relativistic e⁻, "*v_str*", "*e_str
    )
 ax2 = Axis3(f[1, 2];
    aspect = :data,
-   title = "Non-relativistic electron, "*v_str*", "*e_str
+   title = "Non-relativistic e⁻, "*v_str*", "*e_str
    )
 
 lines!(f[1,1], sol_rel)
