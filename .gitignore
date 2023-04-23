@@ -4,6 +4,8 @@
 test*
 *.out
 /docs/build/
+/docs/src/democards/
+/docs/src/examples/
 Manifest.toml
 report.md
 /.benchmarkci

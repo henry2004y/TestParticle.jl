@@ -1,6 +1,13 @@
 using TestParticle
 using TestParticleMakie
-using Documenter
+using Documenter, DemoCards
+
+branch = "master"
+# generate demo files
+demos, postprocess_cb, demo_assets = makedemos("examples"; branch)
+# if there are generated css assets, pass it to Documenter.HTML
+assets = String[]
+isnothing(demo_assets) || (push!(assets, demo_assets))
 
 makedocs(;
     modules=[TestParticle],
@@ -14,9 +21,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Example" => "example.md",
-        "API" => "api.md",
         "Tutorial" => "tutorial.md",
+        "Examples" => demos,
+        "API" => "api.md",
         "Plot Functions" => "plotfunctions.md"
     ],
 )

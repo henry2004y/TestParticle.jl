@@ -1,0 +1,20 @@
+{
+   "order": [
+     "demo_Buniform_Ezero.jl",
+     "demo_electron_proton.jl",
+     "demo_multiple.jl",
+     "demo_ExB_drift.jl",
+     "demo_gravity_drift.jl",
+     "demo_gradient_B.jl",
+     "demo_curvature_B.jl",
+     "demo_FLR.jl",
+     "demo_polarization_drift.jl",
+     "demo_magneticmirror.jl",
+     "demo_magneticbottle.jl",
+     "demo_proton_dipole.jl",
+     "demo_currentsheet.jl",
+     "demo_ensemble.jl",
+     "demo_tokamak_coil.jl",
+     "demo_tokamak_profile.jl"
+   ]
+}

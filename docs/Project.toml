@@ -1,7 +1,11 @@
 [deps]
+DemoCards = "311a05b2-6137-4a5a-b473-18580a3d38b5"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+FieldTracer = "05065131-34d1-456a-ba22-faf972bb2934"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
+Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
