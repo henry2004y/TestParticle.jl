@@ -1,6 +1,6 @@
 # Precompiling workloads
 
-@precompile_all_calls begin
+@compile_workload begin
    # numerical field parameters
    x = range(-10, 10, length=15)
    y = range(-10, 10, length=20)
