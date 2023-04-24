@@ -6,7 +6,7 @@ using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadrati
    Line, OnGrid, Periodic
 using Distributions: Normal, MvNormal
 using StaticArrays
-using SnoopPrecompile
+using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, sample
 export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
