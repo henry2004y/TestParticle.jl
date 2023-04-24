@@ -1,7 +1,7 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>, and contributors"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
