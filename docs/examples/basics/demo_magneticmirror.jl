@@ -110,4 +110,4 @@ lines!(ax, x, y, z, color=:red)
 ## # lines(z, Ba, color=:red)
 ## lines(x, Ba, color=:red)
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f)
