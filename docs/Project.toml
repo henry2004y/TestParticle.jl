@@ -1,5 +1,6 @@
 [deps]
 DemoCards = "311a05b2-6137-4a5a-b473-18580a3d38b5"
+DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FieldTracer = "05065131-34d1-456a-ba22-faf972bb2934"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
