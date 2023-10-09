@@ -87,7 +87,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_non = solve(prob, AB4(); dt=3e-9)
 
 ### Visualization
-#=
+
 f = monitor(sol_non, vars=[absB, v_perp, mu])
 
 ## Plot coils
@@ -110,5 +110,4 @@ lines!(ax, x, y, z, color=:red)
 ## # lines(z, Ba, color=:red)
 ## lines(x, Ba, color=:red)
 
-f = DisplayAs.Text(DisplayAs.PNG(f)) # hide
-=#
+f = DisplayAs.HTML(DisplayAs.PNG(f))
