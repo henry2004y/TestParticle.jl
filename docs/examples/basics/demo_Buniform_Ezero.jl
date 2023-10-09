@@ -11,6 +11,7 @@
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -37,4 +38,5 @@ param = prepare(uniform_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5())
 
-plot(sol)
+f = plot(sol)
+f = DisplayAs.PNG(f)

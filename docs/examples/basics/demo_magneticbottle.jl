@@ -13,6 +13,7 @@
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -140,4 +141,4 @@ for i in 0:8
    end
 end
 
-f
+f = DisplayAs.PNG(f)

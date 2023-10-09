@@ -11,6 +11,7 @@
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, mᵢ, qᵢ, c, Rₑ
@@ -56,4 +57,4 @@ for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
-f
+f = DisplayAs.PNG(f)

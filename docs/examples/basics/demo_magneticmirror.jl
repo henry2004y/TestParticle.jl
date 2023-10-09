@@ -110,4 +110,5 @@ lines!(ax, x, y, z, color=:red)
 ## # lines(z, Ba, color=:red)
 ## lines(x, Ba, color=:red)
 
-f = DisplayAs.HTML(DisplayAs.PNG(f))
+#f = DisplayAs.HTML(DisplayAs.PNG(f)) # hide
+f = DisplayAs.PNG(f)

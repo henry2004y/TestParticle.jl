@@ -16,6 +16,7 @@
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using OrdinaryDiffEq
@@ -69,4 +70,4 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f
+f = DisplayAs.PNG(f)

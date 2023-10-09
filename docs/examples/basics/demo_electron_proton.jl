@@ -12,6 +12,7 @@
 
 using JSServe: Page # hide
 Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using Meshes
@@ -66,4 +67,4 @@ plot!(sol_e, color=:tomato, label="electron")
 plot!(sol_p, color=:deepskyblue3, label="proton")
 axislegend()
 
-f
+f = DisplayAs.PNG(f)
