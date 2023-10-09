@@ -10,8 +10,6 @@
 # This example demonstrates a single proton motion under uniform E and B fields. The electric field is parallel to the magnetic field in the z-direction, so the motion consists of a cyclotron gyration and an acceleration along z. On top of that, particles also exhibit a ExB drift in the direction perpendicular to both E and B field.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen and Computational Plasma Physics, Toshi Tajima.
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -20,7 +18,6 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-#using WGLMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
@@ -61,4 +58,4 @@ gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 ## numeric result and analytic result
 f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
 
-f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide

@@ -9,9 +9,7 @@
 
 # This example demonstrates a single proton motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration.
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
-#import DisplayAs # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -19,8 +17,6 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-#using WGLMakie
-
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
@@ -42,4 +38,4 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5())
 
 f = plot(sol)
-#f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide

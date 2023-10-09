@@ -9,8 +9,6 @@
 
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -19,7 +17,6 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-#using WGLMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
@@ -46,4 +43,4 @@ sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 ## drift in x-direction + free fall in z-direction
 f = plot(sol)
 
-f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide

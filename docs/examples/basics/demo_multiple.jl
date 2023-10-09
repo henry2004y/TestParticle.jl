@@ -7,14 +7,11 @@
 # description: Tracing multiple charged particles in a static EM field
 # ---
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
 using OrdinaryDiffEq
 using TestParticleMakie
-#using WGLMakie
 using Random
 using CairoMakie
 CairoMakie.activate!(type = "png")
@@ -80,4 +77,4 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide

@@ -9,15 +9,12 @@
 
 # This example shows how to trace protons of a certain energy in a analytic Earth-like magnetic dipole field. There is a combination of grad-B drift, curvature drift, and the bounce motion between mirror points. It demonstrates the motions corresponding to the three adiabatic invariants.
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, mᵢ, qᵢ, c, Rₑ
 using OrdinaryDiffEq
 using TestParticleMakie
-#using WGLMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
@@ -59,4 +56,4 @@ for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
-f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide

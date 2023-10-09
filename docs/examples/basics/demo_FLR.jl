@@ -9,8 +9,6 @@
 
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen.
 
-#using JSServe: Page # hide
-#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -19,11 +17,9 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-using WGLMakie
 using Tensors: laplace
 import Tensors: Vec as Vec3
 ## using SpecialFunctions
-
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
@@ -70,4 +66,4 @@ gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 ## numeric result and analytic result
 f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
 
-#f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) # hide
