@@ -1,5 +1,4 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -7,7 +6,8 @@ using OrdinaryDiffEq
 using StaticArrays
 using Printf
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
@@ -127,7 +127,6 @@ for i in 0:8
    end
 end
 
-f
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

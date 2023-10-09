@@ -1,11 +1,11 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using OrdinaryDiffEq
 using TestParticleMakie
-using WGLMakie
 using Random
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 # For reproducible results
 Random.seed!(1234)
@@ -68,7 +68,6 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

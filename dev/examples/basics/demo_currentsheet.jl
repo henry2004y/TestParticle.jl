@@ -1,5 +1,4 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_CS_harris
@@ -7,7 +6,8 @@ using OrdinaryDiffEq
 using StaticArrays
 using Statistics: mean
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
@@ -84,7 +84,6 @@ for s = 1:3
    @. Y -= 15
 end
 
-f
+f = DisplayAs.PNG(f)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

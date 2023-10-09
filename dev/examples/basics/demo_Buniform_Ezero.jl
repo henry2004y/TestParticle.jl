@@ -1,5 +1,4 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -7,7 +6,8 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function uniform_B(x)
     return SA[0.0, 0.0, 1e-8]
@@ -26,7 +26,7 @@ param = prepare(uniform_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5())
 
-plot(sol)
+f = plot(sol)
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

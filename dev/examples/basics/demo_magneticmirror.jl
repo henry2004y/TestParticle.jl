@@ -1,5 +1,4 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_mirror
@@ -8,7 +7,8 @@ using StaticArrays
 using LinearAlgebra
 using TestParticleMakie
 using Printf
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
@@ -91,7 +91,6 @@ lines!(ax, x, y, z, color=:red)
 # # lines(z, Ba, color=:red)
 # lines(x, Ba, color=:red)
 
-f
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

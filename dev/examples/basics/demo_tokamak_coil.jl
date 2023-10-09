@@ -1,5 +1,4 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_tokamak_coil
@@ -8,7 +7,8 @@ using StaticArrays
 using Statistics: mean
 using Printf
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
@@ -86,7 +86,6 @@ Z = @. (a - 0.05) * sin(U)
 
 wireframe!(ax, X, Y, Z, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 
-f
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

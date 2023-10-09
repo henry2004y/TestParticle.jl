@@ -1,11 +1,11 @@
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 "Initial state perturbation for EnsembleProblem."
 function prob_func(prob, i, repeat)
@@ -53,7 +53,6 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f
+f = DisplayAs.PNG(f) # hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-
