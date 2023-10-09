@@ -18,7 +18,7 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://henry2004y.github.io/TestParticle.jl",
         assets=String[],
-        size_threshold=35000000,
+        size_threshold=22000000,
         size_threshold_warn=10000000,
     ),
     pages=[

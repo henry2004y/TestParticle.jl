@@ -13,8 +13,7 @@
 # order term.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -23,7 +22,8 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function grad_B(x)
     return SA[0, 0, 1e-8+1e-9 *x[2]]
@@ -62,4 +62,6 @@ sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
 
 gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 ## numeric result and analytic result
-orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+
+f = DisplayAs.PNG(f) # hide
