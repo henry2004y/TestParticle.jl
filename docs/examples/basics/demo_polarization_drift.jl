@@ -10,8 +10,7 @@
 # This example demonstrates a single proton motion under time-varying E field.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -19,7 +18,8 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function uniform_B(x)
     return SA[0, 0, 1e-8]
@@ -41,4 +41,6 @@ gc = get_gc(param)
 v_perp(xu) = hypot(xu[4], xu[5])
 gc_y = gc[2]
 ## polarization drift
-monitor(sol, vars=[v_perp, 2, gc_y])
+f = monitor(sol, vars=[v_perp, 2, gc_y])
+
+f = DisplayAs.PNG(f) # hide

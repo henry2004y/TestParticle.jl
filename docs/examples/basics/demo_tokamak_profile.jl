@@ -10,8 +10,7 @@
 # This example shows how to trace protons in a stationary magnetic field that
 # corresponds to an ITER-like Tokamak.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_tokamak_profile
@@ -19,7 +18,8 @@ using OrdinaryDiffEq
 using StaticArrays
 using GeometryBasics
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ## parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
 const R₀ = 6.2  # Major radius [m]
@@ -67,7 +67,7 @@ tor_mesh = GeometryBasics.Mesh(points, faces)
 wireframe!(fig1[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 Label(fig1[1, 1, Top()], "passing particle", padding = (0, 0, 10, 0), fontsize = 22)
 
-fig1
+fig1 = DisplayAs.PNG(fig1) # hide
 
 # Trapped proton in a Tokamak that shows the banana orbit
 
@@ -89,4 +89,4 @@ wireframe!(fig2[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency
 Label(fig2[1, 1, Top()], "trapped particle", padding = (0, 0, 10, 0), fontsize = 22)
 
 ## banana orbit
-fig2
+fig2 = DisplayAs.PNG(fig2) # hide

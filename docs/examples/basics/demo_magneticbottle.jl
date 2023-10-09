@@ -11,8 +11,7 @@
 # stationary magnetic field that corresponds to a magnetic bottle.
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+import DisplayAs # hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -20,7 +19,8 @@ using OrdinaryDiffEq
 using StaticArrays
 using Printf
 using TestParticleMakie
-using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
@@ -140,4 +140,4 @@ for i in 0:8
    end
 end
 
-f
+f = DisplayAs.PNG(f) # hide
