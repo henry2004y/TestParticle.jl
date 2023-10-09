@@ -18,7 +18,9 @@ using TestParticle
 using Meshes
 using OrdinaryDiffEq
 using TestParticleMakie
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Initialize grid and field
 

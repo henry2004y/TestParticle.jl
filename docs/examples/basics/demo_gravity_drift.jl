@@ -9,8 +9,8 @@
 
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -19,7 +19,9 @@ using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function B(x)
     return SA[0.0, 1e-8, 0.0]

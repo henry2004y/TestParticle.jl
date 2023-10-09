@@ -13,8 +13,8 @@
 # order term.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -24,7 +24,9 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function grad_B(x)
     return SA[0, 0, 1e-8+1e-9 *x[2]]

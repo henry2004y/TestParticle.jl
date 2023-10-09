@@ -10,8 +10,8 @@
 # This example shows how to trace protons in a stationary magnetic field that
 # corresponds to an ITER-like Tokamak.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 
 using TestParticle
 using TestParticle: getB_tokamak_profile
@@ -19,7 +19,9 @@ using OrdinaryDiffEq
 using StaticArrays
 using GeometryBasics
 using TestParticleMakie
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ## parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
 const R₀ = 6.2  # Major radius [m]

@@ -7,15 +7,17 @@
 # description: Tracing multiple charged particles in a static EM field
 # ---
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
 using OrdinaryDiffEq
 using TestParticleMakie
-using WGLMakie
+#using WGLMakie
 using Random
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ## For reproducible results
 Random.seed!(1234)

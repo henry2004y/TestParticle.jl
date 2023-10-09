@@ -11,8 +11,8 @@
 # Similar to the magnetic field gradient drift, analytic calculation should include both of the gradient drift and the curvature drift.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion, F. F. Chen and Computational Plasma Physics by Toshi Tajima.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -22,7 +22,9 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient, jacobian
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 function curved_B(x)
     ## satisify ∇⋅B=0

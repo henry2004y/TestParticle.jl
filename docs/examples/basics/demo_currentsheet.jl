@@ -11,8 +11,8 @@
 # the 1D Harris current sheet defined by a reference strength and width.
 # Reference: https://en.wikipedia.org/wiki/Current_sheet
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -21,7 +21,9 @@ using OrdinaryDiffEq
 using StaticArrays
 using Statistics: mean
 using TestParticleMakie
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 

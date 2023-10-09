@@ -11,8 +11,8 @@
 # corresponds to a [Tokamak](https://en.wikipedia.org/wiki/Tokamak) represented by a circle of coils.
 # A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 
 using TestParticle
 using TestParticle: getB_tokamak_coil
@@ -21,7 +21,9 @@ using StaticArrays
 using Statistics: mean
 using Printf
 using TestParticleMakie
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 

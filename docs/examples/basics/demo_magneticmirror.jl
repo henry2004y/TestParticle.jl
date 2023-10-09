@@ -16,8 +16,8 @@
 #
 # This example is based on `demo_magneticbottle.jl`.
 
-using JSServe: Page # hide
-Page(exportable=true, offline=true) # hide
+#using JSServe: Page # hide
+#Page(exportable=true, offline=true) # hide
 import DisplayAs # hide
 
 using TestParticle
@@ -27,7 +27,9 @@ using StaticArrays
 using LinearAlgebra
 using TestParticleMakie
 using Printf
-using WGLMakie
+#using WGLMakie
+using CairoMakie
+CairoMakie.activate!(type = "png")
 
 ### Obtain field
 
