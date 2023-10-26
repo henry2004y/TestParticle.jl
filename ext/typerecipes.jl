@@ -46,6 +46,9 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
     t_step = (t_max - t_min) / len
     t = collect(t_min:t_step:t_max)
     u = sol.(t)
+    if !isa(u[1], Vector)
+        u = Vector.(u)
+    end
     # the structure of subarray: [x, y, z, vx, vy, vz, t]
     append!.(u, t)
 
