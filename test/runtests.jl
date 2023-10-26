@@ -360,3 +360,5 @@ end
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
    end
 end
+
+include("test_Makie.jl")
