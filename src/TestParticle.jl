@@ -12,6 +12,7 @@ export prepare, sample
 export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
+export orbit, monitor
 
 include("utility/utility.jl")
 
@@ -555,6 +556,10 @@ function get_gc(param::Union{TPTuple, FullTPTuple})
    # Because of the design of the keyword 'vars', three coordinates must be divided into three functions.
    return (gc_x, gc_y, gc_z)
 end
+
+function orbit end
+
+function monitor end
 
 include("precompile.jl")
 
