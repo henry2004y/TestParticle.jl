@@ -361,4 +361,6 @@ end
    end
 end
 
-include("test_Makie.jl")
+if "makie" in ARGS
+   include("test_Makie.jl")
+end
