@@ -10,7 +10,6 @@ on:
       - 'test/**'
       - 'docs/**'
       - 'examples/**'
-      - 'TestParticleMakie/**'
 
 jobs:
   Benchmark:
