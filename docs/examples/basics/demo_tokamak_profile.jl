@@ -17,7 +17,6 @@ using TestParticle: getB_tokamak_profile
 using OrdinaryDiffEq
 using StaticArrays
 using GeometryBasics
-using TestParticleMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 

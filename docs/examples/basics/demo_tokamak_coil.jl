@@ -19,7 +19,6 @@ using OrdinaryDiffEq
 using StaticArrays
 using Statistics: mean
 using Printf
-using TestParticleMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
