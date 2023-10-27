@@ -7,7 +7,7 @@
 # description: Tracing multiple charged particles in a static EM field
 # ---
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using OrdinaryDiffEq
@@ -76,4 +76,4 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
