@@ -11,7 +11,6 @@
 # Due to the fact that ``m_p / m_e \doteq 1836``, the proton gyro-radius is 1800 times larger than the electron, if they start with the same velocity as in this case. In more common cases we would compare electrons and protons with the same energy, and their gyro-radii differ by a factor of ``\sqrt{m_p/m_e} \sim 40``.
 
 import DisplayAs #hide
-
 using TestParticle
 using Meshes
 using OrdinaryDiffEq

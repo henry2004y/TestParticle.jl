@@ -8,7 +8,6 @@
 # ---
 
 import DisplayAs #hide
-
 using TestParticle
 using OrdinaryDiffEq
 using Random

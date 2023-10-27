@@ -15,7 +15,6 @@
 # numerical EM fields are used!
 
 import DisplayAs #hide
-
 using TestParticle
 using OrdinaryDiffEq
 using StaticArrays

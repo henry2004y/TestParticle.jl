@@ -12,7 +12,6 @@
 # Reference: https://en.wikipedia.org/wiki/Current_sheet
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_CS_harris
 using OrdinaryDiffEq

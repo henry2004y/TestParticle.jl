@@ -10,7 +10,6 @@
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
