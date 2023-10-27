@@ -49,6 +49,7 @@ v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
 tspan_proton = (0.0, 2000.0)
 
+# Uniform B field and zero E field
 param_proton = prepare(zero_E, uniform_B, species=Proton)
 
 # Solve for the trajectories
@@ -73,14 +74,16 @@ lines!(ax, sol)
 
 f = DisplayAs.PNG(f) #hide
 
+# Zero B field and uniform E field
 param_proton = prepare(uniform_E, zero_B, species=Proton)
 
+# acceleration, [m/s²]
 a = param_proton[1] * E₀ / param_proton[2]
-
+# predicted final speed, [m/s]
 v_final_predict = a * tspan_proton[2]
-
+# predicted travel distance, [m/s]
 d_final_predict = 0.5 * tspan_proton[2] * v_final_predict
-
+# predicted energy gain, [eV]
 E_predict = E₀ * d_final_predict
 
 prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_proton)
