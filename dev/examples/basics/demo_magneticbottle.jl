@@ -5,7 +5,6 @@ using TestParticle: getB_bottle
 using OrdinaryDiffEq
 using StaticArrays
 using Printf
-using TestParticleMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
