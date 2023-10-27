@@ -1,5 +1,4 @@
 import DisplayAs #hide
-
 using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
@@ -21,7 +20,7 @@ function lorentz!(dv, v, x, p::TestParticle.TPTuple, t)
    dv .= q/m*(E(x, t) + v × (B(x, t)))
 end
 
-# Initialize field
+### Initialize field
 
 function uniform_B(x)
    return SA[0, 0, B₀]
@@ -42,7 +41,7 @@ end
 "Check energy conservation."
 E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 
-# Initialize particles
+### Initialize particles
 
 x0 = [0.0, 0, 0]
 v0 = [0.0, 1e2, 0.0]
@@ -52,7 +51,7 @@ tspan_proton = (0.0, 2000.0)
 # Uniform B field and zero E field
 param_proton = prepare(zero_E, uniform_B, species=Proton)
 
-# Solve for the trajectories
+### Solve for the trajectories
 
 prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_proton)
 

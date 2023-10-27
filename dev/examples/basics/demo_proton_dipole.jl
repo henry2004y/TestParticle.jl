@@ -1,5 +1,4 @@
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, mᵢ, qᵢ, c, Rₑ
 using OrdinaryDiffEq

@@ -1,5 +1,4 @@
 import DisplayAs #hide
-
 using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
