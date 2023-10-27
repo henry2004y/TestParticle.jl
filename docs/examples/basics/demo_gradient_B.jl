@@ -13,7 +13,7 @@
 # order term.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -63,4 +63,4 @@ gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 ## numeric result and analytic result
 f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
