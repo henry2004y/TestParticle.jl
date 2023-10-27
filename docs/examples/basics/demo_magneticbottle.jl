@@ -12,7 +12,6 @@
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_bottle
 using OrdinaryDiffEq

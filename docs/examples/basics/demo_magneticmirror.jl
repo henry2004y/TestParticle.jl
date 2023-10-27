@@ -17,7 +17,6 @@
 # This example is based on `demo_magneticbottle.jl`.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_mirror
 using OrdinaryDiffEq

@@ -11,7 +11,6 @@
 # corresponds to an ITER-like Tokamak.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_tokamak_profile
 using OrdinaryDiffEq

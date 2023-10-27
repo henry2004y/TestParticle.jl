@@ -12,7 +12,6 @@
 # A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: getB_tokamak_coil
 using OrdinaryDiffEq

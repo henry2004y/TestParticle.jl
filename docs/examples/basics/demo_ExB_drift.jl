@@ -11,7 +11,6 @@
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen and Computational Plasma Physics, Toshi Tajima.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq

@@ -10,7 +10,6 @@
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
 import DisplayAs #hide
-
 using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
