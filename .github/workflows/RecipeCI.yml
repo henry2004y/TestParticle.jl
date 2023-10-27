@@ -40,6 +40,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"add Makie"
           pkg"dev ."
       - name: Run the tests
         continue-on-error: true
