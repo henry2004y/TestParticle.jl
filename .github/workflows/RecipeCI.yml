@@ -2,12 +2,12 @@ name: TestParticleMakie CI
 on:
   pull_request:
     paths:
-      - 'TestParticleMakie/**'
+      - 'ext/**'
     branches:
       - master
   push:
     paths:
-      - 'TestParticleMakie/**'
+      - 'ext/**'
     branches:
       - master
     tags: '*'
@@ -40,15 +40,14 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./TestParticleMakie"
+          pkg"add Makie"
+          pkg"dev ."
       - name: Run the tests
         continue-on-error: true
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("TestParticleMakie", coverage=true)'
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("TestParticle", coverage=true, test_args=["makie"])'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: TestParticleMakie/src
       - uses: codecov/codecov-action@v3
         with:
           file: lcov.info

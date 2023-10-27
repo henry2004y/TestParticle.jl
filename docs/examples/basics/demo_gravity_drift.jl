@@ -13,7 +13,6 @@ import DisplayAs # hide
 
 using TestParticle
 using TestParticle: get_gc
-using TestParticleMakie
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra

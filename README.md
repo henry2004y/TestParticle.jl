@@ -44,7 +44,7 @@ sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
 For plotting with Makie,
 
 ```julia
-using TestParticleMakie, GLMakie
+using GLMakie
 
 plot(sol)
 ```
