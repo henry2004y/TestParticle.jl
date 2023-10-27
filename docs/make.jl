@@ -1,5 +1,4 @@
 using TestParticle
-using TestParticleMakie
 using Documenter, DemoCards
 
 branch = "master"

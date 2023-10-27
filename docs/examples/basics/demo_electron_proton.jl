@@ -15,7 +15,6 @@ import DisplayAs # hide
 using TestParticle
 using Meshes
 using OrdinaryDiffEq
-using TestParticleMakie
 using CairoMakie
 CairoMakie.activate!(type = "png")
 

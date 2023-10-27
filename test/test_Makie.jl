@@ -1,4 +1,7 @@
-using TestParticleMakie, TestParticle, OrdinaryDiffEq, StaticArrays
+# test Makie recipes
+
+module TestModule
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using GLMakie
 using Test
 
@@ -65,4 +68,6 @@ end
 @testset "monitor" begin
     fig = monitor(sol)
     @test fig isa Figure
+end
+
 end
