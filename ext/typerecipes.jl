@@ -46,6 +46,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
     t_step = (t_max - t_min) / len
     t = collect(t_min:t_step:t_max)
     u = sol.(t)
+    # If the elements in u are not of type Vector, it may cause some problems. Related to #81
     if !isa(u[1], Vector)
         u = Vector.(u)
     end

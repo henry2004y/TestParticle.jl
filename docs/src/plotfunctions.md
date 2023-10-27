@@ -1,6 +1,6 @@
 # Plot Functions
 
-Before using the plot recipes of `Testparticle.jl`, you need to import `Makie` package via `using Makie`. All plot recipes depend on `Makie.jl`.
+Before using the plot recipes of `Testparticle.jl`, you need to import `Makie` package via `using GLMakie` or `using CairoMakie`, which depends on your choice for the backend. All plot recipes depend on `Makie.jl`.
 
 ## Convention
 
