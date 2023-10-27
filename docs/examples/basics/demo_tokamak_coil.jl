@@ -11,7 +11,7 @@
 # corresponds to a [Tokamak](https://en.wikipedia.org/wiki/Tokamak) represented by a circle of coils.
 # A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_tokamak_coil
@@ -98,4 +98,4 @@ Z = @. (a - 0.05) * sin(U)
 
 wireframe!(ax, X, Y, Z, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide

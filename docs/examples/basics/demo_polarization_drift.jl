@@ -10,7 +10,7 @@
 # This example demonstrates a single proton motion under time-varying E field.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -42,4 +42,4 @@ gc_y = gc[2]
 ## polarization drift
 f = monitor(sol, vars=[v_perp, 2, gc_y])
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide

@@ -16,7 +16,7 @@
 #
 # This example is based on `demo_magneticbottle.jl`.
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_mirror
@@ -108,4 +108,4 @@ lines!(ax, x, y, z, color=:red)
 ## # lines(z, Ba, color=:red)
 ## lines(x, Ba, color=:red)
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide

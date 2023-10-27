@@ -9,7 +9,7 @@
 
 # This example demonstrates a single proton motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration.
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -37,4 +37,4 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5())
 
 f = plot(sol)
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
