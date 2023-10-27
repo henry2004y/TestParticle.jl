@@ -359,6 +359,17 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Prot
    q, m, E, B, F
 end
 
+function prepare(x::AbstractRange, y::AbstractRange, E::TE, B::TB; species::Species=Proton,
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB}
+
+   q, m = getchargemass(species, q, m)
+
+   E = TE <: AbstractArray ? getinterp(E, x, y, order) : Field(E)
+   B = TB <: AbstractArray ? getinterp(B, x, y, order) : Field(B)
+
+   q, m, E, B
+end
+
 function prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E::TE, B::TB;
    species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {TE, TB}
 
