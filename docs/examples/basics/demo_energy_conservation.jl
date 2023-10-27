@@ -60,7 +60,7 @@ v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
 tspan_proton = (0.0, 2000.0)
 
-# Uniform B field and zero E field
+## Uniform B field and zero E field
 param_proton = prepare(zero_E, uniform_B, species=Proton)
 
 ## Solve for the trajectories
@@ -85,16 +85,16 @@ lines!(ax, sol)
 
 f = DisplayAs.PNG(f) #hide
 
-# Zero B field and uniform E field 
+## Zero B field and uniform E field 
 param_proton = prepare(uniform_E, zero_B, species=Proton)
 
-# acceleration, [m/s²]
+## acceleration, [m/s²]
 a = param_proton[1] * E₀ / param_proton[2]
-# predicted final speed, [m/s]
+## predicted final speed, [m/s]
 v_final_predict = a * tspan_proton[2]
-# predicted travel distance, [m/s]
+## predicted travel distance, [m/s]
 d_final_predict = 0.5 * tspan_proton[2] * v_final_predict
-# predicted energy gain, [eV]
+## predicted energy gain, [eV]
 E_predict = E₀ * d_final_predict
 
 prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_proton)
@@ -103,10 +103,15 @@ sol = solve(prob_p, Vern6())
 
 energy = map(x -> E(x[1:3]...), sol.u) .* param_proton[2]
 
-@info "simulated travel distance: $(sol.u[end][4]) [m]" #src
+# Predicted final speed
 @info "predicted final speed: $v_final_predict [m/s]" #src
-@info "simulated time: $(tspan_proton[2]) [s]" #src
-@info "predicted travel distance: $d_final_predict [m]" #src
+# Simulated final speed
 @info "simulated final speed: $(sol.u[end][1]) [m/s]" #src
+# Predicted travel distance
+@info "predicted travel distance: $d_final_predict [m]" #src
+# Simulated travel distance
+@info "simulated travel distance: $(sol.u[end][4]) [m]" #src
+# Predicted final energy
 @info "predicted energy gain: $E_predict [eV]" #src
+# Simulated final energy
 @info "simulated final energy: $(energy[end] / param_proton[1]) [eV]" #src
