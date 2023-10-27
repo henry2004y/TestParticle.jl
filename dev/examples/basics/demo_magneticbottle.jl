@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -126,6 +126,6 @@ for i in 0:8
    end
 end
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

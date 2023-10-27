@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -26,6 +26,6 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Tsit5())
 
 f = plot(sol)
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

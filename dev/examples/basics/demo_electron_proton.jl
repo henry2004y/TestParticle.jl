@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using Meshes
@@ -53,6 +53,6 @@ plot!(sol_e, color=:tomato, label="electron")
 plot!(sol_p, color=:deepskyblue3, label="proton")
 axislegend()
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

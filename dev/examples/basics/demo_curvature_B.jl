@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -57,6 +57,6 @@ gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 # numeric result and analytic result
 f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

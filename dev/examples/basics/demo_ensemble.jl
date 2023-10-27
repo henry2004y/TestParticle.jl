@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using OrdinaryDiffEq
@@ -52,6 +52,6 @@ for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
 end
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

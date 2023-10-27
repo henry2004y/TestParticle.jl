@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -31,6 +31,6 @@ sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 # drift in x-direction + free fall in z-direction
 f = plot(sol)
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

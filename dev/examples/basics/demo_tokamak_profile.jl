@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_tokamak_profile
@@ -52,7 +52,7 @@ tor_mesh = GeometryBasics.Mesh(points, faces)
 wireframe!(fig1[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 Label(fig1[1, 1, Top()], "passing particle", padding = (0, 0, 10, 0), fontsize = 22)
 
-fig1 = DisplayAs.PNG(fig1) # hide
+fig1 = DisplayAs.PNG(fig1) #hide
 
 # initial velocity for trapped particle
 v₀ = [0.0, 1.15, 5.1] .* 1e6
@@ -72,6 +72,6 @@ wireframe!(fig2[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency
 Label(fig2[1, 1, Top()], "trapped particle", padding = (0, 0, 10, 0), fontsize = 22)
 
 # banana orbit
-fig2 = DisplayAs.PNG(fig2) # hide
+fig2 = DisplayAs.PNG(fig2) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

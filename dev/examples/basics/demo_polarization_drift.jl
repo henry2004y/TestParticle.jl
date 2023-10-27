@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: get_gc
@@ -30,6 +30,6 @@ gc_y = gc[2]
 # polarization drift
 f = monitor(sol, vars=[v_perp, 2, gc_y])
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, mᵢ, qᵢ, c, Rₑ
@@ -44,6 +44,6 @@ for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

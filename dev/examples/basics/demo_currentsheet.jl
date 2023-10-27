@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_CS_harris
@@ -83,6 +83,6 @@ for s = 1:3
    @. Y -= 15
 end
 
-f = DisplayAs.PNG(f)
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

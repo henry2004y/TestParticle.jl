@@ -1,4 +1,4 @@
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_tokamak_coil
@@ -85,6 +85,6 @@ Z = @. (a - 0.05) * sin(U)
 
 wireframe!(ax, X, Y, Z, color=(:blue, 0.1), linewidth=0.5, transparency=true)
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
