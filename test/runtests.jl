@@ -328,6 +328,9 @@ end
 
       B[3,:,:] .= 1.0
 
+      param = prepare(x, y, E, B./B₀; species=Proton)
+      @test param[3] isa TestParticle.Field
+
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
 
