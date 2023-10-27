@@ -11,7 +11,7 @@
 # stationary magnetic field that corresponds to a magnetic bottle.
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
-import DisplayAs # hide
+import DisplayAs #hide
 
 using TestParticle
 using TestParticle: getB_bottle
@@ -139,4 +139,4 @@ for i in 0:8
    end
 end
 
-f = DisplayAs.PNG(f) # hide
+f = DisplayAs.PNG(f) #hide
