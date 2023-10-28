@@ -59,7 +59,7 @@ v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
 tspan_proton = (0.0, 2000.0)
 
-## Uniform B field and zero E field
+# Uniform B field and zero E field
 param_proton = prepare(zero_E, uniform_B, species=Proton)
 
 ### Solve for the trajectories
@@ -84,7 +84,7 @@ lines!(ax, sol)
 
 f = DisplayAs.PNG(f) #hide
 
-## Zero B field and uniform E field 
+# Zero B field and uniform E field 
 param_proton = prepare(uniform_E, zero_B, species=Proton)
 
 ## acceleration, [m/s²]
@@ -103,14 +103,14 @@ sol = solve(prob_p, Vern6())
 energy = map(x -> E(x[1:3]...), sol.u) .* param_proton[2]
 
 # Predicted final speed
-@info "predicted final speed: $v_final_predict [m/s]" #src
+println("predicted final speed: $v_final_predict [m/s]") #hide
 # Simulated final speed
-@info "simulated final speed: $(sol.u[end][1]) [m/s]" #src
+println("simulated final speed: $(sol.u[end][1]) [m/s]") #hide
 # Predicted travel distance
-@info "predicted travel distance: $d_final_predict [m]" #src
+println("predicted travel distance: $d_final_predict [m]") #hide
 # Simulated travel distance
-@info "simulated travel distance: $(sol.u[end][4]) [m]" #src
+println("simulated travel distance: $(sol.u[end][4]) [m]") #hide
 # Predicted final energy
-@info "predicted energy gain: $E_predict [eV]" #src
+println("predicted energy gain: $E_predict [eV]") #hide
 # Simulated final energy
-@info "simulated final energy: $(energy[end] / param_proton[1]) [eV]" #src
+println("simulated final energy: $(energy[end] / param_proton[1]) [eV]") #hide
