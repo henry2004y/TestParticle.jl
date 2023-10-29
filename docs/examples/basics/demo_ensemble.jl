@@ -10,9 +10,8 @@
 # This example demonstrates tracing multiple electrons in an analytic EM field and how to
 # take advantage of the multithreading support in the ODE solver. A multiproc version is
 # also available. Check the official documentation of DifferentialEquations.jl for details.
-# Note: as of OrdinaryDiffEq v6.31.2, parameters of the solutions in the EnsembleProblem are
-# replicated for each particle solution, which is highly memory inefficient especially when
-# numerical EM fields are used!
+# In performing test particle tracing, we want to share the field information for all
+# particles. This can be achieved in the ensemble problem with `safetycopy=false`.
 
 import DisplayAs #hide
 using TestParticle
@@ -48,7 +47,7 @@ trajectories = 10
 ## Solve for the trajectories
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=prob_func, safetycopy=false)
 sols = solve(ensemble_prob, Tsit5(), EnsembleThreads();
    trajectories=trajectories, save_idxs=[1,2,3])
 
