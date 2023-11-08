@@ -59,6 +59,12 @@ get_energy_ratio(sol)
 sol = solve(prob, ImplicitMidpoint(); dt=1e-4)
 get_energy_ratio(sol)
 
+sol = solve(prob, Vern9())
+get_energy_ratio(sol)
+
+sol = solve(prob, Trapezoid())
+get_energy_ratio(sol)
+
 sol = solve(prob, Vern6())
 get_energy_ratio(sol)
 
