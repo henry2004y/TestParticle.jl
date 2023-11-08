@@ -26,11 +26,11 @@ r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
 stateinit = [r₀..., v₀...]
 ## obtain field
 param = prepare(getE_dipole, getB_dipole)
-tspan = (0.0, 2.0)
+tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+sol = solve(prob, Vern9())
 
 ### Visualization
 
@@ -44,14 +44,51 @@ ax = Axis3(f[1, 1],
 )
 
 invRE = 1 / Rₑ
-x = getindex.(sol.u, 1) .* invRE
-y = getindex.(sol.u, 2) .* invRE
-z = getindex.(sol.u, 3) .* invRE
-
-l = lines!(ax, x, y, z)
+l = lines!(ax, sol)
+scale!(l, invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
 f = DisplayAs.PNG(f) #hide
+
+# Solver algorithm matters in terms of energy conservation. In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
+
+function get_energy_ratio(sol)
+   vx = getindex.(sol.u, 4)
+   vy = getindex.(sol.u, 5)
+   vz = getindex.(sol.u, 6)
+
+   Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
+   Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
+
+   (Eend - Einit) / Einit
+end
+
+sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
+get_energy_ratio(sol)
+
+#
+sol = solve(prob, ImplicitMidpoint(); dt=1e-4)
+get_energy_ratio(sol)
+
+#
+sol = solve(prob, Vern6())
+get_energy_ratio(sol)
+
+#
+sol = solve(prob, Tsit5())
+get_energy_ratio(sol)
+
+# Or, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
+using DiffEqCallbacks
+
+## p = (q, m, E, B)
+dtFE(u, p, t) = p[2] / (2π * abs(p[1]) * hypot(p[4](u, t)...))
+cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
+
+sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
+get_energy_ratio(sol)
+
+# Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
