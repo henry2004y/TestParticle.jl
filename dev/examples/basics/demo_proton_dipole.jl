@@ -15,11 +15,11 @@ r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
 stateinit = [r₀..., v₀...]
 # obtain field
 param = prepare(getE_dipole, getB_dipole)
-tspan = (0.0, 2.0)
+tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+sol = solve(prob, Vern9())
 
 ### Visualization
 
@@ -33,16 +33,45 @@ ax = Axis3(f[1, 1],
 )
 
 invRE = 1 / Rₑ
-x = getindex.(sol.u, 1) .* invRE
-y = getindex.(sol.u, 2) .* invRE
-z = getindex.(sol.u, 3) .* invRE
-
-l = lines!(ax, x, y, z)
+l = lines!(ax, sol)
+scale!(l, invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
 f = DisplayAs.PNG(f) #hide
+
+function get_energy_ratio(sol)
+   vx = getindex.(sol.u, 4)
+   vy = getindex.(sol.u, 5)
+   vz = getindex.(sol.u, 6)
+
+   Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
+   Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
+
+   (Eend - Einit) / Einit
+end
+
+sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
+get_energy_ratio(sol)
+
+sol = solve(prob, ImplicitMidpoint(); dt=1e-4)
+get_energy_ratio(sol)
+
+sol = solve(prob, Vern6())
+get_energy_ratio(sol)
+
+sol = solve(prob, Tsit5())
+get_energy_ratio(sol)
+
+using DiffEqCallbacks
+
+# p = (q, m, E, B)
+dtFE(u, p, t) = p[2] / (2π * abs(p[1]) * hypot(p[4](u, t)...))
+cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
+
+sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
+get_energy_ratio(sol)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

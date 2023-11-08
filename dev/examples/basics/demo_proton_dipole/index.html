@@ -15,11 +15,11 @@ r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
 stateinit = [r₀..., v₀...]
 # obtain field
 param = prepare(getE_dipole, getB_dipole)
-tspan = (0.0, 2.0)
+tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+sol = solve(prob, Vern9())
 
 ### Visualization
 
@@ -33,13 +33,32 @@ ax = Axis3(f[1, 1],
 )
 
 invRE = 1 / Rₑ
-x = getindex.(sol.u, 1) .* invRE
-y = getindex.(sol.u, 2) .* invRE
-z = getindex.(sol.u, 3) .* invRE
-
-l = lines!(ax, x, y, z)
+l = lines!(ax, sol)
+scale!(l, invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
    lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
-</code></pre><p><img src="../demo_proton_dipole-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Sunday 29 October 2023 22:33">Sunday 29 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_proton_dipole-4.png" alt/></p><p>Solver algorithm matters in terms of energy conservation. In the above we used Verner&#39;s “Most Efficient” 9/8 Runge-Kutta method. Let&#39;s check other algorithms.</p><pre><code class="language-julia hljs">function get_energy_ratio(sol)
+   vx = getindex.(sol.u, 4)
+   vy = getindex.(sol.u, 5)
+   vz = getindex.(sol.u, 6)
+
+   Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
+   Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
+
+   (Eend - Einit) / Einit
+end
+
+sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
+get_energy_ratio(sol)</code></pre><pre><code class="nohighlight hljs">-0.0004598227211526936</code></pre><pre><code class="language-julia hljs">sol = solve(prob, ImplicitMidpoint(); dt=1e-4)
+get_energy_ratio(sol)</code></pre><pre><code class="nohighlight hljs">-4.940099606037697e-9</code></pre><pre><code class="language-julia hljs">sol = solve(prob, Vern6())
+get_energy_ratio(sol)</code></pre><pre><code class="nohighlight hljs">-0.06589605977946242</code></pre><pre><code class="language-julia hljs">sol = solve(prob, Tsit5())
+get_energy_ratio(sol)</code></pre><pre><code class="nohighlight hljs">0.5352013195191708</code></pre><p>Or, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:</p><pre><code class="language-julia hljs">using DiffEqCallbacks
+
+# p = (q, m, E, B)
+dtFE(u, p, t) = p[2] / (2π * abs(p[1]) * hypot(p[4](u, t)...))
+cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
+
+sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
+get_energy_ratio(sol)</code></pre><pre><code class="nohighlight hljs">-1.8511053134904427e-14</code></pre><p>Therefore, as a rule of thumb, we should not use the default <code>Tsit5()</code> scheme. A more thorough test can be found <a href="https://github.com/henry2004y/TestParticle.jl/issues/73">here</a>.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Wednesday 8 November 2023 18:01">Wednesday 8 November 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
