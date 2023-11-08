@@ -74,6 +74,14 @@ sol = solve(prob, ImplicitMidpoint(); dt=1e-4)
 get_energy_ratio(sol)
 
 #
+sol = solve(prob, Vern9())
+get_energy_ratio(sol)
+
+#
+sol = solve(prob, Trapezoid())
+get_energy_ratio(sol)
+
+#
 sol = solve(prob, Vern6())
 get_energy_ratio(sol)
 
@@ -81,7 +89,8 @@ get_energy_ratio(sol)
 sol = solve(prob, Tsit5())
 get_energy_ratio(sol)
 
-# Or, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
+# `ImplicitMidpoint()` requires a fixed time step. Classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) also requires a fixed timestep.
+# Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
 
 ## p = (q, m, E, B)
@@ -91,4 +100,5 @@ cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
-# Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
+# This is much more accurate, at the cost of significantly more iterations.
+# Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
