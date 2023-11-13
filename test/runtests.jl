@@ -362,6 +362,22 @@ end
       xs = getindex.(sol.u, 1)
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
    end
+
+   @testset "Boris pusher" begin
+      uniform_B(x) = SA[0.0, 0.0, 0.01]
+      uniform_E(x) = SA[0.0, 0.0, 0.0]
+
+      x0 = [0.0, 0.0, 0.0]
+      v0 = [0.0, 1e5, 0.0]
+      stateinit = [x0..., v0...]
+      tspan = (0, 10)
+      dt = 3e-11
+      param = prepare(uniform_E, uniform_B, species=Electron)
+
+      output = trace_trajectory(param; dt, stateinit, tspan)
+
+      @test size(output) == (6, 1000)
+   end
 end
 
 if "makie" in ARGS
