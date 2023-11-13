@@ -1,45 +1,78 @@
-# Native pusher
+# Native particle pusher
 
-struct TraceProblem{T<:Real, TP}
-   stateinit::AbstractVector{T}
+struct TraceProblem{TS, T<:Real, TP}
+   stateinit::TS
    tspan::Tuple{T, T}
+	dt::T
    param::TP
 end
 
-"updates velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation, p.62"
-function update_velocity!(xv, param, dt, v_minus, v_prime, v_plus, t, s, v_minus_cross_t,
-   v_prime_cross_s)
+struct BorisMethod{T, TV}
+	"(q, m, E, B)"
+	param::T
+	# intermediate variables used in the solver
+	v⁻::TV
+	v′::TV
+	v⁺::TV
+	t_rotate::TV
+	s_rotate::TV
+   v⁻_cross_t::TV
+   v′_cross_s::TV
+
+	function BorisMethod(param)
+		# intermediate variables
+		v⁻ = Vector{Float64}(undef, 3)
+		v′ = Vector{Float64}(undef, 3)
+		v⁺ = Vector{Float64}(undef, 3)
+		t_rotate = Vector{Float64}(undef, 3)
+		s_rotate = Vector{Float64}(undef, 3)
+		v⁻_cross_t = Vector{Float64}(undef, 3)
+		v′_cross_s = Vector{Float64}(undef, 3)
+
+		new{typeof(param), typeof(v⁻)}(param,
+			v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
+	end
+end
+
+	
+
+"""
+    update_velocity!(xv, paramBoris, dt)
+
+Updates velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation,
+p.62. Reference: https://apps.dtic.mil/sti/citations/ADA023511
+"""
+function update_velocity!(xv, paramBoris, dt)
+	(; param, v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
    q, m = param[1], param[2]
    E = param[3](xv, 0.0)
    B = param[4](xv, 0.0)
-	t_mag2 = 0.0
 	# t vector
 	for dim in 1:3
-	   t[dim] = q/m*B[dim]*0.5*dt
+	   t_rotate[dim] = q/m*B[dim]*0.5*dt
 	end
-	# magnitude of t, squared
-	t_mag2 = sum(abs2, t)
+	t_mag2 = sum(abs2, t_rotate)
 	# s vector
 	for dim in 1:3
-	   s[dim] = 2*t[dim]/(1 + t_mag2)
+	   s_rotate[dim] = 2*t_rotate[dim]/(1 + t_mag2)
 	end
 	# v-
 	for dim in 1:3
-	   v_minus[dim] = xv[dim+3] + q/m*E[dim]*0.5*dt
+	   v⁻[dim] = xv[dim+3] + q/m*E[dim]*0.5*dt
    end
 	# v′
-   cross!(v_minus, t, v_minus_cross_t)
+   cross!(v⁻, t_rotate, v⁻_cross_t)
 	for dim in 1:3
-	   v_prime[dim] = v_minus[dim] + v_minus_cross_t[dim]
+	   v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
    end
 	# v+
-   cross!(v_prime, s, v_prime_cross_s)
+   cross!(v′, s_rotate, v′_cross_s)
 	for dim in 1:3
-	   v_plus[dim] = v_minus[dim] + v_prime_cross_s[dim]
+	   v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
    end
 	# v[n+1/2]
 	for dim in 1:3
-	   xv[dim+3] = v_plus[dim] + q/m*E[dim]*0.5*dt
+	   xv[dim+3] = v⁺[dim] + q/m*E[dim]*0.5*dt
    end
 
    return
@@ -53,6 +86,7 @@ function update_location!(xv, dt)
    return
 end
 
+"In-place cross product."
 function cross!(v1, v2, vout)
 	vout[1] = v1[2]*v2[3] - v1[3]*v2[2]
 	vout[2] = -v1[1]*v2[3] + v1[3]*v2[1]
@@ -61,30 +95,29 @@ function cross!(v1, v2, vout)
    return
 end
 
-function trace_trajectory(param; dt, stateinit, tspan)
-   xv = copy(stateinit)
-   # intermediate variables
-   v_minus = Vector{Float64}(undef, 3)
-	v_prime = Vector{Float64}(undef, 3)
-	v_plus = Vector{Float64}(undef, 3)
-	t = Vector{Float64}(undef, 3)
-	s = Vector{Float64}(undef, 3)
-   v_minus_cross_t = Vector{Float64}(undef, 3)
-   v_prime_cross_s = Vector{Float64}(undef, 3)
-	# push velocity back in time by 1/2 dt
-	update_velocity!(xv, param, -0.5*dt, v_minus, v_prime, v_plus, t, s, v_minus_cross_t,
-      v_prime_cross_s)
-   #TODO: get this right!
-   nt = 1000
-   output = zeros(6, nt)
-   for it in 1:nt
-      update_velocity!(xv, param, -0.5*dt, v_minus, v_prime, v_plus, t, s, v_minus_cross_t,
-         v_prime_cross_s)
+function trace_trajectory(prob::TraceProblem)
+	(; stateinit, tspan, dt, param) = prob
+	xv = copy(stateinit)
+   # push velocity back in time by 1/2 dt
+	update_velocity!(xv, param, -0.5*dt)
+	# prepare advancing
+	ttotal = tspan[2] - tspan[1]
+	nt = Int(ttotal ÷ dt)
+	traj = zeros(eltype(stateinit), 6, nt)
+
+	for it in 1:nt
+		update_velocity!(xv, param, dt)
       update_location!(xv, dt)
+      traj[:,it] .= xv
+	end
 
-      output[:,it] .= xv
-   end
+	# final step if needed
+	dtfinal = ttotal - nt*dt
+	if dtfinal > 1e-3
+		update_velocity!(xv, param, dtfinal)
+   	update_location!(xv, dtfinal)
+		traj = hcat(output, xv)
+	end
 
-   output
+   traj
 end
-

@@ -370,13 +370,15 @@ end
       x0 = [0.0, 0.0, 0.0]
       v0 = [0.0, 1e5, 0.0]
       stateinit = [x0..., v0...]
-      tspan = (0, 10)
+      tspan = (0.0, 3e-8)
       dt = 3e-11
       param = prepare(uniform_E, uniform_B, species=Electron)
+      paramBoris = BorisMethod(param)
+      prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 
-      output = trace_trajectory(param; dt, stateinit, tspan)
+      traj = trace_trajectory(prob)
 
-      @test size(output) == (6, 1000)
+      @test traj[:, end] == [-0.00010010246586798348, 3.696468748841441e-5, 0.0, -66972.936997493, -74260.52592009991, 0.0]
    end
 end
 
