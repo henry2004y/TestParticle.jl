@@ -66,6 +66,12 @@ function get_energy_ratio(sol)
    (Eend - Einit) / Einit
 end
 
+function get_energy_ratio(traj::Matrix)
+   Einit = traj[4,1]^2 + traj[5,1]^2 + traj[6,1]^2
+   Eend = traj[4,end]^2 + traj[5,end]^2 + traj[6,end]^2
+   (Eend - Einit) / Einit
+end
+
 sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
 get_energy_ratio(sol)
 
@@ -101,4 +107,15 @@ sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
 # This is much more accurate, at the cost of significantly more iterations.
+# We can also use the Boris method implemented within the package:
+
+dt = 1e-4
+param = prepare(getE_dipole, getB_dipole, species=Electron)
+paramBoris = BorisMethod(param)
+prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+traj = trace_trajectory(prob)
+get_energy_ratio(traj)
+
 # Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
+
+
