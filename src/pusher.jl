@@ -61,7 +61,7 @@ function cross!(v1, v2, vout)
    return
 end
 
-function solve_trajectory(param; dt, stateinit, tspan)
+function trace_trajectory(param; dt, stateinit, tspan)
    xv = copy(stateinit)
    # intermediate variables
    v_minus = Vector{Float64}(undef, 3)
