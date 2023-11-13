@@ -34,7 +34,7 @@ struct BorisMethod{T, TV}
 	end
 end
 
-	
+@inline ODE_DEFAULT_ISOUTOFDOMAIN(u) = false
 
 """
     update_velocity!(xv, paramBoris, dt)
@@ -95,7 +95,8 @@ function cross!(v1, v2, vout)
    return
 end
 
-function trace_trajectory(prob::TraceProblem; savestepinterval::Int=1)
+function trace_trajectory(prob::TraceProblem;
+	savestepinterval::Int=1, isoutofdomain=ODE_DEFAULT_ISOUTOFDOMAIN)
 	(; stateinit, tspan, dt, param) = prob
 	xv = copy(stateinit)
 	# prepare advancing
@@ -116,14 +117,19 @@ function trace_trajectory(prob::TraceProblem; savestepinterval::Int=1)
       	iout += 1
 			traj[:,iout] .= xv
 		end
+		isoutofdomain(xv) && break
 	end
 
-	# final step if needed
-	dtfinal = ttotal - nt*dt
-	if dtfinal > 1e-3
-		update_velocity!(xv, param, dtfinal)
-   	update_location!(xv, dtfinal)
-		traj = hcat(output, xv)
+	if iout == nout # regular termination
+		# final step if needed
+		dtfinal = ttotal - nt*dt
+		if dtfinal > 1e-3
+			update_velocity!(xv, param, dtfinal)
+   		update_location!(xv, dtfinal)
+			traj = hcat(traj, xv)
+		end
+	else # early termination
+		traj = traj[:, 1:iout]
 	end
 
    traj
