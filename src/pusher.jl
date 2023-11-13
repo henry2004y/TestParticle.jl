@@ -96,7 +96,7 @@ function cross!(v1, v2, vout)
 end
 
 function trace_trajectory(prob::TraceProblem;
-	savestepinterval::Int=1, isoutofdomain=ODE_DEFAULT_ISOUTOFDOMAIN)
+	savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 	(; stateinit, tspan, dt, param) = prob
 	xv = copy(stateinit)
 	# prepare advancing
