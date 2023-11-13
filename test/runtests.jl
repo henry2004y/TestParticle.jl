@@ -376,9 +376,10 @@ end
       paramBoris = BorisMethod(param)
       prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 
-      traj = trace_trajectory(prob)
+      traj = trace_trajectory(prob; savestepinterval=10)
 
-      @test traj[:, end] == [-0.00010010246586798348, 3.696468748841441e-5, 0.0, -66972.936997493, -74260.52592009991, 0.0]
+      @test traj[:, end] == [-7.84237771267459e-5, 5.263661571564935e-5, 0.0,
+         -93512.6374393526, -35431.43574759836, 0.0]
    end
 end
 

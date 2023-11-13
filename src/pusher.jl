@@ -95,20 +95,27 @@ function cross!(v1, v2, vout)
    return
 end
 
-function trace_trajectory(prob::TraceProblem)
+function trace_trajectory(prob::TraceProblem; savestepinterval::Int=1)
 	(; stateinit, tspan, dt, param) = prob
 	xv = copy(stateinit)
-   # push velocity back in time by 1/2 dt
-	update_velocity!(xv, param, -0.5*dt)
 	# prepare advancing
 	ttotal = tspan[2] - tspan[1]
 	nt = Int(ttotal ÷ dt)
-	traj = zeros(eltype(stateinit), 6, nt)
+	iout, nout = 1, nt ÷ savestepinterval + 1
+	traj = zeros(eltype(stateinit), 6, nout)
+
+	traj[:,1] = xv
+
+   # push velocity back in time by 1/2 dt
+	update_velocity!(xv, param, -0.5*dt)
 
 	for it in 1:nt
 		update_velocity!(xv, param, dt)
       update_location!(xv, dt)
-      traj[:,it] .= xv
+		if it % savestepinterval == 0
+      	iout += 1
+			traj[:,iout] .= xv
+		end
 	end
 
 	# final step if needed
