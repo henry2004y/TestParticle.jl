@@ -87,7 +87,6 @@ sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
 dt = 1e-4
-param = prepare(getE_dipole, getB_dipole, species=Electron)
 paramBoris = BorisMethod(param)
 prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 traj = trace_trajectory(prob)
