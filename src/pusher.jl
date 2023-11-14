@@ -44,12 +44,12 @@ p.62. Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
 function update_velocity!(xv, paramBoris, dt)
 	(; param, v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-   q, m = param[1], param[2]
-   E = param[3](xv, 0.0)
-   B = param[4](xv, 0.0)
+   q2m = param[1]
+   E = param[2](xv, 0.0)
+   B = param[3](xv, 0.0)
 	# t vector
 	for dim in 1:3
-	   t_rotate[dim] = q/m*B[dim]*0.5*dt
+	   t_rotate[dim] = q2m*B[dim]*0.5*dt
 	end
 	t_mag2 = sum(abs2, t_rotate)
 	# s vector
@@ -58,7 +58,7 @@ function update_velocity!(xv, paramBoris, dt)
 	end
 	# v-
 	for dim in 1:3
-	   v⁻[dim] = xv[dim+3] + q/m*E[dim]*0.5*dt
+	   v⁻[dim] = xv[dim+3] + q2m*E[dim]*0.5*dt
    end
 	# v′
    cross!(v⁻, t_rotate, v⁻_cross_t)
@@ -72,7 +72,7 @@ function update_velocity!(xv, paramBoris, dt)
    end
 	# v[n+1/2]
 	for dim in 1:3
-	   xv[dim+3] = v⁺[dim] + q/m*E[dim]*0.5*dt
+	   xv[dim+3] = v⁺[dim] + q2m*E[dim]*0.5*dt
    end
 
    return
