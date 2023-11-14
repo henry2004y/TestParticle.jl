@@ -99,8 +99,8 @@ get_energy_ratio(sol)
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
 
-## p = (q, m, E, B)
-dtFE(u, p, t) = p[2] / (2π * abs(p[1]) * hypot(p[4](u, t)...))
+## p = (charge_mass_ratio, E, B)
+dtFE(u, p, t) = 1 / (2π * abs(p[1]) * hypot(p[4](u, t)...))
 cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
