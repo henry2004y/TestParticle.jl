@@ -212,7 +212,7 @@ Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 FullTPTuple = Tuple{Float64, Float64, AbstractField, AbstractField, AbstractField}
 
 "The type of parameter tuple for normal test particle problem."
-TPTuple = Tuple{Float64, Float64, AbstractField, AbstractField}
+TPTuple = Tuple{Float64, AbstractField, AbstractField}
 
 "The type of parameter tuple for normalized test particle problem."
 TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
@@ -266,10 +266,10 @@ function sample(vdf::BiMaxwellian{T, U}, nparticles::Int) where {T, U}
 end
 
 """
-    prepare(grid::CartesianGrid, E, B; species=Proton) -> (q, m, E, B)
+    prepare(grid::CartesianGrid, E, B; species=Proton) -> (q2m, E, B)
 
-Return a tuple consists of particle charge, mass for a prescribed `species` and interpolated
-EM field functions.
+Return a tuple consists of particle charge-mass ratio for a prescribed `species` and
+interpolated EM field functions.
 
     prepare(grid::CartesianGrid, E, B, B₀::Real; species=Proton) -> (Ω, E, B)
 
@@ -281,14 +281,14 @@ functions given magnetic field scale B₀ in Tesla.
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, interpolated EM field functions, and external force `F`.
 
-    prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B) -> (q, m, E, B)
+    prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B) -> (q2m, E, B)
 
 Direct range input for uniform grid in 3D is also accepted.
 
-    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q, m, E, B)
+    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q2m, E, B)
 
-Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
-and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
+Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge
+`q` and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
 `Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
     prepare(E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
@@ -311,7 +311,7 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
       B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order) : B
    end
 
-   q, m, Field(E), Field(B)
+   q/m, Field(E), Field(B)
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species=Proton,
@@ -355,7 +355,7 @@ function prepare(x, y, E::TE, B::TB; species::Species=Proton,
    E = TE <: AbstractArray ? getinterp(E, x, y, order) : E
    B = TB <: AbstractArray ? getinterp(B, x, y, order) : B
 
-   q, m, Field(E), Field(B)
+   q/m, Field(E), Field(B)
 end
 
 function prepare(x::T, y::T, z::T, E::TE, B::TB;
@@ -367,13 +367,13 @@ function prepare(x::T, y::T, z::T, E::TE, B::TB;
    E = TE <: AbstractArray ? getinterp(E, x, y, z, order) : E
    B = TB <: AbstractArray ? getinterp(B, x, y, z, order) : B
 
-   q, m, Field(E), Field(B)
+   q/m, Field(E), Field(B)
 end
 
 function prepare(E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
    q, m = getchargemass(species, q, m)
 
-   q, m, Field(E), Field(B)
+   q/m, Field(E), Field(B)
 end
 
 function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
@@ -393,17 +393,35 @@ ODE equations for charged particle moving in static EM field and external force 
 in-place form.
 """
 function trace!(dy, y, p::TPTuple, t)
-   q, m, E, B = p
-   v = @view y[4:6]
-   dy[1:3] = v
-   dy[4:6] = q/m*(E(y, t) + v × (B(y, t)))
+   q2m, E, B = p
+
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dy[1], dy[2], dy[3] = vx, vy, vz
+   # q/m*(E + v × B)
+   dy[4] = q2m*(vy*Bz - vz*By + Ex)
+   dy[5] = q2m*(vz*Bx - vx*Bz + Ey)
+   dy[6] = q2m*(vx*By - vy*Bx + Ez)
+
+   return
 end
 
 function trace!(dy, y, p::FullTPTuple, t)
    q, m, E, B, F = p
-   v = @view y[4:6]
-   dy[1:3] = v
-   dy[4:6] = (q*(E(y, t) + v × (B(y, t))) + F(y, t)) / m
+
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+   Fx, Fy, Fz = F(y, t)
+
+   dy[1], dy[2], dy[3] = vx, vy, vz
+   dy[4] = (q*(vy*Bz - vz*By + Ex) + Fx) / m
+   dy[5] = (q*(vz*Bx - vx*Bz + Ey) + Fy) / m
+   dy[6] = (q*(vx*By - vy*Bx + Ez) + Fz) / m
+
+   return
 end
 
 """
@@ -416,18 +434,32 @@ ODE equations for charged particle moving in static EM field and external force 
 out-of-place form.
 """
 function trace(y, p::TPTuple, t)
-   q, m, E, B = p
-   v = @view y[4:6]
-   dx, dy, dz = v
-   dux, duy, duz = q/m*(E(y, t) + v × (B(y, t)))
+   q2m, E, B = p
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dx, dy, dz = vx, vy, vz
+   # q/m*(E + v × B)
+   dux = q2m*(vy*Bz - vz*By + Ex)
+   duy = q2m*(vz*Bx - vx*Bz + Ey)
+   duz = q2m*(vx*By - vy*Bx + Ez)
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
 function trace(y, p::FullTPTuple, t)
    q, m, E, B, F = p
-   v = @view y[4:6]
-   dx, dy, dz = v
-   dux, duy, duz = (q*(E(y, t) + v × (B(y, t))) + F(y, t)) / m
+
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+   Fx, Fy, Fz = F(y, t)
+
+   dx, dy, dz = vx, vy, vz
+   dux = (q*(vy*Bz - vz*By + Ex) + Fx) / m
+   duy = (q*(vz*Bx - vx*Bz + Ey) + Fy) / m
+   duz = (q*(vx*By - vy*Bx + Ez) + Fz) / m
+
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
@@ -451,7 +483,7 @@ ODE equations for relativistic charged particle moving in static EM field with i
 form.
 """
 function trace_relativistic!(dy, y, p::TPTuple, t)
-   q, m, E, B = p
+   q2m, E, B = p
 
    u2 = y[4]^2 + y[5]^2 + y[6]^2
    c2 = c^2
@@ -460,9 +492,16 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
    end
 
    γInv = √(1.0 - u2/c2)
-   v = @view y[4:6]
-   dy[1:3] = v
-   dy[4:6] = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dy[1], dy[2], dy[3] = vx, vy, vz
+   dy[4] = q2m*γInv^3*(vy*Bz - vz*By + Ex)
+   dy[5] = q2m*γInv^3*(vz*Bx - vx*Bz + Ey)
+   dy[6] = q2m*γInv^3*(vx*By - vy*Bx + Ez)
+
+   return
 end
 
 """
@@ -472,7 +511,7 @@ ODE equations for relativistic charged particle moving in static EM field with o
 form.
 """
 function trace_relativistic(y, p::TPTuple, t)
-   q, m, E, B = p
+   q2m, E, B = p
 
    u2 = y[4]^2 + y[5]^2 + y[6]^2
    c2 = c^2
@@ -481,9 +520,15 @@ function trace_relativistic(y, p::TPTuple, t)
    end
 
    γInv = √(1.0 - u2/c2)
-   v = @view y[4:6]
-   dx, dy, dz = v
-   dux, duy, duz = q/m*γInv^3*(E(y, t) + v × (B(y, t)))
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dx, dy, dz = vx, vy, vz
+   dux = q2m*γInv^3*(vy*Bz - vz*By + Ex)
+   duy = q2m*γInv^3*(vz*Bx - vx*Bz + Ey)
+   duz = q2m*γInv^3*(vx*By - vy*Bx + Ez)
+
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
@@ -496,10 +541,18 @@ the extrapolation function provided by Interpolations.jl.
 """
 function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    Ω, E, B = p
-   v = @view y[4:6]
 
-   dy[1:3] = v
-   dy[4:6] = Ω*(E(y, t) + v × B(y, t))
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dy[1], dy[2], dy[3] = vx, vy, vz
+   # Ω*(E + v × B)
+   dy[4] = Ω*(vy*Bz - vz*By + Ex)
+   dy[5] = Ω*(vz*Bx - vx*Bz + Ey)
+   dy[6] = Ω*(vx*By - vy*Bx + Ez)
+
+   return
 end
 
 """
@@ -513,7 +566,21 @@ A simple definition:
 \\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{v}\\times\\mathbf{B}}{qB}
 ```
 """
-function guiding_center(xu, param::Union{TPTuple, FullTPTuple})
+function guiding_center(xu, param::TPTuple)
+   q2m, _, B_field = param
+   t = xu[end]
+   v = @view xu[4:6]
+   Bv = B_field(xu, t)
+   B = hypot(Bv...)
+   # unit vector along B
+   b = Bv./B
+   # the vector of Larmor radius
+   ρ = (b×v)./(q2m*B)
+   X = xu[1:3] - ρ
+   return X
+end
+
+function guiding_center(xu, param::FullTPTuple)
    q, m, _, B_field = param
    t = xu[end]
    v = @view xu[4:6]
