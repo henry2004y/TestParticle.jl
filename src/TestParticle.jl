@@ -168,22 +168,9 @@ function getinterp(A, gridx, gridy, order::Int=1)
    return Field(get_field)
 end
 
-# judge whether the field function is time dependent
-function is_time_dependent(f)
-   itp_param_number = 2
-   numargs = [length(m.sig.parameters)-1 for m in methods(f)]
-   itp = any(x -> x == itp_param_number, numargs)
-   if !itp
-      if any(x -> x == itp_param_number-1, numargs)
-         return false
-      else
-         name = nameof(f)
-         throw(ArgumentError(
-            "All methods for the field function $name had too many arguments."))
-      end
-   else
-      return true
-   end
+"Judge whether the field function is time dependent."
+function is_time_dependent(f::Function)
+   applicable(f, zeros(6), 0.0) ? true : false
 end
 
 abstract type AbstractField{itd} end

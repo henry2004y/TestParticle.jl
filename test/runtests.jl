@@ -227,10 +227,10 @@ end
       E = Field(E_field)
 
       @test_throws ArgumentError E([0, 0, 0])
-
+      # Test unsupported function form
       F_field(r, v, t) = SA[r, v, t]
 
-      @test_throws ArgumentError Field(F_field)
+      @test typeof(Field(F_field)).parameters[1] == false
 
       x0 = [10.0, 10.0, 0.0] # initial position, [m]
       u0 = [1e10, 0.0, 0.0] # initial velocity, [m/s]
