@@ -13,6 +13,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor
+export TraceProblem, BorisMethod, trace_trajectory
 
 include("utility/utility.jl")
 
@@ -572,6 +573,7 @@ function orbit end
 
 function monitor end
 
+include("pusher.jl")
 include("precompile.jl")
 
 end
