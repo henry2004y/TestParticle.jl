@@ -110,12 +110,10 @@ get_energy_ratio(sol)
 # We can also use the Boris method implemented within the package:
 
 dt = 1e-4
-param = prepare(getE_dipole, getB_dipole, species=Electron)
 paramBoris = BorisMethod(param)
 prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 traj = trace_trajectory(prob)
 get_energy_ratio(traj)
 
+# The Boris method requires a fixed time step. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off.
 # Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
-
-
