@@ -362,6 +362,25 @@ end
       xs = getindex.(sol.u, 1)
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
    end
+
+   @testset "Boris pusher" begin
+      uniform_B(x) = SA[0.0, 0.0, 0.01]
+      uniform_E(x) = SA[0.0, 0.0, 0.0]
+
+      x0 = [0.0, 0.0, 0.0]
+      v0 = [0.0, 1e5, 0.0]
+      stateinit = [x0..., v0...]
+      tspan = (0.0, 3e-8)
+      dt = 3e-11
+      param = prepare(uniform_E, uniform_B, species=Electron)
+      paramBoris = BorisMethod(param)
+      prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+
+      traj = trace_trajectory(prob; savestepinterval=10)
+
+      @test traj[:, end] == [-7.84237771267459e-5, 5.263661571564935e-5, 0.0,
+         -93512.6374393526, -35431.43574759836, 0.0]
+   end
 end
 
 if "makie" in ARGS
