@@ -53,6 +53,12 @@ function get_energy_ratio(sol)
    (Eend - Einit) / Einit
 end
 
+function get_energy_ratio(traj::Matrix)
+   Einit = traj[4,1]^2 + traj[5,1]^2 + traj[6,1]^2
+   Eend = traj[4,end]^2 + traj[5,end]^2 + traj[6,end]^2
+   (Eend - Einit) / Einit
+end
+
 sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
 get_energy_ratio(sol)
 
@@ -79,5 +85,12 @@ cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
+
+dt = 1e-4
+param = prepare(getE_dipole, getB_dipole, species=Electron)
+paramBoris = BorisMethod(param)
+prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+traj = trace_trajectory(prob)
+get_energy_ratio(traj)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
