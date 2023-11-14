@@ -303,15 +303,15 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
 
    if embeddim(grid) == 3
       gridx, gridy, gridz = makegrid(grid)
-      E = TE <: AbstractArray ? Field(getinterp(E, gridx, gridy, gridz, order)) : Field(E)
-      B = TB <: AbstractArray ? Field(getinterp(B, gridx, gridy, gridz, order)) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : E
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : B
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
-      E = TE <: AbstractArray ? Field(getinterp(E, gridx, gridy, order)) : Field(E)
-      B = TB <: AbstractArray ? Field(getinterp(B, gridx, gridy, order)) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order) : E
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order) : B
    end
 
-   q, m, E, B
+   q, m, Field(E), Field(B)
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species=Proton,
@@ -322,15 +322,15 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species
 
    if embeddim(grid) == 3
       gridx, gridy, gridz = makegrid(grid)
-      E = TE <: AbstractArray ? Field(getinterp(E, gridx, gridy, gridz, order)) : Field(E)
-      B = TB <: AbstractArray ? Field(getinterp(B, gridx, gridy, gridz, order)) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : E
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : B
    elseif embeddim(grid) == 2
       gridx, gridy = makegrid(grid)
-      E = TE <: AbstractArray ? Field(getinterp(E, gridx, gridy, order)) : Field(E)
-      B = TB <: AbstractArray ? Field(getinterp(B, gridx, gridy, order)) : Field(B)
+      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order) : E
+      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order) : B
    end
 
-   Ω, E, B
+   Ω, Field(E), Field(B)
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton,
@@ -340,11 +340,11 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Prot
 
    gridx, gridy, gridz = makegrid(grid)
 
-   E = TE <: AbstractArray ? Field(getinterp(E, gridx, gridy, gridz, order)) : Field(E)
-   B = TB <: AbstractArray ? Field(getinterp(B, gridx, gridy, gridz, order)) : Field(B)
-   F = TF <: AbstractArray ? Field(getinterp(F, gridx, gridy, gridz, order)) : Field(F)
+   E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order) : E
+   B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order) : B
+   F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz, order) : F
 
-   q, m, E, B, F
+   q, m, Field(E), Field(B), Field(F)
 end
 
 function prepare(x, y, E::TE, B::TB; species::Species=Proton,
@@ -352,40 +352,35 @@ function prepare(x, y, E::TE, B::TB; species::Species=Proton,
 
    q, m = getchargemass(species, q, m)
 
-   E = TE <: AbstractArray ? Field(getinterp(E, x, y, order)) : Field(E)
-   B = TB <: AbstractArray ? Field(getinterp(B, x, y, order)) : Field(B)
+   E = TE <: AbstractArray ? getinterp(E, x, y, order) : E
+   B = TB <: AbstractArray ? getinterp(B, x, y, order) : B
 
-   q, m, E, B
+   q, m, Field(E), Field(B)
 end
 
 function prepare(x::T, y::T, z::T, E::TE, B::TB;
-   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where {T<:AbstractRange, TE, TB}
+   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1) where
+   {T<:AbstractRange, TE, TB}
 
    q, m = getchargemass(species, q, m)
 
-   E = TE <: AbstractArray ? Field(getinterp(E, x, y, z, order)) : Field(E)
-   B = TB <: AbstractArray ? Field(getinterp(B, x, y, z, order)) : Field(B)
+   E = TE <: AbstractArray ? getinterp(E, x, y, z, order) : E
+   B = TB <: AbstractArray ? getinterp(B, x, y, z, order) : B
 
-   q, m, E, B
+   q, m, Field(E), Field(B)
 end
 
 function prepare(E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
    q, m = getchargemass(species, q, m)
-   B = Field(B)
-   E = Field(E)
 
-   q, m, E, B
+   q, m, Field(E), Field(B)
 end
 
 function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
    m::AbstractFloat=1.0)
-
    q, m = getchargemass(species, q, m)
-   B = Field(B)
-   E = Field(E)
-   F = Field(F)
 
-   q, m, E, B, F
+   q, m, Field(E), Field(B), Field(F)
 end
 
 """
