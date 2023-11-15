@@ -21,7 +21,7 @@ Visualization via [Makie](https://makie.juliaplots.org/stable/), [Plots](https:/
 
 TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
 
-A proton trajectory in a static magnetic field can be traced via
+For example, a proton in a static magnetic field can be traced via
 
 ```julia
 using TestParticle, OrdinaryDiffEq, StaticArrays
@@ -38,7 +38,7 @@ tspan = (0, 20)
 param = prepare(E, B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 # Trace trajectory and save positions & velocities
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+sol = solve(prob, Vern9())
 ```
 
 For plotting with Makie,
