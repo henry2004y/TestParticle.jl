@@ -113,4 +113,4 @@ println("simulated travel distance: $(sol.u[end][4]) [m]") #hide
 # Predicted final energy
 println("predicted energy gain: $E_predict [eV]") #hide
 # Simulated final energy
-println("simulated final energy: $(energy[end] / param_proton[1]) [eV]") #hide
+println("simulated final energy: $(energy[end] / TestParticle.qᵢ) [eV]") #hide
