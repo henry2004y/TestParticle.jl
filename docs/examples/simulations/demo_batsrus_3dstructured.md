@@ -85,9 +85,9 @@ trajectories = 5
 #=
 prob_e = ODEProblem(trace!, stateinit_e, tspan_electron, param_electron)
 ensemble_prob = EnsembleProblem(prob_e, prob_func=prob_func)
-sol_e = solve(prob_e, Tsit5(); save_idxs=[1,2,3], alg_hints=[:nonstiff])
-sol_e = solve(ensemble_prob, Tsit5(), EnsembleThreads();
-   trajectories, save_idxs=[1,2,3])
+sol_e = solve(prob_e, Vern9(); save_idxs=[1,2,3], alg_hints=[:nonstiff])
+sol_e = solve(ensemble_prob, Vern9(), EnsembleThreads();
+   trajectories, save_idxs=[1,2,3], safetycopy=false)
 =#
 
 

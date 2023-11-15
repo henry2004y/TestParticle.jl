@@ -36,7 +36,7 @@ function trace(x, y, z, E, B; trajectories::Int=10)
    for i in 1:trajectories
       prob = remake(prob; u0=[x0..., v[:,i]...])
 
-      sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+      sol = solve(prob, Vern9(); save_idxs=[1,2,3])
       sols[i] = sol
    end
 

@@ -72,6 +72,7 @@ function get_energy_ratio(traj::Matrix)
    (Eend - Einit) / Einit
 end
 
+## `ImplicitMidpoint()` requires a fixed time step.
 sol = solve(prob, ImplicitMidpoint(); dt=1e-3)
 get_energy_ratio(sol)
 
@@ -95,7 +96,10 @@ get_energy_ratio(sol)
 sol = solve(prob, Tsit5())
 get_energy_ratio(sol)
 
-# `ImplicitMidpoint()` requires a fixed time step. Classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) also requires a fixed timestep.
+# Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
+## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
+sol = solve(prob, Tsit5(); reltol=1e-4)
+
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
 
@@ -107,7 +111,8 @@ sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
 # This is much more accurate, at the cost of significantly more iterations.
-# We can also use the Boris method implemented within the package:
+# In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol= 1e-14)`; in terms of performance, it is 12x slower (2.4s v.s. 0.2s) and 8x more memory (1.6 GiB v.s. 196 MiB).
+# We can also use the classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) implemented within the package:
 
 dt = 1e-4
 paramBoris = BorisMethod(param)
@@ -115,5 +120,5 @@ prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 traj = trace_trajectory(prob)
 get_energy_ratio(traj)
 
-# The Boris method requires a fixed time step. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off.
-# Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
+# The Boris method requires a fixed time step. It takes about 0.05s and consumes 53 MiB memory. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off (but the energy is still conserved).
+# Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme without decreasing `reltol`. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
