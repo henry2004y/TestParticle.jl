@@ -31,9 +31,6 @@ jobs:
         arch:
           - x64
     steps:
-      - name: Install dependencies
-        run: |
-          pip install matplotlib
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
@@ -59,9 +56,6 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          pip install matplotlib
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
