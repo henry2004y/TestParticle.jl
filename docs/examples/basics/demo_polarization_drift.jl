@@ -34,7 +34,7 @@ stateinit = [x0..., v0...]
 tspan = (0, 100)
 param = prepare(time_varying_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+sol = solve(prob, Vern9())
 gc = get_gc(param)
 v_perp(xu) = hypot(xu[4], xu[5])
 gc_y = gc[2]

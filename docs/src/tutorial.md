@@ -8,6 +8,9 @@ Here we assume that the EM fields are prescribed and not affected by the charged
 
 By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
 However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
+
+Currently we recommend `Vern9` as a starting point for adaptive timestepping, with additional fine tuning by changing `reltol` if needed. You can also try out the native implementation of the Boris method in TestParticle.jl, with a constraint of using a fixed time step.
+
 Take you some time to figure out which algorithm works for your problem!
 
 ## Multiple particles tracing
