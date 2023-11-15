@@ -18,17 +18,12 @@ using LinearAlgebra
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-function B(x)
-    return SA[0.0, 1e-8, 0.0]
-end
+B(x) = SA[0.0, 1e-8, 0.0]
+E(x) = SA[0.0, 0.0, 0.0]
 
-function E(x)
-    return SA[0.0, 0.0, 0.0]
-end
 ## Earth's gravity
-function F(x)
-    return SA[0.0, 0.0, -TestParticle.mᵢ*9.8]
-end
+F(x) = SA[0.0, 0.0, -TestParticle.mᵢ*9.8]
+
 ## initial static particle
 x0 = [1.0, 0, 0]
 v0 = [0.0, 0.0, 0.0]

@@ -29,7 +29,7 @@ end
 
 ## trace the orbit of the guiding center
 function trace_gc!(dx, x, p, t)
-    _, _, E, B, sol = p
+    _, E, B, sol = p
     xu = sol(t)
     Bv = B(x)
     b = normalize(Bv)

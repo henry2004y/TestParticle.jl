@@ -27,13 +27,8 @@ end
 
 ## Initialization
 
-function B(x)
-   return SA[0, 0, 1e-11]
-end
-
-function E(x)
-   return SA[0, 0, 5e-13]
-end
+B(x) = SA[0, 0, 1e-11]
+E(x) = SA[0, 0, 5e-13]
 
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
