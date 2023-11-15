@@ -58,7 +58,7 @@ tspan = (0, 40)
 ## E×B drift
 param = prepare(zero_E, curved_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3,4,5,6])
+sol = solve(prob, Vern9())
 
 gc = get_gc(param)
 gc_x0 = [gc_i(stateinit) for gc_i in gc]

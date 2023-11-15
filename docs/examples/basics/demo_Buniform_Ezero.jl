@@ -28,7 +28,7 @@ tspan = (0, 18)
 
 param = prepare(uniform_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Tsit5())
+sol = solve(prob, Vern9())
 
 f = plot(sol)
 f = DisplayAs.PNG(f) #hide
