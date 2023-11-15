@@ -15,7 +15,7 @@ Take you some time to figure out which algorithm works for your problem!
 There are two ways to trace multiple particles simultaneously:
 
 1. Extracting the solution in a loop with varying initial conditions. See the example [demo_ensemble](@ref).
-2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that currently the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field.
+2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that by default the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field. We need to set `safetycopy=false` to make the field as a reference in the parameter of each trajectory.
 
 ## Summary of Guiding Center Drifts
 
