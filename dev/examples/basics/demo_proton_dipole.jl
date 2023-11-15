@@ -79,8 +79,8 @@ get_energy_ratio(sol)
 
 using DiffEqCallbacks
 
-# p = (q, m, E, B)
-dtFE(u, p, t) = p[2] / (2π * abs(p[1]) * hypot(p[4](u, t)...))
+# p = (charge_mass_ratio, E, B)
+dtFE(u, p, t) = 1 / (2π * abs(p[1]) * hypot(p[3](u, t)...))
 cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value

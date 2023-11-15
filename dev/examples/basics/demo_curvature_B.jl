@@ -24,14 +24,14 @@ abs_B(x) = norm(curved_B(x))  # |B|
 
 # trace the orbit of the guiding center
 function trace_gc!(dx, x, p, t)
-    q, m, E, B, sol = p
+    q2m, E, B, sol = p
     xu = sol(t)
     gradient_B = gradient(abs_B, x)  # ∇|B|
     Bv = B(x)
     b = normalize(Bv)
     v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
     v_perp = xu[4:6] - v_par
-    Ω = q*norm(Bv)/m
+    Ω = q2m*norm(Bv)
     κ = jacobian(B, x)*Bv  # B⋅∇B
     # v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
     dx[1:3] = norm(v_perp)^2*(Bv×gradient_B)/(2*Ω*norm(Bv)^2) +
