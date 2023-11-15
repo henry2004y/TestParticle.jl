@@ -31,20 +31,20 @@ end
 
 ## trace the orbit of the guiding center
 function trace_gc!(dx, x, p, t)
-    q, m, E, B, sol = p
+    q2m, E, B, sol = p
     xu = sol(t)
     xp = @view xu[1:3]
     Bv = B(xp)
     b = normalize(Bv)
     v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
     v_perp = xu[4:6] - v_par
-    r4 = (m*norm(v_perp)/q/norm(Bv))^2/4
+    r4 = (norm(v_perp)/q2m/norm(Bv))^2/4
     EB(x) = (E(x)×B(x))/norm(B(x))^2
     ## dx[1:3] = EB(xp) + v_par
     dx[1:3] = EB(x) + r4*laplace.(EB, Vec3(x...)) + v_par
 
     ## more accurate
-    ## dx[1:3] = besselj0(0.3*m*norm(v_perp)/q/norm(Bv))*EB(x) + v_par
+    ## dx[1:3] = besselj0(0.3*norm(v_perp)/q2m/norm(Bv))*EB(x) + v_par
 end
 
 x0 = [1.0, 0, 0]

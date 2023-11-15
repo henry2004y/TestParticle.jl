@@ -18,13 +18,8 @@ using LinearAlgebra
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-function uniform_B(x)
-    return SA[0.0, 0.0, 1e-8]
-end
-
-function uniform_E(x)
-    return SA[0.0, 0.0, 0.0]
-end
+uniform_B(x) = SA[0.0, 0.0, 1e-8]
+uniform_E(x) = SA[0.0, 0.0, 0.0]
 
 x0 = [1.0, 0, 0]
 v0 = [0.0, 1.0, 0.1]
