@@ -27,8 +27,8 @@ end
 
 "f1"
 function lorentz!(dv, v, x, p::TestParticle.TPTuple, t)
-   q, m, E, B = p
-   dv .= q/m*(E(x, t) + v × (B(x, t)))
+   q2m, E, B = p
+   dv .= q2m*(E(x, t) + v × (B(x, t)))
 end
 
 ### Initialize field
@@ -88,7 +88,7 @@ f = DisplayAs.PNG(f) #hide
 param_proton = prepare(uniform_E, zero_B, species=Proton)
 
 ## acceleration, [m/s²]
-a = param_proton[1] * E₀ / param_proton[2]
+a = param_proton[1] * E₀
 ## predicted final speed, [m/s]
 v_final_predict = a * tspan_proton[2]
 ## predicted travel distance, [m/s]
@@ -100,7 +100,7 @@ prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_pr
 
 sol = solve(prob_p, Vern6())
 
-energy = map(x -> E(x[1:3]...), sol.u) .* param_proton[2]
+energy = map(x -> E(x[1:3]...), sol.u) .* TestParticle.mᵢ
 
 # Predicted final speed
 println("predicted final speed: $v_final_predict [m/s]") #hide
