@@ -99,6 +99,6 @@ println("simulated travel distance: $(sol.u[end][4]) [m]") #hide
 
 println("predicted energy gain: $E_predict [eV]") #hide
 
-println("simulated final energy: $(energy[end] / param_proton[1]) [eV]") #hide
+println("simulated final energy: $(energy[end] / TestParticle.qᵢ) [eV]") #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
