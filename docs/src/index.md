@@ -30,6 +30,8 @@ pkg> add TestParticle
 
 It would be better to understand the basic workflow of [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) before digging into TestParticle.jl. All we are doing here can be concluded as contructing the ODE system from Newton's 2nd law and preparing the field/particle data. Check more in [examples](@ref).
 
+Additionally, we have a native Boris solver with a similar interface as DifferentialEquations.jl. Check out the details in later sections.
+
 ## Acknowledgement
 
 Nothing can be done such easily without the support of the Julia community. We appreciate all the contributions from developers around the world.

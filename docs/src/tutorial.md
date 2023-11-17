@@ -6,12 +6,16 @@ Here we assume that the EM fields are prescribed and not affected by the charged
 
 ## Choice of numerical algorithms
 
-By default DifferentialEquations.jl applies `Tsit5` to an ODE problem.
-However, it is not always guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
+By default DifferentialEquations.jl applies `Tsit5` to an ODE problem. If only OrdinaryDiffEq.jl is imported, then we need to explicitly select a solver.
+However, not all solvers are guaranteed to work. For example, the demo case of electron tracing in the magnetic bottle with strong magnetic field is tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
 
 Currently we recommend `Vern9` as a starting point for adaptive timestepping, with additional fine tuning by changing `reltol` if needed. You can also try out the native implementation of the Boris method in TestParticle.jl, with a constraint of using a fixed time step.
 
 Take you some time to figure out which algorithm works for your problem!
+
+## Tracing backwards in time
+
+It is easy to trace a charged particle backwards in time. In a forward tracing problem, we set `tspan = (t1, t2)` where `t1 < t2`. In a backward tracing problem, we simply set `t1 > t2`, e.g. `tspan = (0.0, -1.0)`. Note that tracing backwards in time is different from inversing the velocity because of the cross product in the Lorentz force. More specifically, the drift velocities will not change sign if one inverses velocity.
 
 ## Multiple particles tracing
 
