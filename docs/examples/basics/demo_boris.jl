@@ -44,7 +44,7 @@ sol2 = solve(prob, Tsit5());
 
 # The phase space conservation can be visually checked by plotting the trajectory:
 
-f = Figure(resolution=(700, 600))
+f = Figure(size=(700, 600))
 ax = Axis(f[1, 1], aspect=1)
 @views lines!(ax, traj[1,:], traj[2,:], label="Boris")
 lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed")
