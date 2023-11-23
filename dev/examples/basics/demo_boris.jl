@@ -27,7 +27,7 @@ sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=10*dt);
 sol2 = solve(prob, Tsit5());
 @time sol2 = solve(prob, Tsit5());
 
-f = Figure(resolution=(700, 600))
+f = Figure(size=(700, 600))
 ax = Axis(f[1, 1], aspect=1)
 @views lines!(ax, traj[1,:], traj[2,:], label="Boris")
 lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed")
