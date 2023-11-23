@@ -4,7 +4,7 @@
 Makie.plottype(sol::AbstractODESolution, arg...; kw...) = Lines
 
 # prescribe the keyword arguments for the plot function
-Makie.used_attributes(::Makie.PlotFunc, ::AbstractODESolution, arg...; kw...) =
+Makie.used_attributes(::Type{<:Plot}, ::AbstractODESolution, ::Vararg{Any}) =
     (:vars, :tspan, :to_3d)
 
 # conversion from ODESolution to Point set
