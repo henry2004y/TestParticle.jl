@@ -4,7 +4,7 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnGrid, Periodic
-using Distributions: Normal, MvNormal
+using Distributions: MvNormal
 using StaticArrays
 using PrecompileTools: @setup_workload, @compile_workload
 

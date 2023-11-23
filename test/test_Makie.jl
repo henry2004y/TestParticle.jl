@@ -2,7 +2,7 @@
 
 module TestModule
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using GLMakie
+using CairoMakie
 using Test
 
 # a basic case for TestParticle
@@ -19,16 +19,16 @@ sol = solve(prob, Vern6(); save_idxs=[1,2,3,4,5,6])
 
 @testset "basic recipe" begin
     fig, ax, plt = plot(sol)
-    @test fig isa Figure 
+    @test plt isa Lines{Tuple{Vector{Point{3, Float32}}}}
 
     fig, ax, plt = lines(sol, vars=(3, 4), to_3d=true)
-    @test plt isa Lines
+    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
 
     fig, ax, plt = lines(sol, vars=[1, 2], to_3d=true)
-    @test plt isa Lines
+    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
 
     fig, ax, plt = lines(sol, vars=[(1, 2), 3])
-    @test plt isa Lines
+    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
 
     @test_throws ArgumentError lines(sol, vars="x")
 
