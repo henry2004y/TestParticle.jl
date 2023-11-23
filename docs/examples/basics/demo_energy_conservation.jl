@@ -72,7 +72,7 @@ println("Number of gyrations: ", tspan_proton[2] / Tᵢ)
 
 sol = solve(prob_p, ImplicitMidpoint(), dt = Tᵢ/15)
 
-f = Figure()
+f = Figure(fontsize=18)
 ax = Axis(f[1, 1],
     title = "Proton in a uniform B field and zero E field",
     xlabel = "x",
