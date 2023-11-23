@@ -58,7 +58,7 @@ lines(sol, tspan=(0, 1))
 If the default axis or labels are too small, you can first create the customized figure and axis, and then plot inside:
 
 ```julia
-f = Figure(resolution=(1200, 800), fontsize=18)
+f = Figure(size=(1200, 800), fontsize=18)
 ax = Axis3(f[1,1],
     title = "Particle trajectory",
     xlabel = "X",
