@@ -597,7 +597,7 @@ end
 """
     get_gc(param::Union{TPTuple, FullTPTuple})
 
-Get three function for plotting the orbit of guiding center.
+Get three functions for plotting the orbit of guiding center.
 
 For example:
 ```julia
