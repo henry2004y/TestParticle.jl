@@ -41,8 +41,8 @@ Plotting multiple lines at one time are supported by providing a tuple of indexe
 orbit(sol, vars=[1, (1, 2), Eₖ])
 ```
 
-There are some more advanced usages. If a tuple contains vectors, they will be expanded
-automatically. For example,
+Advanced usages: if a tuple contains vectors, they will be expanded automatically.
+For example,
 ```julia
 orbit(sol, vars=(0, [1, 2, 3]))
 orbit(sol, vars=([1, 2, 3], [4, 5, 6]))
@@ -97,20 +97,20 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
     end
 
     if interactive
-        t_min, t_max = get_tspan(sol, tspan)
-        step = (t_max - t_min) / 1e3
+        t1, t2 = get_tspan(sol, tspan)
+        step = (t2 - t1) / 1e3
         # Makie does not support the flag 'g' or 'G'.
         # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
-        time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
-        # the minimum of the range cannot be t_min.
+        time_format = t2 < 2e-3 ? "{:.3e} s" : "{:.3f} s"
+        # the minimum of the range cannot be t1.
         time = SliderGrid(fig[2, 1],
             (label="Time",
-             range=range(t_min+step, stop=t_max, step=step),
+             range=range(t1+step, stop=t2, step=step),
              format=time_format,
-             startvalue=t_max))
+             startvalue=t2))
         # convert tspan to an Observable
         tspan = lift(time.sliders[1].value) do t
-            (t_min, t)
+            (t1, t)
         end
         if dim == 2
             reset_button = Button(fig[2, 2], label="reset")
@@ -122,9 +122,9 @@ function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Boo
 
     for var in vars
         label = "(" * get_label(var) * ")"
-        lines!(ax, sol, vars=var, tspan=tspan, to_3d=to_3d, label=label)
+        lines!(ax, sol; vars=var, tspan, to_3d, label)
     end
-    # Axis3 cannot displays legend correctly
+    # Axis3 cannot displays legend correctly.
     axislegend(ax)
     return fig
 end
@@ -152,7 +152,7 @@ monitor(sol, vars=[1, 2, Eₖ])
 ```
 """
 function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
-    if vars === nothing 
+    if isnothing(vars)
         # default subplots are vx, vy and vz
         vars = [4, 5, 6]
     end
@@ -164,17 +164,17 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
     axs = [Axis(fig[i, 4:6], ylabel=get_label(x), xlabel=get_label(0))
         for (i, x) in enumerate(vars)]
 
-    t_min, t_max = get_tspan(sol, tspan)
-    step = (t_max - t_min) / 1e3
+    t1, t2 = get_tspan(sol, tspan)
+    step = (t2 - t1) / 1e3
 
     # Makie does not support the flag 'g' or 'G'.
     # https://docs.julialang.org/en/v1/stdlib/Printf/#man-printf
-    time_format = t_max < 2e-3 ? "{:.3e} s" : "{:.3f} s"
+    time_format = t2 < 2e-3 ? "{:.3e} s" : "{:.3f} s"
     time = SliderGrid(fig[5, 1:6],
         (label="Time",
-         range=range(t_min+step, stop=t_max, step=step),
+         range=range(t1+step, stop=t2, step=step),
          format=time_format,
-         startvalue=t_max))
+         startvalue=t2))
     # a shorter time for one frame seems useless
     frame = SliderGrid(fig[4, 1:4],
         (label="Speed",
@@ -185,7 +185,7 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
         # According to the doc of Makie, Axis3 have the method `autolimits!` but not.
         autolimits!.(axs)
         # autolimits!(ax1)
-        (t_min, t)
+        (t1, t)
     end
 
     reset_button = Button(fig[4, 5], label="reset")
@@ -202,10 +202,11 @@ function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
         t = time.sliders[1]
         # first run should start from the beginning
         if first_time
-            t.value[] = t_min+step
+            t.value[] = t1+step
             first_time = !first_time
         end
-        @async while isrunning[] && (t.value[] < t_max)
+        tend = t1 < t2 ? t2 : t1
+        @async while isrunning[] && (t.value[] < tend)
             t.value[] += step
             sleep(1/frame.sliders[1].value[])
             reset_limits!(ax1)

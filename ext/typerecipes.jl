@@ -11,12 +11,12 @@ Makie.used_attributes(::Type{<:Plot}, ::AbstractODESolution, ::Vararg{Any}) =
 function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
     vars=nothing, tspan=nothing, to_3d::Bool=false)
     # calculate the time span
-    t_min, t_max = get_tspan(sol, tspan)
+    t1, t2 = get_tspan(sol, tspan)
 
     # The type of vars must be Tuple, Number, Function or AbstractArray, but it will not be
-    # handled properly when its type belong to AbstractArray. Inspired by Armavica and
+    # handled properly when its type is a subtype of AbstractArray. Inspired by Armavica and
     # [PR](https://github.com/SciML/DiffEqBase.jl/pull/15) in DiffEqBase.jl.
-    if vars === nothing
+    if isnothing(vars)
         # default figure is the orbit
         var = (1, 2, 3)
     elseif isa(vars, Integer) | isa(vars, Function)
@@ -38,13 +38,13 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
     end
 
     # When the gyrofrequency is too large, the characteristic step should be adjusted.
-    len = 5*length(sol)*abs((t_max-t_min)/(sol.t[end]-sol.t[1]))
+    len = 5*length(sol)*abs((t2-t1)/(sol.t[end]-sol.t[1]))
     if len < 1000
         len = 1000
     end
-    # maybe the step can be decided by user
-    t_step = (t_max - t_min) / len
-    t = collect(t_min:t_step:t_max)
+    #TODO: maybe the step can be decided by user?
+    t_step = (t2 - t1) / len
+    t = collect(t1:t_step:t2)
     u = sol.(t)
     # If the elements in u are not of type Vector, it may cause some problems. Related to #81
     if !isa(u[1], Vector)
@@ -92,17 +92,20 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
 end
 
 
-# Get the minimum and maximum values of the time span
+"Get the minimum and maximum values of the time span."
 function get_tspan(sol::AbstractODESolution, tspan::Union{Tuple, Nothing})
-    if tspan === nothing
-        t_min = sol.t[1]
-        t_max = sol.t[end]
+    if isnothing(tspan)
+        t1 = sol.t[1]
+        t2 = sol.t[end]
+    elseif tspan[1] < tspan[2]
+        t1 = tspan[1] < sol.t[1] ? sol.t[1] : tspan[1]
+        t2 = tspan[2] > sol.t[end] ? sol.t[end] : tspan[2]
     else
-        t_min = tspan[1] < sol.t[1] ? sol.t[1] : tspan[1]
-        t_max = tspan[2] > sol.t[end] ? sol.t[end] : tspan[2]
+        t1 = tspan[1] > sol.t[1] ? sol.t[1] : tspan[1]
+        t2 = tspan[2] < sol.t[end] ? sol.t[end] : tspan[2]
     end
 
-    return t_min, t_max
+    return t1, t2
 end
 
 const var_names = ("t", "x", "y", "z", "vx", "vy", "vz")
