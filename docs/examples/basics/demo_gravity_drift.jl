@@ -32,8 +32,8 @@ tspan = (0, 1.0)
 
 param = prepare(E, B, F, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9(); save_idxs=[1,2,3])
+sol = solve(prob, Vern9())
 ## drift in x-direction + free fall in z-direction
-f = plot(sol)
+f = orbit(sol, vars=[(1,3),], interactive=false)
 
 f = DisplayAs.PNG(f) #hide
