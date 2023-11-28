@@ -61,7 +61,7 @@ function Makie.convert_arguments(P::PointBased, sol::AbstractODESolution;
             push!(points, x.(u))
         elseif x == 0
             push!(points, t)
-        elseif 1<=x<=6
+        elseif 1 <= x <= 6
             # the variable must be a phase space coordinate
             push!(points, getindex.(u, x))
         else
