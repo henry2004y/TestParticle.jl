@@ -4,7 +4,7 @@
 # date: 2023-04-19
 # author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.9.0
-# description: Simple polarization drift under time-varying E field using Makie
+# description: Simple polarization drift under time-varying E field
 # ---
 
 # This example demonstrates a single proton motion under time-varying E field.
