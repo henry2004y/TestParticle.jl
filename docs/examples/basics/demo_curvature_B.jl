@@ -7,7 +7,7 @@
 # description: Simple magnetic field curvature drift demonstration
 # ---
 
-# This example demonstrates a single proton motion under a non-uniform B field with gradient and curvature.
+# This example demonstrates a single proton motion under a vacuum non-uniform B field with gradient and curvature.
 # Similar to the magnetic field gradient drift, analytic calculation should include both of the gradient drift and the curvature drift.
 # More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion, F. F. Chen and Computational Plasma Physics by Toshi Tajima.
 
