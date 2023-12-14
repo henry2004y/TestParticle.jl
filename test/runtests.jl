@@ -283,8 +283,11 @@ end
    end
 
    @testset "normalized fields" begin
-      # Basic scales: length l₀ [m], time t₀ [s], magnetic field B₀ [T]
-      # Derived scales: velocity v₀ = l₀/t₀ [m/s], electric field E₀ = v₀B₀ [V/m]
+      # Constants: q, m
+      # Basic scale: B [T], U [U₀]
+      # Derived scales:
+      # * angular frequency [qB/m]
+      # * time [2π/Ω], length [U₀*2π/Ω]  
 
       # 3D
       x = range(-10, 10, length=15)
@@ -306,17 +309,18 @@ end
          (Δx, Δy, Δz))
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-      u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
+      u0 = [1.0*param[1], 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
-      tspan = (0.0, 1.0)
+      tspan = (0.0, 0.5π/param[1]) # 1/4 gyroperiod
 
       param = prepare(mesh, E, B, B₀; species=Proton)
+
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs=[1])
+      sol = solve(prob, Vern9(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
 
-      @test length(x) == 8 && x[end] ≈ 0.8540967226941674
+      @test length(x) == 7 && x[end] ≈ 0.9999999989367031
 
       # 2D
       x = range(-10, 10, length=15)
