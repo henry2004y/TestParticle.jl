@@ -16,11 +16,11 @@
 #
 # where ``\Omega = qB_0/m`` is the reference gyrofrequency and  ``\mathbf{b} = \mathbf{B}/B_0`` is the normalized magnetic field.
 #
-# Then we can normalize the time scale to the gyroperiod ``T=2\pi/\Omega``. The spatial scale is proportional to the velocity scale,
+# Then we can normalize the time scale to the gyroperiod ``T=2\pi/\Omega``. We use the gyroradius for the spatial scale, which is proportional to the velocity scale
 #
 # ```math
 # r_L = \frac{U_0}{\Omega}
-# ````
+# ```
 #
 # For instance, if the magnetic field is homogeneous and the initial perpendicular velocity is 4 (in the normalized units), then the gyroradius is 4.
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
