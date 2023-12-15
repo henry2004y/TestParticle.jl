@@ -46,7 +46,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -71,7 +71,7 @@ end
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
       @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
 
-      param = prepare(mesh, E, B)
+      param = prepare(grid, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -92,7 +92,7 @@ end
       stateinit = SA[x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E, B)
+      param = prepare(grid, E, B)
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -151,7 +151,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -160,7 +160,7 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E_field, B, F; species=Electron)
+      param = prepare(grid, E_field, B, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2])
 
@@ -184,7 +184,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -193,7 +193,7 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E_field, B_field, F; species=Electron)
+      param = prepare(grid, E_field, B_field, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
@@ -304,11 +304,11 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
-      param = prepare(mesh, E, B, B₀; species=Proton)
+      param = prepare(grid, E, B, B₀; species=Proton)
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0*param[1], 0.0, 0.0] # initial velocity [v₀]
@@ -332,20 +332,20 @@ end
 
       B[3,:,:] .= 1.0
 
-      param = prepare(x, y, E, B./B₀; species=Proton)
+      param = prepare(x, y, E, B.*B₀; species=Proton)
       @test param[3] isa TestParticle.Field
 
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
+      grid = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E, B, B₀; species=Proton)
+      param = prepare(grid, E, B, B₀; species=Proton)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -353,14 +353,14 @@ end
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(mesh, E, B, B₀; order=2)
+      param = prepare(grid, E, B, B₀; order=2)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(mesh, E, B, B₀; order=3)
+      param = prepare(grid, E, B, B₀; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
