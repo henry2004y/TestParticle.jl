@@ -4,6 +4,7 @@
      "demo_boris.jl",
      "demo_Buniform_Ezero.jl",
      "demo_dimensionless.jl",
+     "demo_dimensionless_periodic.jl",
      "demo_electron_proton.jl",
      "demo_multiple.jl",
      "demo_ExB_drift.jl",
