@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field, qₑ, mₑ, c
+using TestParticle: Field, qₑ, mₑ, c, guiding_center
 using Meshes: CartesianGrid
 using Test
 
@@ -123,6 +123,7 @@ end
 
       x = getindex.(sol.u, 1)
 
+      @test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
       @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
@@ -202,6 +203,7 @@ end
       z = getindex.(sol.u, 3)
 
       @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+      @test guiding_center([stateinit..., 0.0], param)[1] == -0.5685630064930044
 
       F_field(r) = SA[0, 9.10938356e-42, 0] # [N]
 
