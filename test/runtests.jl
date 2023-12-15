@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field, qₑ, mₑ, c
+using TestParticle: Field, qₑ, mₑ, c, guiding_center, get_gc
 using Meshes: CartesianGrid
 using Test
 
@@ -46,7 +46,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -71,7 +71,7 @@ end
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
       @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
 
-      param = prepare(mesh, E, B)
+      param = prepare(grid, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -92,7 +92,7 @@ end
       stateinit = SA[x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E, B)
+      param = prepare(grid, E, B)
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -123,6 +123,8 @@ end
 
       x = getindex.(sol.u, 1)
 
+      @test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
+      @test get_gc(param) isa Tuple
       @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
@@ -151,7 +153,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -160,7 +162,7 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E_field, B, F; species=Electron)
+      param = prepare(grid, E_field, B, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2])
 
@@ -184,7 +186,7 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
@@ -193,7 +195,7 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(mesh, E_field, B_field, F; species=Electron)
+      param = prepare(grid, E_field, B_field, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
@@ -202,6 +204,7 @@ end
       z = getindex.(sol.u, 3)
 
       @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+      @test guiding_center([stateinit..., 0.0], param)[1] == -0.5685630064930044
 
       F_field(r) = SA[0, 9.10938356e-42, 0] # [N]
 
@@ -304,11 +307,11 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
+      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
-      param = prepare(mesh, E, B, B₀; species=Proton)
+      param = prepare(grid, E, B, B₀; species=Proton)
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0*param[1], 0.0, 0.0] # initial velocity [v₀]
@@ -332,20 +335,20 @@ end
 
       B[3,:,:] .= 1.0
 
-      param = prepare(x, y, E, B./B₀; species=Proton)
+      param = prepare(x, y, E, B.*B₀; species=Proton)
       @test param[3] isa TestParticle.Field
 
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
+      grid = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
-
-      param = prepare(mesh, E, B, B₀; species=Proton)
+      # periodic BC
+      param = prepare(grid, E, B, B₀; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -353,14 +356,14 @@ end
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(mesh, E, B, B₀; order=2)
+      param = prepare(grid, E, B, B₀; order=2)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
       @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(mesh, E, B, B₀; order=3)
+      param = prepare(grid, E, B, B₀; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
