@@ -308,12 +308,12 @@ end
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
 
+      param = prepare(mesh, E, B, B₀; species=Proton)
+
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0*param[1], 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
       tspan = (0.0, 0.5π/param[1]) # 1/4 gyroperiod
-
-      param = prepare(mesh, E, B, B₀; species=Proton)
 
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern9(); save_idxs=[1])
