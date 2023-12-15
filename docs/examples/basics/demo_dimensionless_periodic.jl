@@ -8,7 +8,7 @@
 # ---
 
 # This example shows how to trace charged particles in dimensionless units and EM fields with periodic boundaries.
-# For details about dimensionless units, please check another [example](@id demo_dimensionless).
+# For details about dimensionless units, please check another [example](@ref demo_dimensionless).
 
 # Now let's demonstrate this with `trace_normalized!`.
 
