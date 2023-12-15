@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field, qₑ, mₑ, c, guiding_center
+using TestParticle: Field, qₑ, mₑ, c, guiding_center, get_gc
 using Meshes: CartesianGrid
 using Test
 
@@ -124,6 +124,7 @@ end
       x = getindex.(sol.u, 1)
 
       @test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
+      @test get_gc(param) isa Tuple
       @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
