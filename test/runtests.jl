@@ -344,8 +344,8 @@ end
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
-
-      param = prepare(grid, E, B, B₀; species=Proton)
+      # periodic BC
+      param = prepare(grid, E, B, B₀; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 

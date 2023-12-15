@@ -35,8 +35,8 @@ B[3,:,:] .= 1.0
 
 grid = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
 
-## If bc == 1, we set a NaN value outside the domain (default for 3D grids);
-## If bc == 2, we set periodic boundary conditions (default for 2D grids).
+## If bc == 1, we set a NaN value outside the domain (default);
+## If bc == 2, we set periodic boundary conditions.
 param = prepare(grid, E, B, B₀; species=Proton, bc=2)
 
 Ω = param[1]

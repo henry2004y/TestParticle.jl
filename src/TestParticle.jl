@@ -309,8 +309,9 @@ Return a tuple consists of particle charge, mass for a prescribed `species` of c
 and mass `m`, interpolated EM field functions, and external force `F`.
 
     prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B) -> (q2m, E, B)
+    prepare(x, y, E, B) -> (q2m, E, B)
 
-Direct range input for uniform grid in 3D is also accepted.
+Direct range input for uniform grid in 2/3D is also accepted.
 
     prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q2m, E, B)
 
