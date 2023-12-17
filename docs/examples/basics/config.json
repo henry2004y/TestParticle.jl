@@ -5,6 +5,7 @@
      "demo_Buniform_Ezero.jl",
      "demo_dimensionless.jl",
      "demo_dimensionless_periodic.jl",
+     "demo_savingcallback.jl",
      "demo_electron_proton.jl",
      "demo_multiple.jl",
      "demo_ExB_drift.jl",
