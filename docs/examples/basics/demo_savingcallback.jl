@@ -32,9 +32,9 @@ function prob_func(prob, i, repeat)
    Bperp1 = SA[0.0, -B0[3], B0[2]] |> normalize
    Bperp2 = B0 × Bperp1 |> normalize
 
-   # initial azimuthal angle
+   ## initial azimuthal angle
    ϕ = 2π*rand()
-   # initial pitch angle
+   ## initial pitch angle
    θ = acos(0.5)
 
    sinϕ, cosϕ = sincos(ϕ)
