@@ -22,8 +22,8 @@ CairoMakie.activate!(type = "png")
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, i, repeat)
-   # If u0 is immutable (e.g. StaticArrays), use remake; otherwise we can directly modify u0
-   #remake(prob, u0=[i/3, 0.0, 0.0])
+   ## If u0 is immutable (e.g. StaticArrays), use remake; otherwise we can directly modify u0
+   ##remake(prob, u0=[i/3, 0.0, 0.0])
    prob.u0[4] = i / 3 
 
    prob
