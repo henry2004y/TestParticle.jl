@@ -5,15 +5,19 @@ using StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = &quot;png&quot;)
 
-&quot;Initial state perturbation for EnsembleProblem.&quot;
+&quot;Set initial state for EnsembleProblem.&quot;
 function prob_func(prob, i, repeat)
-   remake(prob, u0=rand()*prob.u0)
+   # If u0 is immutable (e.g. StaticArrays), use remake; otherwise we can directly modify u0
+   ##remake(prob, u0=[i/3, 0.0, 0.0])
+   prob.u0[4] = i / 3
+
+   prob
 end
 
 # Initialization
 
 B(x) = SA[0, 0, 1e-11]
-E(x) = SA[0, 0, 5e-13]
+E(x) = SA[0, 0, 1e-13]
 
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
@@ -22,14 +26,13 @@ stateinit = [x0..., u0...]
 param = prepare(E, B, species=Electron)
 tspan = (0.0, 10.0)
 
-trajectories = 10
+trajectories = 3
 
 # Solve for the trajectories
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob, prob_func=prob_func, safetycopy=false)
-sols = solve(ensemble_prob, Tsit5(), EnsembleThreads();
-   trajectories=trajectories, save_idxs=[1,2,3])
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(); trajectories)
 
 # Visualization
 
@@ -45,4 +48,4 @@ ax = Axis3(f[1, 1],
 for i in eachindex(sols)
    lines!(ax, sols[i], label=&quot;$i&quot;)
 end
-</code></pre><p><img src="../demo_ensemble-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 15 December 2023 19:01">Friday 15 December 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_ensemble-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Sunday 17 December 2023 18:00">Sunday 17 December 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
