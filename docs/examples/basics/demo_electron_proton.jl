@@ -53,8 +53,8 @@ tspan_proton = (0.0, 10.0)
 prob_e = ODEProblem(trace!, stateinit, tspan_electron, param_electron)
 prob_p = ODEProblem(trace!, stateinit, tspan_proton, param_proton)
 
-sol_e = solve(prob_e, Vern9(); save_idxs=[1,2,3])
-sol_p = solve(prob_p, Vern9(); save_idxs=[1,2,3])
+sol_e = solve(prob_e, Vern9())
+sol_p = solve(prob_p, Vern9())
 
 ### Visualization
 
