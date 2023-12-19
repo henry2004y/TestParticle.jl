@@ -76,7 +76,7 @@ const rL = 4.0
 
 ## By default User type assumes q=1, m=1
 ## bc=2 uses periodic boundary conditions
-param = prepare(grid, E, B, q2mc; species=User, bc=2)
+param = prepare(grid, E, B, Ω; species=User, bc=2)
 
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
 u0 = [1U₀, 0.0, 0.0] # initial velocity [v₀]
