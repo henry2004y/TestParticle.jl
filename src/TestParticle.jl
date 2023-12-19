@@ -9,7 +9,8 @@ using StaticArrays
 using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, sample
-export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
+export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic,
+   trace_relativistic_normalized!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor
@@ -342,6 +343,30 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
    q/m, Field(E), Field(B)
 end
 
+function prepare(x::T, y::T, z::T, E::TE, B::TB, B₀::Real; species::Species=Proton,
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {T<:AbstractRange, TE, TB}
+
+   q, m = getchargemass(species, q, m)
+   Ω = q*B₀/m
+
+   E = TE <: AbstractArray ? getinterp(E, x, y, z, order, bc) : E
+   B = TB <: AbstractArray ? getinterp(B, x, y, z, order, bc) : B
+
+   Ω, Field(E), Field(B)
+end
+
+function prepare(x::T, y::T, E::TE, B::TB, B₀::Real; species::Species=Proton,
+   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {T<:AbstractRange, TE, TB}
+
+   q, m = getchargemass(species, q, m)
+   Ω = q*B₀/m
+
+   E = TE <: AbstractArray ? getinterp(E, x, y, order, bc) : E
+   B = TB <: AbstractArray ? getinterp(B, x, y, order, bc) : B
+
+   Ω, Field(E), Field(B)
+end
+
 function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species=Proton,
    q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {TE, TB}
 
@@ -375,8 +400,8 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Prot
    q, m, Field(E), Field(B), Field(F)
 end
 
-function prepare(x, y, E::TE, B::TB; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {TE, TB}
+function prepare(x::T, y::T, E::TE, B::TB; species::Species=Proton, q::AbstractFloat=1.0,
+   m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {T<:AbstractRange, TE, TB}
 
    q, m = getchargemass(species, q, m)
 
@@ -409,6 +434,14 @@ function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
    q, m = getchargemass(species, q, m)
 
    q, m, Field(E), Field(B), Field(F)
+end
+
+function prepare(E, B, B₀::AbstractFloat;
+   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
+   q, m = getchargemass(species, q, m)
+   Ω = q*B₀/m
+
+   Ω, Field(E), Field(B)
 end
 
 """
@@ -519,15 +552,15 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
       throw(DomainError(u2, FTLError))
    end
 
-   γInv = √(1.0 - u2/c2)
+   γInv3 = √(1.0 - u2/c2)^3
    vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
    dy[1], dy[2], dy[3] = vx, vy, vz
-   dy[4] = q2m*γInv^3*(vy*Bz - vz*By + Ex)
-   dy[5] = q2m*γInv^3*(vz*Bx - vx*Bz + Ey)
-   dy[6] = q2m*γInv^3*(vx*By - vy*Bx + Ez)
+   dy[4] = q2m*γInv3*(vy*Bz - vz*By + Ex)
+   dy[5] = q2m*γInv3*(vz*Bx - vx*Bz + Ey)
+   dy[6] = q2m*γInv3*(vx*By - vy*Bx + Ez)
 
    return
 end
@@ -547,15 +580,15 @@ function trace_relativistic(y, p::TPTuple, t)
       throw(DomainError(u2, FTLError))
    end
 
-   γInv = √(1.0 - u2/c2)
+   γInv3 = √(1.0 - u2/c2)^3
    vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
    dx, dy, dz = vx, vy, vz
-   dux = q2m*γInv^3*(vy*Bz - vz*By + Ex)
-   duy = q2m*γInv^3*(vz*Bx - vx*Bz + Ey)
-   duz = q2m*γInv^3*(vx*By - vy*Bx + Ez)
+   dux = q2m*γInv3*(vy*Bz - vz*By + Ex)
+   duy = q2m*γInv3*(vz*Bx - vx*Bz + Ey)
+   duz = q2m*γInv3*(vx*By - vy*Bx + Ez)
 
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
@@ -582,6 +615,34 @@ function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
 
    return
 end
+
+"""
+    trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
+
+Normalized ODE equations for relativistic charged particle moving in static EM field with
+in-place form.
+"""
+function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
+   Ω, E, B = p
+
+   u2 = y[4]^2 + y[5]^2 + y[6]^2
+   if u2 ≥ 1
+      throw(DomainError(u2, FTLError))
+   end
+
+   γInv3 = √(1.0 - u2)^3
+   vx, vy, vz = @view y[4:6]
+   Ex, Ey, Ez = E(y, t)
+   Bx, By, Bz = B(y, t)
+
+   dy[1], dy[2], dy[3] = vx, vy, vz
+   dy[4] = Ω*γInv3*(vy*Bz - vz*By + Ex)
+   dy[5] = Ω*γInv3*(vz*Bx - vx*Bz + Ey)
+   dy[6] = Ω*γInv3*(vx*By - vy*Bx + Ez)
+
+   return
+end
+
 
 """
     guiding_center(xu, param::Union{TPTuple, FullTPTuple})
