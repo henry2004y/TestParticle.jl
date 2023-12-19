@@ -93,7 +93,7 @@ lines!(ax, sol1)
 xp, yp, zp = let trange = range(tspan2..., length=40)
    sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀, sol2.(trange, idxs=3) .* l₀
 end
-lines!(ax, xplot, yplot, zplot, linestyle=:dashdot, linewidth=5)
+lines!(ax, xp, yp, zp, linestyle=:dashdot, linewidth=5)
 
 f = DisplayAs.PNG(f) #hide
 
