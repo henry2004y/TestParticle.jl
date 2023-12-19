@@ -20,7 +20,7 @@ Visualization via [Makie](https://makie.juliaplots.org/stable/), [Plots](https:/
 
 ## Usage
 
-TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
+TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl). Native particle pusher also follows a similar interface.
 
 For example, a proton in a static magnetic field can be traced via
 
@@ -29,7 +29,7 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 # Magnetic field
 B(x) = SA[0, 0, 1e-8]
 # Electric field
-E(x) = SA[0, 0, 0]
+E(x) = SA[0,0, 0.0, 0.0]
 # Initial conditions
 x0 = [1.0, 0.0, 0.0]
 v0 = [0.0, 1.0, 0.1]
@@ -50,4 +50,4 @@ using GLMakie
 plot(sol)
 ```
 
-More tutorials and examples can be found in [the doc](https://henry2004y.github.io/TestParticle.jl/dev/).
+More tutorials and examples can be found in the [doc](https://henry2004y.github.io/TestParticle.jl/dev/).
