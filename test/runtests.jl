@@ -257,9 +257,8 @@ end
       end
 
       # calculate the energy [eV] of a electron
-      function cal_energy(sol)
-         v = sol.u[end][4:6]
-         v = hypot(v...)
+      function calc_energy(sol)
+         v = hypot(sol.u[end][4:6]...)
          γ = 1/sqrt(1-(v/c)^2)
          return -(γ-1)*mₑ*c^2/qₑ
       end
@@ -271,18 +270,25 @@ end
 
       param = prepare(E_field, B_field; species=Electron)
       prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
+      sol = solve(prob, Vern6(); dtmax=1e-10)
 
       x = sol.u[end][1:3]
       # Test whether the kinetic energy [eV] of the electron
       # is equal to the electric potential energy gained.
-      @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
 
       prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10, save_idxs=[1,2,3,4,5,6])
+      sol = solve(prob, Vern6(); dtmax=1e-10)
       x = sol.u[end][1:3]
 
-      @test cal_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      # Tracing relativistic particle in dimensionless units
+      param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0], 1.0; species=User)
+      tspan = (0.0, 1.0) # 1/2π period
+      stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
+      prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+      sol = solve(prob, Vern6())
+      @test sol.u[end][1] == 0.46557792821745914
    end
 
    @testset "normalized fields" begin
@@ -310,6 +316,9 @@ end
       grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
          (x[1], y[1], z[1]),
          (Δx, Δy, Δz))
+
+      param = prepare(x, y, z, E, B, B₀; species=Proton)
+      @test param[1] == 0.9573477911347543
 
       param = prepare(grid, E, B, B₀; species=Proton)
 
@@ -348,6 +357,8 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
       # periodic BC
+      param = prepare(x, y, E, B, B₀; species=Proton, bc=2)
+      @test param[1] == 0.9573477911347543
       param = prepare(grid, E, B, B₀; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
