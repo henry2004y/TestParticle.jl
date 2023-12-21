@@ -80,8 +80,6 @@ saveat = tspan[2] / 40 # save interval
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
-saved_values = SavedValues(Float64, Tuple{SVector{3, Float64}, Float64})
-
 "Set customized outputs for the ensemble problem."
 function output_func(sol, i)
    Bfunc = sol.prob.p[3]
