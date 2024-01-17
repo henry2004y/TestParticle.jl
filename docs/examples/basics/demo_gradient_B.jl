@@ -9,9 +9,8 @@
 
 # This example demonstrates a single proton motion under a non-uniform B field with gradient ∇B ⊥ B.
 # The orbit of guiding center includes some high order terms, it is different from the
-# formula of magnetic field gradient drift of some textbooks which just preserves the first
-# order term.
-# More theoretical details can be found in Introduction to Plasma Physics and Controlled Fusion by F. F. Chen, and Fundamentals of Plasma Physics by Paul Bellan.
+# formula of magnetic field gradient drift of some textbooks which just preserves the first order term.
+# More theoretical details can be found in [Grad-B Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#b-b-grad-b-drift), and Fundamentals of Plasma Physics by Paul Bellan.
 
 import DisplayAs #hide
 using TestParticle
