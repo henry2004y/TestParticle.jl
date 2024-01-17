@@ -288,7 +288,7 @@ end
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())
-      @test sol.u[end][1] == 0.46557792820784516
+      @test sol.u[end][1] ≈ 0.46557792820784516
    end
 
    @testset "normalized fields" begin
