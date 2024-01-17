@@ -8,7 +8,7 @@ struct TraceProblem{TS, T<:Real, TP}
 end
 
 struct BorisMethod{T, TV}
-   "(q, m, E, B)"
+   "(q2m, E, B)"
    param::T
    # intermediate variables used in the solver
    v⁻::TV
