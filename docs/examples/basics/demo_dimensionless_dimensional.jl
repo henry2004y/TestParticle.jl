@@ -43,15 +43,15 @@ using StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-## Unit conversion factors
-const B₀ = 1e-8 # [T]
-const U₀ = c    # [m/s]
-const E₀ = U₀*B₀ # [V/m]
-const Ω = abs(qᵢ) * B₀ / mᵢ
-const t₀ = 1 / Ω  # [s]
-const l₀ = U₀ * t₀ # [m]
-
-const Emag = 1e-8 # [V/m]
+## Unit conversion factors between SI and dimensionless units
+const B₀ = 1e-8             # [T]
+const U₀ = c                # [m/s]
+const E₀ = U₀*B₀            # [V/m]
+const Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+const t₀ = 1 / Ω            # [s]
+const l₀ = U₀ * t₀          # [m]
+## Electric field magnitude in SI units
+const Emag = 1e-8           # [V/m]
 ### Solving in SI units
 B(x) = SA[0, 0, B₀]
 E(x) = SA[Emag, 0.0, 0.0]
@@ -59,21 +59,21 @@ E(x) = SA[Emag, 0.0, 0.0]
 x0 = [0.0, 0.0, 0.0] # [m]
 v0 = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0..., v0...]
-tspan1 = (0, 2π/Ω) # [s]
+tspan1 = (0, 2π*t₀) # [s]
 
 param1 = prepare(E, B, species=Proton)
 prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
 sol1 = solve(prob1, Vern9(); reltol=1e-4, abstol=1e-6)
 
 ### Solving in dimensionless units
-B_normalize(x) = SA[0, 0, 1.0]
+B_normalize(x) = SA[0, 0, B₀/B₀]
 E_normalize(x) = SA[Emag/E₀, 0.0, 0.0]
-## Default User type has q=1, m=1. Here we also set B=0. 
-param2 = prepare(E_normalize, B_normalize, 1.0; species=User)
+## For full EM problems, the normalization of E and B should be done separately.
+param2 = prepare(E_normalize, B_normalize; species=User)
 ## Scale initial quantities by the conversion factors
 x0 ./= l₀
 v0 ./= U₀
-tspan2 = (0, 2π/Ω/t₀)
+tspan2 = (0, 2π)
 stateinit2 = [x0..., v0...]
 
 prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
