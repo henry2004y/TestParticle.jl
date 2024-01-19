@@ -15,6 +15,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
@@ -47,11 +48,6 @@ end
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-## Spatial extent along each dimension
-x = range(-0.5, 0.5, length=nx)
-y = range(-0.5, 0.5, length=ny)
-z = range(-0.5, 0.5, length=nz)
-
 ## Numerical magnetic field
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
@@ -69,6 +65,12 @@ const t₀ = 1 / Ω  # [s]
 const U₀ = 1.0    # [m/s]
 const l₀ = U₀ * t₀ # [m]
 const E₀ = U₀*B₀ # [V/m]
+
+## The original coordinates may have units. Divided by l₀ to convert to dimensionless unit.
+## Dimensionless spatial extent along each dimension
+x = range(0, nx-1, length=nx)
+y = range(0, ny-1, length=ny)
+z = range(0, nz-1, length=nz)
 ## Factor to scale the spatial coordinates
 lscale = 2.0
 ## Scale the coordinates to control the number of discrete B values encountered

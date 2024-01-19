@@ -21,10 +21,10 @@ using StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-x = range(-10, 10, length=15)
-y = range(-10, 10, length=20)
-B = fill(0.0, 3, length(x), length(y)) # [B₀]
+## Number of cells for the field along each dimension
+nx, ny = 4, 6
 
+B = fill(0.0, 3, nx, ny) # [B₀]
 B[3,:,:] .= 10e-9
 ## Reference values for unit conversions
 ## This is the magnitude of B
@@ -34,6 +34,9 @@ t₀ = 1 / Ω  # [s]
 U₀ = 1.0    # [m/s]
 l₀ = U₀ * t₀ # [m]
 E₀ = U₀*B₀ # [V/m]
+
+x = range(-10, 10, length=nx) # [l₀]
+y = range(-10, 10, length=ny) # [l₀]
 
 ## For full EM problems, the normalization of E and B should be done separately.
 B ./= B₀
