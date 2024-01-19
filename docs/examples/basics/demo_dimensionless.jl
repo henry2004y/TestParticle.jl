@@ -8,29 +8,17 @@
 # ---
 
 # This example shows how to trace charged particles in dimensionless units.
-# Let ``B_0`` be the reference magnetic field strength and ``U_0`` the reference velocity. The Lorentz equation without the electric field can be written as
-#
-# ```math
-# \frac{\mathrm{d}\mathbf{u}}{\mathrm{d}t} = \Omega \mathbf{u}\times\mathbf{b}
-# ```
-#
-# where ``\Omega = qB_0/m`` is the reference gyrofrequency and  ``\mathbf{b} = \mathbf{B}/B_0`` is the normalized magnetic field.
-#
-# Then we can normalize the time scale to the gyroperiod ``T=2\pi/\Omega``. We use the gyroradius for the spatial scale, which is proportional to the velocity scale
-#
-# ```math
-# r_L = \frac{U_0}{\Omega}
-# ```
-#
-# For instance, if the magnetic field is homogeneous and the initial perpendicular velocity is 4 (in the normalized units), then the gyroradius is 4.
+# After normalization, ``q=1, B=1, m=1`` so that the gyroradius `r_L = mv_\perp/qB = v_\perp`.
+# If the magnetic field is homogeneous and the initial perpendicular velocity is 4 (in the normalized units), then the gyroradius is 4 (in the normalized units).
+# To convert them to the original units, ``v_\perp = 4*U_0`` and ``r_L = 4*l_0``.
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
 #
 # Now let's demonstrate this with `trace_normalized!`.
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
-using Meshes
 
 using CairoMakie
 CairoMakie.activate!(type = "png")
@@ -41,27 +29,28 @@ z = range(-10, 10, length=25)
 B = fill(0.0, 3, length(x), length(y), length(z)) # [B₀]
 E = fill(0.0, 3, length(x), length(y), length(z)) # [E₀]
 
-B₀ = 10e-9
+B[3,:,:,:] .= 10e-9
+## Unit conversion factors
+B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+   sqrt(sum(vec(Bmag) .^ 2)/length(Bmag))
+end
 
-B[3,:,:,:] .= 1.0
+Ω = abs(qᵢ) * B₀ / mᵢ
+t₀ = 1 / Ω  # [s]
+U₀ = 1.0    # [m/s]
+l₀ = U₀ * t₀ # [m]
+E₀ = U₀*B₀ # [V/m]
 
-Δx = x[2] - x[1]
-Δy = y[2] - y[1]
-Δz = z[2] - z[1]
+## For full EM problems, the normalization of E and B should be done separately.
+B ./= B₀
+E ./= E₀
 
-mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-   (x[1], y[1], z[1]),
-   (Δx, Δy, Δz))
-
-param = prepare(mesh, E, B, B₀; species=Proton)
-
-Ω = param[1]
-U₀ = 1.0
+param = prepare(x, y, z, E, B; species=User)
 
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [4*Ω*U₀, 0.0, 0.0] # initial velocity [v₀]
+u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
 stateinit = [x0..., u0...]
-tspan = (0.0, 2π/Ω) # one gyroperiod
+tspan = (0.0, π) # half gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 sol = solve(prob, Vern9())

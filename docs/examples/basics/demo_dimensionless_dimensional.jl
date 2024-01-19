@@ -66,14 +66,14 @@ prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
 sol1 = solve(prob1, Vern9(); reltol=1e-4, abstol=1e-6)
 
 ### Solving in dimensionless units
-B_normalize(x) = SA[0, 0, 1.0]
+B_normalize(x) = SA[0, 0, 1.0] # B₀/B₀
 E_normalize(x) = SA[Emag/E₀, 0.0, 0.0]
-## Default User type has q=1, m=1. Here we also set B=0. 
-param2 = prepare(E_normalize, B_normalize, 1.0; species=User)
+## For full EM problems, the normalization of E and B should be done separately.
+param2 = prepare(E_normalize, B_normalize; species=User)
 ## Scale initial quantities by the conversion factors
 x0 ./= l₀
 v0 ./= U₀
-tspan2 = (0, 2π/Ω/t₀)
+tspan2 = (0, 2π)
 stateinit2 = [x0..., v0...]
 
 prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
