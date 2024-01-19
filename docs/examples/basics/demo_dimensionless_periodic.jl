@@ -26,9 +26,9 @@ y = range(-10, 10, length=20)
 B = fill(0.0, 3, length(x), length(y)) # [B₀]
 
 B[3,:,:] .= 10e-9
+## Reference values for unit conversions
 ## This is the magnitude of B
 B₀ = 10e-9 # [nT]
-
 Ω = abs(qᵢ) * B₀ / mᵢ
 t₀ = 1 / Ω  # [s]
 U₀ = 1.0    # [m/s]

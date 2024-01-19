@@ -8,9 +8,8 @@
 # ---
 
 # This example demonstrates tracing multiple protons in an analytic E field and numerical B field.
-# It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and an initial reference gyroradius `rL`.
-# One way to think of this is that a proton with initial perpendicular velocity `U₀` will gyrate with a radius `rL`.
-# Check [demo_ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
+# See [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
+# Also check [demo_ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
 # The `output_func` argument can be used to change saving outputs. It works as a reduction function, but here we demonstrate how to add additional outputs.
 # Besides the regular outputs, we also save the magnetic field along the trajectory, together with the parallel velocity.
 
@@ -20,8 +19,12 @@ using OrdinaryDiffEq
 using StaticArrays
 using Statistics
 using LinearAlgebra
+using Random
 using CairoMakie
 CairoMakie.activate!(type = "png")
+
+seed = 1 # seed for random number
+Random.seed!(seed)
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, i, repeat)
@@ -42,39 +45,50 @@ function prob_func(prob, i, repeat)
    prob
 end
 
-## Analytical electric field
-E(x) = SA[0.0, 0.0, 0.0]
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 ## Spatial extent along each dimension
-x = range(-10.0, 10.0, length=nx)
-y = range(-10.0, 10.0, length=ny)
-z = range(-10.0, 10.0, length=nz)
+x = range(-0.5, 0.5, length=nx)
+y = range(-0.5, 0.5, length=ny)
+z = range(-0.5, 0.5, length=nz)
 
 ## Numerical magnetic field
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
 B[1,:,:,:] .= 0.0
 B[2,:,:,:] .= 0.0
-B[3,:,:,:] .= 1.0
+B[3,:,:,:] .= 2.0
 
-Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+## Reference values for unit conversions
+const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+   sqrt(mean(vec(Bmag) .^ 2))
+end
 
-B₀ = sqrt(mean(vec(Bmag) .^ 2))
+const Ω = abs(qᵢ) * B₀ / mᵢ
+const t₀ = 1 / Ω  # [s]
+const U₀ = 1.0    # [m/s]
+const l₀ = U₀ * t₀ # [m]
+const E₀ = U₀*B₀ # [V/m]
+## Factor to scale the spatial coordinates
+lscale = 2.0
+## Scale the coordinates to control the number of discrete B values encountered
+## along a given trajectory. In this case B is uniform, so it won't affect the result.
+x /= lscale
+y /= lscale
+z /= lscale
 
-const U₀ = 1.0
-const rL = 4.0
-
-Ω = q2mc = U₀ / (rL*B₀)
+## For full EM problems, the normalization of E and B should be done separately.
+B ./= B₀
+E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
 
 ## By default User type assumes q=1, m=1
 ## bc=2 uses periodic boundary conditions
-param = prepare(x, y, z, E, B, Ω; species=User, bc=2)
+param = prepare(x, y, z, E, B; species=User, bc=2)
 
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [1U₀, 0.0, 0.0] # initial velocity [v₀]
+u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
 stateinit = [x0..., u0...]
-tspan = (0.0, 2π/Ω) # one averaged gyroperiod based on B₀
+tspan = (0.0, 2π) # one averaged gyroperiod based on B₀
 
 saveat = tspan[2] / 40 # save interval
 
