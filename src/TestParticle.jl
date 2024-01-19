@@ -299,11 +299,6 @@ interpolated EM field functions.
 - `order::Int=1`: order of interpolation in [1,2,3].
 - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic.
 
-    prepare(grid::CartesianGrid, E, B, B₀::Real; species=Proton) -> (Ω, E, B)
-
-Return a tuple consists of gyrofrequency for normalization and interpolated EM field
-functions given magnetic field scale B₀ in Tesla.
-
     prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
@@ -341,49 +336,6 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
    end
 
    q/m, Field(E), Field(B)
-end
-
-function prepare(x::T, y::T, z::T, E::TE, B::TB, B₀::Real; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {T<:AbstractRange, TE, TB}
-
-   q, m = getchargemass(species, q, m)
-   Ω = q*B₀/m
-
-   E = TE <: AbstractArray ? getinterp(E, x, y, z, order, bc) : E
-   B = TB <: AbstractArray ? getinterp(B, x, y, z, order, bc) : B
-
-   Ω, Field(E), Field(B)
-end
-
-function prepare(x::T, y::T, E::TE, B::TB, B₀::Real; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {T<:AbstractRange, TE, TB}
-
-   q, m = getchargemass(species, q, m)
-   Ω = q*B₀/m
-
-   E = TE <: AbstractArray ? getinterp(E, x, y, order, bc) : E
-   B = TB <: AbstractArray ? getinterp(B, x, y, order, bc) : B
-
-   Ω, Field(E), Field(B)
-end
-
-function prepare(grid::CartesianGrid, E::TE, B::TB, B₀::Real; species::Species=Proton,
-   q::AbstractFloat=1.0, m::AbstractFloat=1.0, order::Int=1, bc::Int=1) where {TE, TB}
-
-   q, m = getchargemass(species, q, m)
-   Ω = q*B₀/m
-
-   if embeddim(grid) == 3
-      gridx, gridy, gridz = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order, bc) : E
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order, bc) : B
-   elseif embeddim(grid) == 2
-      gridx, gridy = makegrid(grid)
-      E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order, bc) : E
-      B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order, bc) : B
-   end
-
-   Ω, Field(E), Field(B)
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species=Proton,
@@ -434,14 +386,6 @@ function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
    q, m = getchargemass(species, q, m)
 
    q, m, Field(E), Field(B), Field(F)
-end
-
-function prepare(E, B, B₀::AbstractFloat;
-   species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
-   q, m = getchargemass(species, q, m)
-   Ω = q*B₀/m
-
-   Ω, Field(E), Field(B)
 end
 
 """
@@ -601,17 +545,17 @@ If the field is in 2D X-Y plane, periodic boundary should be applied for the fie
 the extrapolation function provided by Interpolations.jl.
 """
 function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
-   Ω, E, B = p
+   _, E, B = p
 
    vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
    dy[1], dy[2], dy[3] = vx, vy, vz
-   # Ω*(E + v × B)
-   dy[4] = Ω*(vy*Bz - vz*By + Ex)
-   dy[5] = Ω*(vz*Bx - vx*Bz + Ey)
-   dy[6] = Ω*(vx*By - vy*Bx + Ez)
+   # E + v × B
+   dy[4] = vy*Bz - vz*By + Ex
+   dy[5] = vz*Bx - vx*Bz + Ey
+   dy[6] = vx*By - vy*Bx + Ez
 
    return
 end
