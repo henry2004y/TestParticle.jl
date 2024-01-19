@@ -16,7 +16,7 @@
 # MHD models, for instance, are dimensionless by nature.
 # If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
 # However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
-#
+
 # The `SavingCallback` from DiffEqCallbacks.jl can be used to save additional outputs for diagnosis. Here we save the magnetic field along the trajectory, together with the parallel velocity.
 # Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see [Demo: ensemble tracing with extra saving](@ref demo_output_func).
 
@@ -30,25 +30,24 @@ using DiffEqCallbacks
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-## Numerical magnetic field
+## Numerical magnetic field given in customized dimensionless units
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
 B[1,:,:,:] .= 0.0
 B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
-## Reference values for unit conversions
-const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-   sqrt(mean(vec(Bmag) .^ 2))
-end
 
-const Ω = abs(qᵢ) * B₀ / mᵢ
-const t₀ = 1 / Ω  # [s]
-const U₀ = 1.0    # [m/s]
-const l₀ = U₀ * t₀ # [m]
-const E₀ = U₀*B₀ # [V/m]
+## Reference values for unit conversions between the customized and default dimensionless
+## units
+const B₀ = 2.0 
+const Ω = B₀
+const t₀ = 1 / Ω
+const U₀ = 1.0
+const l₀ = U₀ * t₀
+const E₀ = U₀ * B₀
 
-## The original coordinates may have units. Divided by l₀ to convert to dimensionless unit.
-## Dimensionless spatial extent along each dimension
+## Convert from customized to default dimensionless units
+## Dimensionless spatial extent along each dimension with resolution 1
 x = range(0, nx-1, length=nx)
 y = range(0, ny-1, length=ny)
 z = range(0, nz-1, length=nz)

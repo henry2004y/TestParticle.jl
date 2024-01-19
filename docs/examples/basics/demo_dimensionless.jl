@@ -8,11 +8,13 @@
 # ---
 
 # This example shows how to trace charged particles in dimensionless units.
-# After normalization, ``q=1, B=1, m=1`` so that the gyroradius `r_L = mv_\perp/qB = v_\perp`.
-# If the magnetic field is homogeneous and the initial perpendicular velocity is 4 (in the normalized units), then the gyroradius is 4 (in the normalized units).
+# After normalization, ``q=1, B=1, m=1`` so that the gyroradius `r_L = mv_\perp/qB = v_\perp`. All the quantities are given in dimensionless units.
+# If the magnetic field is homogeneous and the initial perpendicular velocity is 4, then the gyroradius is 4.
 # To convert them to the original units, ``v_\perp = 4*U_0`` and ``r_L = 4*l_0``.
+# Check [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
+
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
-#
+
 # Now let's demonstrate this with `trace_normalized!`.
 
 import DisplayAs #hide
@@ -25,29 +27,21 @@ CairoMakie.activate!(type = "png")
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-
-B = fill(0.0, 3, nx, ny, nz) # [B₀]
-E = fill(0.0, 3, nx, ny, nz) # [E₀]
-
-B[3,:,:,:] .= 10e-9
-## Unit conversion factors
-B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-   sqrt(sum(vec(Bmag) .^ 2)/length(Bmag))
-end
-
-Ω = abs(qᵢ) * B₀ / mᵢ
-t₀ = 1 / Ω  # [s]
-U₀ = 1.0    # [m/s]
-l₀ = U₀ * t₀ # [m]
-E₀ = U₀*B₀ # [V/m]
-
+## Unit conversion factors between SI and dimensionless units
+B₀ = 10e-9            # [T]
+Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+t₀ = 1 / Ω            # [s]
+U₀ = 1.0              # [m/s]
+l₀ = U₀ * t₀          # [m]
+E₀ = U₀*B₀            # [V/m]
+## All quantities are in dimensionless units
 x = range(-10, 10, length=nx) # [l₀]
 y = range(-10, 10, length=ny) # [l₀]
 z = range(-10, 10, length=nz) # [l₀]
 
-## For full EM problems, the normalization of E and B should be done separately.
-B ./= B₀
-E ./= E₀
+B = fill(0.0, 3, nx, ny, nz) # [B₀]
+B[3,:,:,:] .= 1.0
+E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
 param = prepare(x, y, z, E, B; species=User)
 
