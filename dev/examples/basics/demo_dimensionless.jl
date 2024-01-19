@@ -1,38 +1,35 @@
 import DisplayAs #hide
 using TestParticle
+using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
-using Meshes
 
 using CairoMakie
 CairoMakie.activate!(type = "png")
 
-x = range(-10, 10, length=15)
-y = range(-10, 10, length=20)
-z = range(-10, 10, length=25)
-B = fill(0.0, 3, length(x), length(y), length(z)) # [B₀]
-E = fill(0.0, 3, length(x), length(y), length(z)) # [E₀]
+# Number of cells for the field along each dimension
+nx, ny, nz = 4, 6, 8
+# Unit conversion factors between SI and dimensionless units
+B₀ = 10e-9            # [T]
+Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+t₀ = 1 / Ω            # [s]
+U₀ = 1.0              # [m/s]
+l₀ = U₀ * t₀          # [m]
+E₀ = U₀*B₀            # [V/m]
+# All quantities are in dimensionless units
+x = range(-10, 10, length=nx) # [l₀]
+y = range(-10, 10, length=ny) # [l₀]
+z = range(-10, 10, length=nz) # [l₀]
 
-B₀ = 10e-9
-
+B = fill(0.0, 3, nx, ny, nz) # [B₀]
 B[3,:,:,:] .= 1.0
+E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
-Δx = x[2] - x[1]
-Δy = y[2] - y[1]
-Δz = z[2] - z[1]
-
-mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-   (x[1], y[1], z[1]),
-   (Δx, Δy, Δz))
-
-param = prepare(mesh, E, B, B₀; species=Proton)
-
-Ω = param[1]
-U₀ = 1.0
+param = prepare(x, y, z, E, B; species=User)
 
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [4*Ω*U₀, 0.0, 0.0] # initial velocity [v₀]
+u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
 stateinit = [x0..., u0...]
-tspan = (0.0, 2π/Ω) # one gyroperiod
+tspan = (0.0, π) # half gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 sol = solve(prob, Vern9())

@@ -1,59 +1,63 @@
 using TestParticle
+using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
 using LinearAlgebra
 using DiffEqCallbacks
 
-# Analytical electric field
-E(x) = SA[0.0, 0.0, 0.0]
 # Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-# Spatial extent along each dimension
-x = range(-10.0, 10.0, length=nx)
-y = range(-10.0, 10.0, length=ny)
-z = range(-10.0, 10.0, length=nz)
-
-# Numerical magnetic field
+# Spatial coordinates given in customized units
+x = range(-0.5, 0.5, length=nx)
+y = range(-0.5, 0.5, length=ny)
+z = range(-0.5, 0.5, length=nz)
+# Numerical magnetic field given in customized units
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
 B[1,:,:,:] .= 0.0
 B[2,:,:,:] .= 0.0
-B[3,:,:,:] .= 1.0
+B[3,:,:,:] .= 2.0
 
-Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-
-B₀ = sqrt(mean(vec(Bmag) .^ 2))
-
+# Reference values for unit conversions between the customized and dimensionless units
+const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+   sqrt(mean(vec(Bmag) .^ 2))
+end
 const U₀ = 1.0
-const rL = 4.0
+const l₀ = 4*nx
+const t₀ = l₀ / U₀
+const E₀ = U₀ * B₀
 
-Ω = q2mc = U₀ / (rL*B₀)
+### Convert from customized to default dimensionless units
+# Dimensionless spatial extents [l₀]
+x /= l₀
+y /= l₀
+z /= l₀
+# For full EM problems, the normalization of E and B should be done separately.
+B ./= B₀
+E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
 
-# By default User type assumes q=1, m=1
-# bc=2 uses periodic boundary conditions
-param = prepare(x, y, z, E, B, Ω; species=User, bc=2)
+# By default User type assumes q=1, m=1; bc=2 uses periodic boundary conditions
+param = prepare(x, y, z, E, B; species=User, bc=2)
 
-tspan = (0.0, 2π/Ω) # one averaged gyroperiod based on B₀
+tspan = (0.0, π) # half averaged gyroperiod based on B₀
 
-# Dummy initial state
+# Dummy initial state; positions have units l₀; velocities have units U₀
 stateinit = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
 prob.u0[4:6] = let
-   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-
    B0 = prob.p[3](prob.u0)
    B0 = normalize(B0)
 
    Bperp1 = SA[0.0, -B0[3], B0[2]] |> normalize
    Bperp2 = B0 × Bperp1 |> normalize
 
-   # initial azimuthal angle
-   ϕ = 2π*rand()
-   # initial pitch angle
-   θ = acos(0.5)
+   # initial velocity azimuthal angle
+   ϕ = 2π*0
+   # initial velocity pitch angle w.r.t. B
+   θ = acos(0.0)
 
    sinϕ, cosϕ = sincos(ϕ)
    @. (B0*cos(θ) + Bperp1*(sin(θ)*cosϕ) + Bperp2*(sin(θ)*sinϕ)) * U₀
