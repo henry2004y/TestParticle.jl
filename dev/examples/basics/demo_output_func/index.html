@@ -51,10 +51,7 @@ end
 const U₀ = 1.0
 const l₀ = 2*nx
 const t₀ = l₀ / U₀
-const E₀ = U₀ * B₀
-
-### Convert from customized to default dimensionless units
-# Dimensionless spatial extents [l₀]
+const E₀ = U₀ * B₀;</code></pre><p>Convert from customized to default dimensionless units</p><pre><code class="language-julia hljs"># Dimensionless spatial extents [l₀]
 x /= l₀
 y /= l₀
 z /= l₀
@@ -89,11 +86,7 @@ end
 trajectories = 2
 
 ensemble_prob = EnsembleProblem(prob; prob_func, output_func, safetycopy=false)
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat)
-
-# Visualization
-
-f = Figure(fontsize = 18)
+sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat);</code></pre><p>Visualization</p><pre><code class="language-julia hljs">f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
    title = &quot;Proton trajectories&quot;,
    xlabel = &quot;X&quot;,
@@ -108,4 +101,4 @@ for i in eachindex(sols)
    zp = [s[3] for s in sols[i][1]]
    lines!(ax, xp, yp, zp, label=&quot;$i&quot;)
 end
-</code></pre><p><img src="../demo_output_func-5.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 19 January 2024 19:03">Friday 19 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_output_func-9.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 19 January 2024 19:40">Friday 19 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

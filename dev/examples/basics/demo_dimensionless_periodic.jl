@@ -26,7 +26,7 @@ E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 
 # If bc == 1, we set a NaN value outside the domain (default);
 # If bc == 2, we set periodic boundary conditions.
-param = prepare(x, y, E, B; species=User, bc=2)
+param = prepare(x, y, E, B; species=User, bc=2);
 
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
 u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
@@ -34,9 +34,8 @@ stateinit = [x0..., u0...]
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
+sol = solve(prob, Vern9());
 
-### Visualization
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
    title = "Proton trajectory",
