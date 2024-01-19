@@ -9,11 +9,11 @@
 
 # This example demonstrates tracing one proton in an analytic E field and numerical B field.
 # It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.
-# This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 will possess a gyro-radius of 1.
+# This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 under magnetic field magnitude 1 will possess a gyro-radius of 1.
 # In the dimensionless spatial coordinates, we can zoom in/out the EM field to control the number of discrete points encountered in a gyroperiod.
 # For example, if `dx=dy=dz=1`, it means that a particle with perpendicular velocity 1 will "see" one discrete point along a certain direction oriented from the gyro-center within the gyro-radius;
 # if `dx=dy=dz=0.5`, then the particle will "see" two discrete points.
-# MHD models, for instance, are dimensionless by nature.
+# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we needs to convert the dimensionless units for computing.
 # If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
 # However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
 
@@ -30,41 +30,36 @@ using DiffEqCallbacks
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-## Numerical magnetic field given in customized dimensionless units
+## Spatial coordinates given in customized units
+x = range(-0.5, 0.5, length=nx)
+y = range(-0.5, 0.5, length=ny)
+z = range(-0.5, 0.5, length=nz)
+## Numerical magnetic field given in customized units
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
 B[1,:,:,:] .= 0.0
 B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
 
-## Reference values for unit conversions between the customized and default dimensionless
-## units
-const B₀ = 2.0 
-const Ω = B₀
-const t₀ = 1 / Ω
+## Reference values for unit conversions between the customized and dimensionless units
+const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+   sqrt(mean(vec(Bmag) .^ 2))
+end
 const U₀ = 1.0
-const l₀ = U₀ * t₀
+const l₀ = 4*nx
+const t₀ = l₀ / U₀
 const E₀ = U₀ * B₀
 
-## Convert from customized to default dimensionless units
-## Dimensionless spatial extent along each dimension with resolution 1
-x = range(0, nx-1, length=nx)
-y = range(0, ny-1, length=ny)
-z = range(0, nz-1, length=nz)
-## Factor to scale the spatial coordinates
-lscale = 2.0
-## Scale the coordinates to control the number of discrete B values encountered
-## along a given trajectory. In this case B is uniform, so it won't affect the result.
-x /= lscale
-y /= lscale
-z /= lscale
-
+### Convert from customized to default dimensionless units
+## Dimensionless spatial extents [l₀]
+x /= l₀
+y /= l₀
+z /= l₀
 ## For full EM problems, the normalization of E and B should be done separately.
 B ./= B₀
 E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
 
-## By default User type assumes q=1, m=1
-## bc=2 uses periodic boundary conditions
+## By default User type assumes q=1, m=1; bc=2 uses periodic boundary conditions
 param = prepare(x, y, z, E, B; species=User, bc=2)
 
 tspan = (0.0, π) # half averaged gyroperiod based on B₀

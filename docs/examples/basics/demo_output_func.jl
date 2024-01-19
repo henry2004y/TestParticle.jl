@@ -49,35 +49,31 @@ end
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
-## Numerical magnetic field given in customized dimensionless units
+## Spatial coordinates given in customized units
+x = range(0, 1, length=nx)
+y = range(0, 1, length=ny)
+z = range(0, 1, length=nz)
+## Numerical magnetic field given in customized units
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
 B[1,:,:,:] .= 0.0
 B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
 
-## Reference values for unit conversions between the customized and default dimensionless
-## units
-const B₀ = 2.0 
-const Ω = B₀
-const t₀ = 1 / Ω
+## Reference values for unit conversions between the customized and dimensionless units
+const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
+   sqrt(mean(vec(Bmag) .^ 2))
+end
 const U₀ = 1.0
-const l₀ = U₀ * t₀
+const l₀ = 2*nx
+const t₀ = l₀ / U₀
 const E₀ = U₀ * B₀
 
-## Convert from customized to default dimensionless units
-## Dimensionless spatial extent along each dimension with resolution 1
-x = range(0, nx-1, length=nx)
-y = range(0, ny-1, length=ny)
-z = range(0, nz-1, length=nz)
-## Factor to scale the spatial coordinates
-lscale = 2.0
-## Scale the coordinates to control the number of discrete B values encountered
-## along a given trajectory. In this case B is uniform, so it won't affect the result.
-x /= lscale
-y /= lscale
-z /= lscale
-
+### Convert from customized to default dimensionless units
+## Dimensionless spatial extents [l₀]
+x /= l₀
+y /= l₀
+z /= l₀
 ## For full EM problems, the normalization of E and B should be done separately.
 B ./= B₀
 E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
