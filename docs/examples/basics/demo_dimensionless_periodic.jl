@@ -41,7 +41,7 @@ E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
 
 ## If bc == 1, we set a NaN value outside the domain (default);
 ## If bc == 2, we set periodic boundary conditions.
-param = prepare(E, B; species=User, bc=2)
+param = prepare(x, y, E, B; species=User, bc=2)
 
 # Note that we set a radius of 10, so the trajectory extent from -20 to 0 in y, which is beyond the original y range.
 
