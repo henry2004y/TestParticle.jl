@@ -67,9 +67,9 @@ end
 const U₀ = 1.0
 const l₀ = 2*nx
 const t₀ = l₀ / U₀
-const E₀ = U₀ * B₀
+const E₀ = U₀ * B₀;
 
-### Convert from customized to default dimensionless units
+# Convert from customized to default dimensionless units
 ## Dimensionless spatial extents [l₀]
 x /= l₀
 y /= l₀
@@ -105,9 +105,9 @@ end
 trajectories = 2
 
 ensemble_prob = EnsembleProblem(prob; prob_func, output_func, safetycopy=false)
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat)
+sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat);
 
-## Visualization
+# Visualization
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
