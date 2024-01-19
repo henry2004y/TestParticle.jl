@@ -24,7 +24,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 
 ## Number of cells for the field along each dimension
-nx, ny, nx = 4, 6, 8
+nx, ny, nz = 4, 6, 8
 
 B = fill(0.0, 3, nx, ny, nz) # [B₀]
 E = fill(0.0, 3, nx, ny, nz) # [E₀]
