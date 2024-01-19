@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field, qₑ, mₑ, c, guiding_center, get_gc
+using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center, get_gc
 using Meshes: CartesianGrid
 using Test
 
@@ -283,7 +283,7 @@ end
 
       @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
       # Tracing relativistic particle in dimensionless units
-      param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0], 1.0; species=User)
+      param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
       tspan = (0.0, 1.0) # 1/2π period
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -291,12 +291,13 @@ end
       @test sol.u[end][1] ≈ 0.46557792820784516
    end
 
-   @testset "normalized fields" begin
-      # Constants: q, m
-      # Basic scale: B [T], U [U₀]
-      # Derived scales:
-      # * angular frequency [qB/m]
-      # * time [2π/Ω], length [U₀*2π/Ω]  
+   @testset "normalized fields" begin 
+      B₀ = 10e-9  # [T]
+      Ω = abs(qᵢ) * B₀ / mᵢ
+      t₀ = 1 / Ω  # [s]
+      U₀ = 1.0    # [m/s]
+      l₀ = U₀ * t₀ # [m]
+      E₀ = U₀*B₀ # [V/m]
 
       # 3D
       x = range(-10, 10, length=15)
@@ -304,48 +305,34 @@ end
       z = range(-10, 10, length=25)
       B = fill(0.0, 3, length(x), length(y), length(z)) # [B₀]
       E = fill(0.0, 3, length(x), length(y), length(z)) # [E₀]
-
-      B₀ = 10e-9
-
+      # This is already the normalized field; the original field is B.*B₀
       B[3,:,:,:] .= 1.0
+      # E shall be normalized by E₀
+      E ./= E₀
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-      Δz = z[2] - z[1]
-
-      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-         (x[1], y[1], z[1]),
-         (Δx, Δy, Δz))
-
-      param = prepare(x, y, z, E, B, B₀; species=Proton)
-      @test param[1] == 0.9573477911347543
-
-      param = prepare(grid, E, B, B₀; species=Proton)
+      param = prepare(x, y, z, E, B; species=User)
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-      u0 = [1.0*param[1], 0.0, 0.0] # initial velocity [v₀]
+      u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
-      tspan = (0.0, 0.5π/param[1]) # 1/4 gyroperiod
+      tspan = (0.0, 0.5π) # 1/4 gyroperiod
 
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern9(); save_idxs=[1])
 
       x = getindex.(sol.u, 1)
 
-      @test length(x) == 7 && x[end] ≈ 0.9999999989367031
+      @test length(x) == 7 && x[end] ≈ 1.0
 
       # 2D
       x = range(-10, 10, length=15)
       y = range(-10, 10, length=20)
       B = fill(0.0, 3, length(x), length(y)) # [B₀]
       E = fill(0.0, 3, length(x), length(y)) # [E₀]
-
-      B₀ = 10e-9
-
+      # This is already the normalized field; the original field is B.*B₀
       B[3,:,:] .= 1.0
-
-      param = prepare(x, y, E, B.*B₀; species=Proton)
-      @test param[3] isa TestParticle.Field
+      # E shall be normalized by E₀
+      E ./= E₀
 
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
@@ -355,30 +342,30 @@ end
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
       stateinit = [x0..., u0...]
-      tspan = (0.0, 1.0)
+      tspan = (0.0, 0.5π) # 1/4 gyroperiod
       # periodic BC
-      param = prepare(x, y, E, B, B₀; species=Proton, bc=2)
-      @test param[1] == 0.9573477911347543
-      param = prepare(grid, E, B, B₀; species=Proton, bc=2)
+      param = prepare(grid, E, B; species=Proton, bc=2)
+      @test param[3] isa TestParticle.Field
+      param = prepare(x, y, E, B; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
       xs = getindex.(sol.u, 1)
-      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
+      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(grid, E, B, B₀; order=2)
+      param = prepare(grid, E, B; order=2)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
-      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
+      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
 
       # Because the field is uniform, the order of interpolation does not matter.
-      param = prepare(grid, E, B, B₀; order=3)
+      param = prepare(grid, E, B; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
       xs = getindex.(sol.u, 1)
-      @test length(xs) == 8 && xs[end] ≈ 0.8540967195469715
+      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
    end
 
    @testset "Boris pusher" begin
