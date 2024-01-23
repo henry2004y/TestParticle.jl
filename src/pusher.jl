@@ -1,10 +1,17 @@
 # Native particle pusher
 
-struct TraceProblem{TS, T<:Real, TP}
-   stateinit::TS
+struct TraceProblem{TS, T<:Real, TP, PF}
+   u0::TS
    tspan::Tuple{T, T}
    dt::T
    param::TP
+   prob_func::PF
+end
+
+DEFAULT_PROB_FUNC(prob, i, repeat) = prob
+
+function TraceProblem(u0, tspan, dt, param; prob_func=DEFAULT_PROB_FUNC)
+   TraceProblem(u0, tspan, dt, param, prob_func)
 end
 
 struct BorisMethod{T, TV}
@@ -95,42 +102,49 @@ function cross!(v1, v2, vout)
    return
 end
 
-function trace_trajectory(prob::TraceProblem;
+function trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
-   (; stateinit, tspan, dt, param) = prob
-   xv = copy(stateinit)
-   # prepare advancing
-   ttotal = tspan[2] - tspan[1]
-   nt = Int(ttotal ÷ dt)
-   iout, nout = 1, nt ÷ savestepinterval + 1
-   traj = zeros(eltype(stateinit), 6, nout)
 
-   traj[:,1] = xv
+   trajs = Vector{Array{eltype(prob.u0),2}}(undef, trajectories)
 
-   # push velocity back in time by 1/2 dt
-   update_velocity!(xv, param, -0.5*dt)
+   for i in 1:trajectories
+      new_prob = prob.prob_func(prob, i, false)
+      (; u0, tspan, dt, param) = new_prob
+      xv = copy(u0)
+      # prepare advancing
+      ttotal = tspan[2] - tspan[1]
+      nt = Int(ttotal ÷ dt)
+      iout, nout = 1, nt ÷ savestepinterval + 1
+      traj = zeros(eltype(u0), 6, nout)
 
-   for it in 1:nt
-      update_velocity!(xv, param, dt)
-      update_location!(xv, dt)
-      if it % savestepinterval == 0
-      	iout += 1
-      	traj[:,iout] .= xv
+      traj[:,1] = xv
+
+      # push velocity back in time by 1/2 dt
+      update_velocity!(xv, param, -0.5*dt)
+
+      for it in 1:nt
+         update_velocity!(xv, param, dt)
+         update_location!(xv, dt)
+         if it % savestepinterval == 0
+         	iout += 1
+         	traj[:,iout] .= xv
+         end
+         isoutofdomain(xv) && break
       end
-      isoutofdomain(xv) && break
+
+      if iout == nout # regular termination
+         # final step if needed
+         dtfinal = ttotal - nt*dt
+         if dtfinal > 1e-3
+         	update_velocity!(xv, param, dtfinal)
+         	update_location!(xv, dtfinal)
+         	traj = hcat(traj, xv)
+         end
+      else # early termination
+         traj = traj[:, 1:iout]
+      end
+      trajs[i] = traj
    end
 
-   if iout == nout # regular termination
-      # final step if needed
-      dtfinal = ttotal - nt*dt
-      if dtfinal > 1e-3
-      	update_velocity!(xv, param, dtfinal)
-      	update_location!(xv, dtfinal)
-      	traj = hcat(traj, xv)
-      end
-   else # early termination
-      traj = traj[:, 1:iout]
-   end
-
-   traj
+   trajs
 end

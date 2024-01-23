@@ -46,7 +46,7 @@ sol2 = solve(prob, Tsit5());
 
 f = Figure(size=(700, 600))
 ax = Axis(f[1, 1], aspect=1)
-@views lines!(ax, traj[1,:], traj[2,:], label="Boris")
+@views lines!(ax, traj[1][1,:], traj[1][2,:], label="Boris")
 lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed")
 lines!(ax, sol2, linestyle=:dot, label="Tsit5 adaptive")
 axislegend(position=:lt, framevisible=false)
