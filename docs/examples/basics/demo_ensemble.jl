@@ -90,7 +90,9 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(trajs)
-   @views lines!(ax, trajs[i][1,:], trajs[i][2,:], trajs[i][3,:], label="$i")
+   @views lines!(ax, trajs[i].u[1,:], trajs[i].u[2,:], trajs[i].u[3,:], label="$i")
 end
 
 f = DisplayAs.PNG(f) #hide
+
+# You may notice that the Boris outputs are more "discontinuous" than `Tsit5`. This is because algorithms in OrdinaryDiffEq.jl come with "free" interpolation schemes automatically applied for visualization, while we have not yet implemented this for the native Boris method.

@@ -1,7 +1,7 @@
 # ---
 # title: Boris method
 # id: demo_boris
-# date: 2023-11-13
+# date: 2024-01-23
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.10.0
 # description: Simple electron trajectory under uniform B and zero E
@@ -46,7 +46,7 @@ sol2 = solve(prob, Tsit5());
 
 f = Figure(size=(700, 600))
 ax = Axis(f[1, 1], aspect=1)
-@views lines!(ax, traj[1][1,:], traj[1][2,:], label="Boris")
+@views lines!(ax, traj[1].u[1,:], traj[1].u[2,:], label="Boris")
 lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed")
 lines!(ax, sol2, linestyle=:dot, label="Tsit5 adaptive")
 axislegend(position=:lt, framevisible=false)

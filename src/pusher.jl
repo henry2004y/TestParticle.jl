@@ -4,14 +4,19 @@ struct TraceProblem{TS, T<:Real, TP, PF}
    u0::TS
    tspan::Tuple{T, T}
    dt::T
-   param::TP
+   p::TP
    prob_func::PF
+end
+
+struct TraceSolution{TU<:Array, T<:AbstractVector}
+   u::TU
+   t::T
 end
 
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
-function TraceProblem(u0, tspan, dt, param; prob_func=DEFAULT_PROB_FUNC)
-   TraceProblem(u0, tspan, dt, param, prob_func)
+function TraceProblem(u0, tspan, dt, p; prob_func=DEFAULT_PROB_FUNC)
+   TraceProblem(u0, tspan, dt, p, prob_func)
 end
 
 struct BorisMethod{T, TV}
@@ -105,11 +110,11 @@ end
 function trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
-   trajs = Vector{Array{eltype(prob.u0),2}}(undef, trajectories)
+   sols = Vector{TraceSolution}(undef, trajectories)
 
    for i in 1:trajectories
       new_prob = prob.prob_func(prob, i, false)
-      (; u0, tspan, dt, param) = new_prob
+      (; u0, tspan, dt, p) = new_prob
       xv = copy(u0)
       # prepare advancing
       ttotal = tspan[2] - tspan[1]
@@ -120,10 +125,10 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
       traj[:,1] = xv
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, param, -0.5*dt)
+      update_velocity!(xv, p, -0.5*dt)
 
       for it in 1:nt
-         update_velocity!(xv, param, dt)
+         update_velocity!(xv, p, dt)
          update_location!(xv, dt)
          if it % savestepinterval == 0
          	iout += 1
@@ -133,18 +138,21 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
       end
 
       if iout == nout # regular termination
-         # final step if needed
          dtfinal = ttotal - nt*dt
-         if dtfinal > 1e-3
-         	update_velocity!(xv, param, dtfinal)
+         if dtfinal > 1e-3 # final step if needed
+         	update_velocity!(xv, p, dtfinal)
          	update_location!(xv, dtfinal)
          	traj = hcat(traj, xv)
+            t = [collect(tspan[1]:dt:tspan[2])..., tspan[2]]
+         else
+            t = collect(tspan[1]:dt:tspan[2])
          end
       else # early termination
          traj = traj[:, 1:iout]
+         t = collect(range(tspan[1], tspan[1]+iout*dt, step=dt))
       end
-      trajs[i] = traj
+      sols[i] = TraceSolution(traj, t)
    end
 
-   trajs
+   sols
 end
