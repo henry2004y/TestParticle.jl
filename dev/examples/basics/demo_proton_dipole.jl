@@ -94,6 +94,6 @@ dt = 1e-4
 paramBoris = BorisMethod(param)
 prob = TraceProblem(stateinit, tspan, dt, paramBoris)
 traj = trace_trajectory(prob)
-get_energy_ratio(traj[1])
+get_energy_ratio(traj[1].u)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
