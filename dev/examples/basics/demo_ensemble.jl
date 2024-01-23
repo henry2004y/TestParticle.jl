@@ -51,4 +51,30 @@ end
 
 f = DisplayAs.PNG(f) #hide
 
+dt = 0.1
+savestepinterval = 1
+
+# Solve for the trajectories
+
+paramBoris = BorisMethod(param)
+prob = TraceProblem(stateinit, tspan, dt, paramBoris; prob_func)
+trajs = trace_trajectory(prob; trajectories, savestepinterval)
+
+# Visualization
+
+f = Figure(fontsize = 18)
+ax = Axis3(f[1, 1],
+   title = "Electron trajectories",
+   xlabel = "X",
+   ylabel = "Y",
+   zlabel = "Z",
+   aspect = :data,
+)
+
+for i in eachindex(trajs)
+   @views lines!(ax, trajs[i][1,:], trajs[i][2,:], trajs[i][3,:], label="$i")
+end
+
+f = DisplayAs.PNG(f) #hide
+
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
