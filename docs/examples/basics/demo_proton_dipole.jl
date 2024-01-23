@@ -98,7 +98,7 @@ get_energy_ratio(sol)
 
 # Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
 ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
-sol = solve(prob, Tsit5(); reltol=1e-4)
+sol = solve(prob, Tsit5(); reltol=1e-4);
 
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
