@@ -79,7 +79,7 @@ sol = solve(prob, Tsit5())
 get_energy_ratio(sol)
 
 # This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
-sol = solve(prob, Tsit5(); reltol=1e-4)
+sol = solve(prob, Tsit5(); reltol=1e-4);
 
 using DiffEqCallbacks
 
