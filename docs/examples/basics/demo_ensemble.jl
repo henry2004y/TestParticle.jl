@@ -1,9 +1,9 @@
 # ---
 # title: Ensemble tracing
 # id: demo_ensemble
-# date: 2023-04-20
+# date: 2024-01-23
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
+# julia: 1.10.0
 # description: Tracing multiple charged particles in a static EM field
 # ---
 
@@ -62,6 +62,35 @@ ax = Axis3(f[1, 1],
 
 for i in eachindex(sols)
    lines!(ax, sols[i], label="$i")
+end
+
+f = DisplayAs.PNG(f) #hide
+
+# We can also solve this problem with the native [Boris pusher](@ref demo_boris).
+# Note that the Boris pusher requires a additional parameters: a fixed timestep, and an output save interval.
+
+dt = 0.1
+savestepinterval = 1
+
+## Solve for the trajectories
+
+paramBoris = BorisMethod(param)
+prob = TraceProblem(stateinit, tspan, dt, paramBoris; prob_func)
+trajs = trace_trajectory(prob; trajectories, savestepinterval)
+
+## Visualization
+
+f = Figure(fontsize = 18)
+ax = Axis3(f[1, 1],
+   title = "Electron trajectories",
+   xlabel = "X",
+   ylabel = "Y",
+   zlabel = "Z",
+   aspect = :data,
+)
+
+for i in eachindex(trajs)
+   @views lines!(ax, trajs[i][1,:], trajs[i][2,:], trajs[i][3,:], label="$i")
 end
 
 f = DisplayAs.PNG(f) #hide
