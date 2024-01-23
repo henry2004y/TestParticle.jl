@@ -90,7 +90,7 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(trajs)
-   @views lines!(ax, trajs[i][1,:], trajs[i][2,:], trajs[i][3,:], label="$i")
+   @views lines!(ax, trajs[i].u[1,:], trajs[i].u[2,:], trajs[i].u[3,:], label="$i")
 end
 
 f = DisplayAs.PNG(f) #hide
