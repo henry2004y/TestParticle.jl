@@ -2,6 +2,7 @@
    "order": [
      "demo_energy_conservation.jl",
      "demo_boris.jl",
+     "demo_boris_outofdomain.jl",
      "demo_Buniform_Ezero.jl",
      "demo_dimensionless.jl",
      "demo_dimensionless_periodic.jl",
