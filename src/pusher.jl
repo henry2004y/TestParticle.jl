@@ -1,15 +1,22 @@
 # Native particle pusher
 
 struct TraceProblem{TS, T<:Real, TP, PF}
+   "initial condition"
    u0::TS
+   "time span"
    tspan::Tuple{T, T}
+   "time step"
    dt::T
+   "tuple of parameters"
    p::TP
+   "function for setting initial conditions"
    prob_func::PF
 end
 
 struct TraceSolution{TU<:Array, T<:AbstractVector}
+   "positions and velocities"
    u::TU
+   "time stamps"
    t::T
 end
 
@@ -90,6 +97,7 @@ function update_velocity!(xv, paramBoris, dt)
    return
 end
 
+"Update location in one timestep `dt`."
 function update_location!(xv, dt)
    xv[1] += xv[4]*dt
    xv[2] += xv[5]*dt
@@ -107,6 +115,17 @@ function cross!(v1, v2, vout)
    return
 end
 
+"""
+    trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
+       savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
+
+Trace particles using the Boris method, with specified `prob` and number of trajectories
+`trajectories`.
+
+# keywords
+- `savestepinterval::Int`: saving output interval.
+- `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
+"""
 function trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
