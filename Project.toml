@@ -1,7 +1,7 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>, and Tiancheng Liu <liutc@mail.nankai.edu.cn>"]
-version = "0.7.0"
+version = "0.7.1"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -27,7 +27,7 @@ Distributions = "0.25"
 Elliptic = "1.0"
 Interpolations = "0.14, 0.15"
 Makie = "0.20"
-Meshes = "0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39"
+Meshes = "0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.40"
 PrecompileTools = "1.0"
 SciMLBase = "2"
 SpecialFunctions = "1.5, 2.0"
