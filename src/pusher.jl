@@ -119,10 +119,10 @@ end
     trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
        savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
-Trace particles using the Boris method, with specified `prob` and number of trajectories
-`trajectories`.
+Trace particles using the Boris method with specified `prob`.
 
 # keywords
+- `trajectories::Int`: number of trajectories to trace.
 - `savestepinterval::Int`: saving output interval.
 - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
