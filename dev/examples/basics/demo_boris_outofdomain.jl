@@ -9,6 +9,13 @@ CairoMakie.activate!(type = "png")
 uniform_B(x) = SA[0.0, 0.0, 0.01]
 uniform_E(x) = SA[0.0, 0.0, 0.0]
 
+"Set initial states."
+function prob_func(prob, i, repeat)
+   prob.u0[4] = 10.0 - i*2.0
+
+   prob
+end
+
 function isoutofdomain(xv)
    if isnan(xv[1])
       return true
@@ -39,16 +46,19 @@ E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 # If bc == 2, we set periodic boundary conditions.
 param = prepare(x, y, E, B; species=User, bc=1);
 
+# Initial conditions to be modified in prob_func
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
+u0 = [0.0, 0.0, 0.0] # initial velocity [v₀]
 stateinit = [x0..., u0...]
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
 paramBoris = BorisMethod(param)
 dt = 0.1
-prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+savestepinterval = 1
+trajectories = 2
+prob = TraceProblem(stateinit, tspan, dt, paramBoris; prob_func)
 
-sol = trace_trajectory(prob; savestepinterval=1, isoutofdomain)
+sols = trace_trajectory(prob; savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
@@ -59,7 +69,11 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-@views lines!(ax, sol[1].u[1,:], sol[1].u[2,:])
+for i in eachindex(sols)
+   @views lines!(ax, sols[i].u[1,:], sols[i].u[2,:], label=string(i))
+end
+
+axislegend()
 
 f = DisplayAs.PNG(f) #hide
 
