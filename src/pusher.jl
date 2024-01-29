@@ -130,16 +130,16 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
    sols = Vector{TraceSolution}(undef, trajectories)
+   # prepare advancing
    xv = similar(prob.u0)
    (; tspan, dt, p) = prob
-
-   # prepare advancing
    ttotal = tspan[2] - tspan[1]
    nt = Int(ttotal ÷ dt)
    iout, nout = 1, nt ÷ savestepinterval + 1
    traj = zeros(eltype(prob.u0), 6, nout)
 
    for i in 1:trajectories
+      # set initial conditions for each trajectory
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
       traj[:,1] = xv
