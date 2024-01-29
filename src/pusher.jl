@@ -173,6 +173,7 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
          t = collect(range(tspan[1], tspan[1]+iout*dt, step=dt))
       end
       sols[i] = TraceSolution(traj_save, t)
+      iout = 1
    end
 
    sols
