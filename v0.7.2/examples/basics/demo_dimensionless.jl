@@ -1,0 +1,51 @@
+import DisplayAs #hide
+using TestParticle
+using TestParticle: qᵢ, mᵢ
+using OrdinaryDiffEq
+
+using CairoMakie
+CairoMakie.activate!(type = "png")
+
+# Number of cells for the field along each dimension
+nx, ny, nz = 4, 6, 8
+# Unit conversion factors between SI and dimensionless units
+B₀ = 10e-9            # [T]
+Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+t₀ = 1 / Ω            # [s]
+U₀ = 1.0              # [m/s]
+l₀ = U₀ * t₀          # [m]
+E₀ = U₀*B₀            # [V/m]
+# All quantities are in dimensionless units
+x = range(-10, 10, length=nx) # [l₀]
+y = range(-10, 10, length=ny) # [l₀]
+z = range(-10, 10, length=nz) # [l₀]
+
+B = fill(0.0, 3, nx, ny, nz) # [B₀]
+B[3,:,:,:] .= 1.0
+E = fill(0.0, 3, nx, ny, nz) # [E₀]
+
+param = prepare(x, y, z, E, B; species=User)
+
+x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
+stateinit = [x0..., u0...]
+tspan = (0.0, π) # half gyroperiod
+
+prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = "Proton trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   limits = (-4.1, 4.1, -8.1, 0.1),
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, vars=(1,2))
+
+f = DisplayAs.PNG(f) #hide
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
