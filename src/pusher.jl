@@ -130,17 +130,18 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
    sols = Vector{TraceSolution}(undef, trajectories)
+   xv = similar(prob.u0)
+   (; tspan, dt, p) = prob
+
+   # prepare advancing
+   ttotal = tspan[2] - tspan[1]
+   nt = Int(ttotal ÷ dt)
+   iout, nout = 1, nt ÷ savestepinterval + 1
+   traj = zeros(eltype(prob.u0), 6, nout)
 
    for i in 1:trajectories
       new_prob = prob.prob_func(prob, i, false)
-      (; u0, tspan, dt, p) = new_prob
-      xv = copy(u0)
-      # prepare advancing
-      ttotal = tspan[2] - tspan[1]
-      nt = Int(ttotal ÷ dt)
-      iout, nout = 1, nt ÷ savestepinterval + 1
-      traj = zeros(eltype(u0), 6, nout)
-
+      xv .= new_prob.u0
       traj[:,1] = xv
 
       # push velocity back in time by 1/2 dt
@@ -161,16 +162,17 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
          if dtfinal > 1e-3 # final step if needed
          	update_velocity!(xv, p, dtfinal)
          	update_location!(xv, dtfinal)
-         	traj = hcat(traj, xv)
+         	traj_save = hcat(traj, xv)
             t = [collect(tspan[1]:dt:tspan[2])..., tspan[2]]
          else
+            traj_save = traj
             t = collect(tspan[1]:dt:tspan[2])
          end
       else # early termination
-         traj = traj[:, 1:iout]
+         traj_save = traj[:, 1:iout]
          t = collect(range(tspan[1], tspan[1]+iout*dt, step=dt))
       end
-      sols[i] = TraceSolution(traj, t)
+      sols[i] = TraceSolution(traj_save, t)
    end
 
    sols
