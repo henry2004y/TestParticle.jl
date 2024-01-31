@@ -393,8 +393,8 @@ end
 
       prob = TraceProblem(stateinit, tspan, dt, param; prob_func=prob_func_boris)
       trajectories = 4
-      sols = TestParticle.solve(prob, EnsembleThreads();
-         savestepinterval=1000, trajectories)
+      savestepinterval = 1000
+      sols = TestParticle.solve(prob, EnsembleThreads(); savestepinterval, trajectories)
       @test sum(x -> sum(@view x.u[:,end]), sols) ≈ -1.4065273620640622e6
    end
 end

@@ -124,90 +124,82 @@ function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm=EnsembleS
    trajectories::Int=1, savestepinterval::Int=1,
    isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
-   sols = __solve(ensemblealg, prob, trajectories, savestepinterval, isoutofdomain)
+   sols = _solve(ensemblealg, prob, trajectories, savestepinterval, isoutofdomain)
 end
 
-function __solve(::EnsembleSerial, prob, trajectories, savestepinterval, isoutofdomain)
-   sols = Vector{TraceSolution}(undef, trajectories)
-   # prepare advancing
-   (; tspan, dt, p) = prob
-   ttotal = tspan[2] - tspan[1]
-   nt = round(Int, ttotal / dt)
-   nout = nt ÷ savestepinterval + 1
-   traj = zeros(eltype(prob.u0), 6, nout)
+function _solve(::EnsembleSerial, prob, trajectories, savestepinterval, isoutofdomain)
+   sols, ttotal, nt, nout = _prepare(prob, trajectories, savestepinterval)
 
-   paramBoris = BorisMethod()
-   xv = similar(prob.u0)
-   nout = nt ÷ savestepinterval + 1
-
-   for i in 1:trajectories
-      _boris!(sols, prob, i, xv, paramBoris, p, dt, savestepinterval, nout, ttotal, nt,
-         traj, tspan, isoutofdomain)
-   end
+   _boris!(sols, prob, 1:trajectories, savestepinterval, ttotal, nt, nout, isoutofdomain)
 
    sols
 end
 
-function __solve(::EnsembleThreads, prob, trajectories, savestepinterval, isoutofdomain)
-   sols = Vector{TraceSolution}(undef, trajectories)
-   # prepare advancing
-   (; tspan, dt, p) = prob
-   ttotal = tspan[2] - tspan[1]
-   nt = round(Int, ttotal / dt)
-   nout = nt ÷ savestepinterval + 1
+function _solve(::EnsembleThreads, prob, trajectories, savestepinterval, isoutofdomain)
+   sols, ttotal, nt, nout = _prepare(prob, trajectories, savestepinterval)
 
    nchunks = Threads.nthreads()
    Threads.@threads for (irange, ichunk) in chunks(1:trajectories, nchunks)
-      paramBoris = BorisMethod()
-      xv = similar(prob.u0)
-      traj = zeros(eltype(prob.u0), 6, nout)
-
-      for i in irange
-         _boris!(sols, prob, i, xv, paramBoris, p, dt, savestepinterval, nout, ttotal, nt,
-            traj, tspan, isoutofdomain)
-      end
+      _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
    end
 
    sols
 end
 
-function _boris!(sols, prob, i,
-   xv, paramBoris, p, dt, savestepinterval, nout, ttotal, nt, traj, tspan, isoutofdomain)
-   # set initial conditions for each trajectory
-   iout = 1
-   new_prob = prob.prob_func(prob, i, false)
-   xv .= new_prob.u0
-   traj[:,1] = xv
+"Prepare for advancing."
+function _prepare(prob, trajectories, savestepinterval)
+   (; tspan, dt) = prob
+   ttotal = tspan[2] - tspan[1]
+   nt = round(Int, ttotal / dt)
+   nout = nt ÷ savestepinterval + 1
+   sols = Vector{TraceSolution}(undef, trajectories)
 
-   # push velocity back in time by 1/2 dt
-   update_velocity!(xv, paramBoris, p, -0.5*dt)
+   sols, ttotal, nt, nout
+end
 
-   for it in 1:nt
-      update_velocity!(xv, paramBoris, p, dt)
-      update_location!(xv, dt)
-      if it % savestepinterval == 0
-         iout += 1
-         traj[:,iout] .= xv
+function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
+   (; tspan, dt, p, u0) = prob
+   paramBoris = BorisMethod()
+   xv = similar(u0)
+   traj = zeros(eltype(u0), 6, nout)
+
+   for i in irange
+      # set initial conditions for each trajectory i
+      iout = 1
+      new_prob = prob.prob_func(prob, i, false)
+      xv .= new_prob.u0
+      traj[:,1] = xv
+
+      # push velocity back in time by 1/2 dt
+      update_velocity!(xv, paramBoris, p, -0.5*dt)
+
+      for it in 1:nt
+         update_velocity!(xv, paramBoris, p, dt)
+         update_location!(xv, dt)
+         if it % savestepinterval == 0
+            iout += 1
+            traj[:,iout] .= xv
+         end
+         isoutofdomain(xv) && break
       end
-      isoutofdomain(xv) && break
-   end
 
-   if iout == nout # regular termination
-      dtfinal = ttotal - nt*dt
-      if dtfinal > 1e-3 # final step if needed
-         update_velocity!(xv, paramBoris, p, dtfinal)
-         update_location!(xv, dtfinal)
-         traj_save = hcat(traj, xv)
-         t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
-      else
-         traj_save = copy(traj)
-         t = collect(tspan[1]:dt*savestepinterval:tspan[2])
+      if iout == nout # regular termination
+         dtfinal = ttotal - nt*dt
+         if dtfinal > 1e-3 # final step if needed
+            update_velocity!(xv, paramBoris, p, dtfinal)
+            update_location!(xv, dtfinal)
+            traj_save = hcat(traj, xv)
+            t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
+         else
+            traj_save = copy(traj)
+            t = collect(tspan[1]:dt*savestepinterval:tspan[2])
+         end
+      else # early termination or savestepinterval != 1
+         traj_save = traj[:, 1:iout]
+         t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*iout)
       end
-   else # early termination or savestepinterval != 1
-      traj_save = traj[:, 1:iout]
-      t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*iout)
+      sols[i] = TraceSolution(traj_save, t)
    end
-   sols[i] = TraceSolution(traj_save, t)
 
    return
 end
