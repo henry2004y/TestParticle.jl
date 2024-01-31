@@ -27,11 +27,10 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 3e-6)
 dt = 3e-11
 param = prepare(uniform_E, uniform_B, species=Electron)
-paramBoris = BorisMethod(param)
-prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+prob = TraceProblem(stateinit, tspan, dt, param)
 
-traj = trace_trajectory(prob; savestepinterval=10);
-@time traj = trace_trajectory(prob; savestepinterval=10);
+traj = TestParticle.solve(prob; savestepinterval=10);
+@time traj = TestParticle.solve(prob; savestepinterval=10);
 
 # Now let's compare against other ODE solvers:
 

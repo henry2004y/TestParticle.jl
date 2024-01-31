@@ -8,6 +8,12 @@ function prob_func(prob, i, repeat)
    remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
 end
 
+function prob_func_boris(prob, i, repeat)
+   prob.u0[5] = i*1e5
+
+   prob
+end
+
 "Test boundary check method."
 function isoutofdomain(u, p, t)
    if hypot(u[1], u[2], u[3]) > 0.8
@@ -378,13 +384,18 @@ end
       tspan = (0.0, 3e-8)
       dt = 3e-11
       param = prepare(uniform_E, uniform_B, species=Electron)
-      paramBoris = BorisMethod(param)
-      prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+      prob = TraceProblem(stateinit, tspan, dt, param)
 
-      traj = trace_trajectory(prob; savestepinterval=10)
+      sol = TestParticle.solve(prob; savestepinterval=10)
 
-      @test traj[1].u[:, end] == [-7.84237771267459e-5, 5.263661571564935e-5, 0.0,
-         -93512.6374393526, -35431.43574759836, 0.0]
+      @test sol[1].u[:, end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
+         -62964.170425493256, -77688.56571355555, 0.0]
+
+      prob = TraceProblem(stateinit, tspan, dt, param; prob_func=prob_func_boris)
+      trajectories = 4
+      savestepinterval = 1000
+      sols = TestParticle.solve(prob, EnsembleThreads(); savestepinterval, trajectories)
+      @test sum(x -> sum(@view x.u[:,end]), sols) ≈ -1.4065273620640622e6
    end
 end
 
