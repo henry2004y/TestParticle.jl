@@ -49,7 +49,7 @@ struct BorisMethod{TV}
    end
 end
 
-@inline ODE_DEFAULT_ISOUTOFDOMAIN(u) = false
+@inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
     update_velocity!(xv, paramBoris, param, dt)
@@ -157,6 +157,7 @@ function _prepare(prob, trajectories, savestepinterval)
    sols, ttotal, nt, nout
 end
 
+"Apply Boris method for particles with index in `irange`."
 function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
    (; tspan, dt, p, u0) = prob
    paramBoris = BorisMethod()
@@ -180,7 +181,7 @@ function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutof
             iout += 1
             traj[:,iout] .= xv
          end
-         isoutofdomain(xv) && break
+         isoutofdomain(xv, p, it*dt) && break
       end
 
       if iout == nout # regular termination
