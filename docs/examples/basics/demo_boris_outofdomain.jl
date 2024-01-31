@@ -29,7 +29,7 @@ function prob_func(prob, i, repeat)
    prob
 end
 
-function isoutofdomain(xv)
+function isoutofdomain(xv, p, t)
    if isnan(xv[1])
       return true
    else
