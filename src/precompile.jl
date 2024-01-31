@@ -33,8 +33,7 @@
       end
       tspan = (0.0, 1.0)
       dt = 0.5
-      paramBoris = BorisMethod(param)
-      prob = TraceProblem(stateinit, tspan, dt, paramBoris)
-      sol = trace_trajectory(prob; savestepinterval=100)
+      prob = TraceProblem(stateinit, tspan, dt, param)
+      sol = solve(prob; savestepinterval=100)
    end
 end

@@ -20,8 +20,7 @@ Visualization via [Makie](https://makie.juliaplots.org/stable/), [Plots](https:/
 
 ## Usage
 
-TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl). Native particle pusher also follows a similar interface.
-
+TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
 For example, a proton in a static magnetic field can be traced via
 
 ```julia
@@ -48,6 +47,15 @@ For plotting with Makie,
 using GLMakie
 
 plot(sol)
+```
+
+Native Boris particle pusher also follows a similar interface:
+
+```julia
+dt = 3e-11 # fixed time step
+savestepinterval = 10
+prob = TraceProblem(stateinit, tspan, dt, param)
+sol = TestParticle.solve(prob; savestepinterval)
 ```
 
 More tutorials and examples can be found in the [doc](https://henry2004y.github.io/TestParticle.jl/dev/).

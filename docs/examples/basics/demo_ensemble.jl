@@ -74,9 +74,8 @@ savestepinterval = 1
 
 ## Solve for the trajectories
 
-paramBoris = BorisMethod(param)
-prob = TraceProblem(stateinit, tspan, dt, paramBoris; prob_func)
-trajs = trace_trajectory(prob; trajectories, savestepinterval)
+prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
+trajs = TestParticle.solve(prob; trajectories, savestepinterval)
 
 ## Visualization
 

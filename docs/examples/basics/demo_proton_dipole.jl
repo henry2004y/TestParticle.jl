@@ -115,9 +115,8 @@ get_energy_ratio(sol)
 # We can also use the classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) implemented within the package:
 
 dt = 1e-4
-paramBoris = BorisMethod(param)
-prob = TraceProblem(stateinit, tspan, dt, paramBoris)
-traj = trace_trajectory(prob)
+prob = TraceProblem(stateinit, tspan, dt, param)
+traj = TestParticle.solve(prob)
 get_energy_ratio(traj[1].u)
 
 # The Boris method requires a fixed time step. It takes about 0.05s and consumes 53 MiB memory. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off (but the energy is still conserved).

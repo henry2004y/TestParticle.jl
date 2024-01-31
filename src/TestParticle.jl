@@ -4,8 +4,10 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic
+using SciMLBase: BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial
 using Distributions: MvNormal
 using StaticArrays
+using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, sample
@@ -14,7 +16,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor
-export TraceProblem, BorisMethod, trace_trajectory
+export TraceProblem
 
 include("utility/utility.jl")
 
