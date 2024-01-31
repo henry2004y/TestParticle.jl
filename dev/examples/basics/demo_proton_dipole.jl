@@ -91,9 +91,8 @@ sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
 dt = 1e-4
-paramBoris = BorisMethod(param)
-prob = TraceProblem(stateinit, tspan, dt, paramBoris)
-traj = trace_trajectory(prob)
+prob = TraceProblem(stateinit, tspan, dt, param)
+traj = TestParticle.solve(prob)
 get_energy_ratio(traj[1].u)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

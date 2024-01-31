@@ -14,11 +14,10 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 3e-6)
 dt = 3e-11
 param = prepare(uniform_E, uniform_B, species=Electron)
-paramBoris = BorisMethod(param)
-prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+prob = TraceProblem(stateinit, tspan, dt, param)
 
-traj = trace_trajectory(prob; savestepinterval=10);
-@time traj = trace_trajectory(prob; savestepinterval=10);
+traj = TestParticle.solve(prob; savestepinterval=10);
+@time traj = TestParticle.solve(prob; savestepinterval=10);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=10*dt);
