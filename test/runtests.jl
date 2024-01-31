@@ -378,10 +378,9 @@ end
       tspan = (0.0, 3e-8)
       dt = 3e-11
       param = prepare(uniform_E, uniform_B, species=Electron)
-      paramBoris = BorisMethod(param)
-      prob = TraceProblem(stateinit, tspan, dt, paramBoris)
+      prob = TraceProblem(stateinit, tspan, dt, param)
 
-      traj = trace_trajectory(prob; savestepinterval=10)
+      traj = TestParticle.solve(prob; savestepinterval=10)
 
       @test traj[1].u[:, end] == [-7.84237771267459e-5, 5.263661571564935e-5, 0.0,
          -93512.6374393526, -35431.43574759836, 0.0]

@@ -7,7 +7,7 @@ struct TraceProblem{TS, T<:Real, TP, PF}
    tspan::Tuple{T, T}
    "time step"
    dt::T
-   "tuple of parameters"
+   "(q2m, E, B)"
    p::TP
    "function for setting initial conditions"
    prob_func::PF
@@ -26,9 +26,7 @@ function TraceProblem(u0, tspan, dt, p; prob_func=DEFAULT_PROB_FUNC)
    TraceProblem(u0, tspan, dt, p, prob_func)
 end
 
-struct BorisMethod{T, TV}
-   "(q2m, E, B)"
-   param::T
+struct BorisMethod{TV}
    # intermediate variables used in the solver
    v⁻::TV
    v′::TV
@@ -38,7 +36,7 @@ struct BorisMethod{T, TV}
    v⁻_cross_t::TV
    v′_cross_s::TV
 
-   function BorisMethod(param)
+   function BorisMethod()
       # intermediate variables
       v⁻ = Vector{Float64}(undef, 3)
       v′ = Vector{Float64}(undef, 3)
@@ -48,24 +46,21 @@ struct BorisMethod{T, TV}
       v⁻_cross_t = Vector{Float64}(undef, 3)
       v′_cross_s = Vector{Float64}(undef, 3)
 
-      new{typeof(param), typeof(v⁻)}(param,
-         v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
+      new{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
    end
 end
 
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u) = false
 
 """
-    update_velocity!(xv, paramBoris, dt)
+    update_velocity!(xv, paramBoris, param, dt)
 
 Updates velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation,
 p.62. Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
-function update_velocity!(xv, paramBoris, dt)
-	(; param, v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-   q2m = param[1]
-   E = param[2](xv, 0.0)
-   B = param[3](xv, 0.0)
+function update_velocity!(xv, paramBoris, param,  dt)
+	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
+   q2m, E, B = param[1], param[2](xv, 0.0), param[3](xv, 0.0)
 	# t vector
 	for dim in 1:3
 	   t_rotate[dim] = q2m*B[dim]*0.5*dt
@@ -116,7 +111,7 @@ function cross!(v1, v2, vout)
 end
 
 """
-    trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
+    solve(prob::TraceProblem; trajectories::Int=1, 
        savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
 Trace particles using the Boris method with specified `prob`.
@@ -126,11 +121,12 @@ Trace particles using the Boris method with specified `prob`.
 - `savestepinterval::Int`: saving output interval.
 - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
-function trace_trajectory(prob::TraceProblem; trajectories::Int=1, 
+function solve(prob::TraceProblem; trajectories::Int=1, 
    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
    sols = Vector{TraceSolution}(undef, trajectories)
    # prepare advancing
+   paramBoris = BorisMethod()
    xv = similar(prob.u0)
    (; tspan, dt, p) = prob
    ttotal = tspan[2] - tspan[1]
@@ -145,10 +141,10 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
       traj[:,1] = xv
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, p, -0.5*dt)
+      update_velocity!(xv, paramBoris, p, -0.5*dt)
 
       for it in 1:nt
-         update_velocity!(xv, p, dt)
+         update_velocity!(xv, paramBoris, p, dt)
          update_location!(xv, dt)
          if it % savestepinterval == 0
          	iout += 1
@@ -160,7 +156,7 @@ function trace_trajectory(prob::TraceProblem; trajectories::Int=1,
       if iout == nout # regular termination
          dtfinal = ttotal - nt*dt
          if dtfinal > 1e-3 # final step if needed
-         	update_velocity!(xv, p, dtfinal)
+         	update_velocity!(xv, paramBoris, p, dtfinal)
          	update_location!(xv, dtfinal)
          	traj_save = hcat(traj, xv)
             t = [collect(tspan[1]:dt:tspan[2])..., tspan[2]]

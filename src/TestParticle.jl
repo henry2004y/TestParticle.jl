@@ -14,7 +14,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor
-export TraceProblem, BorisMethod, trace_trajectory
+export TraceProblem, BorisMethod
 
 include("utility/utility.jl")
 

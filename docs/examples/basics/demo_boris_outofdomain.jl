@@ -68,13 +68,12 @@ u0 = [0.0, 0.0, 0.0] # initial velocity [v₀]
 stateinit = [x0..., u0...]
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
-paramBoris = BorisMethod(param)
 dt = 0.1
 savestepinterval = 1
 trajectories = 2
-prob = TraceProblem(stateinit, tspan, dt, paramBoris; prob_func)
+prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
 
-sols = trace_trajectory(prob; savestepinterval, isoutofdomain, trajectories)
+sols = TestParticle.solve(prob; savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
