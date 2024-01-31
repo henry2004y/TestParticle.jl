@@ -4,8 +4,10 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic
+using SciMLBase: BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial
 using Distributions: MvNormal
 using StaticArrays
+using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, sample
