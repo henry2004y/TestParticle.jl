@@ -57,7 +57,7 @@ E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 x0 = [0.0, 0, 0]
 v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
-tspan_proton = (0.0, 2000.0)
+tspan_proton = (0.0, 2000.0);
 
 # Uniform B field and zero E field
 param_proton = prepare(zero_E, uniform_B, species=Proton)
@@ -100,7 +100,7 @@ prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_pr
 
 sol = solve(prob_p, Vern6())
 
-energy = map(x -> E(x[1:3]...), sol.u) .* TestParticle.mᵢ
+energy = map(x -> E(x[1:3]...), sol.u) .* TestParticle.mᵢ;
 
 # Predicted final speed
 println("predicted final speed: $v_final_predict [m/s]") #hide
