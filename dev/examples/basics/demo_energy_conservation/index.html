@@ -46,7 +46,7 @@ E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 x0 = [0.0, 0, 0]
 v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
-tspan_proton = (0.0, 2000.0)</code></pre><pre><code class="nohighlight hljs">(0.0, 2000.0)</code></pre><p>Uniform B field and zero E field</p><pre><code class="language-julia hljs">param_proton = prepare(zero_E, uniform_B, species=Proton)
+tspan_proton = (0.0, 2000.0);</code></pre><p>Uniform B field and zero E field</p><pre><code class="language-julia hljs">param_proton = prepare(zero_E, uniform_B, species=Proton)
 
 ### Solve for the trajectories
 
@@ -82,29 +82,10 @@ prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_pr
 
 sol = solve(prob_p, Vern6())
 
-energy = map(x -&gt; E(x[1:3]...), sol.u) .* TestParticle.mᵢ</code></pre><pre><code class="nohighlight hljs">19-element Vector{Float64}:
- 8.367787729999999e-24
- 8.367787730836762e-24
- 8.367787831248206e-24
- 8.367798039745054e-24
- 8.368820562953854e-24
- 8.47085059938372e-24
- 1.4732011007527203e-23
- 2.0517959176886174e-22
- 5.095554177791137e-21
- 1.2768995823644775e-19
- 3.1926365351508783e-18
- 7.964672867776898e-17
- 1.986996828849101e-15
- 4.9555577506353394e-14
- 1.235659589186214e-12
- 3.0813131681004524e-11
- 7.686080852010258e-10
- 1.917976005311776e-8
- 2.7609124466966282e-8</code></pre><p>Predicted final speed</p><pre><code class="nohighlight hljs">predicted final speed: 5.744086746808526e9 [m/s]
+energy = map(x -&gt; E(x[1:3]...), sol.u) .* TestParticle.mᵢ;</code></pre><p>Predicted final speed</p><pre><code class="nohighlight hljs">predicted final speed: 5.744086746808526e9 [m/s]
 </code></pre><p>Simulated final speed</p><pre><code class="nohighlight hljs">simulated final speed: 5.744086746808613e9 [m/s]
 </code></pre><p>Predicted travel distance</p><pre><code class="nohighlight hljs">predicted travel distance: 5.744086746808526e12 [m]
 </code></pre><p>Simulated travel distance</p><pre><code class="nohighlight hljs">simulated travel distance: 5.744086746768604e12 [m]
 </code></pre><p>Predicted final energy</p><pre><code class="nohighlight hljs">predicted energy gain: 1.723226024042558e11 [eV]
 </code></pre><p>Simulated final energy</p><pre><code class="nohighlight hljs">simulated final energy: 1.7232260240426102e11 [eV]
-</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 1 February 2024 16:35">Thursday 1 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 1 February 2024 17:27">Thursday 1 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

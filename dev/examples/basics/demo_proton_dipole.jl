@@ -92,7 +92,7 @@ get_energy_ratio(sol)
 
 dt = 1e-4
 prob = TraceProblem(stateinit, tspan, dt, param)
-traj = TestParticle.solve(prob)
-get_energy_ratio(traj[1].u)
+sol = TestParticle.solve(prob)
+get_energy_ratio(sol[1].u)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
