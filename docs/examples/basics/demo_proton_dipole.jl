@@ -110,14 +110,14 @@ cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
-# This is much more accurate, at the cost of significantly more iterations.
-# In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol= 1e-14)`; in terms of performance, it is 12x slower (2.4s v.s. 0.2s) and 8x more memory (1.6 GiB v.s. 196 MiB).
+# This is much more accurate, at the cost of more iterations.
+# In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol=1e-7)`; in terms of performance, it is 2x slower (0.04s v.s. 0.02s) and consumes about the same amount of memory 42 MiB.
 # We can also use the classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) implemented within the package:
 
 dt = 1e-4
 prob = TraceProblem(stateinit, tspan, dt, param)
-traj = TestParticle.solve(prob)
-get_energy_ratio(traj[1].u)
+sol = TestParticle.solve(prob)
+get_energy_ratio(sol[1].u)
 
 # The Boris method requires a fixed time step. It takes about 0.05s and consumes 53 MiB memory. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off (but the energy is still conserved).
 # Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme without decreasing `reltol`. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
