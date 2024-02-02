@@ -24,6 +24,8 @@ There are two ways to trace multiple particles simultaneously:
 1. Extracting the solution in a loop with varying initial conditions. See the example [demo_ensemble](@ref).
 2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that by default the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field. We need to set `safetycopy=false` to make the field as a reference in the parameter of each trajectory.
 
+The Boris pusher follows a similar interface for multithreading.
+
 ## Summary of Guiding Center Drifts
 
 General force:
@@ -91,3 +93,10 @@ Polarization drift:[^2]
 ## Adiabatic Invariants
 
 See more thorough [notes](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-adiabatic-invariant) on the adiabatic invariants.
+
+## Presentations
+
+Please checkout:
+
+* [TestParticle.jl: A New Tool for An Old Problem](https://henry2004y.github.io/pluto_playground/testparticle_202401.html)
+* [基于开源工具链的测试粒子模型](https://henry2004y.github.io/pluto_playground/testparticle.html)
