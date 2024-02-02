@@ -16,7 +16,6 @@ using TestParticle
 using TestParticle: getB_CS_harris
 using OrdinaryDiffEq
 using StaticArrays
-using Statistics: mean
 using CairoMakie
 CairoMakie.activate!(type = "png")
 

@@ -2,13 +2,10 @@
    "order": [
      "demo_energy_conservation.jl",
      "demo_boris.jl",
-     "demo_boris_outofdomain.jl",
      "demo_Buniform_Ezero.jl",
      "demo_dimensionless.jl",
      "demo_dimensionless_periodic.jl",
      "demo_dimensionless_dimensional.jl",
-     "demo_savingcallback.jl",
-     "demo_output_func.jl",
      "demo_electron_proton.jl",
      "demo_multiple.jl",
      "demo_ExB_drift.jl",
@@ -16,13 +13,6 @@
      "demo_gradient_B.jl",
      "demo_curvature_B.jl",
      "demo_FLR.jl",
-     "demo_polarization_drift.jl",
-     "demo_magneticmirror.jl",
-     "demo_magneticbottle.jl",
-     "demo_proton_dipole.jl",
-     "demo_currentsheet.jl",
-     "demo_ensemble.jl",
-     "demo_tokamak_coil.jl",
-     "demo_tokamak_profile.jl"
+     "demo_polarization_drift.jl"
    ]
 }

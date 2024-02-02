@@ -2,7 +2,7 @@
    "theme": "grid",
    "order": [
      "basics",
-     "simulations"
+     "advanced"
    ],
    "properties": {
      "notebook": "false"
