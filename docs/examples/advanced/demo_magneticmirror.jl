@@ -42,7 +42,7 @@ function getE(xu)
    SA[0.0, 0.0, 0.0]
 end
 
-## the velocity along with the direction perpendicular to the magnetic field
+## velocity in the direction perpendicular to the magnetic field
 function v_perp(xu)
    vu = @view xu[4:6]
    B = getB(xu)
