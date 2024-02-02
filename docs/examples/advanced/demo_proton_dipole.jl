@@ -11,7 +11,7 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: getB_dipole, getE_dipole, sph2cart, fieldline, mᵢ, qᵢ, c, Rₑ
+using TestParticle: getB_dipole, getE_dipole, sph2cart, dipole_fieldline, mᵢ, qᵢ, c, Rₑ
 using OrdinaryDiffEq
 using CairoMakie
 CairoMakie.activate!(type = "png")
@@ -48,7 +48,7 @@ l = lines!(ax, sol)
 scale!(l, invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
-   lines!(fieldline(ϕ)..., color=:tomato, alpha=0.3)
+   lines!(dipole_fieldline(ϕ)..., color=:tomato, alpha=0.3)
 end
 
 f = DisplayAs.PNG(f) #hide

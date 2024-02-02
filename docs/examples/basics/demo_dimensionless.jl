@@ -8,7 +8,7 @@
 # ---
 
 # This example shows how to trace charged particles in dimensionless units.
-# After normalization, ``q=1, B=1, m=1`` so that the gyroradius `r_L = mv_\perp/qB = v_\perp`. All the quantities are given in dimensionless units.
+# After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``. All the quantities are given in dimensionless units.
 # If the magnetic field is homogeneous and the initial perpendicular velocity is 4, then the gyroradius is 4.
 # To convert them to the original units, ``v_\perp = 4*U_0`` and ``r_L = 4*l_0``.
 # Check [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
