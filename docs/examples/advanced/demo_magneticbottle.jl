@@ -1,6 +1,6 @@
 # ---
 # title: Electron motion in a magnetic bottle
-# id: demo_proton_bottle
+# id: demo_electron_bottle
 # date: 2023-04-20
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.9.0
