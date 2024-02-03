@@ -1,4 +1,5 @@
 {
+   "theme": "nocoverlist",
    "order": [
      "demo_boris_outofdomain.jl",
      "demo_ensemble.jl",

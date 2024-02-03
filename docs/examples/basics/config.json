@@ -1,4 +1,5 @@
 {
+   "theme": "nocoverlist",
    "order": [
      "demo_energy_conservation.jl",
      "demo_boris.jl",
