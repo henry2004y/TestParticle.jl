@@ -54,8 +54,8 @@ end
 """
     update_velocity!(xv, paramBoris, param, dt)
 
-Updates velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation,
-p.62. Reference: https://apps.dtic.mil/sti/citations/ADA023511
+Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
+Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
 function update_velocity!(xv, paramBoris, param,  dt)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
