@@ -35,5 +35,6 @@
       dt = 0.5
       prob = TraceProblem(stateinit, tspan, dt, param)
       sol = solve(prob; savestepinterval=100)
+      sol = solve(prob, EnsembleThreads(); savestepinterval=100)
    end
 end

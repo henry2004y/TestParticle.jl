@@ -37,13 +37,13 @@ struct BorisMethod{TV}
    v′_cross_s::TV
 
    function BorisMethod()
-      v⁻ = Vector{Float64}(undef, 3)
-      v′ = Vector{Float64}(undef, 3)
-      v⁺ = Vector{Float64}(undef, 3)
-      t_rotate = Vector{Float64}(undef, 3)
-      s_rotate = Vector{Float64}(undef, 3)
-      v⁻_cross_t = Vector{Float64}(undef, 3)
-      v′_cross_s = Vector{Float64}(undef, 3)
+      v⁻ = MVector{3, Float64}(undef)
+      v′ = MVector{3, Float64}(undef)
+      v⁺ = MVector{3, Float64}(undef)
+      t_rotate = MVector{3, Float64}(undef)
+      s_rotate = MVector{3, Float64}(undef)
+      v⁻_cross_t = MVector{3, Float64}(undef)
+      v′_cross_s = MVector{3, Float64}(undef)
 
       new{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
    end
@@ -54,8 +54,8 @@ end
 """
     update_velocity!(xv, paramBoris, param, dt)
 
-Updates velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation,
-p.62. Reference: https://apps.dtic.mil/sti/citations/ADA023511
+Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
+Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
 function update_velocity!(xv, paramBoris, param,  dt)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
@@ -161,10 +161,10 @@ end
 function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
    (; tspan, dt, p, u0) = prob
    paramBoris = BorisMethod()
-   xv = similar(u0)
+   xv = MVector{6, eltype(u0)}(undef)
    traj = zeros(eltype(u0), 6, nout)
 
-   for i in irange
+   @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
