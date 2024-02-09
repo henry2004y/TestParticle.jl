@@ -391,6 +391,10 @@ end
       @test sol[1].u[:, end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
          -62964.170425493256, -77688.56571355555, 0.0]
 
+      t = tspan[2] / 2
+      @test sol[1](t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
+         -93808.49725349642, 34640.52313462885, 0.0]
+
       prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris)
       trajectories = 4
       savestepinterval = 1000
