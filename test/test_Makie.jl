@@ -14,8 +14,14 @@ tspan = (0.0, 0.1)
 stateinit = [x0..., u0...]
 param = prepare(E, B; species=Electron)
 
-prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern6(); save_idxs=[1,2,3,4,5,6])
+sol = let prob = ODEProblem(trace!, stateinit, tspan, param)
+    solve(prob, Vern6())
+end
+
+sol_boris = let dt = 0.01
+    prob = TraceProblem(stateinit, tspan, param)
+    TestParticle.solve(prob; dt)[1]
+end
 
 @testset "basic recipe" begin
     fig, ax, plt = plot(sol)
@@ -35,6 +41,9 @@ sol = solve(prob, Vern6(); save_idxs=[1,2,3,4,5,6])
     @test_throws ArgumentError lines(sol, vars=["x", "y"])
 
     @test_throws ArgumentError lines(sol, vars=8)
+    # TraceSolution
+    fig, ax, plt = plot(sol_boris)
+    @test plt isa Lines{Tuple{Vector{Point{3, Float32}}}}
 end
 
 @testset "orbit" begin
