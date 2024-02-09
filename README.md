@@ -21,7 +21,7 @@ Visualization via [Makie](https://makie.juliaplots.org/stable/), [Plots](https:/
 ## Usage
 
 TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
-For example, a proton in a static magnetic field can be traced via
+For example, a proton in a static magnetic field can be traced in SI units via
 
 ```julia
 using TestParticle, OrdinaryDiffEq, StaticArrays
