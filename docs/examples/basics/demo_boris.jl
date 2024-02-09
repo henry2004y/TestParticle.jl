@@ -87,10 +87,10 @@ f = DisplayAs.PNG(f) #hide
 tspan = (0.0, 200*tperiod)
 dt = tperiod / 12
 
-prob_boris = TraceProblem(stateinit, tspan, dt, param)
+prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob_boris; savestepinterval=10);
+sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 sol2 = solve(prob, Tsit5());
 
@@ -102,7 +102,7 @@ f = DisplayAs.PNG(f) #hide
 #
 # Another aspect to compare is performance:
 
-@time sol_boris = TestParticle.solve(prob_boris; savestepinterval=10);
+@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
 @time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 @time sol2 = solve(prob, Tsit5());
 
