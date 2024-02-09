@@ -54,8 +54,8 @@ Native Boris particle pusher also follows a similar interface:
 ```julia
 dt = 3e-11 # fixed time step
 savestepinterval = 10
-prob = TraceProblem(stateinit, tspan, dt, param)
-sol = TestParticle.solve(prob; savestepinterval)
+prob = TraceProblem(stateinit, tspan, param)
+sol = TestParticle.solve(prob; dt, savestepinterval)
 ```
 
 More tutorials and examples can be found in the [doc](https://henry2004y.github.io/TestParticle.jl/dev/).

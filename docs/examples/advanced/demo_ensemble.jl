@@ -74,8 +74,8 @@ savestepinterval = 1
 
 ## Solve for the trajectories
 
-prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
-trajs = TestParticle.solve(prob; trajectories, savestepinterval)
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+trajs = TestParticle.solve(prob; dt, trajectories, savestepinterval)
 
 ## Visualization
 

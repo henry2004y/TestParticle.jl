@@ -71,9 +71,9 @@ tspan = (0.0, 1.5π) # 3/4 gyroperiod
 dt = 0.1
 savestepinterval = 1
 trajectories = 2
-prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
+prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-sols = TestParticle.solve(prob; savestepinterval, isoutofdomain, trajectories)
+sols = TestParticle.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
@@ -85,7 +85,7 @@ ax = Axis(f[1, 1],
 )
 
 for i in eachindex(sols)
-   @views lines!(ax, sols[i].u[1,:], sols[i].u[2,:], label=string(i))
+   @views lines!(ax, sols[i]; vars=(1, 2), label=string(i))
 end
 
 axislegend()

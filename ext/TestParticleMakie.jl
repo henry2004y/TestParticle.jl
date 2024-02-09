@@ -1,6 +1,6 @@
 module TestParticleMakie
 
-import TestParticle: orbit, monitor
+import TestParticle: orbit, monitor, TraceSolution
 using Makie
 using SciMLBase: AbstractODESolution
 

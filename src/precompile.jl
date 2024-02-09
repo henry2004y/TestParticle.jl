@@ -33,8 +33,8 @@
       end
       tspan = (0.0, 1.0)
       dt = 0.5
-      prob = TraceProblem(stateinit, tspan, dt, param)
-      sol = solve(prob; savestepinterval=100)
-      sol = solve(prob, EnsembleThreads(); savestepinterval=100)
+      prob = TraceProblem(stateinit, tspan, param)
+      sol = solve(prob; dt, savestepinterval=100)
+      sol = solve(prob, EnsembleThreads(); dt, savestepinterval=100)
    end
 end

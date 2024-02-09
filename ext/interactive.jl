@@ -1,12 +1,12 @@
 # interactive plots
 
 """
-    orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
+    orbit(sol; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
 
 A plot recipe for plotting orbit or other figures related to six phase space coordinates and time.
 
 # Arguments
-- `sol::AbstractODESolution`: the solution returned by the ODE solver.
+- `sol`: the solution returned by the ODE solver.
 
 # Keywords
 - `vars`: the argument used to choose variables to be plotted. Default value is [(1, 2, 3)].
@@ -53,7 +53,8 @@ orbit(sol, vars=[(0, 1), (0, 2), (0, 3)])
 orbit(sol, vars=[(1, 4), (2, 5), (3, 6)])
 ```
 """
-function orbit(sol::AbstractODESolution; vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
+function orbit(sol::Union{AbstractODESolution, TraceSolution};
+    vars=nothing, tspan=nothing, to_3d::Bool=false, interactive::Bool=true)
     if vars === nothing 
         vars = [(1, 2, 3)]
     elseif isa(vars, Tuple)
@@ -131,12 +132,12 @@ end
 
 
 """
-    monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
+    monitor(sol::Union{AbstractODESolution, TraceSolution}; vars=nothing, tspan=nothing)
 
 A plot recipe for monitor the orbit of a particle and other physics quantities.
 
 # Arguments
-- `sol::AbstractODESolution`: the solution returned by the ODE solver.
+- `sol::Union{AbstractODESolution, TraceSolution}`: the solution returned by the ODE solver.
 
 # Keywords
 - `vars`: the argument used to choose the variables to be plotted. Default value is [4, 5, 6].
@@ -151,7 +152,7 @@ Eₖ(xu) = mₑ*(xu[4]^2 + xu[5]^2 + xu[6]^2)/2
 monitor(sol, vars=[1, 2, Eₖ])
 ```
 """
-function monitor(sol::AbstractODESolution; vars=nothing, tspan=nothing)
+function monitor(sol::Union{AbstractODESolution,TraceSolution}; vars=nothing, tspan=nothing)
     if isnothing(vars)
         # default subplots are vx, vy and vz
         vars = [4, 5, 6]

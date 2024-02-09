@@ -52,9 +52,9 @@ const invrL = 1 / rL;
 tspan = (0.0, tperiod)
 dt = tperiod / 4
 
-prob = TraceProblem(stateinit, tspan, dt, param)
+prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; savestepinterval=1);
+sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -71,9 +71,9 @@ f = DisplayAs.PNG(f) #hide
 
 dt = tperiod / 8
 
-prob = TraceProblem(stateinit, tspan, dt, param)
+prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; savestepinterval=1);
+sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
