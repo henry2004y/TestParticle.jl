@@ -35,6 +35,7 @@ tspan = (0, 100)
 param = prepare(time_varying_E, uniform_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
+## Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
 v_perp(xu) = hypot(xu[4], xu[5])
 gc_y = gc[2]

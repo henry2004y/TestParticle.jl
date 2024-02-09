@@ -32,7 +32,11 @@ There are two ways to trace multiple particles simultaneously:
 
 The Boris pusher follows a similar interface for multithreading.
 
-## Summary of Guiding Center Drifts
+## Guiding center drifts
+
+By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`. In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below. With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
+
+### Summary of guiding center drifts
 
 General force:
 
