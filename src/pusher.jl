@@ -1,41 +1,58 @@
 # Native particle pusher
 
-struct TraceProblem{TS, T<:Real, TP, PF}
+struct TraceProblem{F<:AbstractODEFunction, uType, tType, P, PF} <: AbstractSciMLProblem
+   f::F
    "initial condition"
-   u0::TS
+   u0::uType
    "time span"
-   tspan::Tuple{T, T}
+   tspan::tType
    "(q2m, E, B)"
-   p::TP
+   p::P
    "function for setting initial conditions"
    prob_func::PF
 end
 
-struct TraceSolution{TU<:Array, T<:AbstractVector}
+#SciMLBase.AbstractODESolution{Float64, 2, Vector{Vector{Float64}}}
+#struct TraceSolution{uType<:Array, tType<:AbstractVector, N} <: AbstractODESolution{T, N, uType}
+struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <: AbstractODESolution{T, N, uType}
    "positions and velocities"
-   u::TU
+   u::uType
+   u_analytic::uType2
+   errors::DType
    "time stamps"
-   t::T
+   t::tType
+   k::rateType
+   prob::P
+   alg::A
+   interp::IType
+   dense::Bool
+   tslocation::Int
+   stats::S
+   alg_choice::AC
+   retcode::ReturnCode.T
+end
+
+function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, dense,
+   tslocation, stats, alg_choice, retcode) where {T, N}
+   return TraceSolution{T, N, typeof(u), typeof(u_analytic), typeof(errors), typeof(t),
+       typeof(k), typeof(prob), typeof(alg), typeof(interp),
+       typeof(stats),
+       typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
+       dense, tslocation, stats, alg_choice, retcode)
 end
 
 Base.length(ts::TraceSolution) = length(ts.t)
 
 "Interpolate solution at time `x`. Forward tracing only."
-function (ts::TraceSolution)(x)
-   i1 = findfirst(t -> t > x, ts.t)
-   if isnothing(i1)
-      return ts.u[:,end]
-   end
-   i1, i2 = i1-1, i1
-   dt = ts.t[i2] - ts.t[i1]
-   p2 = (x - ts.t[i1]) / dt
-   return @views @. p2 * ts.u[:,i2] + (1 - p2) * ts.u[:,i1]
+function (ts::TraceSolution)(x, ::Type{deriv} = Val{0}; idxs=nothing, continuity = :left) where {deriv}
+   ts.interp(x, idxs, deriv, ts.prob.p, continuity)
 end
 
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
 function TraceProblem(u0, tspan, p; prob_func=DEFAULT_PROB_FUNC)
-   TraceProblem(u0, tspan, p, prob_func)
+   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> x)
+   TraceProblem(_f, u0, tspan, p, prob_func)
 end
 
 struct BorisMethod{TV}
@@ -173,14 +190,15 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod()
    xv = MVector{6, eltype(u0)}(undef)
-   traj = zeros(eltype(u0), 6, nout)
+   #traj = zeros(eltype(u0), 6, nout)
+   traj = Vector{Vector{eltype(u0)}}(undef, nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
-      traj[:,1] = xv
+      traj[1] = xv
 
       # push velocity back in time by 1/2 dt
       update_velocity!(xv, paramBoris, p, -0.5*dt)
@@ -190,7 +208,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
          update_location!(xv, dt)
          if it % savestepinterval == 0
             iout += 1
-            traj[:,iout] .= xv
+            #traj[iout] .= xv
+            traj[iout] = xv
          end
          isoutofdomain(xv, p, it*dt) && break
       end
@@ -200,17 +219,30 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
          if dtfinal > 0.5*dt # final step if needed
             update_velocity!(xv, paramBoris, p, dtfinal)
             update_location!(xv, dtfinal)
-            traj_save = hcat(traj, xv)
+            #traj_save = hcat(traj, xv)
+            traj_save = copy(traj)
+            push!(traj_save, u0)
             t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
          else
             traj_save = copy(traj)
             t = collect(tspan[1]:dt*savestepinterval:tspan[2])
          end
       else # early termination or savestepinterval != 1
-         traj_save = traj[:, 1:iout]
+         traj_save = traj[1:iout]
          t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1))
       end
-      sols[i] = TraceSolution(traj_save, t)
+      dense = false
+      k = nothing
+      alg = :boris
+      alg_choice = nothing
+      interp = LinearInterpolation(t, traj_save)
+      retcode = ReturnCode.Default
+      stats = nothing
+      u_analytic = nothing
+      errors = nothing
+      tslocation = 0
+      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+         interp, dense, tslocation, stats, alg_choice, retcode)
    end
 
    return

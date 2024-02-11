@@ -4,7 +4,10 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic
-using SciMLBase: BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial
+using SciMLBase: AbstractSciMLProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
+   BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
+   DEFAULT_SPECIALIZATION, ODEFunction,
+   LinearInterpolation
 using Distributions: MvNormal
 using StaticArrays
 using ChunkSplitters
@@ -24,6 +27,11 @@ include("utility/utility.jl")
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 """
 @enum Species Proton Electron Ion User
+
+"""
+Abstract type for tracing solutions.
+"""
+abstract type AbstractTraceSolution{T, N, S} <: AbstractODESolution{T, N, S} end
 
 """
 Abstract type for velocity distribution functions.
