@@ -3,7 +3,7 @@
 # id: demo_FLR
 # date: 2023-04-19
 # author: "[Tiancheng Liu](https://github.com/TCLiuu), [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
+# julia: 1.10.0
 # description: Finite Larmor radius effect demonstration using Makie
 # ---
 
@@ -56,12 +56,30 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 gc = get_gc(param)
-gc_x0 = [gc_i(stateinit) for gc_i in gc]
+gc_x0 = gc(stateinit)
 prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
 
-gc_analytic = Tuple(xu -> getindex(sol_gc(xu[7]), i) for i = 1:3)
 ## numeric result and analytic result
-f = orbit(sol, vars=[(1, 2, 3), gc, gc_analytic])
+f = Figure(fontsize=18)
+ax = Axis3(f[1, 1],
+   title = "Finite Larmor Radius Effect",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data,
+   azimuth = 0.3π,
+)
+
+gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
+
+lines!(ax, sol, idxs=(1,2,3))
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
+lines!(ax, sol_gc, idxs=(1,2,3))
+
+for i in 1:3
+    #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+end
 
 f = DisplayAs.PNG(f) #hide

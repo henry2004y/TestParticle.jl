@@ -130,7 +130,7 @@ end
       x = getindex.(sol.u, 1)
 
       @test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
-      @test get_gc(param) isa Tuple
+      @test get_gc(param) isa Function
       @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
@@ -386,23 +386,23 @@ end
       param = prepare(uniform_E, uniform_B, species=Electron)
       prob = TraceProblem(stateinit, tspan, param)
 
-      sol = TestParticle.solve(prob; dt, savestepinterval=10)
+      sol = TestParticle.solve(prob; dt, savestepinterval=10)[1]
 
-      @test sol[1].u[:, end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
+      @test sol.u[end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
          -62964.170425493256, -77688.56571355555, 0.0]
 
       t = tspan[2] / 2
-      @test sol[1](t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
+      @test sol(t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
          -93808.49725349642, 34640.52313462885, 0.0]
 
       prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris)
       trajectories = 4
       savestepinterval = 1000
       sols = TestParticle.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
-      @test sum(x -> sum(@view x.u[:,end]), sols) ≈ -1.4065273620640622e6
+      @test sum(s -> sum(s.u[end]), sols) ≈ -1.4065273620640622e6
    end
 end
 
-if "makie" in ARGS
-   include("test_Makie.jl")
-end
+#if "makie" in ARGS
+#   include("test_Makie.jl")
+#end

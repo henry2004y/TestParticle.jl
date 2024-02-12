@@ -12,8 +12,6 @@ struct TraceProblem{F<:AbstractODEFunction, uType, tType, P, PF} <: AbstractSciM
    prob_func::PF
 end
 
-#SciMLBase.AbstractODESolution{Float64, 2, Vector{Vector{Float64}}}
-#struct TraceSolution{uType<:Array, tType<:AbstractVector, N} <: AbstractODESolution{T, N, uType}
 struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <: AbstractODESolution{T, N, uType}
    "positions and velocities"
    u::uType
@@ -51,7 +49,7 @@ end
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
 function TraceProblem(u0, tspan, p; prob_func=DEFAULT_PROB_FUNC)
-   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> x)
+   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> x) # dummy func
    TraceProblem(_f, u0, tspan, p, prob_func)
 end
 

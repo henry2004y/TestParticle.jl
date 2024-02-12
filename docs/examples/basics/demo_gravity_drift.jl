@@ -34,6 +34,9 @@ param = prepare(E, B, F, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 ## drift in x-direction + free fall in z-direction
-f = orbit(sol, vars=[(1,3),], interactive=false)
+f = lines(sol, idxs=(3,1);
+   figure = (; size = (800, 400), fontsize=18),
+   axis = (; title="ExF Drift", xlabel="Z [m]", ylabel="X [m]", aspect = DataAspect())
+)
 
 f = DisplayAs.PNG(f) #hide

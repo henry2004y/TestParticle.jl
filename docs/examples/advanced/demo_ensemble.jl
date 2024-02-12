@@ -61,7 +61,9 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], label="$i")
+   lines!(ax, sols[i], idxs=(1,2,3), label="$i")
+   #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -89,9 +91,11 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(trajs)
-   @views lines!(ax, trajs[i].u[1,:], trajs[i].u[2,:], trajs[i].u[3,:], label="$i")
+   lines!(ax, trajs[i]; idxs=(1,2,3), label="$i")
+   #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
 
-# You may notice that the Boris outputs are more "discontinuous" than `Tsit5`. This is because algorithms in OrdinaryDiffEq.jl come with "free" interpolation schemes automatically applied for visualization, while we have not yet implemented this for the native Boris method.
+# Note that by default linear interpolation is applied when plotting the trajectories from the Boris method.

@@ -19,15 +19,27 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 
 function plot_trajectory(sol_boris, sol1, sol2)
-   f = Figure(size=(700, 600))
-   ax = Axis(f[1, 1], aspect=1, limits = (-3, 1, -2, 2))
-   @views lines!(ax, sol_boris[1].u[1,:]./rL, sol_boris[1].u[2,:]./rL,
-      linewidth=2, label="Boris")
-   l1 = lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed", linewidth=2)
-   l2 = lines!(ax, sol2, linestyle=:dot, label="Tsit5 adaptive", linewidth=2)
-   scale!(l1, invrL, invrL, invrL)
-   scale!(l2, invrL, invrL, invrL)
-   axislegend(position=:lt, framevisible=false)
+   f = Figure(size=(700, 600), fontsize=18)
+   ax = Axis(f[1, 1], aspect=1, limits = (-3, 1, -2, 2),
+      xlabel = "X",
+      ylabel = "Y")
+   idxs = (1, 2)
+   #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth=2, label="Boris")
+   l1 = lines!(ax, sol1; idxs, linewidth=2, linestyle=:dashdot, label="Tsit5 fixed")
+   l2 = linesegments!(ax, sol2; idxs, linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
+
+   ax.scene.plots[1].linewidth = 2
+   ax.scene.plots[5].linewidth = 2
+
+   ax.scene.plots[3].color = Makie.wong_colors()[2]
+   ax.scene.plots[5].color = Makie.wong_colors()[3]
+
+   scale!(ax.scene.plots[1], invrL, invrL)
+   scale!(ax.scene.plots[3], invrL, invrL)
+   scale!(ax.scene.plots[5], invrL, invrL)
+
+   axislegend(position=:rt, framevisible=false)
 
    f
 end

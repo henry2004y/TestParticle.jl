@@ -23,29 +23,6 @@ sol_boris = let dt = 0.01
     TestParticle.solve(prob; dt)[1]
 end
 
-@testset "basic recipe" begin
-    fig, ax, plt = plot(sol)
-    @test plt isa Lines{Tuple{Vector{Point{3, Float32}}}}
-
-    fig, ax, plt = lines(sol, vars=(3, 4), to_3d=true)
-    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
-
-    fig, ax, plt = lines(sol, vars=[1, 2], to_3d=true)
-    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
-
-    fig, ax, plt = lines(sol, vars=[(1, 2), 3])
-    @test plt isa Lines{Tuple{Vector{Point{2, Float32}}}}
-
-    @test_throws ArgumentError lines(sol, vars="x")
-
-    @test_throws ArgumentError lines(sol, vars=["x", "y"])
-
-    @test_throws ArgumentError lines(sol, vars=8)
-    # TraceSolution
-    fig, ax, plt = plot(sol_boris)
-    @test plt isa Lines{Tuple{Vector{Point{3, Float32}}}}
-end
-
 @testset "orbit" begin
     fig = orbit(sol)
     @test fig isa Figure

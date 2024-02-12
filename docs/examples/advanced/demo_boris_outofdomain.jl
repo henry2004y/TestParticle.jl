@@ -85,9 +85,11 @@ ax = Axis(f[1, 1],
 )
 
 for i in eachindex(sols)
-   @views lines!(ax, sols[i]; vars=(1, 2), label=string(i))
+   lines!(ax, sols[i]; idxs=(1, 2), label=string(i))
+   #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[2*i-1].color = Makie.wong_colors()[i]
 end
 
-axislegend()
+axislegend(position=:lt, framevisible=false)
 
 f = DisplayAs.PNG(f) #hide
