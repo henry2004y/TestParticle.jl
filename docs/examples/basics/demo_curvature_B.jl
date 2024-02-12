@@ -83,7 +83,7 @@ lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 lines!(ax, sol_gc, idxs=(1,2,3))
 
 for i in 1:3
-    #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+    ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
     ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 

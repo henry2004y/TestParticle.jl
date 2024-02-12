@@ -24,7 +24,7 @@ function plot_trajectory(sol_boris, sol1, sol2)
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   #TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
    l0 = lines!(ax, sol_boris[1]; idxs, linewidth=2, label="Boris")
    l1 = lines!(ax, sol1; idxs, linewidth=2, linestyle=:dashdot, label="Tsit5 fixed")
    l2 = linesegments!(ax, sol2; idxs, linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
