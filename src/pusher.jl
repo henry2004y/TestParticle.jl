@@ -49,7 +49,7 @@ end
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
 function TraceProblem(u0, tspan, p; prob_func=DEFAULT_PROB_FUNC)
-   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> x) # dummy func
+   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
    TraceProblem(_f, u0, tspan, p, prob_func)
 end
 

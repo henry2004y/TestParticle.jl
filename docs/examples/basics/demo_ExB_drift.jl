@@ -9,7 +9,7 @@
 
 # This example demonstrates a single proton motion under uniform E and B fields.
 # The electric field is parallel to the magnetic field in the z-direction, so the motion consists of a cyclotron gyration and an acceleration along z.
-# On top of that, particles also exhibit a ExB drift in the direction perpendicular to both E and B field.
+# On top of that, particles also exhibit an ExB drift in the direction perpendicular to both E and B field.
 # Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps.
 # More theoretical details can be found in [ExB Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#finite-e).
 
@@ -34,7 +34,7 @@ function trace_gc!(dx, x, p, t)
     b = normalize(Bv)
     v_par = @views (xu[4:6] ⋅ b) .* b
     B2 = sum(Bv.^2)
-    dx[1:3] = (E(x) × Bv)/B2 + v_par
+    dx[1:3] = (E(x) × Bv) / B2 + v_par
 end
 ## Initial condition
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
