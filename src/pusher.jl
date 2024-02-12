@@ -42,8 +42,8 @@ end
 Base.length(ts::TraceSolution) = length(ts.t)
 
 "Interpolate solution at time `x`. Forward tracing only."
-function (ts::TraceSolution)(x, ::Type{deriv} = Val{0}; idxs=nothing, continuity = :left) where {deriv}
-   ts.interp(x, idxs, deriv, ts.prob.p, continuity)
+function (sol::TraceSolution)(t, ::Type{deriv} = Val{0}; idxs=nothing, continuity = :left) where {deriv}
+   sol.interp(t, idxs, deriv, sol.prob.p, continuity)
 end
 
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
@@ -188,15 +188,14 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod()
    xv = MVector{6, eltype(u0)}(undef)
-   #traj = zeros(eltype(u0), 6, nout)
-   traj = Vector{Vector{eltype(u0)}}(undef, nout)
+   traj = fill(MVector{6, eltype(u0)}(undef), nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
-      traj[1] = xv
+      traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
       update_velocity!(xv, paramBoris, p, -0.5*dt)
@@ -206,8 +205,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
          update_location!(xv, dt)
          if it % savestepinterval == 0
             iout += 1
-            #traj[iout] .= xv
-            traj[iout] = xv
+            traj[iout] = copy(xv)
          end
          isoutofdomain(xv, p, it*dt) && break
       end
@@ -217,7 +215,6 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
          if dtfinal > 0.5*dt # final step if needed
             update_velocity!(xv, paramBoris, p, dtfinal)
             update_location!(xv, dtfinal)
-            #traj_save = hcat(traj, xv)
             traj_save = copy(traj)
             push!(traj_save, u0)
             t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
@@ -229,6 +226,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
          traj_save = traj[1:iout]
          t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1))
       end
+
       dense = false
       k = nothing
       alg = :boris
@@ -239,6 +237,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
       u_analytic = nothing
       errors = nothing
       tslocation = 0
+
       sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
          interp, dense, tslocation, stats, alg_choice, retcode)
    end
