@@ -14,7 +14,7 @@ using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, dipole_fieldline, mᵢ, qᵢ, c, Rₑ
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## initial particle energy
 Ek = 5e7 # [eV]

@@ -12,7 +12,7 @@ using TestParticle
 using OrdinaryDiffEq
 using Random
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## For reproducible results
 Random.seed!(1234)

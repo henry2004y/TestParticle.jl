@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using FieldTracer
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function getB_superposition(xu)
    getB_dipole(xu) + SA[0.0, 0.0, -10e-9]

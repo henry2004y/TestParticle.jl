@@ -17,7 +17,7 @@ using TestParticle: getB_CS_harris
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 

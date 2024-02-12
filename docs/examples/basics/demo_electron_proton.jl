@@ -15,7 +15,7 @@ using TestParticle
 using Meshes
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Initialize grid and field
 

@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function uniform_B(x)
     return SA[0, 0, 1e-8]

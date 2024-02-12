@@ -18,7 +18,7 @@ using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, i, repeat)

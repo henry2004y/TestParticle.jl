@@ -19,7 +19,7 @@ using Tensors: laplace
 import Tensors: Vec as Vec3
 ## using SpecialFunctions
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function uniform_B(x)
     return SA[0, 0, 1e-8]

@@ -24,7 +24,7 @@ using StaticArrays
 using LinearAlgebra
 using Printf
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 

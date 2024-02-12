@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra: ⋅, ×
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function uniform_B(x)
     return SA[0, 0, 1e-8]
@@ -50,29 +50,30 @@ sol = solve(prob, Vern9())
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
 prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
-sol_gc = solve(prob_gc, Vern9(); save_idxs=[1,2,3])
+sol_gc = solve(prob_gc, Vern9(); save_idxs=[1,2,3]);
 ## Numeric and analytic results
-f = Figure(fontsize=18)
-ax = Axis3(f[1, 1],
-   title = "ExB Drift",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   azimuth = 0.3π,
-)
 
-gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
+#f = Figure(fontsize=18)
+#ax = Axis3(f[1, 1],
+#   title = "ExB Drift",
+#   xlabel = "x [m]",
+#   ylabel = "y [m]",
+#   zlabel = "z [m]",
+#   aspect = :data,
+#   azimuth = 0.3π,
+#)
 
-lines!(ax, sol, idxs=(1,2,3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-lines!(ax, sol_gc, idxs=(1,2,3))
+#gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
 
-for i in 1:3
-    ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
-end
+#lines!(ax, sol, idxs=(1,2,3))
+#lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
+#lines!(ax, sol_gc, idxs=(1,2,3))
 
-f = DisplayAs.PNG(f) #hide
+#for i in 1:3
+#    ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+#    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+#end
+
+#f = DisplayAs.PNG(f) #hide
 
 # Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps.

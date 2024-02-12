@@ -23,7 +23,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8

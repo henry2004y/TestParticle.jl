@@ -17,7 +17,7 @@ using TestParticle: qᵢ, mᵢ
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 uniform_B(x) = SA[0.0, 0.0, 0.01]
 uniform_E(x) = SA[0.0, 0.0, 0.0]

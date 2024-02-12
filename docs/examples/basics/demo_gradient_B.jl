@@ -20,7 +20,7 @@ using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function grad_B(x)
     return SA[0, 0, 1e-8+1e-9 *x[2]]

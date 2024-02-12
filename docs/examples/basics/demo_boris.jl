@@ -16,7 +16,7 @@ using TestParticle
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(sol_boris, sol1, sol2)
    f = Figure(size=(700, 600), fontsize=18)

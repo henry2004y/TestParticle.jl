@@ -19,7 +19,7 @@ using StaticArrays
 using LinearAlgebra
 using ForwardDiff: gradient, jacobian
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function curved_B(x)
     ## satisify ∇⋅B=0

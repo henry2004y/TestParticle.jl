@@ -15,7 +15,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra: ×
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]

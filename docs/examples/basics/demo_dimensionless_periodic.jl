@@ -18,7 +18,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Number of cells for the field along each dimension
 nx, ny = 4, 6

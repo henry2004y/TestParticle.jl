@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using GeometryBasics
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
 const R₀ = 6.2  # Major radius [m]

@@ -41,7 +41,7 @@ using TestParticle: c, qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Unit conversion factors between SI and dimensionless units
 const B₀ = 1e-8             # [T]

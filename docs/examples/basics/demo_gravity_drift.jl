@@ -14,9 +14,8 @@ using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 B(x) = SA[0.0, 1e-8, 0.0]
 E(x) = SA[0.0, 0.0, 0.0]

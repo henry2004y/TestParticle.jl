@@ -23,7 +23,7 @@ using Statistics
 using LinearAlgebra
 using Random
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 seed = 1 # seed for random number
 Random.seed!(seed)
