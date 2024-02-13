@@ -16,7 +16,7 @@ julia> ]
 pkg> add TestParticle
 ```
 
-Visualization via [Makie](https://makie.juliaplots.org/stable/), [Plots](https://docs.juliaplots.org/stable/), and [PyPlot](https://github.com/JuliaPy/PyPlot.jl) are supported. Please refer to each visualization library's documentation for installations.
+Visualization via [Makie](https://makie.juliaplots.org/stable/) and [Plots](https://docs.juliaplots.org/stable/) are supported via recipes. Please refer to each visualization library's documentation for installations.
 
 ## Usage
 
@@ -30,9 +30,10 @@ B(x) = SA[0, 0, 1e-8]
 # Electric field
 E(x) = SA[0,0, 0.0, 0.0]
 # Initial conditions
-x0 = [1.0, 0.0, 0.0]
-v0 = [0.0, 1.0, 0.1]
-stateinit = [x0..., v0...]
+stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
+   [x0..., v0...]
+end
+# Time span
 tspan = (0, 20)
 # Assemble particle + fields
 param = prepare(E, B, species=Proton)
@@ -41,21 +42,21 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 ```
 
-For plotting with Makie,
-
-```julia
-using GLMakie
-
-plot(sol)
-```
-
 Native Boris particle pusher also follows a similar interface:
 
 ```julia
 dt = 3e-11 # fixed time step
 savestepinterval = 10
 prob = TraceProblem(stateinit, tspan, param)
-sol = TestParticle.solve(prob; dt, savestepinterval)
+sol = TestParticle.solve(prob; dt, savestepinterval)[1]
+```
+
+For plotting with Makie,
+
+```julia
+using GLMakie
+
+plot(sol, idxs=(1, 2, 3))
 ```
 
 More tutorials and examples can be found in the [doc](https://henry2004y.github.io/TestParticle.jl/dev/).
