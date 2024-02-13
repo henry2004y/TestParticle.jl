@@ -23,7 +23,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
@@ -45,9 +45,13 @@ E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
 param = prepare(x, y, z, E, B; species=User)
 
-x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
-stateinit = [x0..., u0...]
+## Initial condition
+stateinit = let
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
+end
+## Time span
 tspan = (0.0, π) # half gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)

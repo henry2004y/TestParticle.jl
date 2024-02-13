@@ -17,7 +17,7 @@ using TestParticle: getB_CS_harris
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 
@@ -38,13 +38,17 @@ m = TestParticle.mᵢ
 q = TestParticle.qᵢ
 c = TestParticle.c
 Rₑ = TestParticle.Rₑ
-## initial particle energy, [eV]
-Ek = 5e7
-## initial velocity, [m/s]
-v₀ = [c*√(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]
-## initial position, [m]
-r₀ = [-5.0Rₑ, 0.0, 0.0]
-stateinit = [r₀..., v₀...]
+## Initial condition
+stateinit = let
+   ## initial particle energy, [eV]
+   Ek = 5e7
+   ## initial velocity, [m/s]
+   v₀ = [c*√(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]
+   ## initial position, [m]
+   r₀ = [-5.0Rₑ, 0.0, 0.0]
+
+   [r₀..., v₀...]
+end
 
 param = prepare(getE, getB)
 tspan = (0.0, 10.0)
@@ -55,7 +59,7 @@ sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
 
 ### Visualization
 
-f = Figure()
+f = Figure(fontsize=18)
 ax = Axis3(f[1, 1],
    title = "Particle trajectory near the Harris current sheet",
    xlabel = "x [Re]",
@@ -83,7 +87,7 @@ end
 B = zeros(Float32, 3, size(X)...)
 
 i = 1
-for (x,y) in zip(X,Y)
+for (x,y) in zip(X, Y)
    B[1+3*(i-1):3*i] = getB_CS_harris([x,0.0,0.0], 4e-2, 1.0)
    global i += 1
 end

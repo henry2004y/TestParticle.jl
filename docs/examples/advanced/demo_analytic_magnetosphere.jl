@@ -17,7 +17,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using FieldTracer
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function getB_superposition(xu)
    getB_dipole(xu) + SA[0.0, 0.0, -10e-9]
@@ -63,19 +63,23 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); reltol=1e-5,
 
 ### Visualization
 
-f = Figure()
+f = Figure(fontsize=18)
 ax = Axis3(f[1, 1],
    title = "5 keV Protons in a vacuum superposition magnetosphere",
    xlabel = "x [Re]",
    ylabel = "y [Re]",
    zlabel = "z [Re]",
    aspect = :data,
+   limits = (-14, 14, -14, 14, -5, 5)
 )
 
 invRE = 1 / Rₑ
-for sol in sols
-   l = lines!(ax, sol)
-   scale!(l, invRE, invRE, invRE)
+
+for (i, sol) in enumerate(sols)
+   l = lines!(ax, sol, idxs=(1, 2, 3))
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   scale!(ax.scene.plots[9+2*i-1], invRE, invRE, invRE)
+   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
 ## Field lines

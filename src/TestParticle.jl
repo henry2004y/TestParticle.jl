@@ -4,7 +4,10 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic
-using SciMLBase: BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial
+using SciMLBase: AbstractSciMLProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
+   BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
+   DEFAULT_SPECIALIZATION, ODEFunction,
+   LinearInterpolation
 using Distributions: MvNormal
 using StaticArrays
 using ChunkSplitters
@@ -24,6 +27,11 @@ include("utility/utility.jl")
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 """
 @enum Species Proton Electron Ion User
+
+"""
+Abstract type for tracing solutions.
+"""
+abstract type AbstractTraceSolution{T, N, S} <: AbstractODESolution{T, N, S} end
 
 """
 Abstract type for velocity distribution functions.
@@ -642,15 +650,14 @@ gc = get_gc(params)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=2e-11)
 
-orbit(sol, vars=gc)
+f = Figure(fontsize=18)
+ax = Axis3(f[1, 1], aspect = :data)
+gc_plot(x,y,z,vx,vy,vz) = (gc([x,y,z,vx,vy,vz])...,)
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 ```
 """
 function get_gc(param::Union{TPTuple, FullTPTuple})
-   gc_x(xu) = getindex(guiding_center(xu, param), 1)
-   gc_y(xu) = getindex(guiding_center(xu, param), 2)
-   gc_z(xu) = getindex(guiding_center(xu, param), 3)
-   # Because of the design of the keyword 'vars', three coordinates must be divided into three functions.
-   return (gc_x, gc_y, gc_z)
+   gc(xu) = guiding_center(xu, param)
 end
 
 function orbit end
