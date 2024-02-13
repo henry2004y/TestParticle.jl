@@ -17,7 +17,7 @@ using TestParticle: qᵢ, mᵢ
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 uniform_B(x) = SA[0.0, 0.0, 0.01]
 uniform_E(x) = SA[0.0, 0.0, 0.0]
@@ -71,9 +71,9 @@ tspan = (0.0, 1.5π) # 3/4 gyroperiod
 dt = 0.1
 savestepinterval = 1
 trajectories = 2
-prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
+prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-sols = TestParticle.solve(prob; savestepinterval, isoutofdomain, trajectories)
+sols = TestParticle.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
@@ -85,9 +85,11 @@ ax = Axis(f[1, 1],
 )
 
 for i in eachindex(sols)
-   @views lines!(ax, sols[i].u[1,:], sols[i].u[2,:], label=string(i))
+   lines!(ax, sols[i]; idxs=(1, 2), label=string(i))
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[2*i-1].color = Makie.wong_colors()[i]
 end
 
-axislegend()
+axislegend(position=:lt, framevisible=false)
 
 f = DisplayAs.PNG(f) #hide

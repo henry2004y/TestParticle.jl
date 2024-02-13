@@ -16,18 +16,30 @@ using TestParticle
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(sol_boris, sol1, sol2)
-   f = Figure(size=(700, 600))
-   ax = Axis(f[1, 1], aspect=1, limits = (-3, 1, -2, 2))
-   @views lines!(ax, sol_boris[1].u[1,:]./rL, sol_boris[1].u[2,:]./rL,
-      linewidth=2, label="Boris")
-   l1 = lines!(ax, sol1, linestyle=:dashdot, label="Tsit5 fixed", linewidth=2)
-   l2 = lines!(ax, sol2, linestyle=:dot, label="Tsit5 adaptive", linewidth=2)
-   scale!(l1, invrL, invrL, invrL)
-   scale!(l2, invrL, invrL, invrL)
-   axislegend(position=:lt, framevisible=false)
+   f = Figure(size=(700, 600), fontsize=18)
+   ax = Axis(f[1, 1], aspect=1, limits = (-3, 1, -2, 2),
+      xlabel = "X",
+      ylabel = "Y")
+   idxs = (1, 2)
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth=2, label="Boris")
+   l1 = lines!(ax, sol1; idxs, linewidth=2, linestyle=:dashdot, label="Tsit5 fixed")
+   l2 = linesegments!(ax, sol2; idxs, linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
+
+   ax.scene.plots[1].linewidth = 2
+   ax.scene.plots[5].linewidth = 2
+
+   ax.scene.plots[3].color = Makie.wong_colors()[2]
+   ax.scene.plots[5].color = Makie.wong_colors()[3]
+
+   scale!(ax.scene.plots[1], invrL, invrL)
+   scale!(ax.scene.plots[3], invrL, invrL)
+   scale!(ax.scene.plots[5], invrL, invrL)
+
+   axislegend(position=:rt, framevisible=false)
 
    f
 end
@@ -52,9 +64,9 @@ const invrL = 1 / rL;
 tspan = (0.0, tperiod)
 dt = tperiod / 4
 
-prob = TraceProblem(stateinit, tspan, dt, param)
+prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; savestepinterval=1);
+sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -71,9 +83,9 @@ f = DisplayAs.PNG(f) #hide
 
 dt = tperiod / 8
 
-prob = TraceProblem(stateinit, tspan, dt, param)
+prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; savestepinterval=1);
+sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
@@ -87,10 +99,10 @@ f = DisplayAs.PNG(f) #hide
 tspan = (0.0, 200*tperiod)
 dt = tperiod / 12
 
-prob_boris = TraceProblem(stateinit, tspan, dt, param)
+prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob_boris; savestepinterval=10);
+sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 sol2 = solve(prob, Tsit5());
 
@@ -102,9 +114,14 @@ f = DisplayAs.PNG(f) #hide
 #
 # Another aspect to compare is performance:
 
-@time sol_boris = TestParticle.solve(prob_boris; savestepinterval=10);
+@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 @time sol2 = solve(prob, Tsit5());
+
+# We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
+
+t = tspan[2] / 2
+sol_boris(t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping.

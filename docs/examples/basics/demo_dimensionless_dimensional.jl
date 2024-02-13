@@ -41,7 +41,7 @@ using TestParticle: c, qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## Unit conversion factors between SI and dimensionless units
 const B₀ = 1e-8             # [T]
@@ -56,6 +56,7 @@ const Emag = 1e-8           # [V/m]
 B(x) = SA[0, 0, B₀]
 E(x) = SA[Emag, 0.0, 0.0]
 
+## Initial conditions
 x0 = [0.0, 0.0, 0.0] # [m]
 v0 = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0..., v0...]
@@ -70,7 +71,7 @@ B_normalize(x) = SA[0, 0, B₀/B₀]
 E_normalize(x) = SA[Emag/E₀, 0.0, 0.0]
 ## For full EM problems, the normalization of E and B should be done separately.
 param2 = prepare(E_normalize, B_normalize; species=User)
-## Scale initial quantities by the conversion factors
+## Scale initial conditions by the conversion factors
 x0 ./= l₀
 v0 ./= U₀
 tspan2 = (0, 2π)
@@ -81,19 +82,18 @@ sol2 = solve(prob2, Vern9(); reltol=1e-4, abstol=1e-6)
 
 ### Visualization
 f = Figure(fontsize=18)
-ax = Axis3(f[1, 1],
+ax = Axis(f[1, 1],
     xlabel = "x",
     ylabel = "y",
-    zlabel = "z",
-    aspect = :data,
+    aspect = DataAspect(),
 )
 
-lines!(ax, sol1)
+lines!(ax, sol1, idxs=(1, 2))
 ## Interpolate dimensionless solutions and map back to SI units
-xp, yp, zp = let trange = range(tspan2..., length=40)
-   sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀, sol2.(trange, idxs=3) .* l₀
+xp, yp = let trange = range(tspan2..., length=40)
+   sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀
 end
-lines!(ax, xp, yp, zp, linestyle=:dashdot, linewidth=5)
+lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5)
 
 f = DisplayAs.PNG(f) #hide
 

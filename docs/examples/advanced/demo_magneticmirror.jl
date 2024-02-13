@@ -21,10 +21,9 @@ using TestParticle
 using TestParticle: getB_mirror
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
-using Printf
+using LinearAlgebra: normalize, norm, ⋅
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 
@@ -38,25 +37,27 @@ function getB(xu)
    SVector{3}(getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
 end
 
-function getE(xu)
-   SA[0.0, 0.0, 0.0]
-end
+getE(xu) = SA[0.0, 0.0, 0.0]
 
 ## velocity in the direction perpendicular to the magnetic field
-function v_perp(xu)
+function v_perp(t, x, y, z, vx, vy, vz)
+   xu = SA[x, y, z, vx, vy, vz]
    vu = @view xu[4:6]
    B = getB(xu)
    b = normalize(B)
-   v_pa = (vu⋅b).*b
-   return norm(vu - v_pa)
+   v_pa = (vu ⋅ b) .* b
+
+   (t, norm(vu - v_pa))
 end
 
 ## magnetic field
-absB(xu) = hypot(getB(xu)...)
+absB(t, x, y, z) = (t, hypot(getB(SA[x,y,z])...))
 
 ## μ, magnetic moment
-function mu(xu)
-   return v_perp(xu)^2/hypot(getB(xu)...)
+function mu(t, x, y, z, vx, vy, vz)
+   xu = SA[x, y, z, vx, vy, vz]
+
+   (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / hypot(getB(xu)...) )
 end
 
 Et(xu) = hypot(xu[4:6]...)
@@ -84,18 +85,33 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_non = solve(prob, AB4(); dt=3e-9)
 
 ### Visualization
+f = Figure(size=(900, 600), fontsize=18)
+ax1 = Axis3(f[1:3, 1],
+   title = "Magnetic Mirror",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data,
+   azimuth = 0.9π,
+   elevation = 0.1π
+)
+ax2 = Axis(f[1,2], xlabel = "time [s]", ylabel = "B [T]")
+ax3 = Axis(f[2,2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
+ax4 = Axis(f[3,2], xlabel = "time [s]", ylabel = "mu")
 
-f = monitor(sol_non, vars=[absB, v_perp, mu])
+lines!(ax1, sol_non, idxs=(1, 2, 3))
+lines!(ax2, sol_non, idxs=(absB, 0, 1, 2, 3))
+lines!(ax3, sol_non, idxs=(v_perp, 0, 1, 2, 3, 4, 5, 6))
+lines!(ax4, sol_non, idxs=(mu, 0, 1, 2, 3, 4, 5, 6))
 
 ## Plot coils
 θ = range(0, 2π, length=100)
 x = a.*cos.(θ)
 y = a.*sin.(θ)
 z = fill(distance/2, size(x))
-ax = f[1:3,1:3]
-lines!(ax, x, y, z, color=:red)
+lines!(ax1, x, y, z, color=:red)
 z = fill(-distance/2, size(x))
-lines!(ax, x, y, z, color=:red)
+lines!(ax1, x, y, z, color=:red)
 
 ## # The distribution of magnetic field along the z-axis or x-axis
 ## Bz(z) = hypot(getB(SA[0.0, 0.0, z])...)

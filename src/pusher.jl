@@ -1,29 +1,56 @@
 # Native particle pusher
 
-struct TraceProblem{TS, T<:Real, TP, PF}
+struct TraceProblem{F<:AbstractODEFunction, uType, tType, P, PF} <: AbstractSciMLProblem
+   f::F
    "initial condition"
-   u0::TS
+   u0::uType
    "time span"
-   tspan::Tuple{T, T}
-   "time step"
-   dt::T
+   tspan::tType
    "(q2m, E, B)"
-   p::TP
+   p::P
    "function for setting initial conditions"
    prob_func::PF
 end
 
-struct TraceSolution{TU<:Array, T<:AbstractVector}
+struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <: AbstractODESolution{T, N, uType}
    "positions and velocities"
-   u::TU
+   u::uType
+   u_analytic::uType2
+   errors::DType
    "time stamps"
-   t::T
+   t::tType
+   k::rateType
+   prob::P
+   alg::A
+   interp::IType
+   dense::Bool
+   tslocation::Int
+   stats::S
+   alg_choice::AC
+   retcode::ReturnCode.T
+end
+
+function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, dense,
+   tslocation, stats, alg_choice, retcode) where {T, N}
+   return TraceSolution{T, N, typeof(u), typeof(u_analytic), typeof(errors), typeof(t),
+       typeof(k), typeof(prob), typeof(alg), typeof(interp),
+       typeof(stats),
+       typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
+       dense, tslocation, stats, alg_choice, retcode)
+end
+
+Base.length(ts::TraceSolution) = length(ts.t)
+
+"Interpolate solution at time `x`. Forward tracing only."
+function (sol::TraceSolution)(t, ::Type{deriv} = Val{0}; idxs=nothing, continuity = :left) where {deriv}
+   sol.interp(t, idxs, deriv, sol.prob.p, continuity)
 end
 
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
-function TraceProblem(u0, tspan, dt, p; prob_func=DEFAULT_PROB_FUNC)
-   TraceProblem(u0, tspan, dt, p, prob_func)
+function TraceProblem(u0, tspan, p; prob_func=DEFAULT_PROB_FUNC)
+   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
+   TraceProblem(_f, u0, tspan, p, prob_func)
 end
 
 struct BorisMethod{TV}
@@ -57,7 +84,7 @@ end
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
-function update_velocity!(xv, paramBoris, param,  dt)
+function update_velocity!(xv, paramBoris, param, dt)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
    q2m, E, B = param[1], param[2](xv, 0.0), param[3](xv, 0.0)
 	# t vector
@@ -121,35 +148,34 @@ Trace particles using the Boris method with specified `prob`.
 - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
 function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm=EnsembleSerial();
-   trajectories::Int=1, savestepinterval::Int=1,
+   trajectories::Int=1, savestepinterval::Int=1, dt::AbstractFloat,
    isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
-   sols = _solve(ensemblealg, prob, trajectories, savestepinterval, isoutofdomain)
+   sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain)
 end
 
-function _solve(::EnsembleSerial, prob, trajectories, savestepinterval, isoutofdomain)
-   sols, ttotal, nt, nout = _prepare(prob, trajectories, savestepinterval)
-
-   _boris!(sols, prob, 1:trajectories, savestepinterval, ttotal, nt, nout, isoutofdomain)
+function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain)
+   sols, ttotal, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
+   irange = 1:trajectories
+   _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
 
    sols
 end
 
-function _solve(::EnsembleThreads, prob, trajectories, savestepinterval, isoutofdomain)
-   sols, ttotal, nt, nout = _prepare(prob, trajectories, savestepinterval)
+function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain)
+   sols, ttotal, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
 
    nchunks = Threads.nthreads()
    Threads.@threads for (irange, ichunk) in chunks(1:trajectories, nchunks)
-      _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
+      _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
    end
 
    sols
 end
 
 "Prepare for advancing."
-function _prepare(prob, trajectories, savestepinterval)
-   (; tspan, dt) = prob
-   ttotal = tspan[2] - tspan[1]
+function _prepare(prob, trajectories, dt, savestepinterval)
+   ttotal = prob.tspan[2] - prob.tspan[1]
    nt = round(Int, ttotal / dt)
    nout = nt ÷ savestepinterval + 1
    sols = Vector{TraceSolution}(undef, trajectories)
@@ -158,18 +184,18 @@ function _prepare(prob, trajectories, savestepinterval)
 end
 
 "Apply Boris method for particles with index in `irange`."
-function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutofdomain)
-   (; tspan, dt, p, u0) = prob
+function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
+   (; tspan, p, u0) = prob
    paramBoris = BorisMethod()
    xv = MVector{6, eltype(u0)}(undef)
-   traj = zeros(eltype(u0), 6, nout)
+   traj = fill(MVector{6, eltype(u0)}(undef), nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
-      traj[:,1] = xv
+      traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
       update_velocity!(xv, paramBoris, p, -0.5*dt)
@@ -179,27 +205,41 @@ function _boris!(sols, prob, irange, savestepinterval, ttotal, nt, nout, isoutof
          update_location!(xv, dt)
          if it % savestepinterval == 0
             iout += 1
-            traj[:,iout] .= xv
+            traj[iout] = copy(xv)
          end
          isoutofdomain(xv, p, it*dt) && break
       end
 
       if iout == nout # regular termination
          dtfinal = ttotal - nt*dt
-         if dtfinal > 1e-3 # final step if needed
+         if dtfinal > 0.5*dt # final step if needed
             update_velocity!(xv, paramBoris, p, dtfinal)
             update_location!(xv, dtfinal)
-            traj_save = hcat(traj, xv)
+            traj_save = copy(traj)
+            push!(traj_save, u0)
             t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
          else
             traj_save = copy(traj)
             t = collect(tspan[1]:dt*savestepinterval:tspan[2])
          end
       else # early termination or savestepinterval != 1
-         traj_save = traj[:, 1:iout]
-         t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*iout)
+         traj_save = traj[1:iout]
+         t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1))
       end
-      sols[i] = TraceSolution(traj_save, t)
+
+      dense = false
+      k = nothing
+      alg = :boris
+      alg_choice = nothing
+      interp = LinearInterpolation(t, traj_save)
+      retcode = ReturnCode.Default
+      stats = nothing
+      u_analytic = nothing
+      errors = nothing
+      tslocation = 0
+
+      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+         interp, dense, tslocation, stats, alg_choice, retcode)
    end
 
    return

@@ -19,7 +19,7 @@ using StaticArrays
 using Statistics: mean
 using Printf
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 
@@ -64,7 +64,7 @@ sol = solve(prob, Tsit5(); dt=2e-11, save_idxs=[1,2,3])
 
 ### Visualization
 
-f = Figure()
+f = Figure(fontsize=18)
 ax = Axis3(f[1, 1],
    title = "Particle trajectory in Tokamak",
    xlabel = "x [m]",

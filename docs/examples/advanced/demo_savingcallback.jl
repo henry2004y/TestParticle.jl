@@ -25,7 +25,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
-using LinearAlgebra
+using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks
 
 ## Number of cells for the field along each dimension
@@ -96,7 +96,7 @@ end
 
 cb = SavingCallback(save_B_mu, saved_values)
 
-sol = solve(prob, Vern9(); callback=cb)
+sol = solve(prob, Vern9(); callback=cb);
 
 # The extra values are saved in `saved_values`:
 

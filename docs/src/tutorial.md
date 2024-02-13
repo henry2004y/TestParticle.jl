@@ -13,6 +13,12 @@ Currently we recommend `Vern9` as a starting point for adaptive timestepping, wi
 
 Take you some time to figure out which algorithm works for your problem!
 
+## Unit conversions
+
+By default SI units are applied within the package. However, users can also define their own units by setting the particle mass and charge (2 constants) and providing the basic scales of magnetic field, length, time, or velocity (3 reference scales required; length, time and velocity are interchangable).
+
+In the dimensionless natural unit system, we have the most number of ones which in turn gives the simplest form for computation. Check out the demos on unit conversions for more details.
+
 ## Tracing backwards in time
 
 It is easy to trace a charged particle backwards in time. In a forward tracing problem, we set `tspan = (t1, t2)` where `t1 < t2`. In a backward tracing problem, we simply set `t1 > t2`, e.g. `tspan = (0.0, -1.0)`. Note that tracing backwards in time is different from inversing the velocity because of the cross product in the Lorentz force. More specifically, the drift velocities will not change sign if one inverses velocity.
@@ -26,7 +32,11 @@ There are two ways to trace multiple particles simultaneously:
 
 The Boris pusher follows a similar interface for multithreading.
 
-## Summary of Guiding Center Drifts
+## Guiding center drifts
+
+By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`. In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below. With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
+
+### Summary of guiding center drifts
 
 General force:
 

@@ -12,7 +12,7 @@ using TestParticle
 using OrdinaryDiffEq
 using Random
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 ## For reproducible results
 Random.seed!(1234)
@@ -34,9 +34,10 @@ function trace(x, y, z, E, B; trajectories::Int=10)
    v = sample(vdf, trajectories)
 
    for i in 1:trajectories
-      prob = remake(prob; u0=[x0..., v[:,i]...])
+      #prob = remake(prob; u0=[x0..., v[:,i]...])
+      prob.u0[4:6] = v[:,i]
 
-      sol = solve(prob, Vern9(); save_idxs=[1,2,3])
+      sol = solve(prob, Vern9())
       sols[i] = sol
    end
 
@@ -44,35 +45,33 @@ function trace(x, y, z, E, B; trajectories::Int=10)
 end
 
 ### Initialize grid and field
-
 x = range(-10, 10, length=15)
 y = range(-10, 10, length=20)
 z = range(-10, 10, length=25)
+
 B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
 E = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
-
 B[3,:,:,:] .= 1e-11
 E[3,:,:,:] .= 5e-13
 
-trajectories = 10
+trajectories = 4
 
 ### Solve for the trajectories
 
 sols = trace(x, y, z, E, B; trajectories)
 
 ### Visualization
-
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
    title = "Particle trajectories",
-   xlabel = "X",
-   ylabel = "Y",
-   zlabel = "Z",
+   xlabel = "X [m]",
+   ylabel = "Y [m]",
+   zlabel = "Z [m]",
    aspect = :data,
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], label="$i")
+   lines!(ax, sols[i], idxs=(1, 2, 3), label="$i")
 end
 
 f = DisplayAs.PNG(f) #hide
