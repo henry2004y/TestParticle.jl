@@ -15,7 +15,6 @@ using Statistics: mean
 using Batsrus
 using TestParticle
 using OrdinaryDiffEq
-using Meshes
 using FieldTracer
 using PyPlot
 
@@ -26,9 +25,9 @@ function initial_conditions(i)
    [x[xc_], y[yc_+j], z[zc_], Uix[xc_,yc_+j,zc_], Uiy[xc_,yc_+j,zc_], Uiz[xc_,yc_+j,zc_]]
 end
 
-"Initial state perturbation for EnsembleProblem."
+"Set initial conditions."
 function prob_func(prob, i, repeat)
-   remake(prob,u0=initial_conditions(i))
+   remake(prob, u0=initial_conditions(i))
 end
 
 ## Data processing
@@ -54,14 +53,6 @@ E[1,:,:,:] .= var["Ex"] .* 1e-6
 E[2,:,:,:] .= var["Ey"] .* 1e-6
 E[3,:,:,:] .= var["Ez"] .* 1e-6
 
-Δx = x[2] - x[1]
-Δy = y[2] - y[1]
-Δz = z[2] - z[1]
-
-grid = Meshes.CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-   (x[1], y[1], z[1]),
-   (Δx, Δy, Δz))
-
 ## Initial conditions
 
 Uex, Uey, Uez = var["uxs0"] .* 1e3, var["uys0"] .* 1e3, var["uzs0"] .* 1e3
@@ -74,36 +65,22 @@ zc_ = floor(Int, length(z)/2) + 1
 stateinit_e = [x[xc_], y[yc_], z[zc_], Uex[xc_,yc_,zc_], Uey[xc_,yc_,zc_], Uez[xc_,yc_,zc_]]
 stateinit_p = [x[xc_], y[yc_], z[zc_], Uix[xc_,yc_,zc_], Uiy[xc_,yc_,zc_], Uiz[xc_,yc_,zc_]]
 
-
-param_electron = prepare(grid, E, B, species=Electron)
+param_electron = prepare(x, y, z, E, B, species=Electron)
 tspan_electron = (0.0, 0.1)
 
-param_proton = prepare(grid, E, B, species=Proton)
+param_proton = prepare(x, y, z, E, B, species=Proton)
 tspan_proton = (0.0, 10.0)
 trajectories = 5
 
-#=
-prob_e = ODEProblem(trace!, stateinit_e, tspan_electron, param_electron)
-ensemble_prob = EnsembleProblem(prob_e, prob_func=prob_func)
-sol_e = solve(prob_e, Vern9(); save_idxs=[1,2,3], alg_hints=[:nonstiff])
-sol_e = solve(ensemble_prob, Vern9(), EnsembleThreads();
-   trajectories, save_idxs=[1,2,3], safetycopy=false)
-=#
-
-
 prob_p = ODEProblem(trace!, stateinit_p, tspan_proton, param_proton)
 ensemble_prob = EnsembleProblem(prob_p, prob_func=prob_func)
-#sol_p = solve(prob_p; save_idxs=[1,2,3], alg_hints=[:nonstiff])
-sol_p = solve(ensemble_prob, AutoTsit5(Rosenbrock23()), EnsembleThreads();
-   trajectories, save_idxs=[1,2,3])
-
+sol_p = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories)
 
 ## Visualization
 
 using3D()
 fig = plt.figure(figsize=(10,6))
 ax = fig.gca(projection="3d")
-
 
 ## Field tracing
 
@@ -119,14 +96,7 @@ for i in 1:10:length(y)
    line = ax.plot(x1 ./ RG, y1 ./RG, z1 ./ RG, "k-", alpha=0.3)
 end
 
-#xyz = plot(sol_e, vars=(1,2,3), xlabel="x", ylabel="y", zlabel="z",
-#   aspect_ratio=:equal, label="electron", lw=2)
-
-#ax.plot(sol_e[1,:], sol_e[2,:], sol_e[3,:], label="electron")
-
 n = 200 # number of timepoints
-#ts = range(0, stop=tspan_electron[2], length=n)
-#ax.plot(sol_e(ts,idxs=1) ./ RG, sol_e(ts,idxs=2) ./ RG, sol_e(ts,idxs=3) ./ RG, label="electron")
 
 ts = range(0, stop=tspan_proton[2], length=n)
 for i = 1:trajectories
@@ -148,8 +118,6 @@ zlabel("z [Rg]")
 
 ax.set_box_aspect([1.17,4,4])
 TestParticle.set_axes_equal(ax)
-
-#plotdata(data, "bz", plotmode="contbar", cut="y", cutPlaneIndex=40, level=20)
 ```
 
 ![](../../figures/proton_ganymede_mhdepic.png)

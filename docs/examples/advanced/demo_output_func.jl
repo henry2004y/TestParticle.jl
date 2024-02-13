@@ -9,9 +9,10 @@
 
 # This example demonstrates tracing multiple protons in an analytic E field and numerical B field.
 # See [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
-# Also check [demo_ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
+# Also check [Demo: Ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
 
-# The `output_func` argument can be used to change saving outputs. It works as a reduction function, but here we demonstrate how to add additional outputs.
+# The `output_func` argument can be used to change saving outputs.
+# It works as a reduction function, but here we demonstrate how to add additional outputs.
 # Besides the regular outputs, we also save the magnetic field along the trajectory, together with the parallel velocity.
 
 import DisplayAs #hide

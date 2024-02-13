@@ -1,5 +1,5 @@
 # ---
-# title: Electron motion in a magnetic bottle
+# title: Electron in a magnetic bottle
 # id: demo_electron_bottle
 # date: 2023-04-20
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
@@ -75,14 +75,14 @@ sol_non = solve(prob_non, AB4(); dt=3e-9)
 
 ### Visualization
 
-f = Figure()
+f = Figure(fontsize=18)
 ax1 = Axis3(f[1, 1];
    aspect = :data,
-   title = "Relativistic e⁻, "*v_str*", "*e_str
+   title = "Relativistic e⁻, \n"*v_str*", "*e_str
    )
 ax2 = Axis3(f[1, 2];
    aspect = :data,
-   title = "Non-relativistic e⁻, "*v_str*", "*e_str
+   title = "Non-relativistic e⁻, \n"*v_str*", "*e_str
    )
 
 lines!(ax1, sol_rel, idxs=(1, 2, 3))

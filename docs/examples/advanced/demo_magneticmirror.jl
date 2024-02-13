@@ -85,7 +85,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_non = solve(prob, AB4(); dt=3e-9)
 
 ### Visualization
-f = Figure(size=(800, 600), fontsize=18)
+f = Figure(size=(900, 600), fontsize=18)
 ax1 = Axis3(f[1:3, 1],
    title = "Magnetic Mirror",
    xlabel = "x [m]",

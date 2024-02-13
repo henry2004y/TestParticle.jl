@@ -114,14 +114,14 @@ f = DisplayAs.PNG(f) #hide
 #
 # Another aspect to compare is performance:
 
-@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
+@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 @time sol2 = solve(prob, Tsit5());
 
 # We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
 
 t = tspan[2] / 2
-sol_boris[1](t)
+sol_boris(t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping.

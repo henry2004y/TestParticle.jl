@@ -80,7 +80,7 @@ ax = Axis(f[1, 1],
     aspect = 1,
 )
 
-lines!(ax, sol)
+lines!(ax, sol, idxs=(1, 2))
 
 f = DisplayAs.PNG(f) #hide
 
