@@ -23,7 +23,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function grad_B(x)
-    return SA[0, 0, 1e-8+1e-9 *x[2]]
+    return SA[0, 0, 1e-8 + 1e-9*x[2]]
 end
 
 function uniform_E(x)
@@ -42,12 +42,14 @@ function trace_gc!(dx, x, p, t)
     v_par = (xu[4:6] ⋅ b).*b
     v_perp = xu[4:6] - v_par
     dx[1:3] = norm(v_perp)^2*(Bv × gradient_B)/(2*q2m*norm(Bv)^3) +
-       (E(x)×Bv)/norm(Bv)^2+v_par
+       (E(x) × Bv) / norm(Bv)^2 + v_par
 end
 
-x0 = [1.0, 0, 0]
-v0 = [0.0, 1.0, 0.1]
-stateinit = [x0..., v0...]
+## Initial condition
+stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
+    [x0..., v0...]
+end
+## Time span
 tspan = (0, 20)
 param = prepare(uniform_E, grad_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -69,11 +71,11 @@ ax = Axis3(f[1, 1],
    azimuth = 0.3π,
 )
 
-gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
+gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 
-lines!(ax, sol, idxs=(1,2,3))
+lines!(ax, sol, idxs=(1, 2, 3))
 lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-lines!(ax, sol_gc, idxs=(1,2,3))
+lines!(ax, sol_gc, idxs=(1, 2, 3))
 
 for i in 1:3
     ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!

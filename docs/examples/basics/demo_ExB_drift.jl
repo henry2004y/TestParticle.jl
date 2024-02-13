@@ -65,11 +65,11 @@ ax = Axis3(f[1, 1],
    azimuth = 0.3π,
 )
 
-gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
+gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 
-lines!(ax, sol, idxs=(1,2,3))
+lines!(ax, sol, idxs=(1, 2, 3))
 lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-lines!(ax, sol_gc, idxs=(1,2,3))
+lines!(ax, sol_gc, idxs=(1, 2, 3))
 
 for i in 1:3
     ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!

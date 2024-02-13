@@ -85,8 +85,8 @@ ax2 = Axis3(f[1, 2];
    title = "Non-relativistic e⁻, "*v_str*", "*e_str
    )
 
-lines!(f[1,1], sol_rel)
-lines!(f[1,2], sol_non)
+lines!(ax1, sol_rel, idxs=(1, 2, 3))
+lines!(ax2, sol_non, idxs=(1, 2, 3))
 
 ## Plot coils
 θ = range(0, 2π, length=100)
