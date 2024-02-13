@@ -5,14 +5,14 @@ using OrdinaryDiffEq
 using StaticArrays
 using GeometryBasics
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
-# parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
+# Parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
 const R₀ = 6.2  # Major radius [m]
 const Bζ0 = 5.3  # toroidal field on axis [T]
 const a = 2.0 # Minor radius [m]
 
-# variable must be a radius normalized by minor radius.
+# Variable must be a radius normalized by minor radius.
 function q_profile(nr::Float64)
     return nr^2 + 2*nr + 0.5
 end
@@ -25,6 +25,19 @@ function E(xu)
     SA[0.0, 0.0, 0.0]
 end
 
+"Contruct the topology of Tokamak."
+function get_tokamak_topology()
+    nθ = LinRange(0, 2π, 30)
+    nζ = LinRange(0, 2π, 30)
+    nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
+    ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
+    nz = [a*sin(θ) for θ in nθ, ζ in nζ]
+    points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
+    faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
+
+    tor_mesh = GeometryBasics.Mesh(points, faces)
+end
+
 # initial velocity for passing particle
 v₀ = [0.0, 2.15, 3.1] .* 1e6
 # initial position, [m]. where q≈2, (2, 1) flux surface.
@@ -35,21 +48,22 @@ param = prepare(E, B; species=Proton)
 tspan = (0.0, 4e-5) # [s]
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern7(); dt=2e-11)
+sol = solve(prob, Vern7(); dt=2e-11);
 
-fig1 = orbit(sol)
-# contruct the topology of Tokamak
-nθ = LinRange(0, 2π, 30)
-nζ = LinRange(0, 2π, 30)
-nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
-ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
-nz = [a*sin(θ) for θ in nθ, ζ in nζ]
-points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
-faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
-tor_mesh = GeometryBasics.Mesh(points, faces)
-# plot the surface of Tokamak
+tor_mesh = get_tokamak_topology()
+
+fig1 = Figure(fontsize=18)
+ax = Axis3(fig1[1, 1],
+   title = "Passing Particle",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data,
+)
+
+lines!(ax, sol; idxs=(1,2,3))
+# Plot the surface of Tokamak
 wireframe!(fig1[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
-Label(fig1[1, 1, Top()], "passing particle", padding = (0, 0, 10, 0), fontsize = 22)
 
 fig1 = DisplayAs.PNG(fig1) #hide
 
@@ -65,12 +79,18 @@ tspan = (0.0, 4e-5)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=1e-11)
 
-fig2 = orbit(sol)
+fig2 = Figure(fontsize=18)
+ax = Axis3(fig2[1, 1],
+   title = "Trapped Particle",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data,
+)
 
+lines!(ax, sol; idxs=(1,2,3))
 wireframe!(fig2[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
-Label(fig2[1, 1, Top()], "trapped particle", padding = (0, 0, 10, 0), fontsize = 22)
 
-# banana orbit
 fig2 = DisplayAs.PNG(fig2) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

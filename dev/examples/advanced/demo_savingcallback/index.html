@@ -4,7 +4,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
-using LinearAlgebra
+using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks
 
 # Number of cells for the field along each dimension
@@ -75,29 +75,8 @@ end
 
 cb = SavingCallback(save_B_mu, saved_values)
 
-sol = solve(prob, Vern9(); callback=cb)</code></pre><pre><code class="nohighlight hljs">retcode: Success
-Interpolation: specialized 9th order lazy interpolation
-t: 9-element Vector{Float64}:
- 0.0
- 0.0007064003808057418
- 0.006151342961409062
- 0.03990852562861322
- 0.24729664360869114
- 0.8655117969873891
- 1.8106352974346311
- 2.900697481526176
- 3.141592653589793
-u: 9-element Vector{Vector{Float64}}:
- [0.0, 0.0, 0.0, 0.0, -1.0, 6.123233995736766e-17]
- [-2.495007386261447e-7, -0.0007064003220566018, 4.3254548263511157e-20, -0.0007064003220566018, -0.9999997504992614, 6.123233995736766e-17]
- [-1.891945045653648e-5, -0.006151304168017332, 3.766611234073604e-19, -0.006151304168017332, -0.9999810805495435, 6.123233995736766e-17]
- [-0.0007962395202539919, -0.03989793281780862, 2.4436924084885645e-18, -0.03989793281780862, -0.999203760479746, 6.123233995736766e-17]
- [-0.030422298499120575, -0.24478374282674448, 1.514255215176337e-17, -0.24478374282674448, -0.9695777015008794, 6.123233995736766e-17]
- [-0.35174949555056156, -0.7614271359337509, 5.299731259024399e-17, -0.7614271359337509, -0.6482505044494384, 6.123233995736766e-17]
- [-1.237546207617505, -0.9713762318669743, 1.1086943607132683e-16, -0.9713762318669743, 0.23754620761750492, 6.123233995736766e-17]
- [-1.9711247573948023, -0.23857203129394697, 1.77616494302291e-16, -0.23857203129394697, 0.9711247573948022, 6.123233995736766e-17]
- [-1.9999999542704117, 3.5908880970261306e-9, 1.9236706937217898e-16, 3.5908880970261306e-9, 0.9999999542704117, 6.123233995736766e-17]</code></pre><p>The extra values are saved in <code>saved_values</code>:</p><pre><code class="language-julia hljs">saved_values</code></pre><pre><code class="nohighlight hljs">SavedValues{tType=Float64, savevalType=Tuple{StaticArraysCore.SVector{3, Float64}, Float64}}
+sol = solve(prob, Vern9(); callback=cb);</code></pre><p>The extra values are saved in <code>saved_values</code>:</p><pre><code class="language-julia hljs">saved_values</code></pre><pre><code class="nohighlight hljs">SavedValues{tType=Float64, savevalType=Tuple{StaticArraysCore.SVector{3, Float64}, Float64}}
 t:
 [0.0, 0.0007064003808057418, 0.006151342961409062, 0.03990852562861322, 0.24729664360869114, 0.8655117969873891, 1.8106352974346311, 2.900697481526176, 3.141592653589793]
 saveval:
-Tuple{StaticArraysCore.SVector{3, Float64}, Float64}[([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17)]</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 6 February 2024 16:17">Tuesday 6 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Tuple{StaticArraysCore.SVector{3, Float64}, Float64}[([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17)]</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 13 February 2024 19:06">Tuesday 13 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

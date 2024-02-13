@@ -3,16 +3,18 @@ using TestParticle
 using TestParticle: getB_dipole, getE_dipole, sph2cart, dipole_fieldline, mᵢ, qᵢ, c, Rₑ
 using OrdinaryDiffEq
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
-# initial particle energy
-Ek = 5e7 # [eV]
-
-# initial velocity, [m/s]
-v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
-# initial position, [m]
-r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
-stateinit = [r₀..., v₀...]
+# Initial condition
+stateinit = let
+   # Initial particle energy
+   Ek = 5e7 # [eV]
+   # initial velocity, [m/s]
+   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   # initial position, [m]
+   r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
+   [r₀..., v₀...]
+end
 # obtain field
 param = prepare(getE_dipole, getB_dipole)
 tspan = (0.0, 10.0)
@@ -23,18 +25,20 @@ sol = solve(prob, Vern9())
 
 ### Visualization
 
-f = Figure()
+f = Figure(fontsize=18)
 ax = Axis3(f[1, 1],
    title = "50 MeV Proton trajectory in Earth's dipole field",
    xlabel = "x [Re]",
    ylabel = "y [Re]",
    zlabel = "z [Re]",
    aspect = :data,
+   limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
 )
 
 invRE = 1 / Rₑ
-l = lines!(ax, sol)
-scale!(l, invRE, invRE, invRE)
+l = lines!(ax, sol, idxs=(1, 2, 3))
+##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+scale!(ax.scene.plots[9+1], invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
    lines!(dipole_fieldline(ϕ)..., color=:tomato, alpha=0.3)
@@ -50,12 +54,6 @@ function get_energy_ratio(sol)
    Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
    Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
 
-   (Eend - Einit) / Einit
-end
-
-function get_energy_ratio(traj::Matrix)
-   Einit = traj[4,1]^2 + traj[5,1]^2 + traj[6,1]^2
-   Eend = traj[4,end]^2 + traj[5,end]^2 + traj[6,end]^2
    (Eend - Einit) / Einit
 end
 
@@ -91,8 +89,8 @@ sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value
 get_energy_ratio(sol)
 
 dt = 1e-4
-prob = TraceProblem(stateinit, tspan, dt, param)
-sol = TestParticle.solve(prob)
-get_energy_ratio(sol[1].u)
+prob = TraceProblem(stateinit, tspan, param)
+sol = TestParticle.solve(prob; dt)[1]
+get_energy_ratio(sol)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

@@ -4,10 +4,10 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
-using LinearAlgebra
+using LinearAlgebra: normalize, ×, ⋅
 using Random
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 seed = 1 # seed for random number
 Random.seed!(seed)
@@ -65,9 +65,13 @@ E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
 # bc=2 uses periodic boundary conditions
 param = prepare(x, y, z, E, B; species=User, bc=2)
 
-x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
-stateinit = [x0..., u0...]
+# Initial condition
+stateinit = let
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
+end
+# Time span
 tspan = (0.0, 2π) # one averaged gyroperiod based on B₀
 
 saveat = tspan[2] / 40 # save interval

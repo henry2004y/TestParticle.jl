@@ -4,7 +4,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra: ×
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]
@@ -68,7 +68,7 @@ ax = Axis(f[1, 1],
     aspect = 1,
 )
 
-lines!(ax, sol)
+lines!(ax, sol, idxs=(1, 2))
 
 f = DisplayAs.PNG(f) #hide
 

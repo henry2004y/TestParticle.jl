@@ -4,7 +4,7 @@ using TestParticle: qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 # Number of cells for the field along each dimension
 nx, ny = 4, 6
@@ -28,9 +28,13 @@ E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 # If bc == 2, we set periodic boundary conditions.
 param = prepare(x, y, E, B; species=User, bc=2);
 
-x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
-stateinit = [x0..., u0...]
+# Initial conditions
+stateinit = let
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
+end
+# Time span
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)

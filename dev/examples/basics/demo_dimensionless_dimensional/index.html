@@ -9,7 +9,6 @@ using TestParticle: c, qᵢ, mᵢ
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = &quot;png&quot;)
 
 # Unit conversion factors between SI and dimensionless units
 const B₀ = 1e-8             # [T]
@@ -24,6 +23,7 @@ const Emag = 1e-8           # [V/m]
 B(x) = SA[0, 0, B₀]
 E(x) = SA[Emag, 0.0, 0.0]
 
+# Initial conditions
 x0 = [0.0, 0.0, 0.0] # [m]
 v0 = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0..., v0...]
@@ -38,7 +38,7 @@ B_normalize(x) = SA[0, 0, B₀/B₀]
 E_normalize(x) = SA[Emag/E₀, 0.0, 0.0]
 # For full EM problems, the normalization of E and B should be done separately.
 param2 = prepare(E_normalize, B_normalize; species=User)
-# Scale initial quantities by the conversion factors
+# Scale initial conditions by the conversion factors
 x0 ./= l₀
 v0 ./= U₀
 tspan2 = (0, 2π)
@@ -49,17 +49,16 @@ sol2 = solve(prob2, Vern9(); reltol=1e-4, abstol=1e-6)
 
 ### Visualization
 f = Figure(fontsize=18)
-ax = Axis3(f[1, 1],
+ax = Axis(f[1, 1],
     xlabel = &quot;x&quot;,
     ylabel = &quot;y&quot;,
-    zlabel = &quot;z&quot;,
-    aspect = :data,
+    aspect = DataAspect(),
 )
 
-lines!(ax, sol1)
+lines!(ax, sol1, idxs=(1, 2))
 # Interpolate dimensionless solutions and map back to SI units
-xp, yp, zp = let trange = range(tspan2..., length=40)
-   sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀, sol2.(trange, idxs=3) .* l₀
+xp, yp = let trange = range(tspan2..., length=40)
+   sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀
 end
-lines!(ax, xp, yp, zp, linestyle=:dashdot, linewidth=5)
-</code></pre><p><img src="../demo_dimensionless_dimensional-5.png" alt/></p><p>We see that the results are almost identical, with only floating point numerical errors. Tracing in dimensionless units usually allows larger timesteps, which leads to faster computation.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 6 February 2024 16:17">Tuesday 6 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5)
+</code></pre><p><img src="../demo_dimensionless_dimensional-5.png" alt/></p><p>We see that the results are almost identical, with only floating point numerical errors. Tracing in dimensionless units usually allows larger timesteps, which leads to faster computation.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 13 February 2024 19:06">Tuesday 13 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

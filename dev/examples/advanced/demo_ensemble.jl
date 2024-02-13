@@ -3,7 +3,7 @@ using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "png") #hide
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, i, repeat)
@@ -46,7 +46,9 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], label="$i")
+   lines!(ax, sols[i], idxs=(1,2,3), label="$i")
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -56,8 +58,8 @@ savestepinterval = 1
 
 # Solve for the trajectories
 
-prob = TraceProblem(stateinit, tspan, dt, param; prob_func)
-trajs = TestParticle.solve(prob; trajectories, savestepinterval)
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+trajs = TestParticle.solve(prob; dt, trajectories, savestepinterval)
 
 # Visualization
 
@@ -71,7 +73,9 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(trajs)
-   @views lines!(ax, trajs[i].u[1,:], trajs[i].u[2,:], trajs[i].u[3,:], label="$i")
+   lines!(ax, trajs[i]; idxs=(1,2,3), label="$i")
+   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
+   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
