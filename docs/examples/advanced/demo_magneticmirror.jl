@@ -21,7 +21,7 @@ using TestParticle
 using TestParticle: getB_mirror
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
+using LinearAlgebra: normalize, norm, ⋅
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

@@ -16,7 +16,7 @@ using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
+using LinearAlgebra: normalize, norm, ×, ⋅
 using ForwardDiff: gradient, jacobian
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -51,9 +51,11 @@ function trace_gc!(dx, x, p, t)
         norm(v_par)^2*(Bv × κ)/Ω/norm(Bv)^3 + (E(x) × Bv)/norm(Bv)^2 + v_par
 end
 
-x0 = [1.0, 0, 0]
-v0 = [0.0, 1.0, 0.1]
-stateinit = [x0..., v0...]
+## Initial conditions
+stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
+    [x0..., v0...]
+end
+## Time span
 tspan = (0, 40)
 ## Trace particle
 param = prepare(zero_E, curved_B, species=Proton)

@@ -14,7 +14,7 @@ using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
+using LinearAlgebra: ×, ⋅, norm, normalize
 using Tensors: laplace
 import Tensors: Vec as Vec3
 ## using SpecialFunctions
@@ -36,7 +36,7 @@ function trace_gc!(dx, x, p, t)
     xp = @view xu[1:3]
     Bv = B(xp)
     b = normalize(Bv)
-    v_par = (xu[4:6]⋅b).*b  # (v⋅b)b
+    v_par = (xu[4:6] ⋅ b) .* b # (v ⋅ b)b
     v_perp = xu[4:6] - v_par
     r4 = (norm(v_perp) / q2m / norm(Bv))^2 / 4
     EB(x) = (E(x) × B(x)) / norm(B(x))^2

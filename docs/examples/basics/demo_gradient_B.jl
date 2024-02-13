@@ -17,7 +17,7 @@ using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
+using LinearAlgebra: ×, ⋅, normalize, norm
 using ForwardDiff: gradient
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -39,7 +39,7 @@ function trace_gc!(dx, x, p, t)
     gradient_B = gradient(abs_B, x)
     Bv = B(x)
     b = normalize(Bv)
-    v_par = (xu[4:6] ⋅ b).*b
+    v_par = (xu[4:6] ⋅ b) .* b
     v_perp = xu[4:6] - v_par
     dx[1:3] = norm(v_perp)^2*(Bv × gradient_B)/(2*q2m*norm(Bv)^3) +
        (E(x) × Bv) / norm(Bv)^2 + v_par

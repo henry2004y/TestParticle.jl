@@ -44,9 +44,13 @@ param = prepare(x, y, E, B; species=User, bc=2);
 
 # Note that we set a radius of 10, so the trajectory extent from -20 to 0 in y, which is beyond the original y range.
 
-x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
-stateinit = [x0..., u0...]
+## Initial conditions
+stateinit = let
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
+end
+## Time span
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)

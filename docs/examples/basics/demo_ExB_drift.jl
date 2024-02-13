@@ -18,7 +18,7 @@ using TestParticle
 using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra: ⋅, ×
+using LinearAlgebra: ⋅, ×, normalize
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
