@@ -104,6 +104,24 @@ Polarization drift:[^2]
 
 See more thorough [notes](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-adiabatic-invariant) on the adiabatic invariants.
 
+## Solution Interpolations
+
+All the tracing solutions come with an interpolation method to make them continuous. Depending on the order of the scheme, different orders of interpolations are applied.
+
+Note that if the scheme comes with an "lazy" interpolation (e.g. Vern family), you can either output the full solution (default) and interpolate
+
+```julia
+sol = solve(prob, Vern9())
+```
+
+or turn off the lazy interpolation and select part of the solution
+
+```julia
+sol = solve(prob, Vern9(lazy=false), save_idxs=[1,2,3])
+```
+
+The interpolated solution would be wrong if `lazy=true` and `save_idxs!=[1,2,3,4,5,6]`.
+
 ## Presentations
 
 Please checkout:
