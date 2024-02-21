@@ -3,7 +3,7 @@ module TestParticle
 using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
-   Line, OnCell, Periodic
+   Line, OnCell, Periodic, Flat
 using SciMLBase: AbstractSciMLProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
    DEFAULT_SPECIALIZATION, ODEFunction,
