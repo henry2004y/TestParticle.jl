@@ -13,6 +13,46 @@ include("dipole.jl")
 include("confinement.jl")
 
 """
+    getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
+
+Return charge and mass for `species`. if `species = User`, input `q` and `m` are returned.
+"""
+function getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
+   if species == Proton
+      q = qᵢ
+      m = mᵢ
+   elseif species == Electron
+      q = qₑ
+      m = mₑ
+   end
+   q, m
+end
+
+"Return uniform range from 2D/3D CartesianGrid."
+function makegrid(grid::CartesianGrid{3, T}) where T
+   gridmin = coordinates(minimum(grid))
+   gridmax = coordinates(maximum(grid))
+   Δx = spacing(grid)
+
+   gridx = range(gridmin[1], gridmax[1], step=Δx[1])
+   gridy = range(gridmin[2], gridmax[2], step=Δx[2])
+   gridz = range(gridmin[3], gridmax[3], step=Δx[3])
+
+   gridx, gridy, gridz
+end
+
+function makegrid(grid::CartesianGrid{2, T}) where T
+   gridmin = coordinates(minimum(grid))
+   gridmax = coordinates(maximum(grid))
+   Δx = spacing(grid)
+
+   gridx = range(gridmin[1], gridmax[1], step=Δx[1])
+   gridy = range(gridmin[2], gridmax[2], step=Δx[2])
+
+   gridx, gridy
+end
+
+"""
     set_axes_equal(ax)
 
 Set 3D plot axes to equal scale for Matplotlib.
