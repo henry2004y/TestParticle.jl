@@ -51,7 +51,7 @@ TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
 
 
 """
-    prepare(grid::CartesianGrid, E, B; species=Proton) -> (q2m, E, B)
+    prepare(grid::CartesianGrid, E, B; kwargs...) -> (q2m, E, B)
 
 Return a tuple consists of particle charge-mass ratio for a prescribed `species` and
 interpolated EM field functions.
@@ -59,24 +59,28 @@ interpolated EM field functions.
 # keywords
 - `order::Int=1`: order of interpolation in [1,2,3].
 - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic.
+- `species::Species=Proton`: particle species.
+- `q::AbstractFloat=1.0`: particle charge. Only works when `Species=User`.
+- `m::AbstractFloat=1.0`: particle mass. Only works when `Species=User`.
 
     prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, interpolated EM field functions, and external force `F`.
 
-    prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B) -> (q2m, E, B)
-    prepare(x, y, E, B) -> (q2m, E, B)
+    prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
+    prepare(x, y, E, B; kwargs...) -> (q2m, E, B)
+    prepare(x::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
 
 Direct range input for uniform grid in 2/3D is also accepted.
 
-    prepare(E, B; species=Proton, q=1.0, m=1.0) -> (q2m, E, B)
+    prepare(E, B; kwargs...) -> (q2m, E, B)
 
 Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge
 `q` and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
 `Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
-    prepare(E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
+    prepare(E, B, F; kwargs...) -> (q, m, E, B, F)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, analytic EM field functions, and external force `F`.
@@ -120,6 +124,17 @@ function prepare(x::T, y::T, E::TE, B::TB; species::Species=Proton, q::AbstractF
 
    E = TE <: AbstractArray ? getinterp(E, x, y, order, bc) : E
    B = TB <: AbstractArray ? getinterp(B, x, y, order, bc) : B
+
+   q/m, Field(E), Field(B)
+end
+
+function prepare(x::T, E::TE, B::TB; species::Species=Proton, q::AbstractFloat=1.0,
+   m::AbstractFloat=1.0, order::Int=1, bc::Int=3) where {T<:AbstractRange, TE, TB}
+
+   q, m = getchargemass(species, q, m)
+
+   E = TE <: AbstractArray ? getinterp(E, x, order, bc) : E
+   B = TB <: AbstractArray ? getinterp(B, x, order, bc) : B
 
    q/m, Field(E), Field(B)
 end
