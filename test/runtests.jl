@@ -297,7 +297,7 @@ end
       @test sol.u[end][1] ≈ 0.46557792820784516
    end
 
-   @testset "normalized fields" begin 
+   @testset "normalized fields" begin
       B₀ = 10e-9  # [T]
       Ω = abs(qᵢ) * B₀ / mᵢ
       t₀ = 1 / Ω  # [s]
@@ -370,6 +370,27 @@ end
       param = prepare(grid, E, B; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
+      xs = getindex.(sol.u, 1)
+      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
+
+      # 1D
+      x = range(-10, 10, length=15)
+      B = fill(0.0, 3, length(x)) # [B₀]
+      E = fill(0.0, 3, length(x)) # [E₀]
+      # This is already the normalized field; the original field is B.*B₀
+      B[3,:] .= 1.0
+      # E shall be normalized by E₀
+      E ./= E₀
+
+      x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+      u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
+      stateinit = [x0..., u0...]
+      tspan = (0.0, 0.5π) # 1/4 gyroperiod
+      # periodic BC
+      param = prepare(x, E, B; species=Proton, bc=3)
+      prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+      sol = solve(prob, Tsit5(); save_idxs=[1])
+
       xs = getindex.(sol.u, 1)
       @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
    end
