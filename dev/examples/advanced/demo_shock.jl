@@ -13,9 +13,8 @@ const γ = 5/3
 function prob_func(prob, i, repeat)
    v₀ = sample(vdf₁, 1)
    r₀ = [5_000e3, 0.0, 0.0]
-   prob.u0 .= [r₀..., v₀...]
 
-   prob
+   prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
 # MHD states in SI units
