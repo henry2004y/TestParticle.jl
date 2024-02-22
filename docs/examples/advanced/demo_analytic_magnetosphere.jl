@@ -42,9 +42,8 @@ function prob_func(prob, i, repeat)
    v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
    ## initial position, [m]
    r₀ = sph2cart(13*Rₑ, π*i, π/2)
-   prob.u0 .= [r₀..., v₀...]
 
-   prob
+   prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
 ## obtain field
