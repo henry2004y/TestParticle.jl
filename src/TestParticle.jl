@@ -4,9 +4,9 @@ using LinearAlgebra: norm, ×, ⋅
 using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic, Flat
-using SciMLBase: AbstractSciMLProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
+using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
-   DEFAULT_SPECIALIZATION, ODEFunction,
+   DEFAULT_SPECIALIZATION, ODEFunction, 
    LinearInterpolation
 using Distributions: MvNormal
 using StaticArrays
