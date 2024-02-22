@@ -10,6 +10,7 @@
      "demo_magneticbottle.jl",
      "demo_proton_dipole.jl",
      "demo_analytic_magnetosphere.jl",
+     "demo_shock",
      "demo_tokamak_coil.jl",
      "demo_tokamak_profile.jl",
      "demo_batsrus_3dstructured.md"
