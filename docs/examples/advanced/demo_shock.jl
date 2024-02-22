@@ -66,17 +66,18 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-vdf₁ = Maxwellian(V₁, Uth₁)
-vdf₂ = Maxwellian(V₂, Uth₂)
+const vdf₁ = Maxwellian(V₁, Uth₁)
 
 trajectories = 100
 weight₁ = n₁ / trajectories # relation between test particle and real particles
-## BC type 3 is Flat
-param = prepare(x, E, B; species=Proton, bc=3);
-stateinit = zeros(6) # particle position and velocity to be modified
-tspan = (0.0, 30.0)
 
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = let
+   ## BC type 3 is Flat
+   param = prepare(x, E, B; species=Proton, bc=3);
+   stateinit = zeros(6) # particle position and velocity to be modified
+   tspan = (0.0, 30.0)
+   ODEProblem(trace!, stateinit, tspan, param)
+end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
@@ -205,12 +206,14 @@ vdf₂ = Maxwellian(V₂, Uth₂)
 
 trajectories = 2
 weight₁ = n₁ / trajectories
-## BC type 3 is Flat
-param = prepare(x, E, B; species=Proton, bc=3);
-stateinit = zeros(6) # particle position and velocity to be modified
-tspan = (0.0, 30.0)
 
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = let
+   ## BC type 3 is Flat
+   param = prepare(x, E, B; species=Proton, bc=3);
+   stateinit = zeros(6) # particle position and velocity to be modified
+   tspan = (0.0, 30.0)
+   ODEProblem(trace!, stateinit, tspan, param)
+end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
