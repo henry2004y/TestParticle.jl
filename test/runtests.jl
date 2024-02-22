@@ -8,10 +8,14 @@ function prob_func(prob, i, repeat)
    remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
 end
 
-function prob_func_boris(prob, i, repeat)
+function prob_func_boris_mutable(prob, i, repeat)
    prob.u0[5] = i*1e5
 
    prob
+end
+
+function prob_func_boris_immutable(prob, i, repeat)
+   prob = @views remake(prob; u0=[prob.u0[1:4]..., i*1e5, prob.u0[6]])
 end
 
 "Test boundary check method."
@@ -416,11 +420,17 @@ end
       @test sol(t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
          -93808.49725349642, 34640.52313462885, 0.0]
 
-      prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris)
+      prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris_mutable)
       trajectories = 4
       savestepinterval = 1000
       sols = TestParticle.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
       @test sum(s -> sum(s.u[end]), sols) ≈ -1.4065273620640622e6
+
+      prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris_immutable)
+      trajectories = 2
+      savestepinterval = 1000
+      sols = TestParticle.solve(prob; dt, savestepinterval, trajectories)
+      @test sum(s -> sum(s.u[end]), sols) ≈ -421958.20861921855
    end
 end
 

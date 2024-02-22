@@ -23,10 +23,9 @@ const γ = 5/3
 "Set initial conditions."
 function prob_func(prob, i, repeat)
    v₀ = sample(vdf₁, 1)
-   r₀ = [5_000e3, 0.0, 0.0]   
-   prob.u0 .= [r₀..., v₀...]
+   r₀ = [5_000e3, 0.0, 0.0]
 
-   prob
+   prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
 # Perpendicular shock is a special shock in which both the upstream and downstream plasma flows are perpendicular to the magnetic field, as well as the shock front.
@@ -113,7 +112,7 @@ f = DisplayAs.PNG(f) #hide
 
 function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
    trange = range(sols[1].prob.tspan..., length=ntchunks)
-   
+
    xrange = range(x[1], x[end], length=nxchunks+1)
    dx = (x[end] - x[1]) / nxchunks
    xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length=nxchunks) ./ 1e3
@@ -223,4 +222,4 @@ f = DisplayAs.PNG(f) #hide
 
 # Clearly, test particle tracing in MHD parallel shocks fails to recover physics.
 # MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role.
-# Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here. 
+# Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here.

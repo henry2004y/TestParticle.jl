@@ -1,6 +1,6 @@
 # Native particle pusher
 
-struct TraceProblem{F<:AbstractODEFunction, uType, tType, P, PF} <: AbstractSciMLProblem
+struct TraceProblem{uType, tType, isinplace, P, F<:AbstractODEFunction, PF} <: AbstractODEProblem{uType, tType, isinplace}
    f::F
    "initial condition"
    u0::uType
@@ -50,7 +50,13 @@ DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
 function TraceProblem(u0, tspan, p; prob_func=DEFAULT_PROB_FUNC)
    _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
-   TraceProblem(_f, u0, tspan, p, prob_func)
+   TraceProblem{typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
+      typeof(prob_func)}(_f, u0, tspan, p, prob_func)
+end
+# For remake
+function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
+   TraceProblem{typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
+      typeof(prob_func)}(f, u0, tspan, p, prob_func)
 end
 
 struct BorisMethod{TV}
