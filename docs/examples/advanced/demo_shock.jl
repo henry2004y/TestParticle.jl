@@ -7,7 +7,7 @@
 # description: Tracing charged particle in an MHD plane shock
 # ---
 
-# This example shows how to trace protons of a certain energy in an MHD plane shock.
+# This example shows how to trace protons of a certain energy in MHD plane shocks.
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
@@ -30,7 +30,7 @@ function prob_func(prob, i, repeat)
 end
 
 # Perpendicular shock is a special shock in which both the upstream and downstream plasma flows are perpendicular to the magnetic field, as well as the shock front.
-## In SI units
+## MHD states in SI units
 n₁ = 1.0e6
 T₁ = 720471.8506664868
 Pi₁ = 0.0049735919716217296 * 1e-9
@@ -45,20 +45,22 @@ Pi₂ = 0.13022511153415584 * 1e-9
 Pe₂ = 0.13022511153415584 * 1e-9
 Pth₂ = Pi₂ + Pe₂
 V₂ = [-172.17489874108816, 0.0, 0.0] .* 1e3
-B₂ = [0.0, 0.0, 15.831239517770003] .* 1e-9
+B₂ = [0.0, 0.0, 15.831239517770003] .* 1e-9;
 
-# In ideal MHD, the electric field simply contains the convection term:
+# In ideal MHD, the electric field simply contains the convection term.
+# For perpendicular shocks, the electric field across the shock is continuous.
+# In the upstream, particles follow straight lines because it's purely an ExB drift; across the shock, ExB drift changes to the downstream bulk velocity.
 
 E₁ = B₁ × V₁
 E₂ = B₂ × V₂
-## thermal speed used to generate the Maxwellian distribution
+## Thermal speed used to generate the Maxwellian distribution
 Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
 Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
 E = repeat(E₁, 1, length(x))
-## index for the shock location
+## Index for the shock location
 mid_ = length(x) ÷ 2
 
 B[:, 1:mid_] .= B₂
@@ -68,7 +70,7 @@ vdf₁ = Maxwellian(V₁, Uth₁)
 vdf₂ = Maxwellian(V₂, Uth₂)
 
 trajectories = 100
-weight₁ = n₁ / trajectories
+weight₁ = n₁ / trajectories # relation between test particle and real particles
 ## BC type 3 is Flat
 param = prepare(x, E, B; species=Proton, bc=3);
 stateinit = zeros(6) # particle position and velocity to be modified
@@ -161,7 +163,7 @@ f = DisplayAs.PNG(f) #hide
 # However, this is not the case for parallel shocks.
 #
 # Parallel shock is another special shock in which both the upstream and downstream plasma flows are parallel to the magnetic field, as well as perpendicular to the shock front.
-## In SI units
+## MHD states in SI units
 n₁ = 1.0e6
 T₁ = 720471.8506664868
 Pi₁ = 0.0049735919716217296 * 1e-9
@@ -176,23 +178,23 @@ Pi₂ = 0.18526630094290936 * 1e-9
 Pe₂ = 0.18526630094290936 * 1e-9
 Pth₂ = Pi₂ + Pe₂
 V₂ = [-149.91581335048804, 0.0, 0.0] .* 1e3
-B₂ = [5.0, 0.0, 0.0] .* 1e-9
+B₂ = [5.0, 0.0, 0.0] .* 1e-9;
 
-# There is no convection electric field in this case:
+# There is no convection electric field in the parallel shock:
 
 E₁ = B₁ × V₁
 E₂ = B₂ × V₂
 
 # Therefore, when we trace particles, there is no deceleration across the shock:
 
-## thermal speed used to generate the Maxwellian distribution
+## Thermal speed used to generate the Maxwellian distribution
 Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
 Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
 E = repeat(E₁, 1, length(x))
-## index for the shock location
+## Index for the shock location
 mid_ = length(x) ÷ 2
 
 B[:, 1:mid_] .= B₂
@@ -215,3 +217,7 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
 f = plot_traj(sols)
 f = DisplayAs.PNG(f) #hide
+
+# Clearly, test particle tracing in MHD parallel shocks fails to recover physics.
+# MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role.
+# Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here. 
