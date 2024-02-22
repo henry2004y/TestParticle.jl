@@ -43,9 +43,9 @@ function prob_func(prob, i, repeat)
    θ = acos(0.5)
 
    sinϕ, cosϕ = sincos(ϕ)
-   prob.u0[4:6] = @. (B0*cos(θ) + Bperp1*(sin(θ)*cosϕ) + Bperp2*(sin(θ)*sinϕ)) * U₀
+   u = @. (B0*cos(θ) + Bperp1*(sin(θ)*cosϕ) + Bperp2*(sin(θ)*sinϕ)) * U₀
 
-   prob
+   prob = @views remake(prob; u0=[prob.u0[1:3]..., u...])
 end
 
 ## Number of cells for the field along each dimension

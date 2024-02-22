@@ -24,9 +24,7 @@ uniform_E(x) = SA[0.0, 0.0, 0.0]
 
 "Set initial states."
 function prob_func(prob, i, repeat)
-   prob.u0[4] = 10.0 - i*2.0
-
-   prob
+   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
 end
 
 function isoutofdomain(xv, p, t)
