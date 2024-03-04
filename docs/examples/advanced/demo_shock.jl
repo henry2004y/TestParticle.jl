@@ -11,14 +11,12 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
-using TestParticle: mᵢ
+using TestParticle: mᵢ, kB
 using LinearAlgebra
-using Statistics: mean
+using Statistics: mean, std
 using Printf
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
-
-const γ = 5/3
 
 "Set initial conditions."
 function prob_func(prob, i, repeat)
@@ -53,8 +51,11 @@ B₂ = [0.0, 0.0, 15.831239517770003] .* 1e-9;
 E₁ = B₁ × V₁
 E₂ = B₂ × V₂
 ## Thermal speed used to generate the Maxwellian distribution
-Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
-Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
+Uth₁ = √(2 * Pth₁ / (n₁ * mᵢ))
+Uth₂ = √(2 * Pth₂ / (n₂ * mᵢ))
+println("Uth₁ = ", round(Uth₁ / 1e3, digits=2), " km/s") #hide
+println("Uth₂ = ", round(Uth₂ / 1e3, digits=2), " km/s") #hide
+
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
@@ -149,8 +150,13 @@ function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
          scale_to=-5000/nxchunks, offset=xmid[i], direction=:x)
    end
 
-   means_str = [@sprintf "%d [km/s]" mean(vx[i]) for i in eachindex(vx)]
-   text!(Point.(xmid, 300.0), text = means_str, align = (:right, :center),
+   v̄x = mean.(vx)
+   vth = [std(vx[i]; corrected=false, mean=v̄x[i]) for i in 1:nxchunks]
+   means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
+   std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
+   text!(Point.(xmid.+400, 300.0), text = means_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize=24)
+   text!(Point.(xmid.+400, -700.0), text = std_str, align = (:right, :center),
       offset = (-60, 0), color = :black, fontsize=24)
 
    f
@@ -188,8 +194,8 @@ E₂ = B₂ × V₂
 # Therefore, when we trace particles, there is no deceleration across the shock:
 
 ## Thermal speed used to generate the Maxwellian distribution
-Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
-Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
+Uth₁ = √(2 * Pth₁ / (n₁ * mᵢ))
+Uth₂ = √(2 * Pth₂ / (n₂ * mᵢ))
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
