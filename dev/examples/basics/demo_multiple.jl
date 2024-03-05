@@ -22,11 +22,11 @@ function trace(x, y, z, E, B; trajectories::Int=10)
    sols = Vector{ODESolution}(undef, trajectories)
    # Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
    vdf = Maxwellian([0.0, 0.0, 0.0], 1.0)
-   v = sample(vdf, trajectories)
+   v = [sample(vdf) for _ in 1:trajectories]
 
    for i in 1:trajectories
       #prob = remake(prob; u0=[x0..., v[:,i]...])
-      prob.u0[4:6] = v[:,i]
+      prob.u0[4:6] = v[i]
 
       sol = solve(prob, Vern9())
       sols[i] = sol
