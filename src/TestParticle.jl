@@ -1,15 +1,15 @@
 module TestParticle
 
 using LinearAlgebra: norm, ×, ⋅
-using Meshes: coordinates, spacing, embeddim, CartesianGrid
+using Statistics: mean, normalize
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic, Flat
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
    DEFAULT_SPECIALIZATION, ODEFunction, 
    LinearInterpolation
-using Distributions: MvNormal
-using StaticArrays
+using StaticArrays: SVector, @SMatrix, MVector, SA
+using Meshes: coordinates, spacing, embeddim, CartesianGrid
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
