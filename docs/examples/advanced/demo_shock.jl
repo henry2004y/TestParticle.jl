@@ -11,18 +11,20 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
-using TestParticle: mᵢ
+using TestParticle: mᵢ, kB
 using LinearAlgebra
-using Statistics: mean
+using Statistics: mean, std
 using Printf
+using Random
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-const γ = 5/3
+## For reproducible results
+Random.seed!(1234)
 
 "Set initial conditions."
 function prob_func(prob, i, repeat)
-   v₀ = sample(vdf₁, 1)
+   v₀ = sample(vdf₁)
    r₀ = [5_000e3, 0.0, 0.0]
 
    prob = remake(prob; u0 = [r₀..., v₀...])
@@ -52,9 +54,7 @@ B₂ = [0.0, 0.0, 15.831239517770003] .* 1e-9;
 
 E₁ = B₁ × V₁
 E₂ = B₂ × V₂
-## Thermal speed used to generate the Maxwellian distribution
-Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
-Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
+
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
@@ -65,9 +65,10 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁ = Maxwellian(V₁, Uth₁)
+const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m=mᵢ)
+vdf₂ = Maxwellian(V₂, Pth₂, n₂; m=mᵢ)
 
-trajectories = 100
+trajectories = 400
 weight₁ = n₁ / trajectories # relation between test particle and real particles
 
 prob = let
@@ -149,8 +150,13 @@ function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
          scale_to=-5000/nxchunks, offset=xmid[i], direction=:x)
    end
 
-   means_str = [@sprintf "%d [km/s]" mean(vx[i]) for i in eachindex(vx)]
-   text!(Point.(xmid, 300.0), text = means_str, align = (:right, :center),
+   v̄x = mean.(vx)
+   vth = [std(vx[i]; corrected=false, mean=v̄x[i]) for i in 1:nxchunks]
+   means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
+   std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
+   text!(Point.(xmid.+400, 300.0), text = means_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize=24)
+   text!(Point.(xmid.+400, -700.0), text = std_str, align = (:right, :center),
       offset = (-60, 0), color = :black, fontsize=24)
 
    f
@@ -159,7 +165,12 @@ end
 f = plot_dist(x, sols; nxchunks=4, ntchunks=100)
 f = DisplayAs.PNG(f) #hide
 
-# Even with 100 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock.
+# Even with 400 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock.
+# While the upstream thermal speed is close to what we set, the downstream thermal speed is higher than our precalculated value. (Why?)
+
+println("Vth₁ = ", round(vdf₁.vth / 1e3, digits=2), " km/s") #hide
+println("Vth₂ = ", round(vdf₂.vth / 1e3, digits=2), " km/s") #hide
+
 # However, this is not the case for parallel shocks.
 #
 # Parallel shock is another special shock in which both the upstream and downstream plasma flows are parallel to the magnetic field, as well as perpendicular to the shock front.
@@ -187,9 +198,6 @@ E₂ = B₂ × V₂
 
 # Therefore, when we trace particles, there is no deceleration across the shock:
 
-## Thermal speed used to generate the Maxwellian distribution
-Uth₁ = √(γ * Pth₁ / (n₁ * mᵢ))
-Uth₂ = √(γ * Pth₂ / (n₂ * mᵢ))
 ## Shock normal direction range
 x = range(-5_000e3, 5_000e3, length=100)
 B = repeat(B₁, 1, length(x))
@@ -200,8 +208,8 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-vdf₁ = Maxwellian(V₁, Uth₁)
-vdf₂ = Maxwellian(V₂, Uth₂)
+vdf₁ = Maxwellian(V₁, Pth₁, n₁; m=mᵢ)
+vdf₂ = Maxwellian(V₂, Pth₂, n₂; m=mᵢ)
 
 trajectories = 2
 weight₁ = n₁ / trajectories

@@ -30,16 +30,17 @@ end
 @testset "TestParticle.jl" begin
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
-      uth = 1.0
-      vdf = Maxwellian(u0, uth)
+      p = 1e-9  # [Pa]
+      n = 1e6  # [/cc]
+      vdf = Maxwellian(u0, p, n)
       Random.seed!(1234)
-      v = sample(vdf, 2)
-      @test sum(v) == 0.5383742610785328
-      B = [1.0, 0.0, 0.0]
-      vdf = BiMaxwellian(u0, uth, uth, B)
+      v = sample(vdf)
+      @test sum(v) == 371365.50994738773
+      B = [1.0, 0.0, 0.0] # will be normalized internally
+      vdf = BiMaxwellian(B, u0, p, p, n)
       Random.seed!(1234)
-      v = sample(vdf, 2)
-      @test sum(v) == 0.5429092742594825
+      v = sample(vdf)
+      @test sum(v) == -961387.4020494563
    end
 
    @testset "numerical field" begin

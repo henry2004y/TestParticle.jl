@@ -6,86 +6,98 @@ Abstract type for velocity distribution functions.
 abstract type VDF end
 
 """
-Type for Maxwellian velocity distributions.
+Type for Maxwellian velocity distributions. 
 """
 struct Maxwellian{T<:AbstractFloat} <: VDF
    "Bulk velocity"
    u0::Vector{T}
    "Thermal speed"
-   uth::T
-
-   function Maxwellian(u0::Vector{T}, uth::T) where T
-      @assert length(u0) == 3 "Bulk velocity must have length 3!"
-      new{T}(u0, uth)
-   end
+   vth::T
 end
 
 """
-Type for BiMaxwellian velocity distributions.
+    Maxwellian(u0::Vector{T}, p::T, n; m=mᵢ)
+
+Construct a Maxwellian distribution with bulk velocity `u0`, thermal pressure `p`, and
+number density `n` in SI units. The default particle is proton.
+"""
+function Maxwellian(u0::Vector{T}, p::T, n; m=mᵢ) where T
+   @assert length(u0) == 3 "Bulk velocity must have length 3!"
+   vth = √(p / (n * m))
+
+   Maxwellian{T}(u0, vth)
+end
+
+"""
+Type for BiMaxwellian velocity distributions with respect to the magnetic field.
 """
 struct BiMaxwellian{T<:AbstractFloat, U} <: VDF
-   "Bulk velocity"
-   u0::Vector{T}
-   "Parallel thermal speed"
-   uthpar::T
-   "Perpendicular thermal speed"
-   uthperp::T
    "Unit magnetic field"
    b0::Vector{U}
-
-   function BiMaxwellian(u0::Vector{T}, upar::T, uperp::T, B::Vector{U}) where
-      {T <: AbstractFloat, U <: AbstractFloat}
-      @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
-      b0 = B ./ hypot(B...)
-      new{T, U}(u0, upar, uperp, b0)
-   end
+   "Bulk velocity"
+   u0::Vector{T}
+   "Parallel thermal velocity"
+   vthpar::T
+   "Perpendicular thermal velocity"
+   vthperp::T
 end
 
-
 """
-    sample(vdf::Maxwellian, nparticles::Int)
+    BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar::T, pperp::T, n; m=mᵢ)
 
-Sample velocities from a [`Maxwellian`](@ref) distribution `vdf` with `npoints`.
-
-    sample(vdf::BiMaxwellian, nparticles::Int)
-
-Sample velocities from a [`BiMaxwellian`](@ref) distribution `vdf` with `npoints`.
+Construct a BiMaxwellian distribution with magnetic field `B`, bulk velocity `u0`, parallel
+thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in
+SI units. The default particle is proton.
 """
-function sample(vdf::Maxwellian, nparticles::Int)
-   sqr2 = typeof(vdf.uth)(√2)
-   # Convert from thermal speed to std
-   σ = vdf.uth / sqr2
-   v = σ .* randn(typeof(vdf.uth), 3, nparticles) .+ vdf.u0
+function BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar::T, pperp::T, n; m=mᵢ) where
+   {T <: AbstractFloat, U <: AbstractFloat}
+   @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
+   b0 = normalize(B)
+   vpar = √(ppar / (n * m))
+   vperp = √(pperp / (n * m))
+
+   BiMaxwellian{T, U}(b0, u0, vpar, vperp)
 end
 
-function sample(vdf::BiMaxwellian{T, U}, nparticles::Int) where {T, U}
-   sqr2 = T(√2)
-   # Convert from thermal speed to std
-   σpar = vdf.uthpar / sqr2
-   σperp = vdf.uthperp / sqr2
-   # Transform to Cartesian grid
-   v = fill(vdf.u0, (3, nparticles))
-   vrand = σpar .* randn(T, nparticles)
-   vrand = reshape(vrand, 1, nparticles)
-   vpar = repeat(vrand, outer=3)
-   @inbounds for i in 1:3, ip in 1:nparticles
-      vpar[i,ip] = vpar[i,ip]*vdf.b0[i] + vdf.u0[i]
-   end
-   # Sample vectors on a 2D plane
-   μ = zeros(SVector{2,T})
-   σ = SA[σperp 0; 0 σperp]
-   d = MvNormal(μ, σ)
-   vrand = rand(d, nparticles)
+"""
+    sample(vdf::Maxwellian)
 
-   vperp = zeros(T, (3, nparticles))
-   # Rotate vectors to be perpendicular to b̂
-   k = SVector{3, T}(0, 0, 1)
-   axis = vdf.b0 × k::SVector{3, T}
-   θ = acos(vdf.b0 ⋅ k)
-   R = get_rotation_matrix(axis, θ)
-   @inbounds for ip in 1:nparticles
-      vperp[:,ip] = R * SA[vrand[1,ip], vrand[2,ip], 0]
-   end
+Sample a 3D velocity from a [`Maxwellian`](@ref) distribution `vdf` using the Box-Muller method.
 
-   v = vpar .+ vperp
+    sample(vdf::BiMaxwellian)
+
+Sample a 3D velocity from a [`BiMaxwellian`](@ref) distribution `vdf` using the Box-Muller method.
+"""
+function sample(vdf::Maxwellian{T}) where T
+   r1, r2, θ, ϕ = rand(T, 4)
+   m1 = √(-2*log(r1))
+   m2 = √(-2*log(r2))
+
+   v1 = vdf.vth * m1 * cospi(2θ)
+   v2, v3 = vdf.vth .* m2 .* sincospi(2ϕ)
+   v1v = v1 .* SVector(1, 0, 0)
+   v2v = v2 .* SVector(0, 1, 0)
+   v3v = v3 .* SVector(0, 0, 1)
+
+   v = @. vdf.u0 + v1v + v2v + v3v
+end
+
+function sample(vdf::BiMaxwellian{T, U}) where {T, U}
+   r1, r2, θ, ϕ = rand(T, 4)
+   m1 = √(-2*log(r1))
+   m2 = √(-2*log(r2))
+
+   vpar = vdf.vthpar * m1 * cospi(2θ)
+   vperp1, vperp2 = vdf.vthperp .* m2 .* sincospi(2ϕ)
+
+   tmp = vdf.b0 × SVector(1, 0, 0)
+   bperp1 =
+      if hypot(tmp...) < 1e-3
+         vdf.b0 × SVector(0, 1, 0)
+      else
+         tmp
+      end
+   bperp2 = vdf.b0 × bperp1
+
+   v = @. vdf.u0 + vpar * vdf.b0  + vperp1 * bperp1 + vperp2 * bperp2
 end
