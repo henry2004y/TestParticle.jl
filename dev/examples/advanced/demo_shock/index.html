@@ -62,7 +62,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);</code></pre><p>Sample particle trajectories</p><pre><code class="language-julia hljs">function plot_traj(sols)
    f = Figure(fontsize=18)
    ax = Axis3(f[1, 1],
-      title = &quot;Shock particles&quot;,
+      title = &quot;Particles across MHD shock&quot;,
       xlabel = &quot;x [km]&quot;,
       ylabel = &quot;y [km]&quot;,
       zlabel = &quot;z [km]&quot;,
@@ -77,6 +77,15 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);</code></pr
       ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[mod(i-1, 7)+1]
       scale!(ax.scene.plots[9+2*i-1], invL, invL, invL)
    end
+
+   # Represent the shock front
+   p1 = Point3f(0.0, -2e2, -2e2)
+   p2 = Point3f(0.0, 2e2, -2e2)
+   p3 = Point3f(0.0, 2e2, 2e2)
+   p4 = Point3f(0.0, -2e2, 2e2)
+
+   mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = Makie.automatic)
+   mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = Makie.automatic)
 
    f
 end
@@ -167,7 +176,7 @@ Vth₂ = 221.7 km/s
       end
    end
 
-   f = Figure(size = (1200, 600), fontsize=18)
+   f = Figure(size = (1000, 600), fontsize=18)
 
    c1 = Makie.wong_colors(0.5)[1]
    c2 = Makie.wong_colors(0.5)[2]
@@ -178,7 +187,15 @@ Vth₂ = 221.7 km/s
    pairplot(f[1,1],
        PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
        PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
-       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect())
+       bodyaxis=(; xgridvisible=true, ygridvisible=true),
+       diagaxis=(; xgridvisible=true, ygridvisible=true)
+   )
+
+   pairplot(f[1,1],
+       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
+       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect()),
+       diagaxis=(; ygridvisible=true)
    )
 
    f
@@ -223,11 +240,11 @@ prob = let
    # BC type 3 is Flat
    param = prepare(x, E, B; species=Proton, bc=3);
    stateinit = zeros(6) # particle position and velocity to be modified
-   tspan = (0.0, 30.0)
+   tspan = (0.0, 14.0)
    ODEProblem(trace!, stateinit, tspan, param)
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
-f = plot_traj(sols)</code></pre><p><img src="../demo_shock-22.png" alt/></p><p>Clearly, test particle tracing in MHD parallel shocks fails to recover physics. MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role. Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Sunday 17 March 2024 18:12">Sunday 17 March 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+f = plot_traj(sols)</code></pre><p><img src="../demo_shock-22.png" alt/></p><p>Clearly, test particle tracing in MHD parallel shocks fails to recover physics. MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role. Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Sunday 17 March 2024 22:24">Sunday 17 March 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
