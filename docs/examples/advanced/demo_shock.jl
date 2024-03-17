@@ -201,7 +201,7 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    end
 
    for i in eachindex(table)
-      if isempty(v[i])
+      if isempty(table[i].vx)
          push!(table[i].vx, 0.0)
          push!(table[i].vy, 0.0)
          push!(table[i].vz, 0.0)
