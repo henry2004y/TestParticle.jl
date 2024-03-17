@@ -66,14 +66,15 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
-function plot_traj(sols)
+function plot_traj(sols; azimuth=1.275pi, elevation=pi/8)
    f = Figure(fontsize=18)
-   ax = Axis3(f[1, 1],
+   ax = Axis3(f[1, 1];
       title = "Particles across MHD shock",
       xlabel = "x [km]",
       ylabel = "y [km]",
       zlabel = "z [km]",
       aspect = :data,
+      azimuth, elevation,
    )
 
    invL = 1 / 1e3
@@ -205,13 +206,6 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
        diagaxis=(; xgridvisible=true, ygridvisible=true)
    )
 
-   pairplot(f[1,1],
-       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
-       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
-       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect()),
-       diagaxis=(; ygridvisible=true)
-   )
-
    f
 end
 
@@ -265,7 +259,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
-f = plot_traj(sols)
+f = plot_traj(sols; azimuth=1.08π, elevation=pi/16)
 f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
