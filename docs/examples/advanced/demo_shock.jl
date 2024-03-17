@@ -103,7 +103,7 @@ function plot_traj(sols)
       scale!(ax.scene.plots[9+2*i-1], invL, invL, invL)
    end
 
-   # Represent the shock front
+   ## Represent the shock front
    p1 = Point3f(0.0, -2e2, -2e2)
    p2 = Point3f(0.0, 2e2, -2e2)
    p3 = Point3f(0.0, 2e2, 2e2)
