@@ -178,8 +178,6 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    trange = range(sols[1].prob.tspan..., length=ntchunks)
 
    xrange = range(x[1], x[end], length=nxchunks+1)
-   dx = (x[end] - x[1]) / nxchunks
-   xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length=nxchunks) ./ 1e3
 
    table = [(;
    vx = Float64[],
@@ -208,17 +206,18 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
       end
    end
 
-   f = Figure(size = (800, 800), fontsize=18)
+   f = Figure(size = (1200, 600), fontsize=18)
 
    c1 = Makie.wong_colors(0.5)[1]
    c2 = Makie.wong_colors(0.5)[2]
 
-   l1 = @sprintf "x: %d [km] downstream" xmid[1]
-   l2 = @sprintf "x: %d [km] upstream" xmid[2]
+   l1 = @sprintf "x: [%d, %d] km downstream" xrange[1]/1e3 xrange[2]/1e3
+   l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
 
    pairplot(f[1,1],
        PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
        PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect())
    )
 
    f
