@@ -3,7 +3,7 @@
 # id: demo_shock
 # date: 2024-02-21
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.1
+# julia: 1.10.2
 # description: Tracing charged particle in an MHD plane shock
 # ---
 
@@ -16,7 +16,7 @@ using LinearAlgebra
 using Statistics: mean, std
 using Printf
 using Random
-using CairoMakie
+using CairoMakie, PairPlots
 CairoMakie.activate!(type = "png") #hide
 
 ## For reproducible results
@@ -171,8 +171,63 @@ f = DisplayAs.PNG(f) #hide
 println("Vth₁ = ", round(vdf₁.vth / 1e3, digits=2), " km/s") #hide
 println("Vth₂ = ", round(vdf₂.vth / 1e3, digits=2), " km/s") #hide
 
-# However, this is not the case for parallel shocks.
-#
+# A nice way to present the 3d distributions in 2d is via the pair plots:
+
+function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+   nxchunks = 2
+   trange = range(sols[1].prob.tspan..., length=ntchunks)
+
+   xrange = range(x[1], x[end], length=nxchunks+1)
+   dx = (x[end] - x[1]) / nxchunks
+   xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length=nxchunks) ./ 1e3
+
+   table = [(;
+   vx = Float64[],
+   vy = Float64[],
+   vz = Float64[],
+   ) for _ in 1:nxchunks]
+
+   for sol in sols
+      for t in trange
+         xv = sol(t)
+         for i in 1:nxchunks
+            if xrange[i] < xv[1] ≤ xrange[i+1]
+               push!(table[i].vx, xv[4] / 1e3)
+               push!(table[i].vy, xv[5] / 1e3)
+               push!(table[i].vz, xv[6] / 1e3)
+            end
+         end
+      end
+   end
+
+   for i in eachindex(table)
+      if isempty(v[i])
+         push!(table[i].vx, 0.0)
+         push!(table[i].vy, 0.0)
+         push!(table[i].vz, 0.0)
+      end
+   end
+
+   f = Figure(size = (800, 800), fontsize=18)
+
+   c1 = Makie.wong_colors(0.5)[1]
+   c2 = Makie.wong_colors(0.5)[2]
+
+   l1 = @sprintf "x: %d [km] downstream" xmid[1]
+   l2 = @sprintf "x: %d [km] upstream" xmid[2]
+
+   pairplot(f[1,1],
+       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
+       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+   )
+
+   f
+end
+
+f = plot_dist_pairplot(x, sols; ntchunks=20)
+f = DisplayAs.PNG(f) #hide
+
+# For parallel shocks, we have a different scenario.
 # Parallel shock is another special shock in which both the upstream and downstream plasma flows are parallel to the magnetic field, as well as perpendicular to the shock front.
 ## MHD states in SI units
 n₁ = 1.0e6
