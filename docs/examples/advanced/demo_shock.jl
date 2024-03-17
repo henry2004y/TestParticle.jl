@@ -87,7 +87,7 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 function plot_traj(sols)
    f = Figure(fontsize=18)
    ax = Axis3(f[1, 1],
-      title = "Shock particles",
+      title = "Particles across MHD shock",
       xlabel = "x [km]",
       ylabel = "y [km]",
       zlabel = "z [km]",
@@ -102,6 +102,15 @@ function plot_traj(sols)
       ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[mod(i-1, 7)+1]
       scale!(ax.scene.plots[9+2*i-1], invL, invL, invL)
    end
+
+   # Represent the shock front
+   p1 = Point3f(0.0, -2e2, -2e2)
+   p2 = Point3f(0.0, 2e2, -2e2)
+   p3 = Point3f(0.0, 2e2, 2e2)
+   p4 = Point3f(0.0, -2e2, 2e2)
+
+   mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = Makie.automatic)
+   mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = Makie.automatic)
 
    f
 end
@@ -206,7 +215,7 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
       end
    end
 
-   f = Figure(size = (1200, 600), fontsize=18)
+   f = Figure(size = (1000, 600), fontsize=18)
 
    c1 = Makie.wong_colors(0.5)[1]
    c2 = Makie.wong_colors(0.5)[2]
@@ -217,7 +226,15 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    pairplot(f[1,1],
        PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
        PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
-       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect())
+       bodyaxis=(; xgridvisible=true, ygridvisible=true),
+       diagaxis=(; xgridvisible=true, ygridvisible=true)
+   )
+
+   pairplot(f[1,1],
+       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
+       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+       bodyaxis=(; xgridvisible=true, ygridvisible=true, aspect = DataAspect()),
+       diagaxis=(; ygridvisible=true)
    )
 
    f
@@ -272,7 +289,7 @@ prob = let
    ## BC type 3 is Flat
    param = prepare(x, E, B; species=Proton, bc=3);
    stateinit = zeros(6) # particle position and velocity to be modified
-   tspan = (0.0, 30.0)
+   tspan = (0.0, 14.0)
    ODEProblem(trace!, stateinit, tspan, param)
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
