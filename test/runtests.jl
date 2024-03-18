@@ -36,11 +36,13 @@ end
       Random.seed!(1234)
       v = sample(vdf)
       @test sum(v) == 371365.50994738773
+      @test startswith(repr(vdf), "Isotropic")
       B = [1.0, 0.0, 0.0] # will be normalized internally
       vdf = BiMaxwellian(B, u0, p, p, n)
       Random.seed!(1234)
       v = sample(vdf)
       @test sum(v) == -961387.4020494563
+      @test startswith(repr(vdf), "BiMaxwellian")
    end
 
    @testset "numerical field" begin

@@ -101,3 +101,17 @@ function sample(vdf::BiMaxwellian{T, U}) where {T, U}
 
    v = @. vdf.u0 + vpar * vdf.b0  + vperp1 * bperp1 + vperp2 * bperp2
 end
+
+function Base.show(io::IO, vdf::Maxwellian)
+   println(io, "Isotropic Maxwellian distribution")
+   println(io, "Bulk velocity: ", vdf.u0)
+   println(io, "Thermal speed: ", vdf.vth)
+end
+
+function Base.show(io::IO, vdf::BiMaxwellian)
+   println(io, "BiMaxwellian distribution")
+   println(io, "B field direction:", vdf.b0)
+   println(io, "Bulk velocity: ", vdf.u0)
+   println(io, "Parallel thermal speed: ", vdf.vthpar)
+   println(io, "Perpendicular thermal speed: ", vdf.vthperp)
+end
