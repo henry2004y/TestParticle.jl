@@ -182,7 +182,7 @@ end
 "Prepare for advancing."
 function _prepare(prob, trajectories, dt, savestepinterval)
    ttotal = prob.tspan[2] - prob.tspan[1]
-   nt = round(Int, ttotal / dt)
+   nt = round(Int, ttotal / dt) |> abs
    nout = nt ÷ savestepinterval + 1
    sols = Vector{TraceSolution}(undef, trajectories)
 
@@ -218,7 +218,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
 
       if iout == nout # regular termination
          dtfinal = ttotal - nt*dt
-         if dtfinal > 0.5*dt # final step if needed
+         if abs(dtfinal) > abs(0.5*dt) # final step if needed
             update_velocity!(xv, paramBoris, p, dtfinal)
             update_location!(xv, dtfinal)
             traj_save = copy(traj)
