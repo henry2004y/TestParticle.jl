@@ -11,7 +11,6 @@ isnothing(demo_assets) || (push!(assets, demo_assets))
 makedocs(;
     modules=[TestParticle],
     authors="Hongyang Zhou <hyzhou@umich.edu> and contributors",
-    repo="https://github.com/henry2004y/TestParticle.jl/blob/{commit}{path}#L{line}",
     sitename="TestParticle.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",

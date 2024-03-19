@@ -23,10 +23,10 @@ By convention, we use integers to represent the 7 dimensions in the input argume
 The simplest usage is directly calling the `plot` or `lines` function provided by `Makie`. For example,
 
 ```julia
-plot(sol)
+plot(sol, idxs=(1, 2, 3))
 ```
 
-Without other arguments, it will plot the timeseries of x, y, z, vx, vy, vz. The keyword argument `idxs` can be used to select the variables to be plotted. Please refer to [Choose Variables](https://docs.sciml.ai/DiffEqDocs/stable/basics/plot/#plot_vars) for details.
+The keyword argument `idxs` can be used to select the variables to be plotted; if not specified, it will plot the timeseries of x, y, z, vx, vy, vz. Please refer to [Choose Variables](https://docs.sciml.ai/DiffEqDocs/stable/basics/plot/#plot_vars) for details.
 
 If you want to plot a function of time, position or velocity, you can first define the function. For example,
 
@@ -54,7 +54,7 @@ ax = Axis3(f[1,1],
     zlabel = "Z",
 )
 
-plot!(sol)
+plot!(sol, idxs=(1, 2, 3))
 ```
 
 Multiple particle trajectories saved as the type `EnsembleSolution` is also supported by the Makie recipe.
