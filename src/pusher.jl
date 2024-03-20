@@ -1,7 +1,7 @@
 # Native particle pusher
 
-struct TraceProblem{uType, tType, isinplace, P, F<:AbstractODEFunction, PF} <: AbstractODEProblem{uType, tType, isinplace}
-   f::F
+mutable struct TraceProblem{uType, tType, isinplace, P, F<:AbstractODEFunction, PF} <: AbstractODEProblem{uType, tType, isinplace}
+   const f::F
    "initial condition"
    u0::uType
    "time span"
@@ -9,7 +9,7 @@ struct TraceProblem{uType, tType, isinplace, P, F<:AbstractODEFunction, PF} <: A
    "(q2m, E, B)"
    p::P
    "function for setting initial conditions"
-   prob_func::PF
+   const prob_func::PF
 end
 
 struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <: AbstractODESolution{T, N, uType}
