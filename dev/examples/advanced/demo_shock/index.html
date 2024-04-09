@@ -16,7 +16,7 @@ function prob_func(prob, i, repeat)
    r₀ = [5_000e3, 0.0, 0.0]
 
    prob = remake(prob; u0 = [r₀..., v₀...])
-end</code></pre><pre><code class="nohighlight hljs">Main.var&quot;##55416&quot;.prob_func</code></pre><p>Perpendicular shock is a special shock in which both the upstream and downstream plasma flows are perpendicular to the magnetic field, as well as the shock front.</p><pre><code class="language-julia hljs"># MHD states in SI units
+end;</code></pre><p>Perpendicular shock is a special shock in which both the upstream and downstream plasma flows are perpendicular to the magnetic field, as well as the shock front.</p><pre><code class="language-julia hljs"># MHD states in SI units
 n₁ = 1.0e6
 T₁ = 720471.8506664868
 Pi₁ = 0.0049735919716217296 * 1e-9
@@ -142,9 +142,9 @@ f = plot_traj(sols[1:4])</code></pre><p><img src="../demo_shock-10.png" alt/></p
    f
 end
 
-f = plot_dist(x, sols; nxchunks=4, ntchunks=100)</code></pre><p><img src="../demo_shock-12.png" alt/></p><p>Even with 400 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock. While the upstream thermal speed is close to what we set, the downstream thermal speed is higher than our precalculated value. (Why?)</p><pre><code class="nohighlight hljs">Vth₁ = 77.1 km/s
+f = plot_dist(x, sols; nxchunks=4, ntchunks=100)</code></pre><p><img src="../demo_shock-12.png" alt/></p><p>Even with 400 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock. While the upstream thermal speed is close to what we set, the downstream thermal speed is higher than our set value:</p><pre><code class="nohighlight hljs">Vth₁ = 77.1 km/s
 Vth₂ = 221.7 km/s
-</code></pre><p>A nice way to present the 3d distributions in 2d is via the pair plots:</p><pre><code class="language-julia hljs">function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+</code></pre><p>A nice way to present the 3d distributions in 2d is via the pair plots:</p><pre><code class="language-julia hljs">function collect_VDF(x, sols; ntchunks::Int=20)
    nxchunks = 2
    trange = range(sols[1].prob.tspan..., length=ntchunks)
 
@@ -177,6 +177,12 @@ Vth₂ = 221.7 km/s
       end
    end
 
+   xrange, table
+end
+
+function plot_dist_pairplots(x, sols; ntchunks::Int=20)
+   xrange, table = collect_VDF(x, sols; ntchunks)
+
    f = Figure(size = (1000, 600), fontsize=18)
 
    c1 = Makie.wong_colors(0.5)[1]
@@ -186,16 +192,60 @@ Vth₂ = 221.7 km/s
    l2 = @sprintf &quot;x: [%d, %d] km upstream&quot; xrange[2]/1e3 xrange[3]/1e3
 
    pairplot(f[1,1],
-       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
-       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
-       bodyaxis=(; xgridvisible=true, ygridvisible=true),
-       diagaxis=(; xgridvisible=true, ygridvisible=true)
+      PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
+      PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+      PairPlots.Truth(
+         (;
+            vx = [-545.1484121835928, -172.1748987410881],
+            vy = 0,
+            vz = 0,
+         ),
+         label=&quot;Bulk velocity&quot;,
+         color = :brown,
+      ),
+      bodyaxis=(; xgridvisible=true, ygridvisible=true),
+      diagaxis=(; xgridvisible=true, ygridvisible=true)
    )
 
    f
 end
 
-f = plot_dist_pairplot(x, sols; ntchunks=20)</code></pre><p><img src="../demo_shock-16.png" alt/></p><p>For parallel shocks, we have a different scenario. Parallel shock is another special shock in which both the upstream and downstream plasma flows are parallel to the magnetic field, as well as perpendicular to the shock front.</p><pre><code class="language-julia hljs"># MHD states in SI units
+function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+   xrange, table = collect_VDF(x, sols; ntchunks)
+
+   f = Figure(size = (1000, 1200), fontsize=18)
+
+   c1 = Makie.wong_colors(0.5)[1]
+   c2 = Makie.wong_colors(0.5)[2]
+
+   pairplot(f[1,1],
+      PairPlots.Series(table[1], color=c1, strokecolor=c1),
+      PairPlots.Truth(
+          (;
+              vx = -172.1748987410881,
+              vy = 0,
+              vz = 0
+          ),
+          color = :brown,
+      )
+   )
+
+   pairplot(f[2,1],
+      PairPlots.Series(table[2], color=c2, strokecolor=c2),
+      PairPlots.Truth(
+         (;
+            vx = -545.1484121835928,
+            vy = 0,
+            vz = 0
+         ),
+         color = :brown,
+      )
+   )
+
+   f
+end
+
+f = plot_dist_pairplots(x, sols; ntchunks=20)</code></pre><p><img src="../demo_shock-16.png" alt/></p><p>Downstream and upstream distributions showing separately:</p><pre><code class="language-julia hljs">f = plot_dist_pairplot(x, sols; ntchunks=20)</code></pre><p><img src="../demo_shock-18.png" alt/></p><p>We see that the upstream thermal speed is about what we set in all three dimensions, whereas the downstream thermal speed in the perpendicular plane is larger than the downstream isotropic thermal speed, and that in the parallel z direction is the same as the upstream thermal speed. This simply indicates that there is no heating across the shock in the parallel direction and more heating in the perpendicular directions, which in turn creates anisotropy  <span>$T_\perp / T_parallel &gt; 1$</span>. Due to the lack of wave-particle interactions, there is no way to isotropize the test particle distributions in the downstream.</p><p>For parallel shocks, we have a different scenario. Parallel shock is another special shock in which both the upstream and downstream plasma flows are parallel to the magnetic field, as well as perpendicular to the shock front.</p><pre><code class="language-julia hljs"># MHD states in SI units
 n₁ = 1.0e6
 T₁ = 720471.8506664868
 Pi₁ = 0.0049735919716217296 * 1e-9
@@ -241,4 +291,4 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
-f = plot_traj(sols; azimuth=1.08π, elevation=pi/16)</code></pre><p><img src="../demo_shock-22.png" alt/></p><p>Clearly, test particle tracing in MHD parallel shocks fails to recover physics. MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role. Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Monday 1 April 2024 18:48">Monday 1 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+f = plot_traj(sols; azimuth=1.08π, elevation=pi/16)</code></pre><p><img src="../demo_shock-25.png" alt/></p><p>Clearly, test particle tracing in MHD parallel shocks fails to recover physics. MHD parallel shocks are essentially hydrodynamic shocks where magnetic field plays no role. Due to the lack of collision and other diffusion processes, we are unable to capture the correct microscopic scenario here.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Tuesday 9 April 2024 14:31">Tuesday 9 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

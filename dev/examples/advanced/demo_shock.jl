@@ -17,7 +17,7 @@ function prob_func(prob, i, repeat)
    r₀ = [5_000e3, 0.0, 0.0]
 
    prob = remake(prob; u0 = [r₀..., v₀...])
-end
+end;
 
 # MHD states in SI units
 n₁ = 1.0e6
@@ -158,7 +158,7 @@ f = DisplayAs.PNG(f) #hide
 println("Vth₁ = ", round(vdf₁.vth / 1e3, digits=2), " km/s") #hide
 println("Vth₂ = ", round(vdf₂.vth / 1e3, digits=2), " km/s") #hide
 
-function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+function collect_VDF(x, sols; ntchunks::Int=20)
    nxchunks = 2
    trange = range(sols[1].prob.tspan..., length=ntchunks)
 
@@ -191,6 +191,12 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
       end
    end
 
+   xrange, table
+end
+
+function plot_dist_pairplots(x, sols; ntchunks::Int=20)
+   xrange, table = collect_VDF(x, sols; ntchunks)
+
    f = Figure(size = (1000, 600), fontsize=18)
 
    c1 = Makie.wong_colors(0.5)[1]
@@ -200,14 +206,61 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
 
    pairplot(f[1,1],
-       PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
-       PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
-       bodyaxis=(; xgridvisible=true, ygridvisible=true),
-       diagaxis=(; xgridvisible=true, ygridvisible=true)
+      PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
+      PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+      PairPlots.Truth(
+         (;
+            vx = [-545.1484121835928, -172.1748987410881],
+            vy = 0,
+            vz = 0,
+         ),
+         label="Bulk velocity",
+         color = :brown,
+      ),
+      bodyaxis=(; xgridvisible=true, ygridvisible=true),
+      diagaxis=(; xgridvisible=true, ygridvisible=true)
    )
 
    f
 end
+
+function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+   xrange, table = collect_VDF(x, sols; ntchunks)
+
+   f = Figure(size = (1000, 1200), fontsize=18)
+
+   c1 = Makie.wong_colors(0.5)[1]
+   c2 = Makie.wong_colors(0.5)[2]
+
+   pairplot(f[1,1],
+      PairPlots.Series(table[1], color=c1, strokecolor=c1),
+      PairPlots.Truth(
+          (;
+              vx = -172.1748987410881,
+              vy = 0,
+              vz = 0
+          ),
+          color = :brown,
+      )
+   )
+
+   pairplot(f[2,1],
+      PairPlots.Series(table[2], color=c2, strokecolor=c2),
+      PairPlots.Truth(
+         (;
+            vx = -545.1484121835928,
+            vy = 0,
+            vz = 0
+         ),
+         color = :brown,
+      )
+   )
+
+   f
+end
+
+f = plot_dist_pairplots(x, sols; ntchunks=20)
+f = DisplayAs.PNG(f) #hide
 
 f = plot_dist_pairplot(x, sols; ntchunks=20)
 f = DisplayAs.PNG(f) #hide
