@@ -293,7 +293,7 @@ f = plot_dist_pairplot(x, sols; ntchunks=20)
 f = DisplayAs.PNG(f) #hide
 
 # We see that the upstream thermal speed is about what we set in all three dimensions, whereas the downstream thermal speed in the perpendicular plane is larger than the downstream isotropic thermal speed, and that in the parallel z direction is the same as the upstream thermal speed.
-# This simply indicates that there is no heating across the shock in the parallel direction and more heating in the perpendicular directions, which in turn creates anisotropy  ``T_\perp / T_parallel > 1``.
+# This simply indicates that there is no heating across the shock in the parallel direction and more heating in the perpendicular directions, which in turn creates anisotropy  ``T_\perp / T_\parallel > 1``.
 # Due to the lack of wave-particle interactions, there is no way to isotropize the test particle distributions in the downstream.
 
 # For parallel shocks, we have a different scenario.
