@@ -15,6 +15,17 @@ struct Currentloop{T<:AbstractFloat, Vl, Vn}
    normal::Vn
 end
 
+"""
+    getB_current_loop(x, y, z, cl::Currentloop) -> StaticVector{Float64, 3}
+
+Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coils.
+
+# Arguments
+- `x,y,z::Float`: particle coordinates in [m].
+- `distance::Float`: distance between solenoids in [m].
+- `a::Float`: radius of each side coil in [m].
+- `I1::Float`: current in the solenoid times number of windings in side coils.
+"""
 function getB_current_loop(x, y, z, cl::Currentloop)
    (; a, I, location) = cl
    r = √((x - location[1])^2 + (y - location[2])^2) # distance from z-axis
@@ -29,7 +40,7 @@ function getB_current_loop(x, y, z, cl::Currentloop)
 end
 
 """
-    getB_mirror(x, y, z, distance, a, I1) -> Vector{Float}
+    getB_mirror(x, y, z, distance, a, I1) -> StaticVector{Float64, 3}
 
 Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coils.
 
@@ -55,7 +66,7 @@ function getB_mirror(x, y, z, distance, a, I1)
 end
 
 """
-    getB_bottle(x, y, z, distance, a, b, I1, I2) -> Vector{Float}
+    getB_bottle(x, y, z, distance, a, b, I1, I2) -> StaticVector{Float64, 3}
 
 Get magnetic field from a magnetic bottle.
 Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
@@ -70,11 +81,9 @@ Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
 central loop in [A].
 """
 function getB_bottle(x, y, z, distance, a, b, I1, I2)
-   r = √(x^2 + y^2) # distance from z-axis
-
    B = getB_mirror(x, y, z, distance, a, I1)
    # Central loop
-   cl3 = Currentloop(a, I1, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
+   cl3 = Currentloop(b, I2, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
    B3 = getB_current_loop(x, y, z, cl3)
    # total magnetic field
    if x == 0.0 && y == 0.0
@@ -87,7 +96,7 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
 end
 
 """
-    getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
+    getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma) -> StaticVector{Float64, 3}
 
 Get the magnetic field from a Tokamak topology consists of 16 coils.
 Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/blob/master/Simulation2.m
@@ -95,8 +104,8 @@ Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/
 - `x,y,z::Float`: location in [m].
 - `a::Float`: radius of each coil in [m].
 - `b::Float`: radius of central region in [m].
-- `ICoil::Float`: current in the coil times number of windings.
-- `IPlasma::Float`: current of the plasma?
+- `ICoil::Float`: current in the coil times number of windings in [A].
+- `IPlasma::Float`: current of the plasma in [A].
 """
 function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
    a *= 2
@@ -171,10 +180,10 @@ end
 
 
 """
-    getB_tokamak_profile(x, y, z, q_profile, a, R₀, Bζ0)
+    getB_tokamak_profile(x, y, z, q_profile, a, R₀, Bζ0) -> StaticVector{Float64, 3}
 
 Reconstruct the magnetic field distribution from a safe factor(q) profile.
-The formulations are from the book "Tokamak 4th Edition" by John Wesson.
+Reference: Tokamak, 4th Edition, John Wesson.
 # Arguments
 - `x,y,z::Float`: location in [m].
 - `q_profile::Function`: profile of q. The variable of this function must be the normalized radius.
