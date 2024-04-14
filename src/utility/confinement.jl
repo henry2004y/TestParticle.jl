@@ -46,16 +46,12 @@ function getB_mirror(x, y, z, distance, a, I1)
    B2 = getB_current_loop(x, y, z, cl2)
    # total magnetic field
    if x == 0.0 && y == 0.0
-      Bx = 0.0
-      By = 0.0
-      Bz = B1[3] + B2[3]
+      B = SA[0.0, 0.0, B1[3] + B2[3]]
    else
-      Bx = Bx1 + Bx2
-      By = By1 + By2
-      Bz = Bz1 + Bz2
+      B = B1 + B2
    end
 
-   SA[Bx, By, Bz]
+   B
 end
 
 """
@@ -80,7 +76,6 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
    # Central loop
    cl3 = Currentloop(a, I1, [0.0, 0.0, 0.0], [0.0, 0.0, 1.0])
    B3 = getB_current_loop(x, y, z, cl3)
-
    # total magnetic field
    if x == 0.0 && y == 0.0
       B = SA[0.0, 0.0, B[3] + B3[3]]
