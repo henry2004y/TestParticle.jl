@@ -435,6 +435,13 @@ end
       sols = TestParticle.solve(prob; dt, savestepinterval, trajectories)
       @test sum(s -> sum(s.u[end]), sols) ≈ -421958.20861921855
    end
+
+   @testset "MagnetoStatics" begin
+      B = TestParticle.getB_mirror(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+      @test B[3] == 8.99176285573213e-7
+      B = TestParticle.getB_bottle(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+      @test B[3] == 1.5274948162911718e-6
+   end
 end
 
 #if "makie" in ARGS

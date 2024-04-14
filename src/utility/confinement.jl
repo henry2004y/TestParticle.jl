@@ -3,10 +3,35 @@
 using Elliptic: ellipke
 using SpecialFunctions: erf
 
+
+struct Currentloop{T<:AbstractFloat}
+   "radius of coil loop [m]"
+   a::T
+   "steady current [A]"
+   I::T
+   "location of loop center [m]"
+   location::Vector{T}
+   "unit orientation of the loop (currently only support ẑ)"
+   normal::Vector{T}
+end
+
+function getB_current_loop(x, y, z, cl::Currentloop)
+   (; a, I, location) = cl
+   r = √((x - location[1])^2 + (y - location[2])^2) # distance from z-axis
+   z₁ = z - location[3]
+   K, E = ellipke(4*r*a / (z₁^2 + (a + r)^2))
+   Bz = μ₀*I / (2π*√(z₁^2 + (a+r)^2)) * ((a^2 - z₁^2 - r^2)/(z₁^2 + (r-a)^2)*E + K)
+   Br = μ₀*z₁*I / (2π*r*√(z₁^2 + (a+r)^2))*((z₁^2 + r^2 + a^2)/(z₁^2 + (r-a)^2)*E - K)
+   Bx = Br * x / r
+   By = Br * y / r
+
+   SA[Bx, By, Bz]
+end
+
 """
     getB_mirror(x, y, z, distance, a, I1) -> Vector{Float}
 
-Get magnetic field from a magnetic mirror generated from two coils.
+Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coils.
 
 # Arguments
 - `x,y,z::Float`: particle coordinates in [m].
@@ -15,37 +40,22 @@ Get magnetic field from a magnetic mirror generated from two coils.
 - `I1::Float`: current in the solenoid times number of windings in side coils.
 """
 function getB_mirror(x, y, z, distance, a, I1)
-   r = √(x^2 + y^2) # distance from z-axis
-
-   # 1st loop
-   z₁ = z + 0.5*distance
-   k2 = 4*r*a / (z₁^2 + (a + r)^2)
-   K, E = ellipke(k2)
-   Bz1 = μ₀*I1 / (2π*√(z₁^2+(a+r)^2)) * ((a^2-z₁^2-r^2)/(z₁^2+(r-a)^2)*E + K)
-   Br1 = μ₀*z₁*I1/(2π*r*√(z₁^2+(a+r)^2))*((z₁^2+r^2+a^2)/(z₁^2+(r-a)^2)*E - K)
-   Bx1 = Br1 * x / r
-   By1 = Br1 * y / r
-
-   # 2nd loop
-   z₂ = z - 0.5*distance
-   k2 = 4*r*a / (z₂^2 + (a + r)^2)
-   K, E = ellipke(k2)
-   Bz2 = μ₀*I1 / (2π*√(z₂^2+(a+r)^2)) * ((a^2-z₂^2-r^2)/(z₂^2+(r-a)^2)*E + K)
-   Br2 = μ₀*z₂*I1/(2π*r*√(z₂^2+(a+r)^2))*((z₂^2+r^2+a^2)/(z₂^2+(r-a)^2)*E - K)
-   Bx2 = Br2 * x / r
-   By2 = Br2 * y / r
-
+   cl1 = Currentloop(a, I1, [0.0, 0.0, -0.5*distance], [0.0, 0.0, 1.0])
+   cl2 = Currentloop(a, I1, [0.0, 0.0, 0.5*distance], [0.0, 0.0, 1.0])
+   B1 = getB_current_loop(x, y, z, cl1)
+   B2 = getB_current_loop(x, y, z, cl2)
    # total magnetic field
    if x == 0.0 && y == 0.0
       Bx = 0.0
       By = 0.0
-      Bz = Bz1 + Bz2
+      Bz = B1[3] + B2[3]
    else
       Bx = Bx1 + Bx2
       By = By1 + By2
       Bz = Bz1 + Bz2
    end
-   [Bx, By, Bz]
+
+   SA[Bx, By, Bz]
 end
 
 """
@@ -67,23 +77,15 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
    r = √(x^2 + y^2) # distance from z-axis
 
    B = getB_mirror(x, y, z, distance, a, I1)
-
-   # central loop
-   z₃ = z
-   k2 = 4*r*b / (z₃^2 + (b+r)^2)
-   K, E = ellipke(k2)
-   Bz3 = μ₀*I2 / (2π*√(z₃^2+(b+r)^2)) * ((b^2-z₃^2-r^2)/(z₃^2+(r-b)^2)*E + K)
-   Br3 = μ₀*z₃*I2/(2π*r*√(z₃^2+(b+r)^2))*((z₃^2+r^2+b^2)/(z₃^2+(r-b)^2)*E - K)
-   Bx3 = Br3 * x / r
-   By3 = Br3 * y / r
+   # Central loop
+   cl3 = Currentloop(a, I1, [0.0, 0.0, 0.0], [0.0, 0.0, 1.0])
+   B3 = getB_current_loop(x, y, z, cl3)
 
    # total magnetic field
    if x == 0.0 && y == 0.0
-      B[3] += Bz3
+      B = SA[0.0, 0.0, B[3] + B3[3]]
    else
-      B[1] += Bx3
-      B[2] += By3
-      B[3] += Bz3
+      B = B + B3
    end
 
    B
@@ -107,7 +109,7 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
    Bx, By, Bz = 0.0, 0.0, 0.0
 
    # magnetic field of the coils
-   for i = 0:15
+   for i in 0:15
       θ = π/16 + i*π/8 # angle between the i-th coil and the x-axis
 
       if abs(sin(θ)) > 0.01
@@ -155,7 +157,7 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
    distance = √( z^2 + (x - (a + b)*cos(ϕ))^2 + (y - (a + b)*sin(ϕ))^2 )
    I2_r_plasma = IPlasma * erf(distance/(σ*√2))
 
-   r = hypot(x, y)
+   r = √(x^2 + y^2)
    k = √(4r*(a+b)/(z^2+((a+b)+r)^2))
    K, E = ellipke(k)
    Bz_plasma = μ₀*I2_r_plasma/(2π*√(z^2+((a+b)+r)^2))*(((a+b)^2-z^2-r^2)/(z^2+(r-(a+b))^2)*E+K)
@@ -169,7 +171,7 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
       Bz += Bz_plasma
    end
 
-   [Bx, By, Bz]
+   SA[Bx, By, Bz]
 end
 
 
@@ -187,19 +189,19 @@ The formulations are from the book "Tokamak 4th Edition" by John Wesson.
 """
 function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, q_profile,
                               a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
-   R = hypot(x, y)
-   r = hypot(R-R₀, z)
+   R = √(x^2 + y^2)
+   r = √((R - R₀)^2 + z^2)
    if r > a
       throw(OverflowError("out of vacuum vessel"))
    end
-   θ = atan(z, R-R₀)
-   Bζ = Bζ0*R₀/R
-   Bθ = r*Bζ/R₀/q_profile(r/a)
+   θ = atan(z, R - R₀)
+   Bζ = Bζ0 * R₀ / R
+   Bθ = r * Bζ /R₀ / q_profile(r/a)
    ζ = atan(y, x)
 
    Bx = -Bζ*sin(ζ) - Bθ*sin(θ)*cos(ζ)
    By = Bζ*cos(ζ) - Bθ*sin(θ)*sin(ζ)
    Bz = Bθ*cos(θ)
 
-   [Bx, By, Bz]
+   SA[Bx, By, Bz]
 end
