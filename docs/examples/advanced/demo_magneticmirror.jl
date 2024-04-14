@@ -28,10 +28,10 @@ CairoMakie.activate!(type = "png") #hide
 ### Obtain field
 
 ## Magnetic mirror parameters in SI units
-const I = 20. # current in the solenoid
+const I = 20. # current in the solenoid [A]
 const N = 45 # number of windings
-const distance = 10. # distance between solenoids
-const a = 4.0 # radius of each coil
+const distance = 10. # distance between solenoids [m]
+const a = 4.0 # radius of each coil [m]
 
 function getB(xu)
    SVector{3}(getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
