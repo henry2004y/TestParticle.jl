@@ -26,7 +26,7 @@ end
 "Boundary condition check."
 function isoutofdomain(u, p, t)
    rout = 18Rₑ
-   if hypot(u[1], u[2], u[3]) < 1.1Rₑ ||
+   if (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
       abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
       return true
    else

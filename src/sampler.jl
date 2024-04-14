@@ -92,7 +92,7 @@ function sample(vdf::BiMaxwellian{T, U}) where {T, U}
 
    tmp = vdf.b0 × SVector(1, 0, 0)
    bperp1 =
-      if hypot(tmp...) < 1e-3
+      if (tmp[1]^2 + tmp[2]^2 + tmp[3]^2) < 1e-6
          vdf.b0 × SVector(0, 1, 0)
       else
          tmp

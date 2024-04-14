@@ -24,8 +24,8 @@ CairoMakie.activate!(type = "png") #hide
 function curved_B(x)
     ## satisify ∇⋅B=0
     ## B_θ = 1/r => ∂B_θ/∂θ = 0
-    θ = atan(x[3]/(x[1]+3))
-    r = hypot(x[1]+3, x[3])
+    θ = atan(x[3] / (x[1] + 3))
+    r = sqrt((x[1] + 3)^2 + x[3]^2)
     return SA[-1e-7*sin(θ)/r, 0, 1e-7*cos(θ)/r]
 end
 

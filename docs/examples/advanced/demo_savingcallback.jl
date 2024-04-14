@@ -28,6 +28,15 @@ using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks
 
+function getmeanB(B)
+   B₀sum = eltype(B)(0)
+   for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
+      B₀sum += B[1,i,j,k]^2 + B[2,i,j,k]^2 + B[3,i,j,k]^2
+   end
+
+   sqrt(B₀sum / prod(size(B)[2:4]))
+end
+
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 ## Spatial coordinates given in customized units
@@ -42,9 +51,7 @@ B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
 
 ## Reference values for unit conversions between the customized and dimensionless units
-const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-   sqrt(mean(vec(Bmag) .^ 2))
-end
+const B₀ = getmeanB(B)
 const U₀ = 1.0
 const l₀ = 4*nx
 const t₀ = l₀ / U₀
@@ -89,7 +96,7 @@ saved_values = SavedValues(Float64, Tuple{SVector{3, Float64}, Float64})
 
 function save_B_mu(u, t, integrator)
    b = integrator.p[3](u)
-   μ = @views b ⋅ u[4:6] / hypot(b...)
+   μ = @views b ⋅ u[4:6] / √(b[1]^2 + b[2]^2 + b[3]^2)
 
    b, μ
 end

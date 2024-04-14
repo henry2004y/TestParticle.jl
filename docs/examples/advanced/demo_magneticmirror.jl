@@ -51,16 +51,16 @@ function v_perp(t, x, y, z, vx, vy, vz)
 end
 
 ## magnetic field
-absB(t, x, y, z) = (t, hypot(getB(SA[x,y,z])...))
+absB(t, x, y, z) = (t, sqrt(sum(x -> x^2, getB(SA[x,y,z]))))
 
 ## μ, magnetic moment
 function mu(t, x, y, z, vx, vy, vz)
    xu = SA[x, y, z, vx, vy, vz]
 
-   (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / hypot(getB(xu)...) )
+   (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / sqrt(sum(x -> x^2, getB(xu))))
 end
 
-Et(xu) = hypot(xu[4:6]...)
+Et(xu) = sqrt(xu[4]^2 + xu[5]^2 + xu[6]^2)
 
 ### Initialize particles
 m = TestParticle.mₑ
