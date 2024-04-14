@@ -3,16 +3,16 @@
 using Elliptic: ellipke
 using SpecialFunctions: erf
 
-
-struct Currentloop{T<:AbstractFloat}
+#TODO Generalize the geometry
+struct Currentloop{T<:AbstractFloat, Vl, Vn}
    "radius of coil loop [m]"
    a::T
    "steady current [A]"
    I::T
    "location of loop center [m]"
-   location::Vector{T}
+   location::Vl
    "unit orientation of the loop (currently only support ẑ)"
-   normal::Vector{T}
+   normal::Vn
 end
 
 function getB_current_loop(x, y, z, cl::Currentloop)
@@ -40,8 +40,8 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
 - `I1::Float`: current in the solenoid times number of windings in side coils.
 """
 function getB_mirror(x, y, z, distance, a, I1)
-   cl1 = Currentloop(a, I1, [0.0, 0.0, -0.5*distance], [0.0, 0.0, 1.0])
-   cl2 = Currentloop(a, I1, [0.0, 0.0, 0.5*distance], [0.0, 0.0, 1.0])
+   cl1 = Currentloop(a, I1, SA[0.0, 0.0, -0.5*distance], SA[0.0, 0.0, 1.0])
+   cl2 = Currentloop(a, I1, SA[0.0, 0.0, 0.5*distance], SA[0.0, 0.0, 1.0])
    B1 = getB_current_loop(x, y, z, cl1)
    B2 = getB_current_loop(x, y, z, cl2)
    # total magnetic field
@@ -65,16 +65,16 @@ Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
 - `distance::Float`: distance between solenoids in [m].
 - `a::Float`: radius of each side coil in [m].
 - `b::Float`: radius of central coil in [m].
-- `I1::Float`: current in the solenoid times number of windings in side coils.
+- `I1::Float`: current in the solenoid times number of windings in side coils in [A].
 - `I2::Float`: current in the central solenoid times number of windings in the
-central loop.
+central loop in [A].
 """
 function getB_bottle(x, y, z, distance, a, b, I1, I2)
    r = √(x^2 + y^2) # distance from z-axis
 
    B = getB_mirror(x, y, z, distance, a, I1)
    # Central loop
-   cl3 = Currentloop(a, I1, [0.0, 0.0, 0.0], [0.0, 0.0, 1.0])
+   cl3 = Currentloop(a, I1, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
    B3 = getB_current_loop(x, y, z, cl3)
    # total magnetic field
    if x == 0.0 && y == 0.0
