@@ -180,13 +180,13 @@ function guiding_center(xu, param::TPTuple)
    t = xu[end]
    v = @view xu[4:6]
    Bv = B_field(xu, t)
-   B = hypot(Bv...)
+   B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
    b = Bv./B
    # the vector of Larmor radius
    ρ = (b × v) ./ (q2m*B)
 
-   X = xu[1:3] - ρ
+   X = @views xu[1:3] - ρ
 end
 
 function guiding_center(xu, param::FullTPTuple)
@@ -194,13 +194,13 @@ function guiding_center(xu, param::FullTPTuple)
    t = xu[end]
    v = @view xu[4:6]
    Bv = B_field(xu, t)
-   B = hypot(Bv...)
+   B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
    b = Bv./B
    # the vector of Larmor radius
    ρ = (b × v) ./ (q*B/m)
 
-   X = xu[1:3] - ρ
+   X = @views xu[1:3] - ρ
 end
 
 """

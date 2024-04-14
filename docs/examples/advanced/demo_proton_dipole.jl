@@ -103,7 +103,8 @@ sol = solve(prob, Tsit5(); reltol=1e-4);
 using DiffEqCallbacks
 
 ## p = (charge_mass_ratio, E, B)
-dtFE(u, p, t) = 2π / (abs(p[1]) * hypot(p[3](u, t)...))
+dtFE(u, p, t) = 2π / (abs(p[1]) * sqrt(sum(x -> x^2, p[3](u, t))))
+
 cb = StepsizeLimiter(dtFE; safety_factor=1 // 10, max_step=true)
 
 sol = solve(prob, Vern9(); callback=cb, dt=0.1) # dt=0.1 is a dummy value

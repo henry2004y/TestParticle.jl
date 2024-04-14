@@ -38,7 +38,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
-v_perp(xu) = hypot(xu[4], xu[5])
+v_perp(xu) = sqrt(xu[4]^2 + xu[5]^2)
 
 ## Visualization
 f = Figure(size=(800, 600), fontsize=18)

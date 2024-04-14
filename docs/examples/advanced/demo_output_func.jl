@@ -48,6 +48,15 @@ function prob_func(prob, i, repeat)
    prob = @views remake(prob; u0=[prob.u0[1:3]..., u...])
 end
 
+function getmeanB(B)
+   B₀sum = eltype(B)(0)
+   for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
+      B₀sum += B[1,i,j,k]^2 + B[2,i,j,k]^2 + B[3,i,j,k]^2
+   end
+
+   sqrt(B₀sum / prod(size(B)[2:4]))
+end
+
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 ## Spatial coordinates given in customized units
@@ -62,9 +71,7 @@ B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
 
 ## Reference values for unit conversions between the customized and dimensionless units
-const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-   sqrt(mean(vec(Bmag) .^ 2))
-end
+const B₀ = getmeanB(B)
 const U₀ = 1.0
 const l₀ = 2*nx
 const t₀ = l₀ / U₀
@@ -98,10 +105,10 @@ prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
 "Set customized outputs for the ensemble problem."
 function output_func(sol, i)
-   Bfunc = sol.prob.p[3]
-   b = Bfunc.(sol.u)
+   getB = sol.prob.p[3]
+   b = getB.(sol.u)
 
-   μ = [@views b[i] ⋅ sol[4:6, i] / hypot(b[i]...) for i in eachindex(sol)]
+   μ = [@views b[i] ⋅ sol[4:6, i] / sqrt(sum(x -> x^2, b[i])) for i in eachindex(sol)]   
 
    (sol.u, b, μ), false
 end
