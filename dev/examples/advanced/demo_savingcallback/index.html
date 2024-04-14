@@ -7,6 +7,15 @@ using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks
 
+function getmeanB(B)
+   B₀sum = eltype(B)(0)
+   for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
+      B₀sum += B[1,i,j,k]^2 + B[2,i,j,k]^2 + B[3,i,j,k]^2
+   end
+
+   sqrt(B₀sum / prod(size(B)[2:4]))
+end
+
 # Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 # Spatial coordinates given in customized units
@@ -21,9 +30,7 @@ B[2,:,:,:] .= 0.0
 B[3,:,:,:] .= 2.0
 
 # Reference values for unit conversions between the customized and dimensionless units
-const B₀ = let Bmag = @views hypot.(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:])
-   sqrt(mean(vec(Bmag) .^ 2))
-end
+const B₀ = getmeanB(B)
 const U₀ = 1.0
 const l₀ = 4*nx
 const t₀ = l₀ / U₀
@@ -68,7 +75,7 @@ saved_values = SavedValues(Float64, Tuple{SVector{3, Float64}, Float64})
 
 function save_B_mu(u, t, integrator)
    b = integrator.p[3](u)
-   μ = @views b ⋅ u[4:6] / hypot(b...)
+   μ = @views b ⋅ u[4:6] / √(b[1]^2 + b[2]^2 + b[3]^2)
 
    b, μ
 end
@@ -79,4 +86,4 @@ sol = solve(prob, Vern9(); callback=cb);</code></pre><p>The extra values are sav
 t:
 [0.0, 0.0007064003808057418, 0.006151342961409062, 0.03990852562861322, 0.24729664360869114, 0.8655117969873891, 1.8106352974346311, 2.900697481526176, 3.141592653589793]
 saveval:
-Tuple{StaticArraysCore.SVector{3, Float64}, Float64}[([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17)]</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Sunday 14 April 2024 11:32">Sunday 14 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Tuple{StaticArraysCore.SVector{3, Float64}, Float64}[([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17), ([0.0, 0.0, 1.0], 6.123233995736766e-17)]</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Sunday 14 April 2024 16:59">Sunday 14 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

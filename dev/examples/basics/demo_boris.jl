@@ -42,8 +42,8 @@ stateinit = [x0..., v0...]
 param = prepare(uniform_E, uniform_B, species=Electron)
 
 # Reference parameters
-const tperiod = 2π / (abs(param[1]) * hypot(param[3]([0.0,0.0,0.0], 0.0)...))
-const rL = hypot(v0...) / (abs(param[1]) * Bmag)
+const tperiod = 2π / (abs(param[1]) * sqrt(sum(x -> x^2, param[3]([0.0,0.0,0.0], 0.0))))
+const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;
 
 tspan = (0.0, tperiod)
