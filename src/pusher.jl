@@ -161,19 +161,19 @@ function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm=EnsembleS
 end
 
 function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, ttotal, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
+   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
    irange = 1:trajectories
-   _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
+   _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
 
    sols
 end
 
 function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, ttotal, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
+   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
 
    nchunks = Threads.nthreads()
    Threads.@threads for (irange, ichunk) in chunks(1:trajectories, nchunks)
-      _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
+      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
    end
 
    sols
@@ -186,11 +186,11 @@ function _prepare(prob, trajectories, dt, savestepinterval)
    nout = nt ÷ savestepinterval + 1
    sols = Vector{TraceSolution}(undef, trajectories)
 
-   sols, ttotal, nt, nout
+   sols, nt, nout
 end
 
 "Apply Boris method for particles with index in `irange`."
-function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, isoutofdomain)
+function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod()
    xv = MVector{6, eltype(u0)}(undef)
@@ -218,10 +218,10 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
 
       if iout == nout # regular termination
          traj_save = copy(traj)
-         t = collect(tspan[1]:dt*savestepinterval:tspan[2])
+         t = range(tspan[1], step=dt*savestepinterval, length=nout) |> collect
       else # early termination or savestepinterval != 1
          traj_save = traj[1:iout]
-         t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1))
+         t = tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1) |> collect
       end
 
       dense = false
