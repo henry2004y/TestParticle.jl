@@ -223,11 +223,10 @@ function _boris!(sols, prob, irange, savestepinterval, dt, ttotal, nt, nout, iso
             update_location!(xv, dtfinal)
             traj_save = copy(traj)
             push!(traj_save, u0)
-            t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
          else
             traj_save = copy(traj)
-            t = collect(tspan[1]:dt*savestepinterval:tspan[2])
          end
+         t = [collect(tspan[1]:dt*savestepinterval:tspan[2])..., tspan[2]]
       else # early termination or savestepinterval != 1
          traj_save = traj[1:iout]
          t = collect(tspan[1]:dt*savestepinterval:tspan[1]+dt*savestepinterval*(iout-1))
