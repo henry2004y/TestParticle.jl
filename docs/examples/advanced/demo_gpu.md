@@ -92,7 +92,7 @@ prob = ODEProblem(trace, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 ## saving time interval is required for dense output! 
 sols = solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
-   trajectories, saveat=0.4f0)
+   trajectories, saveat=0.4)
 
 ## Visualization
 
