@@ -198,3 +198,74 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 
    return
 end
+
+"""
+    trace_gc(y, p::TPTuple, t)
+
+Variable `y = (u, x, y, z)`, where `u` is the velocity along the magnetic field.
+"""
+function trace_gc(y, p::TPTuple, t)
+   q2m, E, B = p
+   b̂ = normalize(B)
+   # for simplicity
+   Eᵉ = E
+   Bᵉ = B
+   Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
+
+   du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
+   dX = (y[1] * Bᵉ + Eᵉ × b̂) / Bparᵉ
+
+   #vx, vy, vz = @view y[2:4]
+   #Ex, Ey, Ez = E(y, t)
+   #Bx, By, Bz = B(y, t)
+
+   #dx, dy, dz = vx, vy, vz
+   # q/m*(E + v × B)
+   #dux = q2m*(vy*Bz - vz*By + Ex)
+   #duy = q2m*(vz*Bx - vx*Bz + Ey)
+   #duz = q2m*(vx*By - vy*Bx + Ez)
+   SVector{4}(du, dX[1], dX[2], dX[3])
+end
+
+function trace_gc!(dy, y, p::TPTuple, t)
+   q, m, μ, Efunc, Bfunc = p
+   q2m = q / m
+   E = Efunc(y, t)
+   B = Bfunc(y, t)
+
+   Bmag(x) = Bfunc(x) ⋅ Bfunc(x)
+
+   ∇B = ForwardDiff.gradient(Bmag, @view y[2:4])
+
+   function E2B(x)
+      E² = Efunc(x) ⋅ Efunc(x)
+      B² = Bfunc(x) ⋅ Bfunc(x)
+      vE² = E² / B²
+   end
+
+   ∇vE² = ForwardDiff.gradient(E2B, @view y[2:4])
+
+   #vEmag² = (E[1]^2 + E[2]^2 + E[3]^2) / Bmag²
+   #=
+   x  y  z
+   ∂x ∂y ∂z
+   ux uy uz
+
+   ∂uz/∂y - ∂uy/∂z
+   ∂ux/∂z - ∂uz/∂x
+   ∂uy/∂x - ∂ux/∂y
+   =#
+   #Bremain = ∇ × ( u * b̂ ) / q2m
+   # effective EM fields
+   Eᵉ = E .- μ*∇B .+ 0.5*m*∇vE²
+   Bᵉ = B# .+ Bremain
+   b̂ᵉ = normalize(Bᵉ) # unit effective B field
+   Bparᵉ = b̂ᵉ ⋅ Bᵉ # parallel effective B field
+
+   dy[1] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
+   dy[2] = (y[1] * Bᵉ[1] + Eᵉ[2]*b̂ᵉ[3] - Eᵉ[3]*b̂ᵉ[2]) / Bparᵉ
+   dy[3] = (y[1] * Bᵉ[2] + Eᵉ[3]*b̂ᵉ[1] - Eᵉ[1]*b̂ᵉ[3]) / Bparᵉ
+   dy[4] = (y[1] * Bᵉ[3] + Eᵉ[1]*b̂ᵉ[2] - Eᵉ[2]*b̂ᵉ[1]) / Bparᵉ
+
+   return
+end

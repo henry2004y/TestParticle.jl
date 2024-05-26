@@ -164,6 +164,33 @@ function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
    q, m, Field(E), Field(B), Field(F)
 end
 
+function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
+   q, m = getchargemass(species, q, m)
+
+   x = @view xv[1:3]
+   v = @view xv[4:6]
+
+   e = E(@view xv[1:3])
+   b = B(@view xv[1:3])
+   Bmag² = b[1]^2 + b[2]^2 + b[3]^2
+   Bmag = √Bmag²
+   b̂ = b ./ Bmag
+
+   vpar = @views b̂ ⋅ v
+   # vector of Larmor radius
+   ρ = (b × v) ./ (q2m*B)
+   # Get the guiding center location, maybe merged into a function!
+   X = x - ρ
+
+   stateinit_gc = [vpar, X...]
+   vperp = v .- vpar
+   vE = e × b / Bmag²
+   w = vperp - vE
+   μ = m * w^2 / (2 * Bmag)
+
+   stateinit_gc, (q, m, μ, Field(E), Field(B))
+end
+
 """
     guiding_center(xu, param::Union{TPTuple, FullTPTuple})
 
@@ -182,8 +209,8 @@ function guiding_center(xu, param::TPTuple)
    Bv = B_field(xu, t)
    B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
-   b = Bv./B
-   # the vector of Larmor radius
+   b = Bv ./ B
+   # vector of Larmor radius
    ρ = (b × v) ./ (q2m*B)
 
    X = @views xu[1:3] - ρ
@@ -196,9 +223,23 @@ function guiding_center(xu, param::FullTPTuple)
    Bv = B_field(xu, t)
    B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
-   b = Bv./B
-   # the vector of Larmor radius
+   b = Bv ./ B
+   # vector of Larmor radius
    ρ = (b × v) ./ (q*B/m)
+
+   X = @views xu[1:3] - ρ
+end
+
+function guiding_center(xu, q, m, B_field)
+   q2m = q / m
+   t = xu[end]
+   v = @view xu[4:6]
+   Bv = B_field(xu, t)
+   B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
+   # unit vector along B
+   b = Bv ./ B
+   # the vector of Larmor radius
+   ρ = (b × v) ./ (q2m*B)
 
    X = @views xu[1:3] - ρ
 end
