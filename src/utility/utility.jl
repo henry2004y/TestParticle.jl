@@ -28,8 +28,8 @@ end
 
 "Return uniform range from 2D/3D CartesianGrid."
 function makegrid(grid::CartesianGrid{3, T}) where T
-   gridmin = coordinates(minimum(grid))
-   gridmax = coordinates(maximum(grid))
+   gridmin = coords(minimum(grid))
+   gridmax = coords(maximum(grid))
    Δx = spacing(grid)
 
    gridx = range(gridmin[1], gridmax[1], step=Δx[1])
@@ -40,8 +40,8 @@ function makegrid(grid::CartesianGrid{3, T}) where T
 end
 
 function makegrid(grid::CartesianGrid{2, T}) where T
-   gridmin = coordinates(minimum(grid))
-   gridmax = coordinates(maximum(grid))
+   gridmin = coords(minimum(grid))
+   gridmax = coords(maximum(grid))
    Δx = spacing(grid)
 
    gridx = range(gridmin[1], gridmax[1], step=Δx[1])
