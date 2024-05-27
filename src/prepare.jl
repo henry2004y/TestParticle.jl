@@ -184,6 +184,7 @@ function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::
    X = x - ρ
 
    stateinit_gc = [vpar, X...]
+
    vperp = v .- vpar
    vE = e × b̂ / Bmag
    w = vperp - vE

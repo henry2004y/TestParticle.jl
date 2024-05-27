@@ -227,8 +227,8 @@ function trace_gc!(dy, y, p::GCTuple, t)
    bfunc(x) = normalize(Bfunc(x, t))
    b̂ = normalize(B) # unit B field at X
    ∇b̂ = ForwardDiff.jacobian(bfunc, X)
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
 
+   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
    ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
 
    function E2B(x)
@@ -240,15 +240,14 @@ function trace_gc!(dy, y, p::GCTuple, t)
    ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
    # ∇ × b̂
    curlb = SVector{3}(∇b̂[2,3] - ∇b̂[3,2], ∇b̂[3,1] - ∇b̂[1,3], ∇b̂[1,2] - ∇b̂[2,1])
-   #TODO Check if u is a function of X or not!
+
    # effective EM fields
-   Eᵉ = @. E - μ*∇B + 0.5*m*∇vE²
+   Eᵉ = @. E - (μ*∇B + 0.5*m*∇vE²) / q
    Bᵉ = @. B + y[1] * curlb / q2m
    Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
 
    dy[1] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
    dy[2] = (y[1] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
-   norm(v_perp)^2*(Bv × gradient_B)/(2*q2m*norm(Bv)^3)
    dy[3] = (y[1] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
    dy[4] = (y[1] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
 
