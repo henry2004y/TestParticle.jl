@@ -49,6 +49,9 @@ TPTuple = Tuple{Float64, AbstractField, AbstractField}
 "The type of parameter tuple for normalized test particle problem."
 TPNormalizedTuple = Tuple{AbstractFloat, AbstractField, AbstractField}
 
+"The type of parameter tuple for guiding center problem."
+GCTuple = Tuple{Float64, Float64, Float64, AbstractField, AbstractField}
+
 
 """
     prepare(grid::CartesianGrid, E, B; kwargs...) -> (q2m, E, B)
@@ -170,23 +173,21 @@ function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::
    x = @view xv[1:3]
    v = @view xv[4:6]
 
-   e = E(@view xv[1:3])
-   b = B(@view xv[1:3])
-   Bmag² = b[1]^2 + b[2]^2 + b[3]^2
-   Bmag = √Bmag²
+   e = E(x)
+   b = B(v)
+   Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
    b̂ = b ./ Bmag
-
    vpar = @views b̂ ⋅ v
    # vector of Larmor radius
-   ρ = (b × v) ./ (q2m*B)
-   # Get the guiding center location, maybe merged into a function!
+   ρ = (b̂ × v) ./ (q/m*Bmag)
+   # Get the guiding center location
    X = x - ρ
 
    stateinit_gc = [vpar, X...]
    vperp = v .- vpar
-   vE = e × b / Bmag²
+   vE = e × b̂ / Bmag
    w = vperp - vE
-   μ = m * w^2 / (2 * Bmag)
+   μ = m * (w ⋅ w) / (2 * Bmag)
 
    stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
@@ -223,9 +224,9 @@ function guiding_center(xu, param::FullTPTuple)
    Bv = B_field(xu, t)
    B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
-   b = Bv ./ B
+   b̂ = Bv ./ B
    # vector of Larmor radius
-   ρ = (b × v) ./ (q*B/m)
+   ρ = (b̂ × v) ./ (q*B/m)
 
    X = @views xu[1:3] - ρ
 end
@@ -237,9 +238,9 @@ function guiding_center(xu, q, m, B_field)
    Bv = B_field(xu, t)
    B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
    # unit vector along B
-   b = Bv ./ B
+   b̂ = Bv ./ B
    # the vector of Larmor radius
-   ρ = (b × v) ./ (q2m*B)
+   ρ = (b̂ × v) ./ (q2m*B)
 
    X = @views xu[1:3] - ρ
 end

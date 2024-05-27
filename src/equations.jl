@@ -215,27 +215,21 @@ function trace_gc(y, p::TPTuple, t)
    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
    dX = (y[1] * Bᵉ + Eᵉ × b̂) / Bparᵉ
 
-   #vx, vy, vz = @view y[2:4]
-   #Ex, Ey, Ez = E(y, t)
-   #Bx, By, Bz = B(y, t)
-
-   #dx, dy, dz = vx, vy, vz
-   # q/m*(E + v × B)
-   #dux = q2m*(vy*Bz - vz*By + Ex)
-   #duy = q2m*(vz*Bx - vx*Bz + Ey)
-   #duz = q2m*(vx*By - vy*Bx + Ez)
    SVector{4}(du, dX[1], dX[2], dX[3])
 end
 
-function trace_gc!(dy, y, p::TPTuple, t)
+function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
+   X = @view y[2:4]
    E = Efunc(y, t)
    B = Bfunc(y, t)
+   bfunc(x) = normalize(Bfunc(x, t))
+   b̂ = normalize(B) # unit B field at X
+   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
+   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
 
-   Bmag(x) = Bfunc(x) ⋅ Bfunc(x)
-
-   ∇B = ForwardDiff.gradient(Bmag, @view y[2:4])
+   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
 
    function E2B(x)
       E² = Efunc(x) ⋅ Efunc(x)
@@ -243,29 +237,20 @@ function trace_gc!(dy, y, p::TPTuple, t)
       vE² = E² / B²
    end
 
-   ∇vE² = ForwardDiff.gradient(E2B, @view y[2:4])
-
-   #vEmag² = (E[1]^2 + E[2]^2 + E[3]^2) / Bmag²
-   #=
-   x  y  z
-   ∂x ∂y ∂z
-   ux uy uz
-
-   ∂uz/∂y - ∂uy/∂z
-   ∂ux/∂z - ∂uz/∂x
-   ∂uy/∂x - ∂ux/∂y
-   =#
-   #Bremain = ∇ × ( u * b̂ ) / q2m
+   ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
+   # ∇ × b̂
+   curlb = SVector{3}(∇b̂[2,3] - ∇b̂[3,2], ∇b̂[3,1] - ∇b̂[1,3], ∇b̂[1,2] - ∇b̂[2,1])
+   #TODO Check if u is a function of X or not!
    # effective EM fields
-   Eᵉ = E .- μ*∇B .+ 0.5*m*∇vE²
-   Bᵉ = B# .+ Bremain
-   b̂ᵉ = normalize(Bᵉ) # unit effective B field
-   Bparᵉ = b̂ᵉ ⋅ Bᵉ # parallel effective B field
+   Eᵉ = @. E - μ*∇B + 0.5*m*∇vE²
+   Bᵉ = @. B + y[1] * curlb / q2m
+   Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
 
    dy[1] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-   dy[2] = (y[1] * Bᵉ[1] + Eᵉ[2]*b̂ᵉ[3] - Eᵉ[3]*b̂ᵉ[2]) / Bparᵉ
-   dy[3] = (y[1] * Bᵉ[2] + Eᵉ[3]*b̂ᵉ[1] - Eᵉ[1]*b̂ᵉ[3]) / Bparᵉ
-   dy[4] = (y[1] * Bᵉ[3] + Eᵉ[1]*b̂ᵉ[2] - Eᵉ[2]*b̂ᵉ[1]) / Bparᵉ
+   dy[2] = (y[1] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
+   norm(v_perp)^2*(Bv × gradient_B)/(2*q2m*norm(Bv)^3)
+   dy[3] = (y[1] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
+   dy[4] = (y[1] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
 
    return
 end
