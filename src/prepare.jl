@@ -169,9 +169,7 @@ end
 
 function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
    q, m = getchargemass(species, q, m)
-
-   x = @view xv[1:3]
-   v = @view xv[4:6]
+   x, v = @views xv[1:3], xv[4:6]
 
    bparticle = B(x)
    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
@@ -187,12 +185,12 @@ function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::
    b̂ = b ./ Bmag
    vpar = @views b̂ ⋅ v
 
-   stateinit_gc = [vpar, X...]
-
-   vperp = v .- vpar .* b̂
+   vperp = @. v - vpar * b̂
    vE = e × b̂ / Bmag
    w = vperp - vE
    μ = m * (w ⋅ w) / (2 * Bmag)
+
+   stateinit_gc = [X..., vpar]
 
    stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
@@ -258,7 +256,7 @@ Get three functions for plotting the orbit of guiding center.
 For example:
 ```julia
 param = prepare(E, B; species=Proton)
-gc = get_gc(params)
+gc = get_gc(param)
 # The definitions of stateinit, tspan, E and B are ignored.
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=2e-11)

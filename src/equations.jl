@@ -202,7 +202,9 @@ end
 """
     trace_gc(y, p::TPTuple, t)
 
-Variable `y = (u, x, y, z)`, where `u` is the velocity along the magnetic field.
+Guiding center equations for nonrelativistic charged particle moving in static EM field with
+out-of-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic
+field at (x,y,z).
 """
 function trace_gc(y, p::TPTuple, t)
    q2m, E, B = p
@@ -213,15 +215,22 @@ function trace_gc(y, p::TPTuple, t)
    Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
 
    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-   dX = (y[1] * Bᵉ + Eᵉ × b̂) / Bparᵉ
+   dX = (y[4] * Bᵉ + Eᵉ × b̂) / Bparᵉ
 
-   SVector{4}(du, dX[1], dX[2], dX[3])
+   SVector{4}(dX[1], dX[2], dX[3], du)
 end
 
+"""
+    trace_gc!(dy, y, p::TPTuple, t)
+
+Guiding center equations for nonrelativistic charged particle moving in static EM field with
+in-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic
+field at (x,y,z).
+"""
 function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
-   X = @view y[2:4]
+   X = @view y[1:3]
    E = Efunc(X, t)
    B = Bfunc(X, t)
    b̂ = normalize(B) # unit B field at X
@@ -240,17 +249,16 @@ function trace_gc!(dy, y, p::GCTuple, t)
    bfunc(x) = normalize(Bfunc(x, t))
    ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # ∇ × b̂
-   curlb = SVector{3}(∇b̂[2,3] - ∇b̂[3,2], ∇b̂[3,1] - ∇b̂[1,3], ∇b̂[1,2] - ∇b̂[2,1])
-
+   curlb = SVector{3}(∇b̂[3,2] - ∇b̂[2,3], ∇b̂[1,3] - ∇b̂[3,1], ∇b̂[2,1] - ∇b̂[1,2])
    # effective EM fields
    Eᵉ = @. E - (μ*∇B + 0.5*m*∇vE²) / q
-   Bᵉ = @. B + y[1] * curlb / q2m
+   Bᵉ = @. B + y[4] * curlb / q2m
    Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
 
-   dy[1] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-   dy[2] = (y[1] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
-   dy[3] = (y[1] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
-   dy[4] = (y[1] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
+   dy[1] = (y[4] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
+   dy[2] = (y[4] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
+   dy[3] = (y[4] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
+   dy[4] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
 
    return
 end
