@@ -173,19 +173,23 @@ function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::
    x = @view xv[1:3]
    v = @view xv[4:6]
 
-   e = E(x)
-   b = B(v)
+   bparticle = B(x)
+   Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
+   b̂particle = bparticle ./ Bmag_particle
+   # vector of Larmor radius
+   ρ = (b̂particle × v) ./ (q/m*Bmag_particle)
+   # Get the guiding center location
+   X = x - ρ
+   # Get EM field at guiding center
+   e = E(X)
+   b = B(X)
    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
    b̂ = b ./ Bmag
    vpar = @views b̂ ⋅ v
-   # vector of Larmor radius
-   ρ = (b̂ × v) ./ (q/m*Bmag)
-   # Get the guiding center location
-   X = x - ρ
 
    stateinit_gc = [vpar, X...]
 
-   vperp = v .- vpar
+   vperp = v .- vpar .* b̂
    vE = e × b̂ / Bmag
    w = vperp - vE
    μ = m * (w ⋅ w) / (2 * Bmag)

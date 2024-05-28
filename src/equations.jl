@@ -222,11 +222,9 @@ function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = @view y[2:4]
-   E = Efunc(y, t)
-   B = Bfunc(y, t)
-   bfunc(x) = normalize(Bfunc(x, t))
+   E = Efunc(X, t)
+   B = Bfunc(X, t)
    b̂ = normalize(B) # unit B field at X
-   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
 
    Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
    ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
@@ -238,6 +236,9 @@ function trace_gc!(dy, y, p::GCTuple, t)
    end
 
    ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
+
+   bfunc(x) = normalize(Bfunc(x, t))
+   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # ∇ × b̂
    curlb = SVector{3}(∇b̂[2,3] - ∇b̂[3,2], ∇b̂[3,1] - ∇b̂[1,3], ∇b̂[1,2] - ∇b̂[2,1])
 
