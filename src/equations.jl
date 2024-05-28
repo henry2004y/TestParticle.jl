@@ -251,7 +251,7 @@ function trace_gc!(dy, y, p::GCTuple, t)
    # ∇ × b̂
    curlb = SVector{3}(∇b̂[3,2] - ∇b̂[2,3], ∇b̂[1,3] - ∇b̂[3,1], ∇b̂[2,1] - ∇b̂[1,2])
    # effective EM fields
-   Eᵉ = @. E - (μ*∇B + 0.5*m*∇vE²) / q
+   Eᵉ = @. E - (μ*∇B - 0.5*m*∇vE²) / q
    Bᵉ = @. B + y[4] * curlb / q2m
    Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
 
