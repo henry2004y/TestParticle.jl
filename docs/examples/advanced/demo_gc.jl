@@ -149,6 +149,8 @@ for i in 2:4
    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
+f = DisplayAs.PNG(f) #hide
+
 # We can clearly see the deviations caused by the FLR effect. If we use a smaller gyro-radius by increasing the magnetic field, this accuracy will be much higher:
 
 grad_B(x) = SA[0, 0, 1e-7 + 1e-8*x[2]]
@@ -192,5 +194,7 @@ ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
 for i in 2:4
    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
+
+f = DisplayAs.PNG(f) #hide
 
 # Therefore, it is crucial to check the scale before performing any GC tracing!
