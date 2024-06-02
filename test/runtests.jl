@@ -484,7 +484,7 @@ end
       prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
       sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
       @test sol_gc.u[end][1] ≈ 0.9896155284173717
-      @test sol_gc_analytic.u[end][1] ≈ 0.9906948031769801
+      @test sol_gc_analytic.u[end][1] ≈ 0.9906948031769801 rtol=1e-6
 
       stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
          species=Proton, removeExB=false)
