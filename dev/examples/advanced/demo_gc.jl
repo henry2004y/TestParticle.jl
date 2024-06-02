@@ -134,6 +134,8 @@ for i in 2:4
    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
 
+f = DisplayAs.PNG(f) #hide
+
 grad_B(x) = SA[0, 0, 1e-7 + 1e-8*x[2]]
 
 tspan = (0, 10)
@@ -175,5 +177,7 @@ ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
 for i in 2:4
    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
 end
+
+f = DisplayAs.PNG(f) #hide
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
