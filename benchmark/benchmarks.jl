@@ -62,3 +62,8 @@ prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_td) # out of place
 SUITE["trace"]["time-dependent field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
 SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
+
+stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, E_analytic, B_analytic,
+   species=Proton, removeExB=true)
+prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+SUITE["trace"]["GC"]["in place"] = @benchmarkable solve($prob_gc, Vern9())

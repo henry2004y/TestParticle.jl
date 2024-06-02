@@ -1,6 +1,6 @@
 module TestParticle
 
-using LinearAlgebra: norm, ×, ⋅
+using LinearAlgebra: norm, ×, ⋅, diag
 using Statistics: mean, normalize
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
    Line, OnCell, Periodic, Flat
@@ -10,12 +10,13 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
    LinearInterpolation
 using StaticArrays: SVector, @SMatrix, MVector, SA
 using Meshes: coords, spacing, embeddim, CartesianGrid
+using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
-export prepare, sample
+export prepare, prepare_gc, sample, get_gc
 export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic,
-   trace_relativistic_normalized!
+   trace_relativistic_normalized!, trace_gc!, trace_gc_1st!, trace_gc_drifts!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor
