@@ -97,6 +97,14 @@ end
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
       @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
 
+      # GC prepare
+      stateinit_gc, param_gc = prepare_gc(stateinit, x, y, z, E, B;
+      species=Proton, removeExB=false, order=1)
+      @test stateinit_gc[2] ≈ -1.0445524701265456
+      stateinit_gc, param_gc = prepare_gc(stateinit, x, y, z, E, B;
+      species=Proton, removeExB=true, order=1)
+      @test stateinit_gc[2] ≈ -1.0445524701265456
+
       param = prepare(grid, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])

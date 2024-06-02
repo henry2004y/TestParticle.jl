@@ -14,7 +14,7 @@ using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
-export prepare, sample, get_gc
+export prepare, prepare_gc, sample, get_gc
 export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic,
    trace_relativistic_normalized!, trace_gc!, trace_gc_1st!, trace_gc_drifts!
 export Proton, Electron, Ion, User
