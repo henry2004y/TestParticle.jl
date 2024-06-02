@@ -277,20 +277,6 @@ function guiding_center(xu, param::FullTPTuple)
    X = @views xu[1:3] - ρ
 end
 
-function guiding_center(xu, q, m, B_field)
-   q2m = q / m
-   t = xu[end]
-   v = @view xu[4:6]
-   Bv = B_field(xu, t)
-   B = sqrt(Bv[1]^2 + Bv[2]^2 + Bv[3]^2)
-   # unit vector along B
-   b̂ = Bv ./ B
-   # the vector of Larmor radius
-   ρ = (b̂ × v) ./ (q2m*B)
-
-   X = @views xu[1:3] - ρ
-end
-
 """
     get_gc(param::Union{TPTuple, FullTPTuple})
 
