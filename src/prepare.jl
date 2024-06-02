@@ -167,7 +167,8 @@ function prepare(E, B, F; species::Species=Proton, q::AbstractFloat=1.0,
    q, m, Field(E), Field(B), Field(F)
 end
 
-function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::AbstractFloat=1.0)
+function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0,
+   m::AbstractFloat=1.0, removeExB=true)
    q, m = getchargemass(species, q, m)
    x, v = @views xv[1:3], xv[4:6]
 
@@ -179,15 +180,19 @@ function prepare_gc(xv, E, B; species::Species=Proton, q::AbstractFloat=1.0, m::
    # Get the guiding center location
    X = x - ρ
    # Get EM field at guiding center
-   e = E(X)
    b = B(X)
    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
    b̂ = b ./ Bmag
    vpar = @views b̂ ⋅ v
 
    vperp = @. v - vpar * b̂
-   vE = e × b̂ / Bmag
-   w = vperp - vE
+   if removeExB
+      e = E(X)
+      vE = e × b̂ / Bmag
+      w = vperp - vE
+   else
+      w = vperp
+   end
    μ = m * (w ⋅ w) / (2 * Bmag)
 
    stateinit_gc = [X..., vpar]

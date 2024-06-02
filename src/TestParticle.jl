@@ -16,7 +16,7 @@ using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, sample
 export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic,
-   trace_relativistic_normalized!, trace_gc, trace_gc!
+   trace_relativistic_normalized!, trace_gc, trace_gc!, trace_gc_1st!, trace_gc_drifts!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export orbit, monitor

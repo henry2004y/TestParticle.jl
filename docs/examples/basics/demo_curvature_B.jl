@@ -8,7 +8,7 @@
 # ---
 
 # This example demonstrates a single proton motion under a vacuum non-uniform B field with gradient and curvature.
-# Similar to the magnetic field gradient drift, analytic calculation should include both of the gradient drift and the curvature drift.
+# The analytic calculation includes the grad-B drift, the curvature drift, the ExB drift and parallel velocity.
 # More theoretical details can be found in [Curvature Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#curved-b-curvature-drift) and Computational Plasma Physics by Toshi Tajima.
 
 import DisplayAs #hide
@@ -35,22 +35,6 @@ end
 
 abs_B(x) = norm(curved_B(x))  # |B|
 
-## Trace the orbit of the guiding center using analytical drifts
-function trace_gc!(dx, x, p, t)
-    q2m, E, B, sol = p
-    xu = sol(t)
-    gradient_B = gradient(abs_B, x)  # ∇|B|
-    Bv = B(x)
-    b = normalize(Bv)
-    v_par = (xu[4:6] ⋅ b).*b  # (v⋅b)b
-    v_perp = xu[4:6] - v_par
-    Ω = q2m*norm(Bv)
-    κ = jacobian(B, x)*Bv  # B⋅∇B
-    ## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-    dx[1:3] = norm(v_perp)^2*(Bv × gradient_B)/(2*Ω*norm(Bv)^2) +
-        norm(v_par)^2*(Bv × κ)/Ω/norm(Bv)^3 + (E(x) × Bv)/norm(Bv)^2 + v_par
-end
-
 ## Initial conditions
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
     [x0..., v0...]
@@ -64,7 +48,7 @@ sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
-prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+prob_gc = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
 
 ## Numeric and analytic results

@@ -27,6 +27,19 @@ function isoutofdomain(u, p, t)
    end
 end
 
+uniform_B2(x) = SA[0.0, 0.0, 0.01]
+uniform_B1(x) = SA[0.0, 0.0, 1e-8]
+zero_E(x) = SA[0.0, 0.0, 0.0]
+uniform_E(x) = SA[1e-9, 0, 0]
+
+function curved_B(x)   
+   # satisify ∇ ⋅ B = 0
+   # B_θ = 1/r => ∂B_θ/∂θ = 0
+   θ = atan(x[3] / (x[1] + 3))
+   r = sqrt((x[1] + 3)^2 + x[3]^2)
+   return SA[-1e-6*sin(θ)/r, 0, 1e-6*cos(θ)/r]
+end
+
 @testset "TestParticle.jl" begin
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
@@ -403,15 +416,12 @@ end
    end
 
    @testset "Boris pusher" begin
-      uniform_B(x) = SA[0.0, 0.0, 0.01]
-      uniform_E(x) = SA[0.0, 0.0, 0.0]
-
       x0 = [0.0, 0.0, 0.0]
       v0 = [0.0, 1e5, 0.0]
       stateinit = [x0..., v0...]
       tspan = (0.0, 3e-8)
       dt = 3e-11
-      param = prepare(uniform_E, uniform_B, species=Electron)
+      param = prepare(zero_E, uniform_B2, species=Electron)
       prob = TraceProblem(stateinit, tspan, param)
 
       sol = TestParticle.solve(prob; dt, savestepinterval=10)[1]
@@ -442,6 +452,36 @@ end
       @test B[3] == 8.99176285573213e-7
       B = TestParticle.getB_bottle(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0)
       @test B[3] == 1.5274948162911718e-6
+   end
+
+   @testset "GC" begin
+      stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
+         [x0..., v0...]
+      end
+      tspan = (0, 10)
+
+      param = prepare(uniform_E, curved_B, species=Proton)
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+      sol = solve(prob, Vern9())
+
+      stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
+         species=Proton, removeExB=true)
+
+      prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+      #prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+
+      sol_gc = solve(prob_gc, Vern9())
+
+      # analytical drifts
+      gc = get_gc(param)
+      gc_x0 = gc(stateinit)
+      prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+      sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
+
+      @test sol_gc.u[end] == [0.9896155284173717, -0.09334812883984753, 0.6472792764430003,
+         0.003419043657971693]
+      @test sol_gc_analytic.u[end] == [0.9906948031769801, -0.09333729278510479,
+         0.6405916340977893]
    end
 end
 
