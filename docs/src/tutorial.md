@@ -34,7 +34,9 @@ The Boris pusher follows a similar interface for multithreading.
 
 ## Guiding center drifts
 
-By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`. In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below. With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
+By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`. In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below (see `trace_gc_drifts!`). With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
+
+An alternative approach is to solve the guiding center approximation equations. In TestParticle.jl, we provide tracing via solving the equations derived from Hamiltonian mechanics and their 1st order approximation.
 
 ### Summary of guiding center drifts
 

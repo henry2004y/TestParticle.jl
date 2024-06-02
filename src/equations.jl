@@ -224,27 +224,6 @@ function trace_gc_drifts!(dx, x, p, t)
 end
 
 """
-    trace_gc(y, p::TPTuple, t)
-
-Guiding center equations for nonrelativistic charged particle moving in static EM field with
-out-of-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic
-field at (x,y,z).
-"""
-function trace_gc(y, p::TPTuple, t)
-   q2m, E, B = p
-   b̂ = normalize(B)
-   # for simplicity
-   Eᵉ = E
-   Bᵉ = B
-   Bparᵉ = b̂ ⋅ Bᵉ # parallel effective B field
-
-   du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-   dX = (y[4] * Bᵉ + Eᵉ × b̂) / Bparᵉ
-
-   SVector{4}(dX[1], dX[2], dX[3], du)
-end
-
-"""
     trace_gc!(dy, y, p::TPTuple, t)
 
 Guiding center equations for nonrelativistic charged particle moving in static EM field with
@@ -299,19 +278,19 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
  
    Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
    ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
-   Ω = q*Bmag(X)/m
+   Ω = q * Bmag(X) / m
  
    bfunc(x) = normalize(Bfunc(x, t))
    ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # effective EM fields
    Eᵉ = @. E - (μ*∇B) / q
-   κ = ∇b̂*b̂  # curvature
-   vX = u*b̂ + b̂×(κ*u^2 - q2m*Eᵉ)/Ω
+   κ = ∇b̂ * b̂  # curvature
+   vX = u * b̂ + b̂ × (κ*u^2 - q2m*Eᵉ) / Ω
  
    dy[1] = vX[1]
    dy[2] = vX[2]
    dy[3] = vX[3]
-   dy[4] = q2m *(b̂ + u*(b̂×κ)/Ω) ⋅ Eᵉ
+   dy[4] = q2m *(b̂ + u*(b̂ × κ)/Ω) ⋅ Eᵉ
  
    return
 end

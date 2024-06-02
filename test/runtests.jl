@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Random
-using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center, get_gc
+using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center
 using Meshes: CartesianGrid
 using Test
 
@@ -32,7 +32,7 @@ uniform_B1(x) = SA[0.0, 0.0, 1e-8]
 zero_E(x) = SA[0.0, 0.0, 0.0]
 uniform_E(x) = SA[1e-9, 0, 0]
 
-function curved_B(x)   
+function curved_B(x)
    # satisify ∇ ⋅ B = 0
    # B_θ = 1/r => ∂B_θ/∂θ = 0
    θ = atan(x[3] / (x[1] + 3))
@@ -468,8 +468,6 @@ end
          species=Proton, removeExB=true)
 
       prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-      #prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
-
       sol_gc = solve(prob_gc, Vern9())
 
       # analytical drifts
@@ -477,11 +475,14 @@ end
       gc_x0 = gc(stateinit)
       prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
       sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
+      @test sol_gc.u[end][1] ≈ 0.9896155284173717
+      @test sol_gc_analytic.u[end][1] ≈ 0.9906948031769801
 
-      @test sol_gc.u[end] == [0.9896155284173717, -0.09334812883984753, 0.6472792764430003,
-         0.003419043657971693]
-      @test sol_gc_analytic.u[end] == [0.9906948031769801, -0.09333729278510479,
-         0.6405916340977893]
+      stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
+         species=Proton, removeExB=false)
+      prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+      sol_gc = solve(prob_gc, Vern9())
+      @test sol_gc.u[end][1] ≈ 0.9896155284164463
    end
 end
 

@@ -13,6 +13,7 @@
      "demo_shock.jl",
      "demo_tokamak_coil.jl",
      "demo_tokamak_profile.jl",
+     "demo_gc.jl",
      "demo_batsrus_3dstructured.md",
      "demo_gpu.md"
    ]
