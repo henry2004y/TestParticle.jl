@@ -15,7 +15,6 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: get_gc
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra: ⋅, ×, normalize

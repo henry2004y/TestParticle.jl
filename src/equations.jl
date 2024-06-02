@@ -198,3 +198,99 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 
    return
 end
+
+"""
+    trace_gc_drifts!(dx, x, p, t)
+
+Equations for tracing the guiding center using analytical drifts, including the grad-B
+drift, the curvature drift, the ExB drift. Parallel velocity is also added. This expression
+requires the full particle trajectory `p.sol`.
+"""
+function trace_gc_drifts!(dx, x, p, t)
+   q2m, E, B, sol = p
+   xu = sol(t)
+   v = @view xu[4:6]
+   abs_B(x) = norm(B(x))
+   gradient_B = ForwardDiff.gradient(abs_B, x)
+   Bv = B(x)
+   b = normalize(Bv)
+   v_par = (v ⋅ b) .* b
+   v_perp = v - v_par
+   Ω = q2m*norm(Bv)
+   κ = ForwardDiff.jacobian(B, x)*Bv  # B⋅∇B
+   ## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
+   dx[1:3] = norm(v_perp)^2*(Bv × gradient_B)/(2*Ω*norm(Bv)^2) +
+      norm(v_par)^2*(Bv × κ)/Ω/norm(Bv)^3 + (E(x) × Bv)/norm(Bv)^2 + v_par
+end
+
+"""
+    trace_gc!(dy, y, p::TPTuple, t)
+
+Guiding center equations for nonrelativistic charged particle moving in static EM field with
+in-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic
+field at (x,y,z).
+"""
+function trace_gc!(dy, y, p::GCTuple, t)
+   q, m, μ, Efunc, Bfunc = p
+   q2m = q / m
+   X = @view y[1:3]
+   E = Efunc(X, t)
+   B = Bfunc(X, t)
+   b̂ = normalize(B) # unit B field at X
+
+   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
+   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
+
+   function E2B(x)
+      E² = Efunc(x) ⋅ Efunc(x)
+      B² = Bfunc(x) ⋅ Bfunc(x)
+      vE² = E² / B²
+   end
+
+   ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
+
+   bfunc(x) = normalize(Bfunc(x, t))
+   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
+   # ∇ × b̂
+   curlb = SVector{3}(∇b̂[3,2] - ∇b̂[2,3], ∇b̂[1,3] - ∇b̂[3,1], ∇b̂[2,1] - ∇b̂[1,2])
+   # effective EM fields
+   Eᵉ = @. E - (μ*∇B - 0.5*m*∇vE²) / q
+   Bᵉ = @. B + y[4] / q2m * curlb 
+   Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
+
+   dy[1] = (y[4] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
+   dy[2] = (y[4] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
+   dy[3] = (y[4] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
+   dy[4] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
+
+   return
+end
+
+"1st order approximation of guiding center equations."
+function trace_gc_1st!(dy, y, p::GCTuple, t)
+   q, m, μ, Efunc, Bfunc = p
+   q2m = q / m
+   X = @view y[1:3]
+   E = Efunc(X, t)
+   B = Bfunc(X, t)
+   b̂ = normalize(B) # unit B field at X
+   u = y[4]
+ 
+   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
+   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
+   Ω = q * Bmag(X) / m
+ 
+   bfunc(x) = normalize(Bfunc(x, t))
+   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
+   # effective EM fields
+   Eᵉ = @. E - (μ*∇B) / q
+   κ = ∇b̂ * b̂  # curvature
+   vX = u * b̂ + b̂ × (κ*u^2 - q2m*Eᵉ) / Ω
+ 
+   dy[1] = vX[1]
+   dy[2] = vX[2]
+   dy[3] = vX[3]
+   dy[4] = q2m *(b̂ + u*(b̂ × κ)/Ω) ⋅ Eᵉ
+ 
+   return
+end
