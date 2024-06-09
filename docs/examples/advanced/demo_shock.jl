@@ -231,8 +231,8 @@ function plot_dist_pairplots(x, sols; ntchunks::Int=20)
    l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
 
    pairplot(f[1,1],
-      PairPlots.Series(table[1], label=l1, color=c1, strokecolor=c1),
-      PairPlots.Series(table[2], label=l2, color=c2, strokecolor=c2),
+      PairPlots.Series(table[1], label=l1, color=c1),
+      PairPlots.Series(table[2], label=l2, color=c2),
       PairPlots.Truth(
          (;
             vx = [-545.1484121835928, -172.1748987410881],
@@ -258,7 +258,7 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    c2 = Makie.wong_colors(0.5)[2]
 
    pairplot(f[1,1],
-      PairPlots.Series(table[1], color=c1, strokecolor=c1),
+      PairPlots.Series(table[1], color=c1),
       PairPlots.Truth(
           (;
               vx = -172.1748987410881,
@@ -270,7 +270,7 @@ function plot_dist_pairplot(x, sols; ntchunks::Int=20)
    )
 
    pairplot(f[2,1],
-      PairPlots.Series(table[2], color=c2, strokecolor=c2),
+      PairPlots.Series(table[2], color=c2),
       PairPlots.Truth(
          (;
             vx = -545.1484121835928,
