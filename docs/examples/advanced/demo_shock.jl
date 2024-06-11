@@ -84,15 +84,16 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
 # Sample particle trajectories
 
-function plot_traj(sols; azimuth=1.275pi, elevation=pi/8)
+function plot_traj(sols; azimuth=1.275pi, elevation=pi/8,
+   limits=((-4000.0, 4000.0), (-1000., 1000.), (-2000., 2000.)))
    f = Figure(fontsize=18)
    ax = Axis3(f[1, 1];
-      title = "Particles across MHD shock",
-      xlabel = "x [km]",
-      ylabel = "y [km]",
-      zlabel = "z [km]",
-      aspect = :data,
-      azimuth, elevation,
+      title="Particles across MHD shock",
+      xlabel="x [km]",
+      ylabel="y [km]",
+      zlabel="z [km]",
+      aspect=:data,
+      limits, azimuth, elevation,
    )
 
    invL = 1 / 1e3
