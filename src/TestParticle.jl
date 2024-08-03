@@ -9,7 +9,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
    DEFAULT_SPECIALIZATION, ODEFunction, 
    LinearInterpolation
 using StaticArrays: SVector, @SMatrix, MVector, SA
-using Meshes: coords, spacing, embeddim, CartesianGrid
+using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload

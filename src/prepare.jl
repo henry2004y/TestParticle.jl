@@ -93,11 +93,11 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species=Proton,
 
    q, m = getchargemass(species, q, m)
 
-   if embeddim(grid) == 3
+   if paramdim(grid) == 3
       gridx, gridy, gridz = makegrid(grid)
       E = TE <: AbstractArray ? getinterp(E, gridx, gridy, gridz, order, bc) : E
       B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order, bc) : B
-   elseif embeddim(grid) == 2
+   elseif paramdim(grid) == 2
       gridx, gridy = makegrid(grid)
       E = TE <: AbstractArray ? getinterp(E, gridx, gridy, order, bc) : E
       B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order, bc) : B

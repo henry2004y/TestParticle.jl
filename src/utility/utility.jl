@@ -27,27 +27,20 @@ function getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
 end
 
 "Return uniform range from 2D/3D CartesianGrid."
-function makegrid(grid::CartesianGrid{3, T}) where T
+function makegrid(grid::CartesianGrid)
    gridmin = coords(minimum(grid))
    gridmax = coords(maximum(grid))
    Δx = spacing(grid)
+   dim = paramdim(grid)
 
    gridx = range(gridmin.x.val, gridmax.x.val, step=Δx[1].val)
    gridy = range(gridmin.y.val, gridmax.y.val, step=Δx[2].val)
-   gridz = range(gridmin.z.val, gridmax.z.val, step=Δx[3].val)
-
-   gridx, gridy, gridz
-end
-
-function makegrid(grid::CartesianGrid{2, T}) where T
-   gridmin = coords(minimum(grid))
-   gridmax = coords(maximum(grid))
-   Δx = spacing(grid)
-
-   gridx = range(gridmin.x.val, gridmax.x.val, step=Δx[1].val)
-   gridy = range(gridmin.y.val, gridmax.y.val, step=Δx[2].val)
-
-   gridx, gridy
+   if dim == 3
+      gridz = range(gridmin.z.val, gridmax.z.val, step=Δx[3].val)
+      return gridx, gridy, gridz
+   elseif dim == 2
+      return gridx, gridy
+   end
 end
 
 """

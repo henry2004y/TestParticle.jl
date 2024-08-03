@@ -1,7 +1,7 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>, and Tiancheng Liu <liutc@mail.nankai.edu.cn>"]
-version = "0.11.1"
+version = "0.11.2"
 
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
@@ -22,7 +22,7 @@ ChunkSplitters = "2"
 Elliptic = "1"
 ForwardDiff = "0.10"
 Interpolations = "0.14, 0.15"
-Meshes = "0.44, 0.45, 0.46, 0.47"
+Meshes = "0.47"
 PrecompileTools = "1"
 SciMLBase = "2.24"
 SpecialFunctions = "1.5, 2"
