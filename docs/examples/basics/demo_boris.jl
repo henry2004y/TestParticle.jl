@@ -30,14 +30,14 @@ function plot_trajectory(sol_boris, sol1, sol2)
    l2 = linesegments!(ax, sol2; idxs, linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
 
    ax.scene.plots[1].linewidth = 2
-   ax.scene.plots[5].linewidth = 2
+   ax.scene.plots[3].linewidth = 2
 
-   ax.scene.plots[3].color = Makie.wong_colors()[2]
-   ax.scene.plots[5].color = Makie.wong_colors()[3]
+   ax.scene.plots[2].color = Makie.wong_colors()[2]
+   ax.scene.plots[3].color = Makie.wong_colors()[3]
 
    scale!(ax.scene.plots[1], invrL, invrL)
+   scale!(ax.scene.plots[2], invrL, invrL)
    scale!(ax.scene.plots[3], invrL, invrL)
-   scale!(ax.scene.plots[5], invrL, invrL)
 
    axislegend(position=:rt, framevisible=false)
 

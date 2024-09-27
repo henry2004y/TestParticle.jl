@@ -77,8 +77,8 @@ invRE = 1 / Rₑ
 for (i, sol) in enumerate(sols)
    l = lines!(ax, sol, idxs=(1, 2, 3))
    ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-   scale!(ax.scene.plots[9+2*i-1], invRE, invRE, invRE)
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+   scale!(ax.scene.plots[9+i], invRE, invRE, invRE)
+   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
 end
 
 ## Field lines
