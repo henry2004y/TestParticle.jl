@@ -94,7 +94,7 @@ lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.2)
 
 for i in 2:5
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i+1]
+   ax.scene.plots[9+i].color = Makie.wong_colors()[i+1]
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -146,7 +146,7 @@ lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
 
 for i in 2:4
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -192,7 +192,7 @@ lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
 
 for i in 2:4
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide

@@ -85,7 +85,7 @@ ax = Axis(f[1, 1],
 for i in eachindex(sols)
    lines!(ax, sols[i]; idxs=(1, 2), label=string(i))
    ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-   ax.scene.plots[2*i-1].color = Makie.wong_colors()[i]
+   ax.scene.plots[i].color = Makie.wong_colors()[i]
 end
 
 axislegend(position=:lt, framevisible=false)

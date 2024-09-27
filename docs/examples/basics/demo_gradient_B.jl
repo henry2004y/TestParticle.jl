@@ -78,7 +78,7 @@ lines!(ax, sol_gc, idxs=(1, 2, 3))
 
 for i in 1:3
     ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-    ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
+    ax.scene.plots[9+i].color = Makie.wong_colors()[i]
 end
 
 f = DisplayAs.PNG(f) #hide
