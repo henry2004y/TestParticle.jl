@@ -57,10 +57,6 @@ ax = Axis3(f[1, 1],
 plot!(sol_e, idxs=(1, 2, 3), color=:tomato, label="electron")
 plot!(sol_p, idxs=(1, 2, 3), color=:deepskyblue3, label="proton")
 
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[9+1].color = :tomato
-ax.scene.plots[9+2].color = :deepskyblue3
-
 axislegend()
 
 f = DisplayAs.PNG(f) #hide

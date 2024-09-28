@@ -57,9 +57,7 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], idxs=(1,2,3), label="$i")
-   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
+   lines!(ax, sols[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -87,9 +85,7 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(trajs)
-   lines!(ax, trajs[i]; idxs=(1,2,3), label="$i")
-   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
+   lines!(ax, trajs[i]; idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide

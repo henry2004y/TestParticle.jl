@@ -84,18 +84,11 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-plot!(ax, sol_gc_numericBfield, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.2)
-
-for i in 2:5
-   ax.scene.plots[9+i].color = Makie.wong_colors()[i+1]
-end
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.2))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+plot!(ax, sol_gc_numericBfield, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[4])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[5])
 
 f = DisplayAs.PNG(f) #hide
 
@@ -137,17 +130,10 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
-
-for i in 2:4
-   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
-end
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.4))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[4])
 
 f = DisplayAs.PNG(f) #hide
 
@@ -183,17 +169,10 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
-
-for i in 2:4
-   ax.scene.plots[9+i].color = Makie.wong_colors()[i]
-end
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.4))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[4])
 
 f = DisplayAs.PNG(f) #hide
 
