@@ -71,18 +71,11 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-plot!(ax, sol_gc_numericBfield, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.2)
-
-for i in 2:5
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i+1]
-end
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.2))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+plot!(ax, sol_gc_numericBfield, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[4])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[5])
 </code></pre><p><img src="../demo_gc-4.png" alt/></p><p>It is important to satisfy the strict scale requirements for the GC approximation, i.e. the gyro-radius must be much smaller than the characteristic spatial scales of the EM fields (on the order of 0.01) for the finite-Larmor-radius (FLR) 1st order approximation to be valid. Consider the following example of grad-B drift:</p><pre><code class="language-julia hljs">uniform_E(x) = SA[1e-9, 0.0, 0.0]
 grad_B(x) = SA[0, 0, 1e-8 + 1e-9*x[2]]
 
@@ -118,17 +111,10 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
-
-for i in 2:4
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
-end
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.4))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[4])
 </code></pre><p><img src="../demo_gc-6.png" alt/></p><p>We can clearly see the deviations caused by the FLR effect. If we use a smaller gyro-radius by increasing the magnetic field, this accuracy will be much higher:</p><pre><code class="language-julia hljs">grad_B(x) = SA[0, 0, 1e-7 + 1e-8*x[2]]
 
 tspan = (0, 10)
@@ -159,15 +145,8 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(ax, sol, idxs=(1, 2, 3))
-plot!(ax, sol_gc, idxs=(1, 2, 3))
-lines!(ax, sol_gc_analytic, idxs=(1, 2, 3))
-lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
-
-##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-ax.scene.plots[10].color = (Makie.wong_colors()[1], 0.4)
-
-for i in 2:4
-   ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[i]
-end
-</code></pre><p><img src="../demo_gc-8.png" alt/></p><p>Therefore, it is crucial to check the scale before performing any GC tracing!</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Sunday 8 September 2024 20:31">Sunday 8 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot!(ax, sol, idxs=(1, 2, 3), color=(Makie.wong_colors()[1], 0.4))
+plot!(ax, sol_gc, idxs=(1, 2, 3), color=Makie.wong_colors()[2])
+lines!(ax, sol_gc_analytic, idxs=(1, 2, 3), color=Makie.wong_colors()[3])
+lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[4])
+</code></pre><p><img src="../demo_gc-8.png" alt/></p><p>Therefore, it is crucial to check the scale before performing any GC tracing!</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Sunday 29 September 2024 02:07">Sunday 29 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
