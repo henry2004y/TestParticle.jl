@@ -41,6 +41,12 @@ function curved_B(x)
 end
 
 @testset "TestParticle.jl" begin
+   @testset "utility" begin
+      V, B = 440e3, 5e-9
+      r = get_gyroradius(V, B)
+      @test r ≈ 919206.1737113602
+      @test get_gyroperiod(B) ≈ 13.126233465754511
+   end
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
       p = 1e-9  # [Pa]

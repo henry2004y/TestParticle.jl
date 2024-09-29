@@ -24,20 +24,13 @@ function plot_trajectory(sol_boris, sol1, sol2)
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
    l0 = lines!(ax, sol_boris[1]; idxs, linewidth=2, label="Boris")
-   l1 = lines!(ax, sol1; idxs, linewidth=2, linestyle=:dashdot, label="Tsit5 fixed")
-   l2 = linesegments!(ax, sol2; idxs, linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
+   l1 = lines!(ax, sol1; idxs,
+      color=Makie.wong_colors()[2], linewidth=2, linestyle=:dashdot, label="Tsit5 fixed")
+   l2 = linesegments!(ax, sol2; idxs,
+      color=Makie.wong_colors()[3], linewidth=2, linestyle=:dot, label="Tsit5 adaptive")
 
-   ax.scene.plots[1].linewidth = 2
-   ax.scene.plots[5].linewidth = 2
-
-   ax.scene.plots[3].color = Makie.wong_colors()[2]
-   ax.scene.plots[5].color = Makie.wong_colors()[3]
-
-   scale!(ax.scene.plots[1], invrL, invrL)
-   scale!(ax.scene.plots[3], invrL, invrL)
-   scale!(ax.scene.plots[5], invrL, invrL)
+   scale!(ax.scene, invrL, invrL)
 
    axislegend(position=:rt, framevisible=false)
 
