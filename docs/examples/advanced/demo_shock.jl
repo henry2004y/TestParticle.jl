@@ -87,23 +87,22 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 function plot_traj(sols; azimuth=1.275pi, elevation=pi/8,
    limits=((-4000.0, 4000.0), (-1000., 1000.), (-2000., 2000.)))
    f = Figure(fontsize=18)
-   ax = Axis3(f[1, 1];
-      title="Particles across MHD shock",
-      xlabel="x [km]",
-      ylabel="y [km]",
-      zlabel="z [km]",
-      aspect=:data,
-      limits, azimuth, elevation,
-   )
-
-   invL = 1 / 1e3
-
+   ##ax = Axis3(f[1, 1];
+   ##   title="Particles across MHD shock",
+   ##   xlabel="x [km]",
+   ##   ylabel="y [km]",
+   ##   zlabel="z [km]",
+   ##   aspect=:data,
+   ##   limits, azimuth, elevation,
+   ##)
+   ax = LScene(f[1, 1], show_axis=true)
    for i in eachindex(sols)
-      lines!(ax, sols[i], idxs=(1,2,3), label="$i")
-      ##TODO: wait for https://github.com/MakieOrg/Makie.jl/issues/3623 to be fixed!
-      ax.scene.plots[9+2*i-1].color = Makie.wong_colors()[mod(i-1, 7)+1]
-      scale!(ax.scene.plots[9+2*i-1], invL, invL, invL)
+      lines!(ax, sols[i], idxs=(1,2,3), label="$i",
+         color=Makie.wong_colors()[mod(i-1, 7)+1])
    end
+   invL = 1 / 1e3
+   ## In Makie 0.21.11, scene scaling has issues on Axis3.
+   ##scale!(ax.scene, invL, invL, invL)
 
    ## Represent the shock front
    p1 = Point3f(0.0, -2e2, -2e2)

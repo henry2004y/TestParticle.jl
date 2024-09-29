@@ -24,7 +24,7 @@ function dipole(rIn, M)
 end
 
 """
-    dipole_fieldline(L, ϕ, nP)
+    dipole_fieldline(ϕ, L=2.5, nP=100)
 
 Creates `nP` points on one field line of the magnetic field from a dipole. In a centered
 dipole magnetic field model, the path along a given L shell can be described as r = L*cos²λ,
@@ -41,5 +41,5 @@ function dipole_fieldline(ϕ::Float64, L::Float64=2.5, nP::Int=100)
       x[i], y[i], z[i] = pos
    end
 
-   (x,y,z)
+   (x, y, z)
 end
