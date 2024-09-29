@@ -172,7 +172,7 @@ function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, iso
    sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
 
    nchunks = Threads.nthreads()
-   Threads.@threads for (irange, ichunk) in chunks(1:trajectories, nchunks)
+   Threads.@threads for irange in index_chunks(1:trajectories; n=nchunks)
       _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
    end
 
