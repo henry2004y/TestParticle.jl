@@ -49,8 +49,8 @@ end
    end
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
-      p = 1e-9  # [Pa]
-      n = 1e6  # [/cc]
+      p = 1e-9 # [Pa]
+      n = 1e6 # [/m³]
       vdf = Maxwellian(u0, p, n)
       Random.seed!(1234)
       v = sample(vdf)
