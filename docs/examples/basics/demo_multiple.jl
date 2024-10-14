@@ -71,7 +71,7 @@ ax = Axis3(f[1, 1],
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], idxs=(1, 2, 3), label="$i")
+   lines!(ax, sols[i], idxs=(1, 2, 3), color=Makie.wong_colors()[i], label="$i")
 end
 
 f = DisplayAs.PNG(f) #hide
