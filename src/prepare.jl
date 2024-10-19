@@ -131,13 +131,16 @@ function prepare(x::T, y::T, E::TE, B::TB; species::Species=Proton, q::AbstractF
    q/m, Field(E), Field(B)
 end
 
+"""
+i = 1/2/3, representing x/y/z direction.
+"""
 function prepare(x::T, E::TE, B::TB; species::Species=Proton, q::AbstractFloat=1.0,
-   m::AbstractFloat=1.0, order::Int=1, bc::Int=3) where {T<:AbstractRange, TE, TB}
+   m::AbstractFloat=1.0, order::Int=1, bc::Int=3, i=1) where {T<:AbstractRange, TE, TB}
 
    q, m = getchargemass(species, q, m)
 
-   E = TE <: AbstractArray ? getinterp(E, x, order, bc) : E
-   B = TB <: AbstractArray ? getinterp(B, x, order, bc) : B
+   E = TE <: AbstractArray ? getinterp(E, x, order, bc; i) : E
+   B = TB <: AbstractArray ? getinterp(B, x, order, bc; i) : B
 
    q/m, Field(E), Field(B)
 end

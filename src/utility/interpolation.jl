@@ -57,7 +57,10 @@ function getinterp(A, gridx, gridy, order::Int=1, bc::Int=2)
    return get_field
 end
 
-function getinterp(A, gridx, order::Int=1, bc::Int=3)
+"""
+i = 1/2/3, representing x/y/z direction.
+"""
+function getinterp(A, gridx, order::Int=1, bc::Int=3; i=1)
    @assert size(A,1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
 
    Ax = @view A[1,:]
@@ -72,7 +75,7 @@ function getinterp(A, gridx, order::Int=1, bc::Int=3)
 
    # Return field value at a given location.
    function get_field(xu)
-      r = xu[1]
+      r = xu[i]
 
       return SA[interpx(r), interpy(r), interpz(r)]
    end
