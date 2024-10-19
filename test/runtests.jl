@@ -1,11 +1,12 @@
-using TestParticle, OrdinaryDiffEq, StaticArrays, Random
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center
 using Meshes: CartesianGrid
+using Random, StableRNGs
 using Test
 
 "Initial state perturbation for EnsembleProblem."
 function prob_func(prob, i, repeat)
-   remake(prob, u0=rand(MersenneTwister(i))*prob.u0)
+   remake(prob, u0=rand(StableRNG(i))*prob.u0)
 end
 
 function prob_func_boris_mutable(prob, i, repeat)
@@ -49,8 +50,8 @@ end
    end
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
-      p = 1e-9  # [Pa]
-      n = 1e6  # [/cc]
+      p = 1e-9 # [Pa]
+      n = 1e6 # [/m³]
       vdf = Maxwellian(u0, p, n)
       Random.seed!(1234)
       v = sample(vdf)
@@ -127,7 +128,7 @@ end
 
       x = getindex.(sol.u[10].u, 1)
 
-      @test x[7] ≈ 0.09615629718624641 rtol=1e-6
+      @test x[7] ≈ 0.08230289216655486 rtol=1e-6
 
       stateinit = SA[x0..., u0...]
       tspan = (0.0, 1.0)
