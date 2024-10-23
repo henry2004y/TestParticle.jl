@@ -3,6 +3,7 @@
 """
     getinterp(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
     getinterp(A, gridx, gridy, order::Int=1, bc::Int=1)
+    getinterp(A, gridx, order::Int=1, bc::Int=1, dir::Int=1)
 
 Return a function for interpolating array `A` on the grid given by `gridx`, `gridy`, and
 `gridz`.
@@ -10,6 +11,7 @@ Return a function for interpolating array `A` on the grid given by `gridx`, `gri
 # Arguments
 - `order::Int=1`: order of interpolation in [1,2,3].
 - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+- `dir::Int`: 1/2/3, representing x/y/z direction.
 """
 function getinterp(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
    @assert size(A,1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
@@ -57,7 +59,7 @@ function getinterp(A, gridx, gridy, order::Int=1, bc::Int=2)
    return get_field
 end
 
-function getinterp(A, gridx, order::Int=1, bc::Int=3)
+function getinterp(A, gridx, order::Int=1, bc::Int=3; dir=1)
    @assert size(A,1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
 
    Ax = @view A[1,:]
@@ -72,7 +74,7 @@ function getinterp(A, gridx, order::Int=1, bc::Int=3)
 
    # Return field value at a given location.
    function get_field(xu)
-      r = xu[1]
+      r = xu[dir]
 
       return SA[interpx(r), interpy(r), interpz(r)]
    end

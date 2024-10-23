@@ -73,7 +73,10 @@ and mass `m`, interpolated EM field functions, and external force `F`.
 
     prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
     prepare(x, y, E, B; kwargs...) -> (q2m, E, B)
+
     prepare(x::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
+
+1D grid. An additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
 
 Direct range input for uniform grid in 2/3D is also accepted.
 
@@ -132,12 +135,12 @@ function prepare(x::T, y::T, E::TE, B::TB; species::Species=Proton, q::AbstractF
 end
 
 function prepare(x::T, E::TE, B::TB; species::Species=Proton, q::AbstractFloat=1.0,
-   m::AbstractFloat=1.0, order::Int=1, bc::Int=3) where {T<:AbstractRange, TE, TB}
+   m::AbstractFloat=1.0, order::Int=1, bc::Int=3, dir=1) where {T<:AbstractRange, TE, TB}
 
    q, m = getchargemass(species, q, m)
 
-   E = TE <: AbstractArray ? getinterp(E, x, order, bc) : E
-   B = TB <: AbstractArray ? getinterp(B, x, order, bc) : B
+   E = TE <: AbstractArray ? getinterp(E, x, order, bc; dir) : E
+   B = TB <: AbstractArray ? getinterp(B, x, order, bc; dir) : B
 
    q/m, Field(E), Field(B)
 end
