@@ -80,43 +80,30 @@ function trace(y, p::FullTPTuple, t)
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
 
-const FTLError = """
-Particle faster than the speed of light!
-
-If the initial velocity is slower than light and
-adaptive timestepping of the solver is turned on, it
-is better to set a small initial stepsize (dt) or
-maximum dt for adaptive timestepping (dtmax).
-
-More details about the keywords of initial stepsize
-can be found in this documentation page:
-https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Stepsize-Control
-"""
-
 """
     trace_relativistic!(dy, y, p::TPTuple, t)
 
-ODE equations for relativistic charged particle moving in static EM field with in-place
-form.
+ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
 function trace_relativistic!(dy, y, p::TPTuple, t)
    q2m, E, B = p
-
-   u2 = y[4]^2 + y[5]^2 + y[6]^2
-   c2 = c^2
-   if u2 ≥ c2
-      throw(DomainError(u2, FTLError))
-   end
-
-   γInv3 = √(1.0 - u2/c2)^3
-   vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
+   γv = @view y[4:6]
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   if γ²v² < 1e-20 # no velocity
+      v̂ = SVector{3, Float64}(0, 0, 0)
+   else
+      v̂ = SVector{3, Float64}(normalize(γv))
+   end
+   vmag = √(γ²v² / (1 + γ²v²/c^2))
+   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+
    dy[1], dy[2], dy[3] = vx, vy, vz
-   dy[4] = q2m*γInv3*(vy*Bz - vz*By + Ex)
-   dy[5] = q2m*γInv3*(vz*Bx - vx*Bz + Ey)
-   dy[6] = q2m*γInv3*(vx*By - vy*Bx + Ez)
+   dy[4] = q2m * (vy*Bz - vz*By + Ex)
+   dy[5] = q2m * (vz*Bx - vx*Bz + Ey)
+   dy[6] = q2m * (vx*By - vy*Bx + Ez) 
 
    return
 end
@@ -124,27 +111,27 @@ end
 """
     trace_relativistic(y, p::TPTuple, t) -> SVector{6, Float64}
 
-ODE equations for relativistic charged particle moving in static EM field with out-of-place
-form.
+ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
 function trace_relativistic(y, p::TPTuple, t)
    q2m, E, B = p
-
-   u2 = y[4]^2 + y[5]^2 + y[6]^2
-   c2 = c^2
-   if u2 ≥ c2
-      throw(DomainError(u2, FTLError))
-   end
-
-   γInv3 = √(1.0 - u2/c2)^3
-   vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
+   γv = @view y[4:6]
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   if γ²v² < 1e-20 # no velocity
+      v̂ = SVector{3, Float64}(0, 0, 0)
+   else
+      v̂ = SVector{3, Float64}(normalize(γv))
+   end
+   vmag = √(γ²v² / (1 + γ²v²/c^2))
+   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+
    dx, dy, dz = vx, vy, vz
-   dux = q2m*γInv3*(vy*Bz - vz*By + Ex)
-   duy = q2m*γInv3*(vz*Bx - vx*Bz + Ey)
-   duz = q2m*γInv3*(vx*By - vy*Bx + Ez)
+   dux = q2m * (vy*Bz - vz*By + Ex)
+   duy = q2m * (vz*Bx - vx*Bz + Ey)
+   duz = q2m * (vx*By - vy*Bx + Ez)
 
    SVector{6}(dx, dy, dz, dux, duy, duz)
 end
@@ -175,26 +162,27 @@ end
 """
     trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 
-Normalized ODE equations for relativistic charged particle moving in static EM field with
-in-place form.
+Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
 function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    Ω, E, B = p
-
-   u2 = y[4]^2 + y[5]^2 + y[6]^2
-   if u2 ≥ 1
-      throw(DomainError(u2, FTLError))
-   end
-
-   γInv3 = √(1.0 - u2)^3
-   vx, vy, vz = @view y[4:6]
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
+   γv = @view y[4:6]
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   if γ²v² < 1e-20 # no velocity
+      v̂ = SVector{3, Float64}(0, 0, 0)
+   else
+      v̂ = SVector{3, Float64}(normalize(γv))
+   end
+   vmag = √(γ²v² / (1 + γ²v²/c^2))
+   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+
    dy[1], dy[2], dy[3] = vx, vy, vz
-   dy[4] = Ω*γInv3*(vy*Bz - vz*By + Ex)
-   dy[5] = Ω*γInv3*(vz*Bx - vx*Bz + Ey)
-   dy[6] = Ω*γInv3*(vx*By - vy*Bx + Ez)
+   dy[4] = Ω * (vy*Bz - vz*By + Ex)
+   dy[5] = Ω * (vz*Bx - vx*Bz + Ey)
+   dy[6] = Ω * (vx*By - vy*Bx + Ez)
 
    return
 end

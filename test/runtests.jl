@@ -275,18 +275,6 @@ end
       F_field(r, v, t) = SA[r, v, t]
 
       @test typeof(Field(F_field)).parameters[1] == false
-
-      x0 = [10.0, 10.0, 0.0] # initial position, [m]
-      u0 = [1e10, 0.0, 0.0] # initial velocity, [m/s]
-      stateinit = [x0..., u0...]
-      tspan = (0.0, 2e-7)
-
-      param = prepare(E_field, E_field; species=Electron)
-      prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-      @test_throws DomainError solve(prob, Tsit5())
-
-      prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
-      @test_throws DomainError solve(prob, Tsit5())
    end
 
    @testset "relativistic particle" begin
@@ -299,37 +287,42 @@ end
 
       # calculate the energy [eV] of a electron
       function calc_energy(sol)
-         v = hypot(sol.u[end][4:6]...)
-         γ = 1/sqrt(1-(v/c)^2)
+         γv = @view sol.u[end][4:6]
+         γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+         v² = γ²v² / (1 + γ²v²/c^2)
+         γ = 1 / √(1 - v²/c^2)
+
          return -(γ-1)*mₑ*c^2/qₑ
       end
 
       x0 = [10.0, 10.0, 0.0] # initial position, [m]
-      u0 = [0.0, 0.0, 0.0] # initial velocity, [m/s]
+      u0 = [0.0, 0.0, 0.0] # initial velocity γv, [m/s]
       tspan = (0.0, 2e-7)
       stateinit = [x0..., u0...]
 
       param = prepare(E_field, B_field; species=Electron)
       prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10)
+      sol = solve(prob, Vern6(); dt=1e-10, adaptive=false)
 
-      x = sol.u[end][1:3]
       # Test whether the kinetic energy [eV] of the electron
       # is equal to the electric potential energy gained.
-      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      x = sol.u[end][1:3]
+      @test calc_energy(sol) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      # Convert to velocity
+      @test get_velocity(sol)[1,end] ≈ -1.6588694948554998e7
 
       prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10)
+      sol = solve(prob, Vern6(); dt=1e-10, adaptive=false)
+   
       x = sol.u[end][1:3]
-
-      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test calc_energy(sol) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
       # Tracing relativistic particle in dimensionless units
       param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
       tspan = (0.0, 1.0) # 1/2π period
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())
-      @test sol.u[end][1] ≈ 0.46557792820784516
+      @test sol.u[end][1] ≈ 0.42073549161010637
    end
 
    @testset "normalized fields" begin
