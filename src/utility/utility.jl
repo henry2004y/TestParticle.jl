@@ -105,3 +105,19 @@ function get_gyroperiod(B::AbstractFloat=5e-9; q::AbstractFloat=qᵢ, m::Abstrac
    ω = get_gyrofrequency(B; q, m)
    2π / ω
 end
+
+"Return velocity from relativistic γv in `sol`."
+function get_velocity(sol)
+   v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol))
+   for is in axes(v, 2)
+      γv = @view sol[4:6, is]
+      γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+      v² = γ²v² / (1 + γ²v²/c^2)
+      γ = 1 / √(1 - v²/c^2)
+      for i in axes(v, 1)
+         v[i,is] = γv[i] / γ
+      end
+   end
+
+   v
+end
