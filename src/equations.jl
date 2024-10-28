@@ -188,6 +188,25 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 end
 
 """
+    trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
+
+Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
+"""
+function trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
+   _, E, B = p
+   E = SVector{3}(E(y, t))
+   B = SVector{3}(B(y, t))
+   γv = @views SVector{3}(y[4:6])
+
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   vmag = √(γ²v² / (1 + γ²v²))
+   v = vmag * normalize(γv)
+   dv = v × B + E
+
+   return SVector{6}(v..., dv...)
+end
+
+"""
     trace_gc_drifts!(dx, x, p, t)
 
 Equations for tracing the guiding center using analytical drifts, including the grad-B
