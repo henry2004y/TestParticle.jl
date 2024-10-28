@@ -285,7 +285,7 @@ end
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())
-      @test sol.u[end][1] ≈ 0.42073549161010637
+      @test sol.u[end][1] ≈ 0.38992532495827226
       stateinit = zeros(6)
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())

@@ -92,7 +92,7 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² > 1e-20
+   if γ²v² > eps(eltype(dy))
       v̂ = SVector{3, eltype(dy)}(normalize(γv))
    else # no velocity
       v̂ = SVector{3, eltype(dy)}(0, 0, 0)
@@ -120,7 +120,7 @@ function trace_relativistic(y, p::TPTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² > 1e-20
+   if γ²v² > eps(eltype(dy))
       v̂ = SVector{3, eltype(y)}(normalize(γv))
    else # no velocity
       v̂ = SVector{3, eltype(y)}(0, 0, 0)
@@ -171,7 +171,7 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² > 1e-20
+   if γ²v² > eps(eltype(dy))
       v̂ = SVector{3, eltype(dy)}(normalize(γv))
    else # no velocity
       v̂ = SVector{3, eltype(dy)}(0, 0, 0)
