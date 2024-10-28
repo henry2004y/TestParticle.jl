@@ -3,7 +3,7 @@
 # id: demo_dimensionless_dimensional
 # date: 2023-12-19
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.4
+# julia: 1.11.1
 # description: Tracing charged particle in both dimensional and dimensionless units. 
 # ---
 
@@ -95,7 +95,7 @@ xp, yp = let trange = range(tspan2..., length=40)
 end
 lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5, color=Makie.wong_colors()[2])
 invL = inv(1e3)
-scale!(ax.scene, invrL, invrL)
+scale!(ax.scene, invL, invL)
 
 f = DisplayAs.PNG(f) #hide
 
