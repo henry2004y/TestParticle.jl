@@ -20,8 +20,7 @@
 import DisplayAs #hide
 using TestParticle
 using TestParticle: qᵢ, mᵢ
-using OrdinaryDiffEq
-
+using OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
