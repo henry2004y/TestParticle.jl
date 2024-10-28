@@ -19,7 +19,8 @@ export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic
    trace_relativistic_normalized!, trace_gc!, trace_gc_1st!, trace_gc_drifts!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
-export get_gyrofrequency, get_gyroperiod, get_gyroradius, get_velocity
+export get_gyrofrequency, get_gyroperiod, get_gyroradius, get_velocity, get_energy,
+   energy2velocity
 export orbit, monitor
 export TraceProblem
 

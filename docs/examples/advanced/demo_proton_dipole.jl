@@ -62,9 +62,9 @@ f = DisplayAs.PNG(f) #hide
 # In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
 
 function get_energy_ratio(sol)
-   vx = getindex.(sol.u, 4)
-   vy = getindex.(sol.u, 5)
-   vz = getindex.(sol.u, 6)
+   vx = @view sol[4,:]
+   vy = @view sol[5,:]
+   vz = @view sol[6,:]
 
    Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
    Eend = vx[end]^2 + vy[end]^2 + vz[end]^2

@@ -121,3 +121,29 @@ function get_velocity(sol)
 
    v
 end
+
+"Return the energy [eV] from relativistic `sol`."
+function get_energy(sol::AbstractODESolution; m=mᵢ, q=qᵢ)
+   e = Vector{eltype(sol.u[1])}(undef, length(sol))
+   for i in eachindex(e)
+      γv = @view sol[4:6, i]
+      γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+      v² = γ²v² / (1 + γ²v²/c^2)
+      γ = 1 / √(1 - v²/c^2)
+      e[i] = (γ-1)*m*c^2/abs(q)
+   end
+
+   e
+end
+
+"Calculate the energy [eV] of a relativistic particle from γv."
+function get_energy(γv; m=mᵢ, q=qᵢ)
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   v² = γ²v² / (1 + γ²v²/c^2)
+   γ = 1 / √(1 - v²/c^2)
+
+   (γ-1)*m*c^2/abs(q)
+end
+
+"Return velocity magnitude from energy in [eV]."
+energy2velocity(Ek; m=mᵢ, q=qᵢ) = c*sqrt(1 - 1/(1+Ek*abs(q)/(m*c^2))^2)
