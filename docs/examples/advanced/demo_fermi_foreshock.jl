@@ -121,15 +121,19 @@ function plot_multiple(sol)
    Bz = [b[3] for b in B]
 
    t = sol.t
-   x = sol[1,:] ./ Rₑ
-   y = sol[2,:] ./ Rₑ
-   z = sol[3,:] ./ Rₑ
+   x = @views sol[1,:] ./ Rₑ
+   y = @views sol[2,:] ./ Rₑ
+   z = @views sol[3,:] ./ Rₑ
+   vx = @views sol[4,:] ./ 1e3
+   vy = @views sol[5,:] ./ 1e3
+   vz = @views sol[6,:] ./ 1e3
 
    fig = Figure(size = (900, 600), fontsize = 20)
 
-   xlabels = ("", "", "", "t [s]")
-   ylabels = ("KE [eV]", "Locations [RE]", "E [mV/m]", "B [nT]")
+   xlabels = ("", "", "", "", "t [s]")
+   ylabels = ("KE [eV]", "Locations [RE]", "V [km/s]","E [mV/m]", "B [nT]")
    limits = (
+      (nothing, (nothing, nothing)),
       (nothing, (nothing, nothing)),
       (nothing, (nothing, nothing)),
       (nothing, (nothing, nothing)),
@@ -144,14 +148,17 @@ function plot_multiple(sol)
    lines!(axs[2], t, x, label="x")
    lines!(axs[2], t, y, label="y")
    lines!(axs[2], t, z, label="z")
-   lines!(axs[3], t, Ex, label="x")
-   lines!(axs[3], t, Ey, label="y")
-   lines!(axs[3], t, Ez, label="z")
-   lines!(axs[4], t, Bx, label="x")
-   lines!(axs[4], t, By, label="y")
-   lines!(axs[4], t, Bz, label="z")
+   lines!(axs[3], t, vx, label="x")
+   lines!(axs[3], t, vy, label="y")
+   lines!(axs[3], t, vz, label="z")
+   lines!(axs[4], t, Ex, label="x")
+   lines!(axs[4], t, Ey, label="y")
+   lines!(axs[4], t, Ez, label="z")
+   lines!(axs[5], t, Bx, label="x")
+   lines!(axs[5], t, By, label="y")
+   lines!(axs[5], t, Bz, label="z")
    
-   for ax in @view axs[2:4]
+   for ax in @view axs[2:5]
       axislegend(ax, framevisible = false, orientation = :horizontal)
    end
    
@@ -165,7 +172,7 @@ function plot_dist(sols; t=0, case=1, slice=:xy)
    vz = similar(vx)
    n = 0
    for sol in sols
-      if (sol.t[end] ≥ t) && (1.5Rₑ - U*sol.t[end] > sol[1,end] > 0)
+      if (sol.t[end] ≥ t) && (1.5Rₑ - U*sol.t[end] > sol[1,end] > 0.5Rₑ)
          n += 1
          v = sol(t)[4:6] ./ 1e3
          append!(vx, v[1])
@@ -175,18 +182,24 @@ function plot_dist(sols; t=0, case=1, slice=:xy)
    end
 
    f = Figure(size=(700, 600), fontsize=18)
-   vars = 
-      if slice == :xy
-         (vx, vy)
-      elseif slice == :xz
-         (vx, vz)
-      elseif slice == :yz
-         (vy, vz)
-      end
+   
+   if slice == :xy
+      vars = (vx, vy)
+      xlabel = L"V_x [km/s]"
+      ylabel = L"V_y [km/s]"
+   elseif slice == :xz
+      vars = (vx, vz)
+      xlabel = L"V_x [km/s]"
+      ylabel = L"V_z [km/s]"
+   elseif slice == :yz
+      vars = (vy, vz)
+      xlabel = L"V_y [km/s]"
+      ylabel = L"V_z [km/s]"
+   end
    h2d = Hist2D(vars; nbins=(40, 40))
    _, _heatmap = plot(f[1,1], h2d;
       axis=(title="t = $t, case = $case, particle count = $(length(vx))",
-      xlabel=L"V_x [km/s]", ylabel=L"V_y [km/s]", aspect=1, limits=(-1e4, 1e4, -1e4, 1e4)))
+      xlabel=xlabel, ylabel=ylabel, aspect=1, limits=(-1e4, 1e4, -1e4, 1e4)))
 
    Colorbar(f[1,2], _heatmap)
 
@@ -236,12 +249,13 @@ sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
 imax = find_max_acceleration_index(sols)
 
 f = plot_multiple(sols[imax])
+
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[1], case=1)
+f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[2], case=1)
+f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
 # Case 2: B fluctuation core field
@@ -259,8 +273,8 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[1], case=1)
+f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[2], case=1)
+f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
