@@ -43,25 +43,36 @@ stateinit = [x0..., u0...]
 
 param_analytic = prepare(E_analytic, B_analytic)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_analytic) # in place
+prob_rel_ip = ODEProblem(trace_relativistic!, stateinit, tspan, param_analytic) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_analytic) # out of place
-SUITE["trace"]["analytic field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
-SUITE["trace"]["analytic field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["analytic field"]["in place"] =
+    @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["analytic field"]["out of place"] =
+    @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["analytic field"]["in place relativistic"] =
+    @benchmarkable solve($prob_rel_ip, Tsit5(); save_idxs=[1,2,3])
 
 param_numeric = prepare(mesh, E_numeric, B_numeric)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_numeric) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_numeric) # out of place
 prob_boris = TraceProblem(stateinit, tspan, param_numeric)
 
-SUITE["trace"]["numerical field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
-SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
-SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10)
-SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10, trajectories=2)
+SUITE["trace"]["numerical field"]["in place"] =
+    @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["numerical field"]["out of place"] =
+    @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["numerical field"]["Boris"] =
+    @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10)
+SUITE["trace"]["numerical field"]["Boris ensemble"] =
+    @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10, trajectories=2)
 
 param_td = prepare(E_td, B_td, F_td)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_td) # out of place
-SUITE["trace"]["time-dependent field"]["in place"] = @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
-SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["time-dependent field"]["in place"] =
+    @benchmarkable solve($prob_ip, Tsit5(); save_idxs=[1,2,3])
+SUITE["trace"]["time-dependent field"]["out of place"] =
+    @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
 
 stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, E_analytic, B_analytic,
    species=Proton, removeExB=true)

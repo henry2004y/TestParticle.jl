@@ -92,17 +92,17 @@ end
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
       # There are numerical differences on x86 and ARM platforms!
-      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
+      @test sol[1,end] ≈ 0.7388945226814018
       # Because the field is uniform, the order of interpolation does not matter.
       param = prepare(x, y, z, E, B; order=2)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
-      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
+      @test sol[1,end] ≈ 0.7388945226814018
 
       param = prepare(x, y, z, E, B; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1], isoutofdomain, verbose=false)
-      @test getindex.(sol.u, 1)[end] ≈ 0.7388945226814018
+      @test sol[1,end] ≈ 0.7388945226814018
 
       # GC prepare
       stateinit_gc, param_gc = prepare_gc(stateinit, x, y, z, E, B;
@@ -115,19 +115,14 @@ end
       param = prepare(grid, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-
-      x = getindex.(sol.u, 1)
-
-      @test length(x) == 8 && x[end] ≈ 0.8540967226885379
+      @test length(sol) == 8 && sol[1, end] ≈ 0.8540967226885379
 
       trajectories = 10
       prob = ODEProblem(trace!, stateinit, tspan, param)
       ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
       sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
          trajectories=trajectories, save_idxs=[1])
-
       x = getindex.(sol.u[10].u, 1)
-
       @test x[7] ≈ 0.08230289216655486 rtol=1e-6
 
       stateinit = SA[x0..., u0...]
@@ -136,10 +131,7 @@ end
       param = prepare(grid, E, B)
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-
-      x = getindex.(sol.u, 1)
-
-      @test length(x) == 8 && x[end] ≈ 0.8540967226885379
+      @test length(sol) == 8 && sol[1,end] ≈ 0.8540967226885379
    end
 
    @testset "analytical field" begin
@@ -152,7 +144,7 @@ end
       Rₑ = TestParticle.Rₑ
 
       # initial velocity, [m/s]
-      v₀ = TestParticle.sph2cart(c*sqrt(1-1/(1+Ek*q/(m*c^2))^2), 0.0, π/4)
+      v₀ = TestParticle.sph2cart(energy2velocity(Ek; q, m), 0.0, π/4)
       # initial position, [m]
       r₀ = TestParticle.sph2cart(2.5*Rₑ, 0.0, π/2)
       stateinit = [r₀..., v₀...]
@@ -162,21 +154,16 @@ end
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
-      x = getindex.(sol.u, 1)
-
       @test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
       @test get_gc(param) isa Function
-      @test x[300] ≈ 1.2563192407332942e7 rtol=1e-6
+      @test sol[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
 
       # static array version (results not identical with above: maybe some bugs?)
       stateinit = SA[r₀..., v₀...]
 
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-
-      x = getindex.(sol.u, 1)
-
-      @test x[306] ≈ 1.2440619301099773e7 rtol=1e-5
+      @test sol[1,306] ≈ 1.2440619301099773e7 rtol=1e-5
    end
 
    @testset "mixed type fields" begin
@@ -206,11 +193,7 @@ end
       param = prepare(grid, E_field, B, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2])
-
-      x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-
-      @test x[end] ≈ 1.5324506965560782 && y[end] ≈ -2.8156470047903706
+      @test sol[1,end] ≈ 1.5324506965560782 && sol[2,end] ≈ -2.8156470047903706
    end
 
    @testset "time-independent fields" begin
@@ -239,54 +222,31 @@ end
       param = prepare(grid, E_field, B_field, F; species=Electron)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
-
-      x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
-
-      @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+      @test sol[1,end] ≈ -1.2828663442681638 && sol[2,end] ≈ 1.5780464321537067 &&
+         sol[3,end] ≈ 1.0
       @test guiding_center([stateinit..., 0.0], param)[1] == -0.5685630064930044
 
       F_field(r) = SA[0, 9.10938356e-42, 0] # [N]
 
       param = prepare(E_field, B_field, F_field; species=Electron)
       _, _, _, _, F = param
-
       @test F(x0)[2] ≈ 9.10938356e-42
 
       stateinit = SA[x0..., u0...]
 
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
-
-      x = getindex.(sol.u, 1)
-      y = getindex.(sol.u, 2)
-      z = getindex.(sol.u, 3)
-
-      @test x[end] ≈ -1.2828663442681638 && y[end] ≈ 1.5780464321537067 && z[end] ≈ 1.0
+      @test sol[1,end] ≈ -1.2828663442681638 && sol[2,end] ≈ 1.5780464321537067 &&
+         sol[3,end] ≈ 1.0
    end
 
    @testset "Exceptions" begin
       E_field(r, t) = SA[5e-11*sin(2π*t), 0, 0]
       E = Field(E_field)
-
       @test_throws ArgumentError E([0, 0, 0])
       # Test unsupported function form
       F_field(r, v, t) = SA[r, v, t]
-
       @test typeof(Field(F_field)).parameters[1] == false
-
-      x0 = [10.0, 10.0, 0.0] # initial position, [m]
-      u0 = [1e10, 0.0, 0.0] # initial velocity, [m/s]
-      stateinit = [x0..., u0...]
-      tspan = (0.0, 2e-7)
-
-      param = prepare(E_field, E_field; species=Electron)
-      prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-      @test_throws DomainError solve(prob, Tsit5())
-
-      prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
-      @test_throws DomainError solve(prob, Tsit5())
    end
 
    @testset "relativistic particle" begin
@@ -297,39 +257,39 @@ end
          return SA[Ex, Ey, 0.0]
       end
 
-      # calculate the energy [eV] of a electron
-      function calc_energy(sol)
-         v = hypot(sol.u[end][4:6]...)
-         γ = 1/sqrt(1-(v/c)^2)
-         return -(γ-1)*mₑ*c^2/qₑ
-      end
-
       x0 = [10.0, 10.0, 0.0] # initial position, [m]
-      u0 = [0.0, 0.0, 0.0] # initial velocity, [m/s]
+      u0 = [0.0, 0.0, 0.0] # initial velocity γv, [m/s]
       tspan = (0.0, 2e-7)
       stateinit = [x0..., u0...]
 
       param = prepare(E_field, B_field; species=Electron)
       prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10)
+      sol = solve(prob, Vern6(); dt=1e-10, adaptive=false)
 
-      x = sol.u[end][1:3]
       # Test whether the kinetic energy [eV] of the electron
       # is equal to the electric potential energy gained.
-      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      x = sol.u[end][1:3]
+      @test get_energy(sol[4:6,end]; m=mₑ, q=qₑ) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test get_energy(sol; m=mₑ, q=qₑ)[end] / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      # Convert to velocity
+      @test get_velocity(sol)[1,end] ≈ -1.6588694948554998e7
 
       prob = ODEProblem(trace_relativistic, SA[stateinit...], tspan, param)
-      sol = solve(prob, Vern6(); dtmax=1e-10)
-      x = sol.u[end][1:3]
-
-      @test calc_energy(sol)/(x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      sol = solve(prob, Vern6(); dt=1e-10, adaptive=false)
+   
+      x = sol[1:3, end]
+      @test get_energy(sol[4:6,end]; m=mₑ, q=qₑ) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
       # Tracing relativistic particle in dimensionless units
       param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
       tspan = (0.0, 1.0) # 1/2π period
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())
-      @test sol.u[end][1] ≈ 0.46557792820784516
+      @test sol.u[end][1] ≈ 0.38992532495827226
+      stateinit = zeros(6)
+      prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+      sol = solve(prob, Vern6())
+      @test sol[1,end] == 0.0
    end
 
    @testset "normalized fields" begin
@@ -360,10 +320,7 @@ end
 
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern9(); save_idxs=[1])
-
-      x = getindex.(sol.u, 1)
-
-      @test length(x) == 7 && x[end] ≈ 1.0
+      @test length(sol) == 7 && sol[1,end] ≈ 1.0
 
       # 2D
       x = range(-10, 10, length=15)
@@ -390,23 +347,19 @@ end
       param = prepare(x, y, E, B; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-
-      xs = getindex.(sol.u, 1)
-      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
+      @test length(sol) == 9 && sol[1,end] ≈ 0.9999998697180689
 
       # Because the field is uniform, the order of interpolation does not matter.
       param = prepare(grid, E, B; order=2)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-      xs = getindex.(sol.u, 1)
-      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
+      @test length(sol) == 9 && sol[1,end] ≈ 0.9999998697180689
 
       # Because the field is uniform, the order of interpolation does not matter.
       param = prepare(grid, E, B; order=3)
       prob = remake(prob; p=param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-      xs = getindex.(sol.u, 1)
-      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
+      @test length(sol) == 9 && sol[1,end] ≈ 0.9999998697180689
 
       # 1D
       x = range(-10, 10, length=15)
@@ -425,9 +378,7 @@ end
       param = prepare(x, E, B; species=Proton, bc=3)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
-
-      xs = getindex.(sol.u, 1)
-      @test length(xs) == 9 && xs[end] ≈ 0.9999998697180689
+      @test length(sol) == 9 && sol[1,end] ≈ 0.9999998697180689
    end
 
    @testset "Boris pusher" begin
@@ -490,8 +441,8 @@ end
       gc_x0 = gc(stateinit)
       prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
       sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
-      @test sol_gc.u[end][1] ≈ 0.9896155284173717
-      @test sol_gc_analytic.u[end][1] ≈ 0.9906923500002904 rtol=1e-5
+      @test sol_gc[1,end] ≈ 0.9896155284173717
+      @test sol_gc_analytic[1,end] ≈ 0.9906923500002904 rtol=1e-5
 
       stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
          species=Proton, removeExB=false)
