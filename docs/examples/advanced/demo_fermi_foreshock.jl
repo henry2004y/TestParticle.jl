@@ -66,18 +66,21 @@ function E(xu, t)
 end
 
 function B_field_perturb(xu, t)
+   B₀ = B(xu, t)
    L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
 
    δBx, δBy, δBz = 0.0, 0.0, 0.0
-   for N in N₀:N₁
-      δBn = B̃(N / N0)^-1.2
-      ϕx, ϕy, ϕz = rand(3) .* 2π
-      δBx += δBn * cos(2π * N * x / L₀ + ϕx)
-      δBy += δBn * cos(2π * N * x / L₀ + ϕy)
-      δBz += δBn * cos(2π * N * x / L₀ + ϕz)
+   if 0.5Rₑ < xu[1] < 1.5Rₑ - U*t
+      for N in N₀:N₁
+         δBn = B̃(N / N0)^-1.2
+         ϕx, ϕy, ϕz = rand(3) .* 2π
+         δBx += δBn * cos(2π * N * xu[1] / L₀ + ϕx)
+         δBy += δBn * cos(2π * N * xu[1] / L₀ + ϕy)
+         δBz += δBn * cos(2π * N * xu[1] / L₀ + ϕz)
+      end
    end
 
-   SA[δBx, δBy, δBz]
+   B₀ + SA[δBx, δBy, δBz]
 end
 
 function isoutofdomain(xv, p, t)
@@ -155,7 +158,7 @@ function plot_multiple(sol)
    fig
 end
 
-function plot_dist_pairplots(sols; t=0, case=1)
+function plot_dist(sols; t=0, case=1, slice=:xy)
    ##TODO: Optimization
    vx = Vector{eltype(sols[1].u[1])}(undef, 0)
    vy = similar(vx)
@@ -171,8 +174,16 @@ function plot_dist_pairplots(sols; t=0, case=1)
       end
    end
 
-   f = Figure(size=(650, 600), fontsize=18)
-   h2d = Hist2D((vx, vy); nbins=(40, 40))
+   f = Figure(size=(700, 600), fontsize=18)
+   vars = 
+      if slice == :xy
+         (vx, vy)
+      elseif slice == :xz
+         (vx, vz)
+      elseif slice == :yz
+         (vy, vz)
+      end
+   h2d = Hist2D(vars; nbins=(40, 40))
    _, _heatmap = plot(f[1,1], h2d;
       axis=(title="t = $t, case = $case, particle count = $(length(vx))",
       xlabel=L"V_x [km/s]", ylabel=L"V_y [km/s]", aspect=1, limits=(-1e4, 1e4, -1e4, 1e4)))
@@ -227,10 +238,10 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist_pairplots(sols, t=tspan[1], case=1)
+f = plot_dist(sols, t=tspan[1], case=1)
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist_pairplots(sols, t=tspan[2], case=1)
+f = plot_dist(sols, t=tspan[2], case=1)
 f = DisplayAs.PNG(f) #hide
 
 # Case 2: B fluctuation core field
@@ -248,8 +259,8 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist_pairplots(sols, t=tspan[1], case=1)
+f = plot_dist(sols, t=tspan[1], case=1)
 f = DisplayAs.PNG(f) #hide
 
-f = plot_dist_pairplots(sols, t=tspan[2], case=1)
+f = plot_dist(sols, t=tspan[2], case=1)
 f = DisplayAs.PNG(f) #hide
