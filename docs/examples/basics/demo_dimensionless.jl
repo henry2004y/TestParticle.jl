@@ -1,9 +1,9 @@
 # ---
 # title: Dimensionless Units
 # id: demo_dimensionless
-# date: 2023-12-14
+# date: 2024-10-28
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.4
+# julia: 1.11.1
 # description: Tracing charged particle in dimensionless units
 # ---
 
@@ -15,7 +15,7 @@
 
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
 
-# Now let's demonstrate this with `trace_normalized!`.
+# Now let's demonstrate this with `trace_normalized!` and `trace_relativistic_normalized!`.
 
 import DisplayAs #hide
 using TestParticle
@@ -67,6 +67,56 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, vars=(1,2))
+lines!(ax, sol, idxs=(1,2))
+
+f = DisplayAs.PNG(f) #hide
+
+# In the relativistic case,
+# * Velocity is normalized by speed of light c, $V = V^\prime c$;
+# * Magnetic field is normalized by the characteristic magnetic field, $B = B^\prime B\_0$;
+# * Electric field is normalized by $E_0 = c\,B_0$, $E = E^\prime E_0$;
+# * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
+# * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
+
+# In the small velocity scenario, it should behave similar to the non-relativistic case:
+
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
+tspan = (0.0, π) # half period
+stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
+prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = "Relativistic particle trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   #limits = (-0.6, 0.6, -1.1, 0.1),
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, idxs=(1,2))
+
+f = DisplayAs.PNG(f) #hide
+
+# In the large velocity scenario, relativistic effect takes place:
+
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
+tspan = (0.0, π) # half period
+stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
+prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = "Relativistic particle trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, idxs=(1,2))
 
 f = DisplayAs.PNG(f) #hide

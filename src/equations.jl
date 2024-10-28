@@ -163,9 +163,6 @@ end
     trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
-
-The velocity is normalized by the characteristic velocity v0 (c); the magnetic field is normalized by the characteristic magnetic field B0; 
-   the electric field is normalized by E0=v0 B0; the position is normalized by the L = v0 / Ω0, where Ω0 = q B0 / m and the time is normalized by Ω0^-1.
 """
 function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    _, E, B = p
