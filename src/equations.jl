@@ -120,7 +120,7 @@ function trace_relativistic(y, p::TPTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² > eps(eltype(dy))
+   if γ²v² > eps(eltype(y))
       v̂ = SVector{3, eltype(y)}(normalize(γv))
    else # no velocity
       v̂ = SVector{3, eltype(y)}(0, 0, 0)
