@@ -15,8 +15,8 @@ using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, prepare_gc, sample, get_gc
-export trace!, trace_relativistic!, trace_normalized!, trace, trace_relativistic,
-   trace_relativistic_normalized!, trace_gc!, trace_gc_1st!, trace_gc_drifts!
+export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!, 
+   trace, trace_relativistic, trace_relativistic_normalized, trace_gc!, trace_gc_1st!, trace_gc_drifts!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export get_gyrofrequency, get_gyroperiod, get_gyroradius, get_velocity, get_energy,
