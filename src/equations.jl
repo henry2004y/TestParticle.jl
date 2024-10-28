@@ -90,15 +90,15 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
-   γv = @view y[4:6]
+   γv = @views SVector{3, eltype(dy)}(y[4:6])
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
    if γ²v² > eps(eltype(dy))
-      v̂ = SVector{3, eltype(dy)}(normalize(γv))
+      v̂ = normalize(γv)
    else # no velocity
       v̂ = SVector{3, eltype(dy)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²/c^2))
-   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+   vx, vy, vz = vmag * v̂
 
    dy[1], dy[2], dy[3] = vx, vy, vz
    dy[4] = q2m * (vy*Bz - vz*By + Ex)
@@ -118,15 +118,15 @@ function trace_relativistic(y, p::TPTuple, t)
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
-   γv = @view y[4:6]
+   γv = @views SVector{3, eltype(y)}(y[4:6])
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
    if γ²v² > eps(eltype(y))
-      v̂ = SVector{3, eltype(y)}(normalize(γv))
+      v̂ = normalize(γv)
    else # no velocity
       v̂ = SVector{3, eltype(y)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²/c^2))
-   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+   vx, vy, vz = vmag * v̂
 
    dx, dy, dz = vx, vy, vz
    dux = q2m * (vy*Bz - vz*By + Ex)
@@ -169,15 +169,15 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
-   γv = @view y[4:6]
+   γv = @views SVector{3, eltype(dy)}(y[4:6])
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
    if γ²v² > eps(eltype(dy))
-      v̂ = SVector{3, eltype(dy)}(normalize(γv))
+      v̂ = normalize(γv)
    else # no velocity
       v̂ = SVector{3, eltype(dy)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²))
-   vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
+   vx, vy, vz = vmag * v̂
 
    dy[1], dy[2], dy[3] = vx, vy, vz
    dy[4] = vy*Bz - vz*By + Ex
@@ -197,7 +197,7 @@ requires the full particle trajectory `p.sol`.
 function trace_gc_drifts!(dx, x, p, t)
    q2m, E, B, sol = p
    xu = sol(t)
-   v = @view xu[4:6]
+   v = @views SVector{3, eltype(dx)}(xu[4:6])
    abs_B(x) = norm(B(x))
    gradient_B = ForwardDiff.gradient(abs_B, x)
    Bv = B(x)
