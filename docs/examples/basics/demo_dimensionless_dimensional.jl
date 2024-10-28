@@ -83,8 +83,8 @@ sol2 = solve(prob2, Vern9(); reltol=1e-4, abstol=1e-6)
 ### Visualization
 f = Figure(fontsize=18)
 ax = Axis(f[1, 1],
-    xlabel = "x",
-    ylabel = "y",
+    xlabel = "x [km]",
+    ylabel = "y [km]",
     aspect = DataAspect(),
 )
 
@@ -93,7 +93,9 @@ lines!(ax, sol1, idxs=(1, 2))
 xp, yp = let trange = range(tspan2..., length=40)
    sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀
 end
-lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5)
+lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5, color=Makie.wong_colors()[2])
+invL = inv(1e3)
+scale!(ax.scene, invrL, invrL)
 
 f = DisplayAs.PNG(f) #hide
 

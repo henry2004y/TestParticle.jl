@@ -92,10 +92,10 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² < 1e-20 # no velocity
-      v̂ = SVector{3, Float64}(0, 0, 0)
-   else
-      v̂ = SVector{3, Float64}(normalize(γv))
+   if γ²v² > 1e-20
+      v̂ = SVector{3, eltype(dy)}(normalize(γv))
+   else # no velocity
+      v̂ = SVector{3, eltype(dy)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²/c^2))
    vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
@@ -109,7 +109,7 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 end
 
 """
-    trace_relativistic(y, p::TPTuple, t) -> SVector{6, Float64}
+    trace_relativistic(y, p::TPTuple, t) -> SVector{6}
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
@@ -120,10 +120,10 @@ function trace_relativistic(y, p::TPTuple, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² < 1e-20 # no velocity
-      v̂ = SVector{3, Float64}(0, 0, 0)
-   else
-      v̂ = SVector{3, Float64}(normalize(γv))
+   if γ²v² > 1e-20
+      v̂ = SVector{3, eltype(y)}(normalize(γv))
+   else # no velocity
+      v̂ = SVector{3, eltype(y)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²/c^2))
    vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
@@ -165,24 +165,24 @@ end
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
 function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
-   Ω, E, B = p
+   _, E, B = p
    Ex, Ey, Ez = E(y, t)
    Bx, By, Bz = B(y, t)
 
    γv = @view y[4:6]
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² < 1e-20 # no velocity
-      v̂ = SVector{3, Float64}(0, 0, 0)
-   else
-      v̂ = SVector{3, Float64}(normalize(γv))
+   if γ²v² > 1e-20
+      v̂ = SVector{3, eltype(dy)}(normalize(γv))
+   else # no velocity
+      v̂ = SVector{3, eltype(dy)}(0, 0, 0)
    end
    vmag = √(γ²v² / (1 + γ²v²/c^2))
    vx, vy, vz = vmag * v̂[1], vmag * v̂[2], vmag * v̂[3]
 
    dy[1], dy[2], dy[3] = vx, vy, vz
-   dy[4] = Ω * (vy*Bz - vz*By + Ex)
-   dy[5] = Ω * (vz*Bx - vx*Bz + Ey)
-   dy[6] = Ω * (vx*By - vy*Bx + Ez)
+   dy[4] = vy*Bz - vz*By + Ex
+   dy[5] = vz*Bx - vx*Bz + Ey
+   dy[6] = vx*By - vy*Bx + Ez
 
    return
 end
