@@ -49,7 +49,7 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, vars=(1,2))
+lines!(ax, sol, idxs=(1,2))
 
 f = DisplayAs.PNG(f) #hide
 
