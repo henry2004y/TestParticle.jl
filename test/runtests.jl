@@ -30,6 +30,18 @@ end
 
 uniform_B2(x) = SA[0.0, 0.0, 0.01]
 uniform_B1(x) = SA[0.0, 0.0, 1e-8]
+function time_varying_B(x, t)
+   Bz =
+      if x[1] > 100t
+         1e-8
+      elseif x[1] < -10.0
+         1e-8
+      else
+         0.0
+      end
+
+   SA[0.0, 0.0, Bz]
+end
 zero_E(x) = SA[0.0, 0.0, 0.0]
 uniform_E(x) = SA[1e-9, 0, 0]
 
@@ -411,6 +423,16 @@ end
       savestepinterval = 1000
       sols = TestParticle.solve(prob; dt, savestepinterval, trajectories)
       @test sum(s -> sum(s.u[end]), sols) ≈ -421958.20861921855
+
+      x0 = [-1.0, 0.0, 0.0]
+      v0 = [1e6, 0.0, 0.0]
+      stateinit = [x0..., v0...]
+      tspan = (0.0, 0.01)
+      dt = 1e-4
+      param = prepare(zero_E, time_varying_B, species=Electron)
+      prob = TraceProblem(stateinit, tspan, param)
+      sol = TestParticle.solve(prob; dt, savestepinterval=100)[1]
+      @test sol[1, end] ≈ -512.8807058314515
    end
 
    @testset "MagnetoStatics" begin
