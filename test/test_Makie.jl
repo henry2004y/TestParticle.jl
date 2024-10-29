@@ -27,28 +27,28 @@ end
     fig = orbit(sol)
     @test fig isa Figure
 
-    fig = orbit(sol, vars=(1, 2))
+    fig = orbit(sol, idxs=(1, 2))
     @test fig isa Figure
 
     f(xu) = xu[1]
-    fig = orbit(sol, vars=f, tspan=(0.0, 0.05))
+    fig = orbit(sol, idxs=f, tspan=(0.0, 0.05))
     @test fig isa Figure
 
-    fig = orbit(sol, vars=(1, [2, 3]))
+    fig = orbit(sol, idxs=(1, [2, 3]))
     @test fig isa Figure
 
-    fig = orbit(sol, vars=([1, 2], 3))
+    fig = orbit(sol, idxs=([1, 2], 3))
     @test fig isa Figure
 
-    fig = orbit(sol, vars=([1, 2], [3, 4]))
+    fig = orbit(sol, idxs=([1, 2], [3, 4]))
     @test fig isa Figure
 
-    fig = orbit(sol, vars=[(1, 2, 3), (1, 2)], to_3d=true)
+    fig = orbit(sol, idxs=[(1, 2, 3), (1, 2)], to_3d=true)
     @test fig isa Figure
 
-    @test_throws ArgumentError orbit(sol, vars=([1, 2], "x"))
+    @test_throws ArgumentError orbit(sol, idxs=([1, 2], "x"))
 
-    @test_throws ArgumentError orbit(sol, vars=(1, "x"))
+    @test_throws ArgumentError orbit(sol, idxs=(1, "x"))
 end
 
 @testset "monitor" begin
