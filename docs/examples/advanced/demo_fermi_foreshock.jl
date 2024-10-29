@@ -12,10 +12,10 @@
 # The foreshock transient boundary is at $x = 1.5\,R_E$ initially and moves toward the bow shock at a speed $U=100\,\mathrm{km/s}$.
 # The region beyond $x=1.5\,R_E$ is the foreshock transient sheath in which the magnetic field is $B_z=10\,\mathrm{nT}$. A convection electric field $E_y = -1\,\mathrm{mV/m}$, consistent with the velocity U, is introduced in the foreshock transient sheath.
 # Between the two boundaries, $0.5\,R_E < x < 1.5\,R_E$, is the foreshock transient's core region.
-#
+
 # In the first case, the magnetic field in the core region is set to zero.
 # In the second case, a magnetic fluctuation is imposed:
-#
+
 # ```math
 # \begin{aligned}
 # \delta B_{x,y,z} = \sum_{N = N_0}^{N_1} \delta B_N \cos\left( \frac{2\pi N x}{L_0} + \phi_{x,y,z}^N \right) \\
@@ -26,7 +26,9 @@
 # We choose $N_0 = 100, N_1 = 1000, \tilde{B}=0.2\,\mathrm{nT}$, and $\phi_{x,y,z}^N$ as the random phases of various modes between 0 and 2π (independently different in the x, y, and z directions).
 # As the low-frequency wave speed ($\sim \mathcal{O}(10)\mathrm{km/s}$) is much smaller than the electron speed ($\sim \mathcal{O}(10^3)\mathrm{km/s}$), we do not include wave propagation in this 1D model.
 
-#import DisplayAs #hide
+# One important note about Fermi acceleration for space plasmas is that space plasmas are collisionless. Electric field is the only way to accelerate charged particles, instead of elastic collisions.
+
+import DisplayAs #hide
 using TestParticle
 using TestParticle: kB, mₑ, Rₑ, qₑ
 using OrdinaryDiffEq
@@ -45,7 +47,7 @@ function B(xu, t)
    Bz =
       if xu[1] < 0.5Rₑ
          20e-9
-      elseif xu[1] > 1.5Rₑ - U*t
+      elseif xu[1] > 1.5Rₑ + U*t
          10e-9
       else
          0.0
@@ -56,7 +58,7 @@ end
 
 function E(xu, t)
    Ey =
-      if xu[1] > 1.5Rₑ - U*t
+      if xu[1] > 1.5Rₑ + U*t
          -1e-3
       else
          0.0
@@ -70,10 +72,11 @@ function B_field_perturb(xu, t)
    L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
 
    δBx, δBy, δBz = 0.0, 0.0, 0.0
-   if 0.5Rₑ < xu[1] < 1.5Rₑ - U*t
+   ##TODO This is too slow! It would be feasible to generate the numerical field once.
+   if 0.5Rₑ < xu[1] < 1.5Rₑ + U*t
       for N in N₀:N₁
-         δBn = B̃(N / N0)^-1.2
-         ϕx, ϕy, ϕz = rand(3) .* 2π
+         δBn = B̃ * (N / N₀)^-1.2
+         ϕx, ϕy, ϕz = rand(SVector{3, Float64}) .* 2π
          δBx += δBn * cos(2π * N * xu[1] / L₀ + ϕx)
          δBy += δBn * cos(2π * N * xu[1] / L₀ + ϕy)
          δBz += δBn * cos(2π * N * xu[1] / L₀ + ϕz)
@@ -196,7 +199,7 @@ function plot_dist(sols; t=0, case=1, slice=:xy)
       xlabel = L"V_y [km/s]"
       ylabel = L"V_z [km/s]"
    end
-   h2d = Hist2D(vars; nbins=(40, 40))
+   h2d = Hist2D(vars; nbins=(50, 50))
    _, _heatmap = plot(f[1,1], h2d;
       axis=(title="t = $t, case = $case, particle count = $(length(vx))",
       xlabel=xlabel, ylabel=ylabel, aspect=1, limits=(-1e4, 1e4, -1e4, 1e4)))
@@ -234,22 +237,26 @@ stateinit = zeros(6)
 ## Time span [s]
 tspan = (0, 40)
 
-trajectories = 5000;
+trajectories = 1;
 
 # Case 1: 0 core field
 
 param = prepare(E, B; species=Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param) 
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
-## dt=2e-4, adaptive=false)
+
 sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
-   isoutofdomain, trajectories, verbose=false)
+   isoutofdomain, trajectories, verbose=true);
+
+## Equivalent Boris pusher approach
+##dt = 2e-5
+##prob = TraceProblem(stateinit, tspan, param; prob_func)
+##sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=1);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
 
 f = plot_multiple(sols[imax])
-
 f = DisplayAs.PNG(f) #hide
 
 f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
@@ -260,21 +267,21 @@ f = DisplayAs.PNG(f) #hide
 
 # Case 2: B fluctuation core field
 
-param = prepare(E, B_field_perturb; species=Electron);
-prob = ODEProblem(trace!, stateinit, tspan, param) 
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
-## dt=2e-4, adaptive=false)
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
-   isoutofdomain, trajectories, verbose=false)
+##param = prepare(E, B_field_perturb; species=Electron);
+##prob = ODEProblem(trace!, stateinit, tspan, param) 
+##ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+
+##sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
+##   isoutofdomain, trajectories, verbose=false)
 
 ## maximum acceleration ratio particle index
-imax = find_max_acceleration_index(sols)
+##imax = find_max_acceleration_index(sols)
 
-f = plot_multiple(sols[imax])
-f = DisplayAs.PNG(f) #hide
+##f = plot_multiple(sols[imax])
+##f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
-f = DisplayAs.PNG(f) #hide
+##f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
+##f = DisplayAs.PNG(f) #hide
 
-f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
-f = DisplayAs.PNG(f) #hide
+##f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
+##f = DisplayAs.PNG(f) #hide
