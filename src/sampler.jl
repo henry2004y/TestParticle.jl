@@ -69,7 +69,7 @@ Sample a 3D velocity from a [`Maxwellian`](@ref) distribution `vdf` using the Bo
 Sample a 3D velocity from a [`BiMaxwellian`](@ref) distribution `vdf` using the Box-Muller method.
 """
 function sample(vdf::Maxwellian{T}) where T
-   r1, r2, θ, ϕ = rand(T, 4)
+   r1, r2, θ, ϕ = rand(SVector{4, T})
    m1 = √(-2*log(r1))
    m2 = √(-2*log(r2))
 
@@ -83,7 +83,7 @@ function sample(vdf::Maxwellian{T}) where T
 end
 
 function sample(vdf::BiMaxwellian{T, U}) where {T, U}
-   r1, r2, θ, ϕ = rand(T, 4)
+   r1, r2, θ, ϕ = rand(SVector{4, T})
    m1 = √(-2*log(r1))
    m2 = √(-2*log(r2))
 
