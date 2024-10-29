@@ -85,14 +85,14 @@ end
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
-    update_velocity!(xv, paramBoris, param, dt)
+    update_velocity!(xv, paramBoris, param, dt, t)
 
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: https://apps.dtic.mil/sti/citations/ADA023511
 """
-function update_velocity!(xv, paramBoris, param, dt)
+function update_velocity!(xv, paramBoris, param, dt, t)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-   q2m, E, B = param[1], param[2](xv, 0.0), param[3](xv, 0.0)
+   q2m, E, B = param[1], param[2](xv, t), param[3](xv, t)
 	# t vector
 	for dim in 1:3
 	   t_rotate[dim] = q2m*B[dim]*0.5*dt
@@ -136,7 +136,7 @@ end
 "In-place cross product."
 function cross!(v1, v2, vout)
    vout[1] = v1[2]*v2[3] - v1[3]*v2[2]
-   vout[2] = -v1[1]*v2[3] + v1[3]*v2[1]
+   vout[2] = v1[3]*v2[1] - v1[1]*v2[3]
    vout[3] = v1[1]*v2[2] - v1[2]*v2[1]
 
    return
@@ -204,10 +204,10 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5*dt)
+      update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
 
       for it in 1:nt
-         update_velocity!(xv, paramBoris, p, dt)
+         update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
          update_location!(xv, dt)
          if it % savestepinterval == 0
             iout += 1
