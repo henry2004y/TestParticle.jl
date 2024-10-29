@@ -247,7 +247,7 @@ tspan = (0, 40)
 ## Number of particles
 trajectories = 1000;
 
-# Case 1: 0 core field
+# **Case 1**: 0 core field
 
 param = prepare(E, Bcase1; species=Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param) 
@@ -262,13 +262,19 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
+# Trajectory of the most accelerated electron.
+
 f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
+
+# Initial velocity distribution.
 
 f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
-# Case 2: B fluctuation core field
+# Final velocity distribution
+
+# **Case 2**: B fluctuation core field
 # In this case we use the native Boris pusher for demonstration. The smallest electron gyroperiod in the magnetosheath (B ∼ 20 nT) is about $2\times 10^{-3}\,\mathrm{s}$, and we use a time step $\Delta t = 2\times 10^4\mathrm{s}$.
 
 const δBfunc = let
@@ -287,8 +293,14 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
+# Trajectory of the most accelerated electron.
+
 f = plot_dist(sols, t=tspan[1], case=2, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
+# Initial velocity distribution.
+
 f = plot_dist(sols, t=tspan[2], case=2, slice=:xy)
 f = DisplayAs.PNG(f) #hide
+
+# Final velocity distribution
