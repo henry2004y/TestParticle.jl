@@ -1,7 +1,7 @@
 # ---
 # title: Electron Fermi Acceleration Inside Foreshock Transient Cores
 # id: demo_electron_acceleration_foreshock_transient
-# date: 2024-10-27
+# date: 2024-10-28
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.11.1
 # description: Fermi acceleration demonstration
@@ -43,7 +43,7 @@ Random.seed!(1234)
 
 ## Analytic EM fields
 
-function B(xu, t)
+function Bcase1(xu, t)
    Bz =
       if xu[1] < 0.5Rₑ
          20e-9
@@ -67,23 +67,34 @@ function E(xu, t)
    SA[0.0, Ey, 0.0]
 end
 
-function B_field_perturb(xu, t)
-   B₀ = B(xu, t)
-   L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
+function Bcase2(xu, t)
+   if xu[1] < 0.5Rₑ
+      SA[0.0, 0.0, 20e-9]
+   elseif xu[1] > 1.5Rₑ + U*t
+      SA[0.0, 0.0, 10e-9]
+   else
+      δBfunc(xu)
+   end
+end
 
-   δBx, δBy, δBz = 0.0, 0.0, 0.0
-   ##TODO This is too slow! It would be feasible to generate the numerical field once.
-   if 0.5Rₑ < xu[1] < 1.5Rₑ + U*t
-      for N in N₀:N₁
-         δBn = B̃ * (N / N₀)^-1.2
-         ϕx, ϕy, ϕz = rand(SVector{3, Float64}) .* 2π
-         δBx += δBn * cos(2π * N * xu[1] / L₀ + ϕx)
-         δBy += δBn * cos(2π * N * xu[1] / L₀ + ϕy)
-         δBz += δBn * cos(2π * N * xu[1] / L₀ + ϕz)
+function get_B_perturb(x)
+   L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
+   B = fill(0.0, 3, length(x)) # [T]
+   ## Eqs (4-5) from the paper
+   for N in N₀:N₁
+      δBn = B̃ * (N / N₀)^-1.2
+      ϕx, ϕy, ϕz = rand(SVector{3, Float64}) .* 2
+      for i in axes(B, 2)
+         δBx = δBn * cospi(2 * N * x[i] / L₀ + ϕx)
+         δBy = δBn * cospi(2 * N * x[i] / L₀ + ϕy)
+         δBz = δBn * cospi(2 * N * x[i] / L₀ + ϕz)
+         B[1,i] += δBx
+         B[2,i] += δBy
+         B[3,i] += δBz
       end
    end
 
-   B₀ + SA[δBx, δBy, δBz]
+   B
 end
 
 function isoutofdomain(xv, p, t)
@@ -173,10 +184,8 @@ function plot_dist(sols; t=0, case=1, slice=:xy)
    vx = Vector{eltype(sols[1].u[1])}(undef, 0)
    vy = similar(vx)
    vz = similar(vx)
-   n = 0
    for sol in sols
       if (sol.t[end] ≥ t) && (1.5Rₑ - U*sol.t[end] > sol[1,end] > 0.5Rₑ)
-         n += 1
          v = sol(t)[4:6] ./ 1e3
          append!(vx, v[1])
          append!(vy, v[2])
@@ -201,7 +210,7 @@ function plot_dist(sols; t=0, case=1, slice=:xy)
    end
    h2d = Hist2D(vars; nbins=(50, 50))
    _, _heatmap = plot(f[1,1], h2d;
-      axis=(title="t = $t, case = $case, particle count = $(length(vx))",
+      axis=(title="t = $t s, Case = $case, Particle Count = $(length(vx))",
       xlabel=xlabel, ylabel=ylabel, aspect=1, limits=(-1e4, 1e4, -1e4, 1e4)))
 
    Colorbar(f[1,2], _heatmap)
@@ -231,27 +240,21 @@ end
 
 const U = -100e3 # [m/s]
 
-## Initial condition
+## Initial condition to be overwritten in prob_func
 stateinit = zeros(6)
-
 ## Time span [s]
 tspan = (0, 40)
-
-trajectories = 1;
+## Number of particles
+trajectories = 1000;
 
 # Case 1: 0 core field
 
-param = prepare(E, B; species=Electron);
+param = prepare(E, Bcase1; species=Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param) 
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
    isoutofdomain, trajectories, verbose=true);
-
-## Equivalent Boris pusher approach
-##dt = 2e-5
-##prob = TraceProblem(stateinit, tspan, param; prob_func)
-##sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=1);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
@@ -266,22 +269,26 @@ f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
 f = DisplayAs.PNG(f) #hide
 
 # Case 2: B fluctuation core field
+# In this case we use the native Boris pusher for demonstration. The smallest electron gyroperiod in the magnetosheath (B ∼ 20 nT) is about $2\times 10^{-3}\,\mathrm{s}$, and we use a time step $\Delta t = 2\times 10^4\mathrm{s}$.
 
-##param = prepare(E, B_field_perturb; species=Electron);
-##prob = ODEProblem(trace!, stateinit, tspan, param) 
-##ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+const δBfunc = let
+   x = range(0.5Rₑ, 1.5Rₑ, length=10000)
+   δB = get_B_perturb(x)
+   TestParticle.Field(TestParticle.getinterp(δB, x, 1, 3))
+end
 
-##sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
-##   isoutofdomain, trajectories, verbose=false)
+dt = 2e-4 # [s]
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
 
 ## maximum acceleration ratio particle index
-##imax = find_max_acceleration_index(sols)
+imax = find_max_acceleration_index(sols)
 
-##f = plot_multiple(sols[imax])
-##f = DisplayAs.PNG(f) #hide
+f = plot_multiple(sols[imax])
+f = DisplayAs.PNG(f) #hide
 
-##f = plot_dist(sols, t=tspan[1], case=1, slice=:xy)
-##f = DisplayAs.PNG(f) #hide
+f = plot_dist(sols, t=tspan[1], case=2, slice=:xy)
+f = DisplayAs.PNG(f) #hide
 
-##f = plot_dist(sols, t=tspan[2], case=1, slice=:xy)
-##f = DisplayAs.PNG(f) #hide
+f = plot_dist(sols, t=tspan[2], case=2, slice=:xy)
+f = DisplayAs.PNG(f) #hide
