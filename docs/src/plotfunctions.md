@@ -6,7 +6,7 @@ Before using the plot recipes of `Testparticle.jl`, you need to import `Makie` p
 
 ## Convention
 
-By convention, we use integers to represent the 7 dimensions in the input argument `vars` for all plotting methods:
+By convention, we use integers to represent the 7 dimensions in the input argument `idxs` for all plotting methods:
 
 | Component | Meaning |
 |-----------|---------|
