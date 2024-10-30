@@ -15,7 +15,7 @@ permissions:
   pull-requests: write
 
 jobs:
-    generate_plots:
+    performance-guard:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
