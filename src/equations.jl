@@ -51,7 +51,7 @@ function trace(y, p::TPTuple, t)
 
    dv = q2m * (v × B + E)
 
-   SVector{6}(v..., dv...)
+   vcat(v, dv)
 end
 
 function trace(y, p::FullTPTuple, t)
@@ -64,7 +64,7 @@ function trace(y, p::FullTPTuple, t)
 
    dv = (q * (v × B + E) + F) / m
 
-   SVector{6}(v..., dv...)
+   vcat(v, dv)
 end
 
 """
@@ -114,7 +114,7 @@ function trace_relativistic(y, p::TPTuple, t)
    v = vmag * v̂
    dv = q2m * (v × B + E)
 
-   SVector{6}(v..., dv...)
+   vcat(v, dv)
 end
 
 """
@@ -149,7 +149,11 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    γv = @views SVector{3}(y[4:6])
 
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   v̂ = normalize(γv)
+   if γ²v² > eps(eltype(dy))
+      v̂ = normalize(γv)
+   else # no velocity
+      v̂ = SVector{3, eltype(dy)}(0, 0, 0)
+   end
    vmag = √(γ²v² / (1 + γ²v²))
    v = vmag * v̂
 
@@ -165,14 +169,19 @@ end
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
 function trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
-   _, E, B = p
-   E = SVector{3}(E(y, t))
-   B = SVector{3}(B(y, t))
+   _, Efunc, Bfunc = p
+   E = SVector{3}(Efunc(y, t))
+   B = SVector{3}(Bfunc(y, t))
    γv = @views SVector{3}(y[4:6])
 
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   if γ²v² > eps(eltype(y))
+      v̂ = normalize(γv)
+   else # no velocity
+      v̂ = SVector{3, eltype(y)}(0, 0, 0)
+   end
    vmag = √(γ²v² / (1 + γ²v²))
-   v = vmag * normalize(γv)
+   v = vmag * v̂
    dv = v × B + E
 
    vcat(v, dv)
@@ -185,20 +194,22 @@ Equations for tracing the guiding center using analytical drifts, including the 
 Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
 """
 function trace_gc_drifts!(dx, x, p, t)
-   q2m, E, B, sol = p
+   q2m, Efunc, Bfunc, sol = p
    xu = sol(t)
    v = @views SVector{3, eltype(dx)}(xu[4:6])
-   abs_B(x) = norm(B(x))
-   gradient_B = ForwardDiff.gradient(abs_B, x)
-   Bv = B(x)
-   b = normalize(Bv)
+   E = SVector{3}(Efunc(x))
+   B = SVector{3}(Bfunc(x))
+   
+   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
+   ∇B = ForwardDiff.gradient(Bmag, x)
+   b = normalize(B)
    v_par = (v ⋅ b) .* b
    v_perp = v - v_par
-   Ω = q2m*norm(Bv)
-   κ = ForwardDiff.jacobian(B, x)*Bv  # B⋅∇B
+   Ω = q2m*norm(B)
+   κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
    ## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-   dx[1:3] = norm(v_perp)^2*(Bv × gradient_B)/(2*Ω*norm(Bv)^2) +
-      norm(v_par)^2*(Bv × κ)/Ω/norm(Bv)^3 + (E(x) × Bv)/norm(Bv)^2 + v_par
+   dx[1:3] = norm(v_perp)^2*(B × ∇B)/(2*Ω*norm(B)^2) +
+      norm(v_par)^2*(B × κ)/Ω/norm(B)^3 + (E × B)/(B ⋅ B) + v_par
 end
 
 """
@@ -210,9 +221,9 @@ Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field 
 function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
-   X = @view y[1:3]
-   E = Efunc(X, t)
-   B = Bfunc(X, t)
+   X = @views SVector{3}(y[1:3])
+   E = SVector{3}(Efunc(X, t))
+   B = SVector{3}(Bfunc(X, t))
    b̂ = normalize(B) # unit B field at X
 
    Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
