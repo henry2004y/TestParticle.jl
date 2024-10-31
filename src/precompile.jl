@@ -3,9 +3,9 @@
 @setup_workload begin
    @compile_workload begin
       # numerical field parameters
-      x = range(-10, 10, length=15)
-      y = range(-10, 10, length=20)
-      z = range(-10, 10, length=25)
+      x = range(-10, 10, length=4)
+      y = range(-10, 10, length=6)
+      z = range(-10, 10, length=8)
       B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
       E = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
 

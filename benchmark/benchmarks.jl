@@ -36,7 +36,7 @@ mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
     (x[1], y[1], z[1]),
     (Δx, Δy, Δz))
 
-tspan = (0.0, 1.0)
+tspan = (0.0, 10.0)
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
