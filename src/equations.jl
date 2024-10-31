@@ -151,7 +151,9 @@ function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    B = SVector{3}(B(y, t))
 
    dy[1:3] = v
-   dy[4:6] = E + v × B
+   dy[4:6] = v × B + E
+
+   return
 end
 
 """
@@ -171,7 +173,7 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    v = vmag * v̂
 
    dy[1:3] = v
-   dy[4:6] = E + v × B
+   dy[4:6] = v × B + E
 end
 
 """
