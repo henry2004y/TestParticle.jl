@@ -11,12 +11,13 @@ on:
       - 'docs/**'
       - 'examples/**'
 
-permissions:
-  pull-requests: write
-
 jobs:
-    generate_plots:
+    performance-guard:
         runs-on: ubuntu-latest
+        permissions:
+          contents: write
+          pull-requests: write
+          repository-projects: write
         steps:
             - uses: actions/checkout@v4
             - uses: julia-actions/setup-julia@v2

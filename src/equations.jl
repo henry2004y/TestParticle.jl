@@ -146,15 +146,12 @@ the extrapolation function provided by Interpolations.jl.
 function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
    _, E, B = p
 
-   vx, vy, vz = @view y[4:6]
-   Ex, Ey, Ez = E(y, t)
-   Bx, By, Bz = B(y, t)
+   v = @views SVector{3}(y[4:6])
+   E = SVector{3}(E(y, t))
+   B = SVector{3}(B(y, t))
 
-   dy[1], dy[2], dy[3] = vx, vy, vz
-   # E + v × B
-   dy[4] = vy*Bz - vz*By + Ex
-   dy[5] = vz*Bx - vx*Bz + Ey
-   dy[6] = vx*By - vy*Bx + Ez
+   dy[1:3] = v
+   dy[4:6] = v × B + E
 
    return
 end
@@ -166,25 +163,36 @@ Normalized ODE equations for relativistic charged particle (x, γv) moving in st
 """
 function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
    _, E, B = p
-   Ex, Ey, Ez = E(y, t)
-   Bx, By, Bz = B(y, t)
+   E = SVector{3}(E(y, t))
+   B = SVector{3}(B(y, t))
+   γv = @views SVector{3}(y[4:6])
 
-   γv = @views SVector{3, eltype(dy)}(y[4:6])
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   if γ²v² > eps(eltype(dy))
-      v̂ = normalize(γv)
-   else # no velocity
-      v̂ = SVector{3, eltype(dy)}(0, 0, 0)
-   end
+   v̂ = normalize(γv)
    vmag = √(γ²v² / (1 + γ²v²))
-   vx, vy, vz = vmag * v̂
+   v = vmag * v̂
 
-   dy[1], dy[2], dy[3] = vx, vy, vz
-   dy[4] = vy*Bz - vz*By + Ex
-   dy[5] = vz*Bx - vx*Bz + Ey
-   dy[6] = vx*By - vy*Bx + Ez
+   dy[1:3] = v
+   dy[4:6] = v × B + E
+end
 
-   return
+"""
+    trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
+
+Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
+"""
+function trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
+   _, E, B = p
+   E = SVector{3}(E(y, t))
+   B = SVector{3}(B(y, t))
+   γv = @views SVector{3}(y[4:6])
+
+   γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+   vmag = √(γ²v² / (1 + γ²v²))
+   v = vmag * normalize(γv)
+   dv = v × B + E
+
+   return vcat(v, dv)
 end
 
 """
