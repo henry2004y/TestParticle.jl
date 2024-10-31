@@ -6,8 +6,7 @@
 
 ODE equations for charged particle moving in static EM field with in-place form.
 
-ODE equations for charged particle moving in static EM field and external force field with
-in-place form.
+ODE equations for charged particle moving in static EM field and external force field with in-place form.
 """
 function trace!(dy, y, p::TPTuple, t)
    q2m, Efunc, Bfunc = p
@@ -42,8 +41,7 @@ end
 
 ODE equations for charged particle moving in static EM field with out-of-place form.
 
-ODE equations for charged particle moving in static EM field and external force field with
-out-of-place form.
+ODE equations for charged particle moving in static EM field and external force field with out-of-place form.
 """
 function trace(y, p::TPTuple, t)
    q2m, Efunc, Bfunc = p
@@ -183,9 +181,8 @@ end
 """
     trace_gc_drifts!(dx, x, p, t)
 
-Equations for tracing the guiding center using analytical drifts, including the grad-B
-drift, the curvature drift, the ExB drift. Parallel velocity is also added. This expression
-requires the full particle trajectory `p.sol`.
+Equations for tracing the guiding center using analytical drifts, including the grad-B drift, curvature drift, and ExB drift.
+Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
 """
 function trace_gc_drifts!(dx, x, p, t)
    q2m, E, B, sol = p
@@ -207,9 +204,8 @@ end
 """
     trace_gc!(dy, y, p::TPTuple, t)
 
-Guiding center equations for nonrelativistic charged particle moving in static EM field with
-in-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic
-field at (x,y,z).
+Guiding center equations for nonrelativistic charged particle moving in static EM field with in-place form.
+Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
 function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
