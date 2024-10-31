@@ -301,7 +301,7 @@ end
       stateinit = zeros(6)
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
       sol = solve(prob, Vern6())
-      @test sol[1,end] == 0.0 & length(sol) == 6
+      @test sol[1,end] == 0.0 && length(sol) == 6
 
       stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
