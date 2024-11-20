@@ -283,9 +283,10 @@ const δBfunc = let
    TestParticle.Field(TestParticle.getinterp(δB, x, 1, 3))
 end
 
-dt = 2e-4 # [s]
+dt = 5e-5 # [s]
+param = prepare(E, Bcase2; species=Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
+sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=500);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
