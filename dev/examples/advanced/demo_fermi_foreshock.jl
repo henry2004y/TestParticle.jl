@@ -243,6 +243,7 @@ const δBfunc = let
 end
 
 dt = 2e-4 # [s]
+param = prepare(E, Bcase2; species=Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
 
