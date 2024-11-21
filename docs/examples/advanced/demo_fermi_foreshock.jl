@@ -275,7 +275,7 @@ f = DisplayAs.PNG(f) #hide
 # Final velocity distribution
 
 # **Case 2**: B fluctuation core field
-# In this case we use the native Boris pusher for demonstration. The smallest electron gyroperiod in the magnetosheath (B ∼ 20 nT) is about $2\times 10^{-3}\,\mathrm{s}$, and we use a time step $\Delta t = 2\times 10^4\mathrm{s}$.
+# In this case we use the native Boris pusher for demonstration. The smallest electron gyroperiod in the magnetosheath (B ∼ 20 nT) is about $2\times 10^{-3}\,\mathrm{s}$, and we use a time step $\Delta t = 2\times 10^{-4}\mathrm{s}$.
 
 const δBfunc = let
    x = range(0.5Rₑ, 1.5Rₑ, length=10000)
@@ -283,10 +283,10 @@ const δBfunc = let
    TestParticle.Field(TestParticle.getinterp(δB, x, 1, 3))
 end
 
-dt = 5e-5 # [s]
+dt = 2e-4 # [s]
 param = prepare(E, Bcase2; species=Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=500);
+sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
@@ -294,7 +294,7 @@ imax = find_max_acceleration_index(sols)
 f = plot_multiple(sols[imax])
 f = DisplayAs.PNG(f) #hide
 
-# Trajectory of the most accelerated electron.
+# Trajectory of the most accelerated electron. Note that there are locations where we see a jump in kinetic energy with no electric field peaks; these are artifacts because we only save every 100 steps.
 
 f = plot_dist(sols, t=tspan[1], case=2, slice=:xy)
 f = DisplayAs.PNG(f) #hide
