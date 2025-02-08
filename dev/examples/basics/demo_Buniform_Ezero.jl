@@ -2,7 +2,6 @@ import DisplayAs #hide
 using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
-using LinearAlgebra
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
