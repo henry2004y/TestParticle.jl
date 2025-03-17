@@ -33,10 +33,10 @@ end
 function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, dense,
    tslocation, stats, alg_choice, retcode) where {T, N}
    return TraceSolution{T, N, typeof(u), typeof(u_analytic), typeof(errors), typeof(t),
-       typeof(k), typeof(prob), typeof(alg), typeof(interp),
-       typeof(stats),
-       typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
-       dense, tslocation, stats, alg_choice, retcode)
+      typeof(k), typeof(prob), typeof(alg), typeof(interp),
+      typeof(stats),
+      typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
+      dense, tslocation, stats, alg_choice, retcode)
 end
 
 Base.length(ts::TraceSolution) = length(ts.t)
