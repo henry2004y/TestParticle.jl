@@ -46,7 +46,7 @@ param = prepare(x, y, E, B; species=User, bc=1);
 
 # Initial conditions to be modified in prob_func
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-u0 = [0.0, 0.0, 0.0] # initial velocity [v₀]
+u0 = [0.0, 0.0, 0.0] # initial velocity [v₀], will be overwritten in prob_func
 stateinit = [x0..., u0...]
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
