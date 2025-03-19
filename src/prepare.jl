@@ -40,6 +40,11 @@ Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 (f::AbstractField{false})(xu, t) = f.field_function(xu)
 (f::AbstractField{false})(xu) = f.field_function(xu)
 
+function Base.show(io::IO, f::Field)
+   println(io, "Field with interpolation support")
+   println(io, "Time-dependent: ", is_time_dependent(f.field_function))
+end
+
 "The type of parameter tuple for full test particle problem."
 FullTPTuple = Tuple{Float64, Float64, AbstractField, AbstractField, AbstractField}
 
