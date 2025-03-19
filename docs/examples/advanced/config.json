@@ -2,6 +2,7 @@
    "theme": "nocoverlist",
    "order": [
      "demo_boris_outofdomain.jl",
+     "demo_cosmicray.jl",
      "demo_ensemble.jl",
      "demo_savingcallback.jl",
      "demo_output_func.jl",
