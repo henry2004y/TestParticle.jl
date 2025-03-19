@@ -28,7 +28,7 @@
 # \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
 # \end{aligned}
 # ```
-# where ``\mathbf{v}^\prime`` is the normalized space component of the 4-velocity ``(\gamma c, \gamma \mathbf{v}), \mathbf{v}^\prime = \mathbf{v} / \gamma_0``, and ``\mathbf{x}^\prime = \mathbf{x} / r_{L0}`` is the normalized location, ``\mathbf{E}^\prime = \mathbf{E} / (c B_0)`` is the normalized electric field, and ``\mathbf{B}^\prime = \mathbf{B} / B_0`` is the normalized magnetic field. ``t^\prime = e B_0 / (m c^2) t$ is self-time measured in cyclotron frequency units. A particle with pitch angle cosine ``mu = 0`` will make a full orbit in the ``B_0`` field in ``2 \pi`` time.
+# where ``\mathbf{v}^\prime`` is the normalized space component of the 4-velocity ``(\gamma c, \gamma \mathbf{v}), \mathbf{v}^\prime = \mathbf{v} / \gamma_0``, and ``\mathbf{x}^\prime = \mathbf{x} / r_{L0}`` is the normalized location, ``\mathbf{E}^\prime = \mathbf{E} / (c B_0)`` is the normalized electric field, and ``\mathbf{B}^\prime = \mathbf{B} / B_0`` is the normalized magnetic field. ``t^\prime = e B_0 / (m c^2) t`` is self-time measured in cyclotron frequency units. A particle with pitch angle cosine ``mu = 0`` will make a full orbit in the ``B_0`` field in ``2 \pi`` time.
 # ```math
 # \gamma^\prime = \sqrt{\frac{1}{\gamma_0^2} + {\mathbf{u}^\prime}^2}
 # ```
