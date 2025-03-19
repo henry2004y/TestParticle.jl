@@ -1,9 +1,9 @@
 # ---
 # title: Dimensionless Units
 # id: demo_dimensionless
-# date: 2024-10-28
+# date: 2025-03-19
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.1
+# julia: 1.11.4
 # description: Tracing charged particle in dimensionless units
 # ---
 
