@@ -7,15 +7,13 @@ CairoMakie.activate!(type = "png") #hide
 # Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 2
 # Unit conversion factors between dimensional and dimensionless units
-γ0 = 10.0
-B0 = 10.0
-rL0 = γ0 / B0
+rL0 = 1.0
 L = rL0 * 4.0
 Ω0 = 1 / rL0
 # All quantities are in dimensionless units
-x = range(-L/2-0.01, L/2+0.01, length=nx) # [Ω0]
-y = range(-L-0.01, 0.01, length=ny) # [Ω0]
-z = range(-10, 10, length=nz) # [Ω0]
+x = range(-L/2-0.01, L/2+0.01, length=nx) # [rL0]
+y = range(-L-0.01, 0.01, length=ny) # [rL0]
+z = range(-10, 10, length=nz) # [rL0]
 
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3,:,:,:] .= 1.0
@@ -26,7 +24,7 @@ param = prepare(x, y, z, E, B; species=User)
 # Initial condition
 stateinit = let
    x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-   u0 = [2.0, 0.0, 0.0] # initial velocity [v₀] -> r = 2 * rL0
+   u0 = [1.0, 0.0, 0.0] # initial velocity [v₀] -> r = 1 * rL0
    [x0..., u0...]
 end
 # Time span
