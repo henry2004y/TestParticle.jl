@@ -8,6 +8,7 @@
 # ---
 
 # This example shows how to trace cosmic rays in a background magnetic field.
+# In the original MHD solution, everything is dimensionless. 
 # We are following the normalization procedures in [Cosmic ray propagation in sub-Alfvénic magnetohydrodynamic turbulence](https://doi.org/10.1051/0004-6361/201527376).
 # The Lorentz equation for each particle of charge ``q`` and mass ``m``. The particle has a momentum ``\mathbf{p} = \gamma m \mathbf{v}`` and a velocity ``\mathbf{v}`` and propagates in an electromagnetic field ``\mathbf{E}`` (no mean electric field), ``\mathbf{B} = \delta \mathbf{B} + \mathbf{B}_0``:
 # ```math
@@ -52,40 +53,39 @@
 # \Omega_0 = \frac{e\, B_0}{m\, c^2} = 1
 # \end{aligned}
 # ```
-# In the original MHD solution, everything is dimensionless. A standard procedure is as follows:
+# This looks good, but there is still an annoying factor ``r_{L 0} / L`` in the second equation. We can remove that by combining ``L / r_{L 0}`` with ``\mathbf{x}``:
+# ```math
+# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
+# ```
+# It simply means that if the original domain length is 1, now it becomes ``L / r_{L 0}``.
+
+# A standard procedure is as follows:
 # 1. Obtain the dimensionless MHD solution.
 # 2. Normalize the magnetic field with its background mean magnitude, such that in the new field, ``B_0 = 1``. This has a clear physical meaning that a particle with velocity 1 has a gyroradii of 1 and a gyroperiod of  ``2\pi``.
-# 3. Normalize the length by ``L``, such that 1 unit distance in the dimensionless system is equivalent to ``L / r_{L 0}`` gyroradius for a charged particle with initial Lorentz factor ``\gamma_0``. We are free to scale the spatial length. If we have ``nx`` discrete points along that direction, then the grid size is ``dx = L / nx``. For simplicity, we can set the MHD domain extent to be ``[-0.5*np, 0.5*np]`` and ``r_{L0}=1``, where ``np`` is the number of points contained within one gyroradius. If ``np = 1``, ``L = r_{L 0}``; if ``np=2``, ``L = 2 r_{L 0}``, etc. The actual equations we solve are
-# ```math
-# \begin{aligned}
-# \frac{\mathrm{d}\mathbf{v}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime \times \mathbf{B}^\prime \\
-# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
-# \end{aligned}
-# ```
-# where the grid is now ...
+# 3. Manually choose the spatial extent to be ``L/r_{L 0}``. For simplicity, we set ``r_{L0}=1`` and the MHD domain extent to be ``[-L/2, L/2]``. If we have ``nx`` discrete points along that direction, then the grid size is ``dx = L / nx``. If ``L = nx/4``, then ``dx = 1/4`` is a quarter of the gyroradius. In this way we can control how well we resolve the magnetic field for the gyromotion and diffusion process.
 
 # Now let's demonstrate this with `trace_normalized!`.
 
 import DisplayAs #hide
 using TestParticle
+using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 2
-## Unit conversion factors between dimensional and dimensionless units
+## Unit conversion factors for length
 rL0 = 1.0
-L = rL0 * 4.0
-Ω0 = 1 / rL0
-## All quantities are in dimensionless units
-x = range(-L/2-0.01, L/2+0.01, length=nx) # [rL0]
-y = range(-L-0.01, 0.01, length=ny) # [rL0]
+L = nx / 4
+## Set length scales
+x = range(-L/2-1e-2, L/2+1e-2, length=nx) # [rL0]
+y = range(-L-1e-2, 1e-2, length=ny) # [rL0]
 z = range(-10, 10, length=nz) # [rL0]
 
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3,:,:,:] .= 1.0
-E = fill(0.0, 3, nx, ny, nz) # [E₀]
+E = SA[0.0, 0.0, 0.0] # [E₀]
 
 param = prepare(x, y, z, E, B; species=User)
 
