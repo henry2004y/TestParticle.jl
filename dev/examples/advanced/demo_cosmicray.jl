@@ -1,25 +1,25 @@
 import DisplayAs #hide
 using TestParticle
+using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 # Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 2
-# Unit conversion factors between dimensional and dimensionless units
+# Unit conversion factors for length
 rL0 = 1.0
-L = rL0 * 4.0
-Ω0 = 1 / rL0
-# All quantities are in dimensionless units
-x = range(-L/2-0.01, L/2+0.01, length=nx) # [rL0]
-y = range(-L-0.01, 0.01, length=ny) # [rL0]
+L = nx / 4
+# Set length scales
+x = range(-L/2-1e-2, L/2+1e-2, length=nx) # [rL0]
+y = range(-L-1e-2, 1e-2, length=ny) # [rL0]
 z = range(-10, 10, length=nz) # [rL0]
 
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3,:,:,:] .= 1.0
-E = fill(0.0, 3, nx, ny, nz) # [E₀]
+E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 
-param = prepare(x, y, z, E, B; species=User)
+param = prepare(x, y, z, E, B; species=User, bc=2)
 
 # Initial condition
 stateinit = let
@@ -39,7 +39,7 @@ ax = Axis(f[1, 1],
    title = "Proton trajectory",
    xlabel = "X",
    ylabel = "Y",
-   limits = (-2.1, 2.1, -4.1, 0.1),
+   limits = (2*x[1]-0.1, 2*x[end]+0.1, 2*y[1]-0.1, 2*y[end]+0.1),
    aspect = DataAspect()
 )
 
