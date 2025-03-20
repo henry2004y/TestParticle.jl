@@ -85,9 +85,9 @@ z = range(-10, 10, length=nz) # [rL0]
 
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3,:,:,:] .= 1.0
-E = SA[0.0, 0.0, 0.0] # [E₀]
-
-param = prepare(x, y, z, E, B; species=User)
+E(x) = SA[0.0, 0.0, 0.0] # [E₀]
+# periodic bc = 2
+param = prepare(x, y, z, E, B; species=User, bc=2)
 
 ## Initial condition
 stateinit = let
@@ -107,7 +107,7 @@ ax = Axis(f[1, 1],
    title = "Proton trajectory",
    xlabel = "X",
    ylabel = "Y",
-   limits = (-2.1, 2.1, -4.1, 0.1),
+   limits = (2*x[1]-0.1, 2*x[end]+0.1, 2*y[1]-0.1, 2*y[end]+0.1),
    aspect = DataAspect()
 )
 
