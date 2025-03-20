@@ -1,7 +1,7 @@
 # ---
 # title: Cosmic Ray Tracing
 # id: demo_cosmic_ray
-# date: 2025-03-19
+# date: 2025-03-20
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.11.4
 # description: Tracing cosmic ray charged particles
@@ -55,7 +55,7 @@
 # ```
 # This looks good, but there is still an annoying factor ``r_{L 0} / L`` in the second equation. We can remove that by combining ``L / r_{L 0}`` with ``\mathbf{x}``:
 # ```math
-# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
+# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} = \mathbf{v}^\prime
 # ```
 # It simply means that if the original domain length is 1, now it becomes ``L / r_{L 0}``.
 
@@ -86,7 +86,7 @@ z = range(-10, 10, length=nz) # [rL0]
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3,:,:,:] .= 1.0
 E(x) = SA[0.0, 0.0, 0.0] # [E₀]
-# periodic bc = 2
+## periodic bc = 2
 param = prepare(x, y, z, E, B; species=User, bc=2)
 
 ## Initial condition
