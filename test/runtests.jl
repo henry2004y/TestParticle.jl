@@ -366,6 +366,7 @@ end
       # periodic BC
       param = prepare(grid, E, B; species=Proton, bc=2)
       @test param[3] isa TestParticle.Field
+      @test startswith(repr(param[3]), "Field with")
       param = prepare(x, y, E, B; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
