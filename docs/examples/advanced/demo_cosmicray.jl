@@ -7,49 +7,62 @@
 # description: Tracing cosmic ray charged particles
 # ---
 
-# This example shows how to trace cosmic rays in a background magnetic field. In practice, at least in the interstellar medium, the effect of the electric field over high-energy (multi TeV) cosmic rays can be neglected. Therefore, energy is conserved and we are interested in looking at the scattering and diffusion processes.
-# In this demo, we are following the normalization procedures in [Numerical Study of Cosmic Ray Diffusion in MHD Turbulence](https://iopscience.iop.org/article/10.1088/0004-637X/728/1/60).
-# The Lorentz equation for each particle of charge ``q`` and mass ``m``. The particle has a momentum ``\mathbf{p} = \gamma m \mathbf{v}`` and a normalized velocity ``\mathbf{v}_c = \mathbf{v} / c`` and propagates in an electromagnetic field ``\mathbf{E}`` (no mean electric field), ``\mathbf{B} = \delta \mathbf{B} + \mathbf{B}_0``:
+# This example shows how to trace cosmic rays in a background magnetic field.
+# We are following the normalization procedures in [Cosmic ray propagation in sub-Alfvénic magnetohydrodynamic turbulence](https://doi.org/10.1051/0004-6361/201527376).
+# The Lorentz equation for each particle of charge ``q`` and mass ``m``. The particle has a momentum ``\mathbf{p} = \gamma m \mathbf{v}`` and a velocity ``\mathbf{v}`` and propagates in an electromagnetic field ``\mathbf{E}`` (no mean electric field), ``\mathbf{B} = \delta \mathbf{B} + \mathbf{B}_0``:
 # ```math
 # \begin{aligned}
-# \frac{\mathrm{d}\mathbf{p}}{\mathrm{d} t} &= q (\mathbf{E} + \mathbf{v}_c times \mathbf{B}) \\
+# \frac{\mathrm{d}\mathbf{p}}{\mathrm{d} t} &= q (\mathbf{E} + \frac{\mathbf{v}}{c} \times \mathbf{B}) \\
 # \frac{\mathrm{d}\mathbf{x}}{\mathrm{d} t} &= \mathbf{v}
 # \end{aligned}
 # ```
-# Each particle is injected with a Lorentz factor ``\gamma_0``. Physically, one can think of ``gamma_0`` as a measure of the relativity of the particle, i.e., for small ``gamma_0`` we will recover nonrelativistic equations, and for large ``gamma_0`` --- ultra-relativistic equations. ``\gamma_0`` also defines the initial Larmor radius
+# Each particle is injected with a Lorentz factor ``\gamma_0``. Physically, one can think of ``\gamma_0`` as a measure of the relativity of the particle, i.e., for small ``\gamma_0`` we will recover nonrelativistic equations, and for large ``\gamma_0`` --- ultra-relativistic equations. ``\gamma_0`` also defines the initial Larmor radius
 # ```math
 # r_{L0} = \gamma_0 m c^2 / (e B_0)
 # ```
-# where ``B_0`` is background magnetic field strength.
+# where ``B_0`` is background magnetic field strength. We also define the particle's synchrotron pulsation
+# ```math
+# \Omega_0 = c / r_{L0}
+# ```
+# This is measured in cyclotron frequency units, a gyration frequency measured in the particle's own frame. A particle with pitch angle cosine ``\mu = \cos\theta = 0`` will make a full orbit in the ``B_0`` field in ``2 \pi`` time.
 # After normalization, we have
 # ```math
 # \begin{aligned}
 # \frac{\mathrm{d}\mathbf{v}^\prime}{\mathrm{d} t^\prime} &= \gamma^\prime \mathbf{E}^\prime + \mathbf{v}^\prime \times \mathbf{B}^\prime \\
-# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
+# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \frac{r_{L 0}}{L} \mathbf{v}^\prime
 # \end{aligned}
 # ```
-# where ``\mathbf{v}^\prime`` is the normalized space component of the 4-velocity ``(\gamma c, \gamma \mathbf{v}), \mathbf{v}^\prime = \mathbf{v} / \gamma_0``, and ``\mathbf{x}^\prime = \mathbf{x} / r_{L0}`` is the normalized location, ``\mathbf{E}^\prime = \mathbf{E} / (c B_0)`` is the normalized electric field, and ``\mathbf{B}^\prime = \mathbf{B} / B_0`` is the normalized magnetic field. ``t^\prime = e B_0 / (m c^2) t`` is self-time measured in cyclotron frequency units. A particle with pitch angle cosine ``mu = 0`` will make a full orbit in the ``B_0`` field in ``2 \pi`` time.
+# where ``\gamma^\prime = \gamma / \gamma_0``, ``\mathbf{v}^\prime = \gamma^\prime \mathbf{v}/c``, and ``t^\prime = t / (\gamma^\prime r_{L0}/c)``, ``\mathbf{E}^\prime = \mathbf{E} / (B_0)`` is the normalized electric field, ``\mathbf{B}^\prime = \mathbf{B} / B_0`` is the normalized magnetic field, and ``x^\prime = x / L``. ``L`` is the length scale we can choose to decide how many discrete point to have within one gyroradius. For instance, if ``L = r_{L 0}``, then 1 unit distance in the dimensionless system is 1 gyroradius for a particle with ``\gamma_0`` under ``B_0``; if ``L = 4 r_{L 0}``, then 1 unit distance in the dimensionless system is 4 gyroradii for a particle with ``\gamma_0`` under ``B_0``. The smaller ``r_{L0} / L`` is, the more likely a particle will experience an inhomogeneous magnetic field during gyration, and the more likely it will get scattered. Note that ``\gamma^\prime`` is also a function of ``\mathbf{v}``:
 # ```math
-# \gamma^\prime = \sqrt{\frac{1}{\gamma_0^2} + {\mathbf{u}^\prime}^2}
+# \gamma^\prime = \gamma / \gamma_0 =  \sqrt{\frac{1 - v_0^2/c^2}{1 - v^2/c^2}}
 # ```
-# Most of the time, ``1 / \gamma_0 \rightarrow 0`` since cosmic rays are of high energy.
+# In practice, at least in the interstellar medium, the effect of the electric field over high-energy (multi TeV) cosmic rays can be neglected. Therefore, energy is conserved and we are interested in looking at the scattering and diffusion processes. ``\gamma^\prime = 1`` without considering radiative loss or re-acceleration.
 
-# Let us first look at a simpler case without the electric field:
+# Thus, the normalized equations can be further simplified:
+# ```math
+# \begin{aligned}
+# \frac{\mathrm{d}\mathbf{v}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime \times \mathbf{B}^\prime \\
+# \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \frac{r_{L 0}}{L} \mathbf{v}^\prime
+# \end{aligned}
+# ```
+# By taking ``q=1, m=1, c=1, B_0=1``, the characteristic length and frequency scales are
+# ```math
+# \begin{aligned}
+# r_{L0} = \frac{\gamma_0 m c^2}{e\, B_0} = \gamma_0 \\
+# \Omega_0 = \frac{e\, B_0}{m\, c^2} = 1
+# \end{aligned}
+# ```
+# In the original MHD solution, everything is dimensionless. A standard procedure is as follows:
+# 1. Obtain the dimensionless MHD solution.
+# 2. Normalize the magnetic field with its background mean magnitude, such that in the new field, ``B_0 = 1``. This has a clear physical meaning that a particle with velocity 1 has a gyroradii of 1 and a gyroperiod of  ``2\pi``.
+# 3. Normalize the length by ``L``, such that 1 unit distance in the dimensionless system is equivalent to ``L / r_{L 0}`` gyroradius for a charged particle with initial Lorentz factor ``\gamma_0``. We are free to scale the spatial length. If we have ``nx`` discrete points along that direction, then the grid size is ``dx = L / nx``. For simplicity, we can set the MHD domain extent to be ``[-0.5*np, 0.5*np]`` and ``r_{L0}=1``, where ``np`` is the number of points contained within one gyroradius. If ``np = 1``, ``L = r_{L 0}``; if ``np=2``, ``L = 2 r_{L 0}``, etc. The actual equations we solve are
 # ```math
 # \begin{aligned}
 # \frac{\mathrm{d}\mathbf{v}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime \times \mathbf{B}^\prime \\
 # \frac{\mathrm{d}\mathbf{x}^\prime}{\mathrm{d} t^\prime} &= \mathbf{v}^\prime
 # \end{aligned}
 # ```
-# This is simply the normalized Lorentz equation. By taking ``q=1, m=1``, the length and time scales are
-# ```math
-# \begin{aligned}
-# x_0 = r_{L0} = \frac{\gamma_0 m c^2}{e\, B_0} = \gamma_0 / B_0 \\
-# t_0 = \Omega_0^{-1} = \frac{m\, c^2}{e\, B_0} = 1 / B_0
-# \end{aligned}
-# ```
-# In the original MHD solution, everything is dimensionless. There, the ratio between the initial Larmor radius ``r_{L0}`` and the simulation box scale length ``L`` becomes important, as this determines how many discrete points are involved within a gyroradius. The smaller ``r_{L0} / L`` is, the more likely a particle will experience an inhomogeneous magnetic field during gyration, and the more likely it will get scattered.
-# One way to think about this is as follows: when we get a magnetic field, we always normalize it with the background mean magnitude, such that in the dimensionless system the gyroperiod becomes ``2\pi``. We also normalize the length by ``r_{L0}``, such that in the dimensionless system distance 1 means one gyroradii for a charged particle with initial Lorentz factor ``\gamma_0``. We are free to scale the spatial length. For instance, if ``L = 4``, that means for a particle with velocity 1, the gyroradii is 1/4 of the whole simulation domain. If we have ``nx`` discrete points along that direction, then the grid size is ``dx = L / nx``. The more points we can cover within distance 1, the more turbulent a field can be represented.
+# where the grid is now ...
 
 # Now let's demonstrate this with `trace_normalized!`.
 
