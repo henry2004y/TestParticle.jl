@@ -25,7 +25,7 @@ uniform_B(x) = SA[0, 0, 1e-8]
 uniform_E(x) = SA[1e-9, 0, 0]
 
 ## Trace the orbit of the guiding center
-function trace_gc!(dx, x, p, t)
+function trace_gc_ExB!(dx, x, p, t)
    _, E, B, sol = p
    xu = sol(t)
    Bv = B(x)
@@ -49,7 +49,7 @@ sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
-prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+prob_gc = ODEProblem(trace_gc_ExB!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern9(); save_idxs=[1,2,3]);
 
 ## Numeric and analytic results
@@ -71,7 +71,7 @@ lines!(ax, sol_gc, idxs=(1, 2, 3), linestyle=:dash, color=Makie.wong_colors()[3]
 
 f = DisplayAs.PNG(f) #hide
 
-# Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that `trace_gc!` here depends on the velocity at time `t` from the particle trajectory, which is not exactly the guiding center velocity.
+# Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that `trace_gc_ExB!` here depends on the velocity at time `t` from the particle trajectory, which is not exactly the guiding center velocity.
 # A first-order GC approximation tracker would be the following:
 
 stateinit_gc, param_gc = prepare_gc(stateinit, uniform_E, uniform_B, species=Proton, removeExB=false)
