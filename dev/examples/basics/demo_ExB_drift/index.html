@@ -10,7 +10,7 @@ uniform_B(x) = SA[0, 0, 1e-8]
 uniform_E(x) = SA[1e-9, 0, 0]
 
 # Trace the orbit of the guiding center
-function trace_gc!(dx, x, p, t)
+function trace_gc_ExB!(dx, x, p, t)
    _, E, B, sol = p
    xu = sol(t)
    Bv = B(x)
@@ -34,7 +34,7 @@ sol = solve(prob, Vern9())
 # Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
-prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+prob_gc = ODEProblem(trace_gc_ExB!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern9(); save_idxs=[1,2,3]);
 
 # Numeric and analytic results
@@ -53,7 +53,7 @@ gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 lines!(ax, sol, idxs=(1, 2, 3), color=Makie.wong_colors()[1])
 lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6), color=Makie.wong_colors()[2])
 lines!(ax, sol_gc, idxs=(1, 2, 3), linestyle=:dash, color=Makie.wong_colors()[3])
-</code></pre><p><img src="../demo_ExB_drift-4.png" alt/></p><p>Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that <code>trace_gc!</code> here depends on the velocity at time <code>t</code> from the particle trajectory, which is not exactly the guiding center velocity. A first-order GC approximation tracker would be the following:</p><pre><code class="language-julia hljs">stateinit_gc, param_gc = prepare_gc(stateinit, uniform_E, uniform_B, species=Proton, removeExB=false)
+</code></pre><p><img src="../demo_ExB_drift-4.png" alt/></p><p>Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that <code>trace_gc_ExB!</code> here depends on the velocity at time <code>t</code> from the particle trajectory, which is not exactly the guiding center velocity. A first-order GC approximation tracker would be the following:</p><pre><code class="language-julia hljs">stateinit_gc, param_gc = prepare_gc(stateinit, uniform_E, uniform_B, species=Proton, removeExB=false)
 prob_gc1st = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 sol_gc1st = solve(prob_gc1st, Vern9())
 
@@ -69,4 +69,4 @@ ax = Axis3(f[1, 1],
 
 lines!(ax, sol, idxs=(1, 2, 3), color=Makie.wong_colors()[1])
 lines!(ax, sol_gc1st, idxs=(1, 2, 3), linestyle=:dash, color=Makie.wong_colors()[3])
-</code></pre><p><img src="../demo_ExB_drift-6.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.9.0 on <span class="colophon-date" title="Sunday 30 March 2025 19:12">Sunday 30 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_ExB_drift-6.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.0 on <span class="colophon-date" title="Monday 31 March 2025 05:18">Monday 31 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

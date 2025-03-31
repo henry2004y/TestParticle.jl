@@ -11,7 +11,7 @@ uniform_B(x) = SA[0, 0, 1e-8]
 uniform_E(x) = SA[1e-9, 0, 0]
 
 # Trace the orbit of the guiding center
-function trace_gc!(dx, x, p, t)
+function trace_gc_ExB!(dx, x, p, t)
    _, E, B, sol = p
    xu = sol(t)
    Bv = B(x)
@@ -35,7 +35,7 @@ sol = solve(prob, Vern9())
 # Functions for obtaining the guiding center from actual trajectory
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
-prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+prob_gc = ODEProblem(trace_gc_ExB!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern9(); save_idxs=[1,2,3]);
 
 # Numeric and analytic results
