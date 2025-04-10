@@ -162,6 +162,9 @@ end
       stateinit = [r₀..., v₀...]
       tspan = (0.0, 1.0)
 
+      @test sum(TestParticle.getB_CS_harris(
+         [1.0, 0.0, 1.0], 1.0, 1.0, 2.0)) == 2.761594155955765
+
       param = prepare(TestParticle.getE_dipole, TestParticle.getB_dipole)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
