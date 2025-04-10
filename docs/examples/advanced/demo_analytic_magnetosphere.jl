@@ -163,6 +163,6 @@ end
 
 rotate!(ax.scene, Vec3f(0, 0, 1), 1.4)
 trace_field!(ax, x, y, z, invRE, getB_superposition_harris; rmin=4Rₑ, rmax=8Rₑ, nϕ=8)
-scale!(ax.scene, 2.0, 2.0, 2.0)
+scale!(ax.scene, 4.0, 4.0, 4.0)
 
 f = DisplayAs.PNG(f) #hide
