@@ -88,7 +88,7 @@ function plot_B!(ax)
    B = map(p -> Vec3f(getB(p.*Rₑ)./B₀), ps)
    Bmag = norm.(B)
 
-   arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.2, arrowsize = 0.02)
+   arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.4, arrowsize = 0.05)
 end
 
 plot_B!(ax)
