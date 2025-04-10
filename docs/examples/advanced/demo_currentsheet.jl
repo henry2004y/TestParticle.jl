@@ -1,9 +1,9 @@
 # ---
 # title: Current sheet
 # id: demo_currentsheet
-# date: 2023-04-20
+# date: 2024-04-09
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
+# julia: 1.11.4
 # description: Tracing charged particle in the Harris current sheet
 # ---
 
@@ -13,19 +13,20 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: getB_CS_harris
+using TestParticle: getB_CS_harris, c, Rₑ
 using OrdinaryDiffEq
 using StaticArrays
+using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 ### Obtain field
 
-## Harris current sheet parameters in SI units
-const B₀, L = 20e-9, 0.4TestParticle.Rₑ
+## Harris current sheet parameters in SI units. Bn is the z-component.
+const B₀, Bn, L = 20e-9, 2e-9, 0.4TestParticle.Rₑ
 
 function getB(xu)
-   SVector{3}(getB_CS_harris(xu[1:3], B₀, L))
+   SVector{3}(getB_CS_harris(xu[1:3], B₀, L, Bn))
 end
 
 function getE(xu)
@@ -36,26 +37,27 @@ end
 
 m = TestParticle.mᵢ
 q = TestParticle.qᵢ
-c = TestParticle.c
-Rₑ = TestParticle.Rₑ
 ## Initial condition
 stateinit = let
    ## initial particle energy, [eV]
-   Ek = 5e7
+   Ek = 8e3
    ## initial velocity, [m/s]
-   v₀ = [c*√(1-1/(1+Ek*q/(m*c^2))^2), 0.0, 0.0]
+   vmag = c*√(1-1/(1+Ek*q/(m*c^2))^2)
+   θ = -60
+   ϕ = 30
+   v₀ = [vmag*cosd(θ), vmag*sind(θ)*sind(ϕ), vmag*sind(θ)*cosd(ϕ)]
    ## initial position, [m]
-   r₀ = [-5.0Rₑ, 0.0, 0.0]
+   r₀ = [1Rₑ, 0Rₑ, 1Rₑ]
 
    [r₀..., v₀...]
 end
 
 param = prepare(getE, getB)
-tspan = (0.0, 10.0)
+tspan = (0.0, -400.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol = solve(prob, Tsit5(); save_idxs=[1,2,3])
+sol = solve(prob, Vern9())
 
 ### Visualization
 
@@ -68,7 +70,7 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-n = 100 # number of timepoints
+n = 2000 # number of timepoints
 ts = range(tspan..., length=n)
 x = sol(ts, idxs=1)./Rₑ |> Vector
 y = sol(ts, idxs=2)./Rₑ |> Vector
@@ -77,25 +79,18 @@ z = sol(ts, idxs=3)./Rₑ |> Vector
 l = lines!(ax, x, y, z, label="50 MeV proton, B0 = 20 nT")
 axislegend()
 
-X, Y, Z = let xrange = range(-8, 8, length=20)
-   X = collect(Float32, xrange)
-   Y = zeros(Float32, size(X)...)
-   Z = zeros(Float32, size(X)...)
-   X, Y, Z
+function plot_B!(ax)
+   xrange = range(-5, 3, length=5)
+   yrange = range(-1, 1, length=5)
+   zrange = range(-2, 2, length=5)
+
+   ps = [Point3f(x, y, z) for x in xrange for y in yrange for z in zrange]
+   B = map(p -> Vec3f(getB(p.*Rₑ)./B₀), ps)
+   Bmag = norm.(B)
+
+   arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.04, arrowsize = 0.02)
 end
 
-B = zeros(Float32, 3, size(X)...)
-
-i = 1
-for (x,y) in zip(X, Y)
-   B[1+3*(i-1):3*i] = getB_CS_harris([x,0.0,0.0], 4e-2, 1.0)
-   global i += 1
-end
-
-for s = 1:3
-   quiver!(ax, X, Y, Z, vec(B[1,:,:]), vec(B[2,:,:]), vec(B[3,:,:]),
-      color=:black, alpha=0.6, lengthscale=100.0)
-   @. Y -= 15
-end
+plot_B!(ax)
 
 f = DisplayAs.PNG(f) #hide
