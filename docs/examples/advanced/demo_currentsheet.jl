@@ -9,7 +9,7 @@
 
 # This example shows how to trace protons in a stationary magnetic field that corresponds to
 # the 1D Harris current sheet defined by a reference strength and width.
-# Reference: https://en.wikipedia.org/wiki/Current_sheet
+# A Wiki reference can be found [here](https://en.wikipedia.org/wiki/Current_sheet).
 
 import DisplayAs #hide
 using TestParticle
@@ -88,7 +88,7 @@ function plot_B!(ax)
    B = map(p -> Vec3f(getB(p.*Rₑ)./B₀), ps)
    Bmag = norm.(B)
 
-   arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.04, arrowsize = 0.02)
+   arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.2, arrowsize = 0.02)
 end
 
 plot_B!(ax)
