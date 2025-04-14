@@ -1,14 +1,22 @@
 # ---
 # title: Flux
 # id: demo_flux
-# date: 2024-04-13
+# date: 2025-04-13
 # author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.11.4
 # description: Estimation of particle flux
 # ---
 
 # This demo shows how to estimate particle flux using TestParticle.jl.
-# We assume zero EM fields with constant particle velocities along the x-direction.
+# For the flux estimation to be accurate, we need to guarantee that
+# 1. The number of test particles are enough to avoid statistical errors.
+# 2. The source is properly selected. For instance, we usually sample from plasma moments of a known density, velocity and pressure. ``n*U`` gives us the source flux in units of [particles / s / m²]. If our source plane does not include all the possible sources, we will underestimate the target flux. Therefore, we need to make sure that our source plane covers all the launching possibilities, e.g. a closed sphere. Under the steady state assumption, we use the source launching time ``T`` in the denominator of calculating the flux. This time cancels out since there is also a ``T`` in the numerator.
+# The target flux is then estimated as
+# ```math
+# J = \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S 
+# ```
+#
+# In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not. The total number flux [particles / s] is then obtained by counting all impacting particles, while the flux density [particles / s / m²] is determined by counting the impacting particles within a specific area.
 
 using TestParticle
 using OrdinaryDiffEq
@@ -72,7 +80,7 @@ flux = estimate_flux_plane(sols, plane_loc, count_time)
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 
-# The estimated particle flux shall match the source flux in this example. However, in general cases the particle flux through a given surface should be equal or smaller than the source flux. We should also take the area into account.
+# In this example, we assume zero EM fields with constant particle velocities along the x-direction. The estimated particle flux shall match the source flux in this example. However, in general cases the particle flux through a given surface should be equal or smaller than the source flux. We should also take the area into account.
 #
 # The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source. We try to estimate the particle flux through a sphere at radius r.
 
@@ -121,13 +129,3 @@ flux = estimate_flux_sphere(sols, r, count_time)
 println("Example 2:")
 println("Particle flux through sphere r = $r [m]: ", flux, " /s")
 println("Particle flux density through sphere r = $r [m]: ", flux / area, " /(s * m²)")
-
-# For the flux estimation to be accurate, we need to guarantee that
-# 1. The number of test particles are enough to avoid statistical errors.
-# 2. The source is properly selected. For instance, we usually sample from plasma moments of a known density, velocity and pressure. ``n*U`` gives us the source flux in units of [particles / s / m²]. If our source plane does not include all the possible sources, we will underestimate the target flux. Therefore, we need to make sure that our source plane covers all the launching possibilities, e.g. a closed sphere. Under the steady state assumption, we use the source launching time ``T`` in the denominator of calculating the flux. This time cancels out since there is also a ``T`` in the numerator.
-# The target flux is then estimated as
-# ```math
-# J = \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S 
-# ```
-#
-# In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not. The total number flux [particles / s] is then obtained by counting all impacting particles, while the flux density [particles / s / m²] is determined by counting the impacting particles within a specific area.
