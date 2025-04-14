@@ -4,6 +4,7 @@
      "demo_boris_outofdomain.jl",
      "demo_cosmicray.jl",
      "demo_ensemble.jl",
+     "demo_flux.jl",
      "demo_savingcallback.jl",
      "demo_output_func.jl",
      "demo_currentsheet.jl",
