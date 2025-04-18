@@ -36,7 +36,7 @@ using NPZ
 
 vars = npzread("my_field.npz")
 B = vars["data"] # size (nx, ny, nz, 3)
-B = permutedim(B, (4,1,2,3)) # size (3, nx, ny, nz)
+B = permutedims(B, (4,1,2,3)) # size (3, nx, ny, nz)
 # Validation
 println(B[2,1,2,3]) # should be 26
 ```
