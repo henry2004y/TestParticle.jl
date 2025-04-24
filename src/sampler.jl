@@ -8,9 +8,9 @@ abstract type VDF end
 """
 Type for Maxwellian velocity distributions. 
 """
-struct Maxwellian{T <: AbstractFloat} <: VDF
+struct Maxwellian{V <: AbstractVector, T <: AbstractFloat} <: VDF
 	"Bulk velocity"
-	u0::Vector{T}
+	u0::V
 	"Thermal speed"
 	vth::T
 end
@@ -25,17 +25,17 @@ function Maxwellian(u0::AbstractVector{T}, p, n; m = mᵢ) where T
 	@assert length(u0) == 3 "Bulk velocity must have length 3!"
 	vth = √(p / (n * m))
 
-	Maxwellian{T}(u0, vth)
+	Maxwellian{typeof(u0), T}(u0, vth)
 end
 
 """
 Type for BiMaxwellian velocity distributions with respect to the magnetic field.
 """
-struct BiMaxwellian{T <: AbstractFloat, U} <: VDF
+struct BiMaxwellian{V <: AbstractVector, T <: AbstractFloat, U <: AbstractFloat} <: VDF
 	"Unit magnetic field"
-	b0::Vector{U}
+	b0::V
 	"Bulk velocity"
-	u0::Vector{T}
+	u0::V
 	"Parallel thermal velocity"
 	vthpar::T
 	"Perpendicular thermal velocity"
@@ -63,7 +63,7 @@ function BiMaxwellian(
 	vpar = √(ppar / (n * m))
 	vperp = √(pperp / (n * m))
 
-	BiMaxwellian{T, U}(b0, u0, vpar, vperp)
+	BiMaxwellian{typeof(B), T, U}(b0, u0, vpar, vperp)
 end
 
 """
@@ -75,7 +75,7 @@ Sample a 3D velocity from a [`Maxwellian`](@ref) distribution `vdf` using the Bo
 
 Sample a 3D velocity from a [`BiMaxwellian`](@ref) distribution `vdf` using the Box-Muller method.
 """
-function sample(vdf::Maxwellian{T}) where T
+function sample(vdf::Maxwellian{U, T}) where {U, T}
 	r1, r2, θ, ϕ = rand(SVector{4, T})
 	m1 = √(-2*log(r1))
 	m2 = √(-2*log(r2))
@@ -89,7 +89,7 @@ function sample(vdf::Maxwellian{T}) where T
 	v = @. vdf.u0 + v1v + v2v + v3v
 end
 
-function sample(vdf::BiMaxwellian{T, U}) where {T, U}
+function sample(vdf::BiMaxwellian{V, T, U}) where {V, T, U}
 	r1, r2, θ, ϕ = rand(SVector{4, T})
 	m1 = √(-2*log(r1))
 	m2 = √(-2*log(r2))

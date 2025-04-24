@@ -63,7 +63,7 @@ end
 	end
 
 	@testset "sampling" begin
-		u0 = [0.0, 0.0, 0.0]
+		u0 = SA[0.0, 0.0, 0.0]
 		p = 1e-9 # [Pa]
 		n = 1e6 # [/m³]
 		vdf = Maxwellian(u0, p, n)
@@ -194,6 +194,13 @@ end
 
 		@test sum(TP.getB_CS_harris(
 			[1.0, 0.0, 1.0], 1.0, 1.0, 2.0)) == 2.761594155955765
+
+		@test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] == -3.673352034653548e-48
+		@test TP.getB_tokamak_coil(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)[1] ==
+				-1.196424672603716e-6
+		q_profile(nr) = nr^2 + 2*nr + 0.5
+		@test TP.getB_tokamak_profile(1.0, 1.0, 1.0, q_profile, 2.0, 1.0, 1.0)[1] ==
+				-0.7666260799054282
 
 		param = prepare(TP.getE_dipole, TP.getB_dipole)
 		prob = ODEProblem(trace!, stateinit, tspan, param)
