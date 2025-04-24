@@ -2,6 +2,7 @@
 
 using BenchmarkTools
 using TestParticle
+import TestParticle as TP
 using OrdinaryDiffEq, Meshes, StaticArrays
 
 const SUITE = BenchmarkGroup()
@@ -62,9 +63,9 @@ SUITE["trace"]["numerical field"]["in place"] =
 SUITE["trace"]["numerical field"]["out of place"] =
     @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
 SUITE["trace"]["numerical field"]["Boris"] =
-    @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10)
+    @benchmarkable TP.solve($prob_boris; dt=1/7, savestepinterval=10)
 SUITE["trace"]["numerical field"]["Boris ensemble"] =
-    @benchmarkable TestParticle.solve($prob_boris; dt=1/7, savestepinterval=10, trajectories=2)
+    @benchmarkable TP.solve($prob_boris; dt=1/7, savestepinterval=10, trajectories=2)
 
 param_td = prepare(E_td, B_td, F_td)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
@@ -74,7 +75,7 @@ SUITE["trace"]["time-dependent field"]["in place"] =
 SUITE["trace"]["time-dependent field"]["out of place"] =
     @benchmarkable solve($prob_oop, Tsit5(); save_idxs=[1,2,3])
 
-stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, E_analytic, B_analytic,
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, E_analytic, B_analytic,
    species=Proton, removeExB=true)
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["in place"] = @benchmarkable solve($prob_gc, Vern9())

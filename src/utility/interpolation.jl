@@ -5,8 +5,8 @@
     getinterp(A, gridx, gridy, order::Int=1, bc::Int=1)
     getinterp(A, gridx, order::Int=1, bc::Int=1, dir::Int=1)
 
-Return a function for interpolating array `A` on the grid given by `gridx`, `gridy`, and
-`gridz`.
+Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
+and `gridz`.
 
 # Arguments
 - `order::Int=1`: order of interpolation in [1,2,3].
@@ -132,4 +132,65 @@ function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
    end
 
    itpx, itpy, itpz
+end
+
+"""
+    getinterp_scalar(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+
+Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`,
+and `gridz`.
+
+# Arguments
+- `order::Int=1`: order of interpolation in [1,2,3].
+- `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+- `dir::Int`: 1/2/3, representing x/y/z direction.
+"""
+function getinterp_scalar(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+
+   itp = _getinterp_scalar(A, order, bc)
+
+   interp = scale(itp, gridx, gridy, gridz)
+
+   # Return field value at a given location.
+   function get_field(xu)
+      r = @view xu[1:3]
+
+      return interp(r...)
+   end
+
+   return get_field
+end
+
+function _getinterp_scalar(A, order::Int, bc::Int)
+   gt = OnCell()
+
+   if bc == 1
+      if order == 1
+         itp = extrapolate(interpolate(A, BSpline(Linear())), NaN)
+      elseif order == 2
+         itp = extrapolate(interpolate(A, BSpline(Quadratic(Flat(gt)))), NaN)
+      elseif order == 3
+         itp = extrapolate(interpolate(A, BSpline(Cubic(Flat(gt)))), NaN)
+      end
+   elseif bc == 2
+      bctype = Periodic()
+      if order == 1
+         itp = extrapolate(interpolate(A, BSpline(Linear(Periodic(gt)))), bctype)
+      elseif order == 2
+         itp = extrapolate(interpolate(A, BSpline(Quadratic(Periodic(gt)))), bctype)
+      elseif order == 3
+         itp = extrapolate(interpolate(A, BSpline(Cubic(Periodic(gt)))), bctype)
+      end
+   else
+      bctype = Flat()
+      if order == 1
+         itp = extrapolate(interpolate(A, BSpline(Linear())), bctype)
+      elseif order == 2
+         itp = extrapolate(interpolate(A, BSpline(Quadratic(Flat(gt)))), bctype)
+      elseif order == 3
+         itp = extrapolate(interpolate(A, BSpline(Cubic(Flat(gt)))), bctype)
+      end      
+   end
+
+   itp
 end

@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
@@ -59,7 +60,7 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
+sol_boris = TP.solve(prob; dt, savestepinterval=1);
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -78,7 +79,7 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
+sol_boris = TP.solve(prob; dt, savestepinterval=1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
@@ -95,7 +96,7 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
+sol_boris = TP.solve(prob_boris; dt, savestepinterval=10);
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 sol2 = solve(prob, Tsit5());
 
@@ -107,7 +108,7 @@ f = DisplayAs.PNG(f) #hide
 #
 # Another aspect to compare is performance:
 
-@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10)[1];
+@time sol_boris = TP.solve(prob_boris; dt, savestepinterval=10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 @time sol2 = solve(prob, Tsit5());
 

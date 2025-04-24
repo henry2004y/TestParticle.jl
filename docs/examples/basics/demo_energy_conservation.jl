@@ -11,6 +11,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra: ×
@@ -21,12 +22,12 @@ const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]
 
 "f2"
-function location!(dx, v, x, p::TestParticle.TPTuple, t)
+function location!(dx, v, x, p::TP.TPTuple, t)
    dx .= v
 end
 
 "f1"
-function lorentz!(dv, v, x, p::TestParticle.TPTuple, t)
+function lorentz!(dv, v, x, p::TP.TPTuple, t)
    q2m, E, B = p
    dv .= q2m*(E(x, t) + v × (B(x, t)))
 end
@@ -66,7 +67,7 @@ param_proton = prepare(zero_E, uniform_B, species=Proton)
 
 prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_proton)
 
-Ωᵢ = TestParticle.qᵢ * B₀ / TestParticle.mᵢ
+Ωᵢ = TP.qᵢ * B₀ / TP.mᵢ
 Tᵢ = 2π / Ωᵢ
 println("Number of gyrations: ", tspan_proton[2] / Tᵢ)
 
@@ -100,7 +101,7 @@ prob_p = DynamicalODEProblem(lorentz!, location!, v0, x0, tspan_proton, param_pr
 
 sol = solve(prob_p, Vern6())
 
-energy = map(x -> E(x[1:3]...), sol.u) .* TestParticle.mᵢ;
+energy = map(x -> E(x[1:3]...), sol.u) .* TP.mᵢ;
 
 # Predicted final speed
 println("predicted final speed: $v_final_predict [m/s]") #hide
@@ -113,4 +114,4 @@ println("simulated travel distance: $(sol.u[end][4]) [m]") #hide
 # Predicted final energy
 println("predicted energy gain: $E_predict [eV]") #hide
 # Simulated final energy
-println("simulated final energy: $(energy[end] / TestParticle.qᵢ) [eV]") #hide
+println("simulated final energy: $(energy[end] / TP.qᵢ) [eV]") #hide

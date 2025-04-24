@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using TestParticle: getB_tokamak_coil
 using OrdinaryDiffEq
 using StaticArrays
@@ -39,9 +40,9 @@ function getE(xu)
 end
 
 ### Initialize particles
-m = TestParticle.mᵢ
-q = TestParticle.qᵢ
-c = TestParticle.c
+m = TP.mᵢ
+q = TP.qᵢ
+c = TP.c
 
 ## initial velocity, [m/s]
 v₀ = [-0.1, -0.15, 0.0] .* c
