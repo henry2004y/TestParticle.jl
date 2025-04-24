@@ -1,5 +1,6 @@
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using StaticArrays
 using OrdinaryDiffEq
 using CairoMakie
@@ -44,7 +45,7 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
+sol_boris = TP.solve(prob; dt, savestepinterval=1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
@@ -58,7 +59,7 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob; dt, savestepinterval=1);
+sol_boris = TP.solve(prob; dt, savestepinterval=1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
@@ -73,7 +74,7 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10);
+sol_boris = TP.solve(prob_boris; dt, savestepinterval=10);
 sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 sol2 = solve(prob, Tsit5());
 
@@ -81,7 +82,7 @@ sol2 = solve(prob, Tsit5());
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
-@time sol_boris = TestParticle.solve(prob_boris; dt, savestepinterval=10)[1];
+@time sol_boris = TP.solve(prob_boris; dt, savestepinterval=10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
 @time sol2 = solve(prob, Tsit5());
 
