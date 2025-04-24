@@ -31,7 +31,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using TestParticle: kB, mₑ, Rₑ, qₑ
+using TestParticle: mₑ, Rₑ, qₑ
 using Random
 using FHist
 using CairoMakie, Printf

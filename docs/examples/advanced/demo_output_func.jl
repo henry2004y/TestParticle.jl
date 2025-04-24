@@ -17,7 +17,6 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
-using TestParticle: qᵢ, mᵢ
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using Random

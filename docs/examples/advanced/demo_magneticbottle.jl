@@ -14,7 +14,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
-using TestParticle: getB_bottle
 using Printf
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -31,7 +30,7 @@ const a = 4.0 # radius of each coil
 const b = 8.0 # radius of central coil
 
 function getB(xu)
-   SVector{3}(getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1*N1, I2*N2))
+   SVector{3}(TP.getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1*N1, I2*N2))
 end
 
 function getE(xu)

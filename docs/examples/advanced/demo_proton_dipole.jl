@@ -11,7 +11,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
-using TestParticle: getB_dipole, getE_dipole, sph2cart, dipole_fieldline, mᵢ, qᵢ, c, Rₑ
+using TestParticle: mᵢ, qᵢ, c, Rₑ
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -20,13 +20,13 @@ stateinit = let
    ## Initial particle energy
    Ek = 5e7 # [eV]
    ## initial velocity, [m/s]
-   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
    ## initial position, [m]
-   r₀ = sph2cart(2.5*Rₑ, 0.0, π/2)
+   r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
    [r₀..., v₀...]
 end
 ## obtain field
-param = prepare(getE_dipole, getB_dipole)
+param = prepare(TP.getE_dipole, TP.getB_dipole)
 tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -52,7 +52,7 @@ l = lines!(ax, sol, idxs=(1, 2, 3))
 scale!(ax.scene, invRE, invRE, invRE)
 
 for ϕ in range(0, stop=2*π, length=10)
-   lines!(dipole_fieldline(ϕ).*Rₑ..., color=:tomato, alpha=0.3)
+   lines!(TP.dipole_fieldline(ϕ).*Rₑ..., color=:tomato, alpha=0.3)
 end
 
 f = DisplayAs.PNG(f) #hide

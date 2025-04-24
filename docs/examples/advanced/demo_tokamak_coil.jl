@@ -14,7 +14,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using TestParticle: getB_tokamak_coil
 using Statistics: mean
 using Printf
 using CairoMakie
@@ -30,7 +29,7 @@ const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
 function getB(xu)
-   SVector{3}(getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
+   SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 end
 
 function getE(xu)
