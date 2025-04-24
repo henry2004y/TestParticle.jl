@@ -1,5 +1,6 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center
+import TestParticle as TP
 using Meshes: CartesianGrid
 using Random, StableRNGs
 using Test
@@ -60,6 +61,7 @@ end
       @test r ≈ 919206.1737113602
       @test get_gyroperiod(B) ≈ 13.126233465754511
    end
+
    @testset "sampling" begin
       u0 = [0.0, 0.0, 0.0]
       p = 1e-9 # [Pa]
@@ -75,6 +77,18 @@ end
       v = sample(vdf)
       @test sum(v) == -961387.4020494563
       @test startswith(repr(vdf), "BiMaxwellian")
+   end
+
+   @testset "interpolation" begin
+      # scalar interpolation
+      nfunc = let
+         x = range(-10, 10, length=4)
+         y = range(-10, 10, length=6)
+         z = range(-10, 10, length=8)
+         n = [i+j+k for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
+         TP.getinterp_scalar(n, x, y, z) 
+     end
+     @test nfunc(SA[0, 0, 0]) == 10.5
    end
 
    @testset "numerical field" begin
@@ -150,22 +164,22 @@ end
       # in-place version
       Ek = 5e7 # [eV]
 
-      m = TestParticle.mᵢ
-      q = TestParticle.qᵢ
-      c = TestParticle.c
-      Rₑ = TestParticle.Rₑ
+      m = TP.mᵢ
+      q = TP.qᵢ
+      c = TP.c
+      Rₑ = TP.Rₑ
 
       # initial velocity, [m/s]
-      v₀ = TestParticle.sph2cart(energy2velocity(Ek; q, m), 0.0, π/4)
+      v₀ = TP.sph2cart(energy2velocity(Ek; q, m), 0.0, π/4)
       # initial position, [m]
-      r₀ = TestParticle.sph2cart(2.5*Rₑ, 0.0, π/2)
+      r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
       stateinit = [r₀..., v₀...]
       tspan = (0.0, 1.0)
 
-      @test sum(TestParticle.getB_CS_harris(
+      @test sum(TP.getB_CS_harris(
          [1.0, 0.0, 1.0], 1.0, 1.0, 2.0)) == 2.761594155955765
 
-      param = prepare(TestParticle.getE_dipole, TestParticle.getB_dipole)
+      param = prepare(TP.getE_dipole, TP.getB_dipole)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs=[1])
 
@@ -368,7 +382,7 @@ end
       tspan = (0.0, 0.5π) # 1/4 gyroperiod
       # periodic BC
       param = prepare(grid, E, B; species=Proton, bc=2)
-      @test param[3] isa TestParticle.Field
+      @test param[3] isa TP.Field
       @test startswith(repr(param[3]), "Field with")
       param = prepare(x, y, E, B; species=Proton, bc=2)
       prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
@@ -416,7 +430,7 @@ end
       param = prepare(zero_E, uniform_B2, species=Electron)
       prob = TraceProblem(stateinit, tspan, param)
 
-      sol = TestParticle.solve(prob; dt, savestepinterval=10)[1]
+      sol = TP.solve(prob; dt, savestepinterval=10)[1]
 
       @test sol.u[end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
          -62964.170425493256, -77688.56571355555, 0.0]
@@ -429,13 +443,13 @@ end
       prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris_mutable)
       trajectories = 4
       savestepinterval = 1000
-      sols = TestParticle.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
+      sols = TP.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
       @test sum(s -> sum(s.u[end]), sols) ≈ -1.4065273620640622e6
 
       prob = TraceProblem(stateinit, tspan, param; prob_func=prob_func_boris_immutable)
       trajectories = 2
       savestepinterval = 1000
-      sols = TestParticle.solve(prob; dt, savestepinterval, trajectories)
+      sols = TP.solve(prob; dt, savestepinterval, trajectories)
       @test sum(s -> sum(s.u[end]), sols) ≈ -421958.20861921855
 
       x0 = [-1.0, 0.0, 0.0]
@@ -445,14 +459,14 @@ end
       dt = 1e-4
       param = prepare(zero_E, time_varying_B, species=Electron)
       prob = TraceProblem(stateinit, tspan, param)
-      sol = TestParticle.solve(prob; dt, savestepinterval=100)[1]
+      sol = TP.solve(prob; dt, savestepinterval=100)[1]
       @test sol[1, end] ≈ -512.8807058314515
    end
 
    @testset "MagnetoStatics" begin
-      B = TestParticle.getB_mirror(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+      B = TP.getB_mirror(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
       @test B[3] == 8.99176285573213e-7
-      B = TestParticle.getB_bottle(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+      B = TP.getB_bottle(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0)
       @test B[3] == 1.5274948162911718e-6
    end
 
@@ -466,7 +480,7 @@ end
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Vern9())
 
-      stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
+      stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
          species=Proton, removeExB=true)
 
       prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
@@ -480,7 +494,7 @@ end
       @test sol_gc[1,end] ≈ 0.9896155284173717
       @test sol_gc_analytic[1,end] ≈ 0.9906923500002904 rtol=1e-5
 
-      stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
+      stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
          species=Proton, removeExB=false)
       prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
       sol_gc = solve(prob_gc, Vern9())
