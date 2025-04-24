@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using TestParticle: getB_CS_harris, c, Rₑ
 using OrdinaryDiffEq
 using StaticArrays
@@ -23,7 +24,7 @@ CairoMakie.activate!(type = "png") #hide
 ### Obtain field
 
 ## Harris current sheet parameters in SI units. Bn is the z-component.
-const B₀, Bn, L = 20e-9, 2e-9, 0.4TestParticle.Rₑ
+const B₀, Bn, L = 20e-9, 2e-9, 0.4TP.Rₑ
 
 function getB(xu)
    SVector{3}(getB_CS_harris(xu[1:3], B₀, L, Bn))
@@ -35,8 +36,8 @@ end
 
 ### Initialize particles
 
-m = TestParticle.mᵢ
-q = TestParticle.qᵢ
+m = TP.mᵢ
+q = TP.qᵢ
 ## Initial condition
 stateinit = let
    ## initial particle energy, [eV]

@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using TestParticle: getB_bottle
 using OrdinaryDiffEq
 using StaticArrays
@@ -40,9 +41,9 @@ function getE(xu)
 end
 
 ### Initialize particles
-m = TestParticle.mₑ
-q = TestParticle.qₑ
-c = TestParticle.c
+m = TP.mₑ
+q = TP.qₑ
+c = TP.c
 
 ## initial velocity, [m/s]
 v₀ = [2.75, 2.5, 1.3] .* 0.03c  # confined

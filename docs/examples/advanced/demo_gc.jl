@@ -12,6 +12,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
@@ -39,7 +40,7 @@ param = prepare(uniform_E, curved_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
-stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, curved_B,
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
    species=Proton, removeExB=false)
 
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
@@ -58,7 +59,7 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
    B_numerical[:,i,j,k] = curved_B(x)
 end
 ##TODO Higher order interpolation leads to worse results --- needs investigations!
-stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, xrange, yrange, zrange,
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
    uniform_E, B_numerical, species=Proton, removeExB=false, order=1)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
@@ -103,7 +104,7 @@ stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
    [x0..., v0...]
 end
 
-stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, grad_B,
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B,
    species=Proton, removeExB=false)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
@@ -142,7 +143,7 @@ f = DisplayAs.PNG(f) #hide
 grad_B(x) = SA[0, 0, 1e-7 + 1e-8*x[2]]
 
 tspan = (0, 10)
-stateinit_gc, param_gc = TestParticle.prepare_gc(stateinit, uniform_E, grad_B,
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B,
    species=Proton, removeExB=false)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)

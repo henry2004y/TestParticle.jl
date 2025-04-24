@@ -18,6 +18,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using TestParticle: getB_mirror
 using OrdinaryDiffEq
 using StaticArrays
@@ -63,9 +64,9 @@ end
 Et(xu) = sqrt(xu[4]^2 + xu[5]^2 + xu[6]^2)
 
 ### Initialize particles
-m = TestParticle.mₑ
-q = TestParticle.qₑ
-c = TestParticle.c
+m = TP.mₑ
+q = TP.qₑ
+c = TP.c
 
 ## initial velocity, [m/s]
 v₀ = [2.75, 2.5, 1.3] .* 0.001c  # confined

@@ -30,6 +30,7 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
 using TestParticle: kB, mₑ, Rₑ, qₑ
 using OrdinaryDiffEq
 using Random
@@ -106,14 +107,14 @@ function isoutofdomain(xv, p, t)
 end
 
 function prob_func(prob, i, repeat)
-   x0 = [(0.5 + rand())*Rₑ, 0.0, 0.0] # launched in the core region
-   u0 = [0.0, 0.0, 0.0]
+   x0 = SA[(0.5 + rand())*Rₑ, 0.0, 0.0] # launched in the core region
+   u0 = SA[0.0, 0.0, 0.0]
    T₀ = 10 # [eV]
    vth = √(2T₀*abs(qₑ)/mₑ) # [m/s]
    vdf = Maxwellian(u0, vth)
-   v0 = TestParticle.sample(vdf)
+   v0 = TP.sample(vdf)
 
-   prob = @views remake(prob, u0=[x0..., v0...])
+   prob = remake(prob, u0=[x0..., v0...])
 end
 
 "Kinetic energy."
@@ -280,13 +281,13 @@ f = DisplayAs.PNG(f) #hide
 const δBfunc = let
    x = range(0.5Rₑ, 1.5Rₑ, length=10000)
    δB = get_B_perturb(x)
-   TestParticle.Field(TestParticle.getinterp(δB, x, 1, 3))
+   TP.Field(TP.getinterp(δB, x, 1, 3))
 end
 
 dt = 2e-4 # [s]
 param = prepare(E, Bcase2; species=Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TestParticle.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
+sols = TP.solve(prob; dt, trajectories, isoutofdomain, savestepinterval=100);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
