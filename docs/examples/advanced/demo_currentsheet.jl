@@ -14,6 +14,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
+using TestParticle: Rₑ
 using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -68,9 +69,9 @@ ax = Axis3(f[1, 1],
 
 n = 2000 # number of timepoints
 ts = range(tspan..., length=n)
-x = sol(ts, idxs=1)./TP.Rₑ |> Vector
-y = sol(ts, idxs=2)./TP.Rₑ |> Vector
-z = sol(ts, idxs=3)./TP.Rₑ |> Vector
+x = sol(ts, idxs=1)./Rₑ |> Vector
+y = sol(ts, idxs=2)./Rₑ |> Vector
+z = sol(ts, idxs=3)./Rₑ |> Vector
 
 l = lines!(ax, x, y, z, label="50 MeV proton, B0 = 20 nT")
 axislegend()
@@ -81,7 +82,7 @@ function plot_B!(ax)
    zrange = range(-2, 2, length=5)
 
    ps = [Point3f(x, y, z) for x in xrange for y in yrange for z in zrange]
-   B = map(p -> Vec3f(getB(p.*TP.Rₑ)./B₀), ps)
+   B = map(p -> Vec3f(getB(p.*Rₑ)./B₀), ps)
    Bmag = norm.(B)
 
    arrows!(ax, ps, B, fxaa=true, color=Bmag, lengthscale = 0.4, arrowsize = 0.05)
