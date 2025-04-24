@@ -138,7 +138,7 @@ end
     getinterp_scalar(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
 
 Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`,
-and `gridz`.
+and `gridz`. Currently only 3D arrays are supported.
 
 # Arguments
 - `order::Int=1`: order of interpolation in [1,2,3].
