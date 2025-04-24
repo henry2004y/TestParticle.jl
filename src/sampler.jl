@@ -16,12 +16,12 @@ struct Maxwellian{T<:AbstractFloat} <: VDF
 end
 
 """
-    Maxwellian(u0::Vector{T}, p::T, n; m=mᵢ)
+    Maxwellian(u0::AbstractVector{T}, p, n; m=mᵢ)
 
 Construct a Maxwellian distribution with bulk velocity `u0`, thermal pressure `p`, and
 number density `n` in SI units. The default particle is proton.
 """
-function Maxwellian(u0::Vector{T}, p::T, n; m=mᵢ) where T
+function Maxwellian(u0::AbstractVector{T}, p, n; m=mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
    vth = √(p / (n * m))
 
@@ -43,13 +43,13 @@ struct BiMaxwellian{T<:AbstractFloat, U} <: VDF
 end
 
 """
-    BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar::T, pperp::T, n; m=mᵢ)
+    BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar, pperp, n; m=mᵢ)
 
 Construct a BiMaxwellian distribution with magnetic field `B`, bulk velocity `u0`, parallel
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in
 SI units. The default particle is proton.
 """
-function BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar::T, pperp::T, n; m=mᵢ) where
+function BiMaxwellian(B::AbstractVector{U}, u0::AbstractVector{T}, ppar, pperp, n; m=mᵢ) where
    {T <: AbstractFloat, U <: AbstractFloat}
    @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
    b0 = normalize(B)
