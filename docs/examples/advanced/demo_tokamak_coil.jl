@@ -12,11 +12,9 @@
 # A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
 using TestParticle: getB_tokamak_coil
-using OrdinaryDiffEq
-using StaticArrays
 using Statistics: mean
 using Printf
 using CairoMakie
@@ -61,7 +59,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 ## Default Tsit5() alone does not work in this case! You need to set a maximum
 ## timestep to maintain stability, or choose a different algorithm as well.
 ## The sample figure in the gallery is generated with AB3() and dt=2e-11.
-sol = solve(prob, Tsit5(); dt=2e-11, save_idxs=[1,2,3])
+sol = solve(prob, Vern9(); dt=2e-11, save_idxs=[1,2,3])
 
 ### Visualization
 

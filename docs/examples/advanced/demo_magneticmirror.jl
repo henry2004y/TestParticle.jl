@@ -17,11 +17,9 @@
 # This example is based on `demo_magneticbottle.jl`.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using TestParticle: getB_mirror
-using OrdinaryDiffEq
-using StaticArrays
 using LinearAlgebra: normalize, norm, ⋅
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

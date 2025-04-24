@@ -12,11 +12,9 @@
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using TestParticle: getB_bottle
-using OrdinaryDiffEq
-using StaticArrays
 using Printf
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

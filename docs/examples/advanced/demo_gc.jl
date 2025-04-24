@@ -11,10 +11,8 @@
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using OrdinaryDiffEq
-using StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

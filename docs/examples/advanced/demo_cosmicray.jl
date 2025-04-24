@@ -67,9 +67,7 @@
 # Now let's demonstrate this with `trace_normalized!`.
 
 import DisplayAs #hide
-using TestParticle
-using StaticArrays
-using OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

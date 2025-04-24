@@ -16,10 +16,8 @@
 # Besides the regular outputs, we also save the magnetic field along the trajectory, together with the parallel velocity.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
-using OrdinaryDiffEq
-using StaticArrays
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using Random

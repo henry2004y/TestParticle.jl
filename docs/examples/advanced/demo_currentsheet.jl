@@ -12,11 +12,9 @@
 # A Wiki reference can be found [here](https://en.wikipedia.org/wiki/Current_sheet).
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using TestParticle: getB_CS_harris, c, Rₑ
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle: getB_CS_harris, c, Rₑs
 using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

@@ -10,7 +10,7 @@
 # This example shows how to trace protons of a certain energy in MHD plane shocks.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEqVerner
 using TestParticle: mᵢ, kB
 using LinearAlgebra
 using Statistics: mean, std

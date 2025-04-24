@@ -11,10 +11,8 @@
 # corresponds to an ITER-like Tokamak.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: getB_tokamak_profile
-using OrdinaryDiffEq
-using StaticArrays
 using GeometryBasics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

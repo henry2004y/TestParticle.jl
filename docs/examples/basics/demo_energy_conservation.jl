@@ -10,10 +10,8 @@
 # This example demonstrates the energy conservation of a single proton motion in two cases. The first one is under a uniform B field and zero E field. The second on is under a zero B field and uniform E field.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
-using OrdinaryDiffEq
-using StaticArrays
 using LinearAlgebra: ×
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

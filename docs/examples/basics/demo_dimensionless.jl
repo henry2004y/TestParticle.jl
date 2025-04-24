@@ -18,9 +18,8 @@
 # Now let's demonstrate this with `trace_normalized!` and `trace_relativistic_normalized!`.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
-using OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

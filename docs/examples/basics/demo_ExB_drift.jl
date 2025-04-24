@@ -13,9 +13,7 @@
 # More theoretical details can be found in [ExB Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#finite-e).
 
 import DisplayAs #hide
-using TestParticle
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using LinearAlgebra: ⋅, ×, normalize
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
