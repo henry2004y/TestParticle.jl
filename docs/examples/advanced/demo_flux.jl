@@ -13,8 +13,9 @@
 # 2. The source is properly selected. For instance, we usually sample from plasma moments of a known density, velocity and pressure. ``n*U`` gives us the source flux in units of [particles / s / m²]. If our source plane does not include all the possible sources, we will underestimate the target flux. Therefore, we need to make sure that our source plane covers all the launching possibilities, e.g. a closed sphere. Under the steady state assumption, we use the source launching time ``T`` in the denominator of calculating the flux. This time cancels out since there is also a ``T`` in the numerator.
 # The target flux is then estimated as
 # ```math
-# J = \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S 
+# J = \mathrm{h} / \mathrm{N} \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S 
 # ```
+# where ``\mathrm{h}`` is the number of particles that pass through the target and ``\mathrm{N}`` is the total number of test particles.
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not. The total number flux [particles / s] is then obtained by counting all impacting particles, while the flux density [particles / s / m²] is determined by counting the impacting particles within a specific area.
 
