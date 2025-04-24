@@ -194,8 +194,7 @@ Reference: Tokamak, 4th Edition, John Wesson.
 - `Bζ0::Float`: toroidal magnetic field on axis [T].
 """
 function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat,
-	q_profile,
-	a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
+	q_profile, a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
 	R = √(x^2 + y^2)
 	r = √((R - R₀)^2 + z^2)
 	if r > a
