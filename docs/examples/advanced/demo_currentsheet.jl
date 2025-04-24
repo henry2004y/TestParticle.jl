@@ -12,11 +12,9 @@
 # A Wiki reference can be found [here](https://en.wikipedia.org/wiki/Current_sheet).
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using TestParticle: getB_CS_harris, c, Rₑ
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle: Rₑ
 using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -24,10 +22,10 @@ CairoMakie.activate!(type = "png") #hide
 ### Obtain field
 
 ## Harris current sheet parameters in SI units. Bn is the z-component.
-const B₀, Bn, L = 20e-9, 2e-9, 0.4TP.Rₑ
+const B₀, Bn, L = 20e-9, 2e-9, 0.4Rₑ
 
 function getB(xu)
-   SVector{3}(getB_CS_harris(xu[1:3], B₀, L, Bn))
+   SVector{3}(TP.getB_CS_harris(xu[1:3], B₀, L, Bn))
 end
 
 function getE(xu)
@@ -36,14 +34,12 @@ end
 
 ### Initialize particles
 
-m = TP.mᵢ
-q = TP.qᵢ
 ## Initial condition
 stateinit = let
    ## initial particle energy, [eV]
    Ek = 8e3
    ## initial velocity, [m/s]
-   vmag = c*√(1-1/(1+Ek*q/(m*c^2))^2)
+   vmag = TP.c*√(1-1/(1+Ek*TP.qᵢ/(TP.mᵢ*TP.c^2))^2)
    θ = -60
    ϕ = 30
    v₀ = [vmag*cosd(θ), vmag*sind(θ)*sind(ϕ), vmag*sind(θ)*cosd(ϕ)]

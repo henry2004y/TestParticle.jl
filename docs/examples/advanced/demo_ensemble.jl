@@ -14,9 +14,7 @@
 # particles. This can be achieved in the ensemble problem with `safetycopy=false`.
 
 import DisplayAs #hide
-using TestParticle
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -43,7 +41,7 @@ trajectories = 3
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
-sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(); trajectories)
+sols = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories)
 
 ## Visualization
 

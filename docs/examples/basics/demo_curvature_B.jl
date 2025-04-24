@@ -12,9 +12,7 @@
 # More theoretical details can be found in [Curvature Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#curved-b-curvature-drift) and Computational Plasma Physics by Toshi Tajima.
 
 import DisplayAs #hide
-using TestParticle
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using LinearAlgebra: normalize, norm, ×, ⋅
 using ForwardDiff: gradient, jacobian
 using CairoMakie
@@ -48,7 +46,7 @@ sol = solve(prob, Vern9())
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
 prob_gc = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
-sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+sol_gc = solve(prob_gc, Vern7(); save_idxs=[1,2,3])
 
 ## Numeric and analytic results
 f = Figure(fontsize=18)

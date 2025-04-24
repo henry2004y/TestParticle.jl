@@ -36,10 +36,8 @@
 # where all the coefficients with subscript 0 are expressed in SI units. All the variables with a prime are written in the dimensionless units.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: c, qᵢ, mᵢ
-using OrdinaryDiffEq
-using StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

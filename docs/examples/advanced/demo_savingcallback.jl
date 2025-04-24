@@ -20,10 +20,8 @@
 # The `SavingCallback` from DiffEqCallbacks.jl can be used to save additional outputs for diagnosis. Here we save the magnetic field along the trajectory, together with the parallel velocity.
 # Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see [Demo: ensemble tracing with extra saving](@ref demo_output_func).
 
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
-using OrdinaryDiffEq
-using StaticArrays
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks

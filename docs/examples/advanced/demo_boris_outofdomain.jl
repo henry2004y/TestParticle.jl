@@ -12,10 +12,8 @@
 # Check [Demo: Dimensionless Units](@ref demo_dimensionless) for explaining the unit conversion, and [Demo: Boris Method](@ref demo_boris) for introducing the Boris method.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
-using StaticArrays
-using OrdinaryDiffEq
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

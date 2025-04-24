@@ -11,10 +11,8 @@
 # In this slightly modified dipole field, magnetic null points appear near 14 Earth's radii, and the particle orbits are also distorted from the idealized motions in [Demo: magnetic dipole](@ref demo_dipole).
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: getB_dipole, getE_dipole, sph2cart, mᵢ, qᵢ, c, Rₑ
-using OrdinaryDiffEq
-using StaticArrays
 using FieldTracer
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

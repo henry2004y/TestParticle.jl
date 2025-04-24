@@ -29,12 +29,10 @@
 # One important note about Fermi acceleration for space plasmas is that space plasmas are collisionless. Electric field is the only way to accelerate charged particles, instead of elastic collisions.
 
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
-using TestParticle: kB, mₑ, Rₑ, qₑ
-using OrdinaryDiffEq
+using TestParticle: mₑ, Rₑ, qₑ
 using Random
-using StaticArrays
 using FHist
 using CairoMakie, Printf
 CairoMakie.activate!(type = "png") #hide

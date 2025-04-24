@@ -11,9 +11,7 @@
 # More theoretical details can be found in [Non-uniform E Field](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-nonuniform_E).
 
 import DisplayAs #hide
-using TestParticle
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using LinearAlgebra: ×, ⋅, norm, normalize
 using Tensors: laplace
 import Tensors: Vec as Vec3
@@ -60,7 +58,7 @@ sol = solve(prob, Vern9())
 gc = get_gc(param)
 gc_x0 = gc(stateinit)
 prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
-sol_gc = solve(prob_gc, Tsit5(); save_idxs=[1,2,3])
+sol_gc = solve(prob_gc, Vern7(); save_idxs=[1,2,3])
 
 ## numeric result and analytic result
 f = Figure(fontsize=18)

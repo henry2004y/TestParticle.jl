@@ -19,9 +19,7 @@
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not. The total number flux [particles / s] is then obtained by counting all impacting particles, while the flux density [particles / s / m²] is determined by counting the impacting particles within a specific area.
 
-using TestParticle
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
