@@ -71,7 +71,7 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-lines!(ax, sol; idxs=(1,2,3) label="proton")
+lines!(ax, sol; idxs=(1,2,3), label="proton")
 
 ## Plot coils
 θ = range(0, 2π, length=201)
