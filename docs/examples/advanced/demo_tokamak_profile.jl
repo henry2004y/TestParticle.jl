@@ -12,6 +12,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+import TestParticle as TP
 using GeometryBasics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
