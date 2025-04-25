@@ -58,7 +58,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 ## Default Tsit5() alone does not work in this case! You need to set a maximum
 ## timestep to maintain stability, or choose a different algorithm as well.
 ## The sample figure in the gallery is generated with AB3() and dt=2e-11.
-sol = solve(prob, Vern9(); dt=2e-11, save_idxs=[1,2,3])
+sol = solve(prob, Vern9(); dt=2e-11)
 
 ### Visualization
 
@@ -71,7 +71,7 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-plot!(sol, label="proton")
+lines!(ax, sol; idxs=(1,2,3) label="proton")
 
 ## Plot coils
 θ = range(0, 2π, length=201)
@@ -79,7 +79,7 @@ y = a * cos.(θ)
 z = a * sin.(θ)
 for i in 0:17
    ϕ = i*π/9
-   plot!(y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color=(:red, 0.3))
+   lines!(ax, y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color=(:red, 0.3))
 end
 
 ## Plot Tokamak
