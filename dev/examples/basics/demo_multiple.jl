@@ -1,6 +1,5 @@
 import DisplayAs #hide
-using TestParticle
-using OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEqVerner
 using Random
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

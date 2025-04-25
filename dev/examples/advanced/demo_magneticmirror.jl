@@ -1,9 +1,6 @@
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
-using TestParticle: getB_mirror
-using OrdinaryDiffEq
-using StaticArrays
 using LinearAlgebra: normalize, norm, ⋅
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -17,7 +14,7 @@ const distance = 10. # distance between solenoids [m]
 const a = 4.0 # radius of each coil [m]
 
 function getB(xu)
-   SVector{3}(getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
+   SVector{3}(TP.getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
 end
 
 getE(xu) = SA[0.0, 0.0, 0.0]

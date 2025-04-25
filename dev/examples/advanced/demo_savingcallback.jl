@@ -1,7 +1,5 @@
-using TestParticle
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
-using OrdinaryDiffEq
-using StaticArrays
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks

@@ -1,8 +1,6 @@
 import DisplayAs #hide
-using TestParticle
-using TestParticle: getB_tokamak_profile
-using OrdinaryDiffEq
-using StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+import TestParticle as TP
 using GeometryBasics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -18,7 +16,7 @@ function q_profile(nr::Float64)
 end
 
 function B(xu)
-    SVector{3}(getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
+    SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
 end
 
 function E(xu)

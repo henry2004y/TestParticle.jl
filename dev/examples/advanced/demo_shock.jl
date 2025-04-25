@@ -1,5 +1,5 @@
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEqVerner
 using TestParticle: mᵢ, kB
 using LinearAlgebra
 using Statistics: mean, std

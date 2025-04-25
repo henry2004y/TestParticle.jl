@@ -1,8 +1,6 @@
 import DisplayAs #hide
-using TestParticle
+using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 import TestParticle as TP
-using StaticArrays
-using OrdinaryDiffEq
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
