@@ -40,6 +40,7 @@ include("utility/utility.jl")
 include("utility/interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
+include("gc.jl")
 include("equations.jl")
 include("pusher.jl")
 

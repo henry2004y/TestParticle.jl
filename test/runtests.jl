@@ -1,5 +1,5 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c, guiding_center
+using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
 using Meshes: CartesianGrid
 using Random, StableRNGs
@@ -206,7 +206,7 @@ end
 		prob = ODEProblem(trace!, stateinit, tspan, param)
 		sol = solve(prob, Tsit5(); save_idxs = [1])
 
-		@test guiding_center([stateinit..., 0.0], param)[1] == 1.59275e7
+		@test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
 		@test get_gc(param) isa Function
 		@test sol[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
 
@@ -276,7 +276,7 @@ end
 		sol = solve(prob, Tsit5(); save_idxs = [1, 2, 3])
 		@test sol[1, end] ≈ -1.2828663442681638 && sol[2, end] ≈ 1.5780464321537067 &&
 				sol[3, end] ≈ 1.0
-		@test guiding_center([stateinit..., 0.0], param)[1] == -0.5685630064930044
+		@test get_gc([stateinit..., 0.0], param)[1] == -0.5685630064930045
 
 		F_field(r) = SA[0, 9.10938356e-42, 0] # [N]
 
@@ -502,6 +502,17 @@ end
 		param = prepare(uniform_E, curved_B, species = Proton)
 		prob = ODEProblem(trace!, stateinit, tspan, param)
 		sol = solve(prob, Vern9())
+		
+		@views begin
+			x, y, z = sol[1,:], sol[2,:], sol[3,:]
+			vx, vy, vz = sol[4,:], sol[5,:], sol[6,:]
+		end
+		b = [curved_B(SA[xi, yi, zi]) for (xi, yi, zi) in zip(x, y, z)]
+		bx = [bi[1] for bi in b]
+		by = [bi[2] for bi in b]
+		bz = [bi[3] for bi in b]
+		X = get_gc(x, y, z, vx, vy, vz, bx, by, bz, param[1])
+		@test sum(X[end]) == 1.5381703401189195
 
 		stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
 			species = Proton, removeExB = true)
@@ -510,7 +521,7 @@ end
 		sol_gc = solve(prob_gc, Vern9())
 
 		# analytical drifts
-		gc = get_gc(param)
+		gc = param |> get_gc
 		gc_x0 = gc(stateinit)
 		prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 		sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
