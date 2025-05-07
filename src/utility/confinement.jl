@@ -69,7 +69,7 @@ end
 	 getB_bottle(x, y, z, distance, a, b, I1, I2) -> StaticVector{Float64, 3}
 
 Get magnetic field from a magnetic bottle.
-Reference: https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
+Reference: [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
 # Arguments
 - `x,y,z::Float`: particle coordinates in [m].
@@ -99,7 +99,7 @@ end
 	 getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma) -> StaticVector{Float64, 3}
 
 Get the magnetic field from a Tokamak topology consists of 16 coils.
-Original: https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/blob/master/Simulation2.m
+Original: [Tokamak-Fusion-Reactor](https://github.com/BoschSamuel/Simulation-of-a-Tokamak-Fusion-Reactor/blob/master/Simulation2.m)
 # Arguments
 - `x,y,z::Float`: location in [m].
 - `a::Float`: radius of each coil in [m].
