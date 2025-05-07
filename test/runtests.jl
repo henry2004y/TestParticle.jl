@@ -502,10 +502,10 @@ end
 		param = prepare(uniform_E, curved_B, species = Proton)
 		prob = ODEProblem(trace!, stateinit, tspan, param)
 		sol = solve(prob, Vern9())
-		
+
 		@views begin
-			x, y, z = sol[1,:], sol[2,:], sol[3,:]
-			vx, vy, vz = sol[4,:], sol[5,:], sol[6,:]
+			x, y, z = sol[1, :], sol[2, :], sol[3, :]
+			vx, vy, vz = sol[4, :], sol[5, :], sol[6, :]
 		end
 		b = [curved_B(SA[xi, yi, zi]) for (xi, yi, zi) in zip(x, y, z)]
 		bx = [bi[1] for bi in b]
