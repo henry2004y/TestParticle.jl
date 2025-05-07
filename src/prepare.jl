@@ -263,11 +263,11 @@ end
 	 guiding_center(xu, param::Union{TPTuple, FullTPTuple})
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
-Reference: https://en.wikipedia.org/wiki/Guiding_center
+Reference: [wiki](https://en.wikipedia.org/wiki/Guiding_center)
 
 A simple definition:
 ```math
-\\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{v}\\times\\mathbf{B}}{qB}
+\\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times\\mathbf{v}}{qB}
 ```
 """
 function guiding_center(xu, param::TPTuple)
