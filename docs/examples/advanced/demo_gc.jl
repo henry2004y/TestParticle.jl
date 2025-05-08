@@ -65,7 +65,7 @@ prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 sol_gc_numericBfield = solve(prob_gc, Vern9())
 
 ## analytical drifts
-gc = get_gc(param)
+gc = param |> get_gc_func
 gc_x0 = gc(stateinit)
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
@@ -114,7 +114,7 @@ param = prepare(uniform_E, grad_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
-gc = get_gc(param)
+gc = param |> get_gc_func
 gc_x0 = gc(stateinit)
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])
@@ -153,7 +153,7 @@ param = prepare(uniform_E, grad_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
-gc = get_gc(param)
+gc = param |> get_gc_func
 gc_x0 = gc(stateinit)
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs=[1,2,3])

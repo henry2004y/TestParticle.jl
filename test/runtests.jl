@@ -207,7 +207,7 @@ end
 		sol = solve(prob, Tsit5(); save_idxs = [1])
 
 		@test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
-		@test get_gc(param) isa Function
+		@test get_gc_func(param) isa Function
 		@test sol[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
 
 		# static array version (results not identical with above: maybe some bugs?)
@@ -521,8 +521,8 @@ end
 		sol_gc = solve(prob_gc, Vern9())
 
 		# analytical drifts
-		gc = param |> get_gc
-		gc_x0 = gc(stateinit)
+		gc = param |> get_gc_func
+		gc_x0 = gc(stateinit) |> Vector # needs mutation
 		prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 		sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 		@test sol_gc[1, end] ≈ 0.9896155284173717

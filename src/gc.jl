@@ -6,7 +6,7 @@ function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
 	bc::Int = 1, removeExB = true) where {T <: AbstractRange, TE, TB}
 
 	q, m = getchargemass(species, q, m)
-	x, v = @views xv[1:3], xv[4:6]
+	x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
 	E = TE <: AbstractArray ? getinterp(E, xrange, yrange, zrange, order, bc) : E
 	B = TB <: AbstractArray ? getinterp(B, xrange, yrange, zrange, order, bc) : B
@@ -42,7 +42,7 @@ end
 function prepare_gc(xv, E, B; species::Species = Proton, q::AbstractFloat = 1.0,
 	m::AbstractFloat = 1.0, removeExB = true)
 	q, m = getchargemass(species, q, m)
-	x, v = @views xv[1:3], xv[4:6]
+	x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
 	bparticle = B(x)
 	Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
@@ -87,7 +87,7 @@ Nonrelativistic definition:
 function get_gc(xu, param::TPTuple)
 	q2m, _, B_field = param
 	t = xu[end]
-	v = @view xu[4:6]
+	v = xu[SA[4:6...]]
 	B = B_field(xu, t)
 	B² = B[1]^2 + B[2]^2 + B[3]^2
 	# vector of Larmor radius
@@ -99,7 +99,7 @@ end
 function get_gc(xu, param::FullTPTuple)
 	q, m, _, B_field = param
 	t = xu[end]
-	v = @view xu[4:6]
+	v = xu[SA[4:6...]]
 	B = B_field(xu, t)
 	B² = B[1]^2 + B[2]^2 + B[3]^2
 	# vector of Larmor radius
@@ -145,24 +145,24 @@ get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m) =
 	get_gc(x, y, z, vx, vy, vz, bx, by, bz, q/m)
 
 """
-	 get_gc(param::Union{TPTuple, FullTPTuple})
+	 get_gc_func(param::Union{TPTuple, FullTPTuple})
 
 Return the function for plotting the orbit of guiding center.
 
 # Example
 ```julia
 param = prepare(E, B; species=Proton)
-gc = get_gc(param)
 # The definitions of stateinit, tspan, E and B are ignored.
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7(); dt=2e-11)
 
 f = Figure(fontsize=18)
 ax = Axis3(f[1, 1], aspect = :data)
-gc_plot(x,y,z,vx,vy,vz) = (gc([x,y,z,vx,vy,vz])...,)
+gc = param |> get_gc_func
+gc_plot(x,y,z,vx,vy,vz) = (gc(SA[x,y,z,vx,vy,vz])...,)
 lines!(ax, sol, idxs=(gc_plot, 1, 2, 3, 4, 5, 6))
 ```
 """
-function get_gc(param::Union{TPTuple, FullTPTuple})
+function get_gc_func(param::Union{TPTuple, FullTPTuple})
 	gc(xu) = get_gc(xu, param)
 end
