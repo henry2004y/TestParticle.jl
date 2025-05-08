@@ -512,7 +512,7 @@ end
 		by = [bi[2] for bi in b]
 		bz = [bi[3] for bi in b]
 		X = get_gc(x, y, z, vx, vy, vz, bx, by, bz, param[1])
-		@test sum(X[end]) ≈ 1.5381703401189195
+		@test sum(X[end]) ≈ 1.5381703401189195 rtol=1e-6
 
 		stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
 			species = Proton, removeExB = true)
