@@ -38,5 +38,7 @@
 		prob = TraceProblem(stateinit, tspan, param)
 		sol = solve(prob; dt, savestepinterval = 100)
 		sol = solve(prob, EnsembleThreads(); dt, savestepinterval = 100)
+		# guiding center
+		X = get_gc(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0)
 	end
 end
