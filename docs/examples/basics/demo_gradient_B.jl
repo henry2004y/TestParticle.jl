@@ -52,8 +52,8 @@ param = prepare(uniform_E, grad_B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
-gc = get_gc(param)
-gc_x0 = gc(stateinit)
+gc = param |> get_gc_func
+gc_x0 = gc(stateinit) |> Vector
 prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern7(); save_idxs=[1,2,3])
 

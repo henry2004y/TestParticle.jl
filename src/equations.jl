@@ -11,7 +11,7 @@ ODE equations for charged particle moving in static EM field and external force 
 function trace!(dy, y, p::TPTuple, t)
 	q2m, Efunc, Bfunc = p
 
-	v = @views SVector{3}(y[4:6])
+	v = y[SA[4:6...]]
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 
@@ -24,7 +24,7 @@ end
 function trace!(dy, y, p::FullTPTuple, t)
 	q, m, Efunc, Bfunc, Ffunc = p
 
-	v = @views SVector{3}(y[4:6])
+	v = y[SA[4:6...]]
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 	F = SVector{3}(Ffunc(y, t))
@@ -45,7 +45,7 @@ ODE equations for charged particle moving in static EM field and external force 
 """
 function trace(y, p::TPTuple, t)
 	q2m, Efunc, Bfunc = p
-	v = @views SVector{3}(y[4:6])
+	v = y[SA[4:6...]]
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 
@@ -57,7 +57,7 @@ end
 function trace(y, p::FullTPTuple, t)
 	q, m, Efunc, Bfunc, Ffunc = p
 
-	v = @views SVector{3}(y[4:6])
+	v = y[SA[4:6...]]
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 	F = SVector{3}(Ffunc(y, t))
@@ -77,7 +77,7 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 
-	γv = @views SVector{3, eltype(dy)}(y[4:6])
+	γv = y[SA[4:6...]]
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(dy))
 		v̂ = normalize(γv)
@@ -103,7 +103,7 @@ function trace_relativistic(y, p::TPTuple, t)
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 
-	γv = @views SVector{3, eltype(y)}(y[4:6])
+	γv = y[SA[4:6...]]
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(y))
 		v̂ = normalize(γv)
@@ -127,7 +127,7 @@ the extrapolation function provided by Interpolations.jl.
 function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
 	_, Efunc, Bfunc = p
 
-	v = @views SVector{3}(y[4:6])
+	v = y[SA[4:6...]]
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
 
@@ -146,7 +146,7 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 	_, Efunc, Bfunc = p
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
-	γv = @views SVector{3}(y[4:6])
+	γv = y[SA[4:6...]]
 
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(dy))
@@ -172,7 +172,7 @@ function trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
 	_, Efunc, Bfunc = p
 	E = SVector{3}(Efunc(y, t))
 	B = SVector{3}(Bfunc(y, t))
-	γv = @views SVector{3}(y[4:6])
+	γv = y[SA[4:6...]]
 
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(y))
@@ -196,7 +196,7 @@ Parallel velocity is also added. This expression requires the full particle traj
 function trace_gc_drifts!(dx, x, p, t)
 	q2m, Efunc, Bfunc, sol = p
 	xu = sol(t)
-	v = @views SVector{3, eltype(dx)}(xu[4:6])
+	v = xu[SA[4:6...]]
 	E = SVector{3}(Efunc(x))
 	B = SVector{3}(Bfunc(x))
 
@@ -222,7 +222,7 @@ Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field 
 function trace_gc!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = @views SVector{3}(y[1:3])
+	X = y[SA[1:3...]]
 	E = SVector{3}(Efunc(X, t))
 	B = SVector{3}(Bfunc(X, t))
 	b̂ = normalize(B) # unit B field at X
@@ -259,7 +259,7 @@ end
 function trace_gc_1st!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = @view y[1:3]
+	X = y[SA[1:3...]]
 	E = Efunc(X, t)
 	B = Bfunc(X, t)
 	b̂ = normalize(B) # unit B field at X
