@@ -60,10 +60,14 @@ GCTuple = Tuple{Float64, Float64, Float64, AbstractField, AbstractField}
 
 
 """
-	 prepare(grid::CartesianGrid, E, B; kwargs...) -> (q2m, E, B)
+	prepare(args...; kwargs...) -> (q2m, m, E, B, F)
+	prepare(E, B, F = ZeroField(); kwargs...)
 
-Return a tuple consists of particle charge-mass ratio for a prescribed `species` and
-interpolated EM field functions.
+Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge `q` and mass `m`,
+	mass `m` for a prescribed `species`, analytic/interpolated EM field functions, and external force `F`.
+
+Prescribed `species` are `Electron` and `Proton`; 
+	other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
 # Keywords
 - `order::Int=1`: order of interpolation in [1,2,3].
@@ -72,30 +76,20 @@ interpolated EM field functions.
 - `q::AbstractFloat=1.0`: particle charge. Only works when `Species=User`.
 - `m::AbstractFloat=1.0`: particle mass. Only works when `Species=User`.
 
-	 prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0) -> (q, m, E, B, F)
+	 prepare(grid::CartesianGrid, E, B; kwargs...)
+	 prepare(grid::CartesianGrid, E, B, F; species=Proton, q=1.0, m=1.0)
 
 Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
 and mass `m`, interpolated EM field functions, and external force `F`.
 
-	 prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
-	 prepare(x, y, E, B; kwargs...) -> (q2m, E, B)
+	 prepare(x::AbstractRange, y::AbstractRange, z::AbstractRange, E, B; kwargs...)
+	 prepare(x, y, E, B; kwargs...)
 
-	 prepare(x::AbstractRange, E, B; kwargs...) -> (q2m, E, B)
+	 prepare(x::AbstractRange, E, B; kwargs...)
 
 1D grid. An additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
 
 Direct range input for uniform grid in 2/3D is also accepted.
-
-	 prepare(E, B; kwargs...) -> (q2m, E, B)
-
-Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge
-`q` and mass `m` and analytic EM field functions. Prescribed `species` are `Electron` and
-`Proton`; other species can be manually specified with `species=Ion/User`, `q` and `m`.
-
-	 prepare(E, B, F; kwargs...) -> (q, m, E, B, F)
-
-Return a tuple consists of particle charge, mass for a prescribed `species` of charge `q`
-and mass `m`, analytic EM field functions, and external force `F`.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species = Proton,
 	q::AbstractFloat = 1.0, m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1,
@@ -113,7 +107,7 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species = Proton,
 		B = TB <: AbstractArray ? getinterp(B, gridx, gridy, order, bc) : B
 	end
 
-	q/m, Field(E), Field(B)
+	q/m, m, Field(E), Field(B)
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species = Proton,
@@ -128,7 +122,7 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species = Pr
 	B = TB <: AbstractArray ? getinterp(B, gridx, gridy, gridz, order, bc) : B
 	F = TF <: AbstractArray ? getinterp(F, gridx, gridy, gridz, order, bc) : F
 
-	q, m, Field(E), Field(B), Field(F)
+	q/m, m, Field(E), Field(B), Field(F)
 end
 
 function prepare(x::T, y::T, E::TE, B::TB; species::Species = Proton,
@@ -140,7 +134,7 @@ function prepare(x::T, y::T, E::TE, B::TB; species::Species = Proton,
 	E = TE <: AbstractArray ? getinterp(E, x, y, order, bc) : E
 	B = TB <: AbstractArray ? getinterp(B, x, y, order, bc) : B
 
-	q/m, Field(E), Field(B)
+	q/m, m, Field(E), Field(B)
 end
 
 function prepare(x::T, E::TE, B::TB; species::Species = Proton, q::AbstractFloat = 1.0,
@@ -152,7 +146,7 @@ function prepare(x::T, E::TE, B::TB; species::Species = Proton, q::AbstractFloat
 	E = TE <: AbstractArray ? getinterp(E, x, order, bc; dir) : E
 	B = TB <: AbstractArray ? getinterp(B, x, order, bc; dir) : B
 
-	q/m, Field(E), Field(B)
+	q/m, m, Field(E), Field(B)
 end
 
 function prepare(x::T, y::T, z::T, E::TE, B::TB;
@@ -165,26 +159,14 @@ function prepare(x::T, y::T, z::T, E::TE, B::TB;
 	E = TE <: AbstractArray ? getinterp(E, x, y, z, order, bc) : E
 	B = TB <: AbstractArray ? getinterp(B, x, y, z, order, bc) : B
 
-	q/m, Field(E), Field(B)
+	q/m, m, Field(E), Field(B)
 end
 
-function prepare(
-	E,
-	B;
-	species::Species = Proton,
-	q::AbstractFloat = 1.0,
-	m::AbstractFloat = 1.0,
-)
-	q, m = getchargemass(species, q, m)
-
-	q/m, Field(E), Field(B)
-end
-
-function prepare(E, B, F; species::Species = Proton, q::AbstractFloat = 1.0,
+function prepare(E, B, F = ZeroField(); species::Species = Proton, q::AbstractFloat = 1.0,
 	m::AbstractFloat = 1.0)
 	q, m = getchargemass(species, q, m)
 
-	q, m, Field(E), Field(B), Field(F)
+	q/m, m, Field(E), Field(B), Field(F)
 end
 
 

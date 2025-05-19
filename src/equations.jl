@@ -1,28 +1,12 @@
 # Tracing equations.
 
 """
-	 trace!(dy, y, p::TPTuple, t)
-	 trace!(dy, y, p::FullTPTuple, t)
-
-ODE equations for charged particle moving in static EM field with in-place form.
+	trace!(dy, y, p, t)
 
 ODE equations for charged particle moving in static EM field and external force field with in-place form.
 """
-function trace!(dy, y, p::TPTuple, t)
-	q2m, Efunc, Bfunc = p
-
-	v = y[SA[4:6...]]
-	E = Efunc(y, t)
-	B = Bfunc(y, t)
-
-	dy[1:3] = v
-	dy[4:6] = SVector{3}(q2m * (v × B + E))
-
-	return
-end
-
-function trace!(dy, y, p::FullTPTuple, t)
-	q, m, Efunc, Bfunc, Ffunc = p
+function trace!(dy, y, p, t)
+	q2m, m, Efunc, Bfunc, Ffunc = p
 
 	v = y[SA[4:6...]]
 	E = Efunc(y, t)
@@ -30,52 +14,39 @@ function trace!(dy, y, p::FullTPTuple, t)
 	F = Ffunc(y, t)
 
 	dy[1:3] = v
-	dy[4:6] = SVector{3}((q * (v × B + E) + F) / m)
+	dy[4:6] = SVector{3}(q2m * (v × B + E) + F / m)
 
 	return
 end
 
 """
-	 trace(y, p::TPTuple, t) -> SVector{6, Float64}
-	 trace(y, p::FullTPTuple, t) -> SVector{6, Float64}
-
-ODE equations for charged particle moving in static EM field with out-of-place form.
+	trace(y, p, t) -> SVector{6, Float64}
 
 ODE equations for charged particle moving in static EM field and external force field with out-of-place form.
 """
-function trace(y, p::TPTuple, t)
-	q2m, Efunc, Bfunc = p
-	v = y[SA[4:6...]]
-	E = Efunc(y, t)
-	B = Bfunc(y, t)
-
-	dv = SVector{3}(q2m * (v × B + E))
-
-	vcat(v, dv)
-end
-
-function trace(y, p::FullTPTuple, t)
-	q, m, Efunc, Bfunc, Ffunc = p
+function trace(y, p, t)
+	q2m, m, Efunc, Bfunc, Ffunc = p
 
 	v = y[SA[4:6...]]
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 	F = Ffunc(y, t)
 
-	dv = SVector{3}((q * (v × B + E) + F) / m)
+	dv = SVector{3}(q2m * (v × B + E) + F / m)
 
 	vcat(v, dv)
 end
 
 """
-	 trace_relativistic!(dy, y, p::TPTuple, t)
+	 trace_relativistic!(dy, y, p, t)
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
-function trace_relativistic!(dy, y, p::TPTuple, t)
-	q2m, Efunc, Bfunc = p
+function trace_relativistic!(dy, y, p, t)
+	q2m, m, Efunc, Bfunc, Ffunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
+	F = Ffunc(y, t)
 
 	γv = y[SA[4:6...]]
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
@@ -84,24 +55,25 @@ function trace_relativistic!(dy, y, p::TPTuple, t)
 	else # no velocity
 		v̂ = SVector{3, eltype(dy)}(0, 0, 0)
 	end
-	vmag = √(γ²v² / (1 + γ²v²/c^2))
+	vmag = √(γ²v² / (1 + γ²v² / c^2))
 	v = vmag * v̂
 
 	dy[1:3] = v
-	dy[4:6] = SVector{3}(q2m * (v × B + E))
+	dy[4:6] = SVector{3}(q2m * (v × B + E) + F / m)
 
 	return
 end
 
 """
-	 trace_relativistic(y, p::TPTuple, t) -> SVector{6}
+	 trace_relativistic(y, p, t) -> SVector{6}
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
-function trace_relativistic(y, p::TPTuple, t)
-	q2m, Efunc, Bfunc = p
+function trace_relativistic(y, p, t)
+	q2m, m, Efunc, Bfunc, Ffunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
+	F = Ffunc(y, t)
 
 	γv = y[SA[4:6...]]
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
@@ -118,14 +90,14 @@ function trace_relativistic(y, p::TPTuple, t)
 end
 
 """
-	 trace_normalized!(dy, y, p::TPNormalizedTuple, t)
+	 trace_normalized!(dy, y, p, t)
 
 Normalized ODE equations for charged particle moving in static EM field with in-place form.
 If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
 the extrapolation function provided by Interpolations.jl.
 """
-function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
-	_, Efunc, Bfunc = p
+function trace_normalized!(dy, y, p, t)
+	_, m, Efunc, Bfunc = p
 
 	v = y[SA[4:6...]]
 	E = Efunc(y, t)
@@ -138,12 +110,12 @@ function trace_normalized!(dy, y, p::TPNormalizedTuple, t)
 end
 
 """
-	 trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
+	 trace_relativistic_normalized!(dy, y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
-function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
-	_, Efunc, Bfunc = p
+function trace_relativistic_normalized!(dy, y, p, t)
+	_, m, Efunc, Bfunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 	γv = y[SA[4:6...]]
@@ -152,7 +124,7 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 	if γ²v² > eps(eltype(dy))
 		v̂ = normalize(γv)
 	else # no velocity
-		v̂ = SVector{3, eltype(dy)}(0, 0, 0)
+		v̂ = SVector{3,eltype(dy)}(0, 0, 0)
 	end
 	vmag = √(γ²v² / (1 + γ²v²))
 	v = vmag * v̂
@@ -164,12 +136,12 @@ function trace_relativistic_normalized!(dy, y, p::TPNormalizedTuple, t)
 end
 
 """
-	 trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
+	 trace_relativistic_normalized(y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
-function trace_relativistic_normalized(y, p::TPNormalizedTuple, t)
-	_, Efunc, Bfunc = p
+function trace_relativistic_normalized(y, p, t)
+	_, m, Efunc, Bfunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 	γv = y[SA[4:6...]]
@@ -194,7 +166,7 @@ Equations for tracing the guiding center using analytical drifts, including the 
 Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
 """
 function trace_gc_drifts!(dx, x, p, t)
-	q2m, Efunc, Bfunc, sol = p
+	q2m, m, Efunc, Bfunc, sol = p
 	xu = sol(t)
 	v = xu[SA[4:6...]]
 	E = Efunc(x)
@@ -205,12 +177,12 @@ function trace_gc_drifts!(dx, x, p, t)
 	b = normalize(B)
 	v_par = (v ⋅ b) .* b
 	v_perp = v - v_par
-	Ω = q2m*norm(B)
+	Ω = q2m * norm(B)
 	κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
 	## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
 	dx[1:3] =
-		norm(v_perp)^2*(B × ∇B)/(2*Ω*norm(B)^2) +
-		norm(v_par)^2*(B × κ)/Ω/norm(B)^3 + (E × B)/(B ⋅ B) + v_par
+		norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
+		norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
 end
 
 """
@@ -243,13 +215,13 @@ function trace_gc!(dy, y, p::GCTuple, t)
 	# ∇ × b̂
 	curlb = SVector{3}(∇b̂[3, 2] - ∇b̂[2, 3], ∇b̂[1, 3] - ∇b̂[3, 1], ∇b̂[2, 1] - ∇b̂[1, 2])
 	# effective EM fields
-	Eᵉ = @. E - (μ*∇B - 0.5*m*∇vE²) / q
+	Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
 	Bᵉ = @. B + y[4] / q2m * curlb
 	Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
 
-	dy[1] = (y[4] * Bᵉ[1] + Eᵉ[2]*b̂[3] - Eᵉ[3]*b̂[2]) / Bparᵉ
-	dy[2] = (y[4] * Bᵉ[2] + Eᵉ[3]*b̂[1] - Eᵉ[1]*b̂[3]) / Bparᵉ
-	dy[3] = (y[4] * Bᵉ[3] + Eᵉ[1]*b̂[2] - Eᵉ[2]*b̂[1]) / Bparᵉ
+	dy[1] = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
+	dy[2] = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
+	dy[3] = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
 	dy[4] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
 
 	return
@@ -272,14 +244,14 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
 	bfunc(x) = normalize(Bfunc(x, t))
 	∇b̂ = ForwardDiff.jacobian(bfunc, X)
 	# effective EM fields
-	Eᵉ = @. E - (μ*∇B) / q
+	Eᵉ = @. E - (μ * ∇B) / q
 	κ = ∇b̂ * b̂  # curvature
-	vX = u * b̂ + b̂ × (κ*u^2 - q2m*Eᵉ) / Ω
+	vX = u * b̂ + b̂ × (κ * u^2 - q2m * Eᵉ) / Ω
 
 	dy[1] = vX[1]
 	dy[2] = vX[2]
 	dy[3] = vX[3]
-	dy[4] = q2m * (b̂ + u*(b̂ × κ)/Ω) ⋅ Eᵉ
+	dy[4] = q2m * (b̂ + u * (b̂ × κ) / Ω) ⋅ Eᵉ
 
 	return
 end

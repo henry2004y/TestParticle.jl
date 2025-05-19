@@ -111,7 +111,9 @@ Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
 function update_velocity!(xv, paramBoris, param, dt, t)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-	q2m, E, B = param[1], param[2](xv, t), param[3](xv, t)
+	q2m, _, Efunc, Bfunc = param
+	E = Efunc(xv, t)
+	B = Bfunc(xv, t)
 	# t vector
 	for dim in 1:3
 		t_rotate[dim] = q2m*B[dim]*0.5*dt
