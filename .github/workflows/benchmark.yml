@@ -1,23 +1,22 @@
 name: Benchmarks
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - master
-      - '!compathelper/**'
     paths-ignore:
       - 'README.md'
       - 'test/**'
       - 'docs/**'
       - 'examples/**'
 
+permissions:
+  pull-requests: write
+
 jobs:
     performance-guard:
         runs-on: ubuntu-latest
-        permissions:
-          contents: write
-          pull-requests: write
-          repository-projects: write
+
         steps:
             - uses: actions/checkout@v4
             - uses: julia-actions/setup-julia@v2
@@ -28,7 +27,7 @@ jobs:
               id: extract-package-name
               run: |
                 PACKAGE_NAME=$(grep "^name" Project.toml | sed 's/^name = "\(.*\)"$/\1/')
-                echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+                echo "::set-output name=package_name::$PACKAGE_NAME"
             - name: Build AirspeedVelocity
               env:
                 JULIA_NUM_THREADS: 2
