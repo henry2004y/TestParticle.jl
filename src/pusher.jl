@@ -13,6 +13,10 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
 	prob_func::PF
 end
 
+
+get_EField(p::AbstractODEProblem) = get_EField(p.p)
+get_BField(p::AbstractODEProblem) = get_BField(p.p)
+
 struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <:
 		 AbstractODESolution{T, N, uType}
 	"positions and velocities"
@@ -40,6 +44,9 @@ function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, den
 		typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
 		dense, tslocation, stats, alg_choice, retcode)
 end
+
+get_BField(sol::AbstractODESolution) = get_BField(sol.prob)
+get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
 
 Base.length(ts::TraceSolution) = length(ts.t)
 
@@ -111,7 +118,9 @@ Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
 function update_velocity!(xv, paramBoris, param, dt, t)
 	(; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-	q2m, E, B = param[1], param[2](xv, t), param[3](xv, t)
+	q2m, _, Efunc, Bfunc = param
+	E = Efunc(xv, t)
+	B = Bfunc(xv, t)
 	# t vector
 	for dim in 1:3
 		t_rotate[dim] = q2m*B[dim]*0.5*dt

@@ -15,6 +15,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using LinearAlgebra: ⋅, ×, normalize
+using TestParticle: get_EField, get_BField
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -24,13 +25,15 @@ uniform_E(x) = SA[1e-9, 0, 0]
 
 ## Trace the orbit of the guiding center
 function trace_gc_ExB!(dx, x, p, t)
-   _, E, B, sol = p
+   sol = p[end]
+   Bfunc = get_BField(p)
+   Efunc = get_EField(p)
    xu = sol(t)
-   Bv = B(x)
+   Bv = Bfunc(x)
    b = normalize(Bv)
    v_par = @views (xu[4:6] ⋅ b) .* b
    B2 = sum(Bv.^2)
-   dx[1:3] = (E(x) × Bv) / B2 + v_par
+   dx[1:3] = (Efunc(x) × Bv) / B2 + v_par
 end
 ## Initial condition
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]

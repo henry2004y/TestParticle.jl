@@ -31,7 +31,7 @@ abs_B(x) = norm(grad_B(x))
 
 ## Trace the orbit of the guiding center using analytical drifts
 function trace_gc!(dx, x, p, t)
-    q2m, E, B, sol = p
+    q2m, _, E, B, _, sol = p
     xu = sol(t)
     gradient_B = gradient(abs_B, x)
     Bv = B(x)
