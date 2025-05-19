@@ -1,5 +1,5 @@
 style = "sciml"
-format_markdown = true
+format_markdown = false
 format_docstrings = true
 indent = 3
 import_to_using = true
