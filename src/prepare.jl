@@ -38,8 +38,8 @@ Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)
 (f::AbstractField{true})(xu) =
 	throw(ArgumentError("Time-dependent field function must have a time argument."))
-(f::AbstractField{false})(xu, t) = f.field_function(xu)
-(f::AbstractField{false})(xu) = f.field_function(xu)
+(f::AbstractField{false})(xu, t) = SVector{3}(f.field_function(xu))
+(f::AbstractField{false})(xu) = SVector{3}(f.field_function(xu))
 
 function Base.show(io::IO, f::Field)
 	println(io, "Field with interpolation support")
@@ -186,3 +186,32 @@ function prepare(E, B, F; species::Species = Proton, q::AbstractFloat = 1.0,
 
 	q, m, Field(E), Field(B), Field(F)
 end
+
+
+import Base: (+), (*), (/), setindex!
+import LinearAlgebra: ×
+import StaticArrays: StaticArray
+
+struct ZeroField <: AbstractField{false} end
+
+struct ZeroVector end
+
+# ZeroVector operations
+(+)(::ZeroVector, x) = x
+(+)(x, ::ZeroVector) = x
+(+)(::ZeroVector, ::ZeroVector) = ZeroVector()
+(*)(::ZeroVector, _) = ZeroVector()
+(*)(_, ::ZeroVector) = ZeroVector()
+(/)(::ZeroVector, _) = ZeroVector()
+(×)(::ZeroVector, _) = ZeroVector()
+(×)(_, ::ZeroVector) = ZeroVector()
+
+# Convert ZeroVector to SVector{3} when needed
+(::Type{T})(::ZeroVector) where {T <: StaticArray} = T(0, 0, 0)
+
+# Make ZeroVector work with array assignment
+Base.setindex!(A::AbstractArray, ::ZeroVector, I...) = fill!(view(A, I...), 0)
+
+# Field interface
+Field(x::ZeroField) = x
+(::ZeroField)(y, t) = ZeroVector()
