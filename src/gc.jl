@@ -132,7 +132,7 @@ end
 get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m) = get_gc(x, y, z, vx, vy, vz, bx, by, bz, q/m)
 
 """
-     get_gc_func(param::Union{TPTuple, FullTPTuple})
+     get_gc_func(param)
 
 Return the function for plotting the orbit of guiding center.
 
@@ -151,4 +151,4 @@ gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6))
 ```
 """
-get_gc_func(param::Union{TPTuple, FullTPTuple}) = gc(xu) = get_gc(xu, param)
+get_gc_func(param) = gc(xu) = get_gc(xu, param)
