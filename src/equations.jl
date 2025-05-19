@@ -1,5 +1,8 @@
 # Tracing equations.
 
+get_x(u) = @inbounds SA[u[1], u[2], u[3]]
+get_v(u) = @inbounds SA[u[4], u[5], u[6]]
+
 function get_dv(x, v, p, t)
 	q2m, m, Efunc, Bfunc, Ffunc = p
 	E = Efunc(x, t)
@@ -26,10 +29,11 @@ end
 ODE equations for charged particle moving in static EM field and external force field with in-place form.
 """
 function trace!(dy, y, p, t)
-	v = y[SA[4:6...]]
-	dy[1:3] = v
-	dy[4:6] = get_dv(y, v, p, t)
-	return
+	v = get_v(y)
+	@inbounds dy[1:3] = v
+	@inbounds dy[4:6] = get_dv(y, v, p, t)
+
+	return nothing
 end
 
 """
@@ -49,10 +53,10 @@ end
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 """
 function trace_relativistic!(dy, y, p, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 	v = get_relativistic_v(γv)
-	dy[1:3] = v
-	dy[4:6] = get_dv(y, v, p, t)
+	@inbounds dy[1:3] = v
+	@inbounds dy[4:6] = get_dv(y, v, p, t)
 
 	return
 end
@@ -63,7 +67,7 @@ end
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
 function trace_relativistic(y, p, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 	v = get_relativistic_v(γv)
 	dv = get_dv(y, v, p, t)
 
@@ -78,7 +82,7 @@ If the field is in 2D X-Y plane, periodic boundary should be applied for the fie
 the extrapolation function provided by Interpolations.jl.
 """
 function trace_normalized!(dy, y, p, t)
-	v = y[SA[4:6...]]
+	v = get_v(y)
 	E = get_EField(p)(y, t)
 	B = get_BField(p)(y, t)
 
@@ -96,7 +100,7 @@ Normalized ODE equations for relativistic charged particle (x, γv) moving in st
 function trace_relativistic_normalized!(dy, y, p, t)
 	E = get_EField(p)(y, t)
 	B = get_BField(p)(y, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 
 	v = get_relativistic_v(γv; c=1)
 	dy[1:3] = v
@@ -113,7 +117,7 @@ Normalized ODE equations for relativistic charged particle (x, γv) moving in st
 function trace_relativistic_normalized(y, p, t)
 	E = get_EField(p)(y, t)
 	B = get_BField(p)(y, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 
 	v = get_relativistic_v(γv; c=1)
 	dv = SVector{3}(v × B + E)
@@ -130,7 +134,7 @@ Parallel velocity is also added. This expression requires the full particle traj
 function trace_gc_drifts!(dx, x, p, t)
 	q2m, _, Efunc, Bfunc, _, sol = p
 	xu = sol(t)
-	v = xu[SA[4:6...]]
+	v = get_v(xu)
 	E = Efunc(x)
 	B = Bfunc(x)
 
@@ -156,7 +160,7 @@ Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field 
 function trace_gc!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = y[SA[1:3...]]
+	X = get_x(y)
 	E = Efunc(X, t)
 	B = Bfunc(X, t)
 	b̂ = normalize(B) # unit B field at X
@@ -193,7 +197,7 @@ end
 function trace_gc_1st!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = y[SA[1:3...]]
+	X = get_x(y)
 	E = Efunc(X, t)
 	B = Bfunc(X, t)
 	b̂ = normalize(B) # unit B field at X
