@@ -1,4 +1,6 @@
 # Tracing equations.
+get_x(u) = @inbounds SA[u[1], u[2], u[3]]
+get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
 """
 	trace!(dy, y, p, t)
@@ -8,7 +10,7 @@ ODE equations for charged particle moving in static EM field and external force 
 function trace!(dy, y, p, t)
 	q2m, m, Efunc, Bfunc, Ffunc = p
 
-	v = y[SA[4:6...]]
+	v = get_v(y)
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 	F = Ffunc(y, t)
@@ -27,7 +29,7 @@ ODE equations for charged particle moving in static EM field and external force 
 function trace(y, p, t)
 	q2m, m, Efunc, Bfunc, Ffunc = p
 
-	v = y[SA[4:6...]]
+	v = get_v(y)
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 	F = Ffunc(y, t)
@@ -48,7 +50,7 @@ function trace_relativistic!(dy, y, p, t)
 	B = Bfunc(y, t)
 	F = Ffunc(y, t)
 
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(dy))
 		v̂ = normalize(γv)
@@ -75,7 +77,7 @@ function trace_relativistic(y, p, t)
 	B = Bfunc(y, t)
 	F = Ffunc(y, t)
 
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(y))
 		v̂ = normalize(γv)
@@ -99,7 +101,7 @@ the extrapolation function provided by Interpolations.jl.
 function trace_normalized!(dy, y, p, t)
 	_, m, Efunc, Bfunc = p
 
-	v = y[SA[4:6...]]
+	v = get_v(y)
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
 
@@ -118,7 +120,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 	_, m, Efunc, Bfunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(dy))
@@ -144,7 +146,7 @@ function trace_relativistic_normalized(y, p, t)
 	_, m, Efunc, Bfunc = p
 	E = Efunc(y, t)
 	B = Bfunc(y, t)
-	γv = y[SA[4:6...]]
+	γv = get_v(y)
 
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(y))
@@ -168,7 +170,7 @@ Parallel velocity is also added. This expression requires the full particle traj
 function trace_gc_drifts!(dx, x, p, t)
 	q2m, m, Efunc, Bfunc, sol = p
 	xu = sol(t)
-	v = xu[SA[4:6...]]
+	v = get_v(xu)
 	E = Efunc(x)
 	B = Bfunc(x)
 
@@ -194,7 +196,7 @@ Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field 
 function trace_gc!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = y[SA[1:3...]]
+	X = get_x(y)
 	E = Efunc(X, t)
 	B = Bfunc(X, t)
 	b̂ = normalize(B) # unit B field at X
@@ -231,7 +233,7 @@ end
 function trace_gc_1st!(dy, y, p::GCTuple, t)
 	q, m, μ, Efunc, Bfunc = p
 	q2m = q / m
-	X = y[SA[1:3...]]
+	X = get_x(y)
 	E = Efunc(X, t)
 	B = Bfunc(X, t)
 	b̂ = normalize(B) # unit B field at X
