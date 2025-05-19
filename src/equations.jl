@@ -138,7 +138,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 end
 
 """
-	 trace_relativistic_normalized(y, p, t)
+	 trace_relativistic_normalized(y, p, t) -> SVector{6}
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
