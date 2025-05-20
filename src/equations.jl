@@ -12,16 +12,15 @@ function get_dv(x, v, p, t)
 	SVector{3}(q2m * (v × B + E) + F / m)
 end
 
-function get_relativistic_v(γv; c=c)
+function get_relativistic_v(γv; c = c)
 	γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
 	if γ²v² > eps(eltype(γv))
 		v̂ = normalize(γv)
 	else # no velocity
-		v̂ = SVector{3,eltype(γv)}(0, 0, 0)
+		v̂ = SVector{3, eltype(γv)}(0, 0, 0)
 	end
 	√(γ²v² / (1 + γ²v² / c^2)) * v̂
 end
-
 
 """
 	trace!(dy, y, p, t)
@@ -102,7 +101,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 	B = get_BField(p)(y, t)
 	γv = get_v(y)
 
-	v = get_relativistic_v(γv; c=1)
+	v = get_relativistic_v(γv; c = 1)
 	@inbounds dy[1:3] = v
 	@inbounds dy[4:6] = SVector{3}(v × B + E)
 
@@ -119,7 +118,7 @@ function trace_relativistic_normalized(y, p, t)
 	B = get_BField(p)(y, t)
 	γv = get_v(y)
 
-	v = get_relativistic_v(γv; c=1)
+	v = get_relativistic_v(γv; c = 1)
 	dv = SVector{3}(v × B + E)
 
 	vcat(v, dv)
@@ -146,11 +145,10 @@ function trace_gc_drifts!(dx, x, p, t)
 	Ω = q2m * norm(B)
 	κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
 	## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-	@inbounds dx[1:3] =
-		norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
-		norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
+	@inbounds dx[1:3] = norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
+							  norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
 
-   return
+	return
 end
 
 """

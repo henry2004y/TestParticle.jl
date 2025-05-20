@@ -13,7 +13,6 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
 	prob_func::PF
 end
 
-
 get_EField(p::AbstractODEProblem) = get_EField(p.p)
 get_BField(p::AbstractODEProblem) = get_BField(p.p)
 
@@ -37,7 +36,7 @@ struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S
 end
 
 function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, dense,
-	tslocation, stats, alg_choice, retcode) where {T, N}
+		tslocation, stats, alg_choice, retcode) where {T, N}
 	return TraceSolution{T, N, typeof(u), typeof(u_analytic), typeof(errors), typeof(t),
 		typeof(k), typeof(prob), typeof(alg), typeof(interp),
 		typeof(stats),
@@ -52,10 +51,10 @@ Base.length(ts::TraceSolution) = length(ts.t)
 
 "Interpolate solution at time `x`. Forward tracing only."
 function (sol::TraceSolution)(
-	t,
-	::Type{deriv} = Val{0};
-	idxs = nothing,
-	continuity = :left,
+		t,
+		::Type{deriv} = Val{0};
+		idxs = nothing,
+		continuity = :left
 ) where {deriv}
 	sol.interp(t, idxs, deriv, sol.prob.p, continuity)
 end
@@ -70,7 +69,7 @@ function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
 		u0,
 		tspan,
 		p,
-		prob_func,
+		prob_func
 	)
 end
 # For remake
@@ -81,7 +80,7 @@ function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
 		u0,
 		tspan,
 		p,
-		prob_func,
+		prob_func
 	)
 end
 
@@ -132,7 +131,7 @@ function update_velocity!(xv, paramBoris, param, dt, t)
 	end
 	# v-
 	for dim in 1:3
-		v⁻[dim] = xv[dim+3] + q2m*E[dim]*0.5*dt
+		v⁻[dim] = xv[dim + 3] + q2m*E[dim]*0.5*dt
 	end
 	# v′
 	cross!(v⁻, t_rotate, v⁻_cross_t)
@@ -146,7 +145,7 @@ function update_velocity!(xv, paramBoris, param, dt, t)
 	end
 	# v[n+1/2]
 	for dim in 1:3
-		xv[dim+3] = v⁺[dim] + q2m*E[dim]*0.5*dt
+		xv[dim + 3] = v⁺[dim] + q2m*E[dim]*0.5*dt
 	end
 
 	return
@@ -182,9 +181,8 @@ Trace particles using the Boris method with specified `prob`.
 - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
 function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-	trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-	isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN)
-
+		trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
+		isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN)
 	sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain)
 end
 
@@ -249,9 +247,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
 			t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
 		else # early termination or savestepinterval != 1
 			traj_save = traj[1:iout]
-			t =
-				tspan[1]:(dt*savestepinterval):(tspan[1]+dt*savestepinterval*(iout-1)) |>
-				collect
+			t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
+				 collect
 		end
 
 		dense = false

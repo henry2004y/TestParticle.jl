@@ -51,13 +51,13 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
 - `I1::Float`: current in the solenoid times number of windings in side coils.
 """
 function getB_mirror(x, y, z, distance, a, I1)
-	cl1 = Currentloop(a, I1, SA[0.0, 0.0, -0.5*distance], SA[0.0, 0.0, 1.0])
-	cl2 = Currentloop(a, I1, SA[0.0, 0.0, 0.5*distance], SA[0.0, 0.0, 1.0])
+	cl1 = Currentloop(a, I1, SA[0.0, 0.0, -0.5 * distance], SA[0.0, 0.0, 1.0])
+	cl2 = Currentloop(a, I1, SA[0.0, 0.0, 0.5 * distance], SA[0.0, 0.0, 1.0])
 	B1 = getB_current_loop(x, y, z, cl1)
 	B2 = getB_current_loop(x, y, z, cl2)
 	# total magnetic field
 	if x == 0.0 && y == 0.0
-		B = SA[0.0, 0.0, B1[3]+B2[3]]
+		B = SA[0.0, 0.0, B1[3] + B2[3]]
 	else
 		B = B1 + B2
 	end
@@ -87,7 +87,7 @@ function getB_bottle(x, y, z, distance, a, b, I1, I2)
 	B3 = getB_current_loop(x, y, z, cl3)
 	# total magnetic field
 	if x == 0.0 && y == 0.0
-		B = SA[0.0, 0.0, B[3]+B3[3]]
+		B = SA[0.0, 0.0, B[3] + B3[3]]
 	else
 		B = B + B3
 	end
@@ -164,10 +164,8 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
 	r = √(x^2 + y^2)
 	k = √(4r*(a+b)/(z^2+((a+b)+r)^2))
 	K, E = ellipke(k)
-	Bz_plasma =
-		μ₀*I2_r_plasma/(2π*√(z^2+((a+b)+r)^2))*(((a+b)^2-z^2-r^2)/(z^2+(r-(a+b))^2)*E+K)
-	Br_plasma =
-		μ₀*z*I2_r_plasma/(2π*r*√(z^2+(b+r)^2))*((z^2+r^2+(a+b)^2)/(z^2+(r-(a+b))^2)*E-K)
+	Bz_plasma = μ₀*I2_r_plasma/(2π*√(z^2+((a+b)+r)^2))*(((a+b)^2-z^2-r^2)/(z^2+(r-(a+b))^2)*E+K)
+	Br_plasma = μ₀*z*I2_r_plasma/(2π*r*√(z^2+(b+r)^2))*((z^2+r^2+(a+b)^2)/(z^2+(r-(a+b))^2)*E-K)
 	Bx_plasma = Br_plasma*x/r
 	By_plasma = Br_plasma*y/r
 
@@ -179,7 +177,6 @@ function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
 
 	SA[Bx, By, Bz]
 end
-
 
 """
 	 getB_tokamak_profile(x, y, z, q_profile, a, R₀, Bζ0) -> StaticVector{Float64, 3}
@@ -194,7 +191,7 @@ Reference: Tokamak, 4th Edition, John Wesson.
 - `Bζ0::Float`: toroidal magnetic field on axis [T].
 """
 function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat,
-	q_profile, a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
+		q_profile, a::AbstractFloat, R₀::AbstractFloat, Bζ0::AbstractFloat)
 	R = √(x^2 + y^2)
 	r = √((R - R₀)^2 + z^2)
 	if r > a

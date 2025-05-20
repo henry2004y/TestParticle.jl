@@ -8,5 +8,5 @@ and sheet length `L`. The current sheet is assumed to lie in the z = 0 plane.
 """
 function getB_CS_harris(r, B₀, L, Bn = 0.0)
 	z = r[3]
-	SA[B₀*tanh(z/L), 0.0, Bn]
+	SA[B₀ * tanh(z / L), 0.0, Bn]
 end

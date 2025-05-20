@@ -83,27 +83,26 @@ R = get_rotation_matrix(v̂, θ)
 function get_rotation_matrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
 	sinθ, cosθ = sincos(eltype(v)(θ))
 	tmp = 1 - cosθ
-	m = @SMatrix [
-		cosθ+v[1]^2*tmp         v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
-		v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp         v[2]*v[3]*tmp-v[1]*sinθ;
-		v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
+	m = @SMatrix [cosθ+v[1]^2*tmp v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
+					  v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp v[2]*v[3]*tmp-v[1]*sinθ;
+					  v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
 end
 
 "Return the gyrofrequency."
 function get_gyrofrequency(
-	B::AbstractFloat = 5e-9;
-	q::AbstractFloat = qᵢ,
-	m::AbstractFloat = mᵢ,
+		B::AbstractFloat = 5e-9;
+		q::AbstractFloat = qᵢ,
+		m::AbstractFloat = mᵢ
 )
 	ω = q * B / m
 end
 
 "Return the gyroradius."
 function get_gyroradius(
-	V::AbstractFloat,
-	B::AbstractFloat;
-	q::AbstractFloat = qᵢ,
-	m::AbstractFloat = mᵢ,
+		V::AbstractFloat,
+		B::AbstractFloat;
+		q::AbstractFloat = qᵢ,
+		m::AbstractFloat = mᵢ
 )
 	ω = get_gyrofrequency(B; q, m)
 	r = V / ω
@@ -111,9 +110,9 @@ end
 
 "Return the gyroperiod."
 function get_gyroperiod(
-	B::AbstractFloat = 5e-9;
-	q::AbstractFloat = qᵢ,
-	m::AbstractFloat = mᵢ,
+		B::AbstractFloat = 5e-9;
+		q::AbstractFloat = qᵢ,
+		m::AbstractFloat = mᵢ
 )
 	ω = get_gyrofrequency(B; q, m)
 	2π / ω

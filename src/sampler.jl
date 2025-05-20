@@ -6,7 +6,7 @@ Abstract type for velocity distribution functions.
 abstract type VDF end
 
 """
-Type for Maxwellian velocity distributions. 
+Type for Maxwellian velocity distributions.
 """
 struct Maxwellian{V <: AbstractVector, T <: AbstractFloat} <: VDF
 	"Bulk velocity"
@@ -50,14 +50,14 @@ thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number dens
 SI units. The default particle is proton.
 """
 function BiMaxwellian(
-	B::AbstractVector{U},
-	u0::AbstractVector{T},
-	ppar,
-	pperp,
-	n;
-	m = mᵢ,
+		B::AbstractVector{U},
+		u0::AbstractVector{T},
+		ppar,
+		pperp,
+		n;
+		m = mᵢ
 ) where
-	{T <: AbstractFloat, U <: AbstractFloat}
+		{T <: AbstractFloat, U <: AbstractFloat}
 	@assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
 	b0 = normalize(B)
 	vpar = √(ppar / (n * m))
@@ -98,12 +98,11 @@ function sample(vdf::BiMaxwellian{V, T, U}) where {V, T, U}
 	vperp1, vperp2 = vdf.vthperp .* m2 .* sincospi(2ϕ)
 
 	tmp = vdf.b0 × SVector(1, 0, 0)
-	bperp1 =
-		if (tmp[1]^2 + tmp[2]^2 + tmp[3]^2) < 1e-6
-			vdf.b0 × SVector(0, 1, 0)
-		else
-			tmp
-		end
+	bperp1 = if (tmp[1]^2 + tmp[2]^2 + tmp[3]^2) < 1e-6
+		vdf.b0 × SVector(0, 1, 0)
+	else
+		tmp
+	end
 	bperp2 = vdf.b0 × bperp1
 
 	v = @. vdf.u0 + vpar * vdf.b0 + vperp1 * bperp1 + vperp2 * bperp2

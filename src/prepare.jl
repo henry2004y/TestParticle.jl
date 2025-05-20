@@ -29,15 +29,17 @@ time-dependent field
 """
 struct Field{itd, F} <: AbstractField{itd}
 	field_function::F
-	Field{itd, F}(field_function::F) where {itd, F} =
+	function Field{itd, F}(field_function::F) where {itd, F}
 		isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
+	end
 end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)
-(f::AbstractField{true})(xu) =
+function (f::AbstractField{true})(xu)
 	throw(ArgumentError("Time-dependent field function must have a time argument."))
+end
 (f::AbstractField{false})(xu, t) = SVector{3}(f.field_function(xu))
 (f::AbstractField{false})(xu) = SVector{3}(f.field_function(xu))
 
@@ -71,7 +73,7 @@ get_EField(param) = param[3]
 Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge `q` and mass `m`,
 	mass `m` for a prescribed `species`, analytic/interpolated EM field functions, and external force `F`.
 
-Prescribed `species` are `Electron` and `Proton`; 
+Prescribed `species` are `Electron` and `Proton`;
 	other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
 # Keywords
@@ -97,9 +99,8 @@ and mass `m`, interpolated EM field functions, and external force `F`.
 Direct range input for uniform grid in 2/3D is also accepted.
 """
 function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species = Proton,
-	q::AbstractFloat = 1.0, m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1,
+		q::AbstractFloat = 1.0, m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1
 ) where {TE, TB}
-
 	q, m = getchargemass(species, q, m)
 
 	if paramdim(grid) == 3
@@ -116,9 +117,8 @@ function prepare(grid::CartesianGrid, E::TE, B::TB; species::Species = Proton,
 end
 
 function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species = Proton,
-	q::AbstractFloat = 1.0, m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1,
+		q::AbstractFloat = 1.0, m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1
 ) where {TE, TB, TF}
-
 	q, m = getchargemass(species, q, m)
 
 	gridx, gridy, gridz = makegrid(grid)
@@ -131,9 +131,9 @@ function prepare(grid::CartesianGrid, E::TE, B::TB, F::TF; species::Species = Pr
 end
 
 function prepare(x::T, y::T, E::TE, B::TB; species::Species = Proton,
-	q::AbstractFloat = 1.0,
-	m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1) where {T <: AbstractRange, TE, TB}
-
+		q::AbstractFloat = 1.0,
+		m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 1) where {
+		T <: AbstractRange, TE, TB}
 	q, m = getchargemass(species, q, m)
 
 	E = TE <: AbstractArray ? getinterp(E, x, y, order, bc) : E
@@ -143,9 +143,8 @@ function prepare(x::T, y::T, E::TE, B::TB; species::Species = Proton,
 end
 
 function prepare(x::T, E::TE, B::TB; species::Species = Proton, q::AbstractFloat = 1.0,
-	m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 3, dir = 1,
+		m::AbstractFloat = 1.0, order::Int = 1, bc::Int = 3, dir = 1
 ) where {T <: AbstractRange, TE, TB}
-
 	q, m = getchargemass(species, q, m)
 
 	E = TE <: AbstractArray ? getinterp(E, x, order, bc; dir) : E
@@ -155,10 +154,9 @@ function prepare(x::T, E::TE, B::TB; species::Species = Proton, q::AbstractFloat
 end
 
 function prepare(x::T, y::T, z::T, E::TE, B::TB;
-	species::Species = Proton, q::AbstractFloat = 1.0, m::AbstractFloat = 1.0,
-	order::Int = 1,
-	bc::Int = 1) where {T <: AbstractRange, TE, TB}
-
+		species::Species = Proton, q::AbstractFloat = 1.0, m::AbstractFloat = 1.0,
+		order::Int = 1,
+		bc::Int = 1) where {T <: AbstractRange, TE, TB}
 	q, m = getchargemass(species, q, m)
 
 	E = TE <: AbstractArray ? getinterp(E, x, y, z, order, bc) : E
@@ -168,15 +166,13 @@ function prepare(x::T, y::T, z::T, E::TE, B::TB;
 end
 
 function prepare(E, B, F = ZeroField(); species::Species = Proton, q::AbstractFloat = 1.0,
-	m::AbstractFloat = 1.0)
+		m::AbstractFloat = 1.0)
 	q, m = getchargemass(species, q, m)
 
 	q/m, m, Field(E), Field(B), Field(F)
 end
 
-
-import Base: (+), (*), (/), setindex!, getindex
-import LinearAlgebra: ×
+import Base: +, *, /, setindex!, getindex
 import StaticArrays: StaticArray
 
 struct ZeroField <: AbstractField{false} end

@@ -1,10 +1,9 @@
 # Guiding center.
 
 function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
-	species::Species = Proton, q::AbstractFloat = 1.0, m::AbstractFloat = 1.0,
-	order::Int = 1,
-	bc::Int = 1, removeExB = true) where {T <: AbstractRange, TE, TB}
-
+		species::Species = Proton, q::AbstractFloat = 1.0, m::AbstractFloat = 1.0,
+		order::Int = 1,
+		bc::Int = 1, removeExB = true) where {T <: AbstractRange, TE, TB}
 	q, m = getchargemass(species, q, m)
 	x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
@@ -40,7 +39,7 @@ function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
 end
 
 function prepare_gc(xv, E, B; species::Species = Proton, q::AbstractFloat = 1.0,
-	m::AbstractFloat = 1.0, removeExB = true)
+		m::AbstractFloat = 1.0, removeExB = true)
 	q, m = getchargemass(species, q, m)
 	x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
@@ -110,28 +109,26 @@ function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 end
 
 function get_gc(
-	x::T,
-	y::T,
-	z::T,
-	vx::T,
-	vy::T,
-	vz::T,
-	bx::U,
-	by::U,
-	bz::U,
-	q2m,
+		x::T,
+		y::T,
+		z::T,
+		vx::T,
+		vy::T,
+		vz::T,
+		bx::U,
+		by::U,
+		bz::U,
+		q2m
 ) where {T <: AbstractVector, U <: AbstractVector}
 	X = [zeros(SVector{3, eltype(x)}) for _ in x]
 	for i in eachindex(X)
-		X[i] =
-			get_gc(x[i], y[i], z[i], vx[i], vy[i], vz[i], bx[i], by[i], bz[i], q2m)
+		X[i] = get_gc(x[i], y[i], z[i], vx[i], vy[i], vz[i], bx[i], by[i], bz[i], q2m)
 	end
 
 	X
 end
 
-get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m) =
-	get_gc(x, y, z, vx, vy, vz, bx, by, bz, q/m)
+get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m) = get_gc(x, y, z, vx, vy, vz, bx, by, bz, q/m)
 
 """
 	 get_gc_func(param::Union{TPTuple, FullTPTuple})

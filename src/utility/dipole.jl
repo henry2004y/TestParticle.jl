@@ -17,10 +17,9 @@ function dipole(rIn, M)
 	r = sqrt(x^2 + y^2 + z^2)
 	Coef = μ₀/(4*π*r^5)
 
-	B = SA[  3*x^2-r^2 3*x*y     3*x*z;
-		3*y*x     3*y^2-r^2 3*y*z;
-		3*z*x     3*z*y     3*z^2-r^2
-	] * M * Coef
+	B = SA[3*x^2-r^2 3*x*y 3*x*z;
+			 3*y*x 3*y^2-r^2 3*y*z;
+			 3*z*x 3*z*y 3*z^2-r^2] * M * Coef
 end
 
 """
