@@ -1,5 +1,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: ZeroField
 import TestParticle as TP
 using LinearAlgebra: ×
 using CairoMakie
@@ -9,13 +10,13 @@ const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]
 
 "f2"
-function location!(dx, v, x, p::TP.TPTuple, t)
+function location!(dx, v, x, p, t)
    dx .= v
 end
 
 "f1"
-function lorentz!(dv, v, x, p::TP.TPTuple, t)
-   q2m, E, B = p
+function lorentz!(dv, v, x, p, t)
+   q2m, _, E, B = p
    dv .= q2m*(E(x, t) + v × (B(x, t)))
 end
 
@@ -29,13 +30,8 @@ function uniform_E(x)
    return SA[E₀, 0.0, 0.0]
 end
 
-function zero_B(x)
-   return SA[0.0, 0.0, 0.0]
-end
-
-function zero_E(x)
-   return SA[0.0, 0.0, 0.0]
-end
+zero_B = ZeroField()
+zero_E = ZeroField()
 
 "Check energy conservation."
 E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)

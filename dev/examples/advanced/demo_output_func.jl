@@ -1,5 +1,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle: get_BField
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using Random
@@ -11,7 +12,7 @@ Random.seed!(seed)
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, i, repeat)
-   B0 = prob.p[3](prob.u0)
+   B0 = get_BField(prob)(prob.u0)
    B0 = normalize(B0)
 
    Bperp1 = SA[0.0, -B0[3], B0[2]] |> normalize
@@ -84,7 +85,7 @@ prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
 "Set customized outputs for the ensemble problem."
 function output_func(sol, i)
-   getB = sol.prob.p[3]
+   getB = get_BField(sol)
    b = getB.(sol.u)
 
    μ = [@views b[i] ⋅ sol[4:6, i] / sqrt(sum(x -> x^2, b[i])) for i in eachindex(sol)]
