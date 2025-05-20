@@ -173,6 +173,7 @@ function prepare(E, B, F = ZeroField(); species::Species = Proton, q::AbstractFl
 end
 
 import Base: +, *, /, setindex!, getindex
+import LinearAlgebra: ×
 import StaticArrays: StaticArray
 
 struct ZeroField <: AbstractField{false} end
