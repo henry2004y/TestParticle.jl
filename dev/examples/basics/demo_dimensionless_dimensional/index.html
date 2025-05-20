@@ -27,15 +27,15 @@ v0 = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0..., v0...]
 tspan1 = (0, 2π*t₀) # [s]
 
-param1 = prepare(E, B, species=Proton)
+param1 = prepare(E, B, species = Proton)
 prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
-sol1 = solve(prob1, Vern9(); reltol=1e-4, abstol=1e-6)
+sol1 = solve(prob1, Vern9(); reltol = 1e-4, abstol = 1e-6)
 
 ### Solving in dimensionless units
-B_normalize(x) = SA[0, 0, B₀/B₀]
-E_normalize(x) = SA[Emag/E₀, 0.0, 0.0]
+B_normalize(x) = SA[0, 0, B₀ / B₀]
+E_normalize(x) = SA[Emag / E₀, 0.0, 0.0]
 # For full EM problems, the normalization of E and B should be done separately.
-param2 = prepare(E_normalize, B_normalize; species=User)
+param2 = prepare(E_normalize, B_normalize; species = User)
 # Scale initial conditions by the conversion factors
 x0 ./= l₀
 v0 ./= U₀
@@ -43,22 +43,22 @@ tspan2 = (0, 2π)
 stateinit2 = [x0..., v0...]
 
 prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
-sol2 = solve(prob2, Vern9(); reltol=1e-4, abstol=1e-6)
+sol2 = solve(prob2, Vern9(); reltol = 1e-4, abstol = 1e-6)
 
 ### Visualization
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-    xlabel = &quot;x [km]&quot;,
-    ylabel = &quot;y [km]&quot;,
-    aspect = DataAspect(),
+   xlabel = &quot;x [km]&quot;,
+   ylabel = &quot;y [km]&quot;,
+   aspect = DataAspect()
 )
 
-lines!(ax, sol1, idxs=(1, 2))
+lines!(ax, sol1, idxs = (1, 2))
 # Interpolate dimensionless solutions and map back to SI units
-xp, yp = let trange = range(tspan2..., length=40)
-   sol2.(trange, idxs=1) .* l₀, sol2.(trange, idxs=2) .* l₀
+xp, yp = let trange = range(tspan2..., length = 40)
+   sol2.(trange, idxs = 1) .* l₀, sol2.(trange, idxs = 2) .* l₀
 end
-lines!(ax, xp, yp, linestyle=:dashdot, linewidth=5, color=Makie.wong_colors()[2])
+lines!(ax, xp, yp, linestyle = :dashdot, linewidth = 5, color = Makie.wong_colors()[2])
 invL = inv(1e3)
 scale!(ax.scene, invL, invL)
-</code></pre><p><img src="../demo_dimensionless_dimensional-5.png" alt/></p><p>We see that the results are almost identical, with only floating point numerical errors. Tracing in dimensionless units usually allows larger timesteps, which leads to faster computation.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_dimensionless_dimensional-5.png" alt/></p><p>We see that the results are almost identical, with only floating point numerical errors. Tracing in dimensionless units usually allows larger timesteps, which leads to faster computation.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

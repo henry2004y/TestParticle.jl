@@ -9,15 +9,15 @@ nx, ny, nz = 4, 6, 2
 rL0 = 1.0
 L = nx / 4
 # Set length scales
-x = range(-L/2-1e-2, L/2+1e-2, length=nx) # [rL0]
-y = range(-L-1e-2, 1e-2, length=ny) # [rL0]
-z = range(-10, 10, length=nz) # [rL0]
+x = range(-L/2-1e-2, L/2+1e-2, length = nx) # [rL0]
+y = range(-L-1e-2, 1e-2, length = ny) # [rL0]
+z = range(-10, 10, length = nz) # [rL0]
 
 B = fill(0.0, 3, nx, ny, nz) # [B0]
-B[3,:,:,:] .= 1.0
+B[3, :, :, :] .= 1.0
 E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 # periodic bc = 2
-param = prepare(x, y, z, E, B; species=User, bc=2)
+param = prepare(x, y, z, E, B; species = User, bc = 2)
 
 # Initial condition
 stateinit = let
@@ -41,11 +41,11 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
+lines!(ax, sol, idxs = (1, 2))
 
 xgrid = [i for i in x, _ in y]
 ygrid = [j for _ in x, j in y]
-scatter!(ax, xgrid[:], ygrid[:], color=:tomato)
+scatter!(ax, xgrid[:], ygrid[:], color = :tomato)
 
 f = DisplayAs.PNG(f) #hide
 

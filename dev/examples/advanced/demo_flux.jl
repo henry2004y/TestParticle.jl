@@ -3,7 +3,9 @@ using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
 
-"Set initial conditions."
+"""
+Set initial conditions.
+"""
 function prob_func(prob, i, repeat)
    it = (i - 1) ÷ source_flux_tp
    ir = (i - 1) % source_flux_tp
@@ -17,7 +19,7 @@ function prob_func(prob, i, repeat)
    r₀ = prob.u0[1:3]
    t = (prob.tspan[1] + it, prob.tspan[2])
 
-   prob = remake(prob; u0 = [r₀..., v₀...], tspan=t)
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
 end
 
 # Source flux at the origin
@@ -33,12 +35,14 @@ const source_flux_tp = source_flux ÷ tp_per_rp # [test particles / s]
 trajectories = source_flux ÷ tp_per_rp * launch_time # total number of test particles
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
 
-"Estimate the particle flux through a plane x = x0 in a given time range."
-function estimate_flux_plane(sols, x0, trange=sols[1].prob.tspan)
+"""
+Estimate the particle flux through a plane x = x0 in a given time range.
+"""
+function estimate_flux_plane(sols, x0, trange = sols[1].prob.tspan)
    count = 0
    for sol in sols
       xs = [sol(t)[1] for t in trange]
@@ -74,15 +78,17 @@ function prob_func_iso(prob, i, repeat)
    r₀ = prob.u0[1:3]
    t = (prob.tspan[1] + it, prob.tspan[2])
 
-   prob = remake(prob; u0 = [r₀..., v₀...], tspan=t)
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
 end
 
-ensemble_prob = EnsembleProblem(prob; prob_func=prob_func_iso, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
 
-"Estimate the particle flux through a sphere with radius r = r0 in a given time range."
-function estimate_flux_sphere(sols, r0, trange=sols[1].prob.tspan)
+"""
+Estimate the particle flux through a sphere with radius r = r0 in a given time range.
+"""
+function estimate_flux_sphere(sols, r0, trange = sols[1].prob.tspan)
    count = 0
    for sol in sols
       rs = [hypot(sol(t)[1:3]...) for t in trange]

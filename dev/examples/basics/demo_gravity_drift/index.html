@@ -7,7 +7,7 @@ B(x) = SA[0.0, 1e-8, 0.0]
 E(x) = SA[0.0, 0.0, 0.0]
 
 # Earth&#39;s gravity
-F(x) = SA[0.0, 0.0, -TestParticle.mᵢ*9.8]
+F(x) = SA[0.0, 0.0, -TestParticle.mᵢ * 9.8]
 
 # Initial static particle
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 0.0, 0.0]
@@ -16,12 +16,13 @@ end
 # Time span
 tspan = (0, 1.0)
 
-param = prepare(E, B, F, species=Proton)
+param = prepare(E, B, F, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 # drift in x-direction + free fall in z-direction
-f = lines(sol, idxs=(3,1);
-   figure = (; size = (800, 400), fontsize=18),
-   axis = (; title=&quot;ExF Drift&quot;, xlabel=&quot;Z [m]&quot;, ylabel=&quot;X [m]&quot;, aspect = DataAspect())
+f = lines(sol, idxs = (3, 1);
+   figure = (; size = (800, 400), fontsize = 18),
+   axis = (;
+      title = &quot;ExF Drift&quot;, xlabel = &quot;Z [m]&quot;, ylabel = &quot;X [m]&quot;, aspect = DataAspect())
 )
-</code></pre><p><img src="../demo_gravity_drift-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_gravity_drift-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

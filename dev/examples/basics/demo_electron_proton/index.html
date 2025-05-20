@@ -3,14 +3,14 @@
 using CairoMakie
 
 ### Initialize grid and field
-x = range(-10, 10, length=15)
-y = range(-10, 10, length=20)
-z = range(-10, 10, length=25)
+x = range(-10, 10, length = 15)
+y = range(-10, 10, length = 20)
+z = range(-10, 10, length = 25)
 
 B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
 E = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
-B[3,:,:,:] .= 1e-11
-E[3,:,:,:] .= 5e-13
+B[3, :, :, :] .= 1e-11
+E[3, :, :, :] .= 5e-13
 
 ### Initialize particles
 stateinit = let
@@ -18,10 +18,10 @@ stateinit = let
    u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
    [x0..., u0...]
 end
-param_electron = prepare(x, y, z, E, B, species=Electron)
+param_electron = prepare(x, y, z, E, B, species = Electron)
 tspan_electron = (0.0, 15.0)
 
-param_proton = prepare(x, y, z, E, B, species=Proton)
+param_proton = prepare(x, y, z, E, B, species = Proton)
 tspan_proton = (0.0, 10.0)
 
 ### Solve for the trajectories
@@ -32,16 +32,16 @@ sol_e = solve(prob_e, Vern9())
 sol_p = solve(prob_p, Vern9())
 
 ### Visualization
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
    title = &quot;Electron and Ion Trajectories&quot;,
    xlabel = &quot;x [m]&quot;,
    ylabel = &quot;y [m]&quot;,
    zlabel = &quot;z [m]&quot;,
-   aspect = :data,
+   aspect = :data
 )
-plot!(sol_e, idxs=(1, 2, 3), color=:tomato, label=&quot;electron&quot;)
-plot!(sol_p, idxs=(1, 2, 3), color=:deepskyblue3, label=&quot;proton&quot;)
+plot!(sol_e, idxs = (1, 2, 3), color = :tomato, label = &quot;electron&quot;)
+plot!(sol_p, idxs = (1, 2, 3), color = :deepskyblue3, label = &quot;proton&quot;)
 
 axislegend()
-</code></pre><p><img src="../demo_electron_proton-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_electron_proton-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

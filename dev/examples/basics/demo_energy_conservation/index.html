@@ -8,12 +8,14 @@ using CairoMakie
 const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]
 
-&quot;f2&quot;
-function location!(dx, v, x, p, t)
-   dx .= v
-end
+&quot;&quot;&quot;
+f2
+&quot;&quot;&quot;
+location!(dx, v, x, p, t) = dx .= v
 
-&quot;f1&quot;
+&quot;&quot;&quot;
+f1
+&quot;&quot;&quot;
 function lorentz!(dv, v, x, p, t)
    q2m, _, E, B = p
    dv .= q2m*(E(x, t) + v × (B(x, t)))
@@ -21,18 +23,16 @@ end
 
 ### Initialize field
 
-function uniform_B(x)
-   return SA[0, 0, B₀]
-end
+uniform_B(x) = SA[0, 0, B₀]
 
-function uniform_E(x)
-   return SA[E₀, 0.0, 0.0]
-end
+uniform_E(x) = SA[E₀, 0.0, 0.0]
 
 zero_B = ZeroField()
 zero_E = ZeroField()
 
-&quot;Check energy conservation.&quot;
+&quot;&quot;&quot;
+Check energy conservation.
+&quot;&quot;&quot;
 E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 
 ### Initialize particles
@@ -40,7 +40,7 @@ E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 x0 = [0.0, 0, 0]
 v0 = [0.0, 1e2, 0.0]
 stateinit = [x0..., v0...]
-tspan_proton = (0.0, 2000.0);</code></pre><p>Uniform B field and zero E field</p><pre><code class="language-julia hljs">param_proton = prepare(zero_E, uniform_B, species=Proton)
+tspan_proton = (0.0, 2000.0);</code></pre><p>Uniform B field and zero E field</p><pre><code class="language-julia hljs">param_proton = prepare(zero_E, uniform_B, species = Proton)
 
 ### Solve for the trajectories
 
@@ -52,16 +52,16 @@ println(&quot;Number of gyrations: &quot;, tspan_proton[2] / Tᵢ)
 
 sol = solve(prob_p, ImplicitMidpoint(), dt = Tᵢ/15)
 
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-    title = &quot;Proton in a uniform B field and zero E field&quot;,
-    xlabel = &quot;x&quot;,
-    ylabel = &quot;y&quot;,
-    aspect = 1,
+   title = &quot;Proton in a uniform B field and zero E field&quot;,
+   xlabel = &quot;x&quot;,
+   ylabel = &quot;y&quot;,
+   aspect = 1
 )
 
-lines!(ax, sol, idxs=(1, 2))
-</code></pre><p><img src="../demo_energy_conservation-6.png" alt/></p><p>Zero B field and uniform E field</p><pre><code class="language-julia hljs">param_proton = prepare(uniform_E, zero_B, species=Proton)
+lines!(ax, sol, idxs = (1, 2))
+</code></pre><p><img src="../demo_energy_conservation-6.png" alt/></p><p>Zero B field and uniform E field</p><pre><code class="language-julia hljs">param_proton = prepare(uniform_E, zero_B, species = Proton)
 
 # acceleration, [m/s²]
 a = param_proton[1] * E₀
@@ -82,4 +82,4 @@ energy = map(x -&gt; E(x[1:3]...), sol.u) .* TP.mᵢ;</code></pre><p>Predicted f
 </code></pre><p>Simulated travel distance</p><pre><code class="nohighlight hljs">simulated travel distance: 5.74408674677139e12 [m]
 </code></pre><p>Predicted final energy</p><pre><code class="nohighlight hljs">predicted energy gain: 1.723226024042558e11 [eV]
 </code></pre><p>Simulated final energy</p><pre><code class="nohighlight hljs">simulated final energy: 1.7232260240426318e11 [eV]
-</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

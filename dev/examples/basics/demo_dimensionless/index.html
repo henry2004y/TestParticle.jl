@@ -13,15 +13,15 @@ U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]
 E₀ = U₀*B₀            # [V/m]
 # All quantities are in dimensionless units
-x = range(-10, 10, length=nx) # [l₀]
-y = range(-10, 10, length=ny) # [l₀]
-z = range(-10, 10, length=nz) # [l₀]
+x = range(-10, 10, length = nx) # [l₀]
+y = range(-10, 10, length = ny) # [l₀]
+z = range(-10, 10, length = nz) # [l₀]
 
 B = fill(0.0, 3, nx, ny, nz) # [B₀]
-B[3,:,:,:] .= 1.0
+B[3, :, :, :] .= 1.0
 E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
-param = prepare(x, y, z, E, B; species=User)
+param = prepare(x, y, z, E, B; species = User)
 
 # Initial condition
 stateinit = let
@@ -45,8 +45,8 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
-</code></pre><p><img src="../demo_dimensionless-6.png" alt/></p><p>In the relativistic case,</p><ul><li>Velocity is normalized by speed of light c, <span>$V = V^\prime c$</span>;</li><li>Magnetic field is normalized by the characteristic magnetic field, <span>$B = B^\prime B_0$</span>;</li><li>Electric field is normalized by <span>$E_0 = c\,B_0$</span>, <span>$E = E^\prime E_0$</span>;</li><li>Location is normalized by the <span>$L = c / \Omega_0$</span>, where <span>$\Omega_0 = q\,B_0 / m$</span>, and</li><li>Time is normalized by <span>$\Omega_0^{-1}$</span>, <span>$t = t^\prime * \Omega_0^{-1}$</span>.</li></ul><p>In the small velocity scenario, it should behave similar to the non-relativistic case:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species=User)
+lines!(ax, sol, idxs = (1, 2))
+</code></pre><p><img src="../demo_dimensionless-6.png" alt/></p><p>In the relativistic case,</p><ul><li>Velocity is normalized by speed of light c, <span>$V = V^\prime c$</span>;</li><li>Magnetic field is normalized by the characteristic magnetic field, <span>$B = B^\prime B_0$</span>;</li><li>Electric field is normalized by <span>$E_0 = c\,B_0$</span>, <span>$E = E^\prime E_0$</span>;</li><li>Location is normalized by the <span>$L = c / \Omega_0$</span>, where <span>$\Omega_0 = q\,B_0 / m$</span>, and</li><li>Time is normalized by <span>$\Omega_0^{-1}$</span>, <span>$t = t^\prime * \Omega_0^{-1}$</span>.</li></ul><p>In the small velocity scenario, it should behave similar to the non-relativistic case:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species = User)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -62,8 +62,8 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
-</code></pre><p><img src="../demo_dimensionless-9.png" alt/></p><p>In the large velocity scenario, relativistic effect takes place:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species=User)
+lines!(ax, sol, idxs = (1, 2))
+</code></pre><p><img src="../demo_dimensionless-9.png" alt/></p><p>In the large velocity scenario, relativistic effect takes place:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species = User)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -78,5 +78,5 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
-</code></pre><p><img src="../demo_dimensionless-11.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+lines!(ax, sol, idxs = (1, 2))
+</code></pre><p><img src="../demo_dimensionless-11.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

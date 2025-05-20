@@ -8,19 +8,15 @@ using CairoMakie
 ### Obtain field
 
 # Magnetic bottle parameters in SI units
-const ICoil = 80. # current in the coil
+const ICoil = 80.0 # current in the coil
 const N = 15000 # number of windings
 const IPlasma = 1e6 # current in the plasma
 const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
-function getB(xu)
-   SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
-end
+getB(xu) = SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 
-function getE(xu)
-   SA[0.0, 0.0, 0.0]
-end
+getE(xu) = SA[0.0, 0.0, 0.0]
 
 ### Initialize particles
 m = TP.mᵢ
@@ -33,7 +29,7 @@ v₀ = [-0.1, -0.15, 0.0] .* c
 r₀ = [2.3, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(getE, getB; species=Proton)
+param = prepare(getE, getB; species = Proton)
 tspan = (0.0, 1e-6)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -44,33 +40,33 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 # Default Tsit5() alone does not work in this case! You need to set a maximum
 # timestep to maintain stability, or choose a different algorithm as well.
 # The sample figure in the gallery is generated with AB3() and dt=2e-11.
-sol = solve(prob, Vern9(); dt=2e-11)
+sol = solve(prob, Vern9(); dt = 2e-11)
 
 ### Visualization
 
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
    title = &quot;Particle trajectory in Tokamak&quot;,
    xlabel = &quot;x [m]&quot;,
    ylabel = &quot;y [m]&quot;,
    zlabel = &quot;z [m]&quot;,
-   aspect = :data,
+   aspect = :data
 )
 
-lines!(ax, sol; idxs=(1,2,3), label=&quot;proton&quot;)
+lines!(ax, sol; idxs = (1, 2, 3), label = &quot;proton&quot;)
 
 # Plot coils
-θ = range(0, 2π, length=201)
+θ = range(0, 2π, length = 201)
 y = a * cos.(θ)
 z = a * sin.(θ)
 for i in 0:17
    ϕ = i*π/9
-   lines!(ax, y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color=(:red, 0.3))
+   lines!(ax, y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color = (:red, 0.3))
 end
 
 # Plot Tokamak
-u = range(0, 2π, length=100)
-v = range(0, 2π, length=100)
+u = range(0, 2π, length = 100)
+v = range(0, 2π, length = 100)
 
 U = [y for _ in u, y in v]
 V = [x for x in u, _ in v]
@@ -79,5 +75,5 @@ X = @. (a + b + (a - 0.05)*cos(U)) * cos(V)
 Y = @. (a + b + (a - 0.05)*cos(U)) * sin(V)
 Z = @. (a - 0.05) * sin(U)
 
-wireframe!(ax, X, Y, Z, color=(:blue, 0.1), linewidth=0.5, transparency=true)
-</code></pre><p><img src="../demo_tokamak_coil-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+wireframe!(ax, X, Y, Z, color = (:blue, 0.1), linewidth = 0.5, transparency = true)
+</code></pre><p><img src="../demo_tokamak_coil-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

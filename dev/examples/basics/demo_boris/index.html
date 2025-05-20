@@ -5,20 +5,20 @@ import TestParticle as TP
 using CairoMakie
 
 function plot_trajectory(sol_boris, sol1, sol2)
-   f = Figure(size=(700, 600), fontsize=18)
-   ax = Axis(f[1, 1], aspect=1, limits = (-3, 1, -2, 2),
+   f = Figure(size = (700, 600), fontsize = 18)
+   ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = &quot;X&quot;,
       ylabel = &quot;Y&quot;)
    idxs = (1, 2)
-   l0 = lines!(ax, sol_boris[1]; idxs, linewidth=2, label=&quot;Boris&quot;)
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = &quot;Boris&quot;)
    l1 = lines!(ax, sol1; idxs,
-      color=Makie.wong_colors()[2], linewidth=2, linestyle=:dashdot, label=&quot;Tsit5 fixed&quot;)
+      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = &quot;Tsit5 fixed&quot;)
    l2 = linesegments!(ax, sol2; idxs,
-      color=Makie.wong_colors()[3], linewidth=2, linestyle=:dot, label=&quot;Tsit5 adaptive&quot;)
+      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = &quot;Tsit5 adaptive&quot;)
 
    scale!(ax.scene, invrL, invrL)
 
-   axislegend(position=:rt, framevisible=false)
+   axislegend(position = :rt, framevisible = false)
 
    f
 end
@@ -31,18 +31,19 @@ x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1e5, 0.0]
 stateinit = [x0..., v0...]
 
-param = prepare(zero_E, uniform_B, species=Electron)
+param = prepare(zero_E, uniform_B, species = Electron)
 
 # Reference parameters
-const tperiod = 2π / (abs(param[1]) * sqrt(sum(x -&gt; x^2, get_BField(param)([0.0,0.0,0.0], 0.0))))
+const tperiod = 2π / (abs(param[1]) *
+                 sqrt(sum(x -&gt; x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;</code></pre><p>We first trace the particle for one period with a discrete time step of a quarter period.</p><pre><code class="language-julia hljs">tspan = (0.0, tperiod)
 dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval=1);</code></pre><p>Let&#39;s compare against the default ODE solver <code>Tsit5</code> from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:</p><pre><code class="language-julia hljs">prob = ODEProblem(trace!, stateinit, tspan, param)
-sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);</code></pre><p>Let&#39;s compare against the default ODE solver <code>Tsit5</code> from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:</p><pre><code class="language-julia hljs">prob = ODEProblem(trace!, stateinit, tspan, param)
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # Visualization
@@ -50,10 +51,10 @@ f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_bori
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval=1);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-10.png" alt/></p><p>The Boris pusher shines when we do long time tracing, which is fast and conserves energy:</p><pre><code class="language-julia hljs">tspan = (0.0, 200*tperiod)
@@ -62,16 +63,16 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris; dt, savestepinterval=10);
-sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-12.png" alt/></p><p>Fixed time step <code>Tsit5()</code> is ok, but adaptive <code>Tsit5()</code> is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.</p><p>Another aspect to compare is performance:</p><pre><code class="language-julia hljs">@time sol_boris = TP.solve(prob_boris; dt, savestepinterval=10)[1];
-@time sol1 = solve(prob, Tsit5(); adaptive=false, dt, dense=false, saveat=dt);
-@time sol2 = solve(prob, Tsit5());</code></pre><pre><code class="nohighlight hljs">  0.000092 seconds (261 allocations: 21.703 KiB)
-  0.000774 seconds (4.88 k allocations: 376.812 KiB)
-  0.000801 seconds (23.68 k allocations: 1.329 MiB)
+f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-12.png" alt/></p><p>Fixed time step <code>Tsit5()</code> is ok, but adaptive <code>Tsit5()</code> is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.</p><p>Another aspect to compare is performance:</p><pre><code class="language-julia hljs">@time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+@time sol2 = solve(prob, Tsit5());</code></pre><pre><code class="nohighlight hljs">  0.000110 seconds (261 allocations: 21.703 KiB)
+  0.000804 seconds (4.88 k allocations: 376.812 KiB)
+  0.000859 seconds (23.68 k allocations: 1.329 MiB)
 </code></pre><p>We can extract the solution <code>(x, y, z, vx, vy, vz)</code> at any given time by performing a linear interpolation:</p><pre><code class="language-julia hljs">t = tspan[2] / 2
 sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArraysCore.MVector{6, Float64} with indices SOneTo(6):
     -3.911568318655031e-5
@@ -79,4 +80,4 @@ sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArr
      0.0
  99639.26547015733
   8486.269885387323
-     0.0</code></pre><p>The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using <code>Vern9()</code> as a starting point instead of <code>Tsit5()</code>, especially combined with adaptive timestepping.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 01:04">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+     0.0</code></pre><p>The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using <code>Vern9()</code> as a starting point instead of <code>Tsit5()</code>, especially combined with adaptive timestepping.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 02:24">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
