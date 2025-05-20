@@ -44,9 +44,9 @@ param = prepare(x, y, E, B; species = User, bc = 2);
 
 ## Initial conditions
 stateinit = let
-	x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-	u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
-	[x0..., u0...]
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
 end
 ## Time span
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
@@ -57,11 +57,11 @@ sol = solve(prob, Vern9());
 # Visualization
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-	title = "Proton trajectory",
-	xlabel = "X",
-	ylabel = "Y",
-	limits = (-10.1, 10.1, -20.1, 0.1),
-	aspect = DataAspect()
+   title = "Proton trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   limits = (-10.1, 10.1, -20.1, 0.1),
+   aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))

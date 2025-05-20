@@ -17,11 +17,11 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function curved_B(x)
-	## satisify ∇ ⋅ B = 0
-	## B_θ = 1/r => ∂B_θ/∂θ = 0
-	θ = atan(x[3] / (x[1] + 3))
-	r = sqrt((x[1] + 3)^2 + x[3]^2)
-	return SA[-1e-6 * sin(θ) / r, 0, 1e-6 * cos(θ) / r]
+   ## satisify ∇ ⋅ B = 0
+   ## B_θ = 1/r => ∂B_θ/∂θ = 0
+   θ = atan(x[3] / (x[1] + 3))
+   r = sqrt((x[1] + 3)^2 + x[3]^2)
+   return SA[-1e-6 * sin(θ) / r, 0, 1e-6 * cos(θ) / r]
 end
 
 uniform_B(x) = SA[0.0, 0.0, 1e-8]
@@ -29,7 +29,7 @@ uniform_E(x) = SA[1e-9, 0.0, 0.0]
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
-	[x0..., v0...]
+   [x0..., v0...]
 end
 ## Time span
 tspan = (0, 41)
@@ -40,7 +40,7 @@ sol = solve(prob, Vern9())
 
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
-	species = Proton, removeExB = false)
+   species = Proton, removeExB = false)
 
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 
@@ -54,13 +54,13 @@ zrange = range(-0.65, 0.65, length = 40)
 B_numerical = Array{Float64, 4}(undef, 3, length(xrange), length(yrange), length(zrange))
 
 for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
-	x = SA[xrange[i], yrange[j], zrange[k]]
-	B_numerical[:, i, j, k] = curved_B(x)
+   x = SA[xrange[i], yrange[j], zrange[k]]
+   B_numerical[:, i, j, k] = curved_B(x)
 end
 ##TODO Higher order interpolation leads to worse results --- needs investigations!
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
-	uniform_E, B_numerical, species = Proton, removeExB = false, order = 1)
+   uniform_E, B_numerical, species = Proton, removeExB = false, order = 1)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 
@@ -78,11 +78,11 @@ gc_plot(x, y, z, vx, vy, vz) = (gc([x, y, z, vx, vy, vz])...,)
 ## Visualization
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Proton and Its Guiding Center Trajectories",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Proton and Its Guiding Center Trajectories",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 plot!(ax, sol, idxs = (1, 2, 3), color = (Makie.wong_colors()[1], 0.2))
@@ -101,12 +101,12 @@ grad_B(x) = SA[0, 0, 1e-8 + 1e-9 * x[2]]
 
 tspan = (0, 20)
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
-	[x0..., v0...]
+   [x0..., v0...]
 end
 
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B,
-	species = Proton, removeExB = false)
+   species = Proton, removeExB = false)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 
@@ -125,11 +125,11 @@ sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 ## Visualization
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Proton and Its Guiding Center Trajectories",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Proton and Its Guiding Center Trajectories",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 plot!(ax, sol, idxs = (1, 2, 3), color = (Makie.wong_colors()[1], 0.4))
@@ -146,7 +146,7 @@ grad_B(x) = SA[0, 0, 1e-7 + 1e-8 * x[2]]
 tspan = (0, 10)
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B,
-	species = Proton, removeExB = false)
+   species = Proton, removeExB = false)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 
@@ -165,11 +165,11 @@ sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 ## Visualization
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Proton and Its Guiding Center Trajectories",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Proton and Its Guiding Center Trajectories",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 plot!(ax, sol, idxs = (1, 2, 3), color = (Makie.wong_colors()[1], 0.4))

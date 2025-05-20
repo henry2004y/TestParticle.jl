@@ -19,22 +19,22 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(sol_boris, sol1, sol2)
-	f = Figure(size = (700, 600), fontsize = 18)
-	ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
-		xlabel = "X",
-		ylabel = "Y")
-	idxs = (1, 2)
-	l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris")
-	l1 = lines!(ax, sol1; idxs,
-		color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-	l2 = linesegments!(ax, sol2; idxs,
-		color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
+   f = Figure(size = (700, 600), fontsize = 18)
+   ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
+      xlabel = "X",
+      ylabel = "Y")
+   idxs = (1, 2)
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris")
+   l1 = lines!(ax, sol1; idxs,
+      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
+   l2 = linesegments!(ax, sol2; idxs,
+      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
 
-	scale!(ax.scene, invrL, invrL)
+   scale!(ax.scene, invrL, invrL)
 
-	axislegend(position = :rt, framevisible = false)
+   axislegend(position = :rt, framevisible = false)
 
-	f
+   f
 end
 
 const Bmag = 0.01
@@ -49,7 +49,7 @@ param = prepare(zero_E, uniform_B, species = Electron)
 
 ## Reference parameters
 const tperiod = 2π / (abs(param[1]) *
-					  sqrt(sum(x -> x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+                 sqrt(sum(x -> x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;
 

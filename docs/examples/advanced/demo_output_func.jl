@@ -27,32 +27,34 @@ CairoMakie.activate!(type = "png") #hide
 seed = 1 # seed for random number
 Random.seed!(seed)
 
-"Set initial state for EnsembleProblem."
+"""
+Set initial state for EnsembleProblem.
+"""
 function prob_func(prob, i, repeat)
-	B0 = get_BField(prob)(prob.u0)
-	B0 = normalize(B0)
+   B0 = get_BField(prob)(prob.u0)
+   B0 = normalize(B0)
 
-	Bperp1 = SA[0.0, -B0[3], B0[2]] |> normalize
-	Bperp2 = B0 × Bperp1 |> normalize
+   Bperp1 = SA[0.0, -B0[3], B0[2]] |> normalize
+   Bperp2 = B0 × Bperp1 |> normalize
 
-	## initial azimuthal angle
-	ϕ = 2π*rand()
-	## initial pitch angle
-	θ = acos(0.5)
+   ## initial azimuthal angle
+   ϕ = 2π*rand()
+   ## initial pitch angle
+   θ = acos(0.5)
 
-	sinϕ, cosϕ = sincos(ϕ)
-	u = @. (B0*cos(θ) + Bperp1*(sin(θ)*cosϕ) + Bperp2*(sin(θ)*sinϕ)) * U₀
+   sinϕ, cosϕ = sincos(ϕ)
+   u = @. (B0*cos(θ) + Bperp1*(sin(θ)*cosϕ) + Bperp2*(sin(θ)*sinϕ)) * U₀
 
-	prob = @views remake(prob; u0 = [prob.u0[1:3]..., u...])
+   prob = @views remake(prob; u0 = [prob.u0[1:3]..., u...])
 end
 
 function getmeanB(B)
-	B₀sum = eltype(B)(0)
-	for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
-		B₀sum += B[1, i, j, k]^2 + B[2, i, j, k]^2 + B[3, i, j, k]^2
-	end
+   B₀sum = eltype(B)(0)
+   for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
+      B₀sum += B[1, i, j, k]^2 + B[2, i, j, k]^2 + B[3, i, j, k]^2
+   end
 
-	sqrt(B₀sum / prod(size(B)[2:4]))
+   sqrt(B₀sum / prod(size(B)[2:4]))
 end
 
 ## Number of cells for the field along each dimension
@@ -90,9 +92,9 @@ param = prepare(x, y, z, E, B; species = User, bc = 2)
 
 ## Initial condition
 stateinit = let
-	x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-	u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
-	[x0..., u0...]
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
 end
 ## Time span
 tspan = (0.0, 2π) # one averaged gyroperiod based on B₀
@@ -101,14 +103,16 @@ saveat = tspan[2] / 40 # save interval
 
 prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
 
-"Set customized outputs for the ensemble problem."
+"""
+Set customized outputs for the ensemble problem.
+"""
 function output_func(sol, i)
-	getB = get_BField(sol)
-	b = getB.(sol.u)
+   getB = get_BField(sol)
+   b = getB.(sol.u)
 
-	μ = [@views b[i] ⋅ sol[4:6, i] / sqrt(sum(x -> x^2, b[i])) for i in eachindex(sol)]
+   μ = [@views b[i] ⋅ sol[4:6, i] / sqrt(sum(x -> x^2, b[i])) for i in eachindex(sol)]
 
-	(sol.u, b, μ), false
+   (sol.u, b, μ), false
 end
 
 ## Number of trajectories
@@ -121,18 +125,18 @@ sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat);
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Proton trajectories",
-	xlabel = "X",
-	ylabel = "Y",
-	zlabel = "Z",
-	aspect = :data
+   title = "Proton trajectories",
+   xlabel = "X",
+   ylabel = "Y",
+   zlabel = "Z",
+   aspect = :data
 )
 
 for i in eachindex(sols)
-	xp = [s[1] for s in sols[i][1]]
-	yp = [s[2] for s in sols[i][1]]
-	zp = [s[3] for s in sols[i][1]]
-	lines!(ax, xp, yp, zp, label = "$i")
+   xp = [s[1] for s in sols[i][1]]
+   yp = [s[2] for s in sols[i][1]]
+   zp = [s[3] for s in sols[i][1]]
+   lines!(ax, xp, yp, zp, label = "$i")
 end
 
 f = DisplayAs.PNG(f) #hide

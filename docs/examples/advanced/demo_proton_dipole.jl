@@ -18,13 +18,13 @@ CairoMakie.activate!(type = "png") #hide
 
 ## Initial condition
 stateinit = let
-	## Initial particle energy
-	Ek = 5e7 # [eV]
-	## initial velocity, [m/s]
-	v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
-	## initial position, [m]
-	r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
-	[r₀..., v₀...]
+   ## Initial particle energy
+   Ek = 5e7 # [eV]
+   ## initial velocity, [m/s]
+   v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   ## initial position, [m]
+   r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
+   [r₀..., v₀...]
 end
 ## obtain field
 param = prepare(TP.getE_dipole, TP.getB_dipole)
@@ -53,7 +53,7 @@ l = lines!(ax, sol, idxs = (1, 2, 3))
 scale!(ax.scene, invRE, invRE, invRE)
 
 for ϕ in range(0, stop = 2*π, length = 10)
-	lines!(TP.dipole_fieldline(ϕ) .* Rₑ..., color = :tomato, alpha = 0.3)
+   lines!(TP.dipole_fieldline(ϕ) .* Rₑ..., color = :tomato, alpha = 0.3)
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -62,14 +62,14 @@ f = DisplayAs.PNG(f) #hide
 # In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
 
 function get_energy_ratio(sol)
-	vx = @view sol[4, :]
-	vy = @view sol[5, :]
-	vz = @view sol[6, :]
+   vx = @view sol[4, :]
+   vy = @view sol[5, :]
+   vz = @view sol[6, :]
 
-	Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
-	Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
+   Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
+   Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
 
-	(Eend - Einit) / Einit
+   (Eend - Einit) / Einit
 end
 
 ## `ImplicitMidpoint()` requires a fixed time step.

@@ -28,13 +28,9 @@ const IPlasma = 1e6 # current in the plasma
 const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
-function getB(xu)
-	SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
-end
+getB(xu) = SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 
-function getE(xu)
-	SA[0.0, 0.0, 0.0]
-end
+getE(xu) = SA[0.0, 0.0, 0.0]
 
 ### Initialize particles
 m = TP.mᵢ
@@ -64,11 +60,11 @@ sol = solve(prob, Vern9(); dt = 2e-11)
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Particle trajectory in Tokamak",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Particle trajectory in Tokamak",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 lines!(ax, sol; idxs = (1, 2, 3), label = "proton")
@@ -78,8 +74,8 @@ lines!(ax, sol; idxs = (1, 2, 3), label = "proton")
 y = a * cos.(θ)
 z = a * sin.(θ)
 for i in 0:17
-	ϕ = i*π/9
-	lines!(ax, y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color = (:red, 0.3))
+   ϕ = i*π/9
+   lines!(ax, y*sin(ϕ) .+ (a+b)*sin(ϕ), y*cos(ϕ) .+ (a+b)*cos(ϕ), z, color = (:red, 0.3))
 end
 
 ## Plot Tokamak

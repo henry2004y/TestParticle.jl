@@ -20,18 +20,19 @@ CairoMakie.activate!(type = "png") #hide
 uniform_B(x) = SA[0.0, 0.0, 0.01]
 uniform_E(x) = SA[0.0, 0.0, 0.0]
 
-"Set initial states."
+"""
+Set initial states.
+"""
 function prob_func(prob, i, repeat)
-	prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
+   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
 end
 
-function isoutofdomain(xv, p, t)
-	if isnan(xv[1])
-		return true
-	else
-		return false
-	end
-end
+isoutofdomain(xv, p, t) =
+   if isnan(xv[1])
+      return true
+   else
+      return false
+   end
 
 ## Number of cells for the field along each dimension
 nx, ny = 4, 6
@@ -73,15 +74,15 @@ sols = TestParticle.solve(prob; dt, savestepinterval, isoutofdomain, trajectorie
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-	title = "Proton trajectory",
-	xlabel = "X",
-	ylabel = "Y",
-	limits = (-10.1, 10.1, -20.1, 0.1),
-	aspect = DataAspect()
+   title = "Proton trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   limits = (-10.1, 10.1, -20.1, 0.1),
+   aspect = DataAspect()
 )
 
 for i in eachindex(sols)
-	lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
+   lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
 end
 
 axislegend(position = :lt, framevisible = false)

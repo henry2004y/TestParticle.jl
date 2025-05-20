@@ -23,29 +23,25 @@ const Bζ0 = 5.3  # toroidal field on axis [T]
 const a = 2.0 # Minor radius [m]
 
 ## Variable must be a radius normalized by minor radius.
-function q_profile(nr::Float64)
-	return nr^2 + 2*nr + 0.5
-end
+q_profile(nr::Float64) = nr^2 + 2*nr + 0.5
 
-function B(xu)
-	SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
-end
+B(xu) = SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
 
-function E(xu)
-	SA[0.0, 0.0, 0.0]
-end
+E(xu) = SA[0.0, 0.0, 0.0]
 
-"Contruct the topology of Tokamak."
+"""
+Contruct the topology of Tokamak.
+"""
 function get_tokamak_topology()
-	nθ = LinRange(0, 2π, 30)
-	nζ = LinRange(0, 2π, 30)
-	nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
-	ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
-	nz = [a*sin(θ) for θ in nθ, ζ in nζ]
-	points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
-	faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
+   nθ = LinRange(0, 2π, 30)
+   nζ = LinRange(0, 2π, 30)
+   nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
+   ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
+   nz = [a*sin(θ) for θ in nθ, ζ in nζ]
+   points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
+   faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
 
-	tor_mesh = GeometryBasics.Mesh(points, faces)
+   tor_mesh = GeometryBasics.Mesh(points, faces)
 end
 
 # Passing proton in a Tokamak
@@ -66,11 +62,11 @@ tor_mesh = get_tokamak_topology()
 
 fig1 = Figure(fontsize = 18)
 ax = Axis3(fig1[1, 1],
-	title = "Passing Particle",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Passing Particle",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 lines!(ax, sol; idxs = (1, 2, 3))
@@ -95,11 +91,11 @@ sol = solve(prob, Vern7(); dt = 1e-11)
 
 fig2 = Figure(fontsize = 18)
 ax = Axis3(fig2[1, 1],
-	title = "Trapped Particle",
-	xlabel = "x [m]",
-	ylabel = "y [m]",
-	zlabel = "z [m]",
-	aspect = :data
+   title = "Trapped Particle",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   zlabel = "z [m]",
+   aspect = :data
 )
 
 lines!(ax, sol; idxs = (1, 2, 3))

@@ -45,9 +45,9 @@ param = prepare(x, y, z, E, B; species = User)
 
 ## Initial condition
 stateinit = let
-	x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-	u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
-	[x0..., u0...]
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
 end
 ## Time span
 tspan = (0.0, π) # half gyroperiod
@@ -58,11 +58,11 @@ sol = solve(prob, Vern9())
 ### Visualization
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-	title = "Proton trajectory",
-	xlabel = "X",
-	ylabel = "Y",
-	limits = (-4.1, 4.1, -8.1, 0.1),
-	aspect = DataAspect()
+   title = "Proton trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   limits = (-4.1, 4.1, -8.1, 0.1),
+   aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))
@@ -87,11 +87,11 @@ sol = solve(prob, Vern9())
 ### Visualization
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-	title = "Relativistic particle trajectory",
-	xlabel = "X",
-	ylabel = "Y",
-	#limits = (-0.6, 0.6, -1.1, 0.1),
-	aspect = DataAspect()
+   title = "Relativistic particle trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   #limits = (-0.6, 0.6, -1.1, 0.1),
+   aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))
@@ -109,10 +109,10 @@ sol = solve(prob, Vern9())
 ### Visualization
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-	title = "Relativistic particle trajectory",
-	xlabel = "X",
-	ylabel = "Y",
-	aspect = DataAspect()
+   title = "Relativistic particle trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))

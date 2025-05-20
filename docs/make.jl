@@ -9,25 +9,25 @@ assets = String[]
 isnothing(demo_assets) || (push!(assets, demo_assets))
 
 makedocs(;
-	modules = [TestParticle],
-	authors = "Hongyang Zhou <hyzhou@umich.edu> and contributors",
-	sitename = "TestParticle.jl",
-	format = Documenter.HTML(;
-		prettyurls = get(ENV, "CI", "false") == "true",
-		canonical = "https://henry2004y.github.io/TestParticle.jl",
-		assets = String[],
-		size_threshold = 22000000,
-		size_threshold_warn = 10000000
-	),
-	pages = [
-		"Home" => "index.md",
-		"Tutorial" => "tutorial.md",
-		"Examples" => demos,
-		"API" => "api.md",
-		"Plot Functions" => "plotfunctions.md"
-	]
+   modules = [TestParticle],
+   authors = "Hongyang Zhou <hyzhou@umich.edu> and contributors",
+   sitename = "TestParticle.jl",
+   format = Documenter.HTML(;
+      prettyurls = get(ENV, "CI", "false") == "true",
+      canonical = "https://henry2004y.github.io/TestParticle.jl",
+      assets = String[],
+      size_threshold = 22000000,
+      size_threshold_warn = 10000000
+   ),
+   pages = [
+      "Home" => "index.md",
+      "Tutorial" => "tutorial.md",
+      "Examples" => demos,
+      "API" => "api.md",
+      "Plot Functions" => "plotfunctions.md"
+   ]
 )
 
 deploydocs(;
-	repo = "github.com/henry2004y/TestParticle.jl",
+   repo = "github.com/henry2004y/TestParticle.jl",
 )

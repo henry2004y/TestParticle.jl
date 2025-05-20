@@ -22,12 +22,14 @@ CairoMakie.activate!(type = "png") #hide
 ## For reproducible results
 Random.seed!(1234)
 
-"Set initial conditions."
+"""
+Set initial conditions.
+"""
 function prob_func(prob, i, repeat)
-	v₀ = sample(vdf₁)
-	r₀ = [5_000e3, 0.0, 0.0]
+   v₀ = sample(vdf₁)
+   r₀ = [5_000e3, 0.0, 0.0]
 
-	prob = remake(prob; u0 = [r₀..., v₀...])
+   prob = remake(prob; u0 = [r₀..., v₀...])
 end;
 
 # Perpendicular shock is a special shock in which both the upstream and downstream plasma flows are perpendicular to the magnetic field, as well as the shock front.
@@ -72,11 +74,11 @@ trajectories = 400
 weight₁ = n₁ / trajectories # relation between test particle and real particles
 
 prob = let
-	## BC type 3 is Flat
-	param = prepare(x, E, B; species = Proton, bc = 3);
-	stateinit = zeros(6) # particle position and velocity to be modified
-	tspan = (0.0, 30.0)
-	ODEProblem(trace!, stateinit, tspan, param)
+   ## BC type 3 is Flat
+   param = prepare(x, E, B; species = Proton, bc = 3);
+   stateinit = zeros(6) # particle position and velocity to be modified
+   tspan = (0.0, 30.0)
+   ODEProblem(trace!, stateinit, tspan, param)
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
@@ -85,35 +87,35 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 # Sample particle trajectories
 
 function plot_traj(sols; azimuth = 1.275pi, elevation = pi/8,
-		limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)))
-	f = Figure(fontsize = 18)
-	##ax = Axis3(f[1, 1];
-	##   title="Particles across MHD shock",
-	##   xlabel="x [km]",
-	##   ylabel="y [km]",
-	##   zlabel="z [km]",
-	##   aspect=:data,
-	##   limits, azimuth, elevation,
-	##)
-	ax = LScene(f[1, 1], show_axis = true)
-	for i in eachindex(sols)
-		lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i",
-			color = Makie.wong_colors()[mod(i - 1, 7) + 1])
-	end
-	invL = 1 / 1e3
-	## In Makie 0.21.11, scene scaling has issues on Axis3.
-	##scale!(ax.scene, invL, invL, invL)
+      limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)))
+   f = Figure(fontsize = 18)
+   ##ax = Axis3(f[1, 1];
+   ##   title="Particles across MHD shock",
+   ##   xlabel="x [km]",
+   ##   ylabel="y [km]",
+   ##   zlabel="z [km]",
+   ##   aspect=:data,
+   ##   limits, azimuth, elevation,
+   ##)
+   ax = LScene(f[1, 1], show_axis = true)
+   for i in eachindex(sols)
+      lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i",
+         color = Makie.wong_colors()[mod(i - 1, 7) + 1])
+   end
+   invL = 1 / 1e3
+   ## In Makie 0.21.11, scene scaling has issues on Axis3.
+   ##scale!(ax.scene, invL, invL, invL)
 
-	## Represent the shock front
-	p1 = Point3f(0.0, -2e2, -2e2)
-	p2 = Point3f(0.0, 2e2, -2e2)
-	p3 = Point3f(0.0, 2e2, 2e2)
-	p4 = Point3f(0.0, -2e2, 2e2)
+   ## Represent the shock front
+   p1 = Point3f(0.0, -2e2, -2e2)
+   p2 = Point3f(0.0, 2e2, -2e2)
+   p3 = Point3f(0.0, 2e2, 2e2)
+   p4 = Point3f(0.0, -2e2, 2e2)
 
-	mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = Makie.automatic)
-	mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = Makie.automatic)
+   mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = Makie.automatic)
+   mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = Makie.automatic)
 
-	f
+   f
 end
 
 f = plot_traj(sols[1:4])
@@ -122,54 +124,54 @@ f = DisplayAs.PNG(f) #hide
 # Phase space distributions
 
 function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
-	trange = range(sols[1].prob.tspan..., length = ntchunks)
+   trange = range(sols[1].prob.tspan..., length = ntchunks)
 
-	xrange = range(x[1], x[end], length = nxchunks+1)
-	dx = (x[end] - x[1]) / nxchunks
-	xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length = nxchunks) ./ 1e3
+   xrange = range(x[1], x[end], length = nxchunks+1)
+   dx = (x[end] - x[1]) / nxchunks
+   xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length = nxchunks) ./ 1e3
 
-	vx = [Float64[] for _ in 1:nxchunks]
+   vx = [Float64[] for _ in 1:nxchunks]
 
-	for sol in sols
-		for t in trange
-			xv = sol(t)
-			for i in 1:nxchunks
-				if xrange[i] < xv[1] ≤ xrange[i + 1]
-					push!(vx[i], xv[4] / 1e3)
-				end
-			end
-		end
-	end
+   for sol in sols
+      for t in trange
+         xv = sol(t)
+         for i in 1:nxchunks
+            if xrange[i] < xv[1] ≤ xrange[i + 1]
+               push!(vx[i], xv[4] / 1e3)
+            end
+         end
+      end
+   end
 
-	for i in eachindex(vx)
-		if isempty(vx[i])
-			push!(vx[i], 0.0)
-		end
-	end
+   for i in eachindex(vx)
+      if isempty(vx[i])
+         push!(vx[i], 0.0)
+      end
+   end
 
-	f = Figure(size = (1200, 600), fontsize = 18)
-	ax = Axis(f[1, 1],
-		limits = (nothing, nothing, -750, 400),
-		title = "Phase space distributions at different spatial locations",
-		xlabel = "Location [km]",
-		ylabel = "Vx [km/s]",
-		xminorticksvisible = true)
+   f = Figure(size = (1200, 600), fontsize = 18)
+   ax = Axis(f[1, 1],
+      limits = (nothing, nothing, -750, 400),
+      title = "Phase space distributions at different spatial locations",
+      xlabel = "Location [km]",
+      ylabel = "Vx [km/s]",
+      xminorticksvisible = true)
 
-	for i in 1:nxchunks
-		hist!(ax, vx[i], normalization = :pdf, bins = 50,
-			scale_to = -5000/nxchunks, offset = xmid[i], direction = :x)
-	end
+   for i in 1:nxchunks
+      hist!(ax, vx[i], normalization = :pdf, bins = 50,
+         scale_to = -5000/nxchunks, offset = xmid[i], direction = :x)
+   end
 
-	v̄x = mean.(vx)
-	vth = [std(vx[i]; corrected = false, mean = v̄x[i]) for i in 1:nxchunks]
-	means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
-	std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
-	text!(Point.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),
-		offset = (-60, 0), color = :black, fontsize = 24)
-	text!(Point.(xmid .+ 400, -700.0), text = std_str, align = (:right, :center),
-		offset = (-60, 0), color = :black, fontsize = 24)
+   v̄x = mean.(vx)
+   vth = [std(vx[i]; corrected = false, mean = v̄x[i]) for i in 1:nxchunks]
+   means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
+   std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
+   text!(Point.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize = 24)
+   text!(Point.(xmid .+ 400, -700.0), text = std_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize = 24)
 
-	f
+   f
 end
 
 f = plot_dist(x, sols; nxchunks = 4, ntchunks = 100)
@@ -184,104 +186,104 @@ println("Vth₂ = ", round(vdf₂.vth / 1e3, digits = 2), " km/s") #hide
 # A nice way to present the 3d distributions in 2d is via the pair plots:
 
 function collect_VDF(x, sols; ntchunks::Int = 20)
-	nxchunks = 2
-	trange = range(sols[1].prob.tspan..., length = ntchunks)
+   nxchunks = 2
+   trange = range(sols[1].prob.tspan..., length = ntchunks)
 
-	xrange = range(x[1], x[end], length = nxchunks+1)
+   xrange = range(x[1], x[end], length = nxchunks+1)
 
-	table = [(;
-					vx = Float64[],
-					vy = Float64[],
-					vz = Float64[]
-				) for _ in 1:nxchunks]
+   table = [(;
+               vx = Float64[],
+               vy = Float64[],
+               vz = Float64[]
+            ) for _ in 1:nxchunks]
 
-	for sol in sols
-		for t in trange
-			xv = sol(t)
-			for i in 1:nxchunks
-				if xrange[i] < xv[1] ≤ xrange[i + 1]
-					push!(table[i].vx, xv[4] / 1e3)
-					push!(table[i].vy, xv[5] / 1e3)
-					push!(table[i].vz, xv[6] / 1e3)
-				end
-			end
-		end
-	end
+   for sol in sols
+      for t in trange
+         xv = sol(t)
+         for i in 1:nxchunks
+            if xrange[i] < xv[1] ≤ xrange[i + 1]
+               push!(table[i].vx, xv[4] / 1e3)
+               push!(table[i].vy, xv[5] / 1e3)
+               push!(table[i].vz, xv[6] / 1e3)
+            end
+         end
+      end
+   end
 
-	for i in eachindex(table)
-		if isempty(table[i].vx)
-			push!(table[i].vx, 0.0)
-			push!(table[i].vy, 0.0)
-			push!(table[i].vz, 0.0)
-		end
-	end
+   for i in eachindex(table)
+      if isempty(table[i].vx)
+         push!(table[i].vx, 0.0)
+         push!(table[i].vy, 0.0)
+         push!(table[i].vz, 0.0)
+      end
+   end
 
-	xrange, table
+   xrange, table
 end
 
 function plot_dist_pairplots(x, sols; ntchunks::Int = 20)
-	xrange, table = collect_VDF(x, sols; ntchunks)
+   xrange, table = collect_VDF(x, sols; ntchunks)
 
-	f = Figure(size = (1000, 600), fontsize = 18)
+   f = Figure(size = (1000, 600), fontsize = 18)
 
-	c1 = Makie.wong_colors(0.5)[1]
-	c2 = Makie.wong_colors(0.5)[2]
+   c1 = Makie.wong_colors(0.5)[1]
+   c2 = Makie.wong_colors(0.5)[2]
 
-	l1 = @sprintf "x: [%d, %d] km downstream" xrange[1]/1e3 xrange[2]/1e3
-	l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
+   l1 = @sprintf "x: [%d, %d] km downstream" xrange[1]/1e3 xrange[2]/1e3
+   l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
 
-	pairplot(f[1, 1],
-		PairPlots.Series(table[1], label = l1, color = c1),
-		PairPlots.Series(table[2], label = l2, color = c2),
-		PairPlots.Truth(
-			(;
-				vx = [-545.1484121835928, -172.1748987410881],
-				vy = 0,
-				vz = 0
-			),
-			label = "Bulk velocity",
-			color = :brown
-		),
-		bodyaxis = (; xgridvisible = true, ygridvisible = true),
-		diagaxis = (; xgridvisible = true, ygridvisible = true)
-	)
+   pairplot(f[1, 1],
+      PairPlots.Series(table[1], label = l1, color = c1),
+      PairPlots.Series(table[2], label = l2, color = c2),
+      PairPlots.Truth(
+         (;
+            vx = [-545.1484121835928, -172.1748987410881],
+            vy = 0,
+            vz = 0
+         ),
+         label = "Bulk velocity",
+         color = :brown
+      ),
+      bodyaxis = (; xgridvisible = true, ygridvisible = true),
+      diagaxis = (; xgridvisible = true, ygridvisible = true)
+   )
 
-	f
+   f
 end
 
 function plot_dist_pairplot(x, sols; ntchunks::Int = 20)
-	xrange, table = collect_VDF(x, sols; ntchunks)
+   xrange, table = collect_VDF(x, sols; ntchunks)
 
-	f = Figure(size = (1000, 1200), fontsize = 18)
+   f = Figure(size = (1000, 1200), fontsize = 18)
 
-	c1 = Makie.wong_colors(0.5)[1]
-	c2 = Makie.wong_colors(0.5)[2]
+   c1 = Makie.wong_colors(0.5)[1]
+   c2 = Makie.wong_colors(0.5)[2]
 
-	pairplot(f[1, 1],
-		PairPlots.Series(table[1], color = c1),
-		PairPlots.Truth(
-			(;
-				vx = -172.1748987410881,
-				vy = 0,
-				vz = 0
-			),
-			color = :brown
-		)
-	)
+   pairplot(f[1, 1],
+      PairPlots.Series(table[1], color = c1),
+      PairPlots.Truth(
+         (;
+            vx = -172.1748987410881,
+            vy = 0,
+            vz = 0
+         ),
+         color = :brown
+      )
+   )
 
-	pairplot(f[2, 1],
-		PairPlots.Series(table[2], color = c2),
-		PairPlots.Truth(
-			(;
-				vx = -545.1484121835928,
-				vy = 0,
-				vz = 0
-			),
-			color = :brown
-		)
-	)
+   pairplot(f[2, 1],
+      PairPlots.Series(table[2], color = c2),
+      PairPlots.Truth(
+         (;
+            vx = -545.1484121835928,
+            vy = 0,
+            vz = 0
+         ),
+         color = :brown
+      )
+   )
 
-	f
+   f
 end
 
 f = plot_dist_pairplots(x, sols; ntchunks = 20)
@@ -339,11 +341,11 @@ trajectories = 2
 weight₁ = n₁ / trajectories
 
 prob = let
-	## BC type 3 is Flat
-	param = prepare(x, E, B; species = Proton, bc = 3);
-	stateinit = zeros(6) # particle position and velocity to be modified
-	tspan = (0.0, 14.0)
-	ODEProblem(trace!, stateinit, tspan, param)
+   ## BC type 3 is Flat
+   param = prepare(x, E, B; species = Proton, bc = 3);
+   stateinit = zeros(6) # particle position and velocity to be modified
+   tspan = (0.0, 14.0)
+   ODEProblem(trace!, stateinit, tspan, param)
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 

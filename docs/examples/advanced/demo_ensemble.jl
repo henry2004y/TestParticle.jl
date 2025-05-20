@@ -18,9 +18,11 @@ using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-"Set initial state for EnsembleProblem."
+"""
+Set initial state for EnsembleProblem.
+"""
 function prob_func(prob, i, repeat)
-	prob = @views remake(prob, u0 = [prob.u0[1:3]..., i/3, 0.0, 0.0])
+   prob = @views remake(prob, u0 = [prob.u0[1:3]..., i/3, 0.0, 0.0])
 end
 
 ## Initialization
@@ -47,15 +49,15 @@ sols = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Electron trajectories",
-	xlabel = "X",
-	ylabel = "Y",
-	zlabel = "Z",
-	aspect = :data
+   title = "Electron trajectories",
+   xlabel = "X",
+   ylabel = "Y",
+   zlabel = "Z",
+   aspect = :data
 )
 
 for i in eachindex(sols)
-	lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
+   lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide
@@ -75,15 +77,15 @@ trajs = TestParticle.solve(prob; dt, trajectories, savestepinterval)
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
-	title = "Electron trajectories",
-	xlabel = "X",
-	ylabel = "Y",
-	zlabel = "Z",
-	aspect = :data
+   title = "Electron trajectories",
+   xlabel = "X",
+   ylabel = "Y",
+   zlabel = "Z",
+   aspect = :data
 )
 
 for i in eachindex(trajs)
-	lines!(ax, trajs[i]; idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
+   lines!(ax, trajs[i]; idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide
