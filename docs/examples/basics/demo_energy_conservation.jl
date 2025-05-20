@@ -20,12 +20,14 @@ CairoMakie.activate!(type = "png") #hide
 const B₀ = 1e-8 # [T]
 const E₀ = 3e-2 # [V/m]
 
-"f2"
-function location!(dx, v, x, p, t)
-   dx .= v
-end
+"""
+f2
+"""
+location!(dx, v, x, p, t) = dx .= v
 
-"f1"
+"""
+f1
+"""
 function lorentz!(dv, v, x, p, t)
    q2m, _, E, B = p
    dv .= q2m*(E(x, t) + v × (B(x, t)))
@@ -33,18 +35,16 @@ end
 
 ### Initialize field
 
-function uniform_B(x)
-   return SA[0, 0, B₀]
-end
+uniform_B(x) = SA[0, 0, B₀]
 
-function uniform_E(x)
-   return SA[E₀, 0.0, 0.0]
-end
+uniform_E(x) = SA[E₀, 0.0, 0.0]
 
 zero_B = ZeroField()
 zero_E = ZeroField()
 
-"Check energy conservation."
+"""
+Check energy conservation.
+"""
 E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 
 ### Initialize particles
@@ -55,7 +55,7 @@ stateinit = [x0..., v0...]
 tspan_proton = (0.0, 2000.0);
 
 # Uniform B field and zero E field
-param_proton = prepare(zero_E, uniform_B, species=Proton)
+param_proton = prepare(zero_E, uniform_B, species = Proton)
 
 ### Solve for the trajectories
 
@@ -67,20 +67,20 @@ println("Number of gyrations: ", tspan_proton[2] / Tᵢ)
 
 sol = solve(prob_p, ImplicitMidpoint(), dt = Tᵢ/15)
 
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-    title = "Proton in a uniform B field and zero E field",
-    xlabel = "x",
-    ylabel = "y",
-    aspect = 1,
+   title = "Proton in a uniform B field and zero E field",
+   xlabel = "x",
+   ylabel = "y",
+   aspect = 1
 )
 
-lines!(ax, sol, idxs=(1, 2))
+lines!(ax, sol, idxs = (1, 2))
 
 f = DisplayAs.PNG(f) #hide
 
-# Zero B field and uniform E field 
-param_proton = prepare(uniform_E, zero_B, species=Proton)
+# Zero B field and uniform E field
+param_proton = prepare(uniform_E, zero_B, species = Proton)
 
 ## acceleration, [m/s²]
 a = param_proton[1] * E₀

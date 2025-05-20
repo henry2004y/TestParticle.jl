@@ -22,7 +22,9 @@ CairoMakie.activate!(type = "png") #hide
 ## For reproducible results
 Random.seed!(1234)
 
-"Set initial conditions."
+"""
+Set initial conditions.
+"""
 function prob_func(prob, i, repeat)
    v₀ = sample(vdf₁)
    r₀ = [5_000e3, 0.0, 0.0]
@@ -56,7 +58,7 @@ E₁ = B₁ × V₁
 E₂ = B₂ × V₂
 
 ## Shock normal direction range
-x = range(-5_000e3, 5_000e3, length=100)
+x = range(-5_000e3, 5_000e3, length = 100)
 B = repeat(B₁, 1, length(x))
 E = repeat(E₁, 1, length(x))
 ## Index for the shock location
@@ -65,28 +67,28 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m=mᵢ)
-vdf₂ = Maxwellian(V₂, Pth₂, n₂; m=mᵢ)
+const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 trajectories = 400
 weight₁ = n₁ / trajectories # relation between test particle and real particles
 
 prob = let
    ## BC type 3 is Flat
-   param = prepare(x, E, B; species=Proton, bc=3);
+   param = prepare(x, E, B; species = Proton, bc = 3);
    stateinit = zeros(6) # particle position and velocity to be modified
    tspan = (0.0, 30.0)
    ODEProblem(trace!, stateinit, tspan, param)
 end
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
 # Sample particle trajectories
 
-function plot_traj(sols; azimuth=1.275pi, elevation=pi/8,
-   limits=((-4000.0, 4000.0), (-1000., 1000.), (-2000., 2000.)))
-   f = Figure(fontsize=18)
+function plot_traj(sols; azimuth = 1.275pi, elevation = pi/8,
+      limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)))
+   f = Figure(fontsize = 18)
    ##ax = Axis3(f[1, 1];
    ##   title="Particles across MHD shock",
    ##   xlabel="x [km]",
@@ -95,10 +97,10 @@ function plot_traj(sols; azimuth=1.275pi, elevation=pi/8,
    ##   aspect=:data,
    ##   limits, azimuth, elevation,
    ##)
-   ax = LScene(f[1, 1], show_axis=true)
+   ax = LScene(f[1, 1], show_axis = true)
    for i in eachindex(sols)
-      lines!(ax, sols[i], idxs=(1,2,3), label="$i",
-         color=Makie.wong_colors()[mod(i-1, 7)+1])
+      lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i",
+         color = Makie.wong_colors()[mod(i - 1, 7) + 1])
    end
    invL = 1 / 1e3
    ## In Makie 0.21.11, scene scaling has issues on Axis3.
@@ -121,12 +123,12 @@ f = DisplayAs.PNG(f) #hide
 
 # Phase space distributions
 
-function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
-   trange = range(sols[1].prob.tspan..., length=ntchunks)
+function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
+   trange = range(sols[1].prob.tspan..., length = ntchunks)
 
-   xrange = range(x[1], x[end], length=nxchunks+1)
+   xrange = range(x[1], x[end], length = nxchunks+1)
    dx = (x[end] - x[1]) / nxchunks
-   xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length=nxchunks) ./ 1e3
+   xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length = nxchunks) ./ 1e3
 
    vx = [Float64[] for _ in 1:nxchunks]
 
@@ -134,7 +136,7 @@ function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
       for t in trange
          xv = sol(t)
          for i in 1:nxchunks
-            if xrange[i] < xv[1] ≤ xrange[i+1]
+            if xrange[i] < xv[1] ≤ xrange[i + 1]
                push!(vx[i], xv[4] / 1e3)
             end
          end
@@ -147,7 +149,7 @@ function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
       end
    end
 
-   f = Figure(size = (1200, 600), fontsize=18)
+   f = Figure(size = (1200, 600), fontsize = 18)
    ax = Axis(f[1, 1],
       limits = (nothing, nothing, -750, 400),
       title = "Phase space distributions at different spatial locations",
@@ -157,49 +159,49 @@ function plot_dist(x, sols; nxchunks::Int=2, ntchunks::Int=20)
 
    for i in 1:nxchunks
       hist!(ax, vx[i], normalization = :pdf, bins = 50,
-         scale_to=-5000/nxchunks, offset=xmid[i], direction=:x)
+         scale_to = -5000/nxchunks, offset = xmid[i], direction = :x)
    end
 
    v̄x = mean.(vx)
-   vth = [std(vx[i]; corrected=false, mean=v̄x[i]) for i in 1:nxchunks]
+   vth = [std(vx[i]; corrected = false, mean = v̄x[i]) for i in 1:nxchunks]
    means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
    std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
-   text!(Point.(xmid.+400, 300.0), text = means_str, align = (:right, :center),
-      offset = (-60, 0), color = :black, fontsize=24)
-   text!(Point.(xmid.+400, -700.0), text = std_str, align = (:right, :center),
-      offset = (-60, 0), color = :black, fontsize=24)
+   text!(Point.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize = 24)
+   text!(Point.(xmid .+ 400, -700.0), text = std_str, align = (:right, :center),
+      offset = (-60, 0), color = :black, fontsize = 24)
 
    f
 end
 
-f = plot_dist(x, sols; nxchunks=4, ntchunks=100)
+f = plot_dist(x, sols; nxchunks = 4, ntchunks = 100)
 f = DisplayAs.PNG(f) #hide
 
 # Even with 400 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock.
 # While the upstream thermal speed is close to what we set, the downstream thermal speed is higher than our set value:
 
-println("Vth₁ = ", round(vdf₁.vth / 1e3, digits=2), " km/s") #hide
-println("Vth₂ = ", round(vdf₂.vth / 1e3, digits=2), " km/s") #hide
+println("Vth₁ = ", round(vdf₁.vth / 1e3, digits = 2), " km/s") #hide
+println("Vth₂ = ", round(vdf₂.vth / 1e3, digits = 2), " km/s") #hide
 
 # A nice way to present the 3d distributions in 2d is via the pair plots:
 
-function collect_VDF(x, sols; ntchunks::Int=20)
+function collect_VDF(x, sols; ntchunks::Int = 20)
    nxchunks = 2
-   trange = range(sols[1].prob.tspan..., length=ntchunks)
+   trange = range(sols[1].prob.tspan..., length = ntchunks)
 
-   xrange = range(x[1], x[end], length=nxchunks+1)
+   xrange = range(x[1], x[end], length = nxchunks+1)
 
    table = [(;
-   vx = Float64[],
-   vy = Float64[],
-   vz = Float64[],
-   ) for _ in 1:nxchunks]
+               vx = Float64[],
+               vy = Float64[],
+               vz = Float64[]
+            ) for _ in 1:nxchunks]
 
    for sol in sols
       for t in trange
          xv = sol(t)
          for i in 1:nxchunks
-            if xrange[i] < xv[1] ≤ xrange[i+1]
+            if xrange[i] < xv[1] ≤ xrange[i + 1]
                push!(table[i].vx, xv[4] / 1e3)
                push!(table[i].vy, xv[5] / 1e3)
                push!(table[i].vz, xv[6] / 1e3)
@@ -219,10 +221,10 @@ function collect_VDF(x, sols; ntchunks::Int=20)
    xrange, table
 end
 
-function plot_dist_pairplots(x, sols; ntchunks::Int=20)
+function plot_dist_pairplots(x, sols; ntchunks::Int = 20)
    xrange, table = collect_VDF(x, sols; ntchunks)
 
-   f = Figure(size = (1000, 600), fontsize=18)
+   f = Figure(size = (1000, 600), fontsize = 18)
 
    c1 = Makie.wong_colors(0.5)[1]
    c2 = Makie.wong_colors(0.5)[2]
@@ -230,66 +232,66 @@ function plot_dist_pairplots(x, sols; ntchunks::Int=20)
    l1 = @sprintf "x: [%d, %d] km downstream" xrange[1]/1e3 xrange[2]/1e3
    l2 = @sprintf "x: [%d, %d] km upstream" xrange[2]/1e3 xrange[3]/1e3
 
-   pairplot(f[1,1],
-      PairPlots.Series(table[1], label=l1, color=c1),
-      PairPlots.Series(table[2], label=l2, color=c2),
+   pairplot(f[1, 1],
+      PairPlots.Series(table[1], label = l1, color = c1),
+      PairPlots.Series(table[2], label = l2, color = c2),
       PairPlots.Truth(
          (;
             vx = [-545.1484121835928, -172.1748987410881],
             vy = 0,
-            vz = 0,
+            vz = 0
          ),
-         label="Bulk velocity",
-         color = :brown,
+         label = "Bulk velocity",
+         color = :brown
       ),
-      bodyaxis=(; xgridvisible=true, ygridvisible=true),
-      diagaxis=(; xgridvisible=true, ygridvisible=true)
+      bodyaxis = (; xgridvisible = true, ygridvisible = true),
+      diagaxis = (; xgridvisible = true, ygridvisible = true)
    )
 
    f
 end
 
-function plot_dist_pairplot(x, sols; ntchunks::Int=20)
+function plot_dist_pairplot(x, sols; ntchunks::Int = 20)
    xrange, table = collect_VDF(x, sols; ntchunks)
 
-   f = Figure(size = (1000, 1200), fontsize=18)
+   f = Figure(size = (1000, 1200), fontsize = 18)
 
    c1 = Makie.wong_colors(0.5)[1]
    c2 = Makie.wong_colors(0.5)[2]
 
-   pairplot(f[1,1],
-      PairPlots.Series(table[1], color=c1),
+   pairplot(f[1, 1],
+      PairPlots.Series(table[1], color = c1),
       PairPlots.Truth(
-          (;
-              vx = -172.1748987410881,
-              vy = 0,
-              vz = 0
-          ),
-          color = :brown,
+         (;
+            vx = -172.1748987410881,
+            vy = 0,
+            vz = 0
+         ),
+         color = :brown
       )
    )
 
-   pairplot(f[2,1],
-      PairPlots.Series(table[2], color=c2),
+   pairplot(f[2, 1],
+      PairPlots.Series(table[2], color = c2),
       PairPlots.Truth(
          (;
             vx = -545.1484121835928,
             vy = 0,
             vz = 0
          ),
-         color = :brown,
+         color = :brown
       )
    )
 
    f
 end
 
-f = plot_dist_pairplots(x, sols; ntchunks=20)
+f = plot_dist_pairplots(x, sols; ntchunks = 20)
 f = DisplayAs.PNG(f) #hide
 
 # Downstream and upstream distributions showing separately:
 
-f = plot_dist_pairplot(x, sols; ntchunks=20)
+f = plot_dist_pairplot(x, sols; ntchunks = 20)
 f = DisplayAs.PNG(f) #hide
 
 # We see that the upstream thermal speed is about what we set in all three dimensions, whereas the downstream thermal speed in the perpendicular plane is larger than the downstream isotropic thermal speed, and that in the parallel z direction is the same as the upstream thermal speed.
@@ -323,7 +325,7 @@ E₂ = B₂ × V₂
 # Therefore, when we trace particles, there is no deceleration across the shock:
 
 ## Shock normal direction range
-x = range(-5_000e3, 5_000e3, length=100)
+x = range(-5_000e3, 5_000e3, length = 100)
 B = repeat(B₁, 1, length(x))
 E = repeat(E₁, 1, length(x))
 ## Index for the shock location
@@ -332,24 +334,24 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-vdf₁ = Maxwellian(V₁, Pth₁, n₁; m=mᵢ)
-vdf₂ = Maxwellian(V₂, Pth₂, n₂; m=mᵢ)
+vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 trajectories = 2
 weight₁ = n₁ / trajectories
 
 prob = let
    ## BC type 3 is Flat
-   param = prepare(x, E, B; species=Proton, bc=3);
+   param = prepare(x, E, B; species = Proton, bc = 3);
    stateinit = zeros(6) # particle position and velocity to be modified
    tspan = (0.0, 14.0)
    ODEProblem(trace!, stateinit, tspan, param)
 end
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
-f = plot_traj(sols; azimuth=1.08π, elevation=pi/16)
+f = plot_traj(sols; azimuth = 1.08π, elevation = pi/16)
 f = DisplayAs.PNG(f) #hide
 
 # Clearly, test particle tracing in MHD parallel shocks fails to recover physics.

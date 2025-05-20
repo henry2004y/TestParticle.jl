@@ -13,7 +13,7 @@
 # 2. The source is properly selected. For instance, we usually sample from plasma moments of a known density, velocity and pressure. ``n*U`` gives us the source flux in units of [particles / s / m²]. If our source plane does not include all the possible sources, we will underestimate the target flux. Therefore, we need to make sure that our source plane covers all the launching possibilities, e.g. a closed sphere. Under the steady state assumption, we use the source launching time ``T`` in the denominator of calculating the flux. This time cancels out since there is also a ``T`` in the numerator.
 # The target flux is then estimated as
 # ```math
-# J = \mathrm{h} / \mathrm{N} \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S 
+# J = \mathrm{h} / \mathrm{N} \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S
 # ```
 # where ``\mathrm{h}`` is the number of particles that pass through the target and ``\mathrm{N}`` is the total number of test particles.
 #
@@ -24,7 +24,9 @@ using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
 
-"Set initial conditions."
+"""
+Set initial conditions.
+"""
 function prob_func(prob, i, repeat)
    it = (i - 1) ÷ source_flux_tp
    ir = (i - 1) % source_flux_tp
@@ -38,7 +40,7 @@ function prob_func(prob, i, repeat)
    r₀ = prob.u0[1:3]
    t = (prob.tspan[1] + it, prob.tspan[2])
 
-   prob = remake(prob; u0 = [r₀..., v₀...], tspan=t)
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
 end
 
 ## Source flux at the origin
@@ -56,12 +58,14 @@ trajectories = source_flux ÷ tp_per_rp * launch_time # total number of test par
 # The number of test particles is usually smaller than the real particles. In this case, one test particle represents `tp_per_rp` real particles. Assuming steady state, the time for recording the particles is the same as the launch time. We also assume that no particles have reached the plane before we count.
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
 
-"Estimate the particle flux through a plane x = x0 in a given time range."
-function estimate_flux_plane(sols, x0, trange=sols[1].prob.tspan)
+"""
+Estimate the particle flux through a plane x = x0 in a given time range.
+"""
+function estimate_flux_plane(sols, x0, trange = sols[1].prob.tspan)
    count = 0
    for sol in sols
       xs = [sol(t)[1] for t in trange]
@@ -101,15 +105,17 @@ function prob_func_iso(prob, i, repeat)
    r₀ = prob.u0[1:3]
    t = (prob.tspan[1] + it, prob.tspan[2])
 
-   prob = remake(prob; u0 = [r₀..., v₀...], tspan=t)
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
 end
 
-ensemble_prob = EnsembleProblem(prob; prob_func=prob_func_iso, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
 
-"Estimate the particle flux through a sphere with radius r = r0 in a given time range."
-function estimate_flux_sphere(sols, r0, trange=sols[1].prob.tspan)
+"""
+Estimate the particle flux through a sphere with radius r = r0 in a given time range.
+"""
+function estimate_flux_sphere(sols, r0, trange = sols[1].prob.tspan)
    count = 0
    for sol in sols
       rs = [hypot(sol(t)[1:3]...) for t in trange]

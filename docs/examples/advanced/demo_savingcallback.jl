@@ -30,7 +30,7 @@ using DiffEqCallbacks
 function getmeanB(B)
    B₀sum = eltype(B)(0)
    for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
-      B₀sum += B[1,i,j,k]^2 + B[2,i,j,k]^2 + B[3,i,j,k]^2
+      B₀sum += B[1, i, j, k]^2 + B[2, i, j, k]^2 + B[3, i, j, k]^2
    end
 
    sqrt(B₀sum / prod(size(B)[2:4]))
@@ -39,15 +39,15 @@ end
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 ## Spatial coordinates given in customized units
-x = range(-0.5, 0.5, length=nx)
-y = range(-0.5, 0.5, length=ny)
-z = range(-0.5, 0.5, length=nz)
+x = range(-0.5, 0.5, length = nx)
+y = range(-0.5, 0.5, length = ny)
+z = range(-0.5, 0.5, length = nz)
 ## Numerical magnetic field given in customized units
 B = Array{Float32, 4}(undef, 3, nx, ny, nz)
 
-B[1,:,:,:] .= 0.0
-B[2,:,:,:] .= 0.0
-B[3,:,:,:] .= 2.0
+B[1, :, :, :] .= 0.0
+B[2, :, :, :] .= 0.0
+B[3, :, :, :] .= 2.0
 
 ## Reference values for unit conversions between the customized and dimensionless units
 const B₀ = getmeanB(B)
@@ -63,10 +63,10 @@ y /= l₀
 z /= l₀
 ## For full EM problems, the normalization of E and B should be done separately.
 B ./= B₀
-E(x) = SA[0.0/E₀, 0.0/E₀, 0.0/E₀]
+E(x) = SA[0.0 / E₀, 0.0 / E₀, 0.0 / E₀]
 
 ## By default User type assumes q=1, m=1; bc=2 uses periodic boundary conditions
-param = prepare(x, y, z, E, B; species=User, bc=2)
+param = prepare(x, y, z, E, B; species = User, bc = 2)
 
 tspan = (0.0, π) # half averaged gyroperiod based on B₀
 
@@ -102,7 +102,7 @@ end
 
 cb = SavingCallback(save_B_mu, saved_values)
 
-sol = solve(prob, Vern9(); callback=cb);
+sol = solve(prob, Vern9(); callback = cb);
 
 # The extra values are saved in `saved_values`:
 

@@ -23,29 +23,25 @@ const Bζ0 = 5.3  # toroidal field on axis [T]
 const a = 2.0 # Minor radius [m]
 
 ## Variable must be a radius normalized by minor radius.
-function q_profile(nr::Float64)
-    return nr^2 + 2*nr + 0.5
-end
+q_profile(nr::Float64) = nr^2 + 2*nr + 0.5
 
-function B(xu)
-    SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
-end
+B(xu) = SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
 
-function E(xu)
-    SA[0.0, 0.0, 0.0]
-end
+E(xu) = SA[0.0, 0.0, 0.0]
 
-"Contruct the topology of Tokamak."
+"""
+Contruct the topology of Tokamak.
+"""
 function get_tokamak_topology()
-    nθ = LinRange(0, 2π, 30)
-    nζ = LinRange(0, 2π, 30)
-    nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
-    ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
-    nz = [a*sin(θ) for θ in nθ, ζ in nζ]
-    points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
-    faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
+   nθ = LinRange(0, 2π, 30)
+   nζ = LinRange(0, 2π, 30)
+   nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
+   ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
+   nz = [a*sin(θ) for θ in nθ, ζ in nζ]
+   points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
+   faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
 
-    tor_mesh = GeometryBasics.Mesh(points, faces)
+   tor_mesh = GeometryBasics.Mesh(points, faces)
 end
 
 # Passing proton in a Tokamak
@@ -56,26 +52,26 @@ v₀ = [0.0, 2.15, 3.1] .* 1e6
 r₀ = [7.3622, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(E, B; species=Proton)
+param = prepare(E, B; species = Proton)
 tspan = (0.0, 4e-5) # [s]
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern7(); dt=2e-11);
+sol = solve(prob, Vern7(); dt = 2e-11);
 
 tor_mesh = get_tokamak_topology()
 
-fig1 = Figure(fontsize=18)
+fig1 = Figure(fontsize = 18)
 ax = Axis3(fig1[1, 1],
    title = "Passing Particle",
    xlabel = "x [m]",
    ylabel = "y [m]",
    zlabel = "z [m]",
-   aspect = :data,
+   aspect = :data
 )
 
-lines!(ax, sol; idxs=(1,2,3))
+lines!(ax, sol; idxs = (1, 2, 3))
 ## Plot the surface of Tokamak
-wireframe!(fig1[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+wireframe!(fig1[1, 1], tor_mesh, color = (:blue, 0.1), linewidth = 0.5, transparency = true)
 
 fig1 = DisplayAs.PNG(fig1) #hide
 
@@ -87,23 +83,23 @@ v₀ = [0.0, 1.15, 5.1] .* 1e6
 r₀ = [6.6494, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(E, B; species=Proton)
+param = prepare(E, B; species = Proton)
 tspan = (0.0, 4e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern7(); dt=1e-11)
+sol = solve(prob, Vern7(); dt = 1e-11)
 
-fig2 = Figure(fontsize=18)
+fig2 = Figure(fontsize = 18)
 ax = Axis3(fig2[1, 1],
    title = "Trapped Particle",
    xlabel = "x [m]",
    ylabel = "y [m]",
    zlabel = "z [m]",
-   aspect = :data,
+   aspect = :data
 )
 
-lines!(ax, sol; idxs=(1,2,3))
-wireframe!(fig2[1, 1], tor_mesh, color=(:blue, 0.1), linewidth=0.5, transparency=true)
+lines!(ax, sol; idxs = (1, 2, 3))
+wireframe!(fig2[1, 1], tor_mesh, color = (:blue, 0.1), linewidth = 0.5, transparency = true)
 
 fig2 = DisplayAs.PNG(fig2) #hide
 

@@ -1,0 +1,8 @@
+style = "sciml"
+format_markdown = false
+format_docstrings = true
+indent = 3
+remove_extra_newlines = true
+long_to_short_function_def = true
+indent_submodule = true
+surround_whereop_typeparameters = false

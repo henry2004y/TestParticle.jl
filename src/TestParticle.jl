@@ -3,11 +3,11 @@ module TestParticle
 using LinearAlgebra: norm, ×, ⋅, diag
 using Statistics: mean, normalize
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
-	Line, OnCell, Periodic, Flat
+                      Line, OnCell, Periodic, Flat
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
-	BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
-	DEFAULT_SPECIALIZATION, ODEFunction,
-	LinearInterpolation
+                 BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
+                 DEFAULT_SPECIALIZATION, ODEFunction,
+                 LinearInterpolation
 using StaticArrays: SVector, @SMatrix, MVector, SA
 using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
@@ -16,13 +16,13 @@ using PrecompileTools: @setup_workload, @compile_workload
 
 export prepare, prepare_gc, sample, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
-	trace, trace_relativistic, trace_relativistic_normalized, trace_gc!, trace_gc_1st!,
-	trace_gc_drifts!
+       trace, trace_relativistic, trace_relativistic_normalized, trace_gc!, trace_gc_1st!,
+       trace_gc_drifts!
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export get_gyrofrequency,
-	get_gyroperiod, get_gyroradius, get_velocity, get_energy,
-	energy2velocity
+       get_gyroperiod, get_gyroradius, get_velocity, get_energy,
+       energy2velocity
 export orbit, monitor
 export TraceProblem
 

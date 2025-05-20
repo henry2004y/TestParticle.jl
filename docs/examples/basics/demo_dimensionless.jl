@@ -33,15 +33,15 @@ U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]
 E₀ = U₀*B₀            # [V/m]
 ## All quantities are in dimensionless units
-x = range(-10, 10, length=nx) # [l₀]
-y = range(-10, 10, length=ny) # [l₀]
-z = range(-10, 10, length=nz) # [l₀]
+x = range(-10, 10, length = nx) # [l₀]
+y = range(-10, 10, length = ny) # [l₀]
+z = range(-10, 10, length = nz) # [l₀]
 
 B = fill(0.0, 3, nx, ny, nz) # [B₀]
-B[3,:,:,:] .= 1.0
+B[3, :, :, :] .= 1.0
 E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
-param = prepare(x, y, z, E, B; species=User)
+param = prepare(x, y, z, E, B; species = User)
 
 ## Initial condition
 stateinit = let
@@ -65,7 +65,7 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
+lines!(ax, sol, idxs = (1, 2))
 
 f = DisplayAs.PNG(f) #hide
 
@@ -78,7 +78,7 @@ f = DisplayAs.PNG(f) #hide
 
 # In the small velocity scenario, it should behave similar to the non-relativistic case:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species = User)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -94,13 +94,13 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
+lines!(ax, sol, idxs = (1, 2))
 
 f = DisplayAs.PNG(f) #hide
 
 # In the large velocity scenario, relativistic effect takes place:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species=User)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species = User)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -115,6 +115,6 @@ ax = Axis(f[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax, sol, idxs=(1,2))
+lines!(ax, sol, idxs = (1, 2))
 
 f = DisplayAs.PNG(f) #hide

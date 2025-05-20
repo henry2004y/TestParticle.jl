@@ -16,13 +16,13 @@ CairoMakie.activate!(type = "png") #hide
 ## For reproducible results
 Random.seed!(1234)
 
-function trace(x, y, z, E, B; trajectories::Int=10)
+function trace(x, y, z, E, B; trajectories::Int = 10)
    ## Initialize particles
    x0 = [0.0, 0.0, 0.0] # initial position, [m]
    u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
    stateinit = [x0..., u0...]
 
-   param = prepare(x, y, z, E, B, species=Electron)
+   param = prepare(x, y, z, E, B, species = Electron)
    tspan = (0.0, 15.0)
 
    prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -44,14 +44,14 @@ function trace(x, y, z, E, B; trajectories::Int=10)
 end
 
 ### Initialize grid and field
-x = range(-10, 10, length=15)
-y = range(-10, 10, length=20)
-z = range(-10, 10, length=25)
+x = range(-10, 10, length = 15)
+y = range(-10, 10, length = 20)
+z = range(-10, 10, length = 25)
 
 B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
 E = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
-B[3,:,:,:] .= 1e-11
-E[3,:,:,:] .= 5e-13
+B[3, :, :, :] .= 1e-11
+E[3, :, :, :] .= 5e-13
 
 trajectories = 4
 
@@ -66,11 +66,11 @@ ax = Axis3(f[1, 1],
    xlabel = "X [m]",
    ylabel = "Y [m]",
    zlabel = "Z [m]",
-   aspect = :data,
+   aspect = :data
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i], idxs=(1, 2, 3), color=Makie.wong_colors()[i], label="$i")
+   lines!(ax, sols[i], idxs = (1, 2, 3), color = Makie.wong_colors()[i], label = "$i")
 end
 
 f = DisplayAs.PNG(f) #hide
