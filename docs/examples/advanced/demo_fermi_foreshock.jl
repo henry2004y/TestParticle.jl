@@ -32,6 +32,7 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
 using TestParticle: mₑ, Rₑ, qₑ
+using TestParticle: get_EField, get_BField
 using Random
 using FHist
 using CairoMakie, Printf
@@ -122,9 +123,11 @@ function plot_multiple(sol)
    energy = map(x -> get_kinetic_energy(x[4:6]...), sol.u) .* mₑ ./ abs(qₑ)
    ## Obtain the EM fields along the particle trajectory
    ## [mV/m]
-   E = [sol.prob.p[2](sol[:,istep], sol.t[istep]).*1e3 for istep in eachindex(sol)]
+   Efield = get_EField(sol)
+   Bfield = get_BField(sol)
+   E = [Efield(sol[:,istep], sol.t[istep]).*1e3 for istep in eachindex(sol)]
    ## [nT]
-   B = [sol.prob.p[3](sol[:,istep], sol.t[istep]).*1e9 for istep in eachindex(sol)]
+   B = [Bfield(sol[:,istep], sol.t[istep]).*1e9 for istep in eachindex(sol)]
 
    Ex = [e[1] for e in E]
    Ey = [e[2] for e in E]

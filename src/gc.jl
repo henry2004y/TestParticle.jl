@@ -73,7 +73,7 @@ function prepare_gc(xv, E, B; species::Species = Proton, q::AbstractFloat = 1.0,
 end
 
 """
-	 get_gc(xu, param::Union{TPTuple, FullTPTuple})
+	 get_gc(xu, param)
 	 get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
@@ -84,26 +84,15 @@ Nonrelativistic definition:
 \\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times\\mathbf{v}}{qB}
 ```
 """
-function get_gc(xu, param::TPTuple)
-	q2m, _, B_field = param
+function get_gc(xu, param)
+	q2m = get_q2m(param)
+	B_field = get_BField(param)
 	t = xu[end]
 	v = xu[SA[4:6...]]
 	B = B_field(xu, t)
 	B² = B[1]^2 + B[2]^2 + B[3]^2
 	# vector of Larmor radius
 	ρ = B × v ./ (q2m*B²)
-
-	X = @views xu[1:3] - ρ
-end
-
-function get_gc(xu, param::FullTPTuple)
-	q, m, _, B_field = param
-	t = xu[end]
-	v = xu[SA[4:6...]]
-	B = B_field(xu, t)
-	B² = B[1]^2 + B[2]^2 + B[3]^2
-	# vector of Larmor radius
-	ρ = B × v ./ (q*B²/m)
 
 	X = @views xu[1:3] - ρ
 end

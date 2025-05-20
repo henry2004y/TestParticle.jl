@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
+using TestParticle: ZeroField, get_BField
 import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -38,16 +39,16 @@ end
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-uniform_E(x) = SA[0.0, 0.0, 0.0]
+zero_E = ZeroField()
 
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1e5, 0.0]
 stateinit = [x0..., v0...]
 
-param = prepare(uniform_E, uniform_B, species=Electron)
+param = prepare(zero_E, uniform_B, species=Electron)
 
 ## Reference parameters
-const tperiod = 2π / (abs(param[1]) * sqrt(sum(x -> x^2, param[3]([0.0,0.0,0.0], 0.0))))
+const tperiod = 2π / (abs(param[1]) * sqrt(sum(x -> x^2, get_BField(param)([0.0,0.0,0.0], 0.0))))
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;
 
