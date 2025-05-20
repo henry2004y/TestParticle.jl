@@ -86,8 +86,8 @@ function trace_normalized!(dy, y, p, t)
 	E = get_EField(p)(y, t)
 	B = get_BField(p)(y, t)
 
-	dy[1:3] = v
-	dy[4:6] = SVector{3}(v × B + E)
+	@inbounds dy[1:3] = v
+	@inbounds dy[4:6] = SVector{3}(v × B + E)
 
 	return
 end
@@ -103,8 +103,8 @@ function trace_relativistic_normalized!(dy, y, p, t)
 	γv = get_v(y)
 
 	v = get_relativistic_v(γv; c=1)
-	dy[1:3] = v
-	dy[4:6] = SVector{3}(v × B + E)
+	@inbounds dy[1:3] = v
+	@inbounds dy[4:6] = SVector{3}(v × B + E)
 
 	return
 end
@@ -146,9 +146,11 @@ function trace_gc_drifts!(dx, x, p, t)
 	Ω = q2m * norm(B)
 	κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
 	## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-	dx[1:3] =
+	@inbounds dx[1:3] =
 		norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
 		norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
+
+   return
 end
 
 """
