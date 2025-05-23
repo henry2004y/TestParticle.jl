@@ -152,7 +152,7 @@ function trace_gc_drifts!(dx, x, p, t)
 end
 
 """
-     trace_gc!(dy, y, p::TPTuple, t)
+     trace_gc!(dy, y, p, t)
 
 Guiding center equations for nonrelativistic charged particle moving in static EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
