@@ -37,7 +37,7 @@ mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
    (x[1], y[1], z[1]),
    (Δx, Δy, Δz))
 
-tspan = (0.0, 10.0)
+tspan = (0.0, 100.0)
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
@@ -53,6 +53,7 @@ SUITE["trace"]["analytic field"]["out of place"] = @benchmarkable solve(
 SUITE["trace"]["analytic field"]["in place relativistic"] = @benchmarkable solve(
    $prob_rel_ip, Tsit5(); save_idxs = [1, 2, 3])
 
+tspan = (0.0, 10.0)
 param_numeric = prepare(mesh, E_numeric, B_numeric)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_numeric) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_numeric) # out of place
