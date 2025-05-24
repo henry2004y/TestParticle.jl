@@ -75,12 +75,12 @@ function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0, m = 1.0,
 end
 
 """
-prepare(args...; kwargs...) -> (q2m, m, E, B, F)
-prepare(E, B, F = ZeroField(); kwargs...)
-prepare(grid::CartesianGrid, E, B, F = ZeroField(); kwargs...)
-prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
-prepare(x, y, E, B, F = ZeroField(); kwargs...)
-prepare(x, y, z, E, B, F = ZeroField(); kwargs...)
+    prepare(args...; kwargs...) -> (q2m, m, E, B, F)
+    prepare(E, B, F = ZeroField(); kwargs...)
+    prepare(grid::CartesianGrid, E, B, F = ZeroField(); kwargs...)
+    prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
+    prepare(x, y, E, B, F = ZeroField(); kwargs...)
+    prepare(x, y, z, E, B, F = ZeroField(); kwargs...)
 
 Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge `q` and mass `m`,
 mass `m` for a prescribed `species`, analytic/interpolated EM field functions, and external force `F`.
