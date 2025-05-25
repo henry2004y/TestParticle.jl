@@ -40,7 +40,7 @@ function main_gui()
     vel_ts_plots_ref = Ref{Vector{Any}}(Any[]) # For vx(t), vy(t), vz(t) lines
 
     # --- Figure and Main Layout ---
-    fig = Figure(resolution = (1600, 900)) # Increased resolution for more plots
+    fig = Figure(size = (1600, 900)) # Increased resolution for more plots
     # Main GridLayout: 1 row, 3 columns (inputs | 2D plots | 3D plot)
     gl_root = fig[1, 1] = GridLayout() 
 
@@ -96,7 +96,8 @@ function main_gui()
     e_params_grid = field_cfg_grid[3, 1:2] = GridLayout()
 
     # Uniform E-Field Parameters
-    e_uniform_params_grid = GridLayout()
+    # Define and parent e_uniform_params_grid directly
+    e_uniform_params_grid = e_params_grid[1, 1] = GridLayout()
     Label(e_uniform_params_grid[1,1], "Ex:")
     tb_Ex = Textbox(e_uniform_params_grid[1,2], placeholder = "0.0")
     Label(e_uniform_params_grid[2,1], "Ey:")
@@ -104,7 +105,7 @@ function main_gui()
     Label(e_uniform_params_grid[3,1], "Ez:")
     tb_Ez = Textbox(e_uniform_params_grid[3,2], placeholder = "0.0")
     e_uniform_params_grid.visible = false # Initially hidden
-    e_params_grid[1,1] = e_uniform_params_grid
+    # The line `e_params_grid[1,1] = e_uniform_params_grid` is now redundant due to direct parenting.
 
     # B-Field Section
     Label(field_cfg_grid[4, 1], "B-Field Type:")
