@@ -23,8 +23,8 @@ function main_gui()
 
     # Particle Species
     species_type_ref = Ref("Proton") # String type
-    custom_species_q_ref = Ref(1.0)
-    custom_species_m_ref = Ref(1.0)
+    # custom_species_q_ref removed
+    # custom_species_m_ref removed
 
     # Solver Configuration
     solver_type_ref = Ref("Vern9 (adaptive)") # String type
@@ -154,21 +154,14 @@ function main_gui()
     Label(species_grid[1, 1:2], "Particle Species", tellwidth=false, font=:bold)
 
     Label(species_grid[2,1], "Species:")
-    species_options = ["Proton", "Electron", "Custom"]
+    species_options = ["Proton", "Electron"] # "Custom" option removed
     species_menu = Menu(species_grid[2,2], options = species_options, default = "Proton")
     selected_species = species_menu.selection
 
-    custom_species_params_grid = species_grid[3,1:2] = GridLayout()
-    Label(custom_species_params_grid[1,1], "Charge (q):")
-    tb_q = Textbox(custom_species_params_grid[1,2], placeholder = "1.0")
-    Label(custom_species_params_grid[2,1], "Mass (m):")
-    tb_m = Textbox(custom_species_params_grid[2,2], placeholder = "1.0")
-    custom_species_params_grid.layoutobservables.visible[] = false # Initially hidden
-
-    on(selected_species) do selected_type
-        custom_species_params_grid.layoutobservables.visible[] = (selected_type == "Custom")
-    end
-    notify(selected_species)
+    # custom_species_params_grid and its contents (tb_q, tb_m, labels) REMOVED
+    # on(selected_species) callback REMOVED
+    # notify(selected_species) REMOVED (as the callback is gone, no dynamic visibility change based on this menu)
+    # However, selected_species itself is still used in parsing, so the Menu and its observable are kept.
 
     # Solver Configuration Section
     solver_grid = input_grid[5, 1] = GridLayout(tellheight = false)
@@ -299,17 +292,9 @@ function main_gui()
         # b_field_type_ref[] = "Uniform" # Removed, logic downstream determines if ZeroField based on params
 
         # --- Parse Particle Species Parameters ---
-        species_type_ref[] = selected_species[]
-        if species_type_ref[] == "Custom"
-            val_q = tryparse(Float64, tb_q.stored_string[]); if isnothing(val_q) error_display_label.text[] = "Error: Invalid Charge (q)."; return; end
-            val_m = tryparse(Float64, tb_m.stored_string[]); if isnothing(val_m) error_display_label.text[] = "Error: Invalid Mass (m)."; return; end
-            if val_m <= 0.0 error_display_label.text[] = "Error: Mass (m) must be positive."; return; end
-            custom_species_q_ref[] = val_q
-            custom_species_m_ref[] = val_m
-        else
-            custom_species_q_ref[] = 1.0
-            custom_species_m_ref[] = 1.0
-        end
+        species_type_ref[] = selected_species[] # This will now only be "Proton" or "Electron"
+        # Logic for parsing custom q and m REMOVED
+        # custom_species_q_ref and custom_species_m_ref are no longer updated here as they are removed.
 
         # --- Parse Solver Configuration ---
         solver_type_ref[] = selected_solver[]
@@ -360,24 +345,8 @@ function main_gui()
             species_kwargs[:species] = TestParticle.Proton
         elseif species_type_ref[] == "Electron"
             species_kwargs[:species] = TestParticle.Electron
-        elseif species_type_ref[] == "Custom"
-            # Assuming TestParticle.prepare can handle q and m directly,
-            # potentially with a generic species type if needed.
-            # The doc for prepare states `species::Species = Proton, q = 1.0, m = 1.0`
-            # So we provide q and m, and potentially TestParticle.User if it exists and is required.
-            # For now, let's assume omitting `species` or using a placeholder + q/m works.
-            # Based on `prepare` signature, we should be able to just pass q and m.
-            # Let's try passing TestParticle.Ion (assuming it's a general type for this)
-            # or if TestParticle.User is a thing. If not, just q and m.
-            # The example uses Proton/Electron explicitly.
-            # The safest is to provide q and m, and let species default if User is not a type.
-            # Let's assume TestParticle.Species is an enum and Proton/Electron are values.
-            # If custom q/m is provided, the `species` parameter might be ignored or used as a base.
-            # For safety, let's use Proton as a base species and override q, m.
-            species_kwargs[:species] = TestParticle.Proton # Base type
-            species_kwargs[:q] = custom_species_q_ref[]
-            species_kwargs[:m] = custom_species_m_ref[]
         end
+        # "Custom" branch REMOVED as it's no longer an option
         
         # --- Call TestParticle.prepare() ---
         # Note: The example showed `param` (singular) from prepare, used in TraceProblem.
