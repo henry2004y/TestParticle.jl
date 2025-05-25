@@ -6,14 +6,13 @@ using StaticArrays
 function main_gui()
     # --- Data Storage for Parsed Values ---
     # Field Configuration
-    # E-field is hardcoded to Zero, so no Ref needed for its parameters.
-    bz_value_ref = Ref(1e-8) # Default value for Bz
+    # E-field is hardcoded to Zero.
+    parsed_bz_obs = Observable(1e-8)  # Default Bz, parsed reactively
 
-    # Initial Conditions (Hardcoded to zero)
-    # No Refs needed for initial position or velocity.
+    # Initial Conditions are Hardcoded.
 
     # Time Span (Only End Time is configurable, Start Time hardcoded to 0.0)
-    t_end_value_ref = Ref(10.0) # Default value for End Time
+    parsed_t_end_obs = Observable(10.0) # Default End Time, parsed reactively
 
     # Particle Species
     species_type_ref = Ref("Proton") # String type
@@ -63,12 +62,45 @@ function main_gui()
     # Row 1: B-Field Bz
     b_field_minimal_grid = input_grid[1, 1] = GridLayout(tellheight=false, tellwidth=false, halign=:left)
     Label(b_field_minimal_grid[1,1], "Bz:")
-    tb_Bz = Textbox(b_field_minimal_grid[1,2], placeholder = "1e-8") # Default Bz
+    tb_Bz = Textbox(b_field_minimal_grid[1,2], placeholder = "1e-8", validator = Float64) 
+    # Initialize parsed_bz_obs with the initial Textbox content if it's valid
+    val_bz_init = tryparse(Float64, tb_Bz.stored_string[])
+    if !isnothing(val_bz_init) parsed_bz_obs[] = val_bz_init end
+
+    on(tb_Bz.stored_string) do s
+        val = tryparse(Float64, s)
+        if !isnothing(val)
+            parsed_bz_obs[] = val
+            if error_display_label.text[] == "ERROR: Invalid Bz format. Must be a number."
+                 error_display_label.text[] = "" # Clear specific error
+            end
+        else
+            error_display_label.text[] = "ERROR: Invalid Bz format. Must be a number."
+            # error_display_label.color[] = :red # Removed
+        end
+    end
 
     # Row 2: Time Span (End Time only)
     tspan_minimal_grid = input_grid[2, 1] = GridLayout(tellheight=false, tellwidth=false, halign=:left)
     Label(tspan_minimal_grid[1,1], "End Time:")
-    tb_t_end = Textbox(tspan_minimal_grid[1,2], placeholder = "10.0") # Default End Time
+    tb_t_end = Textbox(tspan_minimal_grid[1,2], placeholder = "10.0", validator = Float64)
+    # Initialize parsed_t_end_obs with the initial Textbox content if it's valid
+    val_t_end_init = tryparse(Float64, tb_t_end.stored_string[])
+    if !isnothing(val_t_end_init) parsed_t_end_obs[] = val_t_end_init end
+    
+    on(tb_t_end.stored_string) do s
+        val = tryparse(Float64, s)
+        if !isnothing(val)
+            parsed_t_end_obs[] = val
+            if error_display_label.text[] == "ERROR: Invalid End Time format. Must be a number." || 
+               error_display_label.text[] == "ERROR: End Time must be greater than 0.0." 
+                 error_display_label.text[] = "" # Clear specific error
+            end
+        else
+            error_display_label.text[] = "ERROR: Invalid End Time format. Must be a number."
+            # error_display_label.color[] = :red # Removed
+        end
+    end
 
     # Row 3: Particle Species Section (Kept as is from previous simplification)
     species_grid = input_grid[3, 1] = GridLayout(tellheight = false, tellwidth=false, halign=:left)
@@ -111,7 +143,7 @@ function main_gui()
     run_button = Button(input_grid[5, 1], label = "Run Simulation", tellwidth=false, halign=:left)
 
     # Row 6: Error/Status Display Label
-    error_display_label = Label(input_grid[6, 1], "", color=:red, tellwidth=false, halign=:left)
+    error_display_label = Label(input_grid[6, 1], "", tellwidth=false, halign=:left) # Removed color=:red
 
 
     # --- Button Click Logic ---
@@ -149,28 +181,28 @@ function main_gui()
         # initial_vel_ref[] is no longer set from UI
         # Using hardcoded values directly in stateinit construction later
 
-        # --- Parse Time Span (End Time only) ---
-        parsed_t_end = tryparse(Float64, tb_t_end.stored_string[])
-        if isnothing(parsed_t_end) 
-            error_display_label.text[] = "Error: Invalid End Time. Must be a number."
-            return
+        # --- Use pre-parsed and validated values ---
+        # Clear parsing-specific errors if any were set and not cleared by on-the-fly validation
+        # This is a bit broad, ideally on-the-fly validation clears its own errors.
+        # For now, we'll clear if it's a format error, but not a logical error like t_end <= 0
+        if occursin("format", error_display_label.text[])
+             error_display_label.text[] = ""
         end
-        if 0.0 >= parsed_t_end # Start time is hardcoded as 0.0
-            error_display_label.text[] = "Error: End Time must be greater than 0.0."
-            return
-        end
-        t_end_value_ref[] = parsed_t_end # Store only the parsed end time
-        
-        # --- E-Field Parameters are Hardcoded to Zero ---
-        # No parsing needed.
 
-        # --- Parse B-Field Parameters (Bz only) ---
-        parsed_Bz = tryparse(Float64, tb_Bz.stored_string[])
-        if isnothing(parsed_Bz) 
-            error_display_label.text[] = "Error: Invalid Bz. Must be a number."
+        # Validate End Time (already parsed into parsed_t_end_obs)
+        current_t_end = parsed_t_end_obs[]
+        if 0.0 >= current_t_end 
+            error_display_label.text[] = "ERROR: End Time must be greater than 0.0."
+            # error_display_label.color[] = :red # Removed
             return
         end
-        bz_value_ref[] = parsed_Bz # Store only the parsed Bz value
+        # t_span_ref is no longer used, (0.0, current_t_end) will be used directly.
+        
+        # E-Field Parameters are Hardcoded to Zero.
+
+        # B-Field Parameters (Bz only, already parsed into parsed_bz_obs)
+        # bz_value_ref is no longer used.
+        # No parsing needed here, value is in parsed_bz_obs[].
 
         # --- Parse Particle Species Parameters ---
         species_type_ref[] = selected_species[] # This will now only be "Proton" or "Electron"
@@ -200,18 +232,16 @@ function main_gui()
         
         # Clear any parsing related error messages before attempting simulation
         error_display_label.text[] = "Running simulation..." 
-        error_display_label.color[] = :black # Neutral color for status
+        # error_display_label.color[] = :black # Removed
 
         # --- Construct E-Field Function (Hardcoded to Zero) ---
         E_func = TestParticle.ZeroField()
 
         # --- Construct B-Field Function ---
-        # B_func uses the parsed Bz value directly. Bx and By are hardcoded to 0.0.
-        # If bz_value_ref[] is 0.0, this effectively becomes a ZeroField for B.
-        current_bz = bz_value_ref[]
+        current_bz = parsed_bz_obs[] # Use value from observable
         B_func = (xu, t) -> SA[0.0, 0.0, current_bz]
         if current_bz == 0.0
-            B_func = TestParticle.ZeroField() # Explicitly use ZeroField if Bz is zero
+            B_func = TestParticle.ZeroField()
         end
 
         # --- Determine Particle Species for prepare() ---
@@ -240,7 +270,7 @@ function main_gui()
             if solver_type_ref[] == "Boris (fixed-step)"
                 # Boris method specific setup from example
                 # stateinit_boris = SVector{6, Float64}(stateinit...) # Boris might prefer SVector
-                # prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, t_end_value_ref[]), sim_params)
+                # prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, parsed_t_end_obs[]), sim_params) 
                 # sol_ref[] = TestParticle.solve(prob_boris; dt = solver_dt_ref[])[1] # [1] if it returns a tuple
                 # Re-checking example: TestParticle.solve(prob_boris; dt) returns sol directly.
                 # The example `demo_proton_dipole.jl` uses `sol = TestParticle.solve(prob_boris; dt)[1]`.
@@ -251,11 +281,11 @@ function main_gui()
                 # Reconciling: TestParticle.jl README uses `params` for ODEProblem,
                 # and `param` for `TraceProblem`. Let's assume `sim_params` from `prepare` works for both.
                 stateinit_svector = SVector{6,Float64}(stateinit)
-                prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, t_end_value_ref[]), sim_params) # Use t_end_value_ref
+                prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, parsed_t_end_obs[]), sim_params) # Use parsed_t_end_obs
                 sol_ref[] = TestParticle.solve(prob_boris; dt = solver_dt_ref[])
 
             else # OrdinaryDiffEq solvers
-                prob = ODEProblem(TestParticle.trace!, stateinit, (0.0, t_end_value_ref[]), sim_params) # Use t_end_value_ref
+                prob = ODEProblem(TestParticle.trace, stateinit, (0.0, parsed_t_end_obs[]), sim_params) # Use TestParticle.trace
                 current_solver_reltol = solver_reltol_ref[]
                 current_solver_dt = solver_dt_ref[]
 
@@ -275,7 +305,7 @@ function main_gui()
 
             if sol_ref[] !== nothing && sol_ref[].retcode == :Success
                 error_display_label.text[] = "Simulation successful! Retcode: $(sol_ref[].retcode)"
-                error_display_label.color[] = :green
+                # error_display_label.color[] = :green # Removed
                 
                 # 3D Trajectory Plotting REMOVED
 
@@ -310,17 +340,17 @@ function main_gui()
 
             elseif sol_ref[] !== nothing # Simulation ran but might not be successful
                 error_display_label.text[] = "Simulation completed with issues. Retcode: $(sol_ref[].retcode)"
-                error_display_label.color[] = :orange
+                # error_display_label.color[] = :orange # Removed
                 # Plots already cleared by clear_all_plots() at the start of the callback
             else # sol_ref[] is nothing, meaning simulation didn't run or produce output
                 error_display_label.text[] = "Simulation failed to produce a solution object."
-                error_display_label.color[] = :red
+                # error_display_label.color[] = :red # Removed
                 # Plots already cleared
             end
 
         catch e
             error_display_label.text[] = "Simulation failed: " * sprint(showerror, e)
-            error_display_label.color[] = :red
+            # error_display_label.color[] = :red # Removed
             # sol_ref[] is already nothing or will be reset if error happened mid-simulation
             # Plots already cleared by clear_all_plots() at the start of the callback
             # or if error was during plotting, some might exist.
