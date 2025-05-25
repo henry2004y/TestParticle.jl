@@ -15,15 +15,15 @@ function main_gui()
     parsed_t_end_obs = Observable(10.0) # Default End Time, parsed reactively
 
     # Particle Species
-    species_type_ref = Ref("Proton") # String type
+    selected_species_obs = Observable("Proton") # Default species
 
     # Solver Configuration
-    solver_type_ref = Ref("Vern9 (adaptive)") # String type
-    solver_dt_ref = Ref(0.01)
-    solver_reltol_ref = Ref(1e-6)
+    selected_solver_obs = Observable("Vern9 (adaptive)") # Renamed and changed to Observable
+    parsed_dt_obs = Observable(0.01)     # Default dt, parsed reactively
+    parsed_reltol_obs = Observable(1e-7) # Default reltol
 
     # Simulation Solution Storage
-    sol_ref = Ref{Any}(nothing)
+    sol_obs = Observable{Any}(nothing) # Changed from Ref to Observable
     # current_trajectory_plot Ref removed (no 3D plot)
     # Refs for 2D time-series plot lines (stores plot objects like LineSegments)
     pos_ts_plots_ref = Ref{Vector{Any}}(Any[]) # For x(t), y(t), z(t) lines
@@ -107,16 +107,18 @@ function main_gui()
     # Label(species_grid[1, 1:2], "Particle Species", tellwidth=false, font=:bold) # Optional title for section
     Label(species_grid[1,1], "Species:")
     species_options = ["Proton", "Electron"]
-    species_menu = Menu(species_grid[1,2], options = species_options, default = "Proton")
-    selected_species = species_menu.selection # Used in parsing
+    # Link Menu selection directly to selected_species_obs
+    species_menu = Menu(species_grid[1,2], options = species_options, selection = selected_species_obs)
+    # selected_species = species_menu.selection # No longer needed, selected_species_obs is the source of truth
 
     # Row 4: Solver Configuration Section (Kept as is)
     solver_grid = input_grid[4, 1] = GridLayout(tellheight = false, tellwidth=false, halign=:left)
     # Label(solver_grid[1, 1:2], "Solver Configuration", tellwidth=false, font=:bold) # Optional title
     Label(solver_grid[1,1], "Solver:")
     solver_options = ["Vern9 (adaptive)", "Tsit5 (adaptive)", "Boris (fixed-step)", "ImplicitMidpoint (fixed-step)"]
-    solver_menu = Menu(solver_grid[1,2], options = solver_options, default = "Vern9 (adaptive)")
-    selected_solver = solver_menu.selection # Used in parsing
+    # Link Menu selection directly to selected_solver_obs
+    solver_menu = Menu(solver_grid[1,2], options = solver_options, selection = selected_solver_obs)
+    # selected_solver variable is no longer needed, selected_solver_obs is the source of truth
 
     solver_params_grid = solver_grid[2,1:2] = GridLayout() # Spans 2 cols relative to solver_grid's own layout
     # Timestep (dt)
@@ -124,12 +126,42 @@ function main_gui()
     tb_dt = Textbox(solver_params_grid[1,2], placeholder = "0.01")
     # Relative Tol. (reltol)
     lbl_reltol = Label(solver_params_grid[2,1], "Relative Tol. (reltol):")
-    tb_reltol = Textbox(solver_params_grid[2,2], placeholder = "1e-6")
+    tb_reltol = Textbox(solver_params_grid[2,2], placeholder = "1e-7", validator = Float64) # Placeholder updated
 
     lbl_dt.visible = false; tb_dt.visible = false # Initial state
     lbl_reltol.visible = false; tb_reltol.visible = false # Initial state
 
-    on(selected_solver) do selected_type
+    # Reactive parsing for dt
+    val_dt_init = tryparse(Float64, tb_dt.stored_string[])
+    if !isnothing(val_dt_init) && val_dt_init > 0.0 parsed_dt_obs[] = val_dt_init end
+    on(tb_dt.stored_string) do s
+        val = tryparse(Float64, s)
+        if !isnothing(val) && val > 0.0
+            parsed_dt_obs[] = val
+            if error_display_label.text[] == "ERROR: Timestep (dt) must be a positive number."
+                error_display_label.text[] = "" # Clear specific error
+            end
+        else
+            error_display_label.text[] = "ERROR: Timestep (dt) must be a positive number."
+        end
+    end
+
+    # Reactive parsing for reltol
+    val_reltol_init = tryparse(Float64, tb_reltol.stored_string[])
+    if !isnothing(val_reltol_init) && val_reltol_init > 0.0 parsed_reltol_obs[] = val_reltol_init end
+    on(tb_reltol.stored_string) do s
+        val = tryparse(Float64, s)
+        if !isnothing(val) && val > 0.0
+            parsed_reltol_obs[] = val
+            if error_display_label.text[] == "ERROR: Relative Tolerance (reltol) must be a positive number."
+                error_display_label.text[] = "" # Clear specific error
+            end
+        else
+            error_display_label.text[] = "ERROR: Relative Tolerance (reltol) must be a positive number."
+        end
+    end
+    
+    on(selected_solver_obs) do selected_type # Listen to the observable
         is_fixed_step = occursin("fixed-step", selected_type)
         is_adaptive = occursin("adaptive", selected_type)
         lbl_dt.visible[] = is_fixed_step
@@ -137,7 +169,7 @@ function main_gui()
         lbl_reltol.visible[] = is_adaptive
         tb_reltol.visible[] = is_adaptive
     end
-    notify(selected_solver)
+    notify(selected_solver_obs) # Notify the observable
 
     # Row 5: Run Simulation Button
     run_button = Button(input_grid[5, 1], label = "Run Simulation", tellwidth=false, halign=:left)
@@ -172,7 +204,7 @@ function main_gui()
 
     on(run_button.clicks) do _
         # Clear previous solution, error message, and all plots
-        sol_ref[] = nothing
+        sol_obs[] = nothing # Update to sol_obs
         error_display_label.text[] = "" 
         clear_all_plots()
 
@@ -204,33 +236,37 @@ function main_gui()
         # bz_value_ref is no longer used.
         # No parsing needed here, value is in parsed_bz_obs[].
 
-        # --- Parse Particle Species Parameters ---
-        species_type_ref[] = selected_species[] # This will now only be "Proton" or "Electron"
+        # --- Particle Species Parameters (use selected_species_obs directly) ---
+        # species_type_ref[] = selected_species_obs[] # No need to update species_type_ref if it's removed
         # Logic for parsing custom q and m REMOVED
-        # custom_species_q_ref and custom_species_m_ref are no longer updated here as they are removed.
 
-        # --- Parse Solver Configuration ---
-        solver_type_ref[] = selected_solver[]
-        is_fixed_step_solver = occursin("fixed-step", solver_type_ref[])
-        is_adaptive_solver = occursin("adaptive", solver_type_ref[])
+        # --- Solver Configuration (use selected_solver_obs directly) ---
+        # solver_type_ref[] = selected_solver_obs[] # No longer need to update solver_type_ref
+        current_solver_type = selected_solver_obs[]
+        is_fixed_step_solver = occursin("fixed-step", current_solver_type)
+        is_adaptive_solver = occursin("adaptive", current_solver_type)
 
-        if is_fixed_step_solver
-            val_dt = tryparse(Float64, tb_dt.stored_string[]); if isnothing(val_dt) error_display_label.text[] = "Error: Invalid Timestep (dt)."; return; end
-            if val_dt <= 0.0 error_display_label.text[] = "Error: Timestep (dt) must be positive."; return; end
-            solver_dt_ref[] = val_dt
-            solver_reltol_ref[] = NaN
-        elseif is_adaptive_solver
-            val_reltol = tryparse(Float64, tb_reltol.stored_string[]); if isnothing(val_reltol) error_display_label.text[] = "Error: Invalid Relative Tol."; return; end
-            if val_reltol <= 0.0 error_display_label.text[] = "Error: Relative Tol. must be positive."; return; end
-            solver_reltol_ref[] = val_reltol
-            solver_dt_ref[] = NaN
-        else
-            error_display_label.text[] = "Warning: Unknown solver type. Using default dt/reltol." # Changed from println
-            solver_dt_ref[] = NaN 
-            solver_reltol_ref[] = NaN
+        # Use pre-parsed and validated values from observables
+        # The on-change callbacks for tb_dt and tb_reltol handle format and positivity.
+        # If an error message related to dt or reltol is currently displayed, we should not proceed.
+        if (is_fixed_step_solver && (error_display_label.text[] == "ERROR: Timestep (dt) must be a positive number." || parsed_dt_obs[] <= 0.0))
+            if error_display_label.text[] != "ERROR: Timestep (dt) must be a positive number." # Set it if not already set by reactive parser
+                 error_display_label.text[] = "ERROR: Timestep (dt) must be a positive number."
+            end
+            return
+        end
+        if (is_adaptive_solver && (error_display_label.text[] == "ERROR: Relative Tolerance (reltol) must be a positive number." || parsed_reltol_obs[] <= 0.0))
+             if error_display_label.text[] != "ERROR: Relative Tolerance (reltol) must be a positive number."
+                 error_display_label.text[] = "ERROR: Relative Tolerance (reltol) must be a positive number."
+            end
+            return
         end
         
         # Clear any parsing related error messages before attempting simulation
+        # This specifically clears dt/reltol errors if they were set and now conditions are met
+        if error_display_label.text[] == "ERROR: Timestep (dt) must be a positive number." || error_display_label.text[] == "ERROR: Relative Tolerance (reltol) must be a positive number."
+            error_display_label.text[] = ""
+        end
         error_display_label.text[] = "Running simulation..." 
         # error_display_label.color[] = :black # Removed
 
@@ -246,9 +282,10 @@ function main_gui()
 
         # --- Determine Particle Species for prepare() ---
         species_kwargs = Dict{Symbol, Any}()
-        if species_type_ref[] == "Proton"
+        # Use the value from the observable directly
+        if selected_species_obs[] == "Proton"
             species_kwargs[:species] = TestParticle.Proton
-        elseif species_type_ref[] == "Electron"
+        elseif selected_species_obs[] == "Electron"
             species_kwargs[:species] = TestParticle.Electron
         end
         # "Custom" branch REMOVED as it's no longer an option
@@ -267,7 +304,7 @@ function main_gui()
 
         # --- Create Problem and Solve ---
         try
-            if solver_type_ref[] == "Boris (fixed-step)"
+            if current_solver_type == "Boris (fixed-step)" # Use current_solver_type
                 # Boris method specific setup from example
                 # stateinit_boris = SVector{6, Float64}(stateinit...) # Boris might prefer SVector
                 # prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, parsed_t_end_obs[]), sim_params) 
@@ -281,37 +318,35 @@ function main_gui()
                 # Reconciling: TestParticle.jl README uses `params` for ODEProblem,
                 # and `param` for `TraceProblem`. Let's assume `sim_params` from `prepare` works for both.
                 stateinit_svector = SVector{6,Float64}(stateinit)
-                prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, parsed_t_end_obs[]), sim_params) # Use parsed_t_end_obs
-                sol_ref[] = TestParticle.solve(prob_boris; dt = solver_dt_ref[])
+                prob_boris = TestParticle.TraceProblem(stateinit_svector, (0.0, parsed_t_end_obs[]), sim_params) 
+                sol_obs[] = TestParticle.solve(prob_boris; dt = parsed_dt_obs[]) # Use parsed_dt_obs & sol_obs
 
             else # OrdinaryDiffEq solvers
-                prob = ODEProblem(TestParticle.trace, stateinit, (0.0, parsed_t_end_obs[]), sim_params) # Use TestParticle.trace
-                current_solver_reltol = solver_reltol_ref[]
-                current_solver_dt = solver_dt_ref[]
+                prob = ODEProblem(TestParticle.trace, stateinit, (0.0, parsed_t_end_obs[]), sim_params) 
+                # current_solver_reltol and current_solver_dt are no longer Refs.
+                # Use values from observables directly.
 
-                if solver_type_ref[] == "Vern9 (adaptive)"
-                    sol_ref[] = OrdinaryDiffEq.solve(prob, Vern9(), reltol = current_solver_reltol, abstol=1e-8, save_everystep=false) #abstol and save_everystep are common additions
-                elseif solver_type_ref[] == "Tsit5 (adaptive)"
-                    sol_ref[] = OrdinaryDiffEq.solve(prob, Tsit5(), reltol = current_solver_reltol, abstol=1e-8, save_everystep=false)
-                elseif solver_type_ref[] == "ImplicitMidpoint (fixed-step)"
-                    # ImplicitMidpoint requires dt. Check if reltol is also used or ignored.
-                    # Typically for fixed step, reltol is not the primary control.
-                    sol_ref[] = OrdinaryDiffEq.solve(prob, ImplicitMidpoint(), dt = current_solver_dt, save_everystep=false)
+                if current_solver_type == "Vern9 (adaptive)" # Use current_solver_type
+                    sol_obs[] = OrdinaryDiffEq.solve(prob, Vern9(), reltol = parsed_reltol_obs[], abstol=1e-8, save_everystep=false) 
+                elseif current_solver_type == "Tsit5 (adaptive)" # Use current_solver_type
+                    sol_obs[] = OrdinaryDiffEq.solve(prob, Tsit5(), reltol = parsed_reltol_obs[], abstol=1e-8, save_everystep=false) 
+                elseif current_solver_type == "ImplicitMidpoint (fixed-step)" # Use current_solver_type
+                    sol_obs[] = OrdinaryDiffEq.solve(prob, ImplicitMidpoint(), dt = parsed_dt_obs[], save_everystep=false) 
                 else
-                    println("Error: Unknown solver '", solver_type_ref[], "'. Cannot solve.")
-                    return # Exit if solver is not recognized
+                    error_display_label.text[] = "Error: Unknown solver '$(current_solver_type)'. Cannot solve." 
+                    return 
                 end
             end
 
-            if sol_ref[] !== nothing && sol_ref[].retcode == :Success
-                error_display_label.text[] = "Simulation successful! Retcode: $(sol_ref[].retcode)"
+            if sol_obs[] !== nothing && sol_obs[].retcode == :Success 
+                error_display_label.text[] = "Simulation successful! Retcode: $(sol_obs[].retcode)" 
                 # error_display_label.color[] = :green # Removed
                 
                 # 3D Trajectory Plotting REMOVED
 
                 # --- 2D Time Series Plots ---
                 # Extract solution data
-                sol = sol_ref[]
+                sol = sol_obs[] # Update to sol_obs
                 t_vals = sol.t # Time points
                 s_vals = sol.u # Array of state vectors [x,y,z,vx,vy,vz] at each time point
 
@@ -338,11 +373,11 @@ function main_gui()
                 if !isempty(vel_ts_plots_ref[]) axislegend(vel_ts_ax, position=:rt); end
                 autolimits!(vel_ts_ax)
 
-            elseif sol_ref[] !== nothing # Simulation ran but might not be successful
-                error_display_label.text[] = "Simulation completed with issues. Retcode: $(sol_ref[].retcode)"
+            elseif sol_obs[] !== nothing # Simulation ran but might not be successful # Update to sol_obs
+                error_display_label.text[] = "Simulation completed with issues. Retcode: $(sol_obs[].retcode)" # Update to sol_obs
                 # error_display_label.color[] = :orange # Removed
                 # Plots already cleared by clear_all_plots() at the start of the callback
-            else # sol_ref[] is nothing, meaning simulation didn't run or produce output
+            else # sol_obs[] is nothing, meaning simulation didn't run or produce output # Update to sol_obs
                 error_display_label.text[] = "Simulation failed to produce a solution object."
                 # error_display_label.color[] = :red # Removed
                 # Plots already cleared
@@ -351,7 +386,7 @@ function main_gui()
         catch e
             error_display_label.text[] = "Simulation failed: " * sprint(showerror, e)
             # error_display_label.color[] = :red # Removed
-            # sol_ref[] is already nothing or will be reset if error happened mid-simulation
+            # sol_obs[] is already nothing or will be reset if error happened mid-simulation # Update to sol_obs
             # Plots already cleared by clear_all_plots() at the start of the callback
             # or if error was during plotting, some might exist.
             # For safety, can call clear_all_plots() again, or ensure it's robust.
