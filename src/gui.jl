@@ -6,13 +6,13 @@ using StaticArrays
 function main_gui()
     # --- Data Storage for Parsed Values ---
     # Field Configuration
-    e_field_type_ref = Ref("Zero") # String type
+    # e_field_type_ref removed (always Uniform or Zero based on params)
     e_uniform_params_ref = Ref(SA[0.0, 0.0, 0.0]) # Ex, Ey, Ez
 
-    b_field_type_ref = Ref("Zero") # String type
+    # b_field_type_ref removed (always Uniform or Zero based on params)
     b_uniform_params_ref = Ref(SA[0.0, 0.0, 0.0]) # Bx, By, Bz
-    b_dipole_params_ref = Ref(SA[0.0, 0.0, 1.0])  # Mx, My, Mz (default Mz=1.0)
-    b_cs_params_ref = Ref(SA[1.0, 0.1, 0.0])      # B₀, L, Bn (defaults)
+    # b_dipole_params_ref removed
+    # b_cs_params_ref removed
 
     # Initial Conditions
     initial_pos_ref = Ref(SA[0.0, 0.0, 0.0]) # x₀, y₀, z₀
@@ -87,94 +87,40 @@ function main_gui()
     field_cfg_grid = input_grid[1, 1] = GridLayout(tellheight = false)
     Label(field_cfg_grid[1, 1:2], "Field Configuration", tellwidth=false, font=:bold)
 
-    # E-Field Section
-    Label(field_cfg_grid[2, 1], "E-Field Type:")
-    e_field_options = ["Zero", "Uniform"]
-    e_menu = Menu(field_cfg_grid[2, 2], options = e_field_options, default = "Zero")
-    selected_e_field = e_menu.selection
-
-    e_params_grid = field_cfg_grid[3, 1:2] = GridLayout()
-
-    # Uniform E-Field Parameters
-    # Define and parent e_uniform_params_grid directly
-    e_uniform_params_grid = e_params_grid[1, 1] = GridLayout()
-    Label(e_uniform_params_grid[1,1], "Ex:")
-    tb_Ex = Textbox(e_uniform_params_grid[1,2], placeholder = "0.0")
-    Label(e_uniform_params_grid[2,1], "Ey:")
-    tb_Ey = Textbox(e_uniform_params_grid[2,2], placeholder = "0.0")
-    Label(e_uniform_params_grid[3,1], "Ez:")
-    tb_Ez = Textbox(e_uniform_params_grid[3,2], placeholder = "0.0")
-    e_uniform_params_grid.layoutobservables.visible[] = false # Initially hidden
-    # The line `e_params_grid[1,1] = e_uniform_params_grid` is now redundant due to direct parenting.
-
-    # B-Field Section
-    Label(field_cfg_grid[4, 1], "B-Field Type:")
-    b_field_options = ["Zero", "Uniform", "Dipole", "Current Sheet"]
-    b_menu = Menu(field_cfg_grid[4, 2], options = b_field_options, default = "Zero")
-    selected_b_field = b_menu.selection
-
-    b_params_grid = field_cfg_grid[5, 1:2] = GridLayout()
-
-    # Uniform B-Field Parameters
-    b_uniform_params_grid = GridLayout()
-    Label(b_uniform_params_grid[1,1], "Bx:")
-    tb_Bx = Textbox(b_uniform_params_grid[1,2], placeholder = "0.0")
-    Label(b_uniform_params_grid[2,1], "By:")
-    tb_By = Textbox(b_uniform_params_grid[2,2], placeholder = "0.0")
-    Label(b_uniform_params_grid[3,1], "Bz:")
-    tb_Bz = Textbox(b_uniform_params_grid[3,2], placeholder = "0.0")
-    b_uniform_params_grid.layoutobservables.visible[] = false # Initially hidden
+    # E-Field Section (Simplified - always Uniform)
+    # The e_params_grid will now directly contain the uniform E-field parameters.
+    # It will be placed at field_cfg_grid[2, 1:2]
+    e_params_grid = field_cfg_grid[2, 1:2] = GridLayout() # Renamed from e_field_section_grid for simplicity
     
-    # Dipole B-Field Parameters
-    b_dipole_params_grid = GridLayout()
-    Label(b_dipole_params_grid[1,1], "Dipole Mx:")
-    tb_Mx = Textbox(b_dipole_params_grid[1,2], placeholder = "0.0")
-    Label(b_dipole_params_grid[2,1], "Dipole My:")
-    tb_My = Textbox(b_dipole_params_grid[2,2], placeholder = "0.0")
-    Label(b_dipole_params_grid[3,1], "Dipole Mz:")
-    tb_Mz = Textbox(b_dipole_params_grid[3,2], placeholder = "1.0") # Default Mz
-    b_dipole_params_grid.layoutobservables.visible[] = false # Initially hidden
-    # Add to b_params_grid, but ensure only one is visible at a time.
-    # We can place it in the same cell as b_uniform_params_grid, visibility handles the rest.
+    # Uniform E-Field Parameters (always visible)
+    # This grid holds the Ex, Ey, Ez labels and textboxes
+    e_uniform_params_grid = e_params_grid[1, 1] = GridLayout() # This structure can be kept or flattened
+    Label(e_uniform_params_grid[1,1], "E-Field Ex:") # Label changed for clarity
+    tb_Ex = Textbox(e_uniform_params_grid[1,2], placeholder = "0.0")
+    Label(e_uniform_params_grid[2,1], "E-Field Ey:") # Label changed for clarity
+    tb_Ey = Textbox(e_uniform_params_grid[2,2], placeholder = "0.0")
+    Label(e_uniform_params_grid[3,1], "E-Field Ez:") # Label changed for clarity
+    tb_Ez = Textbox(e_uniform_params_grid[3,2], placeholder = "0.0")
+    # e_uniform_params_grid.layoutobservables.visible[] = false; # No longer needed, always visible
 
-    # Current Sheet B-Field Parameters
-    b_cs_params_grid = GridLayout()
-    Label(b_cs_params_grid[1,1], "CS B₀:")
-    tb_CS_B0 = Textbox(b_cs_params_grid[1,2], placeholder = "1.0")
-    Label(b_cs_params_grid[2,1], "CS L:")
-    tb_CS_L = Textbox(b_cs_params_grid[2,2], placeholder = "0.1")
-    Label(b_cs_params_grid[3,1], "CS Bn:")
-    tb_CS_Bn = Textbox(b_cs_params_grid[3,2], placeholder = "0.0")
-    b_cs_params_grid.layoutobservables.visible[] = false # Initially hidden
-    # Add to b_params_grid, same cell.
+    # B-Field Section (Simplified - always Uniform)
+    # The b_params_grid will now directly contain the uniform B-field parameters.
+    # It will be placed at field_cfg_grid[3, 1:2] (adjusting row from previous E-field)
+    b_params_grid = field_cfg_grid[3, 1:2] = GridLayout() 
 
-    # Dynamic E-Field Parameter Display Logic
-    on(selected_e_field) do selected_type
-        e_uniform_params_grid.layoutobservables.visible[] = (selected_type == "Uniform")
-    end
-    notify(selected_e_field) # Trigger initial update
+    # Uniform B-Field Parameters (always visible)
+    b_uniform_params_grid = b_params_grid[1, 1] = GridLayout()
+    Label(b_uniform_params_grid[1,1], "B-Field Bx:") # Label changed for clarity
+    tb_Bx = Textbox(b_uniform_params_grid[1,2], placeholder = "0.0")
+    Label(b_uniform_params_grid[2,1], "B-Field By:") # Label changed for clarity
+    tb_By = Textbox(b_uniform_params_grid[2,2], placeholder = "0.0")
+    Label(b_uniform_params_grid[3,1], "B-Field Bz:") # Label changed for clarity
+    tb_Bz = Textbox(b_uniform_params_grid[3,2], placeholder = "0.0")
+    # b_uniform_params_grid.layoutobservables.visible[] = false; # No longer needed
 
-    # Dynamic B-Field Parameter Display Logic
-    on(selected_b_field) do selected_type
-        b_uniform_params_grid.layoutobservables.visible[] = (selected_type == "Uniform")
-        b_dipole_params_grid.layoutobservables.visible[] = (selected_type == "Dipole")
-        b_cs_params_grid.layoutobservables.visible[] = (selected_type == "Current Sheet")
-
-        # Ensure correct grid is in the parent if they share the same cell
-        if selected_type == "Uniform"
-            b_params_grid[1,1] = b_uniform_params_grid
-        elseif selected_type == "Dipole"
-            b_params_grid[1,1] = b_dipole_params_grid
-        elseif selected_type == "Current Sheet"
-            b_params_grid[1,1] = b_cs_params_grid
-        else # Zero or other cases
-            # Hide all, or clear the cell if necessary
-            # For now, setting visible to false is handled above,
-            # but explicitly clearing the cell might be safer if grids overlap
-            delete!(b_params_grid, 1, 1)
-        end
-    end
-    notify(selected_b_field) # Trigger initial update
+    # Dipole B-Field Parameters (REMOVED)
+    # Current Sheet B-Field Parameters (REMOVED)
+    # Dynamic B-Field Parameter Display Logic (REMOVED)
 
     # Initial Conditions Section
     init_cond_grid = input_grid[2, 1] = GridLayout(tellheight = false)
@@ -335,36 +281,22 @@ function main_gui()
         t_span_ref[] = (val_t_start, val_t_end)
         
         # --- Parse E-Field Parameters ---
-        e_field_type_ref[] = selected_e_field[]
-        if e_field_type_ref[] == "Uniform"
-            val_Ex = tryparse(Float64, tb_Ex.stored_string[]); if isnothing(val_Ex) error_display_label.text[] = "Error: Invalid Ex."; return; end
-            val_Ey = tryparse(Float64, tb_Ey.stored_string[]); if isnothing(val_Ey) error_display_label.text[] = "Error: Invalid Ey."; return; end
-            val_Ez = tryparse(Float64, tb_Ez.stored_string[]); if isnothing(val_Ez) error_display_label.text[] = "Error: Invalid Ez."; return; end
-            e_uniform_params_ref[] = SA[val_Ex, val_Ey, val_Ez]
-        else
-            e_uniform_params_ref[] = SA[0.0, 0.0, 0.0]
-        end
+        # E-field is always "Uniform". If all inputs are zero, it's effectively a zero field.
+        # The e_field_type_ref might be removed or set to "Uniform" by default.
+        # For now, assume it's "Uniform" or not used for E-field construction logic.
+        val_Ex = tryparse(Float64, tb_Ex.stored_string[]); if isnothing(val_Ex) error_display_label.text[] = "Error: Invalid Ex."; return; end
+        val_Ey = tryparse(Float64, tb_Ey.stored_string[]); if isnothing(val_Ey) error_display_label.text[] = "Error: Invalid Ey."; return; end
+        val_Ez = tryparse(Float64, tb_Ez.stored_string[]); if isnothing(val_Ez) error_display_label.text[] = "Error: Invalid Ez."; return; end
+        e_uniform_params_ref[] = SA[val_Ex, val_Ey, val_Ez]
+        # e_field_type_ref[] = "Uniform" # Removed, logic downstream determines if ZeroField based on params
 
         # --- Parse B-Field Parameters ---
-        b_field_type_ref[] = selected_b_field[]
-        if b_field_type_ref[] == "Uniform"
-            val_Bx = tryparse(Float64, tb_Bx.stored_string[]); if isnothing(val_Bx) error_display_label.text[] = "Error: Invalid Bx."; return; end
-            val_By = tryparse(Float64, tb_By.stored_string[]); if isnothing(val_By) error_display_label.text[] = "Error: Invalid By."; return; end
-            val_Bz = tryparse(Float64, tb_Bz.stored_string[]); if isnothing(val_Bz) error_display_label.text[] = "Error: Invalid Bz."; return; end
-            b_uniform_params_ref[] = SA[val_Bx, val_By, val_Bz]
-        elseif b_field_type_ref[] == "Dipole"
-            val_Mx = tryparse(Float64, tb_Mx.stored_string[]); if isnothing(val_Mx) error_display_label.text[] = "Error: Invalid Dipole Mx."; return; end
-            val_My = tryparse(Float64, tb_My.stored_string[]); if isnothing(val_My) error_display_label.text[] = "Error: Invalid Dipole My."; return; end
-            val_Mz = tryparse(Float64, tb_Mz.stored_string[]); if isnothing(val_Mz) error_display_label.text[] = "Error: Invalid Dipole Mz."; return; end
-            b_dipole_params_ref[] = SA[val_Mx, val_My, val_Mz]
-        elseif b_field_type_ref[] == "Current Sheet"
-            val_CS_B0 = tryparse(Float64, tb_CS_B0.stored_string[]); if isnothing(val_CS_B0) error_display_label.text[] = "Error: Invalid CS B₀."; return; end
-            val_CS_L  = tryparse(Float64, tb_CS_L.stored_string[]);  if isnothing(val_CS_L)  error_display_label.text[] = "Error: Invalid CS L."; return; end
-            val_CS_Bn = tryparse(Float64, tb_CS_Bn.stored_string[]); if isnothing(val_CS_Bn) error_display_label.text[] = "Error: Invalid CS Bn."; return; end
-            b_cs_params_ref[] = SA[val_CS_B0, val_CS_L, val_CS_Bn]
-        else
-            b_uniform_params_ref[] = SA[0.0, 0.0, 0.0]
-        end
+        # B-field is always "Uniform".
+        val_Bx = tryparse(Float64, tb_Bx.stored_string[]); if isnothing(val_Bx) error_display_label.text[] = "Error: Invalid Bx."; return; end
+        val_By = tryparse(Float64, tb_By.stored_string[]); if isnothing(val_By) error_display_label.text[] = "Error: Invalid By."; return; end
+        val_Bz = tryparse(Float64, tb_Bz.stored_string[]); if isnothing(val_Bz) error_display_label.text[] = "Error: Invalid Bz."; return; end
+        b_uniform_params_ref[] = SA[val_Bx, val_By, val_Bz]
+        # b_field_type_ref[] = "Uniform" # Removed, logic downstream determines if ZeroField based on params
 
         # --- Parse Particle Species Parameters ---
         species_type_ref[] = selected_species[]
@@ -405,35 +337,21 @@ function main_gui()
         error_display_label.color[] = :black # Neutral color for status
 
         # --- Construct E-Field Function ---
-        E_func = TestParticle.ZeroField() # Default to zero field
-        if e_field_type_ref[] == "Uniform"
-            # Capture current parameter values for the closure
-            current_e_params = e_uniform_params_ref[]
-            E_func = (xu, t) -> SVector{3, Float64}(current_e_params...)
-            # Or if TestParticle.jl expects E_func(xu)
-            # E_func = xu -> SVector{3, Float64}(current_e_params...)
+        # E_func is always uniform based on e_uniform_params_ref (which could be all zeros)
+        current_e_params = e_uniform_params_ref[]
+        E_func = (xu, t) -> SVector{3, Float64}(current_e_params...)
+        # If all components of current_e_params are 0.0, this effectively becomes a ZeroField.
+        # Alternatively, check current_e_params and explicitly use TestParticle.ZeroField()
+        if all(iszero, current_e_params)
+            E_func = TestParticle.ZeroField()
         end
 
         # --- Construct B-Field Function ---
-        B_func = TestParticle.ZeroField() # Default to zero field
-        if b_field_type_ref[] == "Uniform"
-            current_b_uniform_params = b_uniform_params_ref[]
-            B_func = (xu, t) -> SVector{3, Float64}(current_b_uniform_params...)
-        elseif b_field_type_ref[] == "Dipole"
-            # Assuming TestParticle.dipole(r, M) is the correct function as per worker note
-            current_b_dipole_params = b_dipole_params_ref[]
-            # The dipole function in TestParticle.jl might not expect time `t`.
-            # If it's (xu, M), then: B_func = (xu, t) -> TestParticle.dipole(xu[1:3], current_b_dipole_params)
-            # Or if it's just (xu) and M is configured elsewhere (less likely given GUI)
-            # For now, assuming it can take (xu, t) and ignore t, or (xu) and dipole handles it.
-            # Let's use (xu,t) -> func(xu[1:3], params)
-            B_func = (xu, t) -> TestParticle.dipole(xu[1:3], current_b_dipole_params)
-        elseif b_field_type_ref[] == "Current Sheet"
-            current_b_cs_params = b_cs_params_ref[]
-            # TestParticle.getB_CS_harris(r, B₀, L, Bn)
-            # B_func = (xu, t) -> TestParticle.getB_CS_harris(xu[1:3], current_b_cs_params[1], current_b_cs_params[2], current_b_cs_params[3])
-            # Simpler:
-            B_func = (xu, t) -> TestParticle.getB_CS_harris(xu[1:3], current_b_cs_params...)
+        # B_func is always uniform based on b_uniform_params_ref (which could be all zeros)
+        current_b_params = b_uniform_params_ref[]
+        B_func = (xu, t) -> SVector{3, Float64}(current_b_params...)
+        if all(iszero, current_b_params)
+            B_func = TestParticle.ZeroField()
         end
 
         # --- Determine Particle Species for prepare() ---
