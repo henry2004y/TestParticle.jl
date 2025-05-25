@@ -104,7 +104,7 @@ function main_gui()
     tb_Ey = Textbox(e_uniform_params_grid[2,2], placeholder = "0.0")
     Label(e_uniform_params_grid[3,1], "Ez:")
     tb_Ez = Textbox(e_uniform_params_grid[3,2], placeholder = "0.0")
-    e_uniform_params_grid.visible = false # Initially hidden
+    e_uniform_params_grid.layoutobservables.visible[] = false # Initially hidden
     # The line `e_params_grid[1,1] = e_uniform_params_grid` is now redundant due to direct parenting.
 
     # B-Field Section
@@ -123,7 +123,7 @@ function main_gui()
     tb_By = Textbox(b_uniform_params_grid[2,2], placeholder = "0.0")
     Label(b_uniform_params_grid[3,1], "Bz:")
     tb_Bz = Textbox(b_uniform_params_grid[3,2], placeholder = "0.0")
-    b_uniform_params_grid.visible = false # Initially hidden
+    b_uniform_params_grid.layoutobservables.visible[] = false # Initially hidden
     
     # Dipole B-Field Parameters
     b_dipole_params_grid = GridLayout()
@@ -133,7 +133,7 @@ function main_gui()
     tb_My = Textbox(b_dipole_params_grid[2,2], placeholder = "0.0")
     Label(b_dipole_params_grid[3,1], "Dipole Mz:")
     tb_Mz = Textbox(b_dipole_params_grid[3,2], placeholder = "1.0") # Default Mz
-    b_dipole_params_grid.visible = false # Initially hidden
+    b_dipole_params_grid.layoutobservables.visible[] = false # Initially hidden
     # Add to b_params_grid, but ensure only one is visible at a time.
     # We can place it in the same cell as b_uniform_params_grid, visibility handles the rest.
 
@@ -145,20 +145,20 @@ function main_gui()
     tb_CS_L = Textbox(b_cs_params_grid[2,2], placeholder = "0.1")
     Label(b_cs_params_grid[3,1], "CS Bn:")
     tb_CS_Bn = Textbox(b_cs_params_grid[3,2], placeholder = "0.0")
-    b_cs_params_grid.visible = false # Initially hidden
+    b_cs_params_grid.layoutobservables.visible[] = false # Initially hidden
     # Add to b_params_grid, same cell.
 
     # Dynamic E-Field Parameter Display Logic
     on(selected_e_field) do selected_type
-        e_uniform_params_grid.visible[] = (selected_type == "Uniform")
+        e_uniform_params_grid.layoutobservables.visible[] = (selected_type == "Uniform")
     end
     notify(selected_e_field) # Trigger initial update
 
     # Dynamic B-Field Parameter Display Logic
     on(selected_b_field) do selected_type
-        b_uniform_params_grid.visible[] = (selected_type == "Uniform")
-        b_dipole_params_grid.visible[] = (selected_type == "Dipole")
-        b_cs_params_grid.visible[] = (selected_type == "Current Sheet")
+        b_uniform_params_grid.layoutobservables.visible[] = (selected_type == "Uniform")
+        b_dipole_params_grid.layoutobservables.visible[] = (selected_type == "Dipole")
+        b_cs_params_grid.layoutobservables.visible[] = (selected_type == "Current Sheet")
 
         # Ensure correct grid is in the parent if they share the same cell
         if selected_type == "Uniform"
@@ -217,10 +217,10 @@ function main_gui()
     tb_q = Textbox(custom_species_params_grid[1,2], placeholder = "1.0")
     Label(custom_species_params_grid[2,1], "Mass (m):")
     tb_m = Textbox(custom_species_params_grid[2,2], placeholder = "1.0")
-    custom_species_params_grid.visible = false # Initially hidden
+    custom_species_params_grid.layoutobservables.visible[] = false # Initially hidden
 
     on(selected_species) do selected_type
-        custom_species_params_grid.visible[] = (selected_type == "Custom")
+        custom_species_params_grid.layoutobservables.visible[] = (selected_type == "Custom")
     end
     notify(selected_species)
 
