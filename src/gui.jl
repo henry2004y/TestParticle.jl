@@ -25,9 +25,16 @@ function main_gui()
     # Simulation Solution Storage
     sol_obs = Observable{Any}(nothing) # Changed from Ref to Observable
     # current_trajectory_plot Ref removed (no 3D plot)
-    # Refs for 2D time-series plot lines (stores plot objects like LineSegments)
-    pos_ts_plots_ref = Ref{Vector{Any}}(Any[]) # For x(t), y(t), z(t) lines
-    vel_ts_plots_ref = Ref{Vector{Any}}(Any[]) # For vx(t), vy(t), vz(t) lines
+    
+    # Observables for 2D time-series plot data
+    t_obs = Observable(Float64[])
+    x_pos_obs = Observable(Float64[])
+    y_pos_obs = Observable(Float64[])
+    z_pos_obs = Observable(Float64[])
+    vx_vel_obs = Observable(Float64[])
+    vy_vel_obs = Observable(Float64[])
+    vz_vel_obs = Observable(Float64[])
+    # pos_ts_plots_ref and vel_ts_plots_ref REMOVED
 
     # --- Figure and Main Layout ---
     fig = Figure(size = (1200, 700)) # Adjusted size for simpler layout
@@ -42,6 +49,17 @@ function main_gui()
     pos_ts_ax = Axis(plot_display_grid[1, 1], title="Position vs Time", xlabel="Time [s]", ylabel="Position [m]")
     vel_ts_ax = Axis(plot_display_grid[2, 1], title="Velocity vs Time", xlabel="Time [s]", ylabel="Velocity [m/s]")
     linkxaxes!(pos_ts_ax, vel_ts_ax)
+
+    # Initialize 2D time series plots with observable data
+    lines!(pos_ts_ax, t_obs, x_pos_obs, label="x")
+    lines!(pos_ts_ax, t_obs, y_pos_obs, label="y")
+    lines!(pos_ts_ax, t_obs, z_pos_obs, label="z")
+    axislegend(pos_ts_ax, position=:rt)
+
+    lines!(vel_ts_ax, t_obs, vx_vel_obs, label="vx")
+    lines!(vel_ts_ax, t_obs, vy_vel_obs, label="vy")
+    lines!(vel_ts_ax, t_obs, vz_vel_obs, label="vz")
+    axislegend(vel_ts_ax, position=:rt)
 
     # 3D Trajectory Plot (plot_ax) REMOVED
     
@@ -62,45 +80,40 @@ function main_gui()
     # Row 1: B-Field Bz
     b_field_minimal_grid = input_grid[1, 1] = GridLayout(tellheight=false, tellwidth=false, halign=:left)
     Label(b_field_minimal_grid[1,1], "Bz:")
-    tb_Bz = Textbox(b_field_minimal_grid[1,2], placeholder = "1e-8", validator = Float64) 
-    # Initialize parsed_bz_obs with the initial Textbox content if it's valid
-    val_bz_init = tryparse(Float64, tb_Bz.stored_string[])
-    if !isnothing(val_bz_init) parsed_bz_obs[] = val_bz_init end
-
-    on(tb_Bz.stored_string) do s
-        val = tryparse(Float64, s)
-        if !isnothing(val)
-            parsed_bz_obs[] = val
-            if error_display_label.text[] == "ERROR: Invalid Bz format. Must be a number."
-                 error_display_label.text[] = "" # Clear specific error
-            end
-        else
-            error_display_label.text[] = "ERROR: Invalid Bz format. Must be a number."
-            # error_display_label.color[] = :red # Removed
-        end
+    tb_Bz = Textbox(b_field_minimal_grid[1,2], placeholder = "1e-8", validator = Float64)
+    # Initial value of parsed_bz_obs (1e-8) is the default. 
+    # If placeholder is valid, Textbox.value will update parsed_bz_obs if linked or on first valid input.
+    # For simplicity, we assume the placeholder matches the observable's default or is valid.
+    # Or, we can explicitly link: on(tb_Bz.value) do val; parsed_bz_obs[] = val; end
+    # and then trigger an initial update if needed, but Makie often handles this.
+    # Let's ensure the observable is updated when the Textbox value changes.
+    on(tb_Bz.value) do val # Listens to successfully validated Float64 values
+        # val is guaranteed to be a Float64 due to validator with allow_nothing=false
+        parsed_bz_obs[] = val
+        # No specific error message is set by this callback for Bz format errors anymore.
+        # Error clearing for "Bz" can be removed or made more specific if other logic sets Bz errors.
+        # For now, removing it to rely on global error clear by run button or specific error setting.
+        # if occursin("Bz", error_display_label.text[]) error_display_label.text[] = "" end
     end
+    # Initialize observable from placeholder if valid (optional, if Textbox doesn't do it automatically via value)
+    # This is more robust if the Textbox doesn't immediately push its placeholder to .value
+    try parsed_bz_obs[] = parse(Float64, tb_Bz.stored_string[]) catch; end
+
 
     # Row 2: Time Span (End Time only)
     tspan_minimal_grid = input_grid[2, 1] = GridLayout(tellheight=false, tellwidth=false, halign=:left)
     Label(tspan_minimal_grid[1,1], "End Time:")
     tb_t_end = Textbox(tspan_minimal_grid[1,2], placeholder = "10.0", validator = Float64)
-    # Initialize parsed_t_end_obs with the initial Textbox content if it's valid
-    val_t_end_init = tryparse(Float64, tb_t_end.stored_string[])
-    if !isnothing(val_t_end_init) parsed_t_end_obs[] = val_t_end_init end
-    
-    on(tb_t_end.stored_string) do s
-        val = tryparse(Float64, s)
-        if !isnothing(val)
-            parsed_t_end_obs[] = val
-            if error_display_label.text[] == "ERROR: Invalid End Time format. Must be a number." || 
-               error_display_label.text[] == "ERROR: End Time must be greater than 0.0." 
-                 error_display_label.text[] = "" # Clear specific error
-            end
-        else
-            error_display_label.text[] = "ERROR: Invalid End Time format. Must be a number."
-            # error_display_label.color[] = :red # Removed
-        end
+    on(tb_t_end.value) do val # Listens to successfully validated Float64 values
+        # val is guaranteed to be a Float64
+        parsed_t_end_obs[] = val
+        # Positivity check for t_end remains in the run_button.clicks logic.
+        # No format error is set by this callback. Clearing related to "End Time" format error removed.
+        # If run button sets "ERROR: End Time must be greater than 0.0.", this callback could clear it if logic was added.
+        # For now, only run button clears its own errors or global errors.
+        # if occursin("End Time", error_display_label.text[]) error_display_label.text[] = "" end
     end
+    try parsed_t_end_obs[] = parse(Float64, tb_t_end.stored_string[]) catch; end
 
     # Row 3: Particle Species Section (Kept as is from previous simplification)
     species_grid = input_grid[3, 1] = GridLayout(tellheight = false, tellwidth=false, halign=:left)
@@ -123,41 +136,39 @@ function main_gui()
     solver_params_grid = solver_grid[2,1:2] = GridLayout() # Spans 2 cols relative to solver_grid's own layout
     # Timestep (dt)
     lbl_dt = Label(solver_params_grid[1,1], "Timestep (dt):")
-    tb_dt = Textbox(solver_params_grid[1,2], placeholder = "0.01")
+    tb_dt = Textbox(solver_params_grid[1,2], placeholder = "0.01", validator = Float64)
     # Relative Tol. (reltol)
     lbl_reltol = Label(solver_params_grid[2,1], "Relative Tol. (reltol):")
-    tb_reltol = Textbox(solver_params_grid[2,2], placeholder = "1e-7", validator = Float64) # Placeholder updated
+    tb_reltol = Textbox(solver_params_grid[2,2], placeholder = "1e-7", validator = Float64)
 
     lbl_dt.visible = false; tb_dt.visible = false # Initial state
     lbl_reltol.visible = false; tb_reltol.visible = false # Initial state
 
-    # Reactive parsing for dt
-    val_dt_init = tryparse(Float64, tb_dt.stored_string[])
-    if !isnothing(val_dt_init) && val_dt_init > 0.0 parsed_dt_obs[] = val_dt_init end
-    on(tb_dt.stored_string) do s
-        val = tryparse(Float64, s)
-        if !isnothing(val) && val > 0.0
+    # Reactive parsing for dt (using .value)
+    try parsed_dt_obs[] = parse(Float64, tb_dt.stored_string[]) catch; end # Keep default if placeholder invalid
+    on(tb_dt.value) do val # val is guaranteed Float64
+        if val > 0.0
             parsed_dt_obs[] = val
-            if error_display_label.text[] == "ERROR: Timestep (dt) must be a positive number."
-                error_display_label.text[] = "" # Clear specific error
+            if error_display_label.text[] == "ERROR: Timestep (dt) must be positive." # Clear only this specific error
+                error_display_label.text[] = "" 
             end
         else
-            error_display_label.text[] = "ERROR: Timestep (dt) must be a positive number."
+            error_display_label.text[] = "ERROR: Timestep (dt) must be positive."
+            # parsed_dt_obs[] is not updated with non-positive value by this reactive callback
         end
     end
 
-    # Reactive parsing for reltol
-    val_reltol_init = tryparse(Float64, tb_reltol.stored_string[])
-    if !isnothing(val_reltol_init) && val_reltol_init > 0.0 parsed_reltol_obs[] = val_reltol_init end
-    on(tb_reltol.stored_string) do s
-        val = tryparse(Float64, s)
-        if !isnothing(val) && val > 0.0
+    # Reactive parsing for reltol (using .value)
+    try parsed_reltol_obs[] = parse(Float64, tb_reltol.stored_string[]) catch; end # Keep default if placeholder invalid
+    on(tb_reltol.value) do val # val is guaranteed Float64
+        if val > 0.0
             parsed_reltol_obs[] = val
-            if error_display_label.text[] == "ERROR: Relative Tolerance (reltol) must be a positive number."
-                error_display_label.text[] = "" # Clear specific error
+            if error_display_label.text[] == "ERROR: Relative Tolerance (reltol) must be positive." # Clear only this specific error
+                error_display_label.text[] = "" 
             end
         else
-            error_display_label.text[] = "ERROR: Relative Tolerance (reltol) must be a positive number."
+            error_display_label.text[] = "ERROR: Relative Tolerance (reltol) must be positive."
+            # parsed_reltol_obs[] is not updated with non-positive value by this reactive callback
         end
     end
     
@@ -182,31 +193,26 @@ function main_gui()
     
     # Helper function to clear all plots (2D time series only)
     function clear_all_plots()
-        # 3D trajectory plot clearing REMOVED
-        # autolimits!(plot_ax) REMOVED
-
-        for plt in pos_ts_plots_ref[] delete!(pos_ts_ax, plt) end
-        empty!(pos_ts_plots_ref[])
-        autolimits!(pos_ts_ax)
-
-        for plt in vel_ts_plots_ref[] delete!(vel_ts_ax, plt) end
-        empty!(vel_ts_plots_ref[])
-        autolimits!(vel_ts_ax)
+        # Clear data observables, which will clear the plots
+        t_obs[] = Float64[]
+        x_pos_obs[] = Float64[]
+        y_pos_obs[] = Float64[]
+        z_pos_obs[] = Float64[]
+        vx_vel_obs[] = Float64[]
+        vy_vel_obs[] = Float64[]
+        vz_vel_obs[] = Float64[]
         
-        # Clear legends if they exist (Makie might handle this with plot deletion, but to be safe)
-        # This might require storing legend objects if they need explicit deletion.
-        # For now, assume deleting lines clears relevant legend entries or legend is auto-updated/rebuilt.
-        # If explicit legend object deletion were needed:
-        #   legend_pos = findfirst(x -> x isa Legend, pos_ts_ax.scene.plots)
-        #   if legend_pos !== nothing delete!(pos_ts_ax.scene, pos_ts_ax.scene.plots[legend_pos]) end
-        # Makie's `axislegend` is generally robust to being called again.
+        # Autolimits after clearing data
+        autolimits!(pos_ts_ax)
+        autolimits!(vel_ts_ax)
+        # Legends are persistent, no need to clear/recreate if plots are linked to observables
     end
 
     on(run_button.clicks) do _
         # Clear previous solution, error message, and all plots
-        sol_obs[] = nothing # Update to sol_obs
+        sol_obs[] = nothing 
         error_display_label.text[] = "" 
-        clear_all_plots()
+        clear_all_plots() # This now empties the data observables
 
         # --- Parse Initial Conditions (Hardcoded) ---
         # initial_pos_ref[] is no longer set from UI
@@ -214,12 +220,8 @@ function main_gui()
         # Using hardcoded values directly in stateinit construction later
 
         # --- Use pre-parsed and validated values ---
-        # Clear parsing-specific errors if any were set and not cleared by on-the-fly validation
-        # This is a bit broad, ideally on-the-fly validation clears its own errors.
-        # For now, we'll clear if it's a format error, but not a logical error like t_end <= 0
-        if occursin("format", error_display_label.text[])
-             error_display_label.text[] = ""
-        end
+        # The error_display_label was already cleared at the beginning of this callback.
+        # Reactive parsers handle their own specific error clearing on valid input.
 
         # Validate End Time (already parsed into parsed_t_end_obs)
         current_t_end = parsed_t_end_obs[]
@@ -344,36 +346,32 @@ function main_gui()
                 
                 # 3D Trajectory Plotting REMOVED
 
-                # --- 2D Time Series Plots ---
-                # Extract solution data
-                sol = sol_obs[] # Update to sol_obs
-                t_vals = sol.t # Time points
-                s_vals = sol.u # Array of state vectors [x,y,z,vx,vy,vz] at each time point
-
-                # Extract individual position and velocity components over time
-                x_pos = [state[1] for state in s_vals]
-                y_pos = [state[2] for state in s_vals]
-                z_pos = [state[3] for state in s_vals]
+                # --- Update 2D Time Series Plot Data ---
+                sol = sol_obs[] 
                 
-                vx_vel = [state[4] for state in s_vals]
-                vy_vel = [state[5] for state in s_vals]
-                vz_vel = [state[6] for state in s_vals]
+                # Extract data from solution
+                t_new = sol.t
+                x_new = [state[1] for state in sol.u]
+                y_new = [state[2] for state in sol.u]
+                z_new = [state[3] for state in sol.u]
+                vx_new = [state[4] for state in sol.u]
+                vy_new = [state[5] for state in sol.u]
+                vz_new = [state[6] for state in sol.u]
 
-                # Position vs Time plots
-                push!(pos_ts_plots_ref[], lines!(pos_ts_ax, t_vals, x_pos, label="x(t)"))
-                push!(pos_ts_plots_ref[], lines!(pos_ts_ax, t_vals, y_pos, label="y(t)"))
-                push!(pos_ts_plots_ref[], lines!(pos_ts_ax, t_vals, z_pos, label="z(t)"))
-                if !isempty(pos_ts_plots_ref[]) axislegend(pos_ts_ax, position=:rt); end
+                # Update observables to trigger plot updates
+                t_obs[] = t_new
+                x_pos_obs[] = x_new
+                y_pos_obs[] = y_new
+                z_pos_obs[] = z_new
+                vx_vel_obs[] = vx_new
+                vy_vel_obs[] = vy_new
+                vz_vel_obs[] = vz_new
+
+                # Rescale axes after data update
                 autolimits!(pos_ts_ax)
-
-                # Velocity vs Time plots
-                push!(vel_ts_plots_ref[], lines!(vel_ts_ax, t_vals, vx_vel, label="vx(t)"))
-                push!(vel_ts_plots_ref[], lines!(vel_ts_ax, t_vals, vy_vel, label="vy(t)"))
-                push!(vel_ts_plots_ref[], lines!(vel_ts_ax, t_vals, vz_vel, label="vz(t)"))
-                if !isempty(vel_ts_plots_ref[]) axislegend(vel_ts_ax, position=:rt); end
                 autolimits!(vel_ts_ax)
 
-            elseif sol_obs[] !== nothing # Simulation ran but might not be successful # Update to sol_obs
+            elseif sol_obs[] !== nothing # Simulation ran but might not be successful 
                 error_display_label.text[] = "Simulation completed with issues. Retcode: $(sol_obs[].retcode)" # Update to sol_obs
                 # error_display_label.color[] = :orange # Removed
                 # Plots already cleared by clear_all_plots() at the start of the callback
