@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tokamak profile · TestParticle.jl</title><meta name="title" content="Tokamak profile · TestParticle.jl"/><meta property="og:title" content="Tokamak profile · TestParticle.jl"/><meta property="twitter:title" content="Tokamak profile · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_tokamak_profile/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_tokamak_profile/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_tokamak_profile/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tokamak profile</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tokamak profile</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_tokamak_profile.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_tokamak_profile"><a class="docs-heading-anchor" href="#demo_tokamak_profile">Tokamak profile</a><a id="demo_tokamak_profile-1"></a><a class="docs-heading-anchor-permalink" href="#demo_tokamak_profile" title="Permalink"></a></h1><p><a href="../demo_tokamak_profile.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.9.0-blue.svg" alt="compat"/> <a href="https://github.com/TCLiuu"><img src="https://img.shields.io/badge/Author-Tiancheng%20Liu-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1681948800" alt="Update time"/></p><p>This example shows how to trace protons in a stationary magnetic field that corresponds to an ITER-like Tokamak.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+import TestParticle as TP
+using GeometryBasics
+using CairoMakie
+
+# Parameters from ITER, see http://fusionwiki.ciemat.es/wiki/ITER
+const R₀ = 6.2  # Major radius [m]
+const Bζ0 = 5.3  # toroidal field on axis [T]
+const a = 2.0 # Minor radius [m]
+
+# Variable must be a radius normalized by minor radius.
+q_profile(nr::Float64) = nr^2 + 2*nr + 0.5
+
+B(xu) = SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
+
+E(xu) = SA[0.0, 0.0, 0.0]
+
+&quot;&quot;&quot;
+Contruct the topology of Tokamak.
+&quot;&quot;&quot;
+function get_tokamak_topology()
+   nθ = LinRange(0, 2π, 30)
+   nζ = LinRange(0, 2π, 30)
+   nx = [R₀*cos(ζ) + a*cos(θ)*cos(ζ) for θ in nθ, ζ in nζ]
+   ny = [R₀*sin(ζ) + a*cos(θ)*sin(ζ) for θ in nθ, ζ in nζ]
+   nz = [a*sin(θ) for θ in nθ, ζ in nζ]
+   points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(nx, ny, nz)])
+   faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(nz)))
+
+   tor_mesh = GeometryBasics.Mesh(points, faces)
+end</code></pre><pre><code class="nohighlight hljs">Main.var&quot;##296&quot;.get_tokamak_topology</code></pre><p>Passing proton in a Tokamak</p><pre><code class="language-julia hljs"># initial velocity for passing particle
+v₀ = [0.0, 2.15, 3.1] .* 1e6
+# initial position, [m]. where q≈2, (2, 1) flux surface.
+r₀ = [7.3622, 0.0, 0.0]
+stateinit = [r₀..., v₀...]
+
+param = prepare(E, B; species = Proton)
+tspan = (0.0, 4e-5) # [s]
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern7(); dt = 2e-11);
+
+tor_mesh = get_tokamak_topology()
+
+fig1 = Figure(fontsize = 18)
+ax = Axis3(fig1[1, 1],
+   title = &quot;Passing Particle&quot;,
+   xlabel = &quot;x [m]&quot;,
+   ylabel = &quot;y [m]&quot;,
+   zlabel = &quot;z [m]&quot;,
+   aspect = :data
+)
+
+lines!(ax, sol; idxs = (1, 2, 3))
+# Plot the surface of Tokamak
+wireframe!(fig1[1, 1], tor_mesh, color = (:blue, 0.1), linewidth = 0.5, transparency = true)
+</code></pre><p><img src="../demo_tokamak_profile-6.png" alt/></p><p>Trapped proton in a Tokamak that shows the banana orbit</p><pre><code class="language-julia hljs"># initial velocity for trapped particle
+v₀ = [0.0, 1.15, 5.1] .* 1e6
+# initial position, [m]. where q≈1, (1, 1) flux surface.
+r₀ = [6.6494, 0.0, 0.0]
+stateinit = [r₀..., v₀...]
+
+param = prepare(E, B; species = Proton)
+tspan = (0.0, 4e-5)
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern7(); dt = 1e-11)
+
+fig2 = Figure(fontsize = 18)
+ax = Axis3(fig2[1, 1],
+   title = &quot;Trapped Particle&quot;,
+   xlabel = &quot;x [m]&quot;,
+   ylabel = &quot;y [m]&quot;,
+   zlabel = &quot;z [m]&quot;,
+   aspect = :data
+)
+
+lines!(ax, sol; idxs = (1, 2, 3))
+wireframe!(fig2[1, 1], tor_mesh, color = (:blue, 0.1), linewidth = 0.5, transparency = true)
+</code></pre><p><img src="../demo_tokamak_profile-8.png" alt/></p><p>The trajectory of the trapped particle is sometimes called the &quot;banana orbit&quot;.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Monday 26 May 2025 02:20">Monday 26 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
