@@ -176,14 +176,14 @@ function cross!(v1, v2, vout)
 end
 
 """
-     solve(prob::TraceProblem; trajectories::Int=1,
+     solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
     	 savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
 
 Trace particles using the Boris method with specified `prob`.
 
 # keywords
-
   - `trajectories::Int`: number of trajectories to trace.
+  - `dt::AbstractFloat`: time step.
   - `savestepinterval::Int`: saving output interval.
   - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
