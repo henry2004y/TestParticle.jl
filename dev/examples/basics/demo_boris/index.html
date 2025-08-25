@@ -86,17 +86,17 @@ sols_to_plot = [
 
 for (sol, label) in sols_to_plot
    energy = map(x -&gt; E(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label=label)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
 </code></pre><p><img src="../demo_boris-14.png" alt/></p><p>Another aspect to compare is performance:</p><pre><code class="language-julia hljs">@time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 @time sol2 = solve(prob, Tsit5());
 @time sol3 = solve(prob, Vern7());
-@time sol4 = solve(prob, Vern9());</code></pre><pre><code class="nohighlight hljs">  0.000100 seconds (261 allocations: 21.703 KiB)
-  0.000873 seconds (4.88 k allocations: 376.812 KiB)
-  0.001254 seconds (23.68 k allocations: 1.329 MiB)
-  0.001179 seconds (23.08 k allocations: 1.326 MiB)
-  0.001156 seconds (18.57 k allocations: 1.080 MiB)
+@time sol4 = solve(prob, Vern9());</code></pre><pre><code class="nohighlight hljs">  0.000104 seconds (261 allocations: 21.703 KiB)
+  0.000849 seconds (4.88 k allocations: 376.812 KiB)
+  0.001320 seconds (23.68 k allocations: 1.329 MiB)
+  0.001341 seconds (23.08 k allocations: 1.326 MiB)
+  0.001224 seconds (18.57 k allocations: 1.080 MiB)
 </code></pre><p>We can extract the solution <code>(x, y, z, vx, vy, vz)</code> at any given time by performing a linear interpolation:</p><pre><code class="language-julia hljs">t = tspan[2] / 2
 sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArraysCore.MVector{6, Float64} with indices SOneTo(6):
     -3.911568318655031e-5
@@ -104,4 +104,4 @@ sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArr
      0.0
  99639.26547015733
   8486.269885387323
-     0.0</code></pre><p>The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using <code>Vern9()</code> as a starting point instead of <code>Tsit5()</code>, especially combined with adaptive timestepping. Further fine-grained control includes setting <code>dtmax</code>, <code>reltol</code>, and <code>abstol</code> in the <code>solve</code> method.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 25 August 2025 01:02">Monday 25 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+     0.0</code></pre><p>The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using <code>Vern9()</code> as a starting point instead of <code>Tsit5()</code>, especially combined with adaptive timestepping. Further fine-grained control includes setting <code>dtmax</code>, <code>reltol</code>, and <code>abstol</code> in the <code>solve</code> method.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 25 August 2025 11:57">Monday 25 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
