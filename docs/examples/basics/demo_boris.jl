@@ -90,7 +90,7 @@ f = DisplayAs.PNG(f) #hide
 
 # The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
 
-tspan = (0.0, 200*tperiod)
+tspan = (0.0, 200 * tperiod)
 dt = tperiod / 12
 
 prob_boris = TraceProblem(stateinit, tspan, param)
@@ -126,6 +126,8 @@ for (sol, label) in sols_to_plot
    energy = map(x -> E(x[4:6]...), sol.u)
    lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
+
+axislegend(ax, position = :rt)
 
 f = DisplayAs.PNG(f) #hide
 
