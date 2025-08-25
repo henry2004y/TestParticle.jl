@@ -127,7 +127,7 @@ for (sol, label) in sols_to_plot
    lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
 
-axislegend(ax, position = :rt)
+axislegend(ax, position = :lt)
 
 f = DisplayAs.PNG(f) #hide
 
