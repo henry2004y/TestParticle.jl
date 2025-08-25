@@ -124,7 +124,7 @@ sols_to_plot = [
 
 for (sol, label) in sols_to_plot
    energy = map(x -> E(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label=label)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
 
 f = DisplayAs.PNG(f) #hide
