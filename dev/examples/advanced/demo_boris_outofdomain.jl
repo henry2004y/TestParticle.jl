@@ -4,9 +4,6 @@ using TestParticle: qᵢ, mᵢ
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0.0, 0.0, 0.01]
-uniform_E(x) = SA[0.0, 0.0, 0.0]
-
 """
 Set initial states.
 """
