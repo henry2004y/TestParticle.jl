@@ -109,22 +109,23 @@ f = DisplayAs.PNG(f) #hide
 # Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
 
 E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
-energy_boris = map(x -> E(x[4:6]...), sol_boris[1].u)
-energy_tsit5_fixed = map(x -> E(x[4:6]...), sol1.u)
-energy_tsit5_adaptive = map(x -> E(x[4:6]...), sol2.u)
-energy_vern7 = map(x -> E(x[4:6]...), sol3.u)
-energy_vern9 = map(x -> E(x[4:6]...), sol4.u)
-
 f = Figure(size = (800, 400), fontsize = 18)
 ax = Axis(f[1, 1],
    xlabel = "time [period]",
    ylabel = "Normalized Kinetic Energy")
-lines!(ax, sol_boris[1].t ./ tperiod, energy_boris./energy_boris[1], label = "Boris")
-lines!(ax, sol1.t ./ tperiod, energy_tsit5_fixed./energy_tsit5_fixed[1], label = "Tsit5 fixed")
-lines!(ax, sol2.t ./ tperiod, energy_tsit5_adaptive./energy_tsit5_adaptive[1], label = "Tsit5 adaptive")
-lines!(ax, sol3.t ./ tperiod, energy_vern7./energy_vern7[1], label = "Vern7 adaptive")
-lines!(ax, sol4.t ./ tperiod, energy_vern9./energy_vern9[1], label = "Vern9 adaptive")
-axislegend()
+
+sols_to_plot = [
+   (sol_boris[1], "Boris"),
+   (sol1, "Tsit5 fixed"),
+   (sol2, "Tsit5 adaptive"),
+   (sol3, "Vern7 adaptive"),
+   (sol4, "Vern9 adaptive")
+]
+
+for (sol, label) in sols_to_plot
+   energy = map(x -> E(x[4:6]...), sol.u)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label=label)
+end
 
 f = DisplayAs.PNG(f) #hide
 
