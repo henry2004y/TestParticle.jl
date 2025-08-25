@@ -68,7 +68,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
-tspan = (0.0, 200*tperiod)
+tspan = (0.0, 200 * tperiod)
 dt = tperiod / 12
 
 prob_boris = TraceProblem(stateinit, tspan, param)
@@ -102,6 +102,8 @@ for (sol, label) in sols_to_plot
    energy = map(x -> E(x[4:6]...), sol.u)
    lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
+
+axislegend(ax, position = :rt)
 
 f = DisplayAs.PNG(f) #hide
 
