@@ -182,6 +182,7 @@ end
 Trace particles using the Boris method with specified `prob`.
 
 # keywords
+
   - `trajectories::Int`: number of trajectories to trace.
   - `dt::AbstractFloat`: time step.
   - `savestepinterval::Int`: saving output interval.
