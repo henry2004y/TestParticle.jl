@@ -45,7 +45,7 @@ zero_E = ZeroField()
 """
 Check energy conservation.
 """
-E(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
+E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
 
 ### Initialize particles
 

@@ -12,7 +12,7 @@
 # This is compared against other ODE general algorithms for performance and accuracy.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: ZeroField, get_BField
 import TestParticle as TP
 using CairoMakie
@@ -99,18 +99,43 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
+sol3 = solve(prob, Vern7());
+sol4 = solve(prob, Vern9());
 
 ## Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
 # Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
-#
+
+E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
+f = Figure(size = (800, 400), fontsize = 18)
+ax = Axis(f[1, 1],
+   xlabel = "time [period]",
+   ylabel = "Normalized Kinetic Energy")
+
+sols_to_plot = [
+   (sol_boris[1], "Boris"),
+   (sol1, "Tsit5 fixed"),
+   (sol2, "Tsit5 adaptive"),
+   (sol3, "Vern7 adaptive"),
+   (sol4, "Vern9 adaptive")
+]
+
+for (sol, label) in sols_to_plot
+   energy = map(x -> E(x[4:6]...), sol.u)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label=label)
+end
+
+f = DisplayAs.PNG(f) #hide
+
 # Another aspect to compare is performance:
 
 @time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 @time sol2 = solve(prob, Tsit5());
+@time sol3 = solve(prob, Vern7());
+@time sol4 = solve(prob, Vern9());
 
 # We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
 
@@ -118,4 +143,4 @@ t = tspan[2] / 2
 sol_boris(t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
-# When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping.
+# When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.

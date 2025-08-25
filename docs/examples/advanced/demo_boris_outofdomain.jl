@@ -17,9 +17,6 @@ using TestParticle: qᵢ, mᵢ
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0.0, 0.0, 0.01]
-uniform_E(x) = SA[0.0, 0.0, 0.0]
-
 """
 Set initial states.
 """
@@ -56,7 +53,7 @@ E(x) = SA[0.0, 0.0, 0.0] # [E₀]
 ## If bc == 2, we set periodic boundary conditions.
 param = prepare(x, y, E, B; species = User, bc = 1);
 
-# Note that we set a radius of 10, so the trajectory extent from -20 to 0 in y, and -10 to 10 in x.
+# Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
 # After half a cycle, the particle will move into the region where is field is not defined.
 # The tracing will stop with the final step being all NaNs.
 ## Initial conditions to be modified in prob_func
