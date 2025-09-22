@@ -138,6 +138,8 @@ struct ZeroVector end
 # Make ZeroVector work with array assignment
 Base.setindex!(A::AbstractArray, ::ZeroVector, I...) = fill!(view(A, I...), 0)
 Base.getindex(::ZeroVector, I...) = 0
+Base.length(::ZeroVector) = 3
+Base.iterate(::ZeroVector, state=1) = state > 3 ? nothing : (0, state + 1)
 
 # Field interface
 Field(x::ZeroField) = x
