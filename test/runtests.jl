@@ -494,6 +494,15 @@ end
       @test B[3] == 1.5274948162911718e-6
    end
 
+   @testset "ZeroVector" begin
+      z = TestParticle.ZeroVector()
+      @test length(z) == 3
+      for (i, val) in enumerate(z)
+         @test val == 0.0
+         @test i <= 3
+      end
+   end
+
    @testset "GC" begin
       stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
          [x0..., v0...]
