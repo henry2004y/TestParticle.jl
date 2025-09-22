@@ -497,10 +497,7 @@ end
    @testset "ZeroVector" begin
       z = TestParticle.ZeroVector()
       @test length(z) == 3
-      for (i, val) in enumerate(z)
-         @test val == 0.0
-         @test i <= 3
-      end
+      @test collect(z) == [0, 0, 0]
    end
 
    @testset "GC" begin
