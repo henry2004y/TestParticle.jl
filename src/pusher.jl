@@ -231,6 +231,14 @@ function update_velocity_dispatch!(paramBoris::MultistepBoris, xv, p, dt, t)
    update_velocity_multistep!(xv, paramBoris, p, dt, t)
 end
 
+function _initial_velocity_update!(paramBoris::BorisMethod, xv, p, dt, t)
+   update_velocity!(xv, paramBoris, p, dt, t)
+end
+
+function _initial_velocity_update!(paramBoris::MultistepBoris, xv, p, dt, t)
+   update_velocity!(xv, paramBoris.boris, p, dt, t)
+end
+
 function _boris_loop!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, paramBoris, alg_name)
    (; tspan, p, u0) = prob
 
@@ -246,7 +254,7 @@ function _boris_loop!(sols, prob, irange, savestepinterval, dt, nt, nout, isouto
       traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris.boris, p, -0.5*dt, tspan[1]-0.5*dt)
+      _initial_velocity_update!(paramBoris, xv, p, -0.5*dt, tspan[1]-0.5*dt)
 
       for it in 1:nt
          update_velocity_dispatch!(paramBoris, xv, p, dt, tspan[1]+(it-0.5)*dt)
