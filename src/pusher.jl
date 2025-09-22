@@ -109,6 +109,9 @@ struct BorisMethod{TV}
    end
 end
 
+include("multistep_boris.jl")
+struct Boris <: AbstractBorisAlgorithm end
+
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
@@ -188,70 +191,71 @@ Trace particles using the Boris method with specified `prob`.
   - `savestepinterval::Int`: saving output interval.
   - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
 """
+function solve(prob::TraceProblem, alg::AbstractBorisAlgorithm,
+   ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+   trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
+   isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN)
+
+   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
+
+   if ensemblealg isa EnsembleSerial
+      irange = 1:trajectories
+      _boris_dispatch!(sols, prob, alg, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   elseif ensemblealg isa EnsembleThreads
+      nchunks = Threads.nthreads()
+      Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+         _boris_dispatch!(sols, prob, alg, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+      end
+   end
+   return sols
+end
+
 function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
       trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
       isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN)
-   sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain)
+
+   solve(prob, Boris(), ensemblealg; trajectories=trajectories, savestepinterval=savestepinterval, dt=dt, isoutofdomain=isoutofdomain)
 end
 
-function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
-   irange = 1:trajectories
-   _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
-
-   sols
+reset!(::BorisMethod) = nothing
+function reset!(p::MultistepBoris)
+    p.head[] = 0
+    p.len[] = 0
 end
 
-function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
-
-   nchunks = Threads.nthreads()
-   Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
-      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
-   end
-
-   sols
+function update_velocity_dispatch!(paramBoris::BorisMethod, xv, p, dt, t)
+   update_velocity!(xv, paramBoris, p, dt, t)
 end
 
-"""
-Prepare for advancing.
-"""
-function _prepare(prob, trajectories, dt, savestepinterval)
-   ttotal = prob.tspan[2] - prob.tspan[1]
-   nt = round(Int, ttotal / dt) |> abs
-   nout = nt ÷ savestepinterval + 1
-   sols = Vector{TraceSolution}(undef, trajectories)
-
-   sols, nt, nout
+function update_velocity_dispatch!(paramBoris::MultistepBoris, xv, p, dt, t)
+   update_velocity_multistep!(xv, paramBoris, p, dt, t)
 end
 
-"""
-Apply Boris method for particles with index in `irange`.
-"""
-function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+function _boris_loop!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, paramBoris, alg_name)
    (; tspan, p, u0) = prob
-   paramBoris = BorisMethod()
+
    xv = MVector{6, eltype(u0)}(undef)
    traj = fill(MVector{6, eltype(u0)}(undef), nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
+      reset!(paramBoris)
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
       traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
+      update_velocity!(xv, paramBoris.boris, p, -0.5*dt, tspan[1]-0.5*dt)
 
       for it in 1:nt
-         update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
+         update_velocity_dispatch!(paramBoris, xv, p, dt, tspan[1]+(it-0.5)*dt)
          update_location!(xv, dt)
          if it % savestepinterval == 0
             iout += 1
             traj[iout] = copy(xv)
          end
-         isoutofdomain(xv, p, it*dt) && break
+         isoutofdomain(xv, p, tspan[1]+it*dt) && break
       end
 
       if iout == nout # regular termination
@@ -264,8 +268,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       end
 
       dense = false
-      k = nothing
-      alg = :boris
+      k_interp = nothing
       alg_choice = nothing
       interp = LinearInterpolation(t, traj_save)
       retcode = ReturnCode.Default
@@ -274,9 +277,31 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       errors = nothing
       tslocation = 0
 
-      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k_interp, prob, alg_name,
          interp, dense, tslocation, stats, alg_choice, retcode)
    end
 
    return
+end
+
+function _boris_dispatch!(sols, prob, alg::Boris, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   paramBoris = BorisMethod()
+   _boris_loop!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, paramBoris, :boris)
+end
+
+function _boris_dispatch!(sols, prob, alg::MultistepBoris, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   paramBoris = MultistepBoris(alg.k)
+   _boris_loop!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, paramBoris, :multistep_boris)
+end
+
+"""
+Prepare for advancing.
+"""
+function _prepare(prob, trajectories, dt, savestepinterval)
+   ttotal = prob.tspan[2] - prob.tspan[1]
+   nt = round(Int, ttotal / dt) |> abs
+   nout = nt ÷ savestepinterval + 1
+   sols = Vector{TraceSolution}(undef, trajectories)
+
+   sols, nt, nout
 end

@@ -26,7 +26,7 @@ export Maxwellian, BiMaxwellian
 export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity
-export orbit, monitor
+export orbit, monitor, MultistepBoris
 export TraceProblem
 
 """
@@ -46,6 +46,16 @@ include("prepare.jl")
 include("gc.jl")
 include("equations.jl")
 include("pusher.jl")
+
+"""
+    trace(prob, alg::MultistepBoris; kwargs...)
+
+Trace particles with the multistep Boris method.
+"""
+function trace(prob::TraceProblem, alg::MultistepBoris,
+   ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial(); kwargs...)
+   solve(prob, alg, ensemblealg; kwargs...)
+end
 
 function orbit end
 
