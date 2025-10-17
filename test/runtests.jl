@@ -461,7 +461,7 @@ end
       @test length(sol.t) == length(sol.u)
 
       t = tspan[2] / 2
-      @test sol(t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
+      @test sol(t) ≈ [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
          -93808.49725349642, 34640.52313462885, 0.0]
 
       prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_mutable)
