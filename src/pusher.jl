@@ -86,93 +86,65 @@ function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
    )
 end
 
-struct BorisMethod{TV}
-   # intermediate variables used in the solver
-   v⁻::TV
-   v′::TV
-   v⁺::TV
-   t_rotate::TV
-   s_rotate::TV
-   v⁻_cross_t::TV
-   v′_cross_s::TV
-
-   function BorisMethod()
-      v⁻ = MVector{3, Float64}(undef)
-      v′ = MVector{3, Float64}(undef)
-      v⁺ = MVector{3, Float64}(undef)
-      t_rotate = MVector{3, Float64}(undef)
-      s_rotate = MVector{3, Float64}(undef)
-      v⁻_cross_t = MVector{3, Float64}(undef)
-      v′_cross_s = MVector{3, Float64}(undef)
-
-      new{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
-   end
-end
-
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
-     update_velocity!(xv, paramBoris, param, dt, t)
+    update_velocity!(xv, param, dt, t)
 
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
-function update_velocity!(xv, paramBoris, param, dt, t)
-   (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-   q2m, _, Efunc, Bfunc = param
-   E = Efunc(xv, t)
-   B = Bfunc(xv, t)
-   # t vector
-   for dim in 1:3
-      t_rotate[dim] = q2m*B[dim]*0.5*dt
-   end
-   t_mag2 = sum(abs2, t_rotate)
-   # s vector
-   for dim in 1:3
-      s_rotate[dim] = 2*t_rotate[dim]/(1 + t_mag2)
-   end
-   # v-
-   for dim in 1:3
-      v⁻[dim] = xv[dim + 3] + q2m*E[dim]*0.5*dt
-   end
-   # v′
-   cross!(v⁻, t_rotate, v⁻_cross_t)
-   for dim in 1:3
-      v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
-   end
-   # v+
-   cross!(v′, s_rotate, v′_cross_s)
-   for dim in 1:3
-      v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
-   end
-   # v[n+1/2]
-   for dim in 1:3
-      xv[dim + 3] = v⁺[dim] + q2m*E[dim]*0.5*dt
+function update_velocity!(xv, p, dt, t)
+   q2m, _, E, B = p
+   n = size(xv, 2)
+   E_field = Matrix{eltype(xv)}(undef, 3, n)
+   B_field = Matrix{eltype(xv)}(undef, 3, n)
+   # Get E and B fields for all particles
+   for i in 1:n
+      E_field[:, i] = E(xv[:, i], t)
+      B_field[:, i] = B(xv[:, i], t)
    end
 
-   return
+   @turbo for i in 1:n
+      # half-step velocity update
+      v_minus_x = xv[4, i] + q2m * E_field[1, i] * 0.5 * dt
+      v_minus_y = xv[5, i] + q2m * E_field[2, i] * 0.5 * dt
+      v_minus_z = xv[6, i] + q2m * E_field[3, i] * 0.5 * dt
+      # rotation
+      t_x = q2m * B_field[1, i] * 0.5 * dt
+      t_y = q2m * B_field[2, i] * 0.5 * dt
+      t_z = q2m * B_field[3, i] * 0.5 * dt
+
+      t_mag2 = t_x * t_x + t_y * t_y + t_z * t_z
+
+      s_x = 2 * t_x / (1 + t_mag2)
+      s_y = 2 * t_y / (1 + t_mag2)
+      s_z = 2 * t_z / (1 + t_mag2)
+      # v' = v- + v- x t
+      v_prime_x = v_minus_x + (v_minus_y * t_z - v_minus_z * t_y)
+      v_prime_y = v_minus_y + (v_minus_z * t_x - v_minus_x * t_z)
+      v_prime_z = v_minus_z + (v_minus_x * t_y - v_minus_y * t_x)
+      # v+ = v- + v' x s
+      v_plus_x = v_minus_x + (v_prime_y * s_z - v_prime_z * s_y)
+      v_plus_y = v_minus_y + (v_prime_z * s_x - v_prime_x * s_z)
+      v_plus_z = v_minus_z + (v_prime_x * s_y - v_prime_y * s_x)
+      # half-step velocity update
+      xv[4, i] = v_plus_x + q2m * E_field[1, i] * 0.5 * dt
+      xv[5, i] = v_plus_y + q2m * E_field[2, i] * 0.5 * dt
+      xv[6, i] = v_plus_z + q2m * E_field[3, i] * 0.5 * dt
+   end
 end
+
 
 """
 Update location in one timestep `dt`.
 """
 function update_location!(xv, dt)
-   xv[1] += xv[4]*dt
-   xv[2] += xv[5]*dt
-   xv[3] += xv[6]*dt
-
-   return
-end
-
-"""
-In-place cross product.
-"""
-function cross!(v1, v2, vout)
-   vout[1] = v1[2]*v2[3] - v1[3]*v2[2]
-   vout[2] = v1[3]*v2[1] - v1[1]*v2[3]
-   vout[3] = v1[1]*v2[2] - v1[2]*v2[1]
-
-   return
+   @turbo for i in 1:size(xv, 2)
+      xv[1, i] += xv[4, i] * dt
+      xv[2, i] += xv[5, i] * dt
+      xv[3, i] += xv[6, i] * dt
+   end
 end
 
 """
@@ -229,39 +201,41 @@ end
 Apply Boris method for particles with index in `irange`.
 """
 function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   if isoutofdomain !== ODE_DEFAULT_ISOUTOFDOMAIN
+      @warn "The vectorized Boris pusher does not support `isoutofdomain`."
+   end
+
    (; tspan, p, u0) = prob
-   paramBoris = BorisMethod()
-   xv = MVector{6, eltype(u0)}(undef)
-   traj = fill(MVector{6, eltype(u0)}(undef), nout)
+   nparticles = length(irange)
+   xv = Matrix{eltype(u0)}(undef, 6, nparticles)
+   trajs = [Vector{SVector{6, eltype(u0)}}(undef, nout) for _ in 1:nparticles]
 
-   @fastmath @inbounds for i in irange
-      # set initial conditions for each trajectory i
-      iout = 1
+   # Set initial conditions
+   for (j, i) in enumerate(irange)
       new_prob = prob.prob_func(prob, i, false)
-      xv .= new_prob.u0
-      traj[1] = copy(xv)
+      xv[:, j] .= new_prob.u0
+      trajs[j][1] = SVector{6, eltype(u0)}(new_prob.u0)
+   end
 
-      # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
+   # push velocity back in time by 1/2 dt
+   update_velocity!(xv, p, -0.5*dt, -0.5*dt)
 
-      for it in 1:nt
-         update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
-         update_location!(xv, dt)
-         if it % savestepinterval == 0
-            iout += 1
-            traj[iout] = copy(xv)
+   iout = 1
+   for it in 1:nt
+      update_velocity!(xv, p, dt, (it-0.5)*dt)
+      update_location!(xv, dt)
+      if it % savestepinterval == 0
+         iout += 1
+         for j in 1:nparticles
+            trajs[j][iout] = SVector{6, eltype(u0)}(view(xv, :, j))
          end
-         isoutofdomain(xv, p, it*dt) && break
       end
+   end
 
-      if iout == nout # regular termination
-         traj_save = copy(traj)
-         t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
-      else # early termination or savestepinterval != 1
-         traj_save = traj[1:iout]
-         t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
-             collect
-      end
+   t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
+
+   for (j, i) in enumerate(irange)
+      traj_save = trajs[j]
 
       dense = false
       k = nothing

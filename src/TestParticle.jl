@@ -12,6 +12,7 @@ using StaticArrays: SVector, @SMatrix, MVector, SA
 using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
 using ChunkSplitters
+using LoopVectorization
 using PrecompileTools: @setup_workload, @compile_workload
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
