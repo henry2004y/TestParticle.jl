@@ -94,11 +94,9 @@ end
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
-function update_velocity!(xv, p, dt, t)
+function update_velocity!(xv, p, dt, t, E_field, B_field)
    q2m, _, E, B = p
    n = size(xv, 2)
-   E_field = Matrix{eltype(xv)}(undef, 3, n)
-   B_field = Matrix{eltype(xv)}(undef, 3, n)
    # Get E and B fields for all particles
    for i in 1:n
       E_field[:, i] = E(xv[:, i], t)
@@ -209,6 +207,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
    nparticles = length(irange)
    xv = Matrix{eltype(u0)}(undef, 6, nparticles)
    trajs = [Vector{SVector{6, eltype(u0)}}(undef, nout) for _ in 1:nparticles]
+   E_field = Matrix{eltype(u0)}(undef, 3, nparticles)
+   B_field = Matrix{eltype(u0)}(undef, 3, nparticles)
 
    # Set initial conditions
    for (j, i) in enumerate(irange)
@@ -218,11 +218,11 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
    end
 
    # push velocity back in time by 1/2 dt
-   update_velocity!(xv, p, -0.5*dt, -0.5*dt)
+   update_velocity!(xv, p, -0.5*dt, -0.5*dt, E_field, B_field)
 
    iout = 1
    for it in 1:nt
-      update_velocity!(xv, p, dt, (it-0.5)*dt)
+      update_velocity!(xv, p, dt, (it-0.5)*dt, E_field, B_field)
       update_location!(xv, dt)
       if it % savestepinterval == 0
          iout += 1
