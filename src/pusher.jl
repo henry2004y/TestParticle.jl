@@ -1,5 +1,7 @@
 # Native particle pusher
 
+using LoopVectorization
+
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
        AbstractODEProblem{uType, tType, isinplace}
    f::F
@@ -123,30 +125,30 @@ function update_velocity!(xv, paramBoris, param, dt, t)
    E = Efunc(xv, t)
    B = Bfunc(xv, t)
    # t vector
-   for dim in 1:3
+   @turbo for dim in 1:3
       t_rotate[dim] = q2m*B[dim]*0.5*dt
    end
    t_mag2 = sum(abs2, t_rotate)
    # s vector
-   for dim in 1:3
+   @turbo for dim in 1:3
       s_rotate[dim] = 2*t_rotate[dim]/(1 + t_mag2)
    end
    # v-
-   for dim in 1:3
+   @turbo for dim in 1:3
       v⁻[dim] = xv[dim + 3] + q2m*E[dim]*0.5*dt
    end
    # v′
    cross!(v⁻, t_rotate, v⁻_cross_t)
-   for dim in 1:3
+   @turbo for dim in 1:3
       v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
    end
    # v+
    cross!(v′, s_rotate, v′_cross_s)
-   for dim in 1:3
+   @turbo for dim in 1:3
       v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
    end
    # v[n+1/2]
-   for dim in 1:3
+   @turbo for dim in 1:3
       xv[dim + 3] = v⁺[dim] + q2m*E[dim]*0.5*dt
    end
 
@@ -157,9 +159,9 @@ end
 Update location in one timestep `dt`.
 """
 function update_location!(xv, dt)
-   xv[1] += xv[4]*dt
-   xv[2] += xv[5]*dt
-   xv[3] += xv[6]*dt
+   @turbo for dim in 1:3
+      xv[dim] += xv[dim+3]*dt
+   end
 
    return
 end
