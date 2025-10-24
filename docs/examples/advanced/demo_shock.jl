@@ -334,7 +334,7 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
 vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 trajectories = 2
