@@ -129,6 +129,9 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
+      param = prepare(x, y, z, E, B, species = Ion, q = 1, m = 16) # O+
+      @test param[2] ≈ 2.6776920736e-26
+
       param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs = [1], isoutofdomain, verbose = false)

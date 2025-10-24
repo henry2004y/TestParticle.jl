@@ -11,17 +11,20 @@ include("dipole.jl")
 include("confinement.jl")
 
 """
-     getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
+     getchargemass(species::Species, q, m)
 
 Return charge and mass for `species`. if `species = User`, input `q` and `m` are returned.
 """
-function getchargemass(species::Species, q::AbstractFloat, m::AbstractFloat)
+function getchargemass(species::Species, q::Real, m::Real)
    if species == Proton
       q = qᵢ
       m = mᵢ
    elseif species == Electron
       q = qₑ
       m = mₑ
+   elseif species == Ion
+      q *= qᵢ
+      m *= mᵢ
    end
    q, m
 end
