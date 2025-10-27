@@ -103,8 +103,8 @@ sol = solve(prob, Tsit5(); reltol = 1e-4);
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
 
-## p = (charge_mass_ratio, E, B)
-dtFE(u, p, t) = 2π / (abs(p[1]) * sqrt(sum(x -> x^2, p[3](u, t))))
+## p = (charge_mass_ratio, m, E, B)
+dtFE(u, p, t) = 2π / (abs(p[1]) * sqrt(sum(x -> x^2, p[4](u, t))))
 
 cb = StepsizeLimiter(dtFE; safety_factor = 1 // 10, max_step = true)
 
