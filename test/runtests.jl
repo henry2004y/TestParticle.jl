@@ -548,6 +548,10 @@ end
    end
 end
 
+@testset "Multistep Boris" begin
+   include("test_multistep_boris.jl")
+end
+
 #if "makie" in ARGS
 #   include("test_Makie.jl")
 #end
