@@ -195,88 +195,69 @@ function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = Ensembl
 end
 
 function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
-   irange = 1:trajectories
-   _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   nt = round(Int, (prob.tspan[2] - prob.tspan[1]) / dt) |> abs
+   nout = nt ÷ savestepinterval + 1
+   sols = [_boris_trajectory(prob, i, savestepinterval, dt, nt, nout, isoutofdomain)
+      for i in 1:trajectories]
 
    sols
 end
 
 function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
+   nt = round(Int, (prob.tspan[2] - prob.tspan[1]) / dt) |> abs
+   nout = nt ÷ savestepinterval + 1
 
-   nchunks = Threads.nthreads()
-   Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
-      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
-   end
+   sols = tmap(i -> _boris_trajectory(prob, i, savestepinterval, dt, nt, nout, isoutofdomain),
+      1:trajectories)
 
    sols
 end
 
-"""
-Prepare for advancing.
-"""
-function _prepare(prob, trajectories, dt, savestepinterval)
-   ttotal = prob.tspan[2] - prob.tspan[1]
-   nt = round(Int, ttotal / dt) |> abs
-   nout = nt ÷ savestepinterval + 1
-   sols = Vector{TraceSolution}(undef, trajectories)
-
-   sols, nt, nout
-end
-
-"""
-Apply Boris method for particles with index in `irange`.
-"""
-function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+function _boris_trajectory(prob, i, savestepinterval, dt, nt, nout, isoutofdomain)
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod()
    xv = MVector{6, eltype(u0)}(undef)
    traj = fill(MVector{6, eltype(u0)}(undef), nout)
 
-   @fastmath @inbounds for i in irange
-      # set initial conditions for each trajectory i
-      iout = 1
-      new_prob = prob.prob_func(prob, i, false)
-      xv .= new_prob.u0
-      traj[1] = copy(xv)
+   # set initial conditions for each trajectory i
+   iout = 1
+   new_prob = prob.prob_func(prob, i, false)
+   xv .= new_prob.u0
+   traj[1] = copy(xv)
 
-      # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
+   # push velocity back in time by 1/2 dt
+   update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
 
-      for it in 1:nt
-         update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
-         update_location!(xv, dt)
-         if it % savestepinterval == 0
-            iout += 1
-            traj[iout] = copy(xv)
-         end
-         isoutofdomain(xv, p, it*dt) && break
+   for it in 1:nt
+      update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
+      update_location!(xv, dt)
+      if it % savestepinterval == 0
+         iout += 1
+         traj[iout] = copy(xv)
       end
-
-      if iout == nout # regular termination
-         traj_save = copy(traj)
-         t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
-      else # early termination or savestepinterval != 1
-         traj_save = traj[1:iout]
-         t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
-             collect
-      end
-
-      dense = false
-      k = nothing
-      alg = :boris
-      alg_choice = nothing
-      interp = LinearInterpolation(t, traj_save)
-      retcode = ReturnCode.Default
-      stats = nothing
-      u_analytic = nothing
-      errors = nothing
-      tslocation = 0
-
-      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
-         interp, dense, tslocation, stats, alg_choice, retcode)
+      isoutofdomain(xv, p, it*dt) && break
    end
 
-   return
+   if iout == nout # regular termination
+      traj_save = copy(traj)
+      t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
+   else # early termination or savestepinterval != 1
+      traj_save = traj[1:iout]
+      t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
+          collect
+   end
+
+   dense = false
+   k = nothing
+   alg = :boris
+   alg_choice = nothing
+   interp = LinearInterpolation(t, traj_save)
+   retcode = ReturnCode.Default
+   stats = nothing
+   u_analytic = nothing
+   errors = nothing
+   tslocation = 0
+
+   TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, new_prob, alg,
+      interp, dense, tslocation, stats, alg_choice, retcode)
 end
