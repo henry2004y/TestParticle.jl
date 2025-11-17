@@ -11,7 +11,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using StaticArrays: SVector, @SMatrix, MVector, SA
 using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
-using ChunkSplitters
+using OhMyThreads: tmap
 using PrecompileTools: @setup_workload, @compile_workload
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
