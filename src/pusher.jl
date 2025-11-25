@@ -216,7 +216,7 @@ end
 """
 Prepare for advancing.
 """
-function _prepare(prob, trajectories, dt, savestepinterval)
+function _prepare(prob::TraceProblem, trajectories, dt, savestepinterval)
    ttotal = prob.tspan[2] - prob.tspan[1]
    nt = round(Int, ttotal / dt) |> abs
    nout = nt ÷ savestepinterval + 1
