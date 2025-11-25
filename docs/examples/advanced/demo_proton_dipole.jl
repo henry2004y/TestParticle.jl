@@ -21,9 +21,9 @@ stateinit = let
    ## Initial particle energy
    Ek = 5e7 # [eV]
    ## initial velocity, [m/s]
-   v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), π/4, 0.0)
    ## initial position, [m]
-   r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
+   r₀ = TP.sph2cart(2.5*Rₑ, π/2, 0.0)
    [r₀..., v₀...]
 end
 ## obtain field

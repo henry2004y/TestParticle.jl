@@ -46,7 +46,7 @@ function prob_func_13(prob, i, repeat)
    ## initial particle energy
    Ek = 5e3 # [eV]
    ## initial velocity, [m/s]
-   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), π/4, 0.0)
    ## initial position, [m]
    r₀ = sph2cart(13*Rₑ, π*i, π/2)
 
@@ -57,9 +57,9 @@ function prob_func_6(prob, i, repeat)
    ## initial particle energy
    Ek = 4e3 # [eV]
    ## initial velocity, [m/s]
-   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), π/4, 0.0)
    ## initial position, [m]
-   r₀ = sph2cart(6*Rₑ, 2π*i, π/2)
+   r₀ = sph2cart(6*Rₑ, π/2, 2π*i)
 
    prob = remake(prob; u0 = [r₀..., v₀...])
 end
