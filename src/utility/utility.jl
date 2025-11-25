@@ -5,6 +5,27 @@ Convert from spherical to Cartesian coordinates vector.
 """
 sph2cart(r, ϕ, θ) = r*[sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
 
+"""
+Convert from Cartesian to spherical coordinates vector.
+"""
+function cart2sph(x, y, z)
+   r = √(x^2 + y^2 + z^2)
+   if r == 0
+      return 0.0, 0.0, 0.0
+   end
+   θ = acos(z/r)
+   ϕ = atan(y, x)
+   return r, ϕ, θ
+end
+
+"Convert a vector from spherical to Cartesian."
+function sph_to_cart_vector(vr, vϕ, vθ, ϕ, θ)
+   vx = sin(θ)*cos(ϕ)*vr + cos(θ)*cos(ϕ)*vθ - sin(ϕ)*vϕ
+   vy = sin(θ)*sin(ϕ)*vr + cos(θ)*sin(ϕ)*vθ + cos(ϕ)*vϕ
+   vz = cos(θ)*vr - sin(θ)*vθ
+   return vx, vy, vz
+end
+
 include("constants.jl")
 include("current_sheet.jl")
 include("dipole.jl")

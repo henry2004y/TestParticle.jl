@@ -1,9 +1,17 @@
 # Field interpolations.
 
+"Type for grid."
+abstract type Grid end
+"Cartesian grid."
+struct Cartesian <: Grid end
+"Spherical grid."
+struct Spherical <: Grid end
+
 """
-     getinterp(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
-     getinterp(A, gridx, gridy, order::Int=1, bc::Int=1)
-     getinterp(A, gridx, order::Int=1, bc::Int=1, dir::Int=1)
+     getinterp(::Cartesian, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+     getinterp(::Cartesian, A, gridx, gridy, order::Int=1, bc::Int=1)
+     getinterp(::Cartesian, A, gridx, order::Int=1, bc::Int=1, dir::Int=1)
+     getinterp(::Spherical, A, gridr, gridθ, gridϕ, order::Int=1, bc::Int=1)
 
 Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
 and `gridz`.
@@ -14,7 +22,7 @@ and `gridz`.
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
 """
-function getinterp(A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+function getinterp(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ax = @view A[1, :, :, :]
@@ -37,7 +45,36 @@ function getinterp(A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    return get_field
 end
 
-function getinterp(A, gridx, gridy, order::Int = 1, bc::Int = 2)
+function getinterp(::Spherical, A, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
+   @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+
+   Ar = @view A[1, :, :, :]
+   Aθ = @view A[2, :, :, :]
+   Aϕ = @view A[3, :, :, :]
+
+   itpr, itpθ, itpϕ = _getinterp(Ar, Aθ, Aϕ, order, bc)
+
+   interpr = scale(itpr, gridr, gridθ, gridϕ)
+   interpθ = scale(itpθ, gridr, gridθ, gridϕ)
+   interpϕ = scale(itpϕ, gridr, gridθ, gridϕ)
+
+   # Return field value at a given location.
+   function get_field(xu)
+      r, ϕ, θ = cart2sph(xu[1], xu[2], xu[3])
+
+      Br = interpr(r, θ, ϕ)
+      Bθ = interpθ(r, θ, ϕ)
+      Bϕ = interpϕ(r, θ, ϕ)
+
+      Bx, By, Bz = sph_to_cart_vector(Br, Bϕ, Bθ, ϕ, θ)
+
+      return SA[Bx, By, Bz]
+   end
+
+   return get_field
+end
+
+function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
    @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
 
    Ax = @view A[1, :, :]
@@ -60,7 +97,7 @@ function getinterp(A, gridx, gridy, order::Int = 1, bc::Int = 2)
    return get_field
 end
 
-function getinterp(A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
+function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
    @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
 
    Ax = @view A[1, :]
@@ -136,7 +173,8 @@ function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
 end
 
 """
-     getinterp_scalar(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+     getinterp_scalar(::Cartesian, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+     getinterp_scalar(::Spherical, A, gridr, gridθ, gridϕ, order::Int=1, bc::Int=1)
 
 Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`,
 and `gridz`. Currently only 3D arrays are supported.
@@ -147,7 +185,7 @@ and `gridz`. Currently only 3D arrays are supported.
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
 """
-function getinterp_scalar(A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+function getinterp_scalar(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    itp = _getinterp_scalar(A, order, bc)
 
    interp = scale(itp, gridx, gridy, gridz)
@@ -157,6 +195,21 @@ function getinterp_scalar(A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
       r = @view xu[1:3]
 
       return interp(r...)
+   end
+
+   return get_field
+end
+
+function getinterp_scalar(::Spherical, A, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
+   itp = _getinterp_scalar(A, order, bc)
+
+   interp = scale(itp, gridr, gridθ, gridϕ)
+
+   # Return field value at a given location.
+   function get_field(xu)
+      r, ϕ, θ = cart2sph(xu[1], xu[2], xu[3])
+
+      return interp(r, θ, ϕ)
    end
 
    return get_field

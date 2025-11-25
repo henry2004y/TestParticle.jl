@@ -85,24 +85,40 @@ end
          y = range(-10, 10, length = 6)
          z = range(-10, 10, length = 8)
          n = [i+j+k for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
-         nfunc11 = TP.getinterp_scalar(n, x, y, z)
+         nfunc11 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z)
          @test nfunc11(SA[9, 0, 0]) == 11.85
-         nfunc12 = TP.getinterp_scalar(n, x, y, z, 1, 2)
+         nfunc12 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 1, 2)
          @test nfunc12(SA[20, 0, 0]) == 9.5
-         nfunc13 = TP.getinterp_scalar(n, x, y, z, 1, 3)
+         nfunc13 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 1, 3)
          @test nfunc13(SA[20, 0, 0]) == 12.0
-         nfunc21 = TP.getinterp_scalar(n, x, y, z, 2)
+         nfunc21 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 2)
          @test nfunc21(SA[9, 0, 0]) == 11.898529411764706
-         nfunc22 = TP.getinterp_scalar(n, x, y, z, 2, 2)
+         nfunc22 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 2, 2)
          @test nfunc22(SA[20, 0, 0]) == 9.166666666666668
-         nfunc23 = TP.getinterp_scalar(n, x, y, z, 2, 3)
+         nfunc23 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 2, 3)
          @test nfunc23(SA[20, 0, 0]) == 12.147058823529411
-         nfunc31 = TP.getinterp_scalar(n, x, y, z, 3)
+         nfunc31 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 3)
          @test nfunc31(SA[9, 0, 0]) == 11.883
-         nfunc32 = TP.getinterp_scalar(n, x, y, z, 3, 2)
+         nfunc32 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 3, 2)
          @test nfunc32(SA[20, 0, 0]) == 9.124999999999998
-         nfunc33 = TP.getinterp_scalar(n, x, y, z, 3, 3)
+         nfunc33 = TP.getinterp_scalar(TP.Cartesian(), n, x, y, z, 3, 3)
          @test nfunc33(SA[20, 0, 0]) == 12.191176470588236
+      end
+
+      begin # spherical interpolation
+         r = range(0, 10, length = 11)
+         θ = range(0, π, length = 11)
+         ϕ = range(0, 2π, length = 11)
+         # Vector field
+         B = fill(0.0, 3, length(r), length(θ), length(ϕ))
+         B[1,:,:,:] .= 1.0
+         Bfunc = TP.getinterp(TP.Spherical(), B, r, θ, ϕ)
+         @test Bfunc(SA[1,1,1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         # Scalar field
+         A = ones(length(r), length(θ), length(ϕ))
+         Afunc = TP.getinterp_scalar(TP.Spherical(), A, r, θ, ϕ)
+         @test Afunc(SA[1,1,1]) == 1.0
+         @test Afunc(SA[0,0,0]) == 1.0
       end
    end
 
