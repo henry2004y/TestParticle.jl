@@ -63,7 +63,7 @@ get_BField(param) = param[4]
 get_EField(param) = param[3]
 
 prepare_field(f, args...; kwargs...) = Field(f)
-prepare_field(f::ZeroField, args...; kwargs...) = f
+
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
    Field(getinterp(gridtype, f, x..., order, bc; kw...))
 end
@@ -94,7 +94,7 @@ other species can be manually specified with `species=Ion/User`, `q` and `m`.
 Direct range input for uniform grid in 1/2/3D is supported.
 For 1D grid, an additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
 For 3D grid, the default grid type is `Cartesian`. To use `Spherical` grid, an additional keyword `gridtype` is needed.
-For `Spherical` grid, the 1st dimension of field arrays should be `(Br, Bθ, Bϕ)`.
+For `Spherical` grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
 
 # Keywords
 
@@ -103,6 +103,7 @@ For `Spherical` grid, the 1st dimension of field arrays should be `(Br, Bθ, Bϕ
   - `species::Species=Proton`: particle species.
   - `q=1.0`: particle charge. Only works when `Species=User`.
   - `m=1.0`: particle mass. Only works when `Species=User`.
+  - `gridtype::Grid=Cartesian()`: type of grid in `Cartesian()`, `Spherical()`, `SphericalNonUniformR`.
 """
 function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
    _prepare(E, B, F, makegrid(grid)...; gridtype=Cartesian(), order, bc, kw...)
