@@ -7,8 +7,8 @@ function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
    q, m = getchargemass(species, q, m)
    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
-   E = TE <: AbstractArray ? getinterp(E, xrange, yrange, zrange, order, bc) : E
-   B = TB <: AbstractArray ? getinterp(B, xrange, yrange, zrange, order, bc) : B
+   E = TE <: AbstractArray ? getinterp(Cartesian(), E, xrange, yrange, zrange, order, bc) : E
+   B = TB <: AbstractArray ? getinterp(Cartesian(), B, xrange, yrange, zrange, order, bc) : B
 
    bparticle = B(x)
    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)

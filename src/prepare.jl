@@ -1,11 +1,13 @@
 # Construction of tracing parameters.
 
+abstract type AbstractField{itd} end
+
+struct ZeroField <: AbstractField{false} end
+
 """
 Judge whether the field function is time dependent.
 """
 is_time_dependent(f::Function) = applicable(f, zeros(6), 0.0) ? true : false
-
-abstract type AbstractField{itd} end
 
 """
      Field{itd, F} <: AbstractField{itd}
@@ -60,17 +62,18 @@ get_q2m(param) = param[1]
 get_BField(param) = param[4]
 get_EField(param) = param[3]
 
-prepare_field(f, x...; kwargs...) = Field(f)
-function prepare_field(f::AbstractArray, x...; order, bc, kw...)
-   Field(getinterp(f, x..., order, bc; kw...))
+prepare_field(f, args...; kwargs...) = Field(f)
+
+function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
+   Field(getinterp(gridtype, f, x..., order, bc; kw...))
 end
 
-function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0, m = 1.0, kw...)
+function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0, m = 1.0, gridtype::Grid=Cartesian(), kw...)
    q, m = getchargemass(species, q, m)
    q2m = q / m
-   fE = prepare_field(E, args...; kw...)
-   fB = prepare_field(B, args...; kw...)
-   fF = prepare_field(F, args...; kw...)
+   fE = prepare_field(E, args...; gridtype, kw...)
+   fB = prepare_field(B, args...; gridtype, kw...)
+   fF = prepare_field(F, args...; gridtype, kw...)
    q2m, m, fE, fB, fF
 end
 
@@ -90,6 +93,8 @@ other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
 Direct range input for uniform grid in 1/2/3D is supported.
 For 1D grid, an additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
+For 3D grid, the default grid type is `Cartesian`. To use `Spherical` grid, an additional keyword `gridtype` is needed.
+For `Spherical` grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
 
 # Keywords
 
@@ -98,14 +103,15 @@ For 1D grid, an additional keyword `dir` is used for specifying the spatial dire
   - `species::Species=Proton`: particle species.
   - `q=1.0`: particle charge. Only works when `Species=User`.
   - `m=1.0`: particle mass. Only works when `Species=User`.
+  - `gridtype::Grid=Cartesian()`: type of grid in `Cartesian()`, `Spherical()`, `SphericalNonUniformR`.
 """
 function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
-   _prepare(E, B, F, makegrid(grid)...; order, bc, kw...)
+   _prepare(E, B, F, makegrid(grid)...; gridtype=Cartesian(), order, bc, kw...)
 end
 
 function prepare(x::T, y::T, E, B, F = ZeroField(); order = 1,
       bc = 1, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y; order, bc, kw...)
+   _prepare(E, B, F, x, y; gridtype=Cartesian(), order, bc, kw...)
 end
 
 function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
@@ -114,11 +120,9 @@ function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
 end
 
 function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
-   _prepare(E, B, F, x; order, bc, dir, kw...)
+   _prepare(E, B, F, x; gridtype=Cartesian(), order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
-
-struct ZeroField <: AbstractField{false} end
 
 struct ZeroVector end
 

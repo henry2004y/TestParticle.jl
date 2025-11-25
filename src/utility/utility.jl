@@ -3,7 +3,34 @@
 """
 Convert from spherical to Cartesian coordinates vector.
 """
-sph2cart(r, ϕ, θ) = r*[sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
+function sph2cart(r, θ, ϕ)
+   sinθ, cosθ = sincos(θ)
+   sinϕ, cosϕ = sincos(ϕ)
+   r*SVector{3}(sinθ*cosϕ, sinθ*sinϕ, cosθ)
+end
+
+"""
+Convert from Cartesian to spherical coordinates vector.
+"""
+function cart2sph(x, y, z)
+   r = hypot(x, y, z)
+   if r == 0
+      return 0.0, 0.0, 0.0
+   end
+   θ = acos(z/r)
+   ϕ = atan(y, x)
+   return r, θ, ϕ
+end
+
+"Convert a vector from spherical to Cartesian."
+function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
+   sinθ, cosθ = sincos(θ)
+   sinϕ, cosϕ = sincos(ϕ)
+   vx = sinθ*cosϕ*vr + cosθ*cosϕ*vθ - sinϕ*vϕ
+   vy = sinθ*sinϕ*vr + cosθ*sinϕ*vθ + cosϕ*vϕ
+   vz = cosθ*vr - sinθ*vθ
+   return vx, vy, vz
+end
 
 include("constants.jl")
 include("current_sheet.jl")

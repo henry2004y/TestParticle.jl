@@ -3,7 +3,7 @@ module TestParticle
 using LinearAlgebra: norm, ×, ⋅, diag
 using Statistics: mean, normalize
 using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
-                      Line, OnCell, Periodic, Flat
+                      Line, OnCell, Periodic, Flat, Gridded
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
                  DEFAULT_SPECIALIZATION, ODEFunction,
@@ -27,7 +27,7 @@ export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity
 export orbit, monitor
-export TraceProblem
+export TraceProblem, Cartesian, Spherical, SphericalNonUniformR
 
 """
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
