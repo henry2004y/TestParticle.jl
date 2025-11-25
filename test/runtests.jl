@@ -104,6 +104,38 @@ end
          nfunc33 = TP.getinterp_scalar(n, x, y, z, 3, 3)
          @test nfunc33(SA[20, 0, 0]) == 12.191176470588236
       end
+
+      begin # spherical interpolation
+         r = range(0, 10, length = 11)
+         θ = range(0, π, length = 11)
+         ϕ = range(0, 2π, length = 11)
+         # Vector field
+         B = fill(0.0, 3, length(r), length(θ), length(ϕ))
+         B[1,:,:,:] .= 1.0
+         Bfunc = TP.getinterp(TP.Spherical(), B, r, θ, ϕ)
+         @test Bfunc(SA[1,1,1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         # Scalar field
+         A = ones(length(r), length(θ), length(ϕ))
+         Afunc = TP.getinterp_scalar(TP.Spherical(), A, r, θ, ϕ)
+         @test Afunc(SA[1,1,1]) == 1.0
+         @test Afunc(SA[0,0,0]) == 1.0
+      end
+
+      begin # non-uniform spherical interpolation
+         r = logrange(1.0, 10.0, length=11)
+         θ = range(0, π, length = 11)
+         ϕ = range(0, 2π, length = 11)
+         # Vector field
+         B = fill(0.0, 3, length(r), length(θ), length(ϕ))
+         B[1,:,:,:] .= 1.0
+         Bfunc = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
+         @test Bfunc(SA[1,1,1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         # Scalar field
+         A = ones(length(r), length(θ), length(ϕ))
+         Afunc = TP.getinterp_scalar(TP.SphericalNonUniformR(), A, r, θ, ϕ)
+         @test Afunc(SA[1,1,1]) == 1.0
+         @test Afunc(SA[0,0,0]) == 1.0
+      end
    end
 
    @testset "numerical field" begin
@@ -190,16 +222,16 @@ end
       Rₑ = TP.Rₑ
 
       # initial velocity, [m/s]
-      v₀ = TP.sph2cart(energy2velocity(Ek; q, m), 0.0, π/4)
+      v₀ = TP.sph2cart(energy2velocity(Ek; q, m), π/4, 0.0)
       # initial position, [m]
-      r₀ = TP.sph2cart(2.5*Rₑ, 0.0, π/2)
+      r₀ = TP.sph2cart(2.5*Rₑ, π/2, 0.0)
       stateinit = [r₀..., v₀...]
       tspan = (0.0, 1.0)
 
       @test sum(TP.getB_CS_harris(
          [1.0, 0.0, 1.0], 1.0, 1.0, 2.0)) == 2.761594155955765
 
-      @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] == -3.673352034653548e-48
+      @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] ≈ 0.0 atol=1e-40
       @test TP.getB_tokamak_coil(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)[1] ==
             -1.196424672603716e-6
       q_profile(nr) = nr^2 + 2*nr + 0.5
