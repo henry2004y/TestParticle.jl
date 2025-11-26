@@ -62,8 +62,7 @@ function getinterp(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int 
    return get_field
 end
 
-function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A,
-      gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
+function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A, gridr, gridθ, gridϕ)
    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ar = @view A[1, :, :, :]
@@ -71,19 +70,23 @@ function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A,
    Aϕ = @view A[3, :, :, :]
 
    if gridtype isa Spherical
-      itpr_u, itpθ_u, itpϕ_u = _getinterp(Ar, Aθ, Aϕ, order, bc)
+      gt = OnCell()
+
+      itp_type = (BSpline(Linear()), BSpline(Linear()), BSpline(Linear(Periodic(gt))))
+      extrap_type = (Flat(), Flat(), Periodic())
+
+      itpr_u = extrapolate(interpolate(Ar, itp_type), extrap_type)
+      itpθ_u = extrapolate(interpolate(Aθ, itp_type), extrap_type)
+      itpϕ_u = extrapolate(interpolate(Aϕ, itp_type), extrap_type)
 
       interpr = scale(itpr_u, gridr, gridθ, gridϕ)
       interpθ = scale(itpθ_u, gridr, gridθ, gridϕ)
       interpϕ = scale(itpϕ_u, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
-      if order != 1
-         throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
-      end
-
-      interpr = extrapolate(interpolate((gridr, gridθ, gridϕ), Ar, Gridded(Linear())), Flat())
-      interpθ = extrapolate(interpolate((gridr, gridθ, gridϕ), Aθ, Gridded(Linear())), Flat())
-      interpϕ = extrapolate(interpolate((gridr, gridθ, gridϕ), Aϕ, Gridded(Linear())), Flat())
+      grid = (gridr, gridθ, gridϕ)
+      interpr = extrapolate(interpolate(grid, Ar, Gridded(Linear())), Flat())
+      interpθ = extrapolate(interpolate(grid, Aθ, Gridded(Linear())), Flat())
+      interpϕ = extrapolate(interpolate(grid, Aϕ, Gridded(Linear())), Periodic())
    end
 
    return _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
@@ -91,15 +94,15 @@ end
 
 function _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
    function get_field(xu)
-      r_val, θ_val, ϕ_val = cart2sph(xu[1], xu[2], xu[3])
+      r_val, θ_val, ϕ_val = cart2sph(xu)
 
       Br = interpr(r_val, θ_val, ϕ_val)
       Bθ = interpθ(r_val, θ_val, ϕ_val)
       Bϕ = interpϕ(r_val, θ_val, ϕ_val)
 
-      Bx, By, Bz = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
+      Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
 
-      return SA[Bx, By, Bz]
+      return Bvec
    end
    return get_field
 end
@@ -229,6 +232,7 @@ function getinterp_scalar(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, b
    return get_field
 end
 
+#TODO: The boundary condition for θ should be periodic!
 function getinterp_scalar(gridtype::Union{Spherical, SphericalNonUniformR}, A,
       gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
    if gridtype isa Spherical
