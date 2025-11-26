@@ -22,7 +22,9 @@ function cart2sph(x, y, z)
    return r, θ, ϕ
 end
 
-"Convert a vector from spherical to Cartesian."
+"""
+Convert a vector from spherical to Cartesian.
+"""
 function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
    sinθ, cosθ = sincos(θ)
    sinϕ, cosϕ = sincos(ϕ)

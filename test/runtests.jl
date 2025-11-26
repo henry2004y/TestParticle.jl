@@ -111,30 +111,30 @@ end
          ϕ = range(0, 2π, length = 11)
          # Vector field
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
-         B[1,:,:,:] .= 1.0
+         B[1, :, :, :] .= 1.0
          Bfunc = TP.getinterp(TP.Spherical(), B, r, θ, ϕ)
-         @test Bfunc(SA[1,1,1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
          Afunc = TP.getinterp_scalar(TP.Spherical(), A, r, θ, ϕ)
-         @test Afunc(SA[1,1,1]) == 1.0
-         @test Afunc(SA[0,0,0]) == 1.0
+         @test Afunc(SA[1, 1, 1]) == 1.0
+         @test Afunc(SA[0, 0, 0]) == 1.0
       end
 
       begin # non-uniform spherical interpolation
-         r = logrange(1.0, 10.0, length=11)
+         r = logrange(1.0, 10.0, length = 11)
          θ = range(0, π, length = 11)
          ϕ = range(0, 2π, length = 11)
          # Vector field
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
-         B[1,:,:,:] .= 1.0
+         B[1, :, :, :] .= 1.0
          Bfunc = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
-         @test Bfunc(SA[1,1,1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
          Afunc = TP.getinterp_scalar(TP.SphericalNonUniformR(), A, r, θ, ϕ)
-         @test Afunc(SA[1,1,1]) == 1.0
-         @test Afunc(SA[0,0,0]) == 1.0
+         @test Afunc(SA[1, 1, 1]) == 1.0
+         @test Afunc(SA[0, 0, 0]) == 1.0
       end
    end
 

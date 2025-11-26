@@ -1,19 +1,31 @@
 # Field interpolations.
 
-"Type for grid."
+"""
+Type for grid.
+"""
 abstract type Grid end
-"Cartesian grid."
+"""
+Cartesian grid.
+"""
 struct Cartesian <: Grid end
-"Spherical grid with uniform r, θ and ϕ."
+"""
+Spherical grid with uniform r, θ and ϕ.
+"""
 struct Spherical <: Grid end
-"Spherical grid with non-uniform r and uniform θ, ϕ."
+"""
+Spherical grid with non-uniform r and uniform θ, ϕ.
+"""
 struct SphericalNonUniformR <: Grid end
 
-getinterp(A, grid1, grid2, grid3, args...) = getinterp(Cartesian(), A, grid1, grid2, grid3, args...)
+function getinterp(A, grid1, grid2, grid3, args...)
+   getinterp(Cartesian(), A, grid1, grid2, grid3, args...)
+end
 getinterp(A, grid1, grid2, args...) = getinterp(Cartesian(), A, grid1, grid2, args...)
 getinterp(A, grid1, args...) = getinterp(Cartesian(), A, grid1, args...)
 
-getinterp_scalar(A, grid1, grid2, grid3, args...) = getinterp_scalar(Cartesian(), A, grid1, grid2, grid3, args...)
+function getinterp_scalar(A, grid1, grid2, grid3, args...)
+   getinterp_scalar(Cartesian(), A, grid1, grid2, grid3, args...)
+end
 
 """
      getinterp(::Grid, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
@@ -50,7 +62,8 @@ function getinterp(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int 
    return get_field
 end
 
-function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
+function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A,
+      gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ar = @view A[1, :, :, :]
@@ -216,7 +229,8 @@ function getinterp_scalar(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, b
    return get_field
 end
 
-function getinterp_scalar(gridtype::Union{Spherical, SphericalNonUniformR}, A, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
+function getinterp_scalar(gridtype::Union{Spherical, SphericalNonUniformR}, A,
+      gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1)
    if gridtype isa Spherical
       itp_unscaled = _getinterp_scalar(A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
