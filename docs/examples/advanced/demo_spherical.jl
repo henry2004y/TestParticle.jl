@@ -1,17 +1,17 @@
-
+# ---
 # title: Tracing in spherical coordinates
 # id: demo_spherical_B
 # date: 2025-11-25
-# author: "Hongyang Zhou"
+# author: "[Hongyang Zhou](https://github.com/henry2004y)"
 # julia: 1.12.2
 # description: Simple proton trajectory under uniform B defined in spherical coordinates.
 # ---
 
 # This example demonstrates a single proton motion under a uniform B field defined in
-# spherical coordinates. The E field is assumed to be zero.
+# spherical coordinates following the same values in [Demo: Helix motion](@ref demo_uniformB_zeroE). The E field is set to zero.
 
 import DisplayAs #hide
-import TestParticle
+import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -21,26 +21,30 @@ r = logrange(0.1, 10.0, length=4)
 θ = range(0, π, length=8)
 ϕ = range(0, 2π, length=8)
 
-B₀ = 1e-8
+B₀ = 1e-8 # [nT]
 B = zeros(3, length(r), length(θ), length(ϕ))
 
 for (iθ, θ_val) in enumerate(θ)
-    B[1, :, iθ, :] .= B₀ * cos(θ_val)
-    B[2, :, iθ, :] .= -B₀ * sin(θ_val)
+    sinθ, cosθ = sincos(θ_val)
+    B[1, :, iθ, :] .= B₀ * cosθ
+    B[2, :, iθ, :] .= -B₀ * sinθ
 end
 
-B_field = TestParticle.getinterp(TestParticle.SphericalNonUniformR(), B, r, θ, ϕ)
-zero_E = TestParticle.ZeroField()
+# In TestParticle.jl v0.15, we introduced two new grid geometries: `Spherical()` and `SphericalNonUniformR()`.
+# `Spherical()` assumes uniform range (r,θ,ϕ) coordinates, whereas `SphericalNonUniformR()` accepts non-uniform coordinates.
+
+B_field = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
+zero_E = TP.ZeroField()
 
 ## Initial condition
-stateinit = let x0 = [3.0, 0.0, -1.0], v0 = [0.0, 1.0, 0.1]
+stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
    [x0..., v0...]
 end
 ## Time span
 tspan = (0, 18)
 
-param = TestParticle.prepare(zero_E, B_field, species=TestParticle.Proton)
-prob = ODEProblem(TestParticle.trace!, stateinit, tspan, param)
+param = TP.prepare(zero_E, B_field, species=TP.Proton)
+prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ## Visualization
