@@ -9,7 +9,7 @@ function sph2cart(r, θ, ϕ)
    SVector{3}(r * sinθ * cosϕ, r * sinθ * sinϕ, r * cosθ)
 end
 
-sph2cart(x) = sph2cart(x...)
+@inline sph2cart(x) = sph2cart(x[1], x[2], x[3])
 
 """
 Convert from Cartesian to spherical coordinates vector.
@@ -24,7 +24,7 @@ function cart2sph(x, y, z)
    return SVector{3}(r, θ, ϕ)
 end
 
-cart2sph(x) = cart2sph(x...)
+@inline @inbounds cart2sph(x) = cart2sph(x[1], x[2], x[3])
 
 """
 Convert a vector from spherical to Cartesian.

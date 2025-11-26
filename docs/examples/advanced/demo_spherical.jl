@@ -17,7 +17,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 ## Define the magnetic field in spherical coordinates
-r = range(0.1, 10.0, length=8)
+r = logrange(0.1, 10.0, length=4)
 θ = range(0, π, length=8)
 ϕ = range(0, 2π, length=8)
 
