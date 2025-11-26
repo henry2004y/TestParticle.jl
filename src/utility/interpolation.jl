@@ -98,25 +98,25 @@ end
 
 function _get_bspline(order::Int, periodic::Bool)
    gt = OnCell()
-   if periodic
-      if order == 1
-         return BSpline(Linear(Periodic(gt)))
-      elseif order == 2
-         return BSpline(Quadratic(Periodic(gt)))
-      elseif order == 3
-         return BSpline(Cubic(Periodic(gt)))
-      else
-         throw(ArgumentError("Unsupported interpolation order!"))
-      end
+
+   interp_type = if order == 1
+      Linear
+   elseif order == 2
+      Quadratic
+   elseif order == 3
+      Cubic
    else
-      if order == 1
+      throw(ArgumentError("Unsupported interpolation order!"))
+   end
+
+   if periodic
+      return BSpline(interp_type(Periodic(gt)))
+   else
+      # For non-periodic, Linear() is special as it doesn't take an argument.
+      if interp_type == Linear
          return BSpline(Linear())
-      elseif order == 2
-         return BSpline(Quadratic(Flat(gt)))
-      elseif order == 3
-         return BSpline(Cubic(Flat(gt)))
       else
-         throw(ArgumentError("Unsupported interpolation order!"))
+         return BSpline(interp_type(Flat(gt)))
       end
    end
 end
@@ -130,11 +130,11 @@ function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
 end
 
 function _getinterp(gridtype::Spherical, Ax, Ay, Az, order::Int, bc::Int)
-   itpx = _get_interp_object(gridtype, Ax, order, bc)
-   itpy = _get_interp_object(gridtype, Ay, order, bc)
-   itpz = _get_interp_object(gridtype, Az, order, bc)
+   itpr = _get_interp_object(gridtype, Ax, order, bc)
+   itpθ = _get_interp_object(gridtype, Ay, order, bc)
+   itpϕ = _get_interp_object(gridtype, Az, order, bc)
 
-   itpx, itpy, itpz
+   itpr, itpθ, itpϕ
 end
 
 """
@@ -144,7 +144,6 @@ Return a function for interpolating scalar array `A` on the grid given by `gridx
 and `gridz`. Currently only 3D arrays are supported.
 
 # Arguments
-
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
@@ -154,7 +153,6 @@ function getinterp_scalar(
    return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
 end
 
-#TODO: The boundary condition for θ should be periodic!
 function getinterp_scalar(gridtype::Union{Spherical, SphericalNonUniformR}, A,
       gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3)
    return get_interpolator(gridtype, A, gridr, gridθ, gridϕ, order, bc)
@@ -262,6 +260,7 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       itp_unscaled = _get_interp_object(gridtype, A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
+      #TODO: Respect the passed boundary conditions!
       bctype = (Flat(), Flat(), Periodic())
       itp = extrapolate(interpolate((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
    end
