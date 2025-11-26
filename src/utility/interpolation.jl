@@ -55,7 +55,7 @@ function getinterp(::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int 
 end
 
 function getinterp(gridtype::Union{Spherical, SphericalNonUniformR}, A, gridr, gridθ, gridϕ)
-   @assert size(A, 1) == 3&&ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
 
    Ar = @view A[1, :, :, :]
    Aθ = @view A[2, :, :, :]
@@ -123,7 +123,7 @@ function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
 end
 
 function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
-   @assert size(A, 1) == 3&&ndims(A) == 2 "Inconsistent 1D force field and grid!"
+   @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
 
    Ax = @view A[1, :]
    Ay = @view A[2, :]
