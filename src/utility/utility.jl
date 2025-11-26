@@ -6,8 +6,10 @@ Convert from spherical to Cartesian coordinates vector.
 function sph2cart(r, θ, ϕ)
    sinθ, cosθ = sincos(θ)
    sinϕ, cosϕ = sincos(ϕ)
-   r*SVector{3}(sinθ*cosϕ, sinθ*sinϕ, cosθ)
+   SVector{3}(r * sinθ * cosϕ, r * sinθ * sinϕ, r * cosθ)
 end
+
+sph2cart(x) = sph2cart(x...)
 
 """
 Convert from Cartesian to spherical coordinates vector.
@@ -15,21 +17,25 @@ Convert from Cartesian to spherical coordinates vector.
 function cart2sph(x, y, z)
    r = hypot(x, y, z)
    if r == 0
-      return 0.0, 0.0, 0.0
+      return SVector{3, eltype(x)}(0, 0, 0)
    end
-   θ = acos(z/r)
+   θ = acos(z / r)
    ϕ = atan(y, x)
-   return r, θ, ϕ
+   return SVector{3}(r, θ, ϕ)
 end
 
-"Convert a vector from spherical to Cartesian."
+cart2sph(x) = cart2sph(x...)
+
+"""
+Convert a vector from spherical to Cartesian.
+"""
 function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
    sinθ, cosθ = sincos(θ)
    sinϕ, cosϕ = sincos(ϕ)
-   vx = sinθ*cosϕ*vr + cosθ*cosϕ*vθ - sinϕ*vϕ
-   vy = sinθ*sinϕ*vr + cosθ*sinϕ*vθ + cosϕ*vϕ
-   vz = cosθ*vr - sinθ*vθ
-   return vx, vy, vz
+   vx = sinθ * cosϕ * vr + cosθ * cosϕ * vθ - sinϕ * vϕ
+   vy = sinθ * sinϕ * vr + cosθ * sinϕ * vθ + cosϕ * vϕ
+   vz = cosθ * vr - sinθ * vθ
+   return SVector{3}(vx, vy, vz)
 end
 
 include("constants.jl")
@@ -116,9 +122,9 @@ R = get_rotation_matrix(v̂, θ)
 function get_rotation_matrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
    sinθ, cosθ = sincos(eltype(v)(θ))
    tmp = 1 - cosθ
-   m = @SMatrix [cosθ+v[1]^2*tmp v[1]*v[2]*tmp-v[3]*sinθ v[1]*v[3]*tmp+v[2]*sinθ;
-                 v[1]*v[2]*tmp+v[3]*sinθ cosθ+v[2]^2*tmp v[2]*v[3]*tmp-v[1]*sinθ;
-                 v[1]*v[3]*tmp-v[2]*sinθ v[3]*v[2]*tmp+v[1]*sinθ cosθ+v[3]^2*tmp]
+   m = @SMatrix [cosθ+v[1]^2 * tmp v[1] * v[2] * tmp-v[3] * sinθ v[1] * v[3] * tmp+v[2] * sinθ;
+                 v[1] * v[2] * tmp+v[3] * sinθ cosθ+v[2]^2 * tmp v[2] * v[3] * tmp-v[1] * sinθ;
+                 v[1] * v[3] * tmp-v[2] * sinθ v[3] * v[2] * tmp+v[1] * sinθ cosθ+v[3]^2 * tmp]
 end
 
 """
@@ -165,8 +171,8 @@ function get_velocity(sol)
    for is in axes(v, 2)
       γv = @view sol[4:6, is]
       γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-      v² = γ²v² / (1 + γ²v²/c^2)
-      γ = 1 / √(1 - v²/c^2)
+      v² = γ²v² / (1 + γ²v² / c^2)
+      γ = 1 / √(1 - v² / c^2)
       for i in axes(v, 1)
          v[i, is] = γv[i] / γ
       end
@@ -183,9 +189,9 @@ function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
    for i in eachindex(e)
       γv = @view sol[4:6, i]
       γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-      v² = γ²v² / (1 + γ²v²/c^2)
-      γ = 1 / √(1 - v²/c^2)
-      e[i] = (γ-1)*m*c^2/abs(q)
+      v² = γ²v² / (1 + γ²v² / c^2)
+      γ = 1 / √(1 - v² / c^2)
+      e[i] = (γ - 1) * m * c^2 / abs(q)
    end
 
    e
@@ -196,13 +202,13 @@ Calculate the energy [eV] of a relativistic particle from γv.
 """
 function get_energy(γv; m = mᵢ, q = qᵢ)
    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-   v² = γ²v² / (1 + γ²v²/c^2)
-   γ = 1 / √(1 - v²/c^2)
+   v² = γ²v² / (1 + γ²v² / c^2)
+   γ = 1 / √(1 - v² / c^2)
 
-   (γ-1)*m*c^2/abs(q)
+   (γ - 1) * m * c^2 / abs(q)
 end
 
 """
 Return velocity magnitude from energy in [eV].
 """
-energy2velocity(Ek; m = mᵢ, q = qᵢ) = c*sqrt(1 - 1/(1+Ek*abs(q)/(m*c^2))^2)
+energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
