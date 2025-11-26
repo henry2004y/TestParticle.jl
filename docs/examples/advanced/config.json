@@ -14,6 +14,7 @@
      "demo_analytic_magnetosphere.jl",
      "demo_shock.jl",
      "demo_fermi_foreshock.jl",
+     "demo_spherical.jl",
      "demo_tokamak_coil.jl",
      "demo_tokamak_profile.jl",
      "demo_gc.jl",
