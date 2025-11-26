@@ -4,19 +4,18 @@ using OrdinaryDiffEq, StaticArrays
 using CairoMakie
 
 # Define the magnetic field in spherical coordinates
-r = logrange(0.1, 10.0, length=4)
-θ = range(0, π, length=8)
-ϕ = range(0, 2π, length=8)
+r = logrange(0.1, 10.0, length = 4)
+θ = range(0, π, length = 8)
+ϕ = range(0, 2π, length = 8)
 
 B₀ = 1e-8 # [nT]
 B = zeros(3, length(r), length(θ), length(ϕ))
 
 for (iθ, θ_val) in enumerate(θ)
-    sinθ, cosθ = sincos(θ_val)
-    B[1, :, iθ, :] .= B₀ * cosθ
-    B[2, :, iθ, :] .= -B₀ * sinθ
-end</code></pre><p>In TestParticle.jl v0.15, we introduced two new grid geometries: <code>Spherical()</code> and <code>SphericalNonUniformR()</code>. <code>Spherical()</code> assumes uniform range (r,θ,ϕ) coordinates, whereas <code>SphericalNonUniformR()</code> accepts non-uniform coordinates.</p><pre><code class="language-julia hljs">B_field = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
-zero_E = TP.ZeroField()
+   sinθ, cosθ = sincos(θ_val)
+   B[1, :, iθ, :] .= B₀ * cosθ
+   B[2, :, iθ, :] .= -B₀ * sinθ
+end</code></pre><p>In TestParticle.jl v0.15, we introduced two new grid geometries: <code>Spherical()</code> and <code>SphericalNonUniformR()</code>. <code>Spherical()</code> assumes uniform range (r,θ,ϕ) coordinates, whereas <code>SphericalNonUniformR()</code> accepts non-uniform coordinates.</p><pre><code class="language-julia hljs">zero_E = TP.ZeroField()
 
 # Initial condition
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
@@ -25,7 +24,8 @@ end
 # Time span
 tspan = (0, 18)
 
-param = TP.prepare(zero_E, B_field, species=TP.Proton)
+param = TP.prepare(
+   r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.SphericalNonUniformR())
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
@@ -40,4 +40,4 @@ ax = Axis3(f[1, 1],
 )
 
 plot!(ax, sol, idxs = (1, 2, 3))
-</code></pre><p><img src="../demo_spherical-6.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 26 November 2025 14:44">Wednesday 26 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p><img src="../demo_spherical-6.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 26 November 2025 21:42">Wednesday 26 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
