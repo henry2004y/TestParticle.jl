@@ -17,23 +17,21 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 ## Define the magnetic field in spherical coordinates
-r = logrange(0.1, 10.0, length=4)
-θ = range(0, π, length=8)
-ϕ = range(0, 2π, length=8)
+r = logrange(0.1, 10.0, length = 4)
+θ = range(0, π, length = 8)
+ϕ = range(0, 2π, length = 8)
 
 B₀ = 1e-8 # [nT]
 B = zeros(3, length(r), length(θ), length(ϕ))
 
 for (iθ, θ_val) in enumerate(θ)
-    sinθ, cosθ = sincos(θ_val)
-    B[1, :, iθ, :] .= B₀ * cosθ
-    B[2, :, iθ, :] .= -B₀ * sinθ
+   sinθ, cosθ = sincos(θ_val)
+   B[1, :, iθ, :] .= B₀ * cosθ
+   B[2, :, iθ, :] .= -B₀ * sinθ
 end
 
 # In TestParticle.jl v0.15, we introduced two new grid geometries: `Spherical()` and `SphericalNonUniformR()`.
 # `Spherical()` assumes uniform range (r,θ,ϕ) coordinates, whereas `SphericalNonUniformR()` accepts non-uniform coordinates.
-
-B_field = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
 zero_E = TP.ZeroField()
 
 ## Initial condition
@@ -43,7 +41,8 @@ end
 ## Time span
 tspan = (0, 18)
 
-param = TP.prepare(zero_E, B_field, species=TP.Proton)
+param = TP.prepare(
+   r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.SphericalNonUniformR())
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

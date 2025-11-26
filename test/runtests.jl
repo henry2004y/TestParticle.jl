@@ -43,7 +43,7 @@ function time_varying_B(x, t)
 
    SA[0.0, 0.0, Bz]
 end
-zero_E(x) = SA[0.0, 0.0, 0.0]
+zero_E = TP.ZeroField()
 uniform_E(x) = SA[1e-9, 0, 0]
 
 function curved_B(x)
@@ -210,6 +210,28 @@ end
       prob = ODEProblem(trace, stateinit, tspan, param)
       sol = solve(prob, Tsit5(); save_idxs = [1])
       @test length(sol) == 8 && sol[1, end] ≈ 0.8540967226885379
+
+      # Nonuniform spherical grid
+      function setup_spherical_field()
+         r = logrange(0.1, 10.0, length = 4)
+         θ = range(0, π, length = 8)
+         ϕ = range(0, 2π, length = 8)
+
+         B₀ = 1e-8 # [nT]
+         B = zeros(3, length(r), length(θ), length(ϕ))
+
+         for (iθ, θ_val) in enumerate(θ)
+            sinθ, cosθ = sincos(θ_val)
+            B[1, :, iθ, :] .= B₀ * cosθ
+            B[2, :, iθ, :] .= -B₀ * sinθ
+         end
+         r, θ, ϕ, B
+      end
+
+      r, θ, ϕ, B_sph = setup_spherical_field()
+      param = prepare(r, θ, ϕ, zero_E, B_sph; gridtype = SphericalNonUniformR())
+      # Check field interpolation Bz
+      @test param[4](SA[1.0, 1.0, 1.0])[3] == 9.888387888463716e-9
    end
 
    @testset "analytical field" begin
