@@ -116,8 +116,13 @@ function prepare(x::T, y::T, E, B, F = ZeroField(); order = 1,
 end
 
 function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
-      bc = 1, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y, z; order, bc, kw...)
+      bc = 1, gridtype::Grid = Cartesian(), kw...) where {T <: AbstractRange}
+   _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
+end
+
+function prepare(x::Base.LogRange, y::T, z::T, E, B, F = ZeroField();
+      order = 1, bc = 2, kw...) where {T <: AbstractRange}
+   _prepare(E, B, F, x, y, z; gridtype = SphericalNonUniformR(), order, bc, kw...)
 end
 
 function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)

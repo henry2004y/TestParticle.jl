@@ -32,8 +32,6 @@ end
 
 # In TestParticle.jl v0.15, we introduced two new grid geometries: `Spherical()` and `SphericalNonUniformR()`.
 # `Spherical()` assumes uniform range (r,θ,ϕ) coordinates, whereas `SphericalNonUniformR()` accepts non-uniform coordinates.
-
-B_field = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
 zero_E = TP.ZeroField()
 
 ## Initial condition
@@ -43,7 +41,7 @@ end
 ## Time span
 tspan = (0, 18)
 
-param = TP.prepare(zero_E, B_field, species=TP.Proton)
+param = TP.prepare(r, θ, ϕ, zero_E, B; species=TP.Proton, gridtype = SphericalNonUniformR())
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
