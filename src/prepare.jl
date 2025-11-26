@@ -68,7 +68,8 @@ function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
    Field(getinterp(gridtype, f, x..., order, bc; kw...))
 end
 
-function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0, m = 1.0, gridtype::Grid=Cartesian(), kw...)
+function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0,
+      m = 1.0, gridtype::Grid = Cartesian(), kw...)
    q, m = getchargemass(species, q, m)
    q2m = q / m
    fE = prepare_field(E, args...; gridtype, kw...)
@@ -106,12 +107,12 @@ For `Spherical` grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
   - `gridtype::Grid=Cartesian()`: type of grid in `Cartesian()`, `Spherical()`, `SphericalNonUniformR`.
 """
 function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
-   _prepare(E, B, F, makegrid(grid)...; gridtype=Cartesian(), order, bc, kw...)
+   _prepare(E, B, F, makegrid(grid)...; gridtype = Cartesian(), order, bc, kw...)
 end
 
 function prepare(x::T, y::T, E, B, F = ZeroField(); order = 1,
       bc = 1, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y; gridtype=Cartesian(), order, bc, kw...)
+   _prepare(E, B, F, x, y; gridtype = Cartesian(), order, bc, kw...)
 end
 
 function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
@@ -120,7 +121,7 @@ function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
 end
 
 function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
-   _prepare(E, B, F, x; gridtype=Cartesian(), order, bc, dir, kw...)
+   _prepare(E, B, F, x; gridtype = Cartesian(), order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 

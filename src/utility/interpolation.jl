@@ -1,12 +1,20 @@
 # Field interpolations.
 
-"Type for grid."
+"""
+Type for grid.
+"""
 abstract type Grid end
-"Cartesian grid."
+"""
+Cartesian grid.
+"""
 struct Cartesian <: Grid end
-"Spherical grid with uniform r, θ and ϕ."
+"""
+Spherical grid with uniform r, θ and ϕ.
+"""
 struct Spherical <: Grid end
-"Spherical grid with non-uniform r and uniform θ, ϕ."
+"""
+Spherical grid with non-uniform r and uniform θ, ϕ.
+"""
 struct SphericalNonUniformR <: Grid end
 
 function getinterp(A, grid1, grid2, grid3, args...)
