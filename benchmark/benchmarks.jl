@@ -11,31 +11,39 @@ SUITE["trace"] = BenchmarkGroup()
 SUITE["trace"]["analytic field"] = BenchmarkGroup()
 SUITE["trace"]["numerical field"] = BenchmarkGroup()
 SUITE["trace"]["time-dependent field"] = BenchmarkGroup()
+SUITE["interpolation"] = BenchmarkGroup()
 
 # analytic field
 E_analytic(xu) = SA[5e-10, 5e-10, 0]
 B_analytic(xu) = SA[0, 0, 1e-8]
 
+function setup_numeric_field()
+   x = range(-10, 10, length=15)
+   y = range(-10, 10, length=20)
+   z = range(-10, 10, length=25)
+   B_numeric = fill(0.0, 3, length(x), length(y), length(z))
+   E_numeric = fill(0.0, 3, length(x), length(y), length(z))
+   B_numeric[3, :, :, :] .= 10e-9
+   E_numeric[1, :, :, :] .= 5e-10
+   E_numeric[2, :, :, :] .= 5e-10
+
+   Δx = x[2] - x[1]
+   Δy = y[2] - y[1]
+   Δz = z[2] - z[1]
+
+   mesh = CartesianGrid((length(x) - 1, length(y) - 1, length(z) - 1),
+      (x[1], y[1], z[1]),
+      (Δx, Δy, Δz))
+
+   return mesh, E_numeric, B_numeric
+end
+
 # numerical field
-x = range(-10, 10, length = 15)
-y = range(-10, 10, length = 20)
-z = range(-10, 10, length = 25)
-B_numeric = fill(0.0, 3, length(x), length(y), length(z)) # [T]
-E_numeric = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
-B_numeric[3, :, :, :] .= 10e-9
-E_numeric[1, :, :, :] .= 5e-10
-E_numeric[2, :, :, :] .= 5e-10
+mesh, E_numeric, B_numeric = setup_numeric_field()
+
 B_td(xu, t) = SA[0, 0, 1e-11 * cos(2π * t)]
 E_td(xu, t) = SA[5e-11 * sin(2π * t), 0, 0]
 F_td(xu) = SA[0, 9.10938356e-42, 0]
-
-Δx = x[2] - x[1]
-Δy = y[2] - y[1]
-Δz = z[2] - z[1]
-
-mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-   (x[1], y[1], z[1]),
-   (Δx, Δy, Δz))
 
 tspan = (0.0, 100.0)
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
@@ -67,6 +75,30 @@ SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
    $prob_boris; dt = 1/7, savestepinterval = 10)
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
    $prob_boris; dt = 1/7, savestepinterval = 10, trajectories = 2)
+
+function setup_spherical_field()
+   r = logrange(0.1, 10.0, length=4)
+   θ = range(0, π, length=8)
+   ϕ = range(0, 2π, length=8)
+
+   B₀ = 1e-8 # [nT]
+   B = zeros(3, length(r), length(θ), length(ϕ))
+
+   for (iθ, θ_val) in enumerate(θ)
+      sinθ, cosθ = sincos(θ_val)
+      B[1, :, iθ, :] .= B₀ * cosθ
+      B[2, :, iθ, :] .= -B₀ * sinθ
+   end
+
+   B_field = TP.getinterp(SphericalNonUniformR(), B, r, θ, ϕ)
+
+   return B_field
+end
+
+B_field_car = param_numeric[4]
+B_field_sph = setup_spherical_field()
+SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car($SA[1.0, 1.0, 1.0])
+SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph($SA[1.0, 1.0, 1.0])
 
 param_td = prepare(E_td, B_td, F_td)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
