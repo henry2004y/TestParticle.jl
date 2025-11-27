@@ -19,6 +19,7 @@
      "demo_tokamak_profile.jl",
      "demo_gc.jl",
      "demo_batsrus_3dstructured.md",
+     "demo_radiation.jl",
      "demo_gpu.md"
    ]
 }
