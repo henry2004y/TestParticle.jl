@@ -66,9 +66,9 @@ function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
 
    # Return field value at a given location.
    function get_field(xu)
-      r = @view xu[1:2]
+      x, y = xu[1], xu[2]
 
-      return SA[interpx(r...), interpy(r...), interpz(r...)]
+      return SA[interpx(x, y), interpy(x, y), interpz(x, y)]
    end
 
    return get_field
@@ -186,9 +186,9 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
 
    # Return field value at a given location.
    function get_field(xu)
-      r = @view xu[1:3]
+      x, y, z = xu[1], xu[2], xu[3]
 
-      return SA[interpx(r...), interpy(r...), interpz(r...)]
+      return SA[interpx(x, y, z), interpy(x, y, z), interpz(x, y, z)]
    end
 
    return get_field
@@ -202,9 +202,9 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
 
    # Return field value at a given location.
    function get_field(xu)
-      r = @view xu[1:3]
+      x, y, z = xu[1], xu[2], xu[3]
 
-      return interp(r...)
+      return interp(x, y, z)
    end
 
    return get_field
