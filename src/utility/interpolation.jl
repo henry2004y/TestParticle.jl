@@ -53,12 +53,21 @@ end
 
 function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
    @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
+   if bc == 1
+      _getinterp_2d_impl(A, gridx, gridy, order, Val(1))
+   elseif bc == 2
+      _getinterp_2d_impl(A, gridx, gridy, order, Val(2))
+   else
+      _getinterp_2d_impl(A, gridx, gridy, order, Val(3))
+   end
+end
 
+function _getinterp_2d_impl(A, gridx, gridy, order, val_bc::Val{BC}) where BC
    Ax = @view A[1, :, :]
    Ay = @view A[2, :, :]
    Az = @view A[3, :, :]
 
-   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, bc)
+   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, val_bc)
 
    interpx = scale(itpx, gridx, gridy)
    interpy = scale(itpy, gridx, gridy)
@@ -76,12 +85,21 @@ end
 
 function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
    @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
+   if bc == 1
+      _getinterp_1d_impl(A, gridx, order, Val(1), dir)
+   elseif bc == 2
+      _getinterp_1d_impl(A, gridx, order, Val(2), dir)
+   else
+      _getinterp_1d_impl(A, gridx, order, Val(3), dir)
+   end
+end
 
+function _getinterp_1d_impl(A, gridx, order, val_bc::Val{BC}, dir) where BC
    Ax = @view A[1, :]
    Ay = @view A[2, :]
    Az = @view A[3, :]
 
-   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, bc)
+   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, val_bc)
 
    interpx = scale(itpx, gridx)
    interpy = scale(itpy, gridx)
@@ -122,18 +140,18 @@ function _get_bspline(order::Int, periodic::Bool)
    end
 end
 
-function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
-   itpx = _get_interp_object(Ax, order, bc)
-   itpy = _get_interp_object(Ay, order, bc)
-   itpz = _get_interp_object(Az, order, bc)
+function _getinterp(Ax, Ay, Az, order::Int, val_bc::Val{BC}) where BC
+   itpx = _get_interp_object(Ax, order, val_bc)
+   itpy = _get_interp_object(Ay, order, val_bc)
+   itpz = _get_interp_object(Az, order, val_bc)
 
    itpx, itpy, itpz
 end
 
-function _getinterp(gridtype::Spherical, Ax, Ay, Az, order::Int, bc::Int)
-   itpr = _get_interp_object(gridtype, Ax, order, bc)
-   itpθ = _get_interp_object(gridtype, Ay, order, bc)
-   itpϕ = _get_interp_object(gridtype, Az, order, bc)
+function _getinterp(gridtype::Spherical, Ax, Ay, Az, order::Int, val_bc::Val{BC}) where BC
+   itpr = _get_interp_object(gridtype, Ax, order, val_bc)
+   itpθ = _get_interp_object(gridtype, Ay, order, val_bc)
+   itpϕ = _get_interp_object(gridtype, Az, order, val_bc)
 
    itpr, itpθ, itpϕ
 end
@@ -174,11 +192,21 @@ and `gridz`.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
 """
-function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
+function get_interpolator(gridtype::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
+   if bc == 1
+      _get_interpolator_3d_vec_impl(gridtype, A, gridx, gridy, gridz, order, Val(1))
+   elseif bc == 2
+      _get_interpolator_3d_vec_impl(gridtype, A, gridx, gridy, gridz, order, Val(2))
+   else
+      _get_interpolator_3d_vec_impl(gridtype, A, gridx, gridy, gridz, order, Val(3))
+   end
+end
+
+function _get_interpolator_3d_vec_impl(::Cartesian, A, gridx, gridy, gridz, order, val_bc::Val{BC}) where BC
    itpx, itpy,
    itpz = _getinterp(
-      view(A,1,:,:,:), view(A,2,:,:,:), view(A,3,:,:,:), order, bc)
+      view(A,1,:,:,:), view(A,2,:,:,:), view(A,3,:,:,:), order, val_bc)
 
    interpx = scale(itpx, gridx, gridy, gridz)
    interpy = scale(itpy, gridx, gridy, gridz)
@@ -194,9 +222,19 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
    return get_field
 end
 
-function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
+function get_interpolator(gridtype::Cartesian, A::AbstractArray{T, 3},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
-   itp = _get_interp_object(A, order, bc)
+   if bc == 1
+      _get_interpolator_3d_scalar_impl(gridtype, A, gridx, gridy, gridz, order, Val(1))
+   elseif bc == 2
+      _get_interpolator_3d_scalar_impl(gridtype, A, gridx, gridy, gridz, order, Val(2))
+   else
+      _get_interpolator_3d_scalar_impl(gridtype, A, gridx, gridy, gridz, order, Val(3))
+   end
+end
+
+function _get_interpolator_3d_scalar_impl(::Cartesian, A, gridx, gridy, gridz, order, val_bc::Val{BC}) where BC
+   itp = _get_interp_object(A, order, val_bc)
 
    interp = scale(itp, gridx, gridy, gridz)
 
@@ -212,12 +250,22 @@ end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 4}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
+   if bc == 1
+      _get_interpolator_spherical_vec_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(1))
+   elseif bc == 2
+      _get_interpolator_spherical_vec_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(2))
+   else
+      _get_interpolator_spherical_vec_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(3))
+   end
+end
+
+function _get_interpolator_spherical_vec_impl(gridtype, A, gridr, gridθ, gridϕ, order, val_bc::Val{BC}) where BC
    Ar = @view A[1, :, :, :]
    Aθ = @view A[2, :, :, :]
    Aϕ = @view A[3, :, :, :]
 
    if gridtype isa Spherical
-      itpr_u, itpθ_u, itpϕ_u = _getinterp(gridtype, Ar, Aθ, Aϕ, order, bc)
+      itpr_u, itpθ_u, itpϕ_u = _getinterp(gridtype, Ar, Aθ, Aϕ, order, val_bc)
 
       interpr = scale(itpr_u, gridr, gridθ, gridϕ)
       interpθ = scale(itpθ_u, gridr, gridθ, gridϕ)
@@ -227,9 +275,9 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
          throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
       end
       grid = (gridr, gridθ, gridϕ)
-      bctype_r, bctype_θ, bctype_ϕ = if bc == 1
+      bctype_r, bctype_θ, bctype_ϕ = if BC == 1
          (NaN, NaN, NaN)
-      elseif bc == 2
+      elseif BC == 2
          (Periodic(), Periodic(), Periodic())
       else
          (Flat(), Flat(), Periodic())
@@ -259,8 +307,18 @@ end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
+   if bc == 1
+      _get_interpolator_spherical_scalar_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(1))
+   elseif bc == 2
+      _get_interpolator_spherical_scalar_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(2))
+   else
+      _get_interpolator_spherical_scalar_impl(gridtype, A, gridr, gridθ, gridϕ, order, Val(3))
+   end
+end
+
+function _get_interpolator_spherical_scalar_impl(gridtype, A, gridr, gridθ, gridϕ, order, val_bc::Val{BC}) where BC
    if gridtype isa Spherical
-      itp_unscaled = _get_interp_object(gridtype, A, order, bc)
+      itp_unscaled = _get_interp_object(gridtype, A, order, val_bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
       #TODO: Respect the passed boundary conditions!
@@ -278,12 +336,12 @@ function _create_spherical_scalar_field_interpolator(interp)
    return get_field
 end
 
-function _get_interp_object(A, order::Int, bc::Int)
-   bspline = _get_bspline(order, bc == 2)
+function _get_interp_object(A, order::Int, ::Val{BC}) where BC
+   bspline = _get_bspline(order, BC == 2)
 
-   bctype = if bc == 1
+   bctype = if BC == 1
       NaN
-   elseif bc == 2
+   elseif BC == 2
       Periodic()
    else
       Flat()
@@ -292,16 +350,16 @@ function _get_interp_object(A, order::Int, bc::Int)
    itp = extrapolate(interpolate(A, bspline), bctype)
 end
 
-function _get_interp_object(::Spherical, A, order::Int, bc::Int)
+function _get_interp_object(::Spherical, A, order::Int, ::Val{BC}) where BC
    bspline_r = _get_bspline(order, false)
    bspline_θ = _get_bspline(order, false)
    bspline_ϕ = _get_bspline(order, true)
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
-   bctype = if bc == 1
+   bctype = if BC == 1
       (NaN, NaN, NaN)
-   elseif bc == 2
+   elseif BC == 2
       (Periodic(), Periodic(), Periodic())
    else
       (Flat(), Flat(), Periodic()) # Default to periodic in ϕ
