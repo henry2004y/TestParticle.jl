@@ -11,3 +11,4 @@ report.md
 /.benchmarkci
 /benchmark/*.json
 /.vscode
+/docs/node_modules/

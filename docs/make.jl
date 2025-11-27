@@ -1,5 +1,6 @@
 using TestParticle
 using Documenter, DemoCards
+using DocumenterVitepress
 
 branch = "master"
 # generate demo files
@@ -12,12 +13,11 @@ makedocs(;
    modules = [TestParticle],
    authors = "Hongyang Zhou <hyzhou@umich.edu> and contributors",
    sitename = "TestParticle.jl",
-   format = Documenter.HTML(;
-      prettyurls = get(ENV, "CI", "false") == "true",
-      canonical = "https://henry2004y.github.io/TestParticle.jl",
-      assets = String[],
-      size_threshold = 22000000,
-      size_threshold_warn = 10000000
+   format = DocumenterVitepress.MarkdownVitepress(
+      repo = "github.com/henry2004y/TestParticle.jl",
+      devbranch = "master",
+      devurl = "dev",
+      assets = assets,
    ),
    pages = [
       "Home" => "index.md",
@@ -30,4 +30,8 @@ makedocs(;
 
 deploydocs(;
    repo = "github.com/henry2004y/TestParticle.jl",
+   target = "build",
+   branch = "gh-pages",
+   devbranch = "master",
+   push_preview = true
 )
