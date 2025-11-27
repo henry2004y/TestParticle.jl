@@ -4,7 +4,7 @@ using TestParticle
 using Literate
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
-const OUTPUT_DIR = joinpath(@__DIR__, "src/examples")
+const OUTPUT_DIR = joinpath(@__DIR__, "generated")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
@@ -70,11 +70,11 @@ function process_examples(subdir, order)
          # Compile to markdown
          Literate.markdown(src_path, out_dir; documenter = true, credit = false)
          name = replace(filename, ".jl" => ".md")
-         push!(pages, joinpath("src/examples", subdir, name))
+         push!(pages, joinpath("generated", subdir, name))
       elseif endswith(filename, ".md")
          # Copy file
          cp(src_path, joinpath(out_dir, filename); force = true)
-         push!(pages, joinpath("src/examples", subdir, filename))
+         push!(pages, joinpath("generated", subdir, filename))
       end
    end
    return pages
@@ -84,7 +84,7 @@ basics_pages = process_examples("basics", basics_order)
 advanced_pages = process_examples("advanced", advanced_order)
 
 example_pages = [
-   "Overview" => "src/examples/index.md",
+   "Overview" => "generated/index.md",
    "Basics" => basics_pages,
    "Advanced" => advanced_pages
 ]
