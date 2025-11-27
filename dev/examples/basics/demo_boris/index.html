@@ -95,10 +95,10 @@ axislegend(ax, position = :lt)
 @time sol2 = solve(prob, Tsit5());
 @time sol3 = solve(prob, Vern7());
 @time sol4 = solve(prob, Vern9());</code></pre><pre><code class="nohighlight hljs">  0.000107 seconds (272 allocations: 22.250 KiB)
-  0.000792 seconds (4.89 k allocations: 364.203 KiB)
-  0.000796 seconds (23.69 k allocations: 1.314 MiB)
-  0.000651 seconds (23.08 k allocations: 1.311 MiB)
-  0.000669 seconds (18.58 k allocations: 1.065 MiB)
+  0.000828 seconds (4.89 k allocations: 364.203 KiB)
+  0.000696 seconds (23.69 k allocations: 1.314 MiB)
+  0.000641 seconds (23.08 k allocations: 1.311 MiB)
+  0.000698 seconds (18.58 k allocations: 1.065 MiB)
 </code></pre><p>We can extract the solution <code>(x, y, z, vx, vy, vz)</code> at any given time by performing a linear interpolation:</p><pre><code class="language-julia hljs">t = tspan[2] / 2
 sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArraysCore.MVector{6, Float64} with indices SOneTo(6):
     -3.911568318655031e-5
