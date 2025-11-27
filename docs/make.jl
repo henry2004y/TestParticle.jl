@@ -18,6 +18,12 @@ content = read(index_src, String)
 content = replace(content, "{{{democards}}}" => "")
 write(index_out, content)
 
+if isfile(index_out)
+   @info index_out
+   @info "exists!"
+end
+
+
 # Define orders manually
 basics_order = [
    "demo_energy_conservation.jl",
