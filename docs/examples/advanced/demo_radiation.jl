@@ -14,8 +14,8 @@
 # (non-relativistic) and Synchrotron Radiation (relativistic).
 
 # 1. General Formula (Relativistic)
-# For an electron with charge 2$e$, mass 3$m$, and velocity 4$v$ moving in a magnetic
-# field 5$B$, the total radiated power 6$P$ is given by the relativistic generalization of
+# For an electron with charge $e$, mass $m$, and velocity $v$ moving in a magnetic
+# field $B$, the total radiated power $P$ is given by the relativistic generalization of
 # the Larmor formula:
 # ```math
 # P = \frac{e^4 B^2 \gamma^2 v_{\perp}^2}{6 \pi \epsilon_0 m^2 c^3}
@@ -64,6 +64,8 @@
 # ```
 # In the non-relativistic limit, this simplifies to $\tau \approx \frac{3 m^3 c^5}{4 e^4 B^2}$
 # (note the independence from energy in the classical limit).
+#
+# All the above equations are shown in CGS units.
 
 import DisplayAs #hide
 using TestParticle: qᵢ as e, mₑ, c, ϵ₀
@@ -106,7 +108,7 @@ function radiated_power(B, β, α)
    ## Result: P = (e^4 * B^2 * γ^2 * β^2 * sin(α)^2) / (6 * π * ϵ₀ * m^2 * c)
 
    numerator = e^4 * B^2 * gamma^2 * β^2 * sin(α)^2
-   denominator = 6 * pi * ϵ₀ * (mₑ^2) * c
+   denominator = 6 * π * ϵ₀ * (mₑ^2) * c
 
    return numerator / denominator
 end
@@ -119,10 +121,10 @@ function main()
    ## --- Plot: Power vs Magnetic Field B ---
    ## Fixed parameters
    beta_fixed_1 = 0.9
-   alpha_fixed_1 = pi / 2 # Perpendicular
+   alpha_fixed_1 = π / 2 # Perpendicular
 
    B_range = range(0.1, 10.0, length = 200) # 0.1 T to 10 T
-   P_B = [radiated_power(b, beta_fixed_1, alpha_fixed_1) for b in B_range]
+   P_B = radiated_power.(B_range, beta_fixed_1, alpha_fixed_1)
 
    ax1 = Axis(fig[1, 1],
       title = L"Power vs. Magnetic Field ($B$)",
@@ -139,11 +141,11 @@ function main()
    ## --- Plot: Power vs Velocity (β) ---
    ## Fixed parameters
    B_fixed_2 = 1.0 # 1 Tesla
-   alpha_fixed_2 = pi / 2
+   alpha_fixed_2 = π / 2
 
    ## Range close to 1 to show relativistic effects
    beta_range = range(0.1, 0.999, length = 500)
-   P_beta = [radiated_power(B_fixed_2, b, alpha_fixed_2) for b in beta_range]
+   P_beta = radiated_power.(B_fixed_2, beta_range, alpha_fixed_2)
 
    ax2 = Axis(fig[1, 2],
       title = L"Power vs. Velocity ($\beta$)",
@@ -160,9 +162,9 @@ function main()
    B_fixed_3 = 1.0
    beta_fixed_3 = 0.9
 
-   alpha_range = range(0, pi, length = 360)
+   alpha_range = range(0, π, length = 360)
    alpha_deg = rad2deg.(alpha_range)
-   P_alpha = [radiated_power(B_fixed_3, beta_fixed_3, a) for a in alpha_range]
+   P_alpha = radiated_power.(B_fixed_3, beta_fixed_3, alpha_range)
 
    ax3 = Axis(fig[2, 1],
       title = L"Power vs. Pitch Angle ($\alpha$)",
@@ -182,7 +184,7 @@ function main()
    beta_hm = range(0.5, 0.999, length = 100)
 
    ## Calculate matrix
-   P_matrix = [log10(radiated_power(b, v, pi / 2)) for b in B_hm, v in beta_hm]
+   P_matrix = log10.(radiated_power.(B_hm, beta_hm', π / 2))
 
    ax4 = Axis(fig[2, 2],
       title = "Log10(Power) Heatmap",
@@ -207,12 +209,9 @@ f = DisplayAs.PNG(f) #hide
 # becomes comparable to or shorter than the characteristic timescale of our system
 # (e.g., confinement time, acceleration time, or simulation duration).
 # ```math
-# \tau \approx \frac{E}{P} \approx \frac{5.2 \times 10^5}{B^2 \gamma} \text{ seconds (where B is in Tesla)}
+# \tau \approx \frac{E}{P} = \frac{6 \pi \epsilon_0 m^3 c^3}{e^4 B^2 \gamma} = \frac{5.2}{B^2 \gamma} \text{ seconds (where B is in Tesla)}
 # ```
 # - Weak Fields / Low Energy: If $B=1\text{ T}$ and the electron is non-relativistic
-# ($\gamma \approx 1$), $\tau \approx 500,000$ seconds. You can safely ignore radiation; it
-# won't affect the particle's trajectory or energy on any reasonable simulation timescale.
+# ($\gamma \approx 1$), $\tau \approx 5$ seconds. You can safely ignore radiation.
 # - Strong Fields / High Energy: If $B=5\text{ T}$ and you have a 1 GeV electron
-# ($\gamma \approx 2000$), then $\tau \approx 10$ seconds. If your simulation runs for
-# milliseconds, you might ignore it. If it runs for minutes (like in a storage ring),
-# radiation is the dominant effect.
+# ($\gamma \approx 2000$), then $\tau \approx 2.5$ milliseconds.
