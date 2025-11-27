@@ -8,14 +8,13 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
                  DEFAULT_SPECIALIZATION, ODEFunction,
                  LinearInterpolation
-using StaticArrays: SVector, @SMatrix, MVector, SA
+using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
-import StaticArrays: StaticArray
 
 export prepare, prepare_gc, sample, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
