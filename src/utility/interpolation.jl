@@ -34,6 +34,7 @@ Return a function for interpolating field array `A` on the grid given by `gridx`
 and `gridz`.
 
 # Arguments
+
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
@@ -144,6 +145,7 @@ Return a function for interpolating scalar array `A` on the grid given by `gridx
 and `gridz`. Currently only 3D arrays are supported.
 
 # Arguments
+
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
@@ -166,10 +168,11 @@ Return a function for interpolating field array `A` on the grid given by `gridx`
 and `gridz`.
 
 # Arguments
-- `gridtype`: `Cartesian`, `Spherical` or `SphericalNonUniformR`.
-- `A`: field array. For vector field, the first dimension should be 3.
-- `order::Int=1`: order of interpolation in [1,2,3].
-- `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+
+  - `gridtype`: `Cartesian`, `Spherical` or `SphericalNonUniformR`.
+  - `A`: field array. For vector field, the first dimension should be 3.
+  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
 """
 function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
