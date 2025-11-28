@@ -106,7 +106,7 @@ makedocs(;
       "API" => "api.md",
       "Plot Functions" => "plotfunctions.md"
    ],
-   warnonly = false
+   warnonly = true
 )
 
 deploydocs(;
