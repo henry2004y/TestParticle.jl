@@ -1,5 +1,5 @@
 # # Helix motion
-
+#
 # This example demonstrates a single proton motion under a uniform B field.
 # The E field is assumed to be zero such that there is no particle acceleration.
 

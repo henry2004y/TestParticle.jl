@@ -1,5 +1,5 @@
 # # Grad-B Drift
-
+#
 # This example demonstrates a single proton motion under a non-uniform B field with gradient ∇B ⊥ B.
 # The orbit of guiding center includes some high order terms, it is different from the formula of magnetic field gradient drift of some textbooks which just preserves the first order term.
 # It is more complex than the simpler [ExB drift](@ref "E×B Drift").

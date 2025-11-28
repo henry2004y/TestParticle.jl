@@ -1,5 +1,5 @@
 # # Single Tracing with Additional Diagnostics
-
+#
 # This example demonstrates tracing one proton in an analytic E field and numerical B field.
 # It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.
 # This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 under magnetic field magnitude 1 will possess a gyro-radius of 1.

@@ -1,5 +1,5 @@
 # # Tracing in Spherical Coordinates
-
+#
 # This example demonstrates a single proton motion under a uniform B field defined in
 # spherical coordinates following the same values in [Demo: Helix motion](@ref "E×B Drift"). The E field is set to zero.
 

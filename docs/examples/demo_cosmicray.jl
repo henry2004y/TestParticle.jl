@@ -1,5 +1,5 @@
 # # Cosmic Ray Tracing
-
+#
 # This example shows how to trace cosmic rays in a background magnetic field.
 # In the original MHD solution, everything is dimensionless.
 # We are following the normalization procedures in [Cosmic ray propagation in sub-Alfvénic magnetohydrodynamic turbulence](https://doi.org/10.1051/0004-6361/201527376).

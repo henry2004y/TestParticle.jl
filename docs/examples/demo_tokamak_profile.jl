@@ -1,5 +1,5 @@
 # # Tokamak Profile
-
+#
 # This example shows how to trace protons in a stationary magnetic field that
 # corresponds to an ITER-like Tokamak.
 

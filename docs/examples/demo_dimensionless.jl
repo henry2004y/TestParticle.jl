@@ -1,5 +1,5 @@
 # # Dimensionless Tracing
-
+#
 # This example shows how to trace charged particles in dimensionless units.
 # After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``.
 # All the quantities are given in dimensionless units: if the magnetic field is homogeneous and the initial perpendicular velocity ``v_{\perp 0}^\prime`` is 4, then the gyroradius is 4.

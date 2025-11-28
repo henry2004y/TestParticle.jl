@@ -1,5 +1,5 @@
 # # Current Sheet
-
+#
 # This example shows how to trace protons in a stationary magnetic field that corresponds to
 # the 1D Harris current sheet defined by a reference strength and width.
 # A Wiki reference can be found [here](https://en.wikipedia.org/wiki/Current_sheet).

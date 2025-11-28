@@ -1,5 +1,5 @@
 # # Boris Method
-
+#
 # This example demonstrates a single electron motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration.
 # We use the [Boris method](https://apps.dtic.mil/sti/citations/ADA023511) for phase space conservation under a fixed time step.
 # This is compared against other ODE general algorithms for performance and accuracy.

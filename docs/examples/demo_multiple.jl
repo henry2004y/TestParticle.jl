@@ -1,4 +1,6 @@
 # # Multiple Particles
+#
+# Tracing multiple particles requires changes in the initial conditions.
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner

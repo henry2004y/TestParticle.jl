@@ -1,5 +1,5 @@
 # # ExF Drift
-
+#
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
 import DisplayAs #hide
@@ -24,7 +24,7 @@ tspan = (0, 1.0)
 param = prepare(E, B, F, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
-## drift in x-direction + free fall in z-direction
+## Drift in x-direction + free fall in z-direction
 f = lines(sol, idxs = (3, 1);
    figure = (; size = (800, 400), fontsize = 18),
    axis = (;

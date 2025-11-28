@@ -1,5 +1,5 @@
 # # Guiding Center Approximation
-
+#
 # This example demonstrates how to solve the guiding center (GC) equations directly using TestParticle.jl.
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 

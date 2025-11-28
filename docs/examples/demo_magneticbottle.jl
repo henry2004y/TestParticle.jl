@@ -1,5 +1,5 @@
 # # Electron in a Magnetic Bottle
-
+#
 # This example shows how to trace non-relativistic and relativistic electrons in a
 # stationary magnetic field that corresponds to a magnetic bottle.
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)

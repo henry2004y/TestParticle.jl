@@ -1,5 +1,5 @@
 # # Proton and electron in a static EM field
-
+#
 # This example demonstrates tracing a single proton and electron motion under a uniform B field in real physical parameters. The E field is assumed to be zero such that there is no particle acceleration.
 # Due to the fact that ``m_p / m_e \doteq 1836``, the proton gyro-radius is 1800 times larger than the electron, if they start with the same velocity as in this case. In more common cases we would compare electrons and protons with the same energy, and their gyro-radii differ by a factor of ``\sqrt{m_p/m_e} \sim 40``.
 
