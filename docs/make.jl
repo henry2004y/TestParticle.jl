@@ -110,5 +110,8 @@ makedocs(;
 
 deploydocs(;
    repo = "github.com/henry2004y/TestParticle.jl",
+   target = "build",
+   devbranch = "master",
+   branch = "gh-pages",
    push_preview = true
 )
