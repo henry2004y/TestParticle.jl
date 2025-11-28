@@ -155,11 +155,11 @@ Another aspect to compare is performance:
 
 
 ```ansi
-  0.000112 seconds (308 allocations: 23.891 KiB)
-  0.000778 seconds (4.89 k allocations: 364.203 KiB)
-  0.000739 seconds (23.69 k allocations: 1.314 MiB)
-  0.000700 seconds (23.08 k allocations: 1.311 MiB)
-  0.000719 seconds (18.58 k allocations: 1.065 MiB)
+  0.000127 seconds (308 allocations: 23.891 KiB)
+  0.000741 seconds (4.89 k allocations: 364.203 KiB)
+  0.000686 seconds (23.69 k allocations: 1.314 MiB)
+  0.000663 seconds (23.08 k allocations: 1.311 MiB)
+  0.000674 seconds (18.58 k allocations: 1.065 MiB)
 ```
 
 
