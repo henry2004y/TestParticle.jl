@@ -109,7 +109,7 @@ makedocs(;
    warnonly = true
 )
 
-deploydocs(;
+DocumenterVitepress.deploydocs(;
    repo = "github.com/henry2004y/TestParticle.jl",
    target = "build",
    devbranch = "master",
