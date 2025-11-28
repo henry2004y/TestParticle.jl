@@ -10,7 +10,7 @@
 Type for BiMaxwellian velocity distributions with respect to the magnetic field.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L31-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L31-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -27,7 +27,7 @@ Type for BiMaxwellian velocity distributions with respect to the magnetic field.
 Construct a BiMaxwellian distribution with magnetic field `B`, bulk velocity `u0`, parallel thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in SI units. The default particle is proton.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L45-L51" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L45-L51" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -39,7 +39,7 @@ Construct a BiMaxwellian distribution with magnetic field `B`, bulk velocity `u0
 Cartesian grid.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L7-L9" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L7-L9" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -51,7 +51,7 @@ Cartesian grid.
 Type for Maxwellian velocity distributions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L8-L10" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L8-L10" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -68,7 +68,7 @@ Type for Maxwellian velocity distributions.
 Construct a Maxwellian distribution with bulk velocity `u0`, thermal pressure `p`, and number density `n` in SI units. The default particle is proton.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L18-L23" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L18-L23" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -80,7 +80,7 @@ Construct a Maxwellian distribution with bulk velocity `u0`, thermal pressure `p
 Spherical grid with uniform r, θ and ϕ.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L11-L13" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L11-L13" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -92,7 +92,7 @@ Spherical grid with uniform r, θ and ϕ.
 Spherical grid with non-uniform r and uniform θ, ϕ.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L15-L17" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L15-L17" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -104,7 +104,7 @@ Spherical grid with non-uniform r and uniform θ, ϕ.
 Return velocity magnitude from energy in [eV].
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L211-L213" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L211-L213" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -116,7 +116,7 @@ Return velocity magnitude from energy in [eV].
 Calculate the energy [eV] of a relativistic particle from γv.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L200-L202" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L200-L202" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -128,7 +128,7 @@ Calculate the energy [eV] of a relativistic particle from γv.
 Return the energy [eV] from relativistic `sol`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L184-L186" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L184-L186" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -150,7 +150,7 @@ Nonrelativistic definition:
 $$\mathbf{X}=\mathbf{x}-m\frac{\mathbf{b}\times\mathbf{v}}{qB}$$
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/gc.jl#L76-L88" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/gc.jl#L76-L88" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -183,7 +183,7 @@ lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/gc.jl#L136-L155" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/gc.jl#L136-L155" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -195,7 +195,7 @@ lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6))
 Return the gyrofrequency.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L130-L132" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L130-L132" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -207,7 +207,7 @@ Return the gyrofrequency.
 Return the gyroperiod.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L154-L156" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L154-L156" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -219,7 +219,7 @@ Return the gyroperiod.
 Return the gyroradius.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L141-L143" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L141-L143" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -231,7 +231,7 @@ Return the gyroradius.
 Return velocity from relativistic γv in `sol`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L166-L168" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L166-L168" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -271,7 +271,7 @@ Direct range input for uniform grid in 1/2/3D is supported. For 1D grid, an addi
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/prepare.jl#L81-L108" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/prepare.jl#L81-L108" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -295,7 +295,7 @@ Sample a 3D velocity from a [`Maxwellian`](/api#TestParticle.Maxwellian) distrib
 Sample a 3D velocity from a [`BiMaxwellian`](/api#TestParticle.BiMaxwellian) distribution `vdf` using the Box-Muller method.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L69-L77" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L69-L77" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -312,7 +312,7 @@ trace!(dy, y, p, t)
 ODE equations for charged particle moving in static EM field and external force field with in-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L25-L29" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L25-L29" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -329,7 +329,7 @@ trace(y, p, t) -> SVector{6, Float64}
 ODE equations for charged particle moving in static EM field and external force field with out-of-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L38-L42" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L38-L42" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -346,7 +346,7 @@ ODE equations for charged particle moving in static EM field and external force 
 Guiding center equations for nonrelativistic charged particle moving in static EM field with in-place form. Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L154-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L154-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -358,7 +358,7 @@ Guiding center equations for nonrelativistic charged particle moving in static E
 1st order approximation of guiding center equations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L196-L198" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L196-L198" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -375,7 +375,7 @@ Guiding center equations for nonrelativistic charged particle moving in static E
 Equations for tracing the guiding center using analytical drifts, including the grad-B drift, curvature drift, and ExB drift. Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L127-L132" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L127-L132" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -392,7 +392,7 @@ Equations for tracing the guiding center using analytical drifts, including the 
 Normalized ODE equations for charged particle moving in static EM field with in-place form. If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via the extrapolation function provided by Interpolations.jl.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L76-L82" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L76-L82" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -409,7 +409,7 @@ Normalized ODE equations for charged particle moving in static EM field with in-
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L49-L53" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L49-L53" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -426,7 +426,7 @@ ODE equations for relativistic charged particle (x, γv) moving in static EM fie
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L63-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L63-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -443,7 +443,7 @@ ODE equations for relativistic charged particle (x, γv) moving in static EM fie
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L94-L98" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L94-L98" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -460,7 +460,7 @@ Normalized ODE equations for relativistic charged particle (x, γv) moving in st
 Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/equations.jl#L111-L115" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/equations.jl#L111-L115" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -474,7 +474,7 @@ Normalized ODE equations for relativistic charged particle (x, γv) moving in st
 Abstract type for tracing solutions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/TestParticle.jl#L36-L38" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/TestParticle.jl#L36-L38" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -507,7 +507,7 @@ $$\mathbf{F} = F(\mathbf{x}, t).$$
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/prepare.jl#L12-L34" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/prepare.jl#L12-L34" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -519,7 +519,7 @@ $$\mathbf{F} = F(\mathbf{x}, t).$$
 The type of parameter tuple for guiding center problem.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/prepare.jl#L56-L58" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/prepare.jl#L56-L58" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -531,7 +531,7 @@ The type of parameter tuple for guiding center problem.
 Type for grid.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -543,7 +543,7 @@ Type for grid.
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/TestParticle.jl#L31-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/TestParticle.jl#L31-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -555,7 +555,7 @@ Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 Interpolate solution at time `x`. Forward tracing only.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L52-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L52-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -567,7 +567,7 @@ Interpolate solution at time `x`. Forward tracing only.
 Abstract type for velocity distribution functions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/sampler.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/sampler.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -579,7 +579,7 @@ Abstract type for velocity distribution functions.
 Apply Boris method for particles with index in `irange`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L228-L230" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L228-L230" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -591,7 +591,7 @@ Apply Boris method for particles with index in `irange`.
 Prepare for advancing.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L216-L218" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L216-L218" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -603,7 +603,7 @@ Prepare for advancing.
 Convert from Cartesian to spherical coordinates vector.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L14-L16" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L14-L16" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -615,7 +615,7 @@ Convert from Cartesian to spherical coordinates vector.
 In-place cross product.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L167-L169" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L167-L169" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -627,7 +627,7 @@ In-place cross product.
 Calculates the magnetic field from a dipole with magnetic moment `M` at `r`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/dipole.jl#L16-L18" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/dipole.jl#L16-L18" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -644,7 +644,7 @@ Calculates the magnetic field from a dipole with magnetic moment `M` at `r`.
 Creates `nP` points on one field line of the magnetic field from a dipole. In a centered dipole magnetic field model, the path along a given L shell can be described as r = L*cos²λ, where r is the radial distance (in planetary radii) to a point on the line, λ is its co-latitude, and L is the L-shell of interest.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/dipole.jl#L29-L36" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/dipole.jl#L29-L36" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -661,7 +661,7 @@ Creates `nP` points on one field line of the magnetic field from a dipole. In a 
 Return the magnetic field at location `r` near a current sheet with magnetic strength `B₀` and sheet length `L`. The current sheet is assumed to lie in the z = 0 plane.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/current_sheet.jl#L3-L8" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/current_sheet.jl#L3-L8" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -692,7 +692,7 @@ Get magnetic field from a magnetic bottle. Reference: [wiki](https://en.wikipedi
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/confinement.jl#L70-L85" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/confinement.jl#L70-L85" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -719,7 +719,7 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/confinement.jl#L18-L29" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/confinement.jl#L18-L29" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -731,7 +731,7 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
 Analytic magnetic field function for testing. Return in SI unit.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/dipole.jl#L8-L10" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/dipole.jl#L8-L10" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -758,7 +758,7 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/confinement.jl#L43-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/confinement.jl#L43-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -787,7 +787,7 @@ Get the magnetic field from a Tokamak topology consists of 16 coils. Original: [
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/confinement.jl#L101-L114" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/confinement.jl#L101-L114" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -816,7 +816,7 @@ Reconstruct the magnetic field distribution from a safe factor(q) profile. Refer
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/confinement.jl#L186-L199" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/confinement.jl#L186-L199" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -828,7 +828,7 @@ Reconstruct the magnetic field distribution from a safe factor(q) profile. Refer
 Analytic electric field function for testing.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/dipole.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/dipole.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -856,7 +856,7 @@ Return a function for interpolating field array `A` on the grid given by `gridx`
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L163-L176" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L163-L176" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -884,7 +884,7 @@ R = get_rotation_matrix(v̂, θ)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L105-L121" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L105-L121" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -901,7 +901,7 @@ R = get_rotation_matrix(v̂, θ)
 Return charge and mass for `species`. For `species = Ion`, `q` and `m` are charge and mass numbers. For `species = User`, the input `q` and `m` are returned as is.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L46-L51" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L46-L51" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -926,7 +926,7 @@ Return a function for interpolating field array `A` on the grid given by `gridx`
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L30-L41" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L30-L41" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -951,7 +951,7 @@ Return a function for interpolating scalar array `A` on the grid given by `gridx
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/interpolation.jl#L141-L152" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/interpolation.jl#L141-L152" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -963,7 +963,7 @@ Return a function for interpolating scalar array `A` on the grid given by `gridx
 Judge whether the field function is time dependent.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/prepare.jl#L7-L9" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/prepare.jl#L7-L9" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -975,7 +975,7 @@ Judge whether the field function is time dependent.
 Return uniform range from 2D/3D CartesianGrid.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L66-L68" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L66-L68" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -992,7 +992,7 @@ Return uniform range from 2D/3D CartesianGrid.
 Set 3D plot axes to equal scale for Matplotlib. Make axes of 3D plot have equal scale so that spheres appear as spheres and cubes as cubes. Required since `ax.axis('equal')` and `ax.set_aspect('equal')` don&#39;t work on 3D.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L85-L91" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L85-L91" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1020,7 +1020,7 @@ Trace particles using the Boris method with specified `prob`.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L178-L190" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L178-L190" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1032,7 +1032,7 @@ Trace particles using the Boris method with specified `prob`.
 Convert from spherical to Cartesian coordinates vector.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L3-L5" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1044,7 +1044,7 @@ Convert from spherical to Cartesian coordinates vector.
 Convert a vector from spherical to Cartesian.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/utility/utility.jl#L29-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/utility/utility.jl#L29-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1056,7 +1056,7 @@ Convert a vector from spherical to Cartesian.
 Update location in one timestep `dt`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L156-L158" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L156-L158" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1073,7 +1073,7 @@ Update location in one timestep `dt`.
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation. Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/dc92e4fd7e082a3761bcaff6f7059cbe622e7eec/src/pusher.jl#L114-L119" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/henry2004y/TestParticle.jl/blob/f6ab2b14862afc205e5db218b2f808471b86bf81/src/pusher.jl#L114-L119" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

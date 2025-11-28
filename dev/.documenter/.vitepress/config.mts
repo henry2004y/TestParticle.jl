@@ -77,7 +77,7 @@ const nav = [
 export default defineConfig({
   base: '/henry2004y.github.io/TestParticle.jl/dev/',// TODO: replace this in makedocs!
   title: 'TestParticle.jl',
-  description: 'Documentation for TestParticle.jl',
+  description: 'Test particle tracing in fields',
   lastUpdated: true,
   cleanUrls: true,
   ignoreDeadLinks: true,
