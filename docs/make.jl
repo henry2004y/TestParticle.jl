@@ -78,8 +78,8 @@ advanced_pages = process_examples(advanced_order)
 
 example_pages = [
    "Overview" => "examples/index.md",
-   "Basics" => basics_pages,
-   "Advanced" => advanced_pages
+   # "Basics" => basics_pages,
+   # "Advanced" => advanced_pages
 ]
 
 makedocs(;
