@@ -113,4 +113,4 @@ ax.set_box_aspect([1.17,4,4])
 TestParticle.set_axes_equal(ax)
 ```
 
-![](../../figures/proton_ganymede_mhdepic.png)
+![](../figures/proton_ganymede_mhdepic.png)
