@@ -4,7 +4,7 @@
 # After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``.
 # All the quantities are given in dimensionless units: if the magnetic field is homogeneous and the initial perpendicular velocity ``v_{\perp 0}^\prime`` is 4, then the gyroradius is 4.
 # To convert them to the original units, ``v_\perp = v_{\perp}^\prime * U_0`` and ``r_L = r_L^\prime * l_0 = 4*l_0``.
-# Check [Demo: single tracing with additional diagnostics](@ref "Single Tracing with Additional Diagnostics") and [Demo: Dimensionless and Dimensional Tracing](@ref "Dimensionless and Dimensional Tracing") for explaining the unit conversion.
+# Check Demo: Single Tracing with Additional Diagnostics and [Demo: Dimensionless and Dimensional Tracing for explaining the unit conversion.
 
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
 

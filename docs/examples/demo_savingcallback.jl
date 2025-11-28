@@ -11,7 +11,7 @@
 # However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
 
 # The `SavingCallback` from DiffEqCallbacks.jl can be used to save additional outputs for diagnosis. Here we save the magnetic field along the trajectory, together with the parallel velocity.
-# Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see [Demo: ensemble tracing with extra saving](@ref "Ensemble Tracing with Extra Saving").
+# Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see Demo: Ensemble Tracing with Extra Saving.
 
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ

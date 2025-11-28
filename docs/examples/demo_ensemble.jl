@@ -55,7 +55,7 @@ end
 
 f = DisplayAs.PNG(f) #hide
 
-# We can also solve this problem with the native [Boris pusher](@ref "Boris Method").
+# We can also solve this problem with the native Boris pusher.
 # Note that the Boris pusher requires a additional parameters: a fixed timestep, and an output save interval.
 
 dt = 0.1

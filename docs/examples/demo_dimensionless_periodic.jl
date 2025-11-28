@@ -1,7 +1,7 @@
 # # Tracing with Dimensionless Units and Periodic Boundary
 #
 # This example shows how to trace charged particles in dimensionless units and EM fields with periodic boundaries in a 2D spatial domain.
-# For details about dimensionless units, please check [Dimensionless tracing](@ref "Dimensionless Tracing").
+# For details about dimensionless units, please check Demo: Dimensionless Tracing.
 
 # Now let's demonstrate this with `trace_normalized!`.
 
