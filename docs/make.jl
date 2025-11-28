@@ -97,7 +97,6 @@ makedocs(;
       repo = "https://github.com/henry2004y/TestParticle.jl",
       devbranch = "master",
       devurl = "dev",
-      deploy_url = "henry2004y.github.io/TestParticle.jl"
    ),
    pages = [
       "Home" => "index.md",
