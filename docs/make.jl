@@ -4,7 +4,7 @@ using TestParticle
 using Literate
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
-const OUTPUT_DIR = joinpath(@__DIR__, "generated")
+const OUTPUT_DIR = joinpath(@__DIR__, "src/generated")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
@@ -17,12 +17,6 @@ index_out = joinpath(OUTPUT_DIR, "index.md")
 content = read(index_src, String)
 content = replace(content, "{{{democards}}}" => "")
 write(index_out, content)
-
-if isfile(index_out)
-   @info index_out
-   @info "exists!"
-end
-
 
 # Define orders manually
 basics_order = [
@@ -90,7 +84,7 @@ basics_pages = process_examples("basics", basics_order)
 advanced_pages = process_examples("advanced", advanced_order)
 
 example_pages = [
-   "Overview" => joinpath(OUTPUT_DIR, "index.md"),
+   "Overview" => "generated/index.md",
    "Basics" => basics_pages,
    "Advanced" => advanced_pages
 ]
