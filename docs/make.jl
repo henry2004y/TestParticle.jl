@@ -77,7 +77,7 @@ basics_pages = process_examples(basics_order)
 advanced_pages = process_examples(advanced_order)
 
 example_pages = [
-   "Overview" => "examples/index.md",
+   #"Overview" => "examples/index.md",
    # "Basics" => basics_pages,
    # "Advanced" => advanced_pages
 ]
