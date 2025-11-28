@@ -4,7 +4,7 @@ using TestParticle
 using Literate
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
-const OUTPUT_DIR = joinpath(@__DIR__, "src/generated")
+const OUTPUT_DIR = joinpath(@__DIR__, "src/examples")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
@@ -60,31 +60,31 @@ advanced_order = [
    "demo_gpu.md"
 ]
 
-function process_examples(subdir, order)
+function process_examples(order)
    pages = String[]
    for filename in order
-      src_path = joinpath(EXAMPLES_DIR, subdir, filename)
-      out_dir = joinpath(OUTPUT_DIR, subdir)
+      src_path = joinpath(EXAMPLES_DIR, filename)
+      out_dir = OUTPUT_DIR
 
       if endswith(filename, ".jl")
          # Compile to markdown
          Literate.markdown(src_path, out_dir; documenter = true, credit = false)
          name = replace(filename, ".jl" => ".md")
-         push!(pages, joinpath("generated", subdir, name))
+         push!(pages, joinpath("examples", name))
       elseif endswith(filename, ".md")
          # Copy file
          cp(src_path, joinpath(out_dir, filename); force = true)
-         push!(pages, joinpath("generated", subdir, filename))
+         push!(pages, joinpath("examples", filename))
       end
    end
    return pages
 end
 
-basics_pages = process_examples("basics", basics_order)
-advanced_pages = process_examples("advanced", advanced_order)
+basics_pages = process_examples(basics_order)
+advanced_pages = process_examples(advanced_order)
 
 example_pages = [
-   "Overview" => "generated/index.md",
+   "Overview" => "examples/index.md",
    "Basics" => basics_pages,
    "Advanced" => advanced_pages
 ]
