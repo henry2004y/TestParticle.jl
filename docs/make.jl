@@ -1,7 +1,6 @@
 using Documenter, DocumenterVitepress
-using TestParticle
-
 using Literate
+using TestParticle
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
 const OUTPUT_DIR = joinpath(@__DIR__, "src/examples")
