@@ -11,12 +11,7 @@ mkpath(OUTPUT_DIR)
 mkpath(joinpath(OUTPUT_DIR, "basics"))
 mkpath(joinpath(OUTPUT_DIR, "advanced"))
 
-# Copy and clean index.md
-index_src = joinpath(EXAMPLES_DIR, "index.md")
-index_out = joinpath(OUTPUT_DIR, "index.md")
-content = read(index_src, String)
-content = replace(content, "{{{democards}}}" => "")
-write(index_out, content)
+cp(index_src, index_out; force = true)
 
 # Define orders manually
 basics_order = [
@@ -64,16 +59,15 @@ function process_examples(order)
    pages = String[]
    for filename in order
       src_path = joinpath(EXAMPLES_DIR, filename)
-      out_dir = OUTPUT_DIR
 
       if endswith(filename, ".jl")
          # Compile to markdown
-         Literate.markdown(src_path, out_dir; documenter = true, credit = false)
+         Literate.markdown(src_path, OUTPUT_DIR; documenter = true, credit = false)
          name = replace(filename, ".jl" => ".md")
          push!(pages, joinpath("examples", name))
       elseif endswith(filename, ".md")
          # Copy file
-         cp(src_path, joinpath(out_dir, filename); force = true)
+         cp(src_path, joinpath(OUTPUT_DIR, filename); force = true)
          push!(pages, joinpath("examples", filename))
       end
    end
