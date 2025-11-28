@@ -1,0 +1,185 @@
+
+
+
+
+---
+
+
+title: Boris method id: demo_boris date: 2024-01-23 author: &quot;[Hongyang Zhou](https://github.com/henry2004y)&quot; julia: 1.10.0 description: Simple electron trajectory under uniform B and zero E –-
+
+This example demonstrates a single electron motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration. We use the [Boris method](https://apps.dtic.mil/sti/citations/ADA023511) for phase space conservation under a fixed time step. This is compared against other ODE general algorithms for performance and accuracy.
+
+```julia
+using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: ZeroField, get_BField
+import TestParticle as TP
+using CairoMakie
+
+function plot_trajectory(sol_boris, sol1, sol2)
+   f = Figure(size = (700, 600), fontsize = 18)
+   ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
+      xlabel = "X",
+      ylabel = "Y")
+   idxs = (1, 2)
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris")
+   l1 = lines!(ax, sol1; idxs,
+      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
+   l2 = linesegments!(ax, sol2; idxs,
+      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
+
+   scale!(ax.scene, invrL, invrL)
+
+   axislegend(position = :rt, framevisible = false)
+
+   f
+end
+
+const Bmag = 0.01
+uniform_B(x) = SA[0.0, 0.0, Bmag]
+zero_E = ZeroField()
+
+x0 = [0.0, 0.0, 0.0]
+v0 = [0.0, 1e5, 0.0]
+stateinit = [x0..., v0...]
+
+param = prepare(zero_E, uniform_B, species = Electron)
+
+# Reference parameters
+const tperiod = 2π / (abs(param[1]) *
+                 sqrt(sum(x -> x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
+const invrL = 1 / rL;
+```
+
+
+We first trace the particle for one period with a discrete time step of a quarter period.
+
+```julia
+tspan = (0.0, tperiod)
+dt = tperiod / 4
+
+prob = TraceProblem(stateinit, tspan, param)
+
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+```
+
+
+Let&#39;s compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
+
+```julia
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+sol2 = solve(prob, Tsit5());
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)
+```
+
+![](vxcfxxn.png){width=700px height=600px}
+
+It is clear that the Boris method comes with larger phase errors ($\mathcal{O}(\Delta t)$) compared with Tsit5. The phase error gets smaller using a smaller dt:
+
+```julia
+dt = tperiod / 8
+
+prob = TraceProblem(stateinit, tspan, param)
+
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)
+```
+
+![](mtestvy.png){width=700px height=600px}
+
+The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
+
+```julia
+tspan = (0.0, 200 * tperiod)
+dt = tperiod / 12
+
+prob_boris = TraceProblem(stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+sol2 = solve(prob, Tsit5());
+sol3 = solve(prob, Vern7());
+sol4 = solve(prob, Vern9());
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)
+```
+
+![](nqlyrnn.png){width=700px height=600px}
+
+Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
+
+```julia
+E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
+f = Figure(size = (800, 400), fontsize = 18)
+ax = Axis(f[1, 1],
+   xlabel = "time [period]",
+   ylabel = "Normalized Kinetic Energy")
+
+sols_to_plot = [
+   (sol_boris[1], "Boris"),
+   (sol1, "Tsit5 fixed"),
+   (sol2, "Tsit5 adaptive"),
+   (sol3, "Vern7 adaptive"),
+   (sol4, "Vern9 adaptive")
+]
+
+for (sol, label) in sols_to_plot
+   energy = map(x -> E(x[4:6]...), sol.u)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
+end
+
+axislegend(ax, position = :lt)
+```
+
+![](bxlueoi.png){width=800px height=400px}
+
+Another aspect to compare is performance:
+
+```julia
+@time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+@time sol2 = solve(prob, Tsit5());
+@time sol3 = solve(prob, Vern7());
+@time sol4 = solve(prob, Vern9());
+```
+
+
+```ansi
+  0.000112 seconds (308 allocations: 23.891 KiB)
+  0.000778 seconds (4.89 k allocations: 364.203 KiB)
+  0.000739 seconds (23.69 k allocations: 1.314 MiB)
+  0.000700 seconds (23.08 k allocations: 1.311 MiB)
+  0.000719 seconds (18.58 k allocations: 1.065 MiB)
+```
+
+
+We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
+
+```julia
+t = tspan[2] / 2
+sol_boris(t)
+```
+
+
+```ansi
+6-element StaticArraysCore.MVector{6, Float64} with indices SOneTo(6):
+    -3.911568318655031e-5
+    -5.5137270837814596e-5
+     0.0
+ 99639.26547015733
+  8486.269885387323
+     0.0
+```
+
+
+The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
