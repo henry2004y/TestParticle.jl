@@ -1,11 +1,4 @@
-# ---
-# title: Electron in a magnetic bottle
-# id: demo_electron_bottle
-# date: 2023-04-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Tracing charged particle in a magnetic bottle
-# ---
+# # Electron in a Magnetic Bottle
 
 # This example shows how to trace non-relativistic and relativistic electrons in a
 # stationary magnetic field that corresponds to a magnetic bottle.

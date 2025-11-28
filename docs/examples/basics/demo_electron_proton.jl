@@ -1,11 +1,4 @@
-# ---
-# title: Proton and electron in a static EM field
-# id: demo_proton_electron
-# date: 2023-04-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y); [Tiancheng Liu](https://github.com/TCLiuu)"
-# julia: 1.9.0
-# description: Simple particle trajectories under uniform B and zero E
-# ---
+# # Proton and electron in a static EM field
 
 # This example demonstrates tracing a single proton and electron motion under a uniform B field in real physical parameters. The E field is assumed to be zero such that there is no particle acceleration.
 # Due to the fact that ``m_p / m_e \doteq 1836``, the proton gyro-radius is 1800 times larger than the electron, if they start with the same velocity as in this case. In more common cases we would compare electrons and protons with the same energy, and their gyro-radii differ by a factor of ``\sqrt{m_p/m_e} \sim 40``.

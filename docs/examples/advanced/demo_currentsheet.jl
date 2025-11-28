@@ -1,11 +1,4 @@
-# ---
-# title: Current sheet
-# id: demo_currentsheet
-# date: 2024-04-09
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.4
-# description: Tracing charged particle in the Harris current sheet
-# ---
+# # Current Sheet
 
 # This example shows how to trace protons in a stationary magnetic field that corresponds to
 # the 1D Harris current sheet defined by a reference strength and width.

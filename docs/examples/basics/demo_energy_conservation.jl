@@ -1,11 +1,4 @@
-# ---
-# title: Energy Conservation
-# id: demo_energy_conservation
-# date: 2023-10-27
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.3
-# description: Demonstrate energy conservation in uniform fields.
-# ---
+# # Energy Conservation
 
 # This example demonstrates the energy conservation of a single proton motion in two cases. The first one is under a uniform B field and zero E field. The second on is under a zero B field and uniform E field.
 

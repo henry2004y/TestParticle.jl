@@ -1,11 +1,4 @@
-# ---
-# title: Guiding Center Approximation
-# id: demo_GC
-# date: 2024-06-02
-# author: "[Hongyang Zhou](https://github.com/henry2004y); [Tiancheng Liu](https://github.com/TCLiuu)"
-# julia: 1.10.3
-# description: Demonstrate the GC solvers
-# ---
+# # Guiding Center Approximation
 
 # This example demonstrates how to solve the guiding center (GC) equations directly using TestParticle.jl.
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).

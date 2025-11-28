@@ -1,15 +1,8 @@
-# ---
-# title: Advanced Boris tracing
-# id: demo_boris_advance
-# date: 2024-01-27
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Boris ensemble tracing with field out-of-domain check
-# ---
+# # Advanced Boris Tracing
 
 # This example shows how to trace charged particles using the Boris method in dimensionless units with additionally boundary check.
 # If the particles travel out of the domain specified by the field, the tracing will stop.
-# Check [Demo: Dimensionless Units](@ref demo_dimensionless) for explaining the unit conversion, and [Demo: Boris Method](@ref demo_boris) for introducing the Boris method.
+# Check [Demo: Dimensionless Units](@ref "Dimensionless Tracing") for explaining the unit conversion, and [Demo: Boris Method](@ref "Boris Method") for introducing the Boris method.
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays

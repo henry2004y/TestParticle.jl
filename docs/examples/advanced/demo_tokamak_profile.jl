@@ -1,11 +1,4 @@
-# ---
-# title: Tokamak profile
-# id: demo_tokamak_profile
-# date: 2023-04-20
-# author: "[Tiancheng Liu](https://github.com/TCLiuu)"
-# julia: 1.9.0
-# description: Tracing passing and trapped proton in a Tokamak
-# ---
+# # Tokamak Profile
 
 # This example shows how to trace protons in a stationary magnetic field that
 # corresponds to an ITER-like Tokamak.

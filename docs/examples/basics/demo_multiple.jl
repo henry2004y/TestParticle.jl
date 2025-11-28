@@ -1,11 +1,4 @@
-# ---
-# title: Multiple particles
-# id: demo_multiple
-# date: 2023-04-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.2
-# description: Tracing multiple charged particles in a static EM field
-# ---
+# # Multiple Particles
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner

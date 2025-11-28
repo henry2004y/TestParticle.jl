@@ -1,11 +1,4 @@
-# ---
-# title: Single tracing with additional diagnostics
-# id: demo_savingcallback
-# date: 2023-12-17
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.4
-# description: Tracing one charged particle with additional diagnostics
-# ---
+# # Single Tracing with Additional Diagnostics
 
 # This example demonstrates tracing one proton in an analytic E field and numerical B field.
 # It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.

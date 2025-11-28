@@ -1,11 +1,4 @@
-# ---
-# title: Polarization drift
-# id: demo_polarization_drift
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Simple polarization drift under time-varying E field
-# ---
+# # Polarization Drift
 
 # This example demonstrates a single proton motion under time-varying E field.
 # More theoretical details can be found in [Time-Varying E Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-time-varying_E), and Fundamentals of Plasma Physics by Paul Bellan.

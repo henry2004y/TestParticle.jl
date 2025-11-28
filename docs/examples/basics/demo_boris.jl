@@ -1,11 +1,4 @@
-# ---
-# title: Boris method
-# id: demo_boris
-# date: 2024-01-23
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Simple electron trajectory under uniform B and zero E
-# ---
+# # Boris Method
 
 # This example demonstrates a single electron motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration.
 # We use the [Boris method](https://apps.dtic.mil/sti/citations/ADA023511) for phase space conservation under a fixed time step.

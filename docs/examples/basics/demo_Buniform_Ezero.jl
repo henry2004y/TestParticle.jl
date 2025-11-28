@@ -1,11 +1,4 @@
-# ---
-# title: Helix motion
-# id: demo_uniformB_zeroE
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Simple proton trajectory under uniform B and zero E
-# ---
+# # Helix motion
 
 # This example demonstrates a single proton motion under a uniform B field.
 # The E field is assumed to be zero such that there is no particle acceleration.

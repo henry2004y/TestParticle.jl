@@ -1,11 +1,4 @@
-# ---
-# title: Dimensionless and Dimensional Tracing
-# id: demo_dimensionless_dimensional
-# date: 2023-12-19
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.1
-# description: Tracing charged particle in both dimensional and dimensionless units.
-# ---
+# # Dimensionless and Dimensional Tracing
 
 # This example shows how to trace charged particles in both dimensional and dimensionless units.
 # We first solve the Lorentz equation in SI units, and then convert the quantities to normalized units and solve it again in dimensionless units.

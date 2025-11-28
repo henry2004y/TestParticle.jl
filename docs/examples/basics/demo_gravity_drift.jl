@@ -1,11 +1,4 @@
-# ---
-# title: ExF drift
-# id: demo_uniformB_gravity
-# date: 2023-04-19
-# author: "[Hongyang Zhou](https://github.com/henry2004y); [Tiancheng Liu](https://github.com/TCLiuu)"
-# julia: 1.9.0
-# description: Simple proton trajectory under uniform B and gravity
-# ---
+# # ExF Drift
 
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 

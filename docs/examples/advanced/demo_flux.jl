@@ -1,11 +1,4 @@
-# ---
-# title: Flux
-# id: demo_flux
-# date: 2025-04-13
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.4
-# description: Estimation of particle flux
-# ---
+# # Particle Flux
 
 # This demo shows how to estimate particle flux using TestParticle.jl.
 # For the flux estimation to be accurate, we need to guarantee that

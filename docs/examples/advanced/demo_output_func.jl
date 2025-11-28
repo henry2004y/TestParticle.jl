@@ -1,15 +1,8 @@
-# ---
-# title: Ensemble tracing with extra saving
-# id: demo_output_func
-# date: 2023-12-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.4
-# description: Tracing multiple charged particles in a static EM field
-# ---
+# # Ensemble Tracing with Extra Saving
 
 # This example demonstrates tracing multiple protons in an analytic E field and numerical B field.
 # See [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
-# Also check [Demo: Ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
+# Also check [Demo: Ensemble](@ref "Ensemble Tracing") for basic usages of the ensemble problem.
 
 # The `output_func` argument can be used to change saving outputs.
 # It works as a reduction function, but here we demonstrate how to add additional outputs.

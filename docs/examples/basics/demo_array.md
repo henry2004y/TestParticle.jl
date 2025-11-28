@@ -1,11 +1,4 @@
-# ---
-# title: Array Shape Conversion
-# id: demo_array
-# date: 2025-04-17
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.4
-# description: F-style and C-style array conversion
-# ---
+# # Array Shape Conversion
 
 This example shows how to convert between row-major arrays in Python/C and column-major arrays in Julia/Fortran.
 Let's say you have created an 4D array in Numpy of size `(nx, ny, nz, 3)`:
