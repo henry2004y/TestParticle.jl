@@ -11,6 +11,8 @@ mkpath(OUTPUT_DIR)
 mkpath(joinpath(OUTPUT_DIR, "basics"))
 mkpath(joinpath(OUTPUT_DIR, "advanced"))
 
+index_src = joinpath(EXAMPLES_DIR, "index.md")
+index_out = joinpath(OUTPUT_DIR, "index.md")
 cp(index_src, index_out; force = true)
 
 # Define orders manually
