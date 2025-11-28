@@ -28,8 +28,8 @@ const nav = [
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',// TODO: replace this in makedocs!
-  title: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
-  description: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+  title: 'TestParticle.jl',
+  description: 'Test particle tracing in fields',
   lastUpdated: true,
   cleanUrls: true,
   ignoreDeadLinks: true,
