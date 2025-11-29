@@ -3,7 +3,7 @@ using Literate
 using TestParticle
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
-const OUTPUT_DIR = joinpath(@__DIR__, "src")
+const OUTPUT_DIR = joinpath(@__DIR__, "src/demos")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
@@ -13,7 +13,7 @@ index_out = joinpath(OUTPUT_DIR, "overview.md")
 cp(index_src, index_out; force = true)
 
 # Define orders manually
-basics_order = [
+file_order = [
    "demo_energy_conservation.jl",
    "demo_boris.jl",
    "demo_Buniform_Ezero.jl",
@@ -29,9 +29,6 @@ basics_order = [
    "demo_FLR.jl",
    "demo_polarization_drift.jl",
    "demo_array.md"
-]
-
-advanced_order = [
    "demo_boris_outofdomain.jl",
    "demo_cosmicray.jl",
    "demo_ensemble.jl",
@@ -57,29 +54,28 @@ advanced_order = [
 function process_examples(order)
    pages = String[]
    for filename in order
-      src_path = joinpath(EXAMPLES_DIR, filename)
+      src_path = joinpath(EXAMPLES_DIR, subdir, filename)
+      out_dir = joinpath(OUTPUT_DIR, subdir)
 
       if endswith(filename, ".jl")
          # Compile to markdown
-         Literate.markdown(src_path, OUTPUT_DIR; documenter = true, credit = false)
+         Literate.markdown(src_path, out_dir; documenter = true, credit = false)
          name = replace(filename, ".jl" => ".md")
-         push!(pages, joinpath(name))
+         push!(pages, joinpath("demos", name))
       elseif endswith(filename, ".md")
          # Copy file
-         cp(src_path, joinpath(OUTPUT_DIR, filename); force = true)
-         push!(pages, joinpath(filename))
+         cp(src_path, joinpath(out_dir, filename); force = true)
+         push!(pages, joinpath("demos", filename))
       end
    end
    return pages
 end
 
-basics_pages = process_examples(basics_order)
-advanced_pages = process_examples(advanced_order)
+demo_pages = process_examples(file_order)
 
 example_pages = [
-   #"Overview" => "overview.md",
-   # "Basics" => basics_pages,
-   # "Advanced" => advanced_pages
+   "Overview" => "demos/overview.md",
+   "Demos" => demo_pages,
 ]
 
 makedocs(;
@@ -92,11 +88,11 @@ makedocs(;
       devurl = "dev",
    ),
    pages = [
-      #"Home" => "index.md",
-      #"Tutorial" => "tutorial.md",
-      #"Examples" => example_pages,
-      #"API" => "api.md",
-      #"Plot Functions" => "plotfunctions.md"
+      "Home" => "index.md",
+      "Tutorial" => "tutorial.md",
+      "Examples" => example_pages,
+      "API" => "api.md",
+      "Plot Functions" => "plotfunctions.md"
    ],
    warnonly = true
 )
