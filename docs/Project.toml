@@ -1,7 +1,6 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
-DiskArrayTools = "fcd2136c-9f69-4db6-97e5-f31981721d63"
 DiskArrays = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"

@@ -1,15 +1,11 @@
 # # Interpolate over large HDF5 arrays
 #
-# This example demonstrates how to interpolate over large HDF5 arrays using `DiskArrays.jl` and `DiskArrayTools.jl`.
+# This example demonstrates how to interpolate over large HDF5 arrays using `DiskArrays.jl`.
 # This is useful when the field data is too large to fit in memory.
-# Note that this approach is optimized for batch processing and might be slow for random access patterns typical in particle tracing.
-# However, it provides a viable solution for handling larger-than-memory datasets.
-#
 # The implementation is based on [this Discourse post](https://discourse.julialang.org/t/interpolate-over-large-hdf5-arrays/127079/12).
 
 using HDF5, DiskArrays
 import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked, Unchunked
-using DiskArrayTools: InterpolatedDiskArray
 using Interpolations
 
 # ## Implement HDF5DiskArray
@@ -51,43 +47,70 @@ h5open(filename, "w") do fid
    write(dset, values)
 end
 
-# ## Interpolation
+# ## Interpolation Function
 #
-# Now we wrap the dataset and create an interpolated view.
+# We define a function to query the field at a single location `x`.
+# We implement the interpolation logic manually to read only the necessary chunks.
+# This avoids loading the entire array into memory.
 
+function get_value(da, x; order=Linear(), bc=Flat())
+   # Handle Periodic BC by wrapping x
+   if bc == Periodic()
+      sz = size(da)
+      x = map((val, s) -> mod(val - 1, s) + 1, x, sz)
+      # After wrapping, we use Flat extrapolation on the wrapped coordinate
+      bc = Flat()
+   end
+
+   # Determine indices needed for interpolation (neighbors)
+   inds_raw = map(val -> floor(Int, val):ceil(Int, val), x)
+
+   # Clamp indices to array bounds to find readable block
+   sz = size(da)
+   inds_read = map((r, s) -> max(1, min(s, first(r))):max(1, min(s, last(r))), inds_raw, sz)
+
+   # Read data block
+   # da[inds_read...] reads the block from HDF5 via DiskArrays
+   data = da[inds_read...]
+
+   # Construct interpolator on the loaded block
+   # Handle singleton dimensions (e.g. at boundaries or integer coordinates) by using NoInterp
+   orders = map(s -> s==1 ? NoInterp() : BSpline(order), size(data))
+   itp = interpolate(data, orders)
+   itp = extrapolate(itp, bc)
+
+   # Calculate local coordinates relative to the loaded block
+   local_x = map((val, r) -> val - first(r) + 1, x, inds_read)
+
+   return itp(local_x...)
+end
+
+# Open the file and wrap the dataset
 fid = h5open(filename, "r")
 da = HDF5DiskArray(fid["mygroup/myvector"])
 
-# Define the target grid for interpolation
-# Here we upsample the grid.
-target_indices = (range(1,10,91), range(1,10,91), 1:10)
-newsize = length.(target_indices)
-newchunks = GridChunks(newsize, (50,50,5))
+# Evaluate at a point
+loc_int = (5.0, 5.0, 5.0)
+println("Value at $loc_int: ", get_value(da, loc_int))
 
-# Create the interpolated disk array
-# order=Quadratic() specifies the interpolation order.
-di = InterpolatedDiskArray(da, newchunks, target_indices..., order=Quadratic())
+loc_float = (5.5, 5.5, 5.5)
+println("Value at $loc_float: ", get_value(da, loc_float))
 
-# We can perform operations on this interpolated array.
-# For example, computing the sum over the last dimension.
-# This operation accesses the array in chunks, which is efficient.
-result_sum = sum(di, dims=3)
-
-println("Sum of interpolated array (subset): ", result_sum[1:5])
-
-# We can also access specific elements, though random access might be slower.
-println("Value at [1,1,1]: ", di[1,1,1])
-
-# ## Linear Interpolation with Periodic Boundary Conditions
+# ## Periodic Boundary Conditions
 #
-# We can also use linear interpolation and specify boundary conditions, such as periodic.
-# This is useful when the field is periodic in some dimensions.
+# We can specify boundary conditions, e.g., `Periodic()`.
+# Our function handles coordinate wrapping manually.
 
-di_periodic = InterpolatedDiskArray(da, newchunks, target_indices..., order=Linear(), bc=Periodic())
+loc_out = (-0.5, 1.0, 1.0)
+val_periodic = get_value(da, loc_out, order=Linear(), bc=Periodic())
+println("Value at $loc_out (Periodic): ", val_periodic)
 
-# Note: `InterpolatedDiskArray` currently clamps data loading to the array bounds.
-# `Periodic` boundary conditions will apply to the loaded chunk (which is clamped to the boundary),
-# so it effectively repeats the boundary value rather than wrapping around the global array.
+# Check correctness of Periodic:
+# -0.5 wraps to 9.5 (since period is 10).
+# Value at 9.5, 1.0, 1.0.
+# Data is i+j+k.
+# 9.5 + 1 + 1 = 11.5.
+println("Expected Periodic: ", 9.5 + 1 + 1)
 
 # ## Cleanup
 #
