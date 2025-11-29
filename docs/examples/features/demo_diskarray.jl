@@ -78,6 +78,17 @@ println("Sum of interpolated array (subset): ", result_sum[1:5])
 # We can also access specific elements, though random access might be slower.
 println("Value at [1,1,1]: ", di[1,1,1])
 
+# ## Linear Interpolation with Periodic Boundary Conditions
+#
+# We can also use linear interpolation and specify boundary conditions, such as periodic.
+# This is useful when the field is periodic in some dimensions.
+
+di_periodic = InterpolatedDiskArray(da, newchunks, target_indices..., order=Linear(), bc=Periodic())
+
+# Note: `InterpolatedDiskArray` currently clamps data loading to the array bounds.
+# `Periodic` boundary conditions will apply to the loaded chunk (which is clamped to the boundary),
+# so it effectively repeats the boundary value rather than wrapping around the global array.
+
 # ## Cleanup
 #
 # Close the file and remove it.
