@@ -2,7 +2,7 @@
 #
 # A robust field interpolation is the prerequisite for pushing particles.
 # This example demonstrates the construction of scalar/vector field interpolators for Cartesian/Spherical grids.
-# If the field is analytic, you can directly pass the generated function to [`prepare``](@ref).
+# If the field is analytic, you can directly pass the generated function to [`prepare`](@ref).
 
 import TestParticle as TP
 using StaticArrays
@@ -53,23 +53,18 @@ B_car, A_car = setup_cartesian_field();
 # Gridded spherical interpolation:
 
 loc = SA[1.0, 1.0, 1.0]
-@time B_sph_nu(loc) # Precompilation
+
 @time B_sph_nu(loc)
-@time A_sph_nu(loc) # Precompilation
 @time A_sph_nu(loc)
 
 # Uniform spherical interpolation:
 
-@time B_sph(loc) # Precompilation
 @time B_sph(loc)
-@time A_sph(loc) # Precompilation
 @time A_sph(loc)
 
 # Uniform Cartesian interpolation:
 
-@time B_car(loc) # Precompilation
 @time B_car(loc)
-@time A_car(loc) # Precompilation
 @time A_car(loc)
 
-# Based on the benchmarks, for the same grid size, gridded interpolation is 3x slower than uniform mesh interpolation.
+# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`) is 3x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
