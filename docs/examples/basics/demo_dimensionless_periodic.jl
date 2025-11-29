@@ -1,12 +1,5 @@
-# ---
-# title: Tracing with Dimensionless Units and Periodic Boundary
-# id: demo_dimensionless_periodic
-# date: 2023-12-15
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.4
-# description: Tracing charged particle in dimensionless units and periodic boundary
-# ---
-
+# # Tracing with Dimensionless Units and Periodic Boundary
+#
 # This example shows how to trace charged particles in dimensionless units and EM fields with periodic boundaries in a 2D spatial domain.
 # For details about dimensionless units, please check [Demo: dimensionless tracing](@ref demo_dimensionless).
 

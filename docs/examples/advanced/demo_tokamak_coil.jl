@@ -1,12 +1,5 @@
-# ---
-# title: Coil Tokamak
-# id: demo_tokamak_coil
-# date: 2023-04-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Tracing protons in a Tokamak
-# ---
-
+# # Coil Tokamak
+#
 # This example shows how to trace protons in a stationary magnetic field that
 # corresponds to a [Tokamak](https://en.wikipedia.org/wiki/Tokamak) represented by a circle of coils.
 # A excellent introduction video to Tokamak can be found [here](https://www.youtube.com/watch?v=0JqBfYwQcqg) in Mandarin.

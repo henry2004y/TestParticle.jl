@@ -1,12 +1,5 @@
-# ---
-# title: Analytical magnetosphere
-# id: demo_analytic_magnetosphere
-# date: 2024-04-09
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.4
-# description: Tracing charged particle in an analytical magnetosphere
-# ---
-
+# Analytical Magnetosphere
+#
 # This demo shows how to trace particles in a vacuum superposition of a dipolar magnetic field ``\mathbf{B}_D`` with a uniform background magnetic field ``\mathbf{B}_\mathrm{IMF}``.
 # In this slightly modified dipole field, magnetic null points appear near 14 Earth's radii, and the particle orbits are also distorted from the idealized motions in [Demo: magnetic dipole](@ref demo_dipole).
 

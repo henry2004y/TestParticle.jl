@@ -1,12 +1,5 @@
-# ---
-# title: Grad-B drift
-# id: demo_gradB
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Simple magnetic field gradient drift demonstration
-# ---
-
+# # Grad-B Drift
+#
 # This example demonstrates a single proton motion under a non-uniform B field with gradient ∇B ⊥ B.
 # The orbit of guiding center includes some high order terms, it is different from the formula of magnetic field gradient drift of some textbooks which just preserves the first order term.
 # It is more complex than the simpler [ExB drift](@ref demo_ExB).

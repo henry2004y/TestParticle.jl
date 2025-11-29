@@ -1,12 +1,5 @@
-# ---
-# title: Finite-Larmor-Radius effect
-# id: demo_FLR
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu), [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Finite Larmor radius effect demonstration using Makie
-# ---
-
+# # Finite-Larmor-Radius Effect
+#
 # The general FLR effect refers to the correction terms introduced when considering the field difference at the particle location and the guiding center location.
 # More theoretical details can be found in [Non-uniform E Field](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-nonuniform_E).
 

@@ -1,12 +1,5 @@
-# ---
-# title: Radiation
-# id: demo_radiation
-# date: 2025-11-26
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.12.2
-# description: Estimation of particle radiation
-# ---
-
+# # Radiation
+#
 # For an electron undergoing gyromotion in a constant magnetic field, the energy loss is
 # caused by the emission of electromagnetic radiation. The rate of this energy loss
 # (radiated power $P$) depends on whether the electron's speed is relativistic or non-relativistic.

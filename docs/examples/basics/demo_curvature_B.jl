@@ -1,12 +1,5 @@
-# ---
-# title: Curl-B drift
-# id: demo_curlB
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Simple magnetic field curvature drift demonstration
-# ---
-
+# # Curl-B Drift
+#
 # This example demonstrates a single proton motion under a vacuum non-uniform B field with gradient and curvature.
 # The analytic calculation includes the grad-B drift, the curvature drift, the ExB drift and parallel velocity.
 # More theoretical details can be found in [Curvature Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#curved-b-curvature-drift) and Computational Plasma Physics by Toshi Tajima.

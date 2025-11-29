@@ -1,12 +1,5 @@
-# ---
-# title: E×B drift
-# id: demo_ExB
-# date: 2023-04-19
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Simple ExB drift demonstration
-# ---
-
+# # E×B Drift
+#
 # This example demonstrates a single proton motion under uniform E and B fields.
 # The electric field is parallel to the magnetic field in the z-direction, so the motion consists of a cyclotron gyration and an acceleration along z.
 # On top of that, particles also exhibit an ExB drift in the direction perpendicular to both E and B field.

@@ -1,11 +1,4 @@
-# ---
-# title: Tracing particle from PIC
-# id: demo_pic
-# date: 2023-04-21
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.8.5
-# description: This demo shows how to trace particles from structured SWMF outputs
-# ---
+# Tracing Particle from PIC
 
 This example shows how to trace charged particles in the structured SWMF outputs from an MHD-EPIC simulation of Ganymede.
 For more details about the field file format, please checkout [Batsrus.jl](https://github.com/henry2004y/Batsrus.jl).
