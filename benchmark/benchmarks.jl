@@ -77,9 +77,9 @@ SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
    $prob_boris; dt = 1/7, savestepinterval = 10, trajectories = 2)
 
 function setup_spherical_field()
-   r = logrange(0.1, 10.0, length = 4)
-   θ = range(0, π, length = 8)
-   ϕ = range(0, 2π, length = 8)
+   r = logrange(0.1, 10.0, length = 15)
+   θ = range(0, π, length = 20)
+   ϕ = range(0, 2π, length = 25)
 
    B₀ = 1e-8 # [nT]
    B = zeros(3, length(r), length(θ), length(ϕ))
