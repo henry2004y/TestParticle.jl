@@ -1,12 +1,5 @@
-# ---
-# title: Ensemble tracing
-# id: demo_ensemble
-# date: 2024-01-23
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.0
-# description: Tracing multiple charged particles in a static EM field
-# ---
-
+# # Ensemble Tracing
+#
 # This example demonstrates tracing multiple electrons in an analytic EM field and how to
 # take advantage of the multithreading support in the ODE solver. A multiproc version is
 # also available. Check the official documentation of DifferentialEquations.jl for details.

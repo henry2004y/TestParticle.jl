@@ -1,12 +1,5 @@
-# ---
-# title: Shock
-# id: demo_shock
-# date: 2024-02-21
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.2
-# description: Tracing charged particle in an MHD plane shock
-# ---
-
+# # shock
+#
 # This example shows how to trace protons of a certain energy in MHD plane shocks.
 
 import DisplayAs #hide

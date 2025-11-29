@@ -1,12 +1,5 @@
-# ---
-# title: Tracing in spherical coordinates
-# id: demo_spherical_B
-# date: 2025-11-25
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.12.2
-# description: Simple proton trajectory under uniform B defined in spherical coordinates.
-# ---
-
+# # Spherical Coordinates
+#
 # This example demonstrates a single proton motion under a uniform B field defined in
 # spherical coordinates following the same values in [Demo: Helix motion](@ref demo_uniformB_zeroE). The E field is set to zero.
 

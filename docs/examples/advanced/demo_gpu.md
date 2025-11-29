@@ -1,11 +1,5 @@
-# ---
-# title: GPU Ensemble tracing
-# id: demo_gpu_ensemble
-# date: 2024-05-15
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.10.3
-# description: Tracing multiple charged particles in a static EM field using GPU
-# ---
+
+# GPU Ensemble tracing
 
 This example demonstrates the usage of GPU for [ensemble tracing](@ref demo_ensemble).
 Since GitHub Actions do not have GPU runners for now, we do not show the results on page.

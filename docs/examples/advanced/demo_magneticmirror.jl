@@ -1,12 +1,5 @@
-# ---
-# title: Magnetic mirror
-# id: demo_magnetic_mirror
-# date: 2023-04-20
-# author: "[Tiancheng Liu](https://github.com/TCLiuu); [Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Charged particle in the magnetic mirror
-# ---
-
+# # Magnetic Mirror
+#
 # This example demonstrates the particle motion trajectory in a magnetic mirror
 # and also illustrates the conservation of magnetic moment.
 # From the third figure on the right, it can be seen that the zero-order quantity of

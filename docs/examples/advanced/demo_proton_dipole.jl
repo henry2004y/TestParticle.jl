@@ -1,12 +1,5 @@
-# ---
-# title: Magnetic dipole
-# id: demo_dipole
-# date: 2023-04-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.9.0
-# description: Tracing charged particle in a static analytic dipole magnetic field
-# ---
-
+# # Magnetic Dipole
+#
 # This example shows how to trace protons of a certain energy in a analytic Earth-like magnetic dipole field. There is a combination of grad-B drift, curvature drift, and the bounce motion between mirror points. It demonstrates the motions corresponding to the three adiabatic invariants.
 
 import DisplayAs #hide

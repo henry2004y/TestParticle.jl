@@ -1,12 +1,5 @@
-# ---
-# title: Electron Fermi Acceleration Inside Foreshock Transient Cores
-# id: demo_electron_acceleration_foreshock_transient
-# date: 2024-10-28
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.1
-# description: Fermi acceleration demonstration
-# ---
-
+# # Electron Fermi Acceleration Inside Foreshock Transient Cores
+#
 # This example demonstrates electron acceleration via Fermi acceleration using a simple 1D model. It follows the setup described in [Fermi acceleration of electrons inside foreshock transient cores](https://doi.org/10.1002/2017JA024480).
 # The simulation domain is $2\,R_E$ in x, where the initial magnetosheath locates at $x \in [0, 0.5] R_E$ with a magnetic field $B_z = 20\,\mathrm{nT}$ and the bow shock at $x = 0.5\,R_E$.
 # The foreshock transient boundary is at $x = 1.5\,R_E$ initially and moves toward the bow shock at a speed $U=100\,\mathrm{km/s}$.

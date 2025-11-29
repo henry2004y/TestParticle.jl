@@ -1,12 +1,5 @@
-# ---
-# title: Cosmic Ray Tracing
-# id: demo_cosmic_ray
-# date: 2025-03-20
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.11.4
-# description: Tracing cosmic ray charged particles
-# ---
-
+# # Cosmic Ray
+#
 # This example shows how to trace cosmic rays in a background magnetic field.
 # In the original MHD solution, everything is dimensionless.
 # We are following the normalization procedures in [Cosmic ray propagation in sub-Alfvénic magnetohydrodynamic turbulence](https://doi.org/10.1051/0004-6361/201527376).
