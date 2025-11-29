@@ -28,7 +28,7 @@ file_order = [
    "demo_curvature_B.jl",
    "demo_FLR.jl",
    "demo_polarization_drift.jl",
-   "demo_array.md"
+   "demo_array.md",
    "demo_boris_outofdomain.jl",
    "demo_cosmicray.jl",
    "demo_ensemble.jl",
