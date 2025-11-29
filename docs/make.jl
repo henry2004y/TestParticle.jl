@@ -14,9 +14,7 @@ mkpath(joinpath(OUTPUT_DIR, "advanced"))
 # Copy and clean index.md
 index_src = joinpath(EXAMPLES_DIR, "overview.md")
 index_out = joinpath(OUTPUT_DIR, "overview.md")
-content = read(index_src, String)
-content = replace(content, "{{{democards}}}" => "")
-write(index_out, content)
+cp(index_src, index_out; force=true)
 
 # Define orders manually
 basics_order = [
