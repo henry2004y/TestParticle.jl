@@ -52,19 +52,25 @@ B_car, A_car = setup_cartesian_field();
 
 # Gridded spherical interpolation:
 
-loc = SA[1.0, 1.0, 1.0]
+loc = SA[1.0, 1.0, 1.0];
 
-@time B_sph_nu(loc)
-@time A_sph_nu(loc)
+@time B_sph_nu(loc); # precompilation
+@time B_sph_nu(loc);
+@time A_sph_nu(loc); # precompilation
+@time A_sph_nu(loc);
 
 # Uniform spherical interpolation:
 
-@time B_sph(loc)
-@time A_sph(loc)
+@time B_sph(loc); # precompilation
+@time B_sph(loc);
+@time A_sph(loc); # precompilation
+@time A_sph(loc);
 
 # Uniform Cartesian interpolation:
 
-@time B_car(loc)
-@time A_car(loc)
+@time B_car(loc); # precompilation
+@time B_car(loc);
+@time A_car(loc); # precompilation
+@time A_car(loc);
 
 # Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`) is 3x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
