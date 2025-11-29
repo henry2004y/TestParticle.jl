@@ -8,8 +8,8 @@ const OUTPUT_DIR = joinpath(@__DIR__, "src")
 # Create output directories
 mkpath(OUTPUT_DIR)
 
-index_src = joinpath(EXAMPLES_DIR, "index.md")
-index_out = joinpath(OUTPUT_DIR, "index.md")
+index_src = joinpath(EXAMPLES_DIR, "overview.md")
+index_out = joinpath(OUTPUT_DIR, "overview.md")
 cp(index_src, index_out; force = true)
 
 # Define orders manually
