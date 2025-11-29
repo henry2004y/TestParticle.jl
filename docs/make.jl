@@ -92,7 +92,7 @@ makedocs(;
       devurl = "dev",
    ),
    pages = [
-      "Home" => "index.md",
+      #"Home" => "index.md",
       #"Tutorial" => "tutorial.md",
       #"Examples" => example_pages,
       #"API" => "api.md",
