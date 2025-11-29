@@ -3,5 +3,7 @@ node_modules/
 package-lock.json
 Manifest.toml
 src/overview.md
-src/advanced/
-src/basics/
+src/drifts/
+src/analytic/
+src/applications/
+src/features/

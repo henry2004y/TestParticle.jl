@@ -8,8 +8,10 @@ const OUTPUT_DIR = joinpath(@__DIR__, "src")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
-mkpath(joinpath(OUTPUT_DIR, "basics"))
-mkpath(joinpath(OUTPUT_DIR, "advanced"))
+categories = ["drifts", "analytic", "applications", "features"]
+for category in categories
+   mkpath(joinpath(OUTPUT_DIR, category))
+end
 
 # Copy and clean index.md
 index_src = joinpath(EXAMPLES_DIR, "overview.md")
@@ -17,46 +19,52 @@ index_out = joinpath(OUTPUT_DIR, "overview.md")
 cp(index_src, index_out; force=true)
 
 # Define orders manually
-basics_order = [
-   "demo_energy_conservation.jl",
-   "demo_interpolation.jl",
-   "demo_boris.jl",
-   "demo_Buniform_Ezero.jl",
-   "demo_dimensionless.jl",
-   "demo_dimensionless_periodic.jl",
-   "demo_dimensionless_dimensional.jl",
-   "demo_electron_proton.jl",
-   "demo_multiple.jl",
+drifts_order = [
    "demo_ExB_drift.jl",
-   "demo_gravity_drift.jl",
    "demo_gradient_B.jl",
    "demo_curvature_B.jl",
-   "demo_FLR.jl",
+   "demo_gravity_drift.jl",
    "demo_polarization_drift.jl",
-   "demo_array.md"
+   "demo_FLR.jl"
 ]
 
-advanced_order = [
-   "demo_boris_outofdomain.jl",
-   "demo_cosmicray.jl",
-   "demo_ensemble.jl",
-   "demo_flux.jl",
-   "demo_savingcallback.jl",
-   "demo_output_func.jl",
+analytic_order = [
+   "demo_Buniform_Ezero.jl",
+   "demo_electron_proton.jl",
    "demo_currentsheet.jl",
    "demo_magneticmirror.jl",
    "demo_magneticbottle.jl",
    "demo_proton_dipole.jl",
    "demo_analytic_magnetosphere.jl",
-   "demo_shock.jl",
-   "demo_fermi_foreshock.jl",
-   "demo_spherical.jl",
    "demo_tokamak_coil.jl",
    "demo_tokamak_profile.jl",
-   "demo_gc.jl",
-   "demo_batsrus_3dstructured.md",
+   "demo_spherical.jl"
+]
+
+applications_order = [
+   "demo_shock.jl",
+   "demo_fermi_foreshock.jl",
+   "demo_cosmicray.jl",
    "demo_radiation.jl",
-   "demo_gpu.md"
+   "demo_batsrus_3dstructured.md"
+]
+
+features_order = [
+   "demo_boris.jl",
+   "demo_energy_conservation.jl",
+   "demo_interpolation.jl",
+   "demo_boris_outofdomain.jl",
+   "demo_dimensionless.jl",
+   "demo_dimensionless_periodic.jl",
+   "demo_dimensionless_dimensional.jl",
+   "demo_multiple.jl",
+   "demo_ensemble.jl",
+   "demo_savingcallback.jl",
+   "demo_output_func.jl",
+   "demo_flux.jl",
+   "demo_gc.jl",
+   "demo_gpu.md",
+   "demo_array.md"
 ]
 
 function process_examples(subdir, order)
@@ -79,13 +87,17 @@ function process_examples(subdir, order)
    return pages
 end
 
-basics_pages = process_examples("basics", basics_order)
-advanced_pages = process_examples("advanced", advanced_order)
+drifts_pages = process_examples("drifts", drifts_order)
+analytic_pages = process_examples("analytic", analytic_order)
+applications_pages = process_examples("applications", applications_order)
+features_pages = process_examples("features", features_order)
 
 example_pages = [
    "Overview" => "overview.md",
-   "Basics" => basics_pages,
-   "Advanced" => advanced_pages
+   "Drifts" => drifts_pages,
+   "Analytic Fields" => analytic_pages,
+   "Applications" => applications_pages,
+   "Features" => features_pages
 ]
 
 makedocs(;
