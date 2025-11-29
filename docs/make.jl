@@ -96,7 +96,7 @@ makedocs(;
    format = DocumenterVitepress.MarkdownVitepress(
       repo = "https://github.com/henry2004y/TestParticle.jl",
       devbranch = "master",
-      devurl = "dev",
+      devurl = "dev"
    ),
    pages = [
       "Home" => "index.md",
