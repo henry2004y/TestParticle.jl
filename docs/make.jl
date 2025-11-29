@@ -93,10 +93,10 @@ makedocs(;
    ),
    pages = [
       "Home" => "index.md",
-      "Tutorial" => "tutorial.md",
-      "Examples" => example_pages,
-      "API" => "api.md",
-      "Plot Functions" => "plotfunctions.md"
+      #"Tutorial" => "tutorial.md",
+      #"Examples" => example_pages,
+      #"API" => "api.md",
+      #"Plot Functions" => "plotfunctions.md"
    ],
    warnonly = true
 )
