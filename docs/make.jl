@@ -54,17 +54,16 @@ file_order = [
 function process_examples(order)
    pages = String[]
    for filename in order
-      src_path = joinpath(EXAMPLES_DIR, subdir, filename)
-      out_dir = joinpath(OUTPUT_DIR, subdir)
+      src_path = joinpath(EXAMPLES_DIR, filename)
 
       if endswith(filename, ".jl")
          # Compile to markdown
-         Literate.markdown(src_path, out_dir; documenter = true, credit = false)
+         Literate.markdown(src_path, OUTPUT_DIR; documenter = true, credit = false)
          name = replace(filename, ".jl" => ".md")
          push!(pages, joinpath("demos", name))
       elseif endswith(filename, ".md")
          # Copy file
-         cp(src_path, joinpath(out_dir, filename); force = true)
+         cp(src_path, joinpath(OUTPUT_DIR, filename); force = true)
          push!(pages, joinpath("demos", filename))
       end
    end
