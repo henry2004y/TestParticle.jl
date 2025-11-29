@@ -64,7 +64,8 @@ features_order = [
    "demo_flux.jl",
    "demo_gc.jl",
    "demo_gpu.md",
-   "demo_array.md"
+   "demo_array.md",
+   "demo_diskarray.jl"
 ]
 
 function process_examples(subdir, order)
