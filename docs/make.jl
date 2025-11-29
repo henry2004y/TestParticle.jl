@@ -8,10 +8,10 @@ const OUTPUT_DIR = joinpath(@__DIR__, "src")
 
 # Create output directories
 mkpath(OUTPUT_DIR)
-mkpath(joinpath(OUTPUT_DIR, "drifts"))
-mkpath(joinpath(OUTPUT_DIR, "analytic"))
-mkpath(joinpath(OUTPUT_DIR, "applications"))
-mkpath(joinpath(OUTPUT_DIR, "features"))
+categories = ["drifts", "analytic", "applications", "features"]
+for category in categories
+   mkpath(joinpath(OUTPUT_DIR, category))
+end
 
 # Copy and clean index.md
 index_src = joinpath(EXAMPLES_DIR, "overview.md")
