@@ -1,8 +1,8 @@
 # # Ensemble Tracing with Extra Saving
 #
 # This example demonstrates tracing multiple protons in an analytic E field and numerical B field.
-# See [Demo: single tracing with additional diagnostics](@ref demo_savingcallback) for explaining the unit conversion.
-# Also check [Demo: Ensemble](@ref demo_ensemble) for basic usages of the ensemble problem.
+# See [Demo: single tracing with additional diagnostics](@ref Additional-Diagnostics) for explaining the unit conversion.
+# Also check [Demo: Ensemble](@ref Ensemble-Tracing) for basic usages of the ensemble problem.
 
 # The `output_func` argument can be used to change saving outputs.
 # It works as a reduction function, but here we demonstrate how to add additional outputs.

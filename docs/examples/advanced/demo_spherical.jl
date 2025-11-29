@@ -1,7 +1,7 @@
 # # Spherical Coordinates
 #
 # This example demonstrates a single proton motion under a uniform B field defined in
-# spherical coordinates following the same values in [Demo: Helix motion](@ref demo_uniformB_zeroE). The E field is set to zero.
+# spherical coordinates following the same values in [Demo: Helix motion](@ref Helix-Motion). The E field is set to zero.
 
 import DisplayAs #hide
 import TestParticle as TP
