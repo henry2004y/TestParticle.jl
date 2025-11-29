@@ -41,7 +41,7 @@ end
 filename = "example_field.h5"
 h5open(filename, "w") do fid
    g = create_group(fid, "mygroup")
-   # Create a dataset with chunking enabled
+   ## Create a dataset with chunking enabled
    dset = create_dataset(g, "myvector", Float32, (10,10,10), chunk=(5,5,5))
    values = [Float32(i + j + k) for i in 1:10, j in 1:10, k in 1:10]
    write(dset, values)
@@ -54,32 +54,32 @@ end
 # This avoids loading the entire array into memory.
 
 function get_value(da, x; order=Linear(), bc=Flat())
-   # Handle Periodic BC by wrapping x
+   ## Handle Periodic BC by wrapping x
    if bc == Periodic()
       sz = size(da)
       x = map((val, s) -> mod(val - 1, s) + 1, x, sz)
-      # After wrapping, we use Flat extrapolation on the wrapped coordinate
+      ## After wrapping, we use Flat extrapolation on the wrapped coordinate
       bc = Flat()
    end
 
-   # Determine indices needed for interpolation (neighbors)
+   ## Determine indices needed for interpolation (neighbors)
    inds_raw = map(val -> floor(Int, val):ceil(Int, val), x)
 
-   # Clamp indices to array bounds to find readable block
+   ## Clamp indices to array bounds to find readable block
    sz = size(da)
    inds_read = map((r, s) -> max(1, min(s, first(r))):max(1, min(s, last(r))), inds_raw, sz)
 
-   # Read data block
-   # da[inds_read...] reads the block from HDF5 via DiskArrays
+   ## Read data block
+   ## da[inds_read...] reads the block from HDF5 via DiskArrays
    data = da[inds_read...]
 
-   # Construct interpolator on the loaded block
-   # Handle singleton dimensions (e.g. at boundaries or integer coordinates) by using NoInterp
+   ## Construct interpolator on the loaded block
+   ## Handle singleton dimensions (e.g. at boundaries or integer coordinates) by using NoInterp
    orders = map(s -> s==1 ? NoInterp() : BSpline(order), size(data))
    itp = interpolate(data, orders)
    itp = extrapolate(itp, bc)
 
-   # Calculate local coordinates relative to the loaded block
+   ## Calculate local coordinates relative to the loaded block
    local_x = map((val, r) -> val - first(r) + 1, x, inds_read)
 
    return itp(local_x...)
