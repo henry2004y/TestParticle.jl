@@ -19,6 +19,7 @@ cp(index_src, index_out; force=true)
 # Define orders manually
 basics_order = [
    "demo_energy_conservation.jl",
+   "demo_interpolation.jl",
    "demo_boris.jl",
    "demo_Buniform_Ezero.jl",
    "demo_dimensionless.jl",
