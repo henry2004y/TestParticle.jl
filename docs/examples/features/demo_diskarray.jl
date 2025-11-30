@@ -5,22 +5,23 @@
 # The implementation is based on [this Discourse post](https://discourse.julialang.org/t/interpolate-over-large-hdf5-arrays/127079/12).
 
 using HDF5, DiskArrays
-import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked, Unchunked
+import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked,
+                   Unchunked
 using Interpolations
 
 # ## Implement HDF5DiskArray
 #
 # First, we define a wrapper around HDF5 Dataset that implements the `DiskArrays` interface.
 
-struct HDF5DiskArray{T,N,CS} <: AbstractDiskArray{T,N}
+struct HDF5DiskArray{T, N, CS} <: AbstractDiskArray{T, N}
    ds::HDF5.Dataset
    cs::CS
 end
 
 Base.size(x::HDF5DiskArray) = size(x.ds)
-haschunks(x::HDF5DiskArray{<:Any,<:Any,Nothing}) = Unchunked()
+haschunks(x::HDF5DiskArray{<:Any, <:Any, Nothing}) = Unchunked()
 haschunks(x::HDF5DiskArray) = Chunked()
-eachchunk(x::HDF5DiskArray{<:Any,<:Any,<:GridChunks}) = x.cs
+eachchunk(x::HDF5DiskArray{<:Any, <:Any, <:GridChunks}) = x.cs
 readblock!(x::HDF5DiskArray, aout, r::AbstractUnitRange...) = aout .= x.ds[r...]
 writeblock!(x::HDF5DiskArray, v, r::AbstractUnitRange...) = x.ds[r...] = v
 
@@ -31,7 +32,7 @@ function HDF5DiskArray(ds::HDF5.Dataset)
       nothing
    end
    cs = isnothing(chunks) ? nothing : GridChunks(size(ds), chunks)
-   HDF5DiskArray{eltype(ds),ndims(ds),typeof(cs)}(ds,cs)
+   HDF5DiskArray{eltype(ds), ndims(ds), typeof(cs)}(ds, cs)
 end
 
 # ## Create Example Data
@@ -42,7 +43,7 @@ filename = "example_field.h5"
 h5open(filename, "w") do fid
    g = create_group(fid, "mygroup")
    ## Create a dataset with chunking enabled
-   dset = create_dataset(g, "myvector", Float32, (10,10,10), chunk=(5,5,5))
+   dset = create_dataset(g, "myvector", Float32, (10, 10, 10), chunk = (5, 5, 5))
    values = [Float32(i + j + k) for i in 1:10, j in 1:10, k in 1:10]
    write(dset, values)
 end
@@ -53,7 +54,7 @@ end
 # We implement the interpolation logic manually to read only the necessary chunks.
 # This avoids loading the entire array into memory.
 
-function get_value(da, x; order=Linear(), bc=Flat())
+function get_value(da, x; order = Linear(), bc = Flat())
    ## Handle Periodic BC by wrapping x
    if bc == Periodic()
       sz = size(da)
@@ -102,7 +103,7 @@ println("Value at $loc_float: ", get_value(da, loc_float))
 # Our function handles coordinate wrapping manually.
 
 loc_out = (-0.5, 1.0, 1.0)
-val_periodic = get_value(da, loc_out, order=Linear(), bc=Periodic())
+val_periodic = get_value(da, loc_out, order = Linear(), bc = Periodic())
 println("Value at $loc_out (Periodic): ", val_periodic)
 
 # Check correctness of Periodic:
