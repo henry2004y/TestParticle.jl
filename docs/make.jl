@@ -16,7 +16,7 @@ end
 # Copy and clean index.md
 index_src = joinpath(EXAMPLES_DIR, "overview.md")
 index_out = joinpath(OUTPUT_DIR, "overview.md")
-cp(index_src, index_out; force=true)
+cp(index_src, index_out; force = true)
 
 # Define orders manually
 drifts_order = [
