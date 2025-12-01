@@ -156,7 +156,7 @@ function output_func_custom(sol, i)
    b = getB.(sol.u)
 
    ## Calculate cosine of pitch angle
-   μ = [@views b[j] ⋅ sol[4:6, j] / norm(b[j]) for j in eachindex(sol)]
+   μ = [@views (b[j] ⋅ sol[4:6, j]) / (norm(b[j]) * norm(sol[4:6, j])) for j in eachindex(sol)]
 
    ## Return: (trajectory, B-field, pitch-angle-cosine), rerun_flag
    (sol.u, b, μ), false
