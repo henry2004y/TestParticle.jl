@@ -602,6 +602,8 @@ end
    end
 end
 
+include("test_multistep.jl")
+
 #if "makie" in ARGS
 #   include("test_Makie.jl")
 #end

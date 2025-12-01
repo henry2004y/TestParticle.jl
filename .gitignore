@@ -11,3 +11,4 @@ report.md
 /benchmark/*.json
 /.vscode
 /docs/node_modules/
+!test/test_multistep.jl

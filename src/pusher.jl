@@ -177,7 +177,8 @@ end
 
 """
      solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
-    	 savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
+	 savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+         n::Int=1)
 
 Trace particles using the Boris method with specified `prob`.
 
@@ -187,27 +188,36 @@ Trace particles using the Boris method with specified `prob`.
   - `dt::AbstractFloat`: time step.
   - `savestepinterval::Int`: saving output interval.
   - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
+  - `n::Int`: number of substeps for the Multistep Boris method. Default is 1 (standard Boris).
 """
 function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
       trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-      isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN)
-   sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain)
+      isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1)
+   sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
 end
 
-function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain)
+function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
    sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
    irange = 1:trajectories
-   _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   if n == 1
+      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+   else
+      _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
+   end
 
    sols
 end
 
-function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain)
+function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
    sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
 
    nchunks = Threads.nthreads()
    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
-      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+      if n == 1
+         _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
+      else
+         _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
+      end
    end
 
    sols
