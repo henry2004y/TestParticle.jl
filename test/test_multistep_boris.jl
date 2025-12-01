@@ -59,6 +59,6 @@ using StaticArrays
    v0_norm = hypot(@views u0_gyro[4:6]...)
    for sol in (sol_1step_gyro, sol_2step_gyro, sol_4step_gyro)
       v_end = @view sol[1].u[end][4:6]
-      @test hypot(v_end)≈v0_norm atol=1e-12
+      @test hypot(v_end...)≈v0_norm atol=1e-12
    end
 end
