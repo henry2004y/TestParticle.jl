@@ -1,17 +1,19 @@
+using LinearAlgebra: dot
+
 struct MultistepBorisMethod{TV}
    t_n::TV
    e_n::TV
    v_cross_t::TV
    e_cross_t::TV
+end
 
-   function MultistepBorisMethod()
-      t_n = MVector{3, Float64}(undef)
-      e_n = MVector{3, Float64}(undef)
-      v_cross_t = MVector{3, Float64}(undef)
-      e_cross_t = MVector{3, Float64}(undef)
+function MultistepBorisMethod(T::Type{<:AbstractFloat}=Float64)
+   t_n = MVector{3, T}(undef)
+   e_n = MVector{3, T}(undef)
+   v_cross_t = MVector{3, T}(undef)
+   e_cross_t = MVector{3, T}(undef)
 
-      new{typeof(t_n)}(t_n, e_n, v_cross_t, e_cross_t)
-   end
+   MultistepBorisMethod{typeof(t_n)}(t_n, e_n, v_cross_t, e_cross_t)
 end
 
 """
@@ -75,24 +77,18 @@ function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
    c_n5 = c_n3
 
    # Extract velocity
-   vx = xv[4]
-   vy = xv[5]
-   vz = xv[6]
+   v = @view xv[4:6]
 
    # Dot products
-   v_dot_t = vx*t_n[1] + vy*t_n[2] + vz*t_n[3]
-   e_dot_t = e_n[1]*t_n[1] + e_n[2]*t_n[2] + e_n[3]*t_n[3]
+   v_dot_t = dot(v, t_n)
+   e_dot_t = dot(e_n, t_n)
 
    # Cross products
    # v x t_n
-   v_cross_t[1] = vy*t_n[3] - vz*t_n[2]
-   v_cross_t[2] = vz*t_n[1] - vx*t_n[3]
-   v_cross_t[3] = vx*t_n[2] - vy*t_n[1]
+   cross!(v, t_n, v_cross_t)
 
    # e_n x t_n
-   e_cross_t[1] = e_n[2]*t_n[3] - e_n[3]*t_n[2]
-   e_cross_t[2] = e_n[3]*t_n[1] - e_n[1]*t_n[3]
-   e_cross_t[3] = e_n[1]*t_n[2] - e_n[2]*t_n[1]
+   cross!(e_n, t_n, e_cross_t)
 
    # Update velocity
    # Equation 39:
@@ -112,9 +108,10 @@ end
 
 function _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int)
    (; tspan, p, u0) = prob
-   paramBoris = MultistepBorisMethod()
+   paramBoris = MultistepBorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
-   traj = fill(MVector{6, eltype(u0)}(undef), nout)
+   # Safe initialization avoiding shared mutable elements
+   traj = Vector{MVector{6, eltype(u0)}}(undef, nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
@@ -156,7 +153,7 @@ function _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, i
       errors = nothing
       tslocation = 0
 
-      sols[i] = TraceSolution{Float64, 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+      sols[i] = TraceSolution{eltype(u0), 2}(traj_save, u_analytic, errors, t, k, prob, alg,
          interp, dense, tslocation, stats, alg_choice, retcode)
    end
 
