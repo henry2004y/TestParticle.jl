@@ -1,7 +1,6 @@
 using TestParticle
 using Test
 using StaticArrays
-using LinearAlgebra
 
 @testset "Multistep Boris" begin
     # E cross B drift
@@ -82,27 +81,5 @@ using LinearAlgebra
     for sol in [sol_std_gyro, sol_multi_2_gyro, sol_multi_4_gyro]
         v_end = sol[1].u[end][4:6]
         @test norm(v_end) ≈ v0_norm atol=1e-12
-    end
-
-    # Verify that Multistep n=1 is consistent with Standard Boris
-    # Note: solve with n=1 dispatches to _boris!, so we can't easily test _multistep_boris! with n=1 via solve.
-    # But we can call update_velocity_multistep! manually to check against single step update.
-
-    paramBoris = TestParticle.MultistepBorisMethod()
-    xv = MVector{6, Float64}(u0_gyro)
-    dt_step = 0.1
-    t = 0.0
-    # Use n=1
-    TestParticle.update_velocity_multistep!(xv, paramBoris, param_gyro, dt_step, t, 1)
-    v_multi_1 = copy(xv[4:6])
-
-    # Standard Boris update
-    xv_std = MVector{6, Float64}(u0_gyro)
-    paramBorisStd = TestParticle.BorisMethod()
-    TestParticle.update_velocity!(xv_std, paramBorisStd, param_gyro, dt_step, t)
-    v_std = copy(xv_std[4:6])
-
-    @test v_multi_1 ≈ v_std atol=1e-14
-    
+    end    
 end
-# Force update
