@@ -11,17 +11,19 @@ import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-function plot_trajectory(sol_boris, sol1, sol2)
+function plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris")
-   l1 = lines!(ax, sol1; idxs,
-      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-   l2 = linesegments!(ax, sol2; idxs,
-      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
+   lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris n=1")
+   lines!(ax, sol_boris_2[1]; idxs, linewidth = 2, label = "Boris n=2")
+   lines!(ax, sol_boris_4[1]; idxs, linewidth = 2, label = "Boris n=4")
+   lines!(ax, sol1; idxs,
+      color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
+   linesegments!(ax, sol2; idxs,
+      color = Makie.wong_colors()[5], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
 
    scale!(ax.scene, invrL, invrL)
 
@@ -46,6 +48,8 @@ const tperiod = 2π / (abs(param[1]) *
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;
 
+# ## Multistep Boris Comparison
+
 # We first trace the particle for one period with a discrete time step of a quarter period.
 
 tspan = (0.0, tperiod)
@@ -54,6 +58,8 @@ dt = tperiod / 4
 prob = TraceProblem(stateinit, tspan, param)
 
 sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n=2);
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n=4);
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -61,8 +67,8 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
-# ## Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)
+# ### Visualization
+f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t)``) compared with Tsit5.
@@ -73,13 +79,17 @@ dt = tperiod / 8
 prob = TraceProblem(stateinit, tspan, param)
 
 sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n=2);
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n=4);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
-# ## Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)
+# ### Visualization
+f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
+
+# ## Energy Conservation
 
 # The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
 
@@ -90,13 +100,15 @@ prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
+sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n=2);
+sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n=4);
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
 sol4 = solve(prob, Vern9());
 
-# ## Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)
+# ### Visualization
+f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
 # Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
@@ -108,7 +120,9 @@ ax = Axis(f[1, 1],
    ylabel = "Normalized Kinetic Energy")
 
 sols_to_plot = [
-   (sol_boris[1], "Boris"),
+   (sol_boris[1], "Boris n=1"),
+   (sol_boris_2[1], "Boris n=2"),
+   (sol_boris_4[1], "Boris n=4"),
    (sol1, "Tsit5 fixed"),
    (sol2, "Tsit5 adaptive"),
    (sol3, "Vern7 adaptive"),
@@ -124,9 +138,13 @@ axislegend(ax, position = :lt)
 
 f = DisplayAs.PNG(f) #hide
 
+# ## Performance Comparison
+
 # Another aspect to compare is performance:
 
 @time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+@time sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n=2)[1];
+@time sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n=4)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 @time sol2 = solve(prob, Tsit5());
 @time sol3 = solve(prob, Vern7());
@@ -135,7 +153,7 @@ f = DisplayAs.PNG(f) #hide
 # We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
 
 t = tspan[2] / 2
-sol_boris(t)
+sol_boris[1](t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
