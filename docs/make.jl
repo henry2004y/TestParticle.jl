@@ -53,7 +53,6 @@ features_order = [
    "demo_boris.jl",
    "demo_energy_conservation.jl",
    "demo_interpolation.jl",
-   "demo_boris_outofdomain.jl",
    "demo_dimensionless.jl",
    "demo_multiple.jl",
    "demo_ensemble.jl",
