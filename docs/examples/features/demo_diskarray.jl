@@ -1,4 +1,4 @@
-# # Interpolate over large HDF5 arrays
+# # Interpolate Over Large HDF5 Arrays
 #
 # This example demonstrates how to interpolate over large HDF5 arrays using `DiskArrays.jl`.
 # This is useful when the field data is too large to fit in memory.
