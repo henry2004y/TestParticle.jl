@@ -55,8 +55,6 @@ features_order = [
    "demo_interpolation.jl",
    "demo_boris_outofdomain.jl",
    "demo_dimensionless.jl",
-   "demo_dimensionless_periodic.jl",
-   "demo_dimensionless_dimensional.jl",
    "demo_multiple.jl",
    "demo_ensemble.jl",
    "demo_savingcallback.jl",

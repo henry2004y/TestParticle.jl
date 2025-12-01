@@ -1,4 +1,4 @@
-# # shock
+# # Shock
 #
 # This example shows how to trace protons of a certain energy in MHD plane shocks.
 

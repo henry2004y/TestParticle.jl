@@ -1,5 +1,5 @@
 
-# GPU Ensemble tracing
+# GPU Ensemble Tracing
 
 This example demonstrates the usage of GPU for [ensemble tracing](@ref Ensemble-Tracing).
 Since GitHub Actions do not have GPU runners for now, we do not show the results on page.
