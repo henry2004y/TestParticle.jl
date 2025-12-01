@@ -6,7 +6,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: ZeroField, get_BField
+using TestParticle: ZeroField, get_BField, qᵢ, mᵢ
 import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -40,7 +40,7 @@ stateinit = [x0..., v0...]
 
 param = prepare(zero_E, uniform_B, species = Electron)
 
-## Reference parameters
+# ## Reference parameters
 const tperiod = 2π / (abs(param[1]) *
                  sqrt(sum(x -> x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
@@ -61,7 +61,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
-## Visualization
+# ## Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
@@ -77,7 +77,7 @@ sol_boris = TP.solve(prob; dt, savestepinterval = 1);
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
-## Visualization
+# ## Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
@@ -95,13 +95,13 @@ sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
 sol4 = solve(prob, Vern9());
 
-## Visualization
+# ## Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
 # Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
 
-E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
+E_kin(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
 f = Figure(size = (800, 400), fontsize = 18)
 ax = Axis(f[1, 1],
    xlabel = "time [period]",
@@ -116,7 +116,7 @@ sols_to_plot = [
 ]
 
 for (sol, label) in sols_to_plot
-   energy = map(x -> E(x[4:6]...), sol.u)
+   energy = map(x -> E_kin(x[4:6]...), sol.u)
    lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
 end
 
@@ -139,3 +139,73 @@ sol_boris(t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
+
+# # Advanced Boris Tracing
+#
+# This section shows how to trace charged particles using the Boris method in dimensionless units with additionally boundary check.
+# If the particles travel out of the domain specified by the field, the tracing will stop.
+# Check [Demo: Dimensionless Units](@ref Dimensionless-Units) for explaining the unit conversion.
+
+"""
+Set initial states.
+"""
+function prob_func(prob, i, repeat)
+   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
+end
+
+isoutofdomain(xv, p, t) = isnan(xv[1])
+
+# ## Number of cells for the field along each dimension
+nx, ny = 4, 6
+# ## Unit conversion factors between SI and dimensionless units
+B₀ = 10e-9            # [T]
+Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+t₀ = 1 / Ω            # [s]
+U₀ = 1.0              # [m/s]
+l₀ = U₀ * t₀          # [m]
+E₀ = U₀*B₀            # [V/m]
+
+x = range(0, 11, length = nx) # [l₀]
+y = range(-21, 0, length = ny) # [l₀]
+
+B = fill(0.0, 3, nx, ny) # [B₀]
+B[3, :, :] .= 1.0
+
+E_field(x) = SA[0.0, 0.0, 0.0] # [E₀]
+
+# If bc == 1, we set a NaN value outside the domain (default);
+# If bc == 2, we set periodic boundary conditions.
+param = prepare(x, y, E_field, B; species = User, bc = 1);
+
+# Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
+# After half a cycle, the particle will move into the region where is field is not defined.
+# The tracing will stop with the final step being all NaNs.
+# ## Initial conditions to be modified in prob_func
+x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+u0 = [0.0, 0.0, 0.0] # initial velocity [v₀], will be overwritten in prob_func
+stateinit = [x0..., u0...]
+tspan = (0.0, 1.5π) # 3/4 gyroperiod
+
+dt = 0.1
+savestepinterval = 1
+trajectories = 2
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+
+sols = TestParticle.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
+
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = "Proton trajectory",
+   xlabel = "X",
+   ylabel = "Y",
+   limits = (-10.1, 10.1, -20.1, 0.1),
+   aspect = DataAspect()
+)
+
+for i in eachindex(sols)
+   lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
+end
+
+axislegend(position = :lt, framevisible = false)
+
+f = DisplayAs.PNG(f) #hide
