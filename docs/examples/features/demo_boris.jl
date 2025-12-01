@@ -153,12 +153,7 @@ function prob_func(prob, i, repeat)
    prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
 end
 
-isoutofdomain(xv, p, t) =
-   if isnan(xv[1])
-      return true
-   else
-      return false
-   end
+isoutofdomain(xv, p, t) = isnan(xv[1])
 
 # ## Number of cells for the field along each dimension
 nx, ny = 4, 6
