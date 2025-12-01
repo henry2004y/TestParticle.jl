@@ -17,9 +17,9 @@ function plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris n=1")
-   lines!(ax, sol_boris_2[1]; idxs, linewidth = 2, label = "Boris n=2")
-   lines!(ax, sol_boris_4[1]; idxs, linewidth = 2, label = "Boris n=4")
+   lines!(ax, sol_boris; idxs, linewidth = 2, label = "Boris n=1")
+   lines!(ax, sol_boris_2; idxs, linewidth = 2, label = "Boris n=2")
+   lines!(ax, sol_boris_4; idxs, linewidth = 2, label = "Boris n=4")
    lines!(ax, sol1; idxs,
       color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
    linesegments!(ax, sol2; idxs,
@@ -57,9 +57,9 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1);
-sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2);
-sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -78,9 +78,9 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1);
-sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2);
-sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
@@ -153,7 +153,7 @@ f = DisplayAs.PNG(f) #hide
 # We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
 
 t = tspan[2] / 2
-sol_boris[1](t)
+sol_boris(t)
 
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
