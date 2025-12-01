@@ -12,3 +12,4 @@ report.md
 /.vscode
 /docs/node_modules/
 !test/test_multistep.jl
+!test/test_Makie.jl
