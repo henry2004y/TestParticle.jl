@@ -181,7 +181,7 @@ f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1], title = "Custom Output Trajectories", xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
 
 for i in eachindex(sols_custom)
-   # sols_custom[i][1] contains the trajectory (u)
+   ## sols_custom[i][1] contains the trajectory (u)
    xp = [s[1] for s in sols_custom[i][1]]
    yp = [s[2] for s in sols_custom[i][1]]
    zp = [s[3] for s in sols_custom[i][1]]
