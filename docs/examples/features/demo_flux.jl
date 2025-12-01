@@ -54,8 +54,8 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 "Estimate the particle flux through a plane x = x0."
 function estimate_flux_plane(sols, x0)
    count = sum(sols.u) do sol
-      # Check if particle crossed x0
-      # Assuming monotonic motion along x, check start and end
+      ## Check if particle crossed x0
+      ## Assuming monotonic motion along x, check start and end
       x_start = sol(sol.prob.tspan[1])[1]
       x_end = sol(sol.prob.tspan[2])[1]
 
