@@ -6,22 +6,28 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: ZeroField, get_BField, qᵢ, mᵢ
+using TestParticle: qᵢ, mᵢ
 import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-function plot_trajectory(sol_boris, sol1, sol2)
+function plot_trajectory(sol_boris, sol1, sol2, sol_boris_2=nothing, sol_boris_4=nothing)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = "Boris")
-   l1 = lines!(ax, sol1; idxs,
-      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-   l2 = linesegments!(ax, sol2; idxs,
-      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
+   lines!(ax, sol_boris; idxs, color = Makie.wong_colors()[1], linewidth = 2, label = "Boris n=1")
+   if !isnothing(sol_boris_2)
+      lines!(ax, sol_boris_2; idxs, color = Makie.wong_colors()[2], linewidth = 2, label = "Boris n=2")
+   end
+   if !isnothing(sol_boris_4)
+      lines!(ax, sol_boris_4; idxs, color = Makie.wong_colors()[3], linewidth = 2, label = "Boris n=4")
+   end
+   lines!(ax, sol1; idxs,
+      color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
+   linesegments!(ax, sol2; idxs,
+      color = Makie.wong_colors()[5], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
 
    scale!(ax.scene, invrL, invrL)
 
@@ -32,7 +38,7 @@ end
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = ZeroField()
+zero_E = TP.ZeroField()
 
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1e5, 0.0]
@@ -40,11 +46,13 @@ stateinit = [x0..., v0...]
 
 param = prepare(zero_E, uniform_B, species = Electron)
 
-# ## Reference parameters
+## Reference parameters
 const tperiod = 2π / (abs(param[1]) *
-                 sqrt(sum(x -> x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+                 sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0))))
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
 const invrL = 1 / rL;
+
+# ## Multistep Boris Comparison
 
 # We first trace the particle for one period with a discrete time step of a quarter period.
 
@@ -53,7 +61,9 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -61,8 +71,8 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
-# ## Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)
+# ### Visualization
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t)``) compared with Tsit5.
@@ -72,14 +82,18 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
-# ## Visualization
-f = plot_trajectory(sol_boris, sol1, sol2)
+# ### Visualization
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
 f = DisplayAs.PNG(f) #hide
+
+# ## Energy Conservation
 
 # The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
 
@@ -89,17 +103,17 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
 sol4 = solve(prob, Vern9());
 
-# ## Visualization
+# ### Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
-# Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.
+# Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is known as numerical heating.
 
 E_kin(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
 f = Figure(size = (800, 400), fontsize = 18)
@@ -108,7 +122,9 @@ ax = Axis(f[1, 1],
    ylabel = "Normalized Kinetic Energy")
 
 sols_to_plot = [
-   (sol_boris[1], "Boris"),
+   (sol_boris, "Boris n=1"),
+   (sol_boris_2, "Boris n=2"),
+   (sol_boris_4, "Boris n=4"),
    (sol1, "Tsit5 fixed"),
    (sol2, "Tsit5 adaptive"),
    (sol3, "Vern7 adaptive"),
@@ -117,16 +133,20 @@ sols_to_plot = [
 
 for (sol, label) in sols_to_plot
    energy = map(x -> E_kin(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth=2)
 end
 
 axislegend(ax, position = :lt)
 
 f = DisplayAs.PNG(f) #hide
 
+# ## Performance Comparison
+
 # Another aspect to compare is performance:
 
 @time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+@time sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 2)[1];
+@time sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 4)[1];
 @time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 @time sol2 = solve(prob, Tsit5());
 @time sol3 = solve(prob, Vern7());
@@ -140,30 +160,30 @@ sol_boris(t)
 # The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
 
-# # Advanced Boris Tracing
+# ## Advanced Boris Tracing
 #
 # This section shows how to trace charged particles using the Boris method in dimensionless units with additionally boundary check.
 # If the particles travel out of the domain specified by the field, the tracing will stop.
-# Check [Demo: Dimensionless Units](@ref Dimensionless-Units) for explaining the unit conversion.
+# Check [Demo: Dimensionless Units](@ref Dimensionless-Units-and-Normalization) for explaining the unit conversion.
 
 """
 Set initial states.
 """
 function prob_func(prob, i, repeat)
-   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i*2.0, prob.u0[5:6]...])
+   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i * 2.0, prob.u0[5:6]...])
 end
 
 isoutofdomain(xv, p, t) = isnan(xv[1])
 
-# ## Number of cells for the field along each dimension
+## Number of cells for the field along each dimension
 nx, ny = 4, 6
-# ## Unit conversion factors between SI and dimensionless units
+## Unit conversion factors between SI and dimensionless units
 B₀ = 10e-9            # [T]
 Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]
-E₀ = U₀*B₀            # [V/m]
+E₀ = U₀ * B₀            # [V/m]
 
 x = range(0, 11, length = nx) # [l₀]
 y = range(-21, 0, length = ny) # [l₀]
@@ -180,7 +200,7 @@ param = prepare(x, y, E_field, B; species = User, bc = 1);
 # Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
 # After half a cycle, the particle will move into the region where is field is not defined.
 # The tracing will stop with the final step being all NaNs.
-# ## Initial conditions to be modified in prob_func
+# ## Initial conditions to be modified in `prob_func`
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
 u0 = [0.0, 0.0, 0.0] # initial velocity [v₀], will be overwritten in prob_func
 stateinit = [x0..., u0...]
