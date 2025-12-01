@@ -11,15 +11,19 @@ import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-function plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
+function plot_trajectory(sol_boris, sol1, sol2, sol_boris_2=nothing, sol_boris_4=nothing)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   lines!(ax, sol_boris; idxs, linewidth = 2, label = "Boris n=1")
-   lines!(ax, sol_boris_2; idxs, linewidth = 2, label = "Boris n=2")
-   lines!(ax, sol_boris_4; idxs, linewidth = 2, label = "Boris n=4")
+   lines!(ax, sol_boris; idxs, color = Makie.wong_colors()[1], linewidth = 2, label = "Boris n=1")
+   if !isnothing(sol_boris_2)
+      lines!(ax, sol_boris_2; idxs, color = Makie.wong_colors()[2], linewidth = 2, label = "Boris n=2")
+   end
+   if !isnothing(sol_boris_4)
+      lines!(ax, sol_boris_4; idxs, color = Makie.wong_colors()[3], linewidth = 2, label = "Boris n=4")
+   end
    lines!(ax, sol1; idxs,
       color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
    linesegments!(ax, sol2; idxs,
@@ -68,7 +72,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t)``) compared with Tsit5.
@@ -86,7 +90,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
 f = DisplayAs.PNG(f) #hide
 
 # ## Energy Conservation
@@ -99,16 +103,14 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
-sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 2);
-sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 4);
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
 sol4 = solve(prob, Vern9());
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol_boris_2, sol_boris_4, sol1, sol2)
+f = plot_trajectory(sol_boris, sol1, sol2)
 f = DisplayAs.PNG(f) #hide
 
 # Fixed time step `Tsit5()` is ok, but adaptive `Tsit5()` is pretty bad for long time evolutions. The change in radius indicates change in energy, which is known as numerical heating.
@@ -120,9 +122,9 @@ ax = Axis(f[1, 1],
    ylabel = "Normalized Kinetic Energy")
 
 sols_to_plot = [
-   (sol_boris[1], "Boris n=1"),
-   (sol_boris_2[1], "Boris n=2"),
-   (sol_boris_4[1], "Boris n=4"),
+   (sol_boris, "Boris n=1"),
+   (sol_boris_2, "Boris n=2"),
+   (sol_boris_4, "Boris n=4"),
    (sol1, "Tsit5 fixed"),
    (sol2, "Tsit5 adaptive"),
    (sol3, "Vern7 adaptive"),
@@ -131,7 +133,7 @@ sols_to_plot = [
 
 for (sol, label) in sols_to_plot
    energy = map(x -> E_kin(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth=2)
 end
 
 axislegend(ax, position = :lt)
@@ -162,7 +164,7 @@ sol_boris(t)
 #
 # This section shows how to trace charged particles using the Boris method in dimensionless units with additionally boundary check.
 # If the particles travel out of the domain specified by the field, the tracing will stop.
-# Check [Demo: Dimensionless Units](@ref Dimensionless-Units) for explaining the unit conversion.
+# Check [Demo: Dimensionless Units](@ref Dimensionless-Units-and-Normalization) for explaining the unit conversion.
 
 """
 Set initial states.
