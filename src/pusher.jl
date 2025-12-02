@@ -97,7 +97,7 @@ struct BorisMethod{TV}
    v′_cross_s::TV
 end
 
-function BorisMethod(T::Type{<:AbstractFloat}=Float64)
+function BorisMethod(T::Type{<:AbstractFloat} = Float64)
    v⁻ = MVector{3, T}(undef)
    v′ = MVector{3, T}(undef)
    v⁺ = MVector{3, T}(undef)
@@ -177,7 +177,7 @@ end
 
 """
      solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
-	 savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+     savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
          n::Int=1)
 
 Trace particles using the Boris method with specified `prob`.
@@ -196,15 +196,18 @@ function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = Ensembl
    sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
 end
 
-function _dispatch_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
+function _dispatch_boris!(
+      sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
    if n == 1
       _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain)
    else
-      _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
+      _multistep_boris!(
+         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
    end
 end
 
-function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
+function _solve(
+      ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
    sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
    irange = 1:trajectories
    _dispatch_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n)
@@ -212,7 +215,8 @@ function _solve(::EnsembleSerial, prob, trajectories, dt, savestepinterval, isou
    sols
 end
 
-function _solve(::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
+function _solve(
+      ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n)
    sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval)
 
    nchunks = Threads.nthreads()
@@ -285,7 +289,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       errors = nothing
       tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+      sols[i] = TraceSolution{eltype(u0), 2}(
+         traj_save, u_analytic, errors, t, k, prob, alg,
          interp, dense, tslocation, stats, alg_choice, retcode)
    end
 

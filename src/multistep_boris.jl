@@ -7,7 +7,7 @@ struct MultistepBorisMethod{TV}
    e_cross_t::TV
 end
 
-function MultistepBorisMethod(T::Type{<:AbstractFloat}=Float64)
+function MultistepBorisMethod(T::Type{<:AbstractFloat} = Float64)
    t_n = MVector{3, T}(undef)
    e_n = MVector{3, T}(undef)
    v_cross_t = MVector{3, T}(undef)
@@ -95,18 +95,19 @@ function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
    # v_new = c_n1*v + c_n2*(v x t_n) + c_n3*(v . t_n)t_n + c_n4*e_n + c_n5*(e_n x t_n) + c_n6*(e_n . t_n)t_n
 
    @inbounds for i in 1:3
-      xv[i+3] = c_n1 * xv[i+3] +
-                c_n2 * v_cross_t[i] +
-                c_n3 * v_dot_t * t_n[i] +
-                c_n4 * e_n[i] +
-                c_n5 * e_cross_t[i] +
-                c_n6 * e_dot_t * t_n[i]
+      xv[i + 3] = c_n1 * xv[i + 3] +
+                  c_n2 * v_cross_t[i] +
+                  c_n3 * v_dot_t * t_n[i] +
+                  c_n4 * e_n[i] +
+                  c_n5 * e_cross_t[i] +
+                  c_n6 * e_dot_t * t_n[i]
    end
 
    return
 end
 
-function _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int)
+function _multistep_boris!(
+      sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int)
    (; tspan, p, u0) = prob
    paramBoris = MultistepBorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
@@ -153,7 +154,8 @@ function _multistep_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, i
       errors = nothing
       tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(traj_save, u_analytic, errors, t, k, prob, alg,
+      sols[i] = TraceSolution{eltype(u0), 2}(
+         traj_save, u_analytic, errors, t, k, prob, alg,
          interp, dense, tslocation, stats, alg_choice, retcode)
    end
 
