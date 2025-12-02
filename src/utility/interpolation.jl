@@ -216,24 +216,25 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
 
    if gridtype isa Spherical
       dϕ = gridϕ[2] - gridϕ[1]
-      if abs((2π - gridϕ[end]) - dϕ) < 1e-5
+      if isapprox(gridϕ[end] + dϕ, 2π)
          gridϕ = range(gridϕ[1], step=dϕ, length=length(gridϕ)+1)
          A = cat(A, selectdim(A, 4, 1), dims=4)
       end
       is_periodic = true
-   end
 
-   Ar = @view A[1, :, :, :]
-   Aθ = @view A[2, :, :, :]
-   Aϕ = @view A[3, :, :, :]
+      Ar = @view A[1, :, :, :]
+      Aθ = @view A[2, :, :, :]
+      Aϕ = @view A[3, :, :, :]
 
-   if gridtype isa Spherical
       itpr_u, itpθ_u, itpϕ_u = _getinterp(gridtype, Ar, Aθ, Aϕ, order, bc)
 
       interpr = scale(itpr_u, gridr, gridθ, gridϕ)
       interpθ = scale(itpθ_u, gridr, gridθ, gridϕ)
       interpϕ = scale(itpϕ_u, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
+      Ar = @view A[1, :, :, :]
+      Aθ = @view A[2, :, :, :]
+      Aϕ = @view A[3, :, :, :]
       if order != 1
          throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
       end
@@ -258,7 +259,7 @@ function _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ
       r_val, θ_val, ϕ_val = cart2sph(xu)
 
       if periodic
-         ϕ_val = mod(ϕ_val, 2π)
+         ϕ_val = mod2pi(ϕ_val)
       end
 
       Br = interpr(r_val, θ_val, ϕ_val)
@@ -278,14 +279,12 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
 
    if gridtype isa Spherical
       dϕ = gridϕ[2] - gridϕ[1]
-      if abs((2π - gridϕ[end]) - dϕ) < 1e-5
+      if isapprox(gridϕ[end] + dϕ, 2π)
          gridϕ = range(gridϕ[1], step=dϕ, length=length(gridϕ)+1)
          A = cat(A, selectdim(A, 3, 1), dims=3)
       end
       is_periodic = true
-   end
 
-   if gridtype isa Spherical
       itp_unscaled = _get_interp_object(gridtype, A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
@@ -300,7 +299,7 @@ function _create_spherical_scalar_field_interpolator(interp, periodic::Bool=fals
    function get_field(xu)
       r_val, θ_val, ϕ_val = cart2sph(xu[1], xu[2], xu[3])
       if periodic
-         ϕ_val = mod(ϕ_val, 2π)
+         ϕ_val = mod2pi(ϕ_val)
       end
       return interp(r_val, θ_val, ϕ_val)
    end
@@ -309,16 +308,7 @@ end
 
 function _get_interp_object(A, order::Int, bc::Int)
    bspline = _get_bspline(order, bc == 2)
-
-   bctype = if bc == 1
-      NaN
-   elseif bc == 2
-      Periodic()
-   else
-      Flat()
-   end
-
-   itp = extrapolate(interpolate(A, bspline), bctype)
+   itp = interpolate(A, bspline)
 end
 
 function _get_interp_object(::Spherical, A, order::Int, bc::Int)
@@ -328,13 +318,5 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
-   bctype = if bc == 1
-      (NaN, NaN, NaN)
-   elseif bc == 2
-      (Periodic(), Periodic(), Flat())
-   else
-      (Flat(), Flat(), Flat())
-   end
-
-   itp = extrapolate(interpolate(A, itp_type), bctype)
+   itp = interpolate(A, itp_type)
 end
