@@ -23,18 +23,26 @@ const B₀ = 1.0
 const E₀ = 1.0
 
 ## Helper function to run tests
-function run_test(case_name, param, x0, v0, tspan, expected_energy_func; dt = 0.1, ymin=nothing, ymax=nothing)
+function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
+      uselog = true, dt = 0.1, ymin = nothing, ymax = nothing)
    u0 = [x0..., v0...]
    prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
    prob_tp = TraceProblem(u0, tspan, param)
 
    f = Figure(size = (1000, 600), fontsize = 18)
+   if uselog
+      yscale = log10
+   else
+      yscale = identity
+   end
+
    ax = Axis(f[1, 1],
       title = "$case_name: Energy Error",
       xlabel = "Time",
       ylabel = "Rel. Energy Error |(E - E_ref)/E_ref|",
-      yscale = log10
+      yscale = yscale
    )
+
    if !isnothing(ymin) && !isnothing(ymax)
       ylims!(ax, ymin, ymax)
    end
@@ -46,14 +54,14 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func; dt = 0.
       ## Expected energy
       t = sol.t
       x = @views [u[1:3] for u in sol.u]
-      # Pass velocity to expected_energy_func just in case
+      ## Pass velocity to expected_energy_func just in case
       E_ref = @views [expected_energy_func(ti, xi, u[4:6])
                       for (ti, xi, u) in zip(t, x, sol.u)]
 
       ## Error (Avoid division by zero if E_ref is 0)
       error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
 
-      lines!(ax, t, error, label = label, linewidth=2)
+      lines!(ax, t, error, label = label, linewidth = 2)
    end
 
    ## Run ODE solvers
@@ -76,9 +84,8 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func; dt = 0.
    return f
 end
 
-# Solvers to test
-## Dictionary of Name => Algorithm
-ode_solvers = [
+## Solvers to test
+const ode_solvers = [
    ("Tsit5", Tsit5()),
    ("Vern7", Vern7()),
    ("Vern9", Vern9()),
@@ -97,17 +104,17 @@ v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
 E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
-f1 = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; ymin=1e-16, ymax=1e-2)
+f1 = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; ymin = 1e-16, ymax = 1e-2)
 f1 = DisplayAs.PNG(f1) #hide
 
-# ## Case 2: Constant E, Zero B(TO BE FIXED!)
+# ## Case 2: Constant E, Zero B
 # Energy increases due to work done by the electric field.
 # For a particle starting from rest in constant E field:
 # $\mathbf{a} = \frac{q}{m} \mathbf{E}$
 # $\mathbf{v}(t) = \mathbf{a} t$ (if $v_0=0$)
 # $E_{kin} = \frac{1}{2} m v^2 = \frac{1}{2} m (\frac{q E_0}{m} t)^2$
 
-constant_E(x) = SA[E₀, 0.0, 0.0]
+constant_E(x, t) = SA[E₀, 0.0, 0.0]
 
 param2 = prepare(constant_E, ZeroField(); species = User, q = q, m = m)
 x0_2 = [0.0, 0.0, 0.0]
@@ -120,20 +127,21 @@ function E_func2(t, x, v)
    return 0.5 * m * v_theo^2
 end
 
-f2 = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; ymin=1e-16, ymax=1e3)
+f2 = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; uselog = false)
 f2 = DisplayAs.PNG(f2) #hide
 
-# ## Case 3: Magnetic Mirror (TO BE FIXED!)
+# ## Case 3: Magnetic Mirror
 # Energy should be conserved (E=0).
 # The particle bounces back and forth between regions of high magnetic field.
 
-function mirror_B(x, α = 0.1)
+function mirror_B(x)
+   α = 0.1
    Bz = B₀ * (1 + α * x[3]^2)
 
    ## Divergence-free B field in cylindrical symmetry
    ## Bx = -0.5 * x * dBz/dz
    ## By = -0.5 * y * dBz/dz
-   ## dBz/dz = 2 * B0 * alpha * z
+   ## dBz/dz = 2 * B₀ * alpha * z
 
    Bx = -B₀ * α * x[1] * x[3]
    By = -B₀ * α * x[2] * x[3]
@@ -147,7 +155,7 @@ tspan3 = (0.0, 10.0)
 E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
-f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3)
+f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3; dt = 0.05, ymin=1e-16, ymax=1.0)
 f3 = DisplayAs.PNG(f3) #hide
 
 println("Demo finished successfully")
