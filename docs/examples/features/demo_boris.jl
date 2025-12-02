@@ -11,18 +11,22 @@ import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-function plot_trajectory(sol_boris, sol1, sol2, sol_boris_2=nothing, sol_boris_4=nothing)
+function plot_trajectory(
+      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   lines!(ax, sol_boris; idxs, color = Makie.wong_colors()[1], linewidth = 2, label = "Boris n=1")
+   lines!(ax, sol_boris; idxs, color = Makie.wong_colors()[1],
+      linewidth = 2, label = "Boris n=1")
    if !isnothing(sol_boris_2)
-      lines!(ax, sol_boris_2; idxs, color = Makie.wong_colors()[2], linewidth = 2, label = "Boris n=2")
+      lines!(ax, sol_boris_2; idxs, color = Makie.wong_colors()[2],
+         linewidth = 2, label = "Boris n=2")
    end
    if !isnothing(sol_boris_4)
-      lines!(ax, sol_boris_4; idxs, color = Makie.wong_colors()[3], linewidth = 2, label = "Boris n=4")
+      lines!(ax, sol_boris_4; idxs, color = Makie.wong_colors()[3],
+         linewidth = 2, label = "Boris n=4")
    end
    lines!(ax, sol1; idxs,
       color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
@@ -133,7 +137,7 @@ sols_to_plot = [
 
 for (sol, label) in sols_to_plot
    energy = map(x -> E_kin(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth=2)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth = 2)
 end
 
 axislegend(ax, position = :lt)

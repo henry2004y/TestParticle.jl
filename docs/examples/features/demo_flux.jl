@@ -22,7 +22,9 @@ using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
 
-"Set initial conditions."
+"""
+Set initial conditions.
+"""
 function prob_func(prob, i, repeat)
    ## initial velocity, [m/s]
    ## 50% v=1.0, 50% v=2.0
@@ -51,7 +53,9 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
-"Estimate the particle flux through a plane x = x0."
+"""
+Estimate the particle flux through a plane x = x0.
+"""
 function estimate_flux_plane(sols, x0)
    count = sum(sols.u) do sol
       ## Check if particle crossed x0
@@ -96,7 +100,9 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = fa
 
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
-"Estimate the particle flux through a sphere with radius r = r0."
+"""
+Estimate the particle flux through a sphere with radius r = r0.
+"""
 function estimate_flux_sphere(sols, r0)
    count = sum(sols.u) do sol
       u_start = sol(sol.prob.tspan[1])

@@ -38,17 +38,16 @@ tspan = (0.0, 10.0)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-function prob_func_basic(prob, i, repeat)
-   remake(prob, u0 = [prob.u0[1:3]..., i/3, 0.0, 0.0])
-end
+prob_func_basic(prob, i, repeat) = remake(prob, u0 = [prob.u0[1:3]..., i/3, 0.0, 0.0])
 
 trajectories = 3
-ensemble_prob = EnsembleProblem(prob; prob_func=prob_func_basic, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
 sols = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories)
 
 ## Visualization
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1], title = "Basic Ensemble", xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
+ax = Axis3(f[1, 1], title = "Basic Ensemble", xlabel = "X",
+   ylabel = "Y", zlabel = "Z", aspect = :data)
 
 for i in eachindex(sols)
    lines!(ax, sols[i], idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
@@ -71,15 +70,17 @@ function prob_func_maxwellian(prob, i, repeat)
 end
 
 trajectories_dist = 10
-ensemble_prob_dist = EnsembleProblem(prob; prob_func=prob_func_maxwellian, safetycopy = false)
-sols_dist = solve(ensemble_prob_dist, Vern7(), EnsembleThreads(); trajectories=trajectories_dist)
+ensemble_prob_dist = EnsembleProblem(prob; prob_func = prob_func_maxwellian, safetycopy = false)
+sols_dist = solve(ensemble_prob_dist, Vern7(), EnsembleThreads(); trajectories = trajectories_dist)
 
 ## Visualization
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1], title = "Maxwellian Sampling", xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
+ax = Axis3(f[1, 1], title = "Maxwellian Sampling", xlabel = "X",
+   ylabel = "Y", zlabel = "Z", aspect = :data)
 
 for i in eachindex(sols_dist)
-   lines!(ax, sols_dist[i], idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
+   lines!(ax, sols_dist[i], idxs = (1, 2, 3), label = "$i",
+      color = Makie.wong_colors()[mod1(i, 7)])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -156,7 +157,8 @@ function output_func_custom(sol, i)
    b = getB.(sol.u)
 
    ## Calculate cosine of pitch angle
-   μ = [@views (b[j] ⋅ sol[4:6, j]) / (norm(b[j]) * norm(sol[4:6, j])) for j in eachindex(sol)]
+   μ = [@views (b[j] ⋅ sol[4:6, j]) / (norm(b[j]) * norm(sol[4:6, j]))
+        for j in eachindex(sol)]
 
    ## Return: (trajectory, B-field, pitch-angle-cosine), rerun_flag
    (sol.u, b, μ), false
@@ -166,19 +168,20 @@ trajectories_custom = 2
 saveat = tspan_custom[2] / 40
 
 ensemble_prob_custom = EnsembleProblem(prob_custom;
-    prob_func=prob_func_custom,
-    output_func=output_func_custom,
-    safetycopy = false
+   prob_func = prob_func_custom,
+   output_func = output_func_custom,
+   safetycopy = false
 )
 
 sols_custom = solve(ensemble_prob_custom, Vern9(), EnsembleThreads();
-    trajectories=trajectories_custom,
-    saveat=saveat
+   trajectories = trajectories_custom,
+   saveat = saveat
 )
 
 ## Visualization
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1], title = "Custom Output Trajectories", xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
+ax = Axis3(f[1, 1], title = "Custom Output Trajectories",
+   xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
 
 for i in eachindex(sols_custom)
    ## sols_custom[i][1] contains the trajectory (u)
@@ -189,7 +192,6 @@ for i in eachindex(sols_custom)
 end
 f = DisplayAs.PNG(f) #hide
 
-
 # ## 4. Native Boris Pusher
 #
 # We can also solve the ensemble problem with the native [Boris pusher](@ref Boris-Method).
@@ -199,15 +201,17 @@ dt = 0.1
 savestepinterval = 1
 
 ## Reuse the basic problem parameters
-prob_boris = TraceProblem(stateinit, tspan, param; prob_func=prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris; dt, trajectories=3, savestepinterval)
+prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
+trajs_boris = TestParticle.solve(prob_boris; dt, trajectories = 3, savestepinterval)
 
 ## Visualization
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1], title = "Boris Pusher Trajectories", xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
+ax = Axis3(f[1, 1], title = "Boris Pusher Trajectories",
+   xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data)
 
 for i in eachindex(trajs_boris)
-   lines!(ax, trajs_boris[i]; idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
+   lines!(
+      ax, trajs_boris[i]; idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide
