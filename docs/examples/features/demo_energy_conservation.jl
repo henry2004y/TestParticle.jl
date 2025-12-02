@@ -46,27 +46,30 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func; dt=0.1)
         yscale = log10
     )
 
+    function plot_energy_error!(sol, label)
+        # Calculate energy
+        v_mag = [norm(u[4:6]) for u in sol.u]
+        E = 0.5 .* m .* v_mag.^2
+
+        # Expected energy
+        t = sol.t
+        x = [u[1:3] for u in sol.u]
+        # Pass velocity to expected_energy_func just in case
+        E_ref = [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t, x, sol.u)]
+
+        # Error
+        # Avoid division by zero if E_ref is 0
+        error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
+
+        lines!(ax, t, error, label = label)
+    end
+
     # Run ODE solvers
     for (name, alg) in ode_solvers
         # Catch potential errors with solvers (e.g. divergence)
         try
             sol = solve(prob_ode, alg)
-
-            # Calculate energy
-            v_mag = [norm(u[4:6]) for u in sol.u]
-            E = 0.5 .* m .* v_mag.^2
-
-            # Expected energy
-            t = sol.t
-            x = [u[1:3] for u in sol.u]
-            # Pass velocity to expected_energy_func just in case
-            E_ref = [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t, x, sol.u)]
-
-            # Error
-            # Avoid division by zero if E_ref is 0
-            error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
-
-            lines!(ax, t, error, label = name)
+            plot_energy_error!(sol, name)
         catch e
             println("Solver $name failed: $e")
         end
@@ -75,23 +78,11 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func; dt=0.1)
     # Run Native Solvers
     # Boris
     sol_boris = TestParticle.solve(prob_tp; dt=dt)[1] # returns Vector{TraceSolution}
-    v_mag_b = [norm(u[4:6]) for u in sol_boris.u]
-    E_b = 0.5 .* m .* v_mag_b.^2
-    t_b = sol_boris.t
-    x_b = [u[1:3] for u in sol_boris.u]
-    E_ref_b = [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t_b, x_b, sol_boris.u)]
-    error_b = abs.(E_b .- E_ref_b) ./ (abs.(E_ref_b) .+ 1e-16)
-    lines!(ax, t_b, error_b, label = "Boris (dt=$dt)")
+    plot_energy_error!(sol_boris, "Boris (dt=$dt)")
 
     # Boris Multistep (n=2)
     sol_multi = TestParticle.solve(prob_tp; dt=dt, n=2)[1]
-    v_mag_m = [norm(u[4:6]) for u in sol_multi.u]
-    E_m = 0.5 .* m .* v_mag_m.^2
-    t_m = sol_multi.t
-    x_m = [u[1:3] for u in sol_multi.u]
-    E_ref_m = [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t_m, x_m, sol_multi.u)]
-    error_m = abs.(E_m .- E_ref_m) ./ (abs.(E_ref_m) .+ 1e-16)
-    lines!(ax, t_m, error_m, label = "Boris Multistep (n=2)")
+    plot_energy_error!(sol_multi, "Boris Multistep (n=2)")
 
     axislegend(ax, position = :rb) # bottom right to avoid covering start
     return f
