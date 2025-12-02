@@ -14,7 +14,7 @@ CairoMakie.activate!(type = "png") #hide
 # Define a uniform magnetic field and zero electric field
 # Dimensionless units: q=1, m=1, B=1
 B_func(x, t) = SA[0.0, 0.0, 1.0]
-E_func(x, t) = SA[0.0, 0.0, 0.0]
+E_func = TestParticle.ZeroField()
 
 # Parameters
 q = 1.0
@@ -30,7 +30,7 @@ u0 = [x0..., v0...]
 
 # Simulation time
 # We simulate for multiple periods to allow phase error to accumulate
-n_periods = 100
+n_periods = 10
 t_end = n_periods * T_period
 tspan = (0.0, t_end)
 
@@ -52,10 +52,7 @@ steps_per_period = [10, 20, 40, 80, 160, 320]
 dts = T_period ./ steps_per_period
 
 # Storage for results
-results = Dict{String, Vector{Float64}}()
-for (name, _) in solvers
-    results[name] = Float64[]
-end
+results = Dict(name => Float64[] for (name, _) in solvers)
 
 # Loop over time steps and solvers
 for dt in dts
