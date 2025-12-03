@@ -50,72 +50,33 @@ end
 
 # ## Interpolation Function
 #
-# We define a function to query the field at a single location `x`.
-# We implement the interpolation logic manually to read only the necessary chunks.
-# This avoids loading the entire array into memory.
-
-function get_value(da, x; order = Linear(), bc = Flat())
-   ## Handle Periodic BC by wrapping x
-   if bc == Periodic()
-      sz = size(da)
-      x = map((val, s) -> mod(val - 1, s) + 1, x, sz)
-      ## After wrapping, we use Flat extrapolation on the wrapped coordinate
-      bc = Flat()
-   end
-
-   ## Determine indices needed for interpolation (neighbors)
-   inds_raw = map(val -> floor(Int, val):ceil(Int, val), x)
-
-   ## Clamp indices to array bounds to find readable block
-   sz = size(da)
-   inds_read = map((r, s) -> max(1, min(s, first(r))):max(1, min(s, last(r))), inds_raw, sz)
-
-   ## Read data block
-   ## da[inds_read...] reads the block from HDF5 via DiskArrays
-   data = da[inds_read...]
-
-   ## Construct interpolator on the loaded block
-   ## Handle singleton dimensions (e.g. at boundaries or integer coordinates) by using NoInterp
-   orders = map(s -> s==1 ? NoInterp() : BSpline(order), size(data))
-   itp = interpolate(data, orders)
-   itp = extrapolate(itp, bc)
-
-   ## Calculate local coordinates relative to the loaded block
-   local_x = map((val, r) -> val - first(r) + 1, x, inds_read)
-
-   return itp(local_x...)
-end
+# We define a function `itp` to query the field at a single location `x`.
 
 # Open the file and wrap the dataset
-fid = h5open(filename, "r")
-da = HDF5DiskArray(fid["mygroup/myvector"])
+h5open(filename, "r") do fid
+   da = HDF5DiskArray(fid["mygroup/myvector"])
 
-# Evaluate at a point
-loc_int = (5.0, 5.0, 5.0)
-println("Value at $loc_int: ", get_value(da, loc_int))
+   cached = DiskArrays.cache(da)
+   itp = extrapolate(
+      interpolate(cached, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
 
-loc_float = (5.5, 5.5, 5.5)
-println("Value at $loc_float: ", get_value(da, loc_float))
+   # Evaluate at a point
+   loc_int = (5.0, 5.0, 5.0)
+   println("Value at $loc_int: ", itp(loc_int...))
 
-# ## Periodic Boundary Conditions
-#
-# We can specify boundary conditions, e.g., `Periodic()`.
-# Our function handles coordinate wrapping manually.
+   loc_float = (5.5, 5.5, 5.5)
+   println("Value at $loc_float: ", itp(loc_float...))
 
-loc_out = (-0.5, 1.0, 1.0)
-val_periodic = get_value(da, loc_out, order = Linear(), bc = Periodic())
-println("Value at $loc_out (Periodic): ", val_periodic)
-
-# Check correctness of Periodic:
-# -0.5 wraps to 9.5 (since period is 10).
-# Value at 9.5, 1.0, 1.0.
-# Data is i+j+k.
-# 9.5 + 1 + 1 = 11.5.
-println("Expected Periodic: ", 9.5 + 1 + 1)
+   loc_out = (-0.5, 1.0, 1.0)
+   val_periodic = itp(loc_out...)
+   println("Value at $loc_out (Periodic): ", val_periodic)
+   ## Check correctness of Periodic
+   ## Note that we assume cell center values. -0.5 wraps to 9.5 (since period is 10).
+   ## Value at 9.5, 1.0, 1.0. Data is i+j+k.
+   println("Expected Periodic: ", 9.5 + 1 + 1)
+end
 
 # ## Cleanup
-#
-# Close the file and remove it.
+# Remove the temporary file.
 
-close(fid)
 rm(filename)
