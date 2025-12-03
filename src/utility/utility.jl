@@ -17,7 +17,7 @@ Convert from Cartesian to spherical coordinates vector.
 function cart2sph(x, y, z)
    r = hypot(x, y, z)
    if r == 0
-      return SVector{3, eltype(x)}(0, 0, 0)
+      return SVector{3, eltype(r)}(0, 0, 0)
    end
    θ = acos(z / r)
    ϕ = atan(y, x) |> mod2pi
