@@ -73,4 +73,4 @@ loc = SA[1.0, 1.0, 1.0];
 @time A_car(loc); # precompilation
 @time A_car(loc);
 
-# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`) is 3x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
+# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`) is 2x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).

@@ -13,3 +13,4 @@ report.md
 /docs/node_modules/
 !test/test_multistep.jl
 !test/test_Makie.jl
+!test/test_svector_interp.jl
