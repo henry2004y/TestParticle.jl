@@ -1,12 +1,12 @@
 # # Energy Conservation
 #
-# This example demonstrates the energy conservation (or theoretical agreement) of a single particle motion in three cases.
+# This example demonstrates the energy conservation of a single particle motion in three cases.
 # 1. Constant B field, Zero E field.
 # 2. Constant E field, Zero B field.
 # 3. Magnetic Mirror.
 #
 # The tests are performed in dimensionless units with q=1, m=1.
-# We compare multiple solvers: Tsit5, Vern7, Vern9, BS3, ImplicitMidpoint, Boris, and Boris Multistep.
+# We compare multiple solvers: `Tsit5`, `Vern7`, `Vern9`, `BS3`, `ImplicitMidpoint`, `Boris`, and `Boris Multistep`.
 
 import DisplayAs #hide
 using TestParticle
@@ -70,7 +70,7 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
       plot_energy_error!(sol, name)
    end
 
-   ## Run Native Solvers
+   ## Run native solvers
    ## Boris
    sol_boris = TestParticle.solve(prob_tp; dt)[1] # returns Vector{TraceSolution}
    plot_energy_error!(sol_boris, "Boris")
@@ -110,9 +110,15 @@ f1 = DisplayAs.PNG(f1) #hide
 # ## Case 2: Constant E, Zero B
 # Energy increases due to work done by the electric field.
 # For a particle starting from rest in constant E field:
-# $\mathbf{a} = \frac{q}{m} \mathbf{E}$
-# $\mathbf{v}(t) = \mathbf{a} t$ (if $v_0=0$)
-# $E_{kin} = \frac{1}{2} m v^2 = \frac{1}{2} m (\frac{q E_0}{m} t)^2$
+# ```math
+# \begin{aligned}
+# \mathbf{a} &= \frac{q}{m} \mathbf{E} \\
+# \mathbf{v}(t) &= \mathbf{a} t (\mathrm{if } v_0=0)
+# \end{aligned}
+# ```
+# ```math
+# E_{kin} = \frac{1}{2} m v^2 = \frac{1}{2} m (\frac{q E_0}{m} t)^2
+# ```
 
 constant_E(x, t) = SA[E₀, 0.0, 0.0]
 
@@ -122,8 +128,7 @@ v0_2 = [0.0, 0.0, 0.0] # Start from rest
 tspan2 = (0.0, 5.0)
 
 function E_func2(t, x, v)
-   ## Analytical energy
-   v_theo = (q * E₀ / m) * t
+   v_theo = (q * E₀ / m) * t # analytical energy
    return 0.5 * m * v_theo^2
 end
 
@@ -133,16 +138,18 @@ f2 = DisplayAs.PNG(f2) #hide
 # ## Case 3: Magnetic Mirror
 # Energy should be conserved (E=0).
 # The particle bounces back and forth between regions of high magnetic field.
+# We set a divergence-free B field in cylindrical symmetry
+# ```math
+# \begin{aligned}
+# B_x &= -\alpha B_0 x z \\
+# B_y &= -\alpha B_0 y z \\
+# B_z &= B_0 \left( 1 + \alpha z^2 \right)
+# \end{aligned}
+# ```
 
 function mirror_B(x)
    α = 0.1
    Bz = B₀ * (1 + α * x[3]^2)
-
-   ## Divergence-free B field in cylindrical symmetry
-   ## Bx = -0.5 * x * dBz/dz
-   ## By = -0.5 * y * dBz/dz
-   ## dBz/dz = 2 * B₀ * alpha * z
-
    Bx = -B₀ * α * x[1] * x[3]
    By = -B₀ * α * x[2] * x[3]
    return SA[Bx, By, Bz]
@@ -155,6 +162,6 @@ tspan3 = (0.0, 10.0)
 E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
-f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3,
-   E_func3; dt = 0.05, ymin = 1e-16, ymax = 1.0)
+f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
+   dt = 0.05, ymin = 1e-16, ymax = 1.0)
 f3 = DisplayAs.PNG(f3) #hide
