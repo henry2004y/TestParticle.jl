@@ -157,5 +157,3 @@ E_func3(t, x, v) = E_init_3
 
 f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3; dt = 0.05, ymin=1e-16, ymax=1.0)
 f3 = DisplayAs.PNG(f3) #hide
-
-println("Demo finished successfully")
