@@ -113,7 +113,7 @@ f1 = DisplayAs.PNG(f1) #hide
 # ```math
 # \begin{aligned}
 # \mathbf{a} &= \frac{q}{m} \mathbf{E} \\
-# \mathbf{v}(t) &= \mathbf{a} t (\mathrm{if } v_0=0)
+# \mathbf{v}(t) &= \mathbf{a} t\, (\,\mathrm{if}\,v_0=0)
 # \end{aligned}
 # ```
 # ```math
@@ -141,8 +141,8 @@ f2 = DisplayAs.PNG(f2) #hide
 # We set a divergence-free B field in cylindrical symmetry
 # ```math
 # \begin{aligned}
-# B_x &= -\alpha B_0 x z \\
-# B_y &= -\alpha B_0 y z \\
+# B_x &= -\alpha B_0\, x\, z \\
+# B_y &= -\alpha B_0\, y\, z \\
 # B_z &= B_0 \left( 1 + \alpha z^2 \right)
 # \end{aligned}
 # ```
