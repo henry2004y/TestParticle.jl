@@ -20,7 +20,7 @@ function cart2sph(x, y, z)
       return SVector{3, eltype(x)}(0, 0, 0)
    end
    θ = acos(z / r)
-   ϕ = atan(y, x)
+   ϕ = atan(y, x) |> mod2pi
    return SVector{3}(r, θ, ϕ)
 end
 
