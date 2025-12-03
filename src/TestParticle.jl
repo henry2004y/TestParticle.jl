@@ -2,7 +2,7 @@ module TestParticle
 
 using LinearAlgebra: norm, ×, ⋅, diag
 using Statistics: mean, normalize
-using Interpolations: interpolate, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
+using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Linear, Quadratic, Cubic,
                       Line, OnCell, Periodic, Flat, Gridded
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,

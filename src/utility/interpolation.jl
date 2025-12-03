@@ -210,13 +210,54 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
    return get_field
 end
 
+function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
+   min_phi, max_phi = extrema(gridϕ)
+   needs_0 = !isapprox(min_phi, 0, atol=1e-5)
+   needs_2pi = !isapprox(max_phi, 2π, atol=1e-5)
+
+   if !needs_0 && !needs_2pi
+      return gridϕ, A
+   end
+
+   new_grid_vec = collect(gridϕ)
+   if needs_0
+      pushfirst!(new_grid_vec, 0.0)
+   end
+   if needs_2pi
+      push!(new_grid_vec, 2π)
+   end
+
+   sz = [size(A)...]
+   phi_dim = N
+   sz[phi_dim] = length(new_grid_vec)
+   new_A = Array{T, N}(undef, sz...)
+
+   start_idx = needs_0 ? 2 : 1
+   end_idx = start_idx + length(gridϕ) - 1
+
+   selectdim(new_A, phi_dim, start_idx:end_idx) .= A
+
+   if needs_0
+       src_idx_for_0 = size(A, phi_dim)
+       selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
+   end
+
+   if needs_2pi
+       src_idx_for_2pi = 1
+       selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, src_idx_for_2pi)
+   end
+
+   return new_grid_vec, new_A
+end
+
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 4}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
-   Ar = @view A[1, :, :, :]
-   Aθ = @view A[2, :, :, :]
-   Aϕ = @view A[3, :, :, :]
 
    if gridtype isa Spherical
+      Ar = @view A[1, :, :, :]
+      Aθ = @view A[2, :, :, :]
+      Aϕ = @view A[3, :, :, :]
+
       itpr_u, itpθ_u, itpϕ_u = _getinterp(gridtype, Ar, Aθ, Aϕ, order, bc)
 
       interpr = scale(itpr_u, gridr, gridθ, gridϕ)
@@ -226,6 +267,13 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       if order != 1
          throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
       end
+
+      gridϕ, A = _ensure_full_phi(gridϕ, A)
+
+      Ar = @view A[1, :, :, :]
+      Aθ = @view A[2, :, :, :]
+      Aϕ = @view A[3, :, :, :]
+
       grid = (gridr, gridθ, gridϕ)
       bctype_r, bctype_θ, bctype_ϕ = if bc == 1
          (NaN, NaN, NaN)
@@ -234,9 +282,9 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       else
          (Flat(), Flat(), Periodic())
       end
-      interpr = extrapolate(interpolate(grid, Ar, Gridded(Linear())), bctype_r)
-      interpθ = extrapolate(interpolate(grid, Aθ, Gridded(Linear())), bctype_θ)
-      interpϕ = extrapolate(interpolate(grid, Aϕ, Gridded(Linear())), bctype_ϕ)
+      interpr = extrapolate(interpolate!(grid, Ar, Gridded(Linear())), bctype_r)
+      interpθ = extrapolate(interpolate!(grid, Aθ, Gridded(Linear())), bctype_θ)
+      interpϕ = extrapolate(interpolate!(grid, Aϕ, Gridded(Linear())), bctype_ϕ)
    end
 
    return _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
@@ -265,7 +313,10 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
    else # SphericalNonUniformR
       #TODO: Respect the passed boundary conditions!
       bctype = (Flat(), Flat(), Periodic())
-      itp = extrapolate(interpolate((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+
+      gridϕ, A = _ensure_full_phi(gridϕ, A)
+
+      itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
    end
    return _create_spherical_scalar_field_interpolator(itp)
 end
@@ -289,7 +340,7 @@ function _get_interp_object(A, order::Int, bc::Int)
       Flat()
    end
 
-   itp = extrapolate(interpolate(A, bspline), bctype)
+   itp = extrapolate(interpolate!(A, bspline), bctype)
 end
 
 function _get_interp_object(::Spherical, A, order::Int, bc::Int)
@@ -307,5 +358,5 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
       (Flat(), Flat(), Periodic()) # Default to periodic in ϕ
    end
 
-   itp = extrapolate(interpolate(A, itp_type), bctype)
+   itp = extrapolate(interpolate!(A, itp_type), bctype)
 end
