@@ -140,7 +140,7 @@ function _multistep_boris!(
          v_old .= @view xv[4:6]
          update_velocity_multistep!(xv, paramBoris, p, dt, (it-0.5)*dt, n_steps)
 
-         if (it-1) % savestepinterval == 0
+         if (it-1) > 0 && (it-1) % savestepinterval == 0
             iout += 1
             traj[iout] = copy(xv)
             traj[iout][4] = (v_old[1] + xv[4]) / 2
@@ -157,10 +157,6 @@ function _multistep_boris!(
 
       final_step = min(it, nt)
       if iout < nout && final_step > 0 && final_step % savestepinterval == 0
-         # Update velocity one last time to get v(n+1/2) for averaging
-         v_old .= @view xv[4:6]
-         update_velocity_multistep!(xv, paramBoris, p, dt, (final_step+0.5)*dt, n_steps)
-
          iout += 1
          traj[iout] = copy(xv)
          traj[iout][4] = (v_old[1] + xv[4]) / 2
