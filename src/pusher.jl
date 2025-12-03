@@ -257,7 +257,16 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       traj[1] = copy(xv)
 
       # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5*dt, -0.5*dt)
+      # Euler step: v(-1/2) = v(0) - q/m * (E(0) + v(0) x B(0)) * dt/2
+      q2m, _, Efunc, Bfunc = p
+      t0 = tspan[1]
+      E = Efunc(xv, t0)
+      B = Bfunc(xv, t0)
+      v = @view xv[4:6]
+      cross!(v, B, paramBoris.v⁻) # v x B stored in v⁻
+      for dim in 1:3
+         xv[dim + 3] -= q2m * (E[dim] + paramBoris.v⁻[dim]) * 0.5 * dt
+      end
 
       for it in 1:nt
          update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
