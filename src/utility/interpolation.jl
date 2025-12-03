@@ -230,7 +230,7 @@ function _create_spherical_vector_field_interpolator(itp)
       r_val, θ_val, ϕ_val = cart2sph(xu)
 
       B_local = itp(r_val, θ_val, ϕ_val)
-      Br, Bθ, Bϕ = B_local[1], B_local[2], B_local[3]
+      Br, Bθ, Bϕ = B_local
 
       Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
 
