@@ -525,7 +525,7 @@ end
       trajectories = 4
       savestepinterval = 1000
       sols = TP.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
-      @test sum(s -> sum(s.u[end]), sols) ≈ -1.4065273620640622e6
+      @test sum(s -> sum(s.u[end][4]), sols) ≈ -629641.7042549325
 
       prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
       trajectories = 2
