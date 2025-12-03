@@ -38,6 +38,10 @@ and `gridz`.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function getinterp(gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    if eltype(A) <: SVector
@@ -121,7 +125,7 @@ function _get_bspline(order::Int, periodic::Bool)
    if periodic
       return BSpline(interp_type(Periodic(gt)))
    else
-      # For non-periodic, Linear() is special as it doesn't take an argument.
+      # Linear() is special as it doesn't take an argument.
       if interp_type == Linear
          return BSpline(Linear())
       else
@@ -181,6 +185,10 @@ and `gridz`.
   - `A`: field array. For vector field, the first dimension should be 3.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
@@ -202,6 +210,48 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
    end
 
    return get_field
+end
+
+function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
+   min_phi, max_phi = extrema(gridϕ)
+   needs_0 = !isapprox(min_phi, 0, atol = 1e-5)
+   needs_2pi = !isapprox(max_phi, 2π, atol = 1e-5)
+
+   if !needs_0 && !needs_2pi
+      return gridϕ, A
+   end
+
+   new_grid_vec = collect(gridϕ)
+   if needs_0
+      pushfirst!(new_grid_vec, 0.0)
+   end
+   if needs_2pi
+      push!(new_grid_vec, 2π)
+   end
+
+   phi_dim = N
+   new_A = Array{T, N}(undef, (size(A)[1:(end - 1)]..., length(new_grid_vec)))
+
+   start_idx = needs_0 ? 2 : 1
+   end_idx = start_idx + length(gridϕ) - 1
+
+   selectdim(new_A, phi_dim, start_idx:end_idx) .= A
+
+   if needs_0
+      src_idx_for_0 = size(A, phi_dim)
+      selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
+   end
+
+   if needs_2pi
+      if needs_0
+         selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
+      else # needs 2π only
+         selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(
+            A, phi_dim, 1)
+      end
+   end
+
+   return new_grid_vec, new_A
 end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
@@ -245,9 +295,9 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       itp_unscaled = _get_interp_object(gridtype, A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
-      #TODO: Respect the passed boundary conditions!
       bctype = (Flat(), Flat(), Periodic())
-      itp = extrapolate(interpolate((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+      gridϕ, A = _ensure_full_phi(gridϕ, A)
+      itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
    end
 
    if T <: SVector
@@ -285,14 +335,7 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
    bspline_ϕ = _get_bspline(order, true)
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
-
-   bctype = if bc == 1
-      (NaN, NaN, NaN)
-   elseif bc == 2
-      (Periodic(), Periodic(), Periodic())
-   else
-      (Flat(), Flat(), Periodic()) # Default to periodic in ϕ
-   end
+   bctype = (NaN, NaN, Periodic())
 
    itp = extrapolate(interpolate(A, itp_type), bctype)
 end
