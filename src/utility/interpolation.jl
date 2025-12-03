@@ -40,58 +40,66 @@ and `gridz`.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
 """
 function getinterp(gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
-   @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   if eltype(A) <: SVector
+      @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+   else
+      @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   end
    return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
 end
 
 function getinterp(
       gridtype::Union{Spherical, SphericalNonUniformR}, A, gridr, gridθ, gridϕ,
       order::Int = 1, bc::Int = 3)
-   @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   if eltype(A) <: SVector
+      @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+   else
+      @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   end
    return get_interpolator(gridtype, A, gridr, gridθ, gridϕ, order, bc)
 end
 
 function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
-   @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
+   if eltype(A) <: SVector
+      @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
+      As = A
+   else
+      @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
+      As = reinterpret(reshape, SVector{3, eltype(A)}, A)
+   end
 
-   Ax = @view A[1, :, :]
-   Ay = @view A[2, :, :]
-   Az = @view A[3, :, :]
+   itp = _get_interp_object(As, order, bc)
 
-   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, bc)
-
-   interpx = scale(itpx, gridx, gridy)
-   interpy = scale(itpy, gridx, gridy)
-   interpz = scale(itpz, gridx, gridy)
+   interp = scale(itp, gridx, gridy)
 
    # Return field value at a given location.
    function get_field(xu)
       r = @view xu[1:2]
 
-      return SA[interpx(r...), interpy(r...), interpz(r...)]
+      return interp(r...)
    end
 
    return get_field
 end
 
 function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
-   @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
+   if eltype(A) <: SVector
+      @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
+      As = A
+   else
+      @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
+      As = reinterpret(reshape, SVector{3, eltype(A)}, A)
+   end
 
-   Ax = @view A[1, :]
-   Ay = @view A[2, :]
-   Az = @view A[3, :]
+   itp = _get_interp_object(As, order, bc)
 
-   itpx, itpy, itpz = _getinterp(Ax, Ay, Az, order, bc)
-
-   interpx = scale(itpx, gridx)
-   interpy = scale(itpy, gridx)
-   interpz = scale(itpz, gridx)
+   interp = scale(itp, gridx)
 
    # Return field value at a given location.
    function get_field(xu)
       r = xu[dir]
 
-      return SA[interpx(r), interpy(r), interpz(r)]
+      return interp(r)
    end
 
    return get_field
@@ -176,22 +184,8 @@ and `gridz`.
 """
 function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
-   itpx, itpy,
-   itpz = _getinterp(
-      view(A,1,:,:,:), view(A,2,:,:,:), view(A,3,:,:,:), order, bc)
-
-   interpx = scale(itpx, gridx, gridy, gridz)
-   interpy = scale(itpy, gridx, gridy, gridz)
-   interpz = scale(itpz, gridx, gridy, gridz)
-
-   # Return field value at a given location.
-   function get_field(xu)
-      r = @view xu[1:3]
-
-      return SA[interpx(r...), interpy(r...), interpz(r...)]
-   end
-
-   return get_field
+   As = reinterpret(reshape, SVector{3, T}, A)
+   return get_interpolator(Cartesian(), As, gridx, gridy, gridz, order, bc)
 end
 
 function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
@@ -212,34 +206,8 @@ end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 4}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
-   Ar = @view A[1, :, :, :]
-   Aθ = @view A[2, :, :, :]
-   Aϕ = @view A[3, :, :, :]
-
-   if gridtype isa Spherical
-      itpr_u, itpθ_u, itpϕ_u = _getinterp(gridtype, Ar, Aθ, Aϕ, order, bc)
-
-      interpr = scale(itpr_u, gridr, gridθ, gridϕ)
-      interpθ = scale(itpθ_u, gridr, gridθ, gridϕ)
-      interpϕ = scale(itpϕ_u, gridr, gridθ, gridϕ)
-   else # SphericalNonUniformR
-      if order != 1
-         throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
-      end
-      grid = (gridr, gridθ, gridϕ)
-      bctype_r, bctype_θ, bctype_ϕ = if bc == 1
-         (NaN, NaN, NaN)
-      elseif bc == 2
-         (Periodic(), Periodic(), Periodic())
-      else
-         (Flat(), Flat(), Periodic())
-      end
-      interpr = extrapolate(interpolate(grid, Ar, Gridded(Linear())), bctype_r)
-      interpθ = extrapolate(interpolate(grid, Aθ, Gridded(Linear())), bctype_θ)
-      interpϕ = extrapolate(interpolate(grid, Aϕ, Gridded(Linear())), bctype_ϕ)
-   end
-
-   return _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
+   As = reinterpret(reshape, SVector{3, T}, A)
+   return get_interpolator(gridtype, As, gridr, gridθ, gridϕ, order, bc)
 end
 
 function _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
@@ -249,6 +217,20 @@ function _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ
       Br = interpr(r_val, θ_val, ϕ_val)
       Bθ = interpθ(r_val, θ_val, ϕ_val)
       Bϕ = interpϕ(r_val, θ_val, ϕ_val)
+
+      Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
+
+      return Bvec
+   end
+   return get_field
+end
+
+function _create_spherical_vector_field_interpolator(itp)
+   function get_field(xu)
+      r_val, θ_val, ϕ_val = cart2sph(xu)
+
+      B_local = itp(r_val, θ_val, ϕ_val)
+      Br, Bθ, Bϕ = B_local[1], B_local[2], B_local[3]
 
       Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
 
@@ -267,7 +249,12 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       bctype = (Flat(), Flat(), Periodic())
       itp = extrapolate(interpolate((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
    end
-   return _create_spherical_scalar_field_interpolator(itp)
+
+   if T <: SVector
+      return _create_spherical_vector_field_interpolator(itp)
+   else
+      return _create_spherical_scalar_field_interpolator(itp)
+   end
 end
 
 function _create_spherical_scalar_field_interpolator(interp)
