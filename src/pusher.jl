@@ -112,7 +112,7 @@ end
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
-     update_velocity!(xv, paramBoris, param, dt, t)
+    update_velocity!(xv, paramBoris, param, dt, t)
 
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
@@ -124,16 +124,16 @@ function update_velocity!(xv, paramBoris, param, dt, t)
    B = Bfunc(xv, t)
    # t vector
    for dim in 1:3
-      t_rotate[dim] = q2m*B[dim]*0.5*dt
+      t_rotate[dim] = q2m * B[dim] * 0.5 * dt
    end
    t_mag2 = sum(abs2, t_rotate)
    # s vector
    for dim in 1:3
-      s_rotate[dim] = 2*t_rotate[dim]/(1 + t_mag2)
+      s_rotate[dim] = 2 * t_rotate[dim] / (1 + t_mag2)
    end
    # v-
    for dim in 1:3
-      v⁻[dim] = xv[dim + 3] + q2m*E[dim]*0.5*dt
+      v⁻[dim] = xv[dim + 3] + q2m * E[dim] * 0.5 * dt
    end
    # v′
    cross!(v⁻, t_rotate, v⁻_cross_t)
@@ -147,7 +147,7 @@ function update_velocity!(xv, paramBoris, param, dt, t)
    end
    # v[n+1/2]
    for dim in 1:3
-      xv[dim + 3] = v⁺[dim] + q2m*E[dim]*0.5*dt
+      xv[dim + 3] = v⁺[dim] + q2m * E[dim] * 0.5 * dt
    end
 
    return
@@ -157,9 +157,9 @@ end
 Update location in one timestep `dt`.
 """
 function update_location!(xv, dt)
-   xv[1] += xv[4]*dt
-   xv[2] += xv[5]*dt
-   xv[3] += xv[6]*dt
+   xv[1] += xv[4] * dt
+   xv[2] += xv[5] * dt
+   xv[3] += xv[6] * dt
 
    return
 end
@@ -168,17 +168,17 @@ end
 In-place cross product.
 """
 function cross!(v1, v2, vout)
-   vout[1] = v1[2]*v2[3] - v1[3]*v2[2]
-   vout[2] = v1[3]*v2[1] - v1[1]*v2[3]
-   vout[3] = v1[1]*v2[2] - v1[2]*v2[1]
+   vout[1] = v1[2] * v2[3] - v1[3] * v2[2]
+   vout[2] = v1[3] * v2[1] - v1[1] * v2[3]
+   vout[3] = v1[1] * v2[2] - v1[2] * v2[1]
 
    return
 end
 
 """
-     solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
-     savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-         n::Int=1)
+    solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
+    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+        n::Int=1)
 
 Trace particles using the Boris method with specified `prob`.
 
@@ -246,6 +246,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
+   v_old = MVector{3, eltype(u0)}(undef)
    # Safe initialization avoiding shared mutable elements
    traj = Vector{MVector{6, eltype(u0)}}(undef, nout)
 
@@ -254,7 +255,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       iout = 1
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
-      traj[1] = copy(xv)
+      traj[1] = copy(xv) # Initial condition is saved before the loop
 
       # push velocity back in time by 1/2 dt
       # Euler step: v(-1/2) = v(0) - q/m * (E(0) + v(0) x B(0)) * dt/2
@@ -268,19 +269,39 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
          xv[dim + 3] -= q2m * (E[dim] + paramBoris.v⁻_cross_t[dim]) * 0.5 * dt
       end
 
-      for it in 1:nt
-         update_velocity!(xv, paramBoris, p, dt, (it-0.5)*dt)
-         update_location!(xv, dt)
-         if it % savestepinterval == 0
+      iout = 1
+      it = 1
+      while it <= nt
+         v_old .= @view xv[4:6]
+         update_velocity!(xv, paramBoris, p, dt, (it - 0.5) * dt)
+
+         if (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
             traj[iout] = copy(xv)
+            traj[iout][4] = (v_old[1] + xv[4]) / 2
+            traj[iout][5] = (v_old[2] + xv[5]) / 2
+            traj[iout][6] = (v_old[3] + xv[6]) / 2
          end
-         isoutofdomain(xv, p, it*dt) && break
+
+         update_location!(xv, dt)
+         if isoutofdomain(xv, p, it * dt)
+            break
+         end
+         it += 1
+      end
+
+      final_step = min(it, nt)
+      if iout < nout && final_step > 0 && final_step % savestepinterval == 0
+         iout += 1
+         traj[iout] = copy(xv)
+         traj[iout][4] = (v_old[1] + xv[4]) / 2
+         traj[iout][5] = (v_old[2] + xv[5]) / 2
+         traj[iout][6] = (v_old[3] + xv[6]) / 2
       end
 
       if iout == nout # regular termination
          traj_save = copy(traj)
-         t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
+         t = range(tspan[1], step = dt * savestepinterval, length = nout) |> collect
       else # early termination or savestepinterval != 1
          traj_save = traj[1:iout]
          t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
