@@ -243,8 +243,12 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
    end
 
    if needs_2pi
-       src_idx_for_2pi = 1
-       selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, src_idx_for_2pi)
+       if needs_0
+           selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
+       else
+           src_idx_for_2pi = 1
+           selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, src_idx_for_2pi)
+       end
    end
 
    return new_grid_vec, new_A
@@ -340,7 +344,7 @@ function _get_interp_object(A, order::Int, bc::Int)
       Flat()
    end
 
-   itp = extrapolate(interpolate!(A, bspline), bctype)
+   itp = extrapolate(interpolate(A, bspline), bctype)
 end
 
 function _get_interp_object(::Spherical, A, order::Int, bc::Int)
@@ -358,5 +362,5 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
       (Flat(), Flat(), Periodic()) # Default to periodic in ϕ
    end
 
-   itp = extrapolate(interpolate!(A, itp_type), bctype)
+   itp = extrapolate(interpolate(A, itp_type), bctype)
 end
