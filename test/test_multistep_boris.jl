@@ -56,9 +56,14 @@ using StaticArrays
    @test hypot(@views sol_4step_gyro[1].u[end][1:3]...) < 0.02
 
    # Energy conservation check (E=0 implies |v| is constant)
+   # Euler initialization adds a small energy error: v(-1/2) = v(0) - a*dt/2
+   # |v(-1/2)|^2 = |v(0)|^2 + |a|^2 * dt^2/4
+   # a = q/m * v x B. |a| = 1 * 1 * 1 = 1.
    v0_norm = hypot(@views u0_gyro[4:6]...)
+   expected_v_norm = sqrt(v0_norm^2 + (1.0 * v0_norm * 1.0 * 0.1 / 2)^2)
+
    for sol in (sol_1step_gyro, sol_2step_gyro, sol_4step_gyro)
       v_end = @view sol[1].u[end][4:6]
-      @test hypot(v_end...)≈v0_norm atol=1e-12
+      @test hypot(v_end...) ≈ expected_v_norm atol=1e-12
    end
 end
