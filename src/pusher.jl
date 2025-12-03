@@ -263,9 +263,9 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       E = Efunc(xv, t0)
       B = Bfunc(xv, t0)
       v = @view xv[4:6]
-      cross!(v, B, paramBoris.v⁻) # v x B stored in v⁻
+      cross!(v, B, paramBoris.v⁻_cross_t) # v x B stored in v⁻_cross_t
       for dim in 1:3
-         xv[dim + 3] -= q2m * (E[dim] + paramBoris.v⁻[dim]) * 0.5 * dt
+         xv[dim + 3] -= q2m * (E[dim] + paramBoris.v⁻_cross_t[dim]) * 0.5 * dt
       end
 
       for it in 1:nt
