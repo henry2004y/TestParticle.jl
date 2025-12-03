@@ -38,6 +38,10 @@ and `gridz`.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
   - `dir::Int`: 1/2/3, representing x/y/z direction.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function getinterp(gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
@@ -173,6 +177,10 @@ and `gridz`.
   - `A`: field array. For vector field, the first dimension should be 3.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
