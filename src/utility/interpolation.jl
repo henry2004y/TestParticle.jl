@@ -117,7 +117,7 @@ function _get_bspline(order::Int, periodic::Bool)
    if periodic
       return BSpline(interp_type(Periodic(gt)))
    else
-      # For non-periodic, Linear() is special as it doesn't take an argument.
+      # Linear() is special as it doesn't take an argument.
       if interp_type == Linear
          return BSpline(Linear())
       else
@@ -186,7 +186,7 @@ function get_interpolator(::Cartesian, A::AbstractArray{T, 4},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
    itpx, itpy,
    itpz = _getinterp(
-      view(A,1,:,:,:), view(A,2,:,:,:), view(A,3,:,:,:), order, bc)
+      view(A, 1, :, :, :), view(A, 2, :, :, :), view(A, 3, :, :, :), order, bc)
 
    interpx = scale(itpx, gridx, gridy, gridz)
    interpy = scale(itpy, gridx, gridy, gridz)
@@ -220,8 +220,8 @@ end
 
 function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
    min_phi, max_phi = extrema(gridϕ)
-   needs_0 = !isapprox(min_phi, 0, atol=1e-5)
-   needs_2pi = !isapprox(max_phi, 2π, atol=1e-5)
+   needs_0 = !isapprox(min_phi, 0, atol = 1e-5)
+   needs_2pi = !isapprox(max_phi, 2π, atol = 1e-5)
 
    if !needs_0 && !needs_2pi
       return gridϕ, A
@@ -235,10 +235,8 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
       push!(new_grid_vec, 2π)
    end
 
-   sz = [size(A)...]
    phi_dim = N
-   sz[phi_dim] = length(new_grid_vec)
-   new_A = Array{T, N}(undef, sz...)
+   new_A = Array{T, N}(undef, (size(A)[1:(end - 1)]..., length(new_grid_vec)))
 
    start_idx = needs_0 ? 2 : 1
    end_idx = start_idx + length(gridϕ) - 1
@@ -246,17 +244,17 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
    selectdim(new_A, phi_dim, start_idx:end_idx) .= A
 
    if needs_0
-       src_idx_for_0 = size(A, phi_dim)
-       selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
+      src_idx_for_0 = size(A, phi_dim)
+      selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
    end
 
    if needs_2pi
-       if needs_0
-           selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
-       else
-           src_idx_for_2pi = 1
-           selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, src_idx_for_2pi)
-       end
+      if needs_0
+         selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
+      else # needs 2π only
+         selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(
+            A, phi_dim, 1)
+      end
    end
 
    return new_grid_vec, new_A
@@ -264,7 +262,6 @@ end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 4}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
-
    if gridtype isa Spherical
       Ar = @view A[1, :, :, :]
       Aθ = @view A[2, :, :, :]
@@ -276,9 +273,7 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       interpθ = scale(itpθ_u, gridr, gridθ, gridϕ)
       interpϕ = scale(itpϕ_u, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
-      if order != 1
-         throw(ArgumentError("Only linear interpolation is supported for non-uniform spherical grids!"))
-      end
+      @assert order==1 "Only linear interpolation is supported for non-uniform spherical grids!"
 
       gridϕ, A = _ensure_full_phi(gridϕ, A)
 
@@ -287,16 +282,9 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       Aϕ = @view A[3, :, :, :]
 
       grid = (gridr, gridθ, gridϕ)
-      bctype_r, bctype_θ, bctype_ϕ = if bc == 1
-         (NaN, NaN, NaN)
-      elseif bc == 2
-         (Periodic(), Periodic(), Periodic())
-      else
-         (Flat(), Flat(), Periodic())
-      end
-      interpr = extrapolate(interpolate!(grid, Ar, Gridded(Linear())), bctype_r)
-      interpθ = extrapolate(interpolate!(grid, Aθ, Gridded(Linear())), bctype_θ)
-      interpϕ = extrapolate(interpolate!(grid, Aϕ, Gridded(Linear())), bctype_ϕ)
+      interpr = extrapolate(interpolate!(grid, Ar, Gridded(Linear())), NaN)
+      interpθ = extrapolate(interpolate!(grid, Aθ, Gridded(Linear())), NaN)
+      interpϕ = extrapolate(interpolate!(grid, Aϕ, Gridded(Linear())), Periodic())
    end
 
    return _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
@@ -323,11 +311,8 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       itp_unscaled = _get_interp_object(gridtype, A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
-      #TODO: Respect the passed boundary conditions!
       bctype = (Flat(), Flat(), Periodic())
-
       gridϕ, A = _ensure_full_phi(gridϕ, A)
-
       itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
    end
    return _create_spherical_scalar_field_interpolator(itp)
@@ -361,14 +346,7 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
    bspline_ϕ = _get_bspline(order, true)
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
-
-   bctype = if bc == 1
-      (NaN, NaN, NaN)
-   elseif bc == 2
-      (Periodic(), Periodic(), Periodic())
-   else
-      (Flat(), Flat(), Periodic()) # Default to periodic in ϕ
-   end
+   bctype = (NaN, NaN, Periodic())
 
    itp = extrapolate(interpolate(A, itp_type), bctype)
 end
