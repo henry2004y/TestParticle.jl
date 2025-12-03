@@ -97,8 +97,9 @@ end
 
 B_field_car = param_numeric[4]
 B_field_sph = setup_spherical_field()
-SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car($SA[1.0, 1.0, 1.0])
-SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph($SA[1.0, 1.0, 1.0])
+loc = SA[1.0, 1.0, 1.0]
+SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car(loc)
+SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph(loc)
 
 param_td = prepare(E_td, B_td, F_td)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
