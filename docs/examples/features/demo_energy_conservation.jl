@@ -104,8 +104,8 @@ v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
 E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
-f1 = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; ymin = 1e-16, ymax = 1e-2)
-f1 = DisplayAs.PNG(f1) #hide
+f = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; ymin = 1e-16, ymax = 1e-2)
+f = DisplayAs.PNG(f) #hide
 
 # ## Case 2: Constant E, Zero B
 # Energy increases due to work done by the electric field.
@@ -125,15 +125,15 @@ constant_E(x, t) = SA[E₀, 0.0, 0.0]
 param2 = prepare(constant_E, ZeroField(); species = User, q = q, m = m)
 x0_2 = [0.0, 0.0, 0.0]
 v0_2 = [0.0, 0.0, 0.0] # Start from rest
-tspan2 = (0.0, 5.0)
+tspan2 = (0.0, 40.0)
 
 function E_func2(t, x, v)
    v_theo = (q * E₀ / m) * t # analytical energy
    return 0.5 * m * v_theo^2
 end
 
-f2 = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; uselog = false)
-f2 = DisplayAs.PNG(f2) #hide
+f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; ymin = 1e-16, ymax = 1e-1)
+f = DisplayAs.PNG(f) #hide
 
 # ## Case 3: Magnetic Mirror
 # Energy should be conserved (E=0).
@@ -158,10 +158,10 @@ end
 param3 = prepare(ZeroField(), mirror_B; species = User, q = q, m = m)
 x0_3 = [0.1, 0.0, 0.0]
 v0_3 = [0.5, 0.5, 1.0]
-tspan3 = (0.0, 10.0)
+tspan3 = (0.0, 200.0)
 E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
-f3 = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
+f = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
    dt = 0.05, ymin = 1e-16, ymax = 1.0)
-f3 = DisplayAs.PNG(f3) #hide
+f = DisplayAs.PNG(f) #hide
