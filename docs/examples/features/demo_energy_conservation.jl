@@ -63,7 +63,7 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
       ## Error (Avoid division by zero if E_ref is 0)
       error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
 
-      scatterlines!(ax, t, error, label = label, linewidth = 2, marker = marker)
+      scatter!(ax, t, error, label = label, marker = marker)
    end
 
    ## Run ODE solvers
@@ -78,7 +78,7 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
       plot_energy_error!(sol, name, marker)
    end
 
-   f[1, 2] = Legend(f, ax, "Solvers", framevisible = false)
+   f[1, 2] = Legend(f, ax, "Solvers", framevisible = false, labelsize=24)
 
    return f
 end
@@ -90,12 +90,12 @@ const ode_solvers = [
    ("Vern9", Vern9(), :diamond),
    ("BS3", BS3(), :utriangle),
    ("ImplicitMidpoint", ImplicitMidpoint(), :pentagon)
-];
+]
 
 const native_solvers = [
    ("Boris", :star5, Dict{Symbol, Any}()),
    ("Boris Multistep (n=2)", :star8, Dict{Symbol, Any}(:n => 2))
-]
+];
 
 # ## Case 1: Constant B, Zero E
 # Energy should be conserved.
@@ -108,13 +108,15 @@ v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
 E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
-f = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; dt=T/20, ymin = 1e-16, ymax = 1e-2)
+f = run_test(
+   "Constant B", param1, x0_1, v0_1, tspan1, E_func1; dt = T / 20, ymin = 1e-16, ymax = 1.0)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 1b: Constant B, Time Step Comparison
 # We compare the energy error for the Boris solver with different time steps.
 
-function compare_dt_boris(param, x0, v0, tspan, expected_energy_func, dt_values)
+function compare_dt_boris(
+      param, x0, v0, tspan, expected_energy_func, dt_values; ymin = nothing, ymax = nothing)
    f = Figure(size = (1000, 600), fontsize = 18)
    ax = Axis(f[1, 1],
       title = "Constant B: dt Comparison (Boris)",
@@ -122,11 +124,13 @@ function compare_dt_boris(param, x0, v0, tspan, expected_energy_func, dt_values)
       ylabel = "Rel. Energy Error",
       yscale = log10
    )
-
+   if !isnothing(ymin) && !isnothing(ymax)
+      ylims!(ax, ymin, ymax)
+   end
    prob_tp = TraceProblem([x0..., v0...], tspan, param)
 
    for dt in dt_values
-      sol = TestParticle.solve(prob_tp; dt, n=1)[1] # Boris
+      sol = TestParticle.solve(prob_tp; dt, n = 1)[1] # Boris
 
       ## Calculate energy
       v_mag = [norm(u[4:6]) for u in sol.u]
@@ -135,7 +139,8 @@ function compare_dt_boris(param, x0, v0, tspan, expected_energy_func, dt_values)
       ## Expected energy
       t = sol.t
       x = @views [u[1:3] for u in sol.u]
-      E_ref = @views [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t, x, sol.u)]
+      E_ref = @views [expected_energy_func(ti, xi, u[4:6])
+                      for (ti, xi, u) in zip(t, x, sol.u)]
 
       ## Error
       error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
@@ -147,8 +152,9 @@ function compare_dt_boris(param, x0, v0, tspan, expected_energy_func, dt_values)
    return f
 end
 
-dt_values = [T/6, T/12, T/24]
-f = compare_dt_boris(param1, x0_1, v0_1, tspan1, E_func1, dt_values)
+dt_values = [T / 6, T / 12, T / 24]
+f = compare_dt_boris(
+   param1, x0_1, v0_1, tspan1, E_func1, dt_values; ymin = 1e-2, ymax = 1.0)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 2: Constant E, Zero B
@@ -176,7 +182,8 @@ function E_func2(t, x, v)
    return 0.5 * m * v_theo^2
 end
 
-f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; dt=T/20, ymin = 1e-16, ymax = 1e-13)
+f = run_test("Constant E", param2, x0_2, v0_2, tspan2,
+   E_func2; dt = T / 20, ymin = 1e-16, ymax = 1e-13)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 3: Magnetic Mirror
@@ -207,5 +214,5 @@ E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
 f = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
-   dt = T/100, ymin = 1e-16, ymax = 1.0)
+   dt = T / 20, ymin = 1e-14, ymax = 10.0)
 f = DisplayAs.PNG(f) #hide
