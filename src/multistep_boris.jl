@@ -107,36 +107,45 @@ function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
 end
 
 function _multistep_boris!(
-      sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int)
+      sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
+      save_start, save_end, save_everystep)
    (; tspan, p, u0) = prob
    paramBoris = MultistepBorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
    # Safe initialization avoiding shared mutable elements
    traj = Vector{MVector{6, eltype(u0)}}(undef, nout)
+   tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
    @fastmath @inbounds for i in irange
       # set initial conditions for each trajectory i
-      iout = 1
+      iout = 0
       new_prob = prob.prob_func(prob, i, false)
       xv .= new_prob.u0
-      traj[1] = copy(xv) # Initial condition is saved before the loop
+
+      if save_start
+         iout += 1
+         traj[iout] = copy(xv)
+         tsave[iout] = tspan[1]
+      end
 
       # push velocity back in time by 1/2 dt
       update_velocity_multistep!(xv, paramBoris, p, -0.5 * dt, tspan[1], n_steps)
 
       v_old = MVector{3, eltype(u0)}(undef)
-      iout = 1
       it = 1
       while it <= nt
          v_old .= @view xv[4:6]
          update_velocity_multistep!(xv, paramBoris, p, dt, (it-0.5)*dt, n_steps)
 
-         if (it-1) > 0 && (it-1) % savestepinterval == 0
+         if save_everystep && (it-1) > 0 && (it-1) % savestepinterval == 0
             iout += 1
-            traj[iout] = copy(xv)
-            traj[iout][4] = (v_old[1] + xv[4]) / 2
-            traj[iout][5] = (v_old[2] + xv[5]) / 2
-            traj[iout][6] = (v_old[3] + xv[6]) / 2
+            if iout <= nout
+               traj[iout] = copy(xv)
+               traj[iout][4] = (v_old[1] + xv[4]) / 2
+               traj[iout][5] = (v_old[2] + xv[5]) / 2
+               traj[iout][6] = (v_old[3] + xv[6]) / 2
+               tsave[iout] = tspan[1] + (it - 1) * dt
+            end
          end
 
          update_location!(xv, dt)
@@ -147,21 +156,28 @@ function _multistep_boris!(
       end
 
       final_step = min(it, nt)
-      if iout < nout && final_step > 0 && final_step % savestepinterval == 0
+      should_save_final = false
+      if save_end
+         should_save_final = true
+      elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
+         should_save_final = true
+      end
+
+      if iout < nout && should_save_final
          iout += 1
          t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
          dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
          update_velocity_multistep!(xv, paramBoris, p, dt_final, t_final, n_steps)
          traj[iout] = copy(xv)
+         tsave[iout] = t_final
       end
 
       if iout == nout # regular termination
          traj_save = copy(traj)
-         t = range(tspan[1], step = dt*savestepinterval, length = nout) |> collect
+         t = tsave
       else # early termination or savestepinterval != 1
          traj_save = traj[1:iout]
-         t = tspan[1]:(dt * savestepinterval):(tspan[1] + dt * savestepinterval * (iout - 1)) |>
-             collect
+         t = tsave[1:iout]
       end
 
       dense = false
