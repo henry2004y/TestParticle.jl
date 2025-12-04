@@ -71,13 +71,10 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
    end
 
    ## Run native solvers
-   ## Boris
-   sol_boris = TestParticle.solve(prob_tp; dt)[1] # returns Vector{TraceSolution}
-   plot_energy_error!(sol_boris, "Boris", :star5)
-
-   ## Boris Multistep (n=2)
-   sol_multi = TestParticle.solve(prob_tp; dt, n = 2)[1]
-   plot_energy_error!(sol_multi, "Boris Multistep (n=2)", :star8)
+   for (name, marker, kwargs) in native_solvers
+      sol = TestParticle.solve(prob_tp; dt, kwargs...)[1]
+      plot_energy_error!(sol, name, marker)
+   end
 
    f[1, 2] = Legend(f, ax, "Solvers", framevisible = false)
 
@@ -92,6 +89,11 @@ const ode_solvers = [
    ("BS3", BS3(), :utriangle),
    ("ImplicitMidpoint", ImplicitMidpoint(), :pentagon)
 ];
+
+const native_solvers = [
+   ("Boris", :star5, Dict{Symbol, Any}()),
+   ("Boris Multistep (n=2)", :star8, Dict{Symbol, Any}(:n => 2))
+]
 
 # ## Case 1: Constant B, Zero E
 # Energy should be conserved.
