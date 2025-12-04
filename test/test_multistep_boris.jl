@@ -56,16 +56,16 @@ using StaticArrays
    @test hypot(@views sol_4step_gyro[1].u[end][1:3]...) < 0.02
 
    # Energy conservation check (E=0 implies |v| is constant)
-   # Euler initialization adds a small energy error: v(-1/2) = v(0) - a*dt/2
-   # |v(-1/2)|^2 = |v(0)|^2 + |a|^2 * dt^2/4
-   # a = q/m * v x B. |a| = 1 * 1 * 1 = 1.
-   # However, the output velocity is now averaged: v(n) = (v(n-1/2) + v(n+1/2))/2
-   # This averaging effectively corrects the magnitude error introduced by the staggered grid for gyromotion.
-   # |v(n)| ≈ |v(0)|
+   # The internal velocity preserves magnitude perfectly.
+   # However, the output velocity is averaged: v(n) = (v(n-1/2) + v(n+1/2))/2
+   # This averaging introduces a damping in magnitude for gyromotion: |v_out| = |v_in| * cos(alpha/2)
+   # where alpha is the rotation angle per step ~ omega_c * dt.
+   # For dt=0.1, omega_c=1, alpha ~ 0.1 rad. cos(0.05) ~ 0.99875.
+   # This damping is O(dt^2).
    v0_norm = hypot(@views u0_gyro[4:6]...)
 
    for sol in (sol_1step_gyro, sol_2step_gyro, sol_4step_gyro)
       v_end = @view sol[1].u[end][4:6]
-      @test hypot(v_end...) ≈ v0_norm atol=1e-5
+      @test hypot(v_end...) ≈ v0_norm atol=2e-3
    end
 end

@@ -121,17 +121,8 @@ function _multistep_boris!(
       xv .= new_prob.u0
       traj[1] = copy(xv) # Initial condition is saved before the loop
 
-      # push velocity back in time by 1/2 dt using Euler step
-      # v(-1/2) = v(0) - q/m * (E(0) + v(0) x B(0)) * dt/2
-      q2m, _, Efunc, Bfunc = p
-      t0 = tspan[1]
-      E = Efunc(xv, t0)
-      B = Bfunc(xv, t0)
-      v = @view xv[4:6]
-      cross!(v, B, paramBoris.v_cross_t) # v x B stored in v_cross_t
-      for dim in 1:3
-         xv[dim + 3] -= q2m * (E[dim] + paramBoris.v_cross_t[dim]) * 0.5 * dt
-      end
+      # push velocity back in time by 1/2 dt
+      update_velocity_multistep!(xv, paramBoris, p, -0.5 * dt, tspan[1], n_steps)
 
       v_old = MVector{3, eltype(u0)}(undef)
       iout = 1
