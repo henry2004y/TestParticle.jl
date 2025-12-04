@@ -335,7 +335,12 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
    bspline_ϕ = _get_bspline(order, true)
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
-   bctype = (NaN, NaN, Periodic())
+
+   bctype = if eltype(A) <: SVector
+      fill(eltype(eltype(A))(NaN), eltype(A))
+   else
+      eltype(A)(NaN)
+   end
 
    itp = extrapolate(interpolate(A, itp_type), bctype)
 end
