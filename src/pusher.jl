@@ -284,8 +284,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       final_step = min(it, nt)
       if iout < nout && final_step > 0 && final_step % savestepinterval == 0
          iout += 1
-         t_final = final_step * dt
-         dt_final = t_final - (final_step - 0.5) * dt
+         t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
+         dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
          update_velocity!(xv, paramBoris, p, dt_final, t_final)
          traj[iout] = copy(xv)
       end
