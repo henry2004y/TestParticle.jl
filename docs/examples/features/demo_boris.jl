@@ -18,20 +18,20 @@ function plot_trajectory(
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   lines!(ax, sol_boris; idxs, color = Makie.wong_colors()[1],
+   lines!(ax, sol1; idxs, color = (Makie.wong_colors()[1], 0.5),
+      linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
+   lines!(ax, sol2; idxs, color = (Makie.wong_colors()[2], 0.5), linewidth = 2,
+      linestyle = :dashdot, label = "Tsit5 adaptive")
+   lines!(ax, sol_boris; idxs, color = (Makie.wong_colors()[3], 0.5),
       linewidth = 2, label = "Boris n=1")
    if !isnothing(sol_boris_2)
-      lines!(ax, sol_boris_2; idxs, color = Makie.wong_colors()[2],
+      lines!(ax, sol_boris_2; idxs, color = (Makie.wong_colors()[4], 0.5),
          linewidth = 2, label = "Boris n=2")
    end
    if !isnothing(sol_boris_4)
-      lines!(ax, sol_boris_4; idxs, color = Makie.wong_colors()[3],
+      lines!(ax, sol_boris_4; idxs, color = (Makie.wong_colors()[5], 0.5),
          linewidth = 2, label = "Boris n=4")
    end
-   lines!(ax, sol1; idxs,
-      color = Makie.wong_colors()[4], linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-   linesegments!(ax, sol2; idxs,
-      color = Makie.wong_colors()[5], linewidth = 2, linestyle = :dot, label = "Tsit5 adaptive")
 
    scale!(ax.scene, invrL, invrL)
 
@@ -108,7 +108,7 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 36)[1];
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
