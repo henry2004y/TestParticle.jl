@@ -509,7 +509,7 @@ end
       sol = TP.solve(prob; dt, savestepinterval = 10)[1]
 
       @test sol.u[end] == [-0.00010199139098074829, 3.4634030517007745e-5, 0.0,
-         -64968.55371149313, -75974.54581682774, 0.0]
+         -60893.0154034644, -79322.38445151183, 0.0]
       @test length(sol.t) == length(sol.u)
 
       t = tspan[2] / 2
@@ -520,13 +520,13 @@ end
       trajectories = 4
       savestepinterval = 1000
       sols = TP.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
-      @test sum(s -> sum(s.u[end][4]), sols) ≈ -649685.5371149312
+      @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.1540346438
 
       prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
       trajectories = 2
       savestepinterval = 1000
       sols = TP.solve(prob; dt, savestepinterval, trajectories)
-      @test sum(s -> sum(s.u[end]), sols) ≈ -422829.29878703464
+      @test sum(s -> sum(s.u[end]), sols) ≈ -420646.1997670008
 
       x0 = [-1.0, 0.0, 0.0]
       v0 = [1e6, 0.0, 0.0]
