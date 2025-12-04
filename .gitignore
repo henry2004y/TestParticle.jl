@@ -14,3 +14,5 @@ report.md
 !test/test_multistep.jl
 !test/test_Makie.jl
 !test/test_svector_interp.jl
+!test/test_save_flags.jl
+!test/
