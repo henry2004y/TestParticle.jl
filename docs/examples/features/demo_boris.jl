@@ -197,14 +197,14 @@ B[3, :, :] .= 1.0
 
 E_field(x) = SA[0.0, 0.0, 0.0] # [E₀]
 
-# If bc == 1, we set a NaN value outside the domain (default);
-# If bc == 2, we set periodic boundary conditions.
+## If bc == 1, we set a NaN value outside the domain (default);
+## If bc == 2, we set periodic boundary conditions.
 param = prepare(x, y, E_field, B; species = User, bc = 1);
 
 # Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
 # After half a cycle, the particle will move into the region where is field is not defined.
 # The tracing will stop with the final step being all NaNs.
-# ## Initial conditions to be modified in `prob_func`
+## Initial conditions to be modified in `prob_func`
 x0 = [0.0, 0.0, 0.0] # initial position [l₀]
 u0 = [0.0, 0.0, 0.0] # initial velocity [v₀], will be overwritten in prob_func
 stateinit = [x0..., u0...]
