@@ -52,7 +52,7 @@ end
 #
 # We define a function `itp` to query the field at a single location `x`.
 
-# Open the file and wrap the dataset
+## Open the file and wrap the dataset
 h5open(filename, "r") do fid
    da = HDF5DiskArray(fid["mygroup/myvector"])
 
@@ -60,7 +60,7 @@ h5open(filename, "r") do fid
    itp = extrapolate(
       interpolate(cached, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
 
-   # Evaluate at a point
+   ## Evaluate at a point
    loc_int = (5.0, 5.0, 5.0)
    println("Value at $loc_int: ", itp(loc_int...))
 
