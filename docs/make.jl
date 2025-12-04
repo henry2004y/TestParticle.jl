@@ -52,6 +52,7 @@ applications_order = [
 features_order = [
    "demo_boris.jl",
    "demo_energy_conservation.jl",
+   "demo_phase_error.jl",
    "demo_interpolation.jl",
    "demo_dimensionless.jl",
    "demo_ensemble.jl",
@@ -60,8 +61,7 @@ features_order = [
    "demo_gc.jl",
    "demo_gpu.md",
    "demo_array.md",
-   "demo_diskarray.jl",
-   "demo_phase_error.jl"
+   "demo_diskarray.jl"
 ]
 
 function process_examples(subdir, order)
