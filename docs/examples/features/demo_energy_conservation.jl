@@ -21,6 +21,8 @@ const q = 1.0
 const m = 1.0
 const B₀ = 1.0
 const E₀ = 1.0
+const Ω = q * B₀ / m
+const T = 2π / Ω
 
 ## Helper function to run tests
 function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
@@ -106,7 +108,47 @@ v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
 E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
-f = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; ymin = 1e-16, ymax = 1e-2)
+f = run_test("Constant B", param1, x0_1, v0_1, tspan1, E_func1; dt=T/20, ymin = 1e-16, ymax = 1e-2)
+f = DisplayAs.PNG(f) #hide
+
+# ## Case 1b: Constant B, Time Step Comparison
+# We compare the energy error for the Boris solver with different time steps.
+
+function compare_dt_boris(param, x0, v0, tspan, expected_energy_func, dt_values)
+   f = Figure(size = (1000, 600), fontsize = 18)
+   ax = Axis(f[1, 1],
+      title = "Constant B: dt Comparison (Boris)",
+      xlabel = "Time",
+      ylabel = "Rel. Energy Error",
+      yscale = log10
+   )
+
+   prob_tp = TraceProblem([x0..., v0...], tspan, param)
+
+   for dt in dt_values
+      sol = TestParticle.solve(prob_tp; dt, n=1)[1] # Boris
+
+      ## Calculate energy
+      v_mag = [norm(u[4:6]) for u in sol.u]
+      E = 0.5 .* m .* v_mag .^ 2
+
+      ## Expected energy
+      t = sol.t
+      x = @views [u[1:3] for u in sol.u]
+      E_ref = @views [expected_energy_func(ti, xi, u[4:6]) for (ti, xi, u) in zip(t, x, sol.u)]
+
+      ## Error
+      error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
+
+      lines!(ax, t, error, label = "dt = T/$(round(Int, T/dt))")
+   end
+
+   f[1, 2] = Legend(f, ax, "Time Step", framevisible = false)
+   return f
+end
+
+dt_values = [T/6, T/12, T/24]
+f = compare_dt_boris(param1, x0_1, v0_1, tspan1, E_func1, dt_values)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 2: Constant E, Zero B
@@ -134,7 +176,7 @@ function E_func2(t, x, v)
    return 0.5 * m * v_theo^2
 end
 
-f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; ymin = 1e-16, ymax = 1e-13)
+f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; dt=T/20, ymin = 1e-16, ymax = 1e-13)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 3: Magnetic Mirror
@@ -165,5 +207,5 @@ E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
 f = run_test("Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
-   dt = 0.05, ymin = 1e-16, ymax = 1.0)
+   dt = T/100, ymin = 1e-16, ymax = 1.0)
 f = DisplayAs.PNG(f) #hide
