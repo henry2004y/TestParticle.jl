@@ -112,7 +112,11 @@ function get_interpolator(::CartesianNonUniform, A::AbstractArray{T, 3},
    end
 
    bctype = if bc == 1
-      NaN
+      if T <: SVector
+         fill(eltype(T)(NaN), T)
+      else
+         T(NaN)
+      end
    elseif bc == 2
       Periodic()
    else
