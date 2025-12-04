@@ -27,7 +27,7 @@ export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity
 export orbit, monitor
-export TraceProblem, Cartesian, Spherical, SphericalNonUniformR
+export TraceProblem, Cartesian, CartesianNonUniform, Spherical, SphericalNonUniformR
 
 """
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.

@@ -16,6 +16,10 @@ struct Spherical <: Grid end
 Spherical grid with non-uniform r and uniform θ, ϕ.
 """
 struct SphericalNonUniformR <: Grid end
+"""
+Cartesian grid with non-uniform x, y and z.
+"""
+struct CartesianNonUniform <: Grid end
 
 function getinterp(A, grid1, grid2, grid3, args...)
    getinterp(Cartesian(), A, grid1, grid2, grid3, args...)
@@ -44,6 +48,15 @@ and `gridz`.
 The input array `A` may be modified in-place for memory optimization.
 """
 function getinterp(gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+   if eltype(A) <: SVector
+      @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+   else
+      @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+   end
+   return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
+end
+
+function getinterp(gridtype::CartesianNonUniform, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    if eltype(A) <: SVector
       @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
    else
@@ -81,6 +94,40 @@ function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
       r = @view xu[1:2]
 
       return interp(r...)
+   end
+
+   return get_field
+end
+
+function get_interpolator(::CartesianNonUniform, A::AbstractArray{T, 4},
+      gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
+   As = reinterpret(reshape, SVector{3, T}, A)
+   return get_interpolator(CartesianNonUniform(), As, gridx, gridy, gridz, order, bc)
+end
+
+function get_interpolator(::CartesianNonUniform, A::AbstractArray{T, 3},
+      gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
+   if order != 1
+      throw(ArgumentError("CartesianNonUniform only supports order=1 (Linear) interpolation."))
+   end
+
+   bctype = if bc == 1
+      if T <: SVector
+         fill(eltype(T)(NaN), T)
+      else
+         T(NaN)
+      end
+   elseif bc == 2
+      Periodic()
+   else
+      Flat()
+   end
+
+   itp = extrapolate(interpolate!((gridx, gridy, gridz), A, Gridded(Linear())), bctype)
+
+   function get_field(xu)
+      r = @view xu[1:3]
+      return itp(r...)
    end
 
    return get_field
@@ -164,6 +211,11 @@ and `gridz`. Currently only 3D arrays are supported.
 """
 function getinterp_scalar(
       gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+   return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
+end
+
+function getinterp_scalar(
+      gridtype::CartesianNonUniform, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
 end
 

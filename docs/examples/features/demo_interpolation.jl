@@ -47,8 +47,24 @@ function setup_cartesian_field()
    return B_field, A_field
 end
 
+function setup_cartesian_nonuniform_field()
+   x = logrange(0.1, 10.0, length = 16)
+   y = range(-10, 10, length = 16)
+   z = range(-10, 10, length = 16)
+   B = zeros(3, length(x), length(y), length(z)) # vector
+   B[3, :, :, :] .= 10e-9
+   A = zeros(length(x), length(y), length(z)) # scalar
+   A[:, :, :] .= 10e-9
+
+   B_field = TP.getinterp(TP.CartesianNonUniform(), B, x, y, z)
+   A_field = TP.getinterp_scalar(TP.CartesianNonUniform(), A, x, y, z)
+
+   return B_field, A_field
+end
+
 B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field()
-B_car, A_car = setup_cartesian_field();
+B_car, A_car = setup_cartesian_field()
+B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
 
 # Gridded spherical interpolation:
 
@@ -73,4 +89,11 @@ loc = SA[1.0, 1.0, 1.0];
 @time A_car(loc); # precompilation
 @time A_car(loc);
 
-# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`) is 2x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
+# Non-uniform Cartesian interpolation:
+
+@time B_car_nu(loc); # precompilation
+@time B_car_nu(loc);
+@time A_car_nu(loc); # precompilation
+@time A_car_nu(loc);
+
+# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`, `CartesianNonUniform()`) is 2x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
