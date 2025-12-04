@@ -46,7 +46,7 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
    if !isnothing(ymin) && !isnothing(ymax)
       ylims!(ax, ymin, ymax)
    end
-   function plot_energy_error!(sol, label)
+   function plot_energy_error!(sol, label, marker)
       ## Calculate energy
       v_mag = [norm(u[4:6]) for u in sol.u]
       E = 0.5 .* m .* v_mag .^ 2
@@ -61,23 +61,20 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
       ## Error (Avoid division by zero if E_ref is 0)
       error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1e-16)
 
-      lines!(ax, t, error, label = label, linewidth = 2)
+      scatterlines!(ax, t, error, label = label, linewidth = 2, marker = marker)
    end
 
    ## Run ODE solvers
-   for (name, alg) in ode_solvers
+   for (name, alg, marker) in ode_solvers
       sol = solve(prob_ode, alg; adaptive = false, dt, dense = false)
-      plot_energy_error!(sol, name)
+      plot_energy_error!(sol, name, marker)
    end
 
    ## Run native solvers
-   ## Boris
-   sol_boris = TestParticle.solve(prob_tp; dt)[1] # returns Vector{TraceSolution}
-   plot_energy_error!(sol_boris, "Boris")
-
-   ## Boris Multistep (n=2)
-   sol_multi = TestParticle.solve(prob_tp; dt, n = 2)[1]
-   plot_energy_error!(sol_multi, "Boris Multistep (n=2)")
+   for (name, marker, kwargs) in native_solvers
+      sol = TestParticle.solve(prob_tp; dt, kwargs...)[1]
+      plot_energy_error!(sol, name, marker)
+   end
 
    f[1, 2] = Legend(f, ax, "Solvers", framevisible = false)
 
@@ -86,12 +83,17 @@ end
 
 ## Solvers to test
 const ode_solvers = [
-   ("Tsit5", Tsit5()),
-   ("Vern7", Vern7()),
-   ("Vern9", Vern9()),
-   ("BS3", BS3()),
-   ("ImplicitMidpoint", ImplicitMidpoint())
+   ("Tsit5", Tsit5(), :circle),
+   ("Vern7", Vern7(), :rect),
+   ("Vern9", Vern9(), :diamond),
+   ("BS3", BS3(), :utriangle),
+   ("ImplicitMidpoint", ImplicitMidpoint(), :pentagon)
 ];
+
+const native_solvers = [
+   ("Boris", :star5, Dict{Symbol, Any}()),
+   ("Boris Multistep (n=2)", :star8, Dict{Symbol, Any}(:n => 2))
+]
 
 # ## Case 1: Constant B, Zero E
 # Energy should be conserved.
@@ -132,7 +134,7 @@ function E_func2(t, x, v)
    return 0.5 * m * v_theo^2
 end
 
-f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; ymin = 1e-16, ymax = 1e-1)
+f = run_test("Constant E", param2, x0_2, v0_2, tspan2, E_func2; ymin = 1e-16, ymax = 1e-13)
 f = DisplayAs.PNG(f) #hide
 
 # ## Case 3: Magnetic Mirror
