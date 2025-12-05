@@ -65,9 +65,9 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
-sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
-sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
+sol_boris = TP.solve(prob; dt)[1];
+sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -87,9 +87,9 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob; dt, savestepinterval = 1)[1];
-sol_boris_2 = TP.solve(prob; dt, savestepinterval = 1, n = 2)[1];
-sol_boris_4 = TP.solve(prob; dt, savestepinterval = 1, n = 4)[1];
+sol_boris = TP.solve(prob; dt)[1];
+sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
@@ -109,6 +109,8 @@ prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 36)[1];
+sol_boris_2 = TP.solve(prob; dt, savestepinterval = 36, n = 2)[1];
+sol_boris_4 = TP.solve(prob; dt, savestepinterval = 36, n = 4)[1];
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
@@ -152,7 +154,7 @@ f = DisplayAs.PNG(f) #hide
 @time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
 @time sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 2)[1];
 @time sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 4)[1];
-@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = 10*dt);
 @time sol2 = solve(prob, Tsit5());
 @time sol3 = solve(prob, Vern7());
 @time sol4 = solve(prob, Vern9());
