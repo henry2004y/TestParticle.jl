@@ -313,10 +313,10 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
             iout += 1
             if iout <= nout
                traj[iout] = copy(xv)
-               traj[iout][4] = (v_old[1] + xv[4]) / 2
-               traj[iout][5] = (v_old[2] + xv[5]) / 2
-               traj[iout][6] = (v_old[3] + xv[6]) / 2
-               tsave[iout] = tspan[1] + (it - 1) * dt
+               traj[iout][4:6] .= v_old
+               t_current = tspan[1] + (it - 1) * dt
+               update_velocity!(traj[iout], paramBoris, p, 0.5 * dt, t_current)
+               tsave[iout] = t_current
             end
          end
 

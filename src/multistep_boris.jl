@@ -137,14 +137,14 @@ function _multistep_boris!(
          v_old .= @view xv[4:6]
          update_velocity_multistep!(xv, paramBoris, p, dt, (it-0.5)*dt, n_steps)
 
-         if save_everystep && (it-1) > 0 && (it-1) % savestepinterval == 0
+         if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
             if iout <= nout
                traj[iout] = copy(xv)
-               traj[iout][4] = (v_old[1] + xv[4]) / 2
-               traj[iout][5] = (v_old[2] + xv[5]) / 2
-               traj[iout][6] = (v_old[3] + xv[6]) / 2
-               tsave[iout] = tspan[1] + (it - 1) * dt
+               traj[iout][4:6] .= v_old
+               t_current = tspan[1] + (it - 1) * dt
+               update_velocity_multistep!(traj[iout], paramBoris, p, 0.5 * dt, t_current, n_steps)
+               tsave[iout] = t_current
             end
          end
 
