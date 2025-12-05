@@ -19,8 +19,23 @@
 
 using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
 
+## Source flux at the origin
+const source_flux = 100.0 # [real particle / s]
+const n_particles = 1000 # number of test particles
+const weight = source_flux / n_particles # [particles / s per test particle]
+
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
+
+param = prepare(zeroE, zeroB)
+stateinit = zeros(6) # particle position and velocity to be modified
+tspan = (0.0, 110.0) # Give particles enough time to reach the plane (x=100 with v>=1)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+
+# # Flux through a Plane
+#
+# In this example, we assume zero EM fields with constant particle velocities along the x-direction. We estimate the particle flux through a plane at x = 100.
+# The estimated particle flux shall match the source flux in this example.
 
 """
 Set initial conditions.
@@ -39,18 +54,7 @@ function prob_func(prob, i, repeat)
    prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-## Source flux at the origin
-const source_flux = 100.0 # [real particle / s]
-const n_particles = 1000 # number of test particles
-const weight = source_flux / n_particles # [particles / s per test particle]
-
-param = prepare(zeroE, zeroB)
-stateinit = zeros(6) # particle position and velocity to be modified
-tspan = (0.0, 110.0) # Give particles enough time to reach the plane (x=100 with v>=1)
-
-prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
-
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
 """
@@ -73,9 +77,9 @@ flux = estimate_flux_plane(sols, plane_loc)
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 
-# In this example, we assume zero EM fields with constant particle velocities along the x-direction. The estimated particle flux shall match the source flux in this example.
+# # Flux through a Sphere
 #
-# The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source. We try to estimate the particle flux through a sphere at radius r.
+# The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source with unit speed. We estimate the particle flux through a sphere at radius r.
 
 function sample_unit_velocity_spherical()
    ϕ = 2 * π * rand()    # Azimuthal angle in [0, 2π)
@@ -96,9 +100,8 @@ function prob_func_iso(prob, i, repeat)
    prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
-
-sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
+ensemble_prob_iso = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
+sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
 """
 Estimate the particle flux through a sphere with radius r = r0.
@@ -117,7 +120,7 @@ end
 
 r = 100.0 # [m]
 area = 4π*r^2 # [m²]
-flux = estimate_flux_sphere(sols, r)
+flux = estimate_flux_sphere(sols_iso, r)
 println("Example 2:")
 println("Particle flux through sphere r = $r [m]: ", flux, " /s")
 println("Particle flux density through sphere r = $r [m]: ", flux / area, " /(s * m²)")
