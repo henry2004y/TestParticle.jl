@@ -78,7 +78,7 @@ function run_test(case_name, param, x0, v0, tspan, expected_energy_func;
       plot_energy_error!(sol, name, marker)
    end
 
-   f[1, 2] = Legend(f, ax, "Solvers", framevisible = false, labelsize=24)
+   f[1, 2] = Legend(f, ax, "Solvers", framevisible = false, labelsize = 24)
 
    return f
 end

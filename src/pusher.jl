@@ -217,7 +217,8 @@ end
 function _solve(
       ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
       save_start, save_end, save_everystep)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval,
+   sols, nt,
+   nout = _prepare(prob, trajectories, dt, savestepinterval,
       save_start, save_end, save_everystep)
    irange = 1:trajectories
    _dispatch_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
@@ -229,12 +230,14 @@ end
 function _solve(
       ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
       save_start, save_end, save_everystep)
-   sols, nt, nout = _prepare(prob, trajectories, dt, savestepinterval,
+   sols, nt,
+   nout = _prepare(prob, trajectories, dt, savestepinterval,
       save_start, save_end, save_everystep)
 
    nchunks = Threads.nthreads()
    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
-      _dispatch_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+      _dispatch_boris!(
+         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
          save_start, save_end, save_everystep)
    end
 
