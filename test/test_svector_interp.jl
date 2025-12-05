@@ -54,9 +54,9 @@ using Random
 end
 
 @testset "CartesianNonUniform" begin
-   x = range(0.0, 10.0, length=11)
-   y = range(0.0, 10.0, length=11)
-   z = range(0.0, 10.0, length=11)
+   x = range(0.0, 10.0, length = 11)
+   y = range(0.0, 10.0, length = 11)
+   z = range(0.0, 10.0, length = 11)
 
    # Vector field
    B = fill(0.0, 3, length(x), length(y), length(z))

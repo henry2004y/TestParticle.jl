@@ -56,7 +56,8 @@ function getinterp(gridtype::Cartesian, A, gridx, gridy, gridz, order::Int = 1, 
    return get_interpolator(gridtype, A, gridx, gridy, gridz, order, bc)
 end
 
-function getinterp(gridtype::CartesianNonUniform, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+function getinterp(
+      gridtype::CartesianNonUniform, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    if eltype(A) <: SVector
       @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
    else
