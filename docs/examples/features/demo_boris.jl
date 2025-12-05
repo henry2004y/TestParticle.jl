@@ -81,7 +81,7 @@ f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha=1)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t^2)``) compared with Tsit5.
-# See [Demo: Phase Error](@ref Phase-Error) for more details.
+# See [Phase Error Analysis](@ref) for more details.
 # The phase error gets smaller using a smaller dt:
 
 dt = tperiod / 8
