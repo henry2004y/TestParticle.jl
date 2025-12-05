@@ -1,6 +1,6 @@
 # # Guiding Center Approximation
 #
-# This example demonstrates how to solve the guiding center (GC) equations directly using TestParticle.jl.
+# This example demonstrates how to solve the guiding center (GC) equations directly.
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 
 import DisplayAs #hide
@@ -50,9 +50,8 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
    x = SA[xrange[i], yrange[j], zrange[k]]
    B_numerical[:, i, j, k] = curved_B(x)
 end
-##TODO Higher order interpolation leads to worse results --- needs investigations!
-stateinit_gc,
-param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
+##TODO: Higher order interpolation leads to worse results --- To be investigated!
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
    uniform_E, B_numerical, species = Proton, removeExB = false, order = 1)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)

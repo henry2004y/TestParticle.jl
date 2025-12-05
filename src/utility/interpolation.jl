@@ -114,7 +114,7 @@ function get_interpolator(::CartesianNonUniform, A::AbstractArray{T, 3},
 
    bctype = if bc == 1
       if T <: SVector
-         fill(eltype(T)(NaN), T)
+         fill(eltype(T)(NaN), 3)
       else
          T(NaN)
       end
@@ -372,7 +372,11 @@ function _get_interp_object(A, order::Int, bc::Int)
    bspline = _get_bspline(order, bc == 2)
 
    bctype = if bc == 1
-      NaN
+      if eltype(A) <: SVector
+         fill(eltype(eltype(A))(NaN), 3)
+      else
+         eltype(eltype(A))(NaN)
+      end
    elseif bc == 2
       Periodic()
    else
@@ -390,7 +394,7 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
    bctype = if eltype(A) <: SVector
-      fill(eltype(eltype(A))(NaN), eltype(A))
+      fill(eltype(eltype(A))(NaN), 3)
    else
       eltype(A)(NaN)
    end

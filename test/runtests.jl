@@ -79,7 +79,7 @@ end
          x = range(-10, 10, length = 4)
          y = range(-10, 10, length = 6)
          z = range(-10, 10, length = 8)
-         n = [i+j+k for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
+         n = [Float32(i+j+k) for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
          nfunc11 = TP.getinterp_scalar(n, x, y, z)
          @test nfunc11(SA[9, 0, 0]) == 11.85
          nfunc12 = TP.getinterp_scalar(n, x, y, z, 1, 2)
@@ -87,17 +87,17 @@ end
          nfunc13 = TP.getinterp_scalar(n, x, y, z, 1, 3)
          @test nfunc13(SA[20, 0, 0]) == 12.0
          nfunc21 = TP.getinterp_scalar(n, x, y, z, 2)
-         @test nfunc21(SA[9, 0, 0]) == 11.898529411764706
+         @test nfunc21(SA[9, 0, 0]) == 11.898528302013874
          nfunc22 = TP.getinterp_scalar(n, x, y, z, 2, 2)
-         @test nfunc22(SA[20, 0, 0]) == 9.166666666666668
+         @test nfunc22(SA[20, 0, 0]) == 9.166666686534882
          nfunc23 = TP.getinterp_scalar(n, x, y, z, 2, 3)
-         @test nfunc23(SA[20, 0, 0]) == 12.147058823529411
+         @test nfunc23(SA[20, 0, 0]) == 12.14705765247345
          nfunc31 = TP.getinterp_scalar(n, x, y, z, 3)
-         @test nfunc31(SA[9, 0, 0]) == 11.883
+         @test nfunc31(SA[9, 0, 0]) == 11.882999392215163
          nfunc32 = TP.getinterp_scalar(n, x, y, z, 3, 2)
-         @test nfunc32(SA[20, 0, 0]) == 9.124999999999998
+         @test nfunc32(SA[20, 0, 0]) == 9.124999547351358
          nfunc33 = TP.getinterp_scalar(n, x, y, z, 3, 3)
-         @test nfunc33(SA[20, 0, 0]) == 12.191176470588236
+         @test nfunc33(SA[20, 0, 0]) == 12.191176189381315
       end
 
       begin # spherical interpolation
