@@ -373,7 +373,7 @@ function _get_interp_object(A, order::Int, bc::Int)
 
    bctype = if bc == 1
       if eltype(A) <: SVector
-         fill(eltype(eltype(A))(NaN), 3)
+         SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
       else
          eltype(eltype(A))(NaN)
       end
@@ -394,7 +394,7 @@ function _get_interp_object(::Spherical, A, order::Int, bc::Int)
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
    bctype = if eltype(A) <: SVector
-      fill(eltype(eltype(A))(NaN), 3)
+      SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
    else
       eltype(A)(NaN)
    end
