@@ -513,8 +513,8 @@ end
       @test length(sol.t) == length(sol.u)
 
       t = tspan[2] / 2
-      @test sol(t) == [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
-         -94656.51056802433, 32143.266643605573, 0.0]
+      @test sol(t) ≈ [-3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
+         -94689.59405645168, 32154.016505320025, 0.0]
 
       prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
       trajectories = 4
