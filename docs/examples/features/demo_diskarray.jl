@@ -4,7 +4,7 @@
 # This is useful when the field data is too large to fit in memory.
 # The implementation is based on [this Discourse post](https://discourse.julialang.org/t/interpolate-over-large-hdf5-arrays/127079/12).
 
-using HDF5, DiskArrays
+using HDF5, DiskArrays, StructArrays
 import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked,
                    Unchunked
 using Interpolations
@@ -77,11 +77,10 @@ println("Successfully created $filename")
 
 ## Open the file and wrap the dataset
 h5open(filename, "r") do fid
-   da = HDF5DiskArray(fid["mygroup/A"])
+   da = HDF5DiskArray(fid["mygroup/A"]) |> DiskArrays.cache
 
-   cached = DiskArrays.cache(da)
    itp = extrapolate(
-      interpolate(cached, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
+      interpolate(da, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
 
    ## Evaluate at a point
    loc_int = (5.0, 5.0, 5.0)
@@ -97,9 +96,15 @@ h5open(filename, "r") do fid
    ## Note that we assume cell center values. -0.5 wraps to 9.5 (since period is 10).
    ## Value at 9.5, 1.0, 1.0. Data is i+j+k.
    println("Expected Periodic: ", 9.5 + 1 + 1)
-end
 
-##TODO: How to interpolate field vectors efficiently?
+   ## vector field
+   Bx = HDF5DiskArray(fid["mygroup/Bx"]) |> DiskArrays.cache
+   By = HDF5DiskArray(fid["mygroup/By"]) |> DiskArrays.cache
+   Bz = HDF5DiskArray(fid["mygroup/Bz"]) |> DiskArrays.cache
+   B = StructArray{SVector{3, eltype(Bx)}}((Bx, By, Bz))
+   itp = extrapolate(
+      interpolate(B, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
+end
 
 # ## Cleanup
 # Remove the temporary file.
