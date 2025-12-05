@@ -95,7 +95,7 @@ function setup_spherical_field()
    return B_field
 end
 
-B_field_car = param_numeric[4]
+B_field_car = TP.get_BField(param_numeric)
 B_field_sph = setup_spherical_field()
 loc = SA[1.0, 1.0, 1.0]
 SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car(loc)

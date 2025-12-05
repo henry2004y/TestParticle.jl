@@ -12,24 +12,24 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(
-      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing)
+      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing; alpha=0.5)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
       ylabel = "Y")
    idxs = (1, 2)
-   lines!(ax, sol1; idxs, color = (Makie.wong_colors()[1], 0.5),
+   lines!(ax, sol1; idxs, color = (Makie.wong_colors()[1], alpha),
       linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-   lines!(ax, sol2; idxs, color = (Makie.wong_colors()[2], 0.5), linewidth = 2,
+   lines!(ax, sol2; idxs, color = (Makie.wong_colors()[2], alpha), linewidth = 2,
       linestyle = :dashdot, label = "Tsit5 adaptive")
-   lines!(ax, sol_boris; idxs, color = (Makie.wong_colors()[3], 0.5),
+   lines!(ax, sol_boris; idxs, color = (Makie.wong_colors()[3], alpha),
       linewidth = 2, label = "Boris n=1")
    if !isnothing(sol_boris_2)
-      lines!(ax, sol_boris_2; idxs, color = (Makie.wong_colors()[4], 0.5),
+      lines!(ax, sol_boris_2; idxs, color = (Makie.wong_colors()[4], alpha),
          linewidth = 2, label = "Boris n=2")
    end
    if !isnothing(sol_boris_4)
-      lines!(ax, sol_boris_4; idxs, color = (Makie.wong_colors()[5], 0.5),
+      lines!(ax, sol_boris_4; idxs, color = (Makie.wong_colors()[5], alpha),
          linewidth = 2, label = "Boris n=4")
    end
 
@@ -47,13 +47,14 @@ zero_E = TP.ZeroField()
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1e5, 0.0]
 stateinit = [x0..., v0...]
-
+## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
+q2m = TP.get_q2m(param)
 
 ## Reference parameters
-const tperiod = 2π / (abs(param[1]) *
+const tperiod = 2π / (abs(q2m) *
                  sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0))))
-const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
+const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(q2m) * Bmag)
 const invrL = 1 / rL;
 
 # ## Multistep Boris Comparison
@@ -76,7 +77,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha=1)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t^2)``) compared with Tsit5.
@@ -95,7 +96,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha=1)
 f = DisplayAs.PNG(f) #hide
 
 # ## Energy Conservation
@@ -109,8 +110,8 @@ prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 36)[1];
-sol_boris_2 = TP.solve(prob; dt, savestepinterval = 36, n = 2)[1];
-sol_boris_4 = TP.solve(prob; dt, savestepinterval = 36, n = 4)[1];
+sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2)[1];
+sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 4)[1];
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
