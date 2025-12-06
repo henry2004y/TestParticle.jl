@@ -59,18 +59,17 @@ end
 # 7. Vern9 (fixed step)
 # 8. Vern9 (adaptive)
 
-# We use a reduced sampling time/output size to focus on computation speed.
-# For a fair comparison, we only save the start and end states for all solvers.
+# To simulate realistic applications, we save the solution at fixed intervals for all solvers.
 
 solvers = [
-    ("Boris (n=1)", () -> TP.solve(prob_boris; dt, save_everystep = false)),
-    ("Boris (n=2)", () -> TP.solve(prob_boris; dt, save_everystep = false, n = 2)),
-    ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false, save_everystep = false)),
-    ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); save_everystep = false)),
-    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false, save_everystep = false)),
-    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); save_everystep = false)),
-    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false, save_everystep = false)),
-    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); save_everystep = false)),
+    ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
+    ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
+    ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
+    ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
+    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
+    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
+    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
+    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
 ]
 
 n_solvers = length(solvers)
@@ -87,25 +86,33 @@ for (i, (name, func)) in enumerate(solvers)
     names[i] = name
 end
 
+# Normalize results
+min_time = minimum(results_time)
+min_mem = minimum(results_mem)
+
+results_time_norm = results_time ./ min_time
+results_mem_norm = results_mem ./ min_mem
+
 # ## Visualization
 
 f = Figure(size = (800, 800), fontsize = 18)
+colors = Makie.wong_colors()
 
 ax1 = Axis(f[1, 1],
     title = "Solver Performance Comparison: Time",
-    ylabel = "Median Time (s)",
+    ylabel = "Relative Time",
     xticklabelrotation = π/4,
     xticklabelcolor = :transparent
 )
-barplot!(ax1, eachindex(results_time), results_time, color = eachindex(results_time), colormap = :viridis)
+barplot!(ax1, eachindex(results_time_norm), results_time_norm, color = colors[1:n_solvers])
 ax1.xticks = (eachindex(names), names)
 
 ax2 = Axis(f[2, 1],
     title = "Solver Performance Comparison: Memory",
-    ylabel = "Median Memory (Bytes)",
+    ylabel = "Relative Memory",
     xticklabelrotation = π/4
 )
-barplot!(ax2, eachindex(results_mem), results_mem, color = eachindex(results_mem), colormap = :viridis)
+barplot!(ax2, eachindex(results_mem_norm), results_mem_norm, color = colors[1:n_solvers])
 ax2.xticks = (eachindex(names), names)
 
 f = DisplayAs.PNG(f) #hide
