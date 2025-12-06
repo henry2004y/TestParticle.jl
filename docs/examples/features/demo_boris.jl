@@ -12,7 +12,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(
-      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing; alpha=0.5)
+      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing; alpha = 0.5)
    f = Figure(size = (700, 600), fontsize = 18)
    ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
       xlabel = "X",
@@ -77,7 +77,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha=1)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t^2)``) compared with Tsit5.
@@ -96,7 +96,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha=1)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
 # ## Energy Conservation
