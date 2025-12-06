@@ -22,22 +22,23 @@ const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
 zero_E = TP.ZeroField()
 
-x0 = [0.0, 0.0, 0.0]
-v0 = [0.0, 1e5, 0.0]
-stateinit = [x0..., v0...]
+x0 = SA[0.0, 0.0, 0.0]
+v0 = SA[0.0, 1e5, 0.0]
+stateinit = SA[x0..., v0...]
 ## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
 q2m = TP.get_q2m(param)
 
 ## Reference parameters
-const tperiod = 2π / (abs(q2m) *
-                 sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+const tperiod = 2π / (abs(q2m) * Bmag)
 
 tspan = (0.0, 200 * tperiod)
 dt = tperiod / 12
 
-prob_boris = TraceProblem(stateinit, tspan, param)
-prob_ode = ODEProblem(trace!, stateinit, tspan, param)
+## Native Boris method requires a mutable state (Vector or MVector)
+prob_boris = TraceProblem(MVector(stateinit), tspan, param)
+## ODE solvers from DifferentialEquations.jl are optimized for StaticArrays (SVector)
+prob_ode = ODEProblem(trace, stateinit, tspan, param)
 
 # ## Benchmark
 #
@@ -72,17 +73,18 @@ solvers = [
     ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); save_everystep = false)),
 ]
 
-results_time = Float64[]
-results_mem = Float64[]
-names = String[]
+n_solvers = length(solvers)
+results_time = Vector{Float64}(undef, n_solvers)
+results_mem = Vector{Float64}(undef, n_solvers)
+names = Vector{String}(undef, n_solvers)
 
-for (name, func) in solvers
+for (i, (name, func)) in enumerate(solvers)
     println("Benchmarking $name...")
     b = @be $func() seconds=1
     mt, mm = get_median_time_memory(b)
-    push!(results_time, mt)
-    push!(results_mem, mm)
-    push!(names, name)
+    results_time[i] = mt
+    results_mem[i] = mm
+    names[i] = name
 end
 
 # ## Visualization
@@ -95,16 +97,16 @@ ax1 = Axis(f[1, 1],
     xticklabelrotation = π/4,
     xticklabelcolor = :transparent
 )
-barplot!(ax1, 1:length(results_time), results_time, color = 1:length(results_time), colormap = :viridis)
-ax1.xticks = (1:length(results_time), names)
+barplot!(ax1, eachindex(results_time), results_time, color = eachindex(results_time), colormap = :viridis)
+ax1.xticks = (eachindex(names), names)
 
 ax2 = Axis(f[2, 1],
     title = "Solver Performance Comparison: Memory",
     ylabel = "Median Memory (Bytes)",
     xticklabelrotation = π/4
 )
-barplot!(ax2, 1:length(results_mem), results_mem, color = 1:length(results_mem), colormap = :viridis)
-ax2.xticks = (1:length(results_time), names)
+barplot!(ax2, eachindex(results_mem), results_mem, color = eachindex(results_mem), colormap = :viridis)
+ax2.xticks = (eachindex(names), names)
 
 f = DisplayAs.PNG(f) #hide
 
