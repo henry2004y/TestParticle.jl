@@ -143,7 +143,8 @@ function _multistep_boris!(
                traj[iout] = copy(xv)
                traj[iout][4:6] .= v_old
                t_current = tspan[1] + (it - 1) * dt
-               update_velocity_multistep!(traj[iout], paramBoris, p, 0.5 * dt, t_current, n_steps)
+               update_velocity_multistep!(
+                  traj[iout], paramBoris, p, 0.5 * dt, t_current, n_steps)
                tsave[iout] = t_current
             end
          end

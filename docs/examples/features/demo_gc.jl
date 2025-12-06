@@ -51,7 +51,8 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
    B_numerical[:, i, j, k] = curved_B(x)
 end
 ##TODO: Higher order interpolation leads to worse results --- To be investigated!
-stateinit_gc, param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
+stateinit_gc,
+param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
    uniform_E, B_numerical, species = Proton, removeExB = false, order = 1)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
