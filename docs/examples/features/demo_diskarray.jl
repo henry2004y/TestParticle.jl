@@ -4,7 +4,7 @@
 # This is useful when the field data is too large to fit in memory.
 # The implementation is based on [this Discourse post](https://discourse.julialang.org/t/interpolate-over-large-hdf5-arrays/127079/12).
 
-using HDF5, DiskArrays, StructArrays
+using HDF5, DiskArrays, StructArrays, StaticArrays
 import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked,
                    Unchunked
 using Interpolations
