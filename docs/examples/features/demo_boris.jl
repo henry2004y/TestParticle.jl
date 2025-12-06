@@ -148,26 +148,6 @@ axislegend(ax, position = :lt)
 
 f = DisplayAs.PNG(f) #hide
 
-# ## Performance Comparison
-
-# Another aspect to compare is performance:
-
-@time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
-@time sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 2)[1];
-@time sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 10, n = 4)[1];
-@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = 10*dt);
-@time sol2 = solve(prob, Tsit5());
-@time sol3 = solve(prob, Vern7());
-@time sol4 = solve(prob, Vern9());
-
-# We can extract the solution `(x, y, z, vx, vy, vz)` at any given time by performing a linear interpolation:
-
-t = tspan[2] / 2
-sol_boris(t)
-
-# The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
-# When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
-
 # ## Advanced Boris Tracing
 #
 # This section shows how to trace charged particles using the Boris method in dimensionless units with additionally boundary check.
