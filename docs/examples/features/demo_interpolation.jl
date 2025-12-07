@@ -6,6 +6,7 @@
 
 import TestParticle as TP
 using StaticArrays
+using Chairmarks
 
 function setup_spherical_field()
    r = logrange(0.1, 10.0, length = 16)
@@ -70,30 +71,22 @@ B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
 
 loc = SA[1.0, 1.0, 1.0];
 
-@time B_sph_nu(loc); # precompilation
-@time B_sph_nu(loc);
-@time A_sph_nu(loc); # precompilation
-@time A_sph_nu(loc);
+@be B_sph_nu($loc)
+@be A_sph_nu($loc)
 
 # Uniform spherical interpolation:
 
-@time B_sph(loc); # precompilation
-@time B_sph(loc);
-@time A_sph(loc); # precompilation
-@time A_sph(loc);
+@be B_sph($loc)
+@be A_sph($loc)
 
 # Uniform Cartesian interpolation:
 
-@time B_car(loc); # precompilation
-@time B_car(loc);
-@time A_car(loc); # precompilation
-@time A_car(loc);
+@be B_car($loc)
+@be A_car($loc)
 
 # Non-uniform Cartesian interpolation:
 
-@time B_car_nu(loc); # precompilation
-@time B_car_nu(loc);
-@time A_car_nu(loc); # precompilation
-@time A_car_nu(loc);
+@be B_car_nu($loc)
+@be A_car_nu($loc)
 
 # Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`, `CartesianNonUniform()`) is 2x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
