@@ -41,6 +41,7 @@ end
 include("constants.jl")
 include("current_sheet.jl")
 include("dipole.jl")
+include("loop.jl")
 include("confinement.jl")
 
 """
