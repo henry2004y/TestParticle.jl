@@ -65,33 +65,28 @@ function get_energy_ratio(sol)
    (Eend - Einit) / Einit
 end
 
-## `ImplicitMidpoint()` requires a fixed time step.
-sol = solve(prob, ImplicitMidpoint(); dt = 1e-3)
-get_energy_ratio(sol)
+using Markdown
+using Printf
 
-#
-sol = solve(prob, ImplicitMidpoint(); dt = 1e-4)
-get_energy_ratio(sol)
+results = Tuple{String, Float64}[]
 
-#
-sol = solve(prob, Vern9())
-get_energy_ratio(sol)
+## OrdinaryDiffEq solvers
+ode_solvers = [
+    ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1e-3)),
+    ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1e-4)),
+    ("Vern9", Vern9(), Dict()),
+    ("Trapezoid", Trapezoid(), Dict()),
+    ("Vern6", Vern6(), Dict()),
+    ("Tsit5", Tsit5(), Dict()),
+    ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
+    ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
+    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1e-4))
+]
 
-#
-sol = solve(prob, Trapezoid())
-get_energy_ratio(sol)
-
-#
-sol = solve(prob, Vern6())
-get_energy_ratio(sol)
-
-#
-sol = solve(prob, Tsit5())
-get_energy_ratio(sol)
-
-# Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
-## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
-sol = solve(prob, Tsit5(); reltol = 1e-4);
+for (name, alg, kwargs) in ode_solvers
+    local sol = solve(prob, alg; kwargs...)
+    push!(results, (name, get_energy_ratio(sol)))
+end
 
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
 using DiffEqCallbacks
@@ -102,16 +97,26 @@ dtFE(u, p, t) = 2π / (abs(p[1]) * sqrt(sum(x -> x^2, p[4](u, t))))
 cb = StepsizeLimiter(dtFE; safety_factor = 1 // 10, max_step = true)
 
 sol = solve(prob, Vern9(); callback = cb, dt = 0.1) # dt=0.1 is a dummy value
-get_energy_ratio(sol)
+push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)))
 
 # This is much more accurate, at the cost of more iterations.
 # In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol=1e-7)`; in terms of performance, it is 2x slower (0.04s v.s. 0.02s) and consumes about the same amount of memory 42 MiB.
 # We can also use the classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) implemented within the package:
 
 dt = 1e-4
-prob = TraceProblem(stateinit, tspan, param)
-sol = TestParticle.solve(prob; dt)[1]
-get_energy_ratio(sol)
+prob_boris = TraceProblem(stateinit, tspan, param)
+sol_boris = TestParticle.solve(prob_boris; dt)[1]
+push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)))
+
+# Comparison of energy conservation:
+
+io = IOBuffer()
+println(io, "| Solver | Energy Ratio |")
+println(io, "| :--- | :--- |")
+for (name, ratio) in results
+    Printf.@printf(io, "| %s | %.4e |\n", name, ratio)
+end
+Markdown.parse(String(take!(io)))
 
 # The Boris method requires a fixed time step. It takes about 0.05s and consumes 53 MiB memory. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off (but the energy is still conserved).
 # Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme without decreasing `reltol`. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).
