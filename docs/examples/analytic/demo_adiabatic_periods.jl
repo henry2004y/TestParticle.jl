@@ -66,7 +66,10 @@ println("Theoretical Drift Period:          $(round(τ_d_theo, digits=4)) s")
 ## Initial condition
 r₀ = sph2cart(L * Rₑ, π/2, 0.0) # Equatorial plane, theta=pi/2, phi=0
 vmag = v
-v₀ = sph2cart(vmag, α_eq, π/2) # Velocity. theta=alpha_eq (pitch angle), phi=pi/2
+# The dipole field at the equator points in the -z direction.
+# To have a pitch angle of α_eq, we need the angle between v and -z to be α_eq.
+# v_x = 0 (radial), v_y = v_perp (azimuthal), v_z = v_para (field-aligned)
+v₀ = [0.0, vmag * sin(α_eq), -vmag * cos(α_eq)]
 
 stateinit = [r₀..., v₀...]
 param = prepare(getE_dipole, getB_dipole)
@@ -127,13 +130,15 @@ f3 = DisplayAs.PNG(f3) #hide
 phi = atan.(y, x)
 # Unwrap phi
 phi_unwrap = copy(phi)
+offset = 0.0
 for i in 2:length(phi)
     dphi = phi[i] - phi[i-1]
     if dphi > π
-        phi_unwrap[i:end] .-= 2π
+        offset -= 2π
     elseif dphi < -π
-        phi_unwrap[i:end] .+= 2π
+        offset += 2π
     end
+    phi_unwrap[i] += offset
 end
 
 # Fit line to phi vs t
