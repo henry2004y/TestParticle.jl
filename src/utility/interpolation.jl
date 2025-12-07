@@ -86,7 +86,11 @@ function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
       As = reinterpret(reshape, SVector{3, eltype(A)}, A)
    end
 
-   itp = _get_interp_object(As, Val(order), Val(bc))
+   return _getinterp(Cartesian(), As, gridx, gridy, Val(order), Val(bc))
+end
+
+function _getinterp(::Cartesian, As, gridx, gridy, ::Val{Order}, ::Val{BC}) where {Order, BC}
+   itp = _get_interp_object(As, Val(Order), Val(BC))
 
    interp = scale(itp, gridx, gridy)
 
@@ -143,7 +147,11 @@ function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
       As = reinterpret(reshape, SVector{3, eltype(A)}, A)
    end
 
-   itp = _get_interp_object(As, Val(order), Val(bc))
+   return _getinterp(Cartesian(), As, gridx, Val(order), Val(bc), dir)
+end
+
+function _getinterp(::Cartesian, As, gridx, ::Val{Order}, ::Val{BC}, dir) where {Order, BC}
+   itp = _get_interp_object(As, Val(Order), Val(BC))
 
    interp = scale(itp, gridx)
 
@@ -364,9 +372,9 @@ function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
 end
 
 function _get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
-      A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, ::Val{Order}, ::Val{BC}) where {T, Order, BC}
+      A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, order::Val{Order}, bc::Val{BC}) where {T, Order, BC}
    if gridtype isa Spherical
-      itp_unscaled = _get_interp_object(gridtype, A, Val(Order), Val(BC))
+      itp_unscaled = _get_interp_object(gridtype, A, order, bc)
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
       bctype = (Flat(), Flat(), Periodic())
@@ -398,7 +406,7 @@ function _get_interp_object(A, ::Val{Order}, ::Val{BC}) where {Order, BC}
 
    bctype = if BC == 1
       if eltype(A) <: SVector
-         fill(eltype(eltype(A))(NaN), SVector{3, eltype(eltype(A))})
+         SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
       else
          eltype(eltype(A))(NaN)
       end
@@ -423,7 +431,7 @@ function _get_interp_object(::Spherical, A, ::Val{Order}, ::Val{BC}) where {Orde
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
    bctype = if eltype(A) <: SVector
-      fill(eltype(eltype(A))(NaN), SVector{3, eltype(eltype(A))})
+      SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
    else
       eltype(A)(NaN)
    end
