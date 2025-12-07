@@ -99,7 +99,7 @@ results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
-f = Figure(size = (1000, 600), fontsize = 18)
+f = Figure(size = (900, 600), fontsize = 18)
 
 ax1 = Axis(f[1, 1],
    title = "Solver Performance Comparison: Time",
@@ -120,7 +120,7 @@ barplot!(ax2, eachindex(results_mem_norm), results_mem_norm,
    color = 1:n_solvers, colormap = :tab10)
 ax2.xticks = (eachindex(names), names)
 
-rowgap!(f.layout, 10)
+resize_to_layout!(f)
 
 f = DisplayAs.PNG(f) #hide
 
