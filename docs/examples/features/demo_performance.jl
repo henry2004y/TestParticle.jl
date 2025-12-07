@@ -42,13 +42,6 @@ prob_ode = ODEProblem(trace, stateinit, tspan, param)
 
 # ## Benchmark
 #
-# We define helper functions to extract the median execution time and memory allocation.
-
-function get_median_time_memory(b)
-   mb = median(b)
-   return mb.time, mb.bytes
-end
-
 # We benchmark the following solvers:
 # 1. Native Boris (n=1)
 # 2. Native Multistep Boris (n=2)
@@ -58,8 +51,16 @@ end
 # 6. Vern7 (adaptive)
 # 7. Vern9 (fixed step)
 # 8. Vern9 (adaptive)
-
+#
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
+
+"""
+Helper functions to extract the median execution time and memory allocation.
+"""
+function get_median_time_memory(b)
+   mb = median(b)
+   return mb.time, mb.bytes
+end
 
 solvers = [
    ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
@@ -91,28 +92,29 @@ min_time = minimum(results_time)
 min_mem = minimum(results_mem)
 
 results_time_norm = results_time ./ min_time
-results_mem_norm = results_mem ./ min_mem
+results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
 f = Figure(size = (800, 800), fontsize = 18)
-colors = Makie.wong_colors()
 
 ax1 = Axis(f[1, 1],
    title = "Solver Performance Comparison: Time",
    ylabel = "Relative Time",
-   xticklabelrotation = π/4,
+   xticklabelrotation = π / 4,
    xticklabelcolor = :transparent
 )
-barplot!(ax1, eachindex(results_time_norm), results_time_norm, color = colors[1:n_solvers])
+barplot!(ax1, eachindex(results_time_norm), results_time_norm,
+   color = 1:n_solvers, colormap = :tab10)
 ax1.xticks = (eachindex(names), names)
 
 ax2 = Axis(f[2, 1],
    title = "Solver Performance Comparison: Memory",
    ylabel = "Relative Memory",
-   xticklabelrotation = π/4
+   xticklabelrotation = π / 4
 )
-barplot!(ax2, eachindex(results_mem_norm), results_mem_norm, color = colors[1:n_solvers])
+barplot!(ax2, eachindex(results_mem_norm), results_mem_norm,
+   color = 1:n_solvers, colormap = :tab10)
 ax2.xticks = (eachindex(names), names)
 
 f = DisplayAs.PNG(f) #hide
