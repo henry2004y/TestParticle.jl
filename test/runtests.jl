@@ -600,6 +600,7 @@ end
 include("test_multistep_boris.jl")
 include("test_svector_interp.jl")
 include("test_loop.jl")
+include("test_fieldline.jl")
 
 #if "makie" in ARGS
 #   include("test_Makie.jl")
