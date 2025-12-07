@@ -45,8 +45,8 @@ prob_ode = ODEProblem(trace, stateinit, tspan, param)
 # We define helper functions to extract the median execution time and memory allocation.
 
 function get_median_time_memory(b)
-    mb = median(b)
-    return mb.time, mb.bytes
+   mb = median(b)
+   return mb.time, mb.bytes
 end
 
 # We benchmark the following solvers:
@@ -62,14 +62,14 @@ end
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
 
 solvers = [
-    ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
-    ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
-    ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
-    ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
-    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
-    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
-    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
-    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
+   ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
+   ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
+   ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
+   ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
+   ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
+   ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
+   ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
+   ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt))
 ]
 
 n_solvers = length(solvers)
@@ -78,12 +78,12 @@ results_mem = Vector{Float64}(undef, n_solvers)
 names = Vector{String}(undef, n_solvers)
 
 for (i, (name, func)) in enumerate(solvers)
-    println("Benchmarking $name...")
-    b = @be $func() seconds=1
-    mt, mm = get_median_time_memory(b)
-    results_time[i] = mt
-    results_mem[i] = mm
-    names[i] = name
+   println("Benchmarking $name...")
+   b = @be $func() seconds=1
+   mt, mm = get_median_time_memory(b)
+   results_time[i] = mt
+   results_mem[i] = mm
+   names[i] = name
 end
 
 # Normalize results
@@ -99,18 +99,18 @@ f = Figure(size = (800, 800), fontsize = 18)
 colors = Makie.wong_colors()
 
 ax1 = Axis(f[1, 1],
-    title = "Solver Performance Comparison: Time",
-    ylabel = "Relative Time",
-    xticklabelrotation = π/4,
-    xticklabelcolor = :transparent
+   title = "Solver Performance Comparison: Time",
+   ylabel = "Relative Time",
+   xticklabelrotation = π/4,
+   xticklabelcolor = :transparent
 )
 barplot!(ax1, eachindex(results_time_norm), results_time_norm, color = colors[1:n_solvers])
 ax1.xticks = (eachindex(names), names)
 
 ax2 = Axis(f[2, 1],
-    title = "Solver Performance Comparison: Memory",
-    ylabel = "Relative Memory",
-    xticklabelrotation = π/4
+   title = "Solver Performance Comparison: Memory",
+   ylabel = "Relative Memory",
+   xticklabelrotation = π/4
 )
 barplot!(ax2, eachindex(results_mem_norm), results_mem_norm, color = colors[1:n_solvers])
 ax2.xticks = (eachindex(names), names)
