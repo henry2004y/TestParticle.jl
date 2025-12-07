@@ -14,6 +14,7 @@ using Meshes: coords, spacing, paramdim, CartesianGrid
 using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
+using Elliptic
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
 

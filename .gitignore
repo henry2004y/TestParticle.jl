@@ -16,3 +16,4 @@ report.md
 !test/test_svector_interp.jl
 !test/test_save_flags.jl
 !test/
+!test/test_loop.jl

@@ -599,6 +599,7 @@ end
 
 include("test_multistep_boris.jl")
 include("test_svector_interp.jl")
+include("test_loop.jl")
 
 #if "makie" in ARGS
 #   include("test_Makie.jl")
