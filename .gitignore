@@ -17,3 +17,4 @@ report.md
 !test/test_save_flags.jl
 !test/
 !test/test_loop.jl
+!test/test_distributions.jl
