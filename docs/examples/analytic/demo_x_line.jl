@@ -61,7 +61,7 @@ sol_e = solve(prob_e, Vern9())
 
 f = Figure(size=(1000, 500), fontsize = 18)
 
-# Plot Proton
+## Plot Proton
 ax1 = Axis3(f[1, 1],
    title = "Proton trajectory",
    xlabel = "x [Re]",
@@ -79,7 +79,7 @@ z_p = sol_p(ts_p, idxs = 3) ./ Rₑ |> Vector
 lines!(ax1, x_p, y_p, z_p, label = "1 keV Proton", color = :red)
 axislegend(ax1)
 
-# Plot Electron
+## Plot Electron
 ax2 = Axis3(f[1, 2],
    title = "Electron trajectory",
    xlabel = "x [Re]",
@@ -96,7 +96,7 @@ z_e = sol_e(ts_e, idxs = 3) ./ Rₑ |> Vector
 lines!(ax2, x_e, y_e, z_e, label = "1 keV Electron", color = :blue)
 axislegend(ax2)
 
-# Add B field arrows to proton plot for context
+## Add B field arrows to proton plot for context
 function plot_B!(ax)
    xrange = range(-2, 2, length = 5)
    yrange = range(-1, 1, length = 3)
