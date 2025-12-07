@@ -34,7 +34,7 @@ end
 ## Initialize proton
 x0_p = [-1.0Rₑ, 0.0, 0.1Rₑ]
 Ek_p = 1e3 # eV
-v_p = TP.get_velocity(Ek_p, TP.mᵢ, 1) # magnitude
+v_p = TP.energy2velocity(Ek_p) # magnitude
 v0_p = [v_p, 0.0, 0.0]
 
 stateinit_p = [x0_p..., v0_p...]
@@ -47,7 +47,7 @@ sol_p = solve(prob_p, Vern9())
 ## Initialize electron
 x0_e = [-1.0Rₑ, 0.0, 0.1Rₑ]
 Ek_e = 1000 # eV
-v_e = TP.get_velocity(Ek_e, TP.mₑ, 1) # magnitude
+v_e = TP.energy2velocity(Ek_e, m=TP.mₑ, q=TP.qₑ) # magnitude
 v0_e = [v_e, 0.0, 0.0]
 
 stateinit_e = [x0_e..., v0_e...]
@@ -61,40 +61,31 @@ sol_e = solve(prob_e, Vern9())
 
 f = Figure(size=(1000, 500), fontsize = 18)
 
+function plot_trajectory!(fpos, sol, tspan, title, label, color)
+   ax = Axis3(fpos,
+      title = title,
+      xlabel = "x [Re]",
+      ylabel = "y [Re]",
+      zlabel = "z [Re]",
+      aspect = :data
+   )
+
+   n = 2000 # number of timepoints
+   ts = range(tspan..., length = n)
+   x = sol(ts, idxs = 1) ./ Rₑ |> Vector
+   y = sol(ts, idxs = 2) ./ Rₑ |> Vector
+   z = sol(ts, idxs = 3) ./ Rₑ |> Vector
+
+   lines!(ax, x, y, z, label = label, color = color)
+   axislegend(ax)
+   return ax
+end
+
 ## Plot Proton
-ax1 = Axis3(f[1, 1],
-   title = "Proton trajectory",
-   xlabel = "x [Re]",
-   ylabel = "y [Re]",
-   zlabel = "z [Re]",
-   aspect = :data
-)
-
-n = 2000 # number of timepoints
-ts_p = range(tspan_p..., length = n)
-x_p = sol_p(ts_p, idxs = 1) ./ Rₑ |> Vector
-y_p = sol_p(ts_p, idxs = 2) ./ Rₑ |> Vector
-z_p = sol_p(ts_p, idxs = 3) ./ Rₑ |> Vector
-
-lines!(ax1, x_p, y_p, z_p, label = "1 keV Proton", color = :red)
-axislegend(ax1)
+ax1 = plot_trajectory!(f[1, 1], sol_p, tspan_p, "Proton trajectory", "1 keV Proton", :red)
 
 ## Plot Electron
-ax2 = Axis3(f[1, 2],
-   title = "Electron trajectory",
-   xlabel = "x [Re]",
-   ylabel = "y [Re]",
-   zlabel = "z [Re]",
-   aspect = :data
-)
-
-ts_e = range(tspan_e..., length = n)
-x_e = sol_e(ts_e, idxs = 1) ./ Rₑ |> Vector
-y_e = sol_e(ts_e, idxs = 2) ./ Rₑ |> Vector
-z_e = sol_e(ts_e, idxs = 3) ./ Rₑ |> Vector
-
-lines!(ax2, x_e, y_e, z_e, label = "1 keV Electron", color = :blue)
-axislegend(ax2)
+ax2 = plot_trajectory!(f[1, 2], sol_e, tspan_e, "Electron trajectory", "1 keV Electron", :blue)
 
 ## Add B field arrows to proton plot for context
 function plot_B!(ax)
