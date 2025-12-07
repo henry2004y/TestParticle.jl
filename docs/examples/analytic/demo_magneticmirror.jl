@@ -129,7 +129,7 @@ loss_cone_angle = asin(sqrt(B_min / B_max))
 println("Loss cone angle: ", rad2deg(loss_cone_angle), "°")
 
 ## Define an ensemble of particles
-## All particles start at the center (z=0) with the same energy but different pitch angles.
+## All particles start at the same radial position r₀ but with different pitch angles.
 n_particles = 100
 pitch_angles = range(0, π, length = n_particles)
 v_mag = norm(v₀)
@@ -145,12 +145,21 @@ end)
 
 ## Trace particles
 ## We use a simpler solver for speed and checking escape condition
-sim = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particles, dt = 3e-9)
+## We use the `isoutofdomain` check to stop tracing those particles that go out of the mirror structure.
+isoutofdomain(u, p, t) = abs(u[3]) > distance/2
+
+sim = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particles, dt = 3e-9, isoutofdomain = isoutofdomain, verbose=false)
 
 ## Check which particles are trapped
-## A particle is considered lost if it goes beyond the coils (z > distance/2 or z < -distance/2)
+## A particle is considered trapped if it remains within the mirror (abs(z) < distance/2)
+## Since we stop tracing when they leave, we can check the final position.
+## However, because `isoutofdomain` rejects the step that goes out, the final point will be inside.
+## So we need to check if the simulation finished the full time span or was terminated early.
+## Actually, `isoutofdomain` in OrdinaryDiffEq forces the solver to reduce step size to find the boundary,
+## or if it can't, it might abort.
+## A robust check here is: if t < tspan[2], it was stopped early (or failed).
 is_trapped = map(sim) do sol
-    all(u -> abs(u[3]) < distance/2 + 0.5, sol.u) # Add a small buffer
+    sol.t[end] ≈ tspan[2]
 end
 
 ## Visualization of Loss Cone
