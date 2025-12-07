@@ -9,7 +9,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
 using Statistics
-import DisplayAs
+import DisplayAs #hide
 import TestParticle as TP
 
 CairoMakie.activate!(type = "png") #hide
@@ -96,7 +96,7 @@ results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
-f = Figure(size = (800, 800), fontsize = 18)
+f = Figure(size = (1000, 600), fontsize = 18)
 
 ax1 = Axis(f[1, 1],
    title = "Solver Performance Comparison: Time",

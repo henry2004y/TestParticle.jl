@@ -37,7 +37,7 @@ B₀ = 3.12e-5        # Dipole moment magnitude [T]
 ## Constants
 Ek = Ek_MeV * 1e6 * 1.602e-19 # Energy in Joules
 γ = 1 + Ek / (mᵢ * c^2)
-v = c * sqrt(1 - 1/γ^2)       # Velocity [m/s]
+v = c * sqrt(1 - 1 / γ^2)       # Velocity [m/s]
 B_eq = B₀ / L^3               # Equatorial field [T]
 
 ## Theoretical periods
@@ -64,7 +64,7 @@ println("Theoretical Drift Period:          $(round(τ_d_theo, digits=4)) s")
 # We simulate the particle trajectory using `Vern9` solver.
 
 ## Initial condition
-r₀ = sph2cart(L * Rₑ, π/2, 0.0) # Equatorial plane, theta=pi/2, phi=0
+r₀ = sph2cart(L * Rₑ, π / 2, 0.0) # Equatorial plane, theta=pi/2, phi=0
 vmag = v
 ## The dipole field at the equator points in the -z direction.
 ## To have a pitch angle of α_eq, we need the angle between v and -z to be α_eq.
@@ -76,7 +76,7 @@ param = prepare(getE_dipole, getB_dipole)
 tspan = (0.0, 1.2 * τ_d_theo) # Run for slightly more than one drift period
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9(); reltol=1e-6, maxiters=1e8);
+sol = solve(prob, Vern9(); reltol = 1e-6, maxiters = 1e8);
 
 # ## Analysis and Visualization
 
@@ -89,16 +89,17 @@ z = @view sol[3, :];
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
 idx_zoom = 1:min(length(t), 200)
-f1 = Figure(size=(800, 400))
-ax1 = Axis(f1[1, 1], title="Gyro Motion (Zoom)", xlabel="x [Rₑ]", ylabel="y [Rₑ]", aspect=DataAspect())
-lines!(ax1, x[idx_zoom]./Rₑ, y[idx_zoom]./Rₑ)
+f1 = Figure(size = (800, 600))
+ax1 = Axis(f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
+   ylabel = "y [Rₑ]", aspect = DataAspect())
+lines!(ax1, x[idx_zoom] ./ Rₑ, y[idx_zoom] ./ Rₑ)
 f1 = DisplayAs.PNG(f1) #hide
 
 # ### 2. Bounce Motion
 # Plot z-coordinate vs time to see bouncing.
-f2 = Figure(size=(800, 400))
-ax2 = Axis(f2[1, 1], title="Bounce Motion", xlabel="Time [s]", ylabel="z [Rₑ]")
-lines!(ax2, t, z./Rₑ)
+f2 = Figure(size = (800, 400))
+ax2 = Axis(f2[1, 1], title = "Bounce Motion", xlabel = "Time [s]", ylabel = "z [Rₑ]")
+lines!(ax2, t, z ./ Rₑ)
 f2 = DisplayAs.PNG(f2) #hide
 
 # Calculate Bounce Period from z-crossings
@@ -106,39 +107,41 @@ f2 = DisplayAs.PNG(f2) #hide
 signs = sign.(z)
 crossings = findall(diff(signs) .!= 0)
 if length(crossings) > 2
-    t_cross = t[crossings]
-    ## Time between every second crossing is one period.
-    τ_b_sim = mean(diff(t_cross)[1:2:end-1]) * 2
-    println("Simulated Bounce Period: $τ_b_sim s")
+   t_cross = t[crossings]
+   ## Time between every second crossing is one period.
+   τ_b_sim = mean(diff(t_cross)[1:2:(end - 1)]) * 2
+   println("Simulated Bounce Period: $τ_b_sim s")
 else
-    println("Not enough bounces to estimate period.")
-    τ_b_sim = NaN
+   println("Not enough bounces to estimate period.")
+   τ_b_sim = NaN
 end
 
 # ### 3. Drift Motion
 ## Plot x-y trajectory.
-f3 = Figure(size=(600, 600))
-ax3 = Axis(f3[1, 1], title="Drift Motion (Azimuthal)", xlabel="x [Rₑ]", ylabel="y [Rₑ]", aspect=DataAspect())
-lines!(ax3, x./Rₑ, y./Rₑ)
+f3 = Figure(size = (600, 600))
+ax3 = Axis(f3[1, 1], title = "Drift Motion (Azimuthal)",
+   xlabel = "x [Rₑ]", ylabel = "y [Rₑ]", aspect = DataAspect())
+lines!(ax3, x ./ Rₑ, y ./ Rₑ)
 ## Draw Earth
 theta = LinRange(0, 2π, 100)
-lines!(ax3, cos.(theta), sin.(theta), color=:black, linestyle=:dash)
+lines!(ax3, cos.(theta), sin.(theta), color = :black, linestyle = :dash)
 f3 = DisplayAs.PNG(f3) #hide
 
 # Calculate Drift Period
-## Calculate azimuthal angle phi
-phi = atan.(y, x)
-## Unwrap phi
-phi_unwrap = copy(phi)
-offset = 0.0
-for i in 2:length(phi)
-    dphi = phi[i] - phi[i-1]
-    if dphi > π
-        offset -= 2π
-    elseif dphi < -π
-        offset += 2π
-    end
-    phi_unwrap[i] += offset
+## Calculate azimuthal angle phi, unwrap phi
+phi_unwrap = let offset = 0.0
+   phi = atan.(y, x)
+   phi_unwrap = copy(phi)
+   for i in eachindex(phi)[2:end]
+      dphi = phi[i] - phi[i - 1]
+      if dphi > π
+         offset -= 2π
+      elseif dphi < -π
+         offset += 2π
+      end
+      phi_unwrap[i] += offset
+   end
+   phi_unwrap
 end
 
 ## Fit line to phi vs t
