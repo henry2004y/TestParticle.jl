@@ -165,10 +165,6 @@ function _getinterp(::Cartesian, As, gridx, ::Val{Order}, ::Val{BC}, dir) where 
    return get_field
 end
 
-function _get_bspline(order::Int, periodic::Bool)
-   _get_bspline(Val(order), Val(periodic))
-end
-
 function _get_bspline(::Val{1}, ::Val{IsPeriodic}) where IsPeriodic
    gt = OnCell()
    if IsPeriodic
@@ -397,10 +393,6 @@ function _create_spherical_scalar_field_interpolator(interp)
    return get_field
 end
 
-function _get_interp_object(A, order::Int, bc::Int)
-   _get_interp_object(A, Val(order), Val(bc))
-end
-
 function _get_interp_object(A, ::Val{Order}, ::Val{BC}) where {Order, BC}
    bspline = _get_bspline(Val(Order), Val(BC == 2))
 
@@ -417,10 +409,6 @@ function _get_interp_object(A, ::Val{Order}, ::Val{BC}) where {Order, BC}
    end
 
    itp = extrapolate(interpolate(A, bspline), bctype)
-end
-
-function _get_interp_object(::Spherical, A, order::Int, bc::Int)
-   _get_interp_object(Spherical(), A, Val(order), Val(bc))
 end
 
 function _get_interp_object(::Spherical, A, ::Val{Order}, ::Val{BC}) where {Order, BC}
