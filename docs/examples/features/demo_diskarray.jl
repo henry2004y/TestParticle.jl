@@ -103,7 +103,7 @@ h5open(filename, "r") do fid
    Bz = HDF5DiskArray(fid["mygroup/Bz"]) |> DiskArrays.cache
    B = StructArray{SVector{3, eltype(Bx)}}((Bx, By, Bz))
    itp = extrapolate(
-      interpolate(B, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
+      interpolate(B, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()));
 end
 
 # ## Cleanup
