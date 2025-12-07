@@ -66,9 +66,9 @@ println("Theoretical Drift Period:          $(round(τ_d_theo, digits=4)) s")
 ## Initial condition
 r₀ = sph2cart(L * Rₑ, π/2, 0.0) # Equatorial plane, theta=pi/2, phi=0
 vmag = v
-# The dipole field at the equator points in the -z direction.
-# To have a pitch angle of α_eq, we need the angle between v and -z to be α_eq.
-# v_x = 0 (radial), v_y = v_perp (azimuthal), v_z = v_para (field-aligned)
+## The dipole field at the equator points in the -z direction.
+## To have a pitch angle of α_eq, we need the angle between v and -z to be α_eq.
+## v_x = 0 (radial), v_y = v_perp (azimuthal), v_z = v_para (field-aligned)
 v₀ = [0.0, vmag * sin(α_eq), -vmag * cos(α_eq)]
 
 stateinit = [r₀..., v₀...]
@@ -76,15 +76,15 @@ param = prepare(getE_dipole, getB_dipole)
 tspan = (0.0, 1.2 * τ_d_theo) # Run for slightly more than one drift period
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9(); reltol=1e-6, maxiters=1e8)
+sol = solve(prob, Vern9(); reltol=1e-6, maxiters=1e8);
 
 # ## Analysis and Visualization
 
-# Extract positions
+## Extract positions
 t = sol.t
-x = sol[1, :]
-y = sol[2, :]
-z = sol[3, :]
+x = @view sol[1, :]
+y = @view sol[2, :]
+z = @view sol[3, :];
 
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
@@ -107,7 +107,7 @@ signs = sign.(z)
 crossings = findall(diff(signs) .!= 0)
 if length(crossings) > 2
     t_cross = t[crossings]
-    # Time between every second crossing is one period.
+    ## Time between every second crossing is one period.
     τ_b_sim = mean(diff(t_cross)[1:2:end-1]) * 2
     println("Simulated Bounce Period: $τ_b_sim s")
 else
@@ -116,19 +116,19 @@ else
 end
 
 # ### 3. Drift Motion
-# Plot x-y trajectory.
+## Plot x-y trajectory.
 f3 = Figure(size=(600, 600))
 ax3 = Axis(f3[1, 1], title="Drift Motion (Azimuthal)", xlabel="x [Rₑ]", ylabel="y [Rₑ]", aspect=DataAspect())
 lines!(ax3, x./Rₑ, y./Rₑ)
-# Draw Earth
+## Draw Earth
 theta = LinRange(0, 2π, 100)
 lines!(ax3, cos.(theta), sin.(theta), color=:black, linestyle=:dash)
 f3 = DisplayAs.PNG(f3) #hide
 
 # Calculate Drift Period
-# Calculate azimuthal angle phi
+## Calculate azimuthal angle phi
 phi = atan.(y, x)
-# Unwrap phi
+## Unwrap phi
 phi_unwrap = copy(phi)
 offset = 0.0
 for i in 2:length(phi)
@@ -141,8 +141,8 @@ for i in 2:length(phi)
     phi_unwrap[i] += offset
 end
 
-# Fit line to phi vs t
-# Slope is drift frequency.
+## Fit line to phi vs t
+## Slope is drift frequency.
 slope = (phi_unwrap[end] - phi_unwrap[1]) / (t[end] - t[1])
 τ_d_sim = abs(2π / slope)
 println("Simulated Drift Period: $τ_d_sim s")
