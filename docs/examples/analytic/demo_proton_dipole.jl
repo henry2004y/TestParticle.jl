@@ -97,7 +97,7 @@ dtFE(u, p, t) = 2π / (abs(p[1]) * sqrt(sum(x -> x^2, p[4](u, t))))
 cb = StepsizeLimiter(dtFE; safety_factor = 1 // 10, max_step = true)
 
 sol = solve(prob, Vern9(); callback = cb, dt = 0.1) # dt=0.1 is a dummy value
-push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)))
+push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)));
 
 # This is much more accurate, at the cost of more iterations.
 # In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol=1e-7)`; in terms of performance, it is 2x slower (0.04s v.s. 0.02s) and consumes about the same amount of memory 42 MiB.
@@ -106,7 +106,7 @@ push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)))
 dt = 1e-4
 prob_boris = TraceProblem(stateinit, tspan, param)
 sol_boris = TestParticle.solve(prob_boris; dt)[1]
-push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)))
+push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
 
 # Comparison of energy conservation:
 
