@@ -68,7 +68,7 @@ end
 using Markdown
 using Printf
 
-results = []
+results = Tuple{String, Float64}[]
 
 ## OrdinaryDiffEq solvers
 ode_solvers = [
