@@ -86,7 +86,7 @@ function getinterp(::Cartesian, A, gridx, gridy, order::Int = 1, bc::Int = 2)
       As = reinterpret(reshape, SVector{3, eltype(A)}, A)
    end
 
-   itp = _get_interp_object(As, order, bc)
+   itp = _get_interp_object(As, Val(order), Val(bc))
 
    interp = scale(itp, gridx, gridy)
 
@@ -143,7 +143,7 @@ function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
       As = reinterpret(reshape, SVector{3, eltype(A)}, A)
    end
 
-   itp = _get_interp_object(As, order, bc)
+   itp = _get_interp_object(As, Val(order), Val(bc))
 
    interp = scale(itp, gridx)
 
@@ -158,42 +158,52 @@ function getinterp(::Cartesian, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
 end
 
 function _get_bspline(order::Int, periodic::Bool)
+   _get_bspline(Val(order), Val(periodic))
+end
+
+function _get_bspline(::Val{1}, ::Val{IsPeriodic}) where IsPeriodic
    gt = OnCell()
-
-   interp_type = if order == 1
-      Linear
-   elseif order == 2
-      Quadratic
-   elseif order == 3
-      Cubic
+   if IsPeriodic
+      return BSpline(Linear(Periodic(gt)))
    else
-      throw(ArgumentError("Unsupported interpolation order!"))
-   end
-
-   if periodic
-      return BSpline(interp_type(Periodic(gt)))
-   else
-      # Linear() is special as it doesn't take an argument.
-      if interp_type == Linear
-         return BSpline(Linear())
-      else
-         return BSpline(interp_type(Flat(gt)))
-      end
+      return BSpline(Linear())
    end
 end
 
+function _get_bspline(::Val{2}, ::Val{IsPeriodic}) where IsPeriodic
+   gt = OnCell()
+   if IsPeriodic
+      return BSpline(Quadratic(Periodic(gt)))
+   else
+      return BSpline(Quadratic(Flat(gt)))
+   end
+end
+
+function _get_bspline(::Val{3}, ::Val{IsPeriodic}) where IsPeriodic
+   gt = OnCell()
+   if IsPeriodic
+      return BSpline(Cubic(Periodic(gt)))
+   else
+      return BSpline(Cubic(Flat(gt)))
+   end
+end
+
+function _get_bspline(::Val{Order}, ::Val{IsPeriodic}) where {Order, IsPeriodic}
+   throw(ArgumentError("Unsupported interpolation order!"))
+end
+
 function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
-   itpx = _get_interp_object(Ax, order, bc)
-   itpy = _get_interp_object(Ay, order, bc)
-   itpz = _get_interp_object(Az, order, bc)
+   itpx = _get_interp_object(Ax, Val(order), Val(bc))
+   itpy = _get_interp_object(Ay, Val(order), Val(bc))
+   itpz = _get_interp_object(Az, Val(order), Val(bc))
 
    itpx, itpy, itpz
 end
 
 function _getinterp(gridtype::Spherical, Ax, Ay, Az, order::Int, bc::Int)
-   itpr = _get_interp_object(gridtype, Ax, order, bc)
-   itpθ = _get_interp_object(gridtype, Ay, order, bc)
-   itpϕ = _get_interp_object(gridtype, Az, order, bc)
+   itpr = _get_interp_object(gridtype, Ax, Val(order), Val(bc))
+   itpθ = _get_interp_object(gridtype, Ay, Val(order), Val(bc))
+   itpϕ = _get_interp_object(gridtype, Az, Val(order), Val(bc))
 
    itpr, itpθ, itpϕ
 end
@@ -251,6 +261,12 @@ end
 
 function get_interpolator(::Cartesian, A::AbstractArray{T, 3},
       gridx, gridy, gridz, order::Int = 1, bc::Int = 1) where T
+   # Function barrier to ensure type stability
+   return _get_interpolator(Cartesian(), A, gridx, gridy, gridz, Val(order), Val(bc))
+end
+
+function _get_interpolator(::Cartesian, A::AbstractArray{T, 3},
+   gridx, gridy, gridz, order::Val{Order}, bc::Val{BC}) where {T, Order, BC}
    itp = _get_interp_object(A, order, bc)
 
    interp = scale(itp, gridx, gridy, gridz)
@@ -344,8 +360,13 @@ end
 
 function get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
       A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1) where T
+   return _get_interpolator(gridtype, A, gridr, gridθ, gridϕ, Val(order), Val(bc))
+end
+
+function _get_interpolator(gridtype::Union{Spherical, SphericalNonUniformR},
+      A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, ::Val{Order}, ::Val{BC}) where {T, Order, BC}
    if gridtype isa Spherical
-      itp_unscaled = _get_interp_object(gridtype, A, order, bc)
+      itp_unscaled = _get_interp_object(gridtype, A, Val(Order), Val(BC))
       itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
    else # SphericalNonUniformR
       bctype = (Flat(), Flat(), Periodic())
@@ -369,15 +390,19 @@ function _create_spherical_scalar_field_interpolator(interp)
 end
 
 function _get_interp_object(A, order::Int, bc::Int)
-   bspline = _get_bspline(order, bc == 2)
+   _get_interp_object(A, Val(order), Val(bc))
+end
 
-   bctype = if bc == 1
+function _get_interp_object(A, ::Val{Order}, ::Val{BC}) where {Order, BC}
+   bspline = _get_bspline(Val(Order), Val(BC == 2))
+
+   bctype = if BC == 1
       if eltype(A) <: SVector
-         SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
+         fill(eltype(eltype(A))(NaN), SVector{3, eltype(eltype(A))})
       else
          eltype(eltype(A))(NaN)
       end
-   elseif bc == 2
+   elseif BC == 2
       Periodic()
    else
       Flat()
@@ -387,14 +412,18 @@ function _get_interp_object(A, order::Int, bc::Int)
 end
 
 function _get_interp_object(::Spherical, A, order::Int, bc::Int)
-   bspline_r = _get_bspline(order, false)
-   bspline_θ = _get_bspline(order, false)
-   bspline_ϕ = _get_bspline(order, true)
+   _get_interp_object(Spherical(), A, Val(order), Val(bc))
+end
+
+function _get_interp_object(::Spherical, A, ::Val{Order}, ::Val{BC}) where {Order, BC}
+   bspline_r = _get_bspline(Val(Order), Val(false))
+   bspline_θ = _get_bspline(Val(Order), Val(false))
+   bspline_ϕ = _get_bspline(Val(Order), Val(true))
 
    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
    bctype = if eltype(A) <: SVector
-      SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
+      fill(eltype(eltype(A))(NaN), SVector{3, eltype(eltype(A))})
    else
       eltype(A)(NaN)
    end
