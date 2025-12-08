@@ -13,6 +13,8 @@ using Test
     n = 1e6
     maxwellian = Maxwellian(u0, vth * vth * m * n, n)
     @test maxwellian.vth ≈ vth
+    v_m = sample(maxwellian)
+    @test length(v_m) == 3
 
     # BiMaxwellian tests
     B = [1.0, 0.0, 0.0]
@@ -21,6 +23,8 @@ using Test
     bimaxwellian = BiMaxwellian(B, u0, vthpar^2 * m * n, vthperp^2 * m * n, n)
     @test bimaxwellian.vthpar ≈ vthpar
     @test bimaxwellian.vthperp ≈ vthperp
+    v_bm = sample(bimaxwellian)
+    @test length(v_bm) == 3
 
     # Kappa tests
     kappa = 4.0
@@ -56,6 +60,20 @@ using Test
 
     # Statistical tests (variance check)
     N = 200000
+
+    # Maxwellian Variance Check
+    # Variance per component should be vth^2
+    samples_m = [sample(maxwellian) - u0 for _ in 1:N]
+    var_m = mean(map(v -> v[1]^2, samples_m)) # x component
+    @test isapprox(var_m, vth^2, rtol=0.05)
+
+    # BiMaxwellian Variance Check
+    # B is aligned with x
+    samples_bm = [sample(bimaxwellian) - u0 for _ in 1:N]
+    var_par_bm = mean(map(v -> v[1]^2, samples_bm)) # parallel (x)
+    var_perp_bm = mean(map(v -> v[2]^2, samples_bm)) # perpendicular (y)
+    @test isapprox(var_par_bm, vthpar^2, rtol=0.05)
+    @test isapprox(var_perp_bm, vthperp^2, rtol=0.05)
 
     # Kappa Variance Check
     # Variance per component should be vth^2

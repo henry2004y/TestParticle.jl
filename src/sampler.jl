@@ -228,26 +228,16 @@ Sample a 3D velocity from a [`SelfSimilar`](@ref) distribution `vdf`.
 Sample a 3D velocity from a [`BiSelfSimilar`](@ref) distribution `vdf`.
 """
 function sample(vdf::Maxwellian{U, T}) where {U, T}
-   r1, r2, θ, ϕ = rand(SVector{4, T})
-   m1 = √(-2*log(r1))
-   m2 = √(-2*log(r2))
-
-   v1 = vdf.vth * m1 * cospi(2θ)
-   v2, v3 = vdf.vth .* m2 .* sincospi(2ϕ)
-   v1v = v1 .* SVector(1, 0, 0)
-   v2v = v2 .* SVector(0, 1, 0)
-   v3v = v3 .* SVector(0, 0, 1)
-
-   v = @. vdf.u0 + v1v + v2v + v3v
+   v = randn(SVector{3, T}) .* vdf.vth .+ vdf.u0
 end
 
 function sample(vdf::BiMaxwellian{V, T, U}) where {V, T, U}
-   r1, r2, θ, ϕ = rand(SVector{4, T})
-   m1 = √(-2*log(r1))
-   m2 = √(-2*log(r2))
+   x = randn(T)
+   y, z = randn(SVector{2, T})
 
-   vpar = vdf.vthpar * m1 * cospi(2θ)
-   vperp1, vperp2 = vdf.vthperp .* m2 .* sincospi(2ϕ)
+   vpar = vdf.vthpar * x
+   vperp1 = vdf.vthperp * y
+   vperp2 = vdf.vthperp * z
 
    tmp = vdf.b0 × SVector(1, 0, 0)
    bperp1 = if (tmp[1]^2 + tmp[2]^2 + tmp[3]^2) < 1e-6
