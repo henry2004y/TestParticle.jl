@@ -88,8 +88,8 @@ z = @view sol[3, :];
 
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
-idx_zoom = 1:min(length(t), 200)
-f1 = Figure(size = (800, 600))
+idx_zoom = 1:min(length(t), 50)
+f1 = Figure(size = (800, 400))
 ax1 = Axis(f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
    ylabel = "y [Rₑ]", aspect = DataAspect())
 lines!(ax1, x[idx_zoom] ./ Rₑ, y[idx_zoom] ./ Rₑ)
@@ -99,6 +99,8 @@ f1 = DisplayAs.PNG(f1) #hide
 # Plot z-coordinate vs time to see bouncing.
 f2 = Figure(size = (800, 400))
 ax2 = Axis(f2[1, 1], title = "Bounce Motion", xlabel = "Time [s]", ylabel = "z [Rₑ]")
+idx_bounce = t .< 10 * τ_b_theo
+lines!(ax2, t[idx_bounce], z[idx_bounce] ./ Rₑ)
 lines!(ax2, t, z ./ Rₑ)
 f2 = DisplayAs.PNG(f2) #hide
 
