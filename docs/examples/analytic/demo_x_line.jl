@@ -21,13 +21,11 @@ const L = 0.5Rₑ   # Current sheet thickness [m]
 const Eᵣ = 0.1e-3 # Reconnection electric field [V/m]
 
 function getB(xu)
-    x, y, z = xu[1], xu[2], xu[3]
-    return SVector{3}(B₀ * tanh(z / L), 0.0, Bₙ * x / L)
+   x, y, z = xu[1], xu[2], xu[3]
+   return SVector{3}(B₀ * tanh(z / L), 0.0, Bₙ * x / L)
 end
 
-function getE(xu)
-    return SVector{3}(0.0, Eᵣ, 0.0)
-end
+getE(xu) = SVector{3}(0.0, Eᵣ, 0.0)
 
 ### Trace Particles
 
@@ -38,7 +36,7 @@ v_p = TP.energy2velocity(Ek_p) # magnitude
 v0_p = [v_p, 0.0, 0.0]
 
 stateinit_p = [x0_p..., v0_p...]
-param_p = prepare(getE, getB, species=TP.Proton)
+param_p = prepare(getE, getB, species = TP.Proton)
 tspan_p = (0.0, 20.0) # seconds
 
 prob_p = ODEProblem(TP.trace!, stateinit_p, tspan_p, param_p)
@@ -47,11 +45,11 @@ sol_p = solve(prob_p, Vern9())
 ## Initialize electron
 x0_e = [-1.0Rₑ, 0.0, 0.1Rₑ]
 Ek_e = 1000 # eV
-v_e = TP.energy2velocity(Ek_e, m=TP.mₑ, q=TP.qₑ) # magnitude
+v_e = TP.energy2velocity(Ek_e, m = TP.mₑ, q = TP.qₑ) # magnitude
 v0_e = [v_e, 0.0, 0.0]
 
 stateinit_e = [x0_e..., v0_e...]
-param_e = prepare(getE, getB, species=TP.Electron)
+param_e = prepare(getE, getB, species = TP.Electron)
 tspan_e = (0.0, 2.0) # seconds, electron is much faster
 
 prob_e = ODEProblem(TP.trace!, stateinit_e, tspan_e, param_e)
@@ -59,7 +57,7 @@ sol_e = solve(prob_e, Vern9())
 
 ### Visualization
 
-f = Figure(size=(1000, 500), fontsize = 18)
+f = Figure(size = (1000, 500), fontsize = 18)
 
 function plot_trajectory!(fpos, sol, tspan, title, label, color)
    ax = Axis3(fpos,
@@ -85,7 +83,8 @@ end
 ax1 = plot_trajectory!(f[1, 1], sol_p, tspan_p, "Proton trajectory", "1 keV Proton", :red)
 
 ## Plot Electron
-ax2 = plot_trajectory!(f[1, 2], sol_e, tspan_e, "Electron trajectory", "1 keV Electron", :blue)
+ax2 = plot_trajectory!(
+   f[1, 2], sol_e, tspan_e, "Electron trajectory", "1 keV Electron", :blue)
 
 ## Add B field arrows to proton plot for context
 function plot_B!(ax)

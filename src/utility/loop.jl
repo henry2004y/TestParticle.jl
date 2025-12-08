@@ -7,13 +7,15 @@ Calculate the magnetic field `B` [T] at point `r` from a current loop with curre
 radius `a` [m], centered at `R`, and normal vector `n`.
 
 # Arguments
-- `r::AbstractVector`: Position vector [x, y, z].
-- `R::AbstractVector`: Position of the loop center [x, y, z].
-- `a::Real`: Radius of the loop.
-- `I::Real`: Current in the loop.
-- `n::AbstractVector`: Normal vector of the loop (direction of the B-field at the center).
+
+  - `r::AbstractVector`: Position vector [x, y, z].
+  - `R::AbstractVector`: Position of the loop center [x, y, z].
+  - `a::Real`: Radius of the loop.
+  - `I::Real`: Current in the loop.
+  - `n::AbstractVector`: Normal vector of the loop (direction of the B-field at the center).
 """
-function getB_loop(r::AbstractVector, R::AbstractVector, a::Real, I::Real, n::AbstractVector)
+function getB_loop(
+      r::AbstractVector, R::AbstractVector, a::Real, I::Real, n::AbstractVector)
    # Normalize the normal vector
    n_hat = normalize(n)
 
@@ -60,9 +62,10 @@ function getB_loop(r::AbstractVector, R::AbstractVector, a::Real, I::Real, n::Ab
    # B_rho (local)
    # B_rho = factor * (z / rho) * (-K + (a^2 + rho^2 + z^2)/((a-rho)^2 + z^2) * E)
    if abs(z_local) < 1e-15
-       B_rho_local = 0.0
+      B_rho_local = 0.0
    else
-       B_rho_local = factor * (z_local / rho) * (-K_val + (a^2 + rho^2 + z_local^2) / denom_diff_sq * E_val)
+      B_rho_local = factor * (z_local / rho) *
+                    (-K_val + (a^2 + rho^2 + z_local^2) / denom_diff_sq * E_val)
    end
 
    # Transform back to global Cartesian coordinates
