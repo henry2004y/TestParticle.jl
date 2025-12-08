@@ -606,3 +606,4 @@ include("test_fieldline.jl")
 #   include("test_Makie.jl")
 #end
 include("test_save_flags.jl")
+include("test_distributions.jl")

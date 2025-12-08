@@ -24,6 +24,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
        trace_gc_drifts!, trace_fieldline!, trace_fieldline
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
+export Kappa, BiKappa, SelfSimilar, BiSelfSimilar
 export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity
