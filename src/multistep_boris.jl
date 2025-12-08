@@ -108,7 +108,7 @@ end
 
 function _multistep_boris!(
       sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
-      save_start, save_end, save_everystep)
+      save_start, save_end, save_everystep, ::Val{ITD}) where ITD
    (; tspan, p, u0) = prob
    paramBoris = MultistepBorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
@@ -135,7 +135,12 @@ function _multistep_boris!(
       it = 1
       while it <= nt
          v_old .= @view xv[4:6]
-         update_velocity_multistep!(xv, paramBoris, p, dt, (it-0.5)*dt, n_steps)
+         if ITD
+            t = (it - 0.5) * dt
+         else
+            t = zero(dt)
+         end
+         update_velocity_multistep!(xv, paramBoris, p, dt, t, n_steps)
 
          if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
@@ -143,8 +148,13 @@ function _multistep_boris!(
                traj[iout] = copy(xv)
                traj[iout][4:6] .= v_old
                t_current = tspan[1] + (it - 1) * dt
-               update_velocity_multistep!(
-                  traj[iout], paramBoris, p, 0.5 * dt, t_current, n_steps)
+               if ITD
+                  update_velocity_multistep!(
+                     traj[iout], paramBoris, p, 0.5 * dt, t_current, n_steps)
+               else
+                  update_velocity_multistep!(
+                     traj[iout], paramBoris, p, 0.5 * dt, zero(dt), n_steps)
+               end
                tsave[iout] = t_current
             end
          end
@@ -168,7 +178,11 @@ function _multistep_boris!(
          iout += 1
          t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
          dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-         update_velocity_multistep!(xv, paramBoris, p, dt_final, t_final, n_steps)
+         if ITD
+            update_velocity_multistep!(xv, paramBoris, p, dt_final, t_final, n_steps)
+         else
+            update_velocity_multistep!(xv, paramBoris, p, dt_final, zero(dt), n_steps)
+         end
          traj[iout] = copy(xv)
          tsave[iout] = t_final
       end
