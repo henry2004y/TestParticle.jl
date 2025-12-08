@@ -171,17 +171,17 @@ struct BiSelfSimilar{V <: AbstractVector, T <: AbstractFloat, U <: AbstractFloat
    "Perpendicular thermal velocity"
    vthperp::T
    "Parallel self-similar exponent"
-   p::T
+   p_exp::T
    "Perpendicular self-similar exponent"
-   q::T
+   q_exp::T
 end
 
 """
-     BiSelfSimilar(B::Vector{U}, u0::Vector{T}, ppar, pperp, n, p, q; m=mᵢ)
+     BiSelfSimilar(B::Vector{U}, u0::Vector{T}, ppar, pperp, n, p_exp, q_exp; m=mᵢ)
 
 Construct a BiSelfSimilar distribution with magnetic field `B`, bulk velocity `u0`, parallel
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, number density `n`, parallel
-exponent `p` and perpendicular exponent `q` in SI units. The default particle is proton.
+exponent `p_exp` and perpendicular exponent `q_exp` in SI units. The default particle is proton.
 """
 function BiSelfSimilar(
       B::AbstractVector{U},
@@ -262,12 +262,7 @@ end
 
 function sample(vdf::Kappa{U, T}) where {U, T}
    # Sample Y ~ N(0, I)
-   r1, r2, θ, ϕ = rand(SVector{4, T})
-   m1 = √(-2*log(r1))
-   m2 = √(-2*log(r2))
-
-   y1 = m1 * cospi(2θ)
-   y2, y3 = m2 .* sincospi(2ϕ)
+   y = randn(SVector{3, T})
 
    # Sample U ~ Gamma(κ - 0.5, 2)
    u = rand_gamma(vdf.kappa - 0.5; scale = 2.0)
@@ -277,11 +272,7 @@ function sample(vdf::Kappa{U, T}) where {U, T}
    # Currently variance is vth^2 / 2 without the sqrt(2) factor
    scale_factor = sqrt(2 * (vdf.kappa - 1.5) * vdf.vth^2 / u)
 
-   v1v = y1 * scale_factor * SVector(1, 0, 0)
-   v2v = y2 * scale_factor * SVector(0, 1, 0)
-   v3v = y3 * scale_factor * SVector(0, 0, 1)
-
-   v = @. vdf.u0 + v1v + v2v + v3v
+   v = vdf.u0 + y * scale_factor
 end
 
 function sample(vdf::BiKappa{V, T, U}) where {V, T, U}
@@ -331,18 +322,14 @@ function sample(vdf::SelfSimilar{U, T}) where {U, T}
    vy = rand_gen_normal(vdf.s; scale = scale_val)
    vz = rand_gen_normal(vdf.s; scale = scale_val)
 
-   v1v = vx .* SVector(1, 0, 0)
-   v2v = vy .* SVector(0, 1, 0)
-   v3v = vz .* SVector(0, 0, 1)
-
-   v = @. vdf.u0 + v1v + v2v + v3v
+   v = vdf.u0 + SVector(vx, vy, vz)
 end
 
 function sample(vdf::BiSelfSimilar{V, T, U}) where {V, T, U}
    # Parallel component: Generalized Normal with exponent p
    # α_par = vthpar * sqrt(Γ(1/p) / Γ(3/p))
-   scale_par = vdf.vthpar * sqrt(gamma(1 / vdf.p) / gamma(3 / vdf.p))
-   vpar = rand_gen_normal(vdf.p; scale = scale_par)
+   scale_par = vdf.vthpar * sqrt(gamma(1 / vdf.p_exp) / gamma(3 / vdf.p_exp))
+   vpar = rand_gen_normal(vdf.p_exp; scale = scale_par)
 
    # Perpendicular component:
    # Assuming cylindrical symmetry for physical reasons in magnetized plasma.
@@ -351,11 +338,11 @@ function sample(vdf::BiSelfSimilar{V, T, U}) where {V, T, U}
    # <vperp^2> = α^2 * Γ(4/q) / Γ(2/q)
    # α^2 = 2 * vthperp^2 * Γ(2/q) / Γ(4/q)
    # α = vthperp * sqrt(2 * Γ(2/q) / Γ(4/q))
-   scale_perp = vdf.vthperp * sqrt(2 * gamma(2 / vdf.q) / gamma(4 / vdf.q))
+   scale_perp = vdf.vthperp * sqrt(2 * gamma(2 / vdf.q_exp) / gamma(4 / vdf.q_exp))
 
    # vperp = α * U^(1/q) where U ~ Gamma(2/q, 1)
-   u_perp = rand_gamma(2.0 / vdf.q; scale = 1.0)
-   vperp_mag = scale_perp * u_perp^(1.0 / vdf.q)
+   u_perp = rand_gamma(2.0 / vdf.q_exp; scale = 1.0)
+   vperp_mag = scale_perp * u_perp^(1.0 / vdf.q_exp)
    # Random phase
    phi = 2π * rand()
    vperp1 = vperp_mag * cos(phi)
@@ -415,6 +402,6 @@ function Base.show(io::IO, vdf::BiSelfSimilar)
    println(io, "Bulk velocity: ", vdf.u0)
    println(io, "Parallel thermal speed: ", vdf.vthpar)
    println(io, "Perpendicular thermal speed: ", vdf.vthperp)
-   println(io, "Parallel exponent: ", vdf.p)
-   println(io, "Perpendicular exponent: ", vdf.q)
+   println(io, "Parallel exponent: ", vdf.p_exp)
+   println(io, "Perpendicular exponent: ", vdf.q_exp)
 end

@@ -49,8 +49,8 @@ using Test
     p_exp = 3.0
     q_exp = 3.0
     bissdist = BiSelfSimilar(B, u0, vthpar^2 * m * n, vthperp^2 * m * n, n, p_exp, q_exp)
-    @test bissdist.p == p_exp
-    @test bissdist.q == q_exp
+    @test bissdist.p_exp == p_exp
+    @test bissdist.q_exp == q_exp
     v_bss = sample(bissdist)
     @test length(v_bss) == 3
 
