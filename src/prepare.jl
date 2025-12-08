@@ -41,6 +41,8 @@ end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
+is_time_dependent(::AbstractField{itd}) where {itd} = itd
+
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)
 function (f::AbstractField{true})(xu)
    throw(ArgumentError("Time-dependent field function must have a time argument."))
@@ -155,3 +157,4 @@ Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)
 Field(x::ZeroField) = x
 (::ZeroField)(y, t) = ZeroVector()
 (::ZeroField)(_) = ZeroVector()
+is_time_dependent(::ZeroField) = false

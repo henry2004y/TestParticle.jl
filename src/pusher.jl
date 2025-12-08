@@ -204,13 +204,15 @@ end
 function _dispatch_boris!(
       sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
       save_start, save_end, save_everystep)
+
+   is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
    if n == 1
       _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-         save_start, save_end, save_everystep)
+         save_start, save_end, save_everystep, Val(is_td))
    else
       _multistep_boris!(
          sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-         save_start, save_end, save_everystep)
+         save_start, save_end, save_everystep, Val(is_td))
    end
 end
 
@@ -280,7 +282,7 @@ end
 Apply Boris method for particles with index in `irange`.
 """
 function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-      save_start, save_end, save_everystep)
+      save_start, save_end, save_everystep, ::Val{ITD}) where ITD
    (; tspan, p, u0) = prob
    paramBoris = BorisMethod(eltype(u0))
    xv = MVector{6, eltype(u0)}(undef)
@@ -307,7 +309,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       it = 1
       while it <= nt
          v_old .= @view xv[4:6]
-         update_velocity!(xv, paramBoris, p, dt, (it - 0.5) * dt)
+         t = ITD ? (it - 0.5) * dt : zero(dt)
+         update_velocity!(xv, paramBoris, p, dt, t)
 
          if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
@@ -315,7 +318,8 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
                traj[iout] = copy(xv)
                traj[iout][4:6] .= v_old
                t_current = tspan[1] + (it - 1) * dt
-               update_velocity!(traj[iout], paramBoris, p, 0.5 * dt, t_current)
+               update_velocity!(traj[iout], paramBoris, p, 0.5 * dt,
+                  ITD ? t_current : zero(dt))
                tsave[iout] = t_current
             end
          end
@@ -339,7 +343,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
          iout += 1
          t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
          dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-         update_velocity!(xv, paramBoris, p, dt_final, t_final)
+         update_velocity!(xv, paramBoris, p, dt_final, ITD ? t_final : zero(dt))
          traj[iout] = copy(xv)
          tsave[iout] = t_final
       end
