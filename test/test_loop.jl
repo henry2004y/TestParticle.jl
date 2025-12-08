@@ -60,5 +60,4 @@ using Elliptic
    r_new = R_new + [0.0, 0.0, 2.0] # 2.0 along z from center
    B_trans = TestParticle.getB_loop(r_new, R_new, a, I, n)
    @test B_trans ≈ B_mag * n atol=1e-15
-
 end

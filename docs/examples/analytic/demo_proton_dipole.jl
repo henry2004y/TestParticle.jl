@@ -72,20 +72,20 @@ results = Tuple{String, Float64}[]
 
 ## OrdinaryDiffEq solvers
 ode_solvers = [
-    ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1e-3)),
-    ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1e-4)),
-    ("Vern9", Vern9(), Dict()),
-    ("Trapezoid", Trapezoid(), Dict()),
-    ("Vern6", Vern6(), Dict()),
-    ("Tsit5", Tsit5(), Dict()),
-    ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
-    ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
-    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1e-4))
+   ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1e-3)),
+   ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1e-4)),
+   ("Vern9", Vern9(), Dict()),
+   ("Trapezoid", Trapezoid(), Dict()),
+   ("Vern6", Vern6(), Dict()),
+   ("Tsit5", Tsit5(), Dict()),
+   ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
+   ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
+   ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1e-4))
 ]
 
 for (name, alg, kwargs) in ode_solvers
-    local sol = solve(prob, alg; kwargs...)
-    push!(results, (name, get_energy_ratio(sol)))
+   local sol = solve(prob, alg; kwargs...)
+   push!(results, (name, get_energy_ratio(sol)))
 end
 
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
@@ -114,7 +114,7 @@ io = IOBuffer()
 println(io, "| Solver | Energy Ratio |")
 println(io, "| :--- | :--- |")
 for (name, ratio) in results
-    Printf.@printf(io, "| %s | %.4e |\n", name, ratio)
+   Printf.@printf(io, "| %s | %.4e |\n", name, ratio)
 end
 Markdown.parse(String(take!(io)))
 
