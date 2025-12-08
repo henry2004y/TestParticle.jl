@@ -44,15 +44,15 @@ s_span = (0.0, s_max);
 # Preallocate solutions: we expect 2 * length(seeds) solutions because mode=:both returns forward and backward traces.
 solutions = Vector{ODESolution}(undef, 2 * length(seeds))
 
+## Stop if we hit the "earth" (r < R_E)
+isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
+
 for (i, u0) in enumerate(seeds)
    ## Returns a vector of two ODEProblems (forward and backward)
    probs = trace_fieldline(u0, param, s_span; mode = :both)
 
    ## Solve each problem
    for (j, prob) in enumerate(probs)
-      ## Stop if we hit the "earth" (r < R_E)
-      isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
-
       sol = solve(prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6)
       solutions[2 * (i - 1) + j] = sol
    end
@@ -69,7 +69,7 @@ ax = Axis3(f[1, 1], aspect = :data, xlabel = "x [m]", ylabel = "y [m]",
 
 ## Plot traced field lines
 for sol in solutions
-   lines!(ax, sol; idxs = (1, 2, 3), linewidth = 2, label = "Traced")
+   lines!(ax, sol; idxs = (1, 2, 3), linewidth = 2)
 end
 
 ## Plot analytic field lines for reference
