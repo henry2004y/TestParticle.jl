@@ -37,14 +37,14 @@ v0_p = [v_p, 0.0, 0.0]
 
 stateinit_p = [x0_p..., v0_p...]
 param_p = prepare(getE, getB, species = TP.Proton)
-tspan_p = (0.0, 150.0) # seconds
+tspan_p = (0.0, 100.0) # seconds
 
 prob_p = ODEProblem(TP.trace!, stateinit_p, tspan_p, param_p)
 sol_p = solve(prob_p, Vern9())
 
 ## Initialize electron
 x0_e = [-1.0Rₑ, 0.0, 0.1Rₑ]
-Ek_e = 1000 # eV
+Ek_e = 1e3 # eV
 v_e = TP.energy2velocity(Ek_e, m = TP.mₑ, q = TP.qₑ) # magnitude
 v0_e = [v_e, 0.0, 0.0]
 
@@ -68,7 +68,7 @@ function plot_trajectory!(fpos, sol, tspan, title, label, color)
       aspect = :data
    )
 
-   n = 15000 # number of timepoints
+   n = 10000 # number of timepoints
    ts = range(tspan..., length = n)
    x = sol(ts, idxs = 1) ./ Rₑ |> Vector
    y = sol(ts, idxs = 2) ./ Rₑ |> Vector

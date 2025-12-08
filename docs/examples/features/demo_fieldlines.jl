@@ -42,7 +42,7 @@ seeds = [MVector(L * TP.Rₑ, 0.0, 0.0) for L in L_shells];
 s_max = 20.0 * TP.Rₑ
 s_span = (0.0, s_max);
 
-# Preallocate solutions: we expect 2 * length(seeds) solutions because mode=:both returns forward and backward traces.
+# Preallocate solutions: we expect 2 * length(seeds) solutions because `mode=:both` returns forward and backward traces.
 solutions = Vector{ODESolution}(undef, 2 * length(seeds))
 
 ## Stop if we hit the "earth" (r < R_E)
@@ -59,6 +59,8 @@ for (i, u0) in enumerate(seeds)
    end
 end
 
+# The warnings simply mean that `isoutofdomain` takes effects and returns `true`. 
+#
 # ## Visualization
 #
 # We plot the traced field lines in 3D.
