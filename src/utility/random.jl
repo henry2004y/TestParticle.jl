@@ -21,9 +21,8 @@ function rand_gamma(shape::Real; scale::Real = 1.0)
    while true
       x = randn()
       v = 1.0 + c * x
-      while v <= 0.0
-         x = randn()
-         v = 1.0 + c * x
+      if v <= 0.0
+         continue
       end
       v = v * v * v
       u = rand()
