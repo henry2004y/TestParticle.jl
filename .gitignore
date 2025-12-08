@@ -1,7 +1,6 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
-test*
 *.out
 /docs/build/
 /docs/src/generated/
@@ -11,10 +10,5 @@ report.md
 /benchmark/*.json
 /.vscode
 /docs/node_modules/
-!test/test_multistep.jl
-!test/test_Makie.jl
-!test/test_svector_interp.jl
-!test/test_save_flags.jl
-!test/
-!test/test_loop.jl
-!test/test_distributions.jl
+/test*
+!/test/

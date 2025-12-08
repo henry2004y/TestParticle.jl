@@ -43,14 +43,17 @@ prob_ode = ODEProblem(trace, stateinit, tspan, param)
 # ## Benchmark
 #
 # We benchmark the following solvers:
-# 1. Native Boris (n=1)
-# 2. Native Multistep Boris (n=2)
-# 3. Tsit5 (fixed step)
-# 4. Tsit5 (adaptive)
-# 5. Vern7 (fixed step)
-# 6. Vern7 (adaptive)
-# 7. Vern9 (fixed step)
-# 8. Vern9 (adaptive)
+#
+# | Solver | Description |
+# | :--- | :--- |
+# | Boris (n=1) | Native Boris with n=1 |
+# | Boris (n=2) | Native Multistep Boris with n=2 |
+# | Tsit5 (fixed) | `OrdinaryDiffEq` Tsit5 with fixed step |
+# | Tsit5 (adaptive) | `OrdinaryDiffEq` Tsit5 with adaptive step |
+# | Vern7 (fixed) | `OrdinaryDiffEq` Vern7 with fixed step |
+# | Vern7 (adaptive) | `OrdinaryDiffEq` Vern7 with adaptive step |
+# | Vern9 (fixed) | `OrdinaryDiffEq` Vern9 with fixed step |
+# | Vern9 (adaptive) | `OrdinaryDiffEq` Vern9 with adaptive step |
 #
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
 
@@ -96,7 +99,7 @@ results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
-f = Figure(size = (1000, 600), fontsize = 18)
+f = Figure(size = (900, 600), fontsize = 18)
 
 ax1 = Axis(f[1, 1],
    title = "Solver Performance Comparison: Time",
@@ -116,6 +119,8 @@ ax2 = Axis(f[2, 1],
 barplot!(ax2, eachindex(results_mem_norm), results_mem_norm,
    color = 1:n_solvers, colormap = :tab10)
 ax2.xticks = (eachindex(names), names)
+
+resize_to_layout!(f)
 
 f = DisplayAs.PNG(f) #hide
 

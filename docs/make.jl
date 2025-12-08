@@ -39,7 +39,8 @@ analytic_order = [
    "demo_analytic_magnetosphere.jl",
    "demo_tokamak_coil.jl",
    "demo_tokamak_profile.jl",
-   "demo_spherical.jl"
+   "demo_spherical.jl",
+   "demo_x_line.jl"
 ]
 
 applications_order = [

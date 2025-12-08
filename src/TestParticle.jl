@@ -7,7 +7,7 @@ using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Li
                       Line, OnCell, Periodic, Flat, Gridded
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
-                 DEFAULT_SPECIALIZATION, ODEFunction,
+                 DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem,
                  LinearInterpolation
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid
@@ -21,7 +21,7 @@ import LinearAlgebra: ×
 export prepare, prepare_gc, sample, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
        trace, trace_relativistic, trace_relativistic_normalized, trace_gc!, trace_gc_1st!,
-       trace_gc_drifts!
+       trace_gc_drifts!, trace_fieldline!, trace_fieldline
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa, SelfSimilar, BiSelfSimilar
@@ -49,6 +49,7 @@ include("gc.jl")
 include("equations.jl")
 include("pusher.jl")
 include("multistep_boris.jl")
+include("fieldline.jl")
 
 function orbit end
 
