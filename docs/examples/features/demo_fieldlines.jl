@@ -8,6 +8,7 @@
 
 # ## Setup
 
+import DisplayAs #hide
 import TestParticle as TP
 using TestParticle: trace_fieldline
 using OrdinaryDiffEq

@@ -110,13 +110,13 @@ push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
 
 # Comparison of energy conservation:
 
-io = IOBuffer()
-println(io, "| Solver | Energy Ratio |")
-println(io, "| :--- | :--- |")
-for (name, ratio) in results
-   Printf.@printf(io, "| %s | %.4e |\n", name, ratio)
-end
-Markdown.parse(String(take!(io)))
+io = IOBuffer() #hide
+println(io, "| Solver | Energy Ratio |") #hide
+println(io, "| :--- | :--- |") #hide
+for (name, ratio) in results #hide
+   Printf.@printf(io, "| %s | %.4e |\n", name, ratio) #hide
+end #hide
+Markdown.parse(String(take!(io))) #hide
 
 # The Boris method requires a fixed time step. It takes about 0.05s and consumes 53 MiB memory. In this specific case, the time step is determined empirically. If we increase the time step to `1e-2` seconds, the trajectory becomes completely off (but the energy is still conserved).
 # Therefore, as a rule of thumb, we should not use the default `Tsit5()` scheme without decreasing `reltol`. Use adaptive `Vern9()` for an unfamiliar field configuration, then switch to more accurate schemes if needed. A more thorough test can be found [here](https://github.com/henry2004y/TestParticle.jl/issues/73).

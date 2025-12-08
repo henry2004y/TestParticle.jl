@@ -88,6 +88,7 @@ z = @view sol[3, :];
 
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
+# Note that here we show the raw output; a more smoothed version can be shown via interpolation.
 idx_zoom = 1:min(length(t), 50)
 f1 = Figure(size = (800, 400))
 ax1 = Axis(f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
@@ -101,7 +102,7 @@ f2 = Figure(size = (800, 400))
 ax2 = Axis(f2[1, 1], title = "Bounce Motion", xlabel = "Time [s]", ylabel = "z [Rₑ]")
 idx_bounce = t .< 10 * τ_b_theo
 lines!(ax2, t[idx_bounce], z[idx_bounce] ./ Rₑ)
-lines!(ax2, t, z ./ Rₑ)
+
 f2 = DisplayAs.PNG(f2) #hide
 
 # Calculate Bounce Period from z-crossings
@@ -153,9 +154,12 @@ slope = (phi_unwrap[end] - phi_unwrap[1]) / (t[end] - t[1])
 println("Simulated Drift Period: $τ_d_sim s")
 
 # Comparison table
-println("\nComparison:")
-println("Period  | Theoretical | Simulated")
-println("------- | ----------- | ---------")
-println("Gyro    | $(round(τ_g_theo, digits=4))      | N/A (varies)")
-println("Bounce  | $(round(τ_b_theo, digits=4))      | $(round(τ_b_sim, digits=4))")
-println("Drift   | $(round(τ_d_theo, digits=4))      | $(round(τ_d_sim, digits=4))")
+
+using Markdown #hide
+io = IOBuffer() #hide
+println(io, "| Period  | Theoretical | Simulated") #hide
+println(io, "| ------- | ----------- | ---------") #hide
+println(io, "| Gyro    | $(round(τ_g_theo, digits=4))      | N/A (varies)") #hide
+println(io, "| Bounce  | $(round(τ_b_theo, digits=4))      | $(round(τ_b_sim, digits=4))") #hide
+println(io, "| Drift   | $(round(τ_d_theo, digits=4))      | $(round(τ_d_sim, digits=4))") #hide
+Markdown.parse(String(take!(io))) #hide
