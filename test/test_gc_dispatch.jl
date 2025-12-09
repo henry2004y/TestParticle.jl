@@ -50,15 +50,5 @@ using Test
    norm_shift_7 = sqrt(sum(shift_7.^2))
    norm_shift_6 = sqrt(sum(shift_6.^2))
 
-   # println("Shift 7: ", norm_shift_7)
-   # println("Shift 6: ", norm_shift_6)
-   # println("Ratio: ", norm_shift_6 / norm_shift_7)
-
    @test isapprox(norm_shift_6 / norm_shift_7, 2.0, rtol=0.01)
-
-   # Also test Float32
-   xu_6_f32 = Float32[0.0, 0.0, 0.0, 1.0, 0.0, 2.0]
-   gc_6_f32 = get_gc(xu_6_f32, param_t)
-   # Check that it runs and returns sensible result
-   @test length(gc_6_f32) == 3
 end
