@@ -64,16 +64,16 @@ using Test
     # Maxwellian Variance Check
     # Variance per component should be vth^2
     samples_m = [sample(maxwellian) - u0 for _ in 1:N]
-    var_m = mean(map(v -> v[1]^2, samples_m)) # x component
-    @test isapprox(var_m, vth^2, rtol=0.05)
+    vars_m = [mean(v[i]^2 for v in samples_m) for i in 1:3]
+    @test all(isapprox.(vars_m, vth^2, rtol=0.05))
 
     # BiMaxwellian Variance Check
     # B is aligned with x
     samples_bm = [sample(bimaxwellian) - u0 for _ in 1:N]
-    var_par_bm = mean(map(v -> v[1]^2, samples_bm)) # parallel (x)
-    var_perp_bm = mean(map(v -> v[2]^2, samples_bm)) # perpendicular (y)
+    var_par_bm = mean(v[1]^2 for v in samples_bm) # parallel (x)
+    vars_perp_bm = [mean(v[i]^2 for v in samples_bm) for i in 2:3] # perpendicular (y, z)
     @test isapprox(var_par_bm, vthpar^2, rtol=0.05)
-    @test isapprox(var_perp_bm, vthperp^2, rtol=0.05)
+    @test all(isapprox.(vars_perp_bm, vthperp^2, rtol=0.05))
 
     # Kappa Variance Check
     # Variance per component should be vth^2

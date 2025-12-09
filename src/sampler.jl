@@ -232,8 +232,7 @@ function sample(vdf::Maxwellian{U, T}) where {U, T}
 end
 
 function sample(vdf::BiMaxwellian{V, T, U}) where {V, T, U}
-   x = randn(T)
-   y, z = randn(SVector{2, T})
+   x, y, z = randn(SVector{3, T})
 
    vpar = vdf.vthpar * x
    vperp1 = vdf.vthperp * y
