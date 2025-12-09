@@ -41,9 +41,7 @@ end
 
 Generate a random number from a Chi-squared distribution with `ν` degrees of freedom.
 """
-function rand_chisq(ν::Real)
-   return rand_gamma(ν / 2.0; scale = 2.0)
-end
+rand_chisq(ν::Real) = rand_gamma(ν / 2.0; scale = 2.0)
 
 """
     rand_gen_normal(β; scale=1.0)
