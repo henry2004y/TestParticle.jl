@@ -108,7 +108,7 @@ f = DisplayAs.PNG(f) #hide
 # ## 3. Kappa Distribution
 # 1D projection
 # ```math
-# v \propto \left(1 + \frac{v^2}{(\kappa - 1.5)v_{th}^2}\right)^{-\kappa-1}$
+# v \propto \left(1 + \frac{v^2}{(\kappa - 1.5)v_{th}^2}\right)^{-\kappa-1}
 # ```
 
 ## Parameters
@@ -134,7 +134,7 @@ end
 
 ## Visualization
 f = Figure()
-ax = Axis(f[1, 1], title = "Kappa (kappa=)", xlabel = "vx", ylabel = "PDF", yscale = log10)
+ax = Axis(f[1, 1], title = "Kappa (kappa=3)", xlabel = "vx", ylabel = "PDF", yscale = log10)
 hist!(ax, vx, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
 lines!(ax, v_grid, pdf_kappa.(v_grid, vdf_kappa.vth, kappa),
    label = "Theory", color = :red, linewidth = 2)
@@ -205,7 +205,7 @@ pdf_gn(x, alpha, s) = s / (2 * alpha * gamma(1 / s)) * exp(-(abs(x) / alpha)^s)
 
 ## Visualization
 f = Figure()
-ax = Axis(f[1, 1], title = "Self-Similar (s=)", xlabel = "vx", ylabel = "PDF")
+ax = Axis(f[1, 1], title = "Self-Similar (s=4)", xlabel = "vx", ylabel = "PDF")
 hist!(ax, vx, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
 lines!(ax, v_grid, pdf_gn.(v_grid, alpha, s), label = "Theory", color = :red, linewidth = 2)
 axislegend(ax)
