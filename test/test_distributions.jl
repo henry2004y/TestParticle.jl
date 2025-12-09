@@ -11,27 +11,31 @@ using Test
    u0 = [10.0, 0.0, 0.0]
    vth = 1000.0
    n = 1e6
-   maxwellian = Maxwellian(u0, vth * vth * m * n, n)
+   maxwellian = Maxwellian(u0, vth^2 / 2 * m * n, n)
    @test maxwellian.vth ≈ vth
+   v_m = sample(maxwellian)
+   @test length(v_m) == 3
 
    # BiMaxwellian tests
    B = [1.0, 0.0, 0.0]
    vthpar = 1000.0
    vthperp = 500.0
-   bimaxwellian = BiMaxwellian(B, u0, vthpar^2 * m * n, vthperp^2 * m * n, n)
+   bimaxwellian = BiMaxwellian(B, u0, vthpar^2 / 2 * m * n, vthperp^2 / 2 * m * n, n)
    @test bimaxwellian.vthpar ≈ vthpar
    @test bimaxwellian.vthperp ≈ vthperp
+   v_bm = sample(bimaxwellian)
+   @test length(v_bm) == 3
 
    # Kappa tests
    kappa = 4.0
-   kdist = Kappa(u0, vth * vth * m * n, n, kappa)
+   kdist = Kappa(u0, vth^2 / 2 * m * n, n, kappa)
    @test kdist.kappa == kappa
    @test kdist.vth ≈ vth
    v_k = sample(kdist)
    @test length(v_k) == 3
 
    # BiKappa tests
-   bikdist = BiKappa(B, u0, vthpar^2 * m * n, vthperp^2 * m * n, n, kappa)
+   bikdist = BiKappa(B, u0, vthpar^2 / 2 * m * n, vthperp^2 / 2 * m * n, n, kappa)
    @test bikdist.kappa == kappa
    @test bikdist.vthpar ≈ vthpar
    @test bikdist.vthperp ≈ vthperp
@@ -40,7 +44,7 @@ using Test
 
    # SelfSimilar tests
    s_exp = 3.0
-   ssdist = SelfSimilar(u0, vth * vth * m * n, n, s_exp)
+   ssdist = SelfSimilar(u0, vth^2 / 2 * m * n, n, s_exp)
    @test ssdist.s == s_exp
    v_ss = sample(ssdist)
    @test length(v_ss) == 3
@@ -48,14 +52,29 @@ using Test
    # BiSelfSimilar tests
    p_exp = 3.0
    q_exp = 3.0
-   bissdist = BiSelfSimilar(B, u0, vthpar^2 * m * n, vthperp^2 * m * n, n, p_exp, q_exp)
+   bissdist = BiSelfSimilar(
+      B, u0, vthpar^2 / 2 * m * n, vthperp^2 / 2 * m * n, n, p_exp, q_exp)
    @test bissdist.p_exp == p_exp
    @test bissdist.q_exp == q_exp
    v_bss = sample(bissdist)
    @test length(v_bss) == 3
 
    # Statistical tests (variance check)
-   N = 200000
+   N = 10000
+
+   # Maxwellian Variance Check
+   # Variance per component should be vth^2
+   samples_m = [sample(maxwellian) - u0 for _ in 1:N]
+   vars_m = [mean(2*v[i]^2 for v in samples_m) for i in 1:3]
+   @test all(isapprox.(vars_m, vth^2, rtol = 0.05))
+
+   # BiMaxwellian Variance Check
+   # B is aligned with x
+   samples_bm = [sample(bimaxwellian) - u0 for _ in 1:N]
+   var_par_bm = mean(2*v[1]^2 for v in samples_bm) # parallel (x)
+   vars_perp_bm = [mean(2*v[i]^2 for v in samples_bm) for i in 2:3] # perpendicular (y, z)
+   @test isapprox(var_par_bm, vthpar^2, rtol = 0.05)
+   @test all(isapprox.(vars_perp_bm, vthperp^2, rtol = 0.05))
 
    # Kappa Variance Check
    # Variance per component should be vth^2

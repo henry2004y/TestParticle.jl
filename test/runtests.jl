@@ -64,13 +64,13 @@ end
       vdf = Maxwellian(u0, p, n)
       Random.seed!(1234)
       v = sample(vdf)
-      @test sum(v) == 371365.50994738773
+      @test sum(v) == 237999.044917082
       @test startswith(repr(vdf), "Isotropic")
       B = [1.0, 0.0, 0.0] # will be normalized internally
       vdf = BiMaxwellian(B, u0, p, p, n)
       Random.seed!(1234)
       v = sample(vdf)
-      @test sum(v) == -961387.4020494563
+      @test sum(v) == 886684.8629134325
       @test startswith(repr(vdf), "BiMaxwellian")
    end
 
