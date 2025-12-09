@@ -204,7 +204,6 @@ end
 function _dispatch_boris!(
       sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
       save_start, save_end, save_everystep)
-
    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
    if n == 1
       _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
