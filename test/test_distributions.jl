@@ -60,7 +60,7 @@ using Test
    @test length(v_bss) == 3
 
    # Statistical tests (variance check)
-   N = 10000
+   N = 100000
 
    # Maxwellian Variance Check
    # Variance per component should be vth^2
