@@ -89,7 +89,7 @@ Nonrelativistic definition:
 function get_gc(xu, param)
    q2m = get_q2m(param)
    B_field = get_BField(param)
-   t = xu[end]
+   t = length(xu) == 7 ? xu[end] : zero(eltype(xu))
    v = xu[SA[4:6...]]
    B = B_field(xu, t)
    B² = B[1]^2 + B[2]^2 + B[3]^2
