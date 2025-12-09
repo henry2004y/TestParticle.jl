@@ -63,6 +63,9 @@ E[:, 1:mid_] .= E₂
 const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
 vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
+println(vdf₁)
+println(vdf₂)
+
 trajectories = 400
 weight₁ = n₁ / trajectories # relation between test particle and real particles
 
@@ -156,7 +159,7 @@ function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
    end
 
    v̄x = mean.(vx)
-   vth = [std(vx[i]; corrected = false, mean = v̄x[i]) for i in 1:nxchunks]
+   vth = [√2 * std(vx[i]; corrected = false, mean = v̄x[i]) for i in 1:nxchunks]
    means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
    std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
    text!(Point.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),

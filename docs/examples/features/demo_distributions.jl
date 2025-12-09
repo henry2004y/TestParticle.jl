@@ -5,10 +5,10 @@
 # We compare the sampled distributions with their theoretical probability density functions (PDFs).
 
 using TestParticle
+using TestParticle: gamma
 using Random
 using StaticArrays
 using Statistics
-using SpecialFunctions: gamma
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 import DisplayAs #hide
@@ -59,11 +59,11 @@ f = DisplayAs.PNG(f) #hide
 
 # ## 2. Bi-Maxwellian Distribution
 # ```math
-# (v_\parallel) \propto \exp\left(-\frac{v_\parallel^2}{v_{th,\parallel}^2}\right)
+# v_\parallel \propto \exp\left(-\frac{v_\parallel^2}{v_{th,\parallel}^2}\right)
 # ```
 # 2D magnitude:
 # ```math
-# (v_\perp) \propto \frac{v_\perp}{v_{th,\perp}^2} \exp\left(-\frac{v_\perp^2}{v_{th,\perp}^2}\right)
+# v_\perp \propto \frac{v_\perp}{v_{th,\perp}^2} \exp\left(-\frac{v_\perp^2}{v_{th,\perp}^2}\right)
 # ```
 
 ## Parameters
@@ -176,11 +176,11 @@ f = DisplayAs.PNG(f) #hide
 
 # ## 5. Self-Similar Distribution
 # ```math
-# (v) \propto \exp\left(-\left(\frac{|v|}{\alpha}\right)^s\right)
+# v \propto \exp\left(-\left(\frac{|v|}{\alpha}\right)^s\right)
 # ```
 # The implementation samples independent components from a Generalized Normal distribution.
 # ```math
-# (v_x) \propto \exp\left(-\left(\frac{|v_x|}{\alpha}\right)^s\right)
+# v_x \propto \exp\left(-\left(\frac{|v_x|}{\alpha}\right)^s\right)
 # ```
 
 ## Parameters
