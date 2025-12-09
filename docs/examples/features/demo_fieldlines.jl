@@ -54,12 +54,12 @@ for (i, u0) in enumerate(seeds)
 
    ## Solve each problem
    for (j, prob) in enumerate(probs)
-      sol = solve(prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6)
+      sol = solve(prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6, verbose=false)
       solutions[2 * (i - 1) + j] = sol
    end
 end
 
-# The warnings simply mean that `isoutofdomain` takes effects and returns `true`. 
+# Warnings will raise when `isoutofdomain` takes effects and returns `true`. Here they are turned off via `verbose=false`.
 #
 # ## Visualization
 #
