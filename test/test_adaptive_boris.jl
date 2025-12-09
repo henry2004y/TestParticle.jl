@@ -28,7 +28,7 @@ using Test
 
     # Run adaptive step
     alg = AdaptiveBoris(dtmax=0.5, dtmin=1e-4, safety=0.1)
-    sol_adaptive = TestParticle.solve(prob, alg; dt=0.1)[1]
+    sol_adaptive = TestParticle.solve(prob, alg)[1]
 
     steps = diff(sol_adaptive.t)
 
@@ -61,7 +61,7 @@ using Test
     # q2m=1, B=1. safety=0.1 => dt_ideal = 0.1.
     # Set dtmax=0.05. It should clamp to 0.05.
     alg_const = AdaptiveBoris(dtmax=0.05, dtmin=1e-4, safety=0.1)
-    sol_const = TestParticle.solve(prob_const, alg_const; dt=0.01)[1]
+    sol_const = TestParticle.solve(prob_const, alg_const)[1]
 
     steps_const = diff(sol_const.t)
     # The first step uses initial dt=0.01. Subsequent steps should adapt.
@@ -85,4 +85,18 @@ using Test
 
     # 3. Test exact end time
     @test sol_const.t[end] == 10.0
+
+    # 4. Test savestepinterval
+    # Re-use prob_const. With dt~0.05, tspan=10, we expect ~200 steps.
+    # If interval=2, we expect ~100 steps saved.
+    # Note: save_start and save_end are true by default.
+    # Total points = 1 (start) + floor(steps/interval) + 1 (end) (if last step aligns, else handled)
+
+    sol_interval = TestParticle.solve(prob_const, alg_const; savestepinterval=2)[1]
+
+    # sol_const has all steps.
+    # sol_interval should have roughly half.
+
+    @test length(sol_interval.t) < length(sol_const.t)
+    @test length(sol_interval.t) ≈ length(sol_const.t) / 2 atol=2
 end
