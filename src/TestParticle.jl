@@ -30,6 +30,7 @@ export get_gyrofrequency,
        energy2velocity
 export orbit, monitor
 export TraceProblem, Cartesian, CartesianNonUniform, Spherical, SphericalNonUniformR
+export AdaptiveBoris
 
 """
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
@@ -48,6 +49,7 @@ include("prepare.jl")
 include("gc.jl")
 include("equations.jl")
 include("pusher.jl")
+include("adaptive_boris.jl")
 include("multistep_boris.jl")
 include("fieldline.jl")
 
