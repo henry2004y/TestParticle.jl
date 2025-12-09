@@ -607,3 +607,4 @@ include("test_fieldline.jl")
 #end
 include("test_save_flags.jl")
 include("test_distributions.jl")
+include("test_gc_dispatch.jl")
