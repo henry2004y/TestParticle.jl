@@ -59,6 +59,7 @@ features_order = [
    "demo_interpolation.jl",
    "demo_dimensionless.jl",
    "demo_ensemble.jl",
+   "demo_distributions.jl",
    "demo_savingcallback.jl",
    "demo_flux.jl",
    "demo_gc.jl",

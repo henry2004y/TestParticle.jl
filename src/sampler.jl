@@ -12,7 +12,7 @@ Type for Maxwellian velocity distributions.
 struct Maxwellian{V <: AbstractVector, T <: AbstractFloat} <: VDF
    "Bulk velocity"
    u0::V
-   "Thermal speed"
+   "Thermal speed following most probable speed"
    vth::T
 end
 
@@ -24,7 +24,7 @@ number density `n` in SI units. The default particle is proton.
 """
 function Maxwellian(u0::AbstractVector{T}, p, n; m = mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
-   vth = √(p / (n * m))
+   vth = get_thermal_speed(p, n, m)
 
    Maxwellian{typeof(u0), T}(u0, vth)
 end
@@ -61,8 +61,8 @@ function BiMaxwellian(
       {T <: AbstractFloat, U <: AbstractFloat}
    @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
    b0 = normalize(B)
-   vpar = √(ppar / (n * m))
-   vperp = √(pperp / (n * m))
+   vpar = get_thermal_speed(ppar, n, m)
+   vperp = get_thermal_speed(pperp, n, m)
 
    BiMaxwellian{typeof(B), T, U}(b0, u0, vpar, vperp)
 end
@@ -87,7 +87,7 @@ Construct a Kappa distribution with bulk velocity `u0`, thermal pressure `p`, nu
 """
 function Kappa(u0::AbstractVector{T}, p, n, kappa; m = mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
-   vth = √(p / (n * m))
+   vth = get_thermal_speed(p, n, m)
 
    Kappa{typeof(u0), T}(u0, vth, kappa)
 end
@@ -127,8 +127,8 @@ function BiKappa(
       {T <: AbstractFloat, U <: AbstractFloat}
    @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
    b0 = normalize(B)
-   vpar = √(ppar / (n * m))
-   vperp = √(pperp / (n * m))
+   vpar = get_thermal_speed(ppar, n, m)
+   vperp = get_thermal_speed(pperp, n, m)
 
    BiKappa{typeof(B), T, U}(b0, u0, vpar, vperp, kappa)
 end
@@ -153,7 +153,7 @@ Construct a SelfSimilar distribution with bulk velocity `u0`, thermal pressure `
 """
 function SelfSimilar(u0::AbstractVector{T}, p, n, s; m = mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
-   vth = √(p / (n * m))
+   vth = get_thermal_speed(p, n, m)
 
    SelfSimilar{typeof(u0), T}(u0, vth, s)
 end
@@ -196,8 +196,8 @@ function BiSelfSimilar(
       {T <: AbstractFloat, U <: AbstractFloat}
    @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
    b0 = normalize(B)
-   vpar = √(ppar / (n * m))
-   vperp = √(pperp / (n * m))
+   vpar = get_thermal_speed(ppar, n, m)
+   vperp = get_thermal_speed(pperp, n, m)
 
    BiSelfSimilar{typeof(B), T, U}(b0, u0, vpar, vperp, p_exp, q_exp)
 end
@@ -228,26 +228,15 @@ Sample a 3D velocity from a [`SelfSimilar`](@ref) distribution `vdf`.
 Sample a 3D velocity from a [`BiSelfSimilar`](@ref) distribution `vdf`.
 """
 function sample(vdf::Maxwellian{U, T}) where {U, T}
-   r1, r2, θ, ϕ = rand(SVector{4, T})
-   m1 = √(-2*log(r1))
-   m2 = √(-2*log(r2))
-
-   v1 = vdf.vth * m1 * cospi(2θ)
-   v2, v3 = vdf.vth .* m2 .* sincospi(2ϕ)
-   v1v = v1 .* SVector(1, 0, 0)
-   v2v = v2 .* SVector(0, 1, 0)
-   v3v = v3 .* SVector(0, 0, 1)
-
-   v = @. vdf.u0 + v1v + v2v + v3v
+   v = randn(SVector{3, T}) .* vdf.vth ./ sqrt(2) .+ vdf.u0
 end
 
 function sample(vdf::BiMaxwellian{V, T, U}) where {V, T, U}
-   r1, r2, θ, ϕ = rand(SVector{4, T})
-   m1 = √(-2*log(r1))
-   m2 = √(-2*log(r2))
+   x, y, z = randn(SVector{3, T})
 
-   vpar = vdf.vthpar * m1 * cospi(2θ)
-   vperp1, vperp2 = vdf.vthperp .* m2 .* sincospi(2ϕ)
+   vpar = vdf.vthpar / sqrt(2) * x
+   vperp1 = vdf.vthperp / sqrt(2) * y
+   vperp2 = vdf.vthperp / sqrt(2) * z
 
    tmp = vdf.b0 × SVector(1, 0, 0)
    bperp1 = if (tmp[1]^2 + tmp[2]^2 + tmp[3]^2) < 1e-6
@@ -405,3 +394,5 @@ function Base.show(io::IO, vdf::BiSelfSimilar)
    println(io, "Parallel exponent: ", vdf.p_exp)
    println(io, "Perpendicular exponent: ", vdf.q_exp)
 end
+
+get_thermal_speed(p, n, m) = √(2 * p / (n * m))
