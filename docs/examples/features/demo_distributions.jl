@@ -16,7 +16,7 @@ import DisplayAs #hide
 Random.seed!(1234)
 
 # Number of samples
-N = 100_000
+N = 100_000;
 
 # Plotting configuration
 theme = Theme(fontsize = 18)
