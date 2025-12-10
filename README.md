@@ -1,4 +1,4 @@
-<img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/logo.png" width="300">
+<img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/TP-logo.png" width="300">
 
 ---
 
