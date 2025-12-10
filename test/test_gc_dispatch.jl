@@ -47,8 +47,8 @@ using Test
    # If bug (t=2.0 for gc_6): rho_6_bug ~ 1/3.
    # Ratio would be (1/3) / (1/2) = 2/3.
 
-   norm_shift_7 = sqrt(sum(shift_7.^2))
-   norm_shift_6 = sqrt(sum(shift_6.^2))
+   norm_shift_7 = sqrt(sum(shift_7 .^ 2))
+   norm_shift_6 = sqrt(sum(shift_6 .^ 2))
 
-   @test isapprox(norm_shift_6 / norm_shift_7, 2.0, rtol=0.01)
+   @test isapprox(norm_shift_6 / norm_shift_7, 2.0, rtol = 0.01)
 end
