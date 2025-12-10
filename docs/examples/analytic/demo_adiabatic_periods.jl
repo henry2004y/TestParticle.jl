@@ -9,7 +9,7 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: getB_dipole, getE_dipole, sph2cart, dipole_fieldline, Rₑ, mᵢ, qᵢ, c
+using TestParticle: DipoleField, sph2cart, dipole_fieldline, Rₑ, mᵢ, qᵢ, c
 using OrdinaryDiffEq
 using LinearAlgebra
 using Statistics
@@ -72,7 +72,7 @@ vmag = v
 v₀ = [0.0, vmag * sin(α_eq), -vmag * cos(α_eq)]
 
 stateinit = [r₀..., v₀...]
-param = prepare(getE_dipole, getB_dipole)
+param = prepare(DipoleField())
 tspan = (0.0, 1.2 * τ_d_theo) # Run for slightly more than one drift period
 
 prob = ODEProblem(trace!, stateinit, tspan, param)

@@ -17,7 +17,7 @@ CairoMakie.activate!(type = "png") #hide
 ## Harris current sheet parameters in SI units. Bn is the z-component.
 const B₀, Bn, L = 20e-9, 2e-9, 0.4Rₑ
 
-getB(xu) = SVector{3}(TP.getB_CS_harris(xu[1:3], B₀, L, Bn))
+const getB = TP.HarrisCurrentSheet(B₀, L, Bn)
 
 getE(xu) = SA[0.0, 0.0, 0.0]
 

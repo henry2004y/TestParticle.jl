@@ -25,4 +25,3 @@ Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)
 Field(x::ZeroField) = x
 (::ZeroField)(y, t) = ZeroVector()
 (::ZeroField)(_) = ZeroVector()
-is_time_dependent(::ZeroField) = false
