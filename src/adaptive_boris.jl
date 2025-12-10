@@ -159,7 +159,7 @@ function _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdoma
       should_save_final = false
       if save_end
          should_save_final = true
-      elseif save_everystep && (it - 1) % savestepinterval == 0
+      elseif save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
           should_save_final = true
       end
 
