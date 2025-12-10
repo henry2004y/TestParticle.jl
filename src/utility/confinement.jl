@@ -215,3 +215,29 @@ function getB_tokamak_profile(x::AbstractFloat, y::AbstractFloat, z::AbstractFlo
 
    SA[Bx, By, Bz]
 end
+"""
+     getB_zpinch(x, y, z, I, a) -> StaticVector{Float64, 3}
+
+Get magnetic field from a Z-pinch configuration.
+Reference: [Z-pinch](https://en.wikipedia.org/wiki/Z-pinch)
+
+# Arguments
+
+  - `x,y,z::Float`: particle coordinates in [m].
+  - `I::Float`: current in the wire [A].
+  - `a::Float`: radius of the wire [m].
+"""
+function getB_zpinch(x, y, z, I, a)
+   r = hypot(x, y)
+   if r < a
+      factor = μ₀ * I / (2π * a^2)
+      Bx = -factor * y
+      By = factor * x
+   else
+      factor = μ₀ * I / (2π * r^2)
+      Bx = -factor * y
+      By = factor * x
+   end
+
+   SA[Bx, By, 0.0]
+end

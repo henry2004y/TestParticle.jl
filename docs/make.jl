@@ -40,7 +40,8 @@ analytic_order = [
    "demo_tokamak_coil.jl",
    "demo_tokamak_profile.jl",
    "demo_spherical.jl",
-   "demo_x_line.jl"
+   "demo_x_line.jl",
+   "demo_zpinch.jl"
 ]
 
 applications_order = [

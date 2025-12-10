@@ -29,7 +29,8 @@ export Kappa, BiKappa, SelfSimilar, BiSelfSimilar
 export AdaptiveBoris
 export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
-       energy2velocity
+       energy2velocity,
+       getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
 export TraceProblem, Cartesian, CartesianNonUniform, Spherical, SphericalNonUniformR
 
