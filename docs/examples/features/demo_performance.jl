@@ -9,6 +9,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using CairoMakie
 using Statistics
+using Random
 import DisplayAs #hide
 import TestParticle as TP
 
@@ -99,30 +100,61 @@ results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
-f = Figure(size = (900, 600), fontsize = 18)
+f = Figure(size = (1200, 1000), fontsize = 24)
 
-ax1 = Axis(f[1, 1],
-   title = "Solver Performance Comparison: Time",
-   ylabel = "Relative Time",
-   xticklabelrotation = π / 4,
-   xticklabelcolor = :transparent
+ax = Axis(f[1, 1],
+   title = "Solver Efficiency Frontier (Time vs. Memory)",
+   xlabel = "Relative Time (1.0 = Fastest)",
+   ylabel = "Relative Memory (1.0 = Lowest)",
+   xgridstyle = :dash,
+   ygridstyle = :dash,
+   xminorticksvisible = true,
+   yminorticksvisible = true,
+   xminorticks = IntervalsBetween(5),
+   yminorticks = IntervalsBetween(5)
 )
-barplot!(ax1, eachindex(results_time_norm), results_time_norm,
-   color = 1:n_solvers, colormap = :tab10)
-ax1.xticks = (eachindex(names), names)
 
-ax2 = Axis(f[2, 1],
-   title = "Solver Performance Comparison: Memory",
-   ylabel = "Relative Memory",
-   xticklabelrotation = π / 4
+sc = scatter!(ax, results_time_norm, results_mem_norm,
+   color = 1:n_solvers,
+   colormap = :tab10,
+   markersize = 30,
+   strokewidth = 1,
+   strokecolor = :black
 )
-barplot!(ax2, eachindex(results_mem_norm), results_mem_norm,
-   color = 1:n_solvers, colormap = :tab10)
-ax2.xticks = (eachindex(names), names)
 
-resize_to_layout!(f)
+## Add annotations with random offsets to fix overlaps
+rng = Random.MersenneTwister(42)
+offsets = [(8, rand(rng, -30:30)) for _ in 1:n_solvers]
+
+text!(ax, results_time_norm, results_mem_norm,
+   text = names,
+   align = (:left, :center),
+   offset = offsets,
+   fontsize = 14
+)
+
+## Highlight the "Utopia Point" (Theoretical Best)
+scatter!(ax, [1.0], [1.0],
+   marker = :star5,
+   markersize = 20,
+   color = :red,
+   label = "Ideal Limit"
+)
+text!(ax, 1.0, 1.0, text = "Utopia Point", align = (:right, :top),
+   offset = (55, -5), color = :red, fontsize = 15)
+
+## Add "Iso-Efficiency" curves (Optional visual aid)
+## Curves where Time * Memory = Constant (Cost invariant)
+x_range = range(
+   minimum(results_time_norm) * 0.8, stop = maximum(results_time_norm) * 1.1, length = 100)
+lines!(ax, x_range, 5.0 ./ x_range, color = (:gray, 1.0), linestyle = :dot)
+text!(ax, maximum(x_range), 5.0 / maximum(x_range),
+   text = "Iso-cost", fontsize = 14, color = :black)
+
+xlims!(ax, minimum(results_time_norm) * 0.9, maximum(results_time_norm) * 1.2)
+ylims!(ax, minimum(results_mem_norm) * 0.9, maximum(results_mem_norm) * 1.1)
 
 f = DisplayAs.PNG(f) #hide
 
-# The Boris method is typically faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm.
+# In practice, it is pretty hard to find an optimal algorithm. The native Boris method is good if you want a fixed time step.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
