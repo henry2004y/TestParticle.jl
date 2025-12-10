@@ -1,13 +1,14 @@
 # TestParticle.jl
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://henry2004y.github.io/TestParticle.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://henry2004y.github.io/TestParticle.jl/dev)
 [![Coverage](https://codecov.io/gh/henry2004y/TestParticle.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/henry2004y/TestParticle.jl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10149789.svg)](https://doi.org/10.5281/zenodo.10149789)
 
-<img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/logo.png" align="right" style="padding-left:10px;" width="180"/>
+<img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/logo.png" align="right" style="padding-left:10px;" width="100"/>
 
-This package provides test particle tracing in an analytic or numerical electromagnetic field via [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) and native solvers that are compatible with the DifferentialEquations interface.
+This package provides test particle tracing in an analytical/numerical field via [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) and native solvers that are compatible with the DifferentialEquations interface.
 
 ## Installation
 
