@@ -28,7 +28,7 @@
       param = prepare(x, y, z, E, B)
       param = prepare(mesh, E, B)
       # analytical field
-      param = prepare(getE_dipole, getB_dipole)
+      param = prepare(DipoleField())
       # Boris pusher
       stateinit = let x0 = [0.0, 0.0, 0.0], v0 = [0.0, 1e5, 0.0]
          [x0..., v0...]

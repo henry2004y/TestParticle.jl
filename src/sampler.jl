@@ -1,10 +1,6 @@
 # Particle sampling
 
 using SpecialFunctions: gamma
-"""
-Abstract type for velocity distribution functions.
-"""
-abstract type VDF end
 
 """
 Type for Maxwellian velocity distributions.

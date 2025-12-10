@@ -39,11 +39,8 @@ Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.
 """
 @enum Species Proton Electron Ion User
 
-"""
-Abstract type for tracing solutions.
-"""
-abstract type AbstractTraceSolution{T, N, S} <: AbstractODESolution{T, N, S} end
-
+include("types.jl")
+include("fields/Fields.jl")
 include("utility/utility.jl")
 include("utility/interpolation.jl")
 include("sampler.jl")

@@ -39,8 +39,6 @@ function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
 end
 
 include("constants.jl")
-include("current_sheet.jl")
-include("dipole.jl")
 include("loop.jl")
 include("confinement.jl")
 
