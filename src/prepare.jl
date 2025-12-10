@@ -87,6 +87,7 @@ end
     prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
     prepare(x, y, E, B, F = ZeroField(); kwargs...)
     prepare(x, y, z, E, B, F = ZeroField(); kwargs...)
+    prepare(B; E = ZeroField(), F = ZeroField(), kwargs...)
 
 Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge `q` and mass `m`,
 mass `m` for a prescribed `species`, analytic/interpolated EM field functions, and external force `F`.
@@ -158,3 +159,4 @@ Field(x::ZeroField) = x
 (::ZeroField)(y, t) = ZeroVector()
 (::ZeroField)(_) = ZeroVector()
 is_time_dependent(::ZeroField) = false
+prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)
