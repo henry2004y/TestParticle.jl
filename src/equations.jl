@@ -61,6 +61,56 @@ function trace_relativistic!(dy, y, p, t)
 end
 
 """
+     trace_gc_exb!(dx, x, p, t)
+
+Equations for tracing the guiding center using the ExB drift and parallel velocity from a reference trajectory.
+"""
+function trace_gc_exb!(dx, x, p, t)
+   q2m, _, Efunc, Bfunc, _, sol = p
+   xu = sol(t)
+   v = get_v(xu)
+   E = Efunc(x)
+   B = Bfunc(x)
+
+   b = normalize(B)
+   v_par = (v ⋅ b) .* b
+
+   dx[1:3] = (E × B) / (B ⋅ B) + v_par
+
+   return
+end
+
+"""
+     trace_gc_flr!(dx, x, p, t)
+
+Equations for tracing the guiding center using the ExB drift with FLR corrections and parallel velocity.
+"""
+function trace_gc_flr!(dx, x, p, t)
+   q2m, _, Efunc, Bfunc, _, sol = p
+   xu = sol(t)
+   xp = get_x(xu)
+   v = get_v(xu)
+   E = Efunc(x)
+   B = Bfunc(x)
+   Bx = Bfunc(xp)
+
+   b = normalize(Bx)
+   v_par = (v ⋅ b) .* b
+   v_perp = v - v_par
+
+   Bmag = norm(Bx)
+   r4 = (norm(v_perp) / q2m / Bmag)^2 / 4
+
+   # Helper for FLR term: (E × B) / B²
+   EB(x_in) = (Efunc(x_in) × Bfunc(x_in)) / norm(Bfunc(x_in))^2
+
+   # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
+   dx[1:3] = EB(x) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
+
+   return
+end
+
+"""
      trace_relativistic(y, p, t) -> SVector{6}
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.

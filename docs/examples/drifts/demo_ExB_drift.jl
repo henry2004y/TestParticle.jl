@@ -16,18 +16,6 @@ CairoMakie.activate!(type = "png") #hide
 uniform_B(x) = SA[0, 0, 1e-8]
 uniform_E(x) = SA[1e-9, 0, 0]
 
-## Trace the orbit of the guiding center
-function trace_gc_ExB!(dx, x, p, t)
-   sol = p[end]
-   Bfunc = get_BField(p)
-   Efunc = get_EField(p)
-   xu = sol(t)
-   Bv = Bfunc(x)
-   b = normalize(Bv)
-   v_par = @views (xu[4:6] ⋅ b) .* b
-   B2 = sum(Bv .^ 2)
-   dx[1:3] = (Efunc(x) × Bv) / B2 + v_par
-end
 ## Initial condition
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
    [x0..., v0...]
@@ -43,7 +31,7 @@ sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
 gc = param |> get_gc_func
 gc_x0 = gc(stateinit) |> Vector
-prob_gc = ODEProblem(trace_gc_ExB!, gc_x0, tspan, (param..., sol))
+prob_gc = ODEProblem(trace_gc_exb!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern9(); save_idxs = [1, 2, 3]);
 
 ## Numeric and analytic results
@@ -65,7 +53,7 @@ lines!(ax, sol_gc, idxs = (1, 2, 3), linestyle = :dash, color = Makie.wong_color
 
 f = DisplayAs.PNG(f) #hide
 
-# Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that `trace_gc_ExB!` here depends on the velocity at time `t` from the particle trajectory, which is not exactly the guiding center velocity.
+# Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that `trace_gc_exb!` here depends on the velocity at time `t` from the particle trajectory, which is not exactly the guiding center velocity.
 # A first-order GC approximation tracker would be the following:
 
 stateinit_gc,
