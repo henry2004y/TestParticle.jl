@@ -283,14 +283,16 @@ Apply Boris method for particles with index in `irange`.
 function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
       save_start, save_end, save_everystep, ::Val{ITD}) where ITD
    (; tspan, p, u0) = prob
-   paramBoris = BorisMethod(eltype(u0))
-   xv = MVector{6, eltype(u0)}(undef)
-   v_old = MVector{3, eltype(u0)}(undef)
-   # Safe initialization avoiding shared mutable elements
-   traj = Vector{MVector{6, eltype(u0)}}(undef, nout)
-   tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+   T = eltype(u0)
+   paramBoris = BorisMethod(T)
+   xv = MVector{6, T}(undef)
+   v_old = MVector{3, T}(undef)
+   xv_save = MVector{6, T}(undef)
 
    @fastmath @inbounds for i in irange
+      traj = Vector{SVector{6, T}}(undef, nout)
+      tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+
       # set initial conditions for each trajectory i
       iout = 0
       new_prob = prob.prob_func(prob, i, false)
@@ -298,7 +300,7 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
 
       if save_start
          iout += 1
-         traj[iout] = copy(xv)
+         traj[iout] = SVector{6, T}(xv)
          tsave[iout] = tspan[1]
       end
 
@@ -314,11 +316,12 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
          if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
             if iout <= nout
-               traj[iout] = copy(xv)
-               traj[iout][4:6] .= v_old
+               xv_save .= xv
+               xv_save[4:6] .= v_old
                t_current = tspan[1] + (it - 1) * dt
-               update_velocity!(traj[iout], paramBoris, p, 0.5 * dt,
+               update_velocity!(xv_save, paramBoris, p, 0.5 * dt,
                   ITD ? t_current : zero(dt))
+               traj[iout] = SVector{6, T}(xv_save)
                tsave[iout] = t_current
             end
          end
@@ -343,17 +346,16 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
          t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
          dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
          update_velocity!(xv, paramBoris, p, dt_final, ITD ? t_final : zero(dt))
-         traj[iout] = copy(xv)
+         traj[iout] = SVector{6, T}(xv)
          tsave[iout] = t_final
       end
 
-      if iout == nout # regular termination
-         traj_save = copy(traj)
-         t = tsave
-      else # early termination or savestepinterval != 1
-         traj_save = traj[1:iout]
-         t = tsave[1:iout]
+      if iout < nout
+         resize!(traj, iout)
+         resize!(tsave, iout)
       end
+      traj_save = traj
+      t = tsave
 
       dense = false
       k = nothing
