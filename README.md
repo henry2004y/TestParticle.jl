@@ -1,3 +1,7 @@
+<img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/logo.png" width="300">
+
+---
+
 # TestParticle.jl
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://henry2004y.github.io/TestParticle.jl/dev)
