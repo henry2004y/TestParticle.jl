@@ -68,13 +68,11 @@ Equations for tracing the guiding center using the ExB drift and parallel veloci
 function trace_gc_exb!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
-   xp = get_x(xu)
    v = get_v(xu)
    E = Efunc(x)
    B = Bfunc(x)
-   Bx = Bfunc(xp)
 
-   b = normalize(Bx)
+   b = normalize(B)
    v_par = (v ⋅ b) .* b
 
    dx[1:3] = (E × B) / (B ⋅ B) + v_par
