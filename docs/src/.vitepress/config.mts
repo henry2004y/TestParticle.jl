@@ -35,7 +35,7 @@ export default defineConfig({
   ignoreDeadLinks: true,
   outDir: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // This is required for MarkdownVitepress to work correctly...
   head: [
-    ['link', { rel: 'icon', href: '/assets/favicon.ico' }],
+    ['link', { rel: 'icon', href: `${baseTemp.base}favicon.ico` }],
     ['script', {src: `${getBaseRepository(baseTemp.base)}versions.js`}],
     ['script', {src: `${baseTemp.base}siteinfo.js`}]
   ],
