@@ -25,6 +25,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
 export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa, SelfSimilar, BiSelfSimilar
+export AdaptiveBoris
 export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity
@@ -49,6 +50,7 @@ include("gc.jl")
 include("equations.jl")
 include("pusher.jl")
 include("multistep_boris.jl")
+include("adaptive_boris.jl")
 include("fieldline.jl")
 
 function orbit end
