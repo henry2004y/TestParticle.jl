@@ -54,7 +54,8 @@ for (i, u0) in enumerate(seeds)
 
    ## Solve each problem
    for (j, prob) in enumerate(probs)
-      sol = solve(prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6, verbose=false)
+      sol = solve(
+         prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6, verbose = false)
       solutions[2 * (i - 1) + j] = sol
    end
 end
