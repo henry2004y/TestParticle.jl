@@ -103,7 +103,7 @@ results_mem_norm = results_mem ./ min_mem;
 f = Figure(size = (1200, 1000), fontsize = 24)
 
 ax = Axis(f[1, 1],
-   title = "Solver Efficiency Frontier (Time vs. Memory)",
+   title = "Solver Efficiency (Time vs. Memory)",
    xlabel = "Relative Time (1.0 = Fastest)",
    ylabel = "Relative Memory (1.0 = Lowest)",
    xgridstyle = :dash,
@@ -124,13 +124,13 @@ sc = scatter!(ax, results_time_norm, results_mem_norm,
 
 ## Add annotations with random offsets to fix overlaps
 rng = Random.MersenneTwister(42)
-offsets = [(8, rand(rng, -30:30)) for _ in 1:n_solvers]
+offsets = [(10, rand(rng, -30:30)) for _ in 1:n_solvers]
 
 text!(ax, results_time_norm, results_mem_norm,
    text = names,
    align = (:left, :center),
    offset = offsets,
-   fontsize = 14
+   fontsize = 24
 )
 
 ## Highlight the "Utopia Point" (Theoretical Best)
@@ -149,7 +149,7 @@ x_range = range(
    minimum(results_time_norm) * 0.8, stop = maximum(results_time_norm) * 1.1, length = 100)
 lines!(ax, x_range, 5.0 ./ x_range, color = (:gray, 1.0), linestyle = :dot)
 text!(ax, maximum(x_range), 5.0 / maximum(x_range),
-   text = "Iso-cost", fontsize = 14, color = :black)
+   text = "Iso-cost", fontsize = 20, color = :black)
 
 xlims!(ax, minimum(results_time_norm) * 0.9, maximum(results_time_norm) * 1.2)
 ylims!(ax, minimum(results_mem_norm) * 0.9, maximum(results_mem_norm) * 1.1)
