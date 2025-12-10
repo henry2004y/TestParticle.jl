@@ -114,6 +114,7 @@ function _multistep_boris!(
    paramBoris = MultistepBorisMethod(T)
    xv = MVector{6, T}(undef)
    xv_save = MVector{6, T}(undef)
+   v_old = MVector{3, T}(undef)
 
    @fastmath @inbounds for i in irange
       traj = Vector{SVector{6, T}}(undef, nout)
@@ -133,7 +134,6 @@ function _multistep_boris!(
       # push velocity back in time by 1/2 dt
       update_velocity_multistep!(xv, paramBoris, p, -0.5 * dt, tspan[1], n_steps)
 
-      v_old = MVector{3, T}(undef)
       it = 1
       while it <= nt
          v_old .= @view xv[4:6]
