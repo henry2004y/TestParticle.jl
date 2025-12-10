@@ -4,20 +4,23 @@ CurrentModule = TestParticle
 
 # TestParticle.jl
 
-TestParticle.jl is a test particle tracer in a static electromagnetic field.
+TestParticle.jl is a flexible tool for tracing charged particles in electromagnetic or body force fields. It supports three-dimensional particle tracking in both relativistic and non-relativistic regimes.
 
-This package supports charged particle tracing in analytic/numerical relativistic/non-relativistic
+The package handles field definitions in two ways:
 
-* electric and magnetic field;
-* body force field.
+- *Analytical Fields*: User-defined functions that calculate field values at specific spatial coordinates.
 
-All tracing are performed in 3D, as is the nature for the fields. For a numerical field, the mesh is constructed with [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl), and the field is interpolated with the aid of [Interpolations.jl](https://github.com/JuliaMath/Interpolations.jl).
-For an analytical field, the user is responsible for providing the function for calculating the field at a given spatial location.
-The actual tracing is done through [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl), thanks to the ODE system of the equations of motion.
+- *Numerical Fields*: Discretized fields constructed directly with coordinates or using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and interpolated via [Interpolations.jl](https://github.com/JuliaMath/Interpolations.jl).
 
-For all the tracing methods, we provide both an inplace version (with `!` at the end of the function name) and a non-inplace version using StaticArrays. The non-inplace version requires the initial conditions to be static a static vector. Use them at your convenience.
+The core trajectory integration is powered by the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) ecosystem, solving the Ordinary Differential Equations (ODEs) of motion.
 
-The single particle motions are the basics in understanding the test particle method. Check out [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html) for more complete maths.
+To accommodate different performance needs, the API provides:
+
+- *In-place versions*: Functions ending in `!`.
+
+- *Out-of-place versions*: Functions optimized with StaticArrays. Note that this requires the initial conditions to be passed as a static vector.
+
+For a theoretical background on the physics involved, please refer to [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html).
 
 ## Installation
 
@@ -28,9 +31,11 @@ pkg> add TestParticle
 
 ## Usage
 
-It would be better to understand the basic workflow of [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) before digging into TestParticle.jl. All we are doing here can be concluded as contructing the ODE system from Newton's 2nd law and preparing the field/particle data. Check more in [examples](@ref).
+Familiarity with the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) workflow is recommended, as TestParticle.jl builds directly upon its ecosystem.
 
-Additionally, we have a native Boris solver with a similar interface as DifferentialEquations.jl. Check out the details in later sections.
+The primary role of this package is to automate the construction of the ODE system based on Newton's second law. This allows users to focus on defining the field configurations and particle initial conditions. For practical demonstrations, please refer to the examples.
+
+In addition to standard integrators, TestParticle.jl includes a native implementation of the Boris solver. It exposes an interface similar to DifferentialEquations.jl for ease of adoption. Further details are provided in the subsequent sections. Check more in [examples](@ref).
 
 ## Acknowledgement
 
