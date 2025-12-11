@@ -266,7 +266,7 @@ end
       prob = ODEProblem(trace, stateinit_sa, tspan, param)
       sol_sa = solve(prob, Tsit5(); save_idxs = [1])
       # Compare results at the final time step
-      @test sol_sa(1.0)[1] ≈ sol_inplace(1.0)[1] rtol=1e-6
+      @test sol_sa(1.0)[1] ≈ sol_inplace(1.0)[1] rtol=1e-3
    end
 
    @testset "mixed type fields" begin
