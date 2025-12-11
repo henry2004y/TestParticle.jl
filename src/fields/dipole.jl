@@ -5,6 +5,12 @@ Analytic electric field function for testing.
 """
 getE_dipole(xu) = SA[0.0, 0.0, 0.0]
 
+@kwdef struct DipoleField{M} <: AbstractField{false}
+   BMoment::M = BMoment_Earth
+end
+
+(M::DipoleField)(xu) = dipole(xu[1:3], M.BMoment)
+
 """
 Analytic magnetic field function for testing. Return in SI unit.
 """
