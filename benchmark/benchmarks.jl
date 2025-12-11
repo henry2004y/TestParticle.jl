@@ -27,10 +27,6 @@ function setup_numeric_field()
    E_numeric[1, :, :, :] .= 5e-10
    E_numeric[2, :, :, :] .= 5e-10
 
-   Δx = x[2] - x[1]
-   Δy = y[2] - y[1]
-   Δz = z[2] - z[1]
-
    mesh = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
       dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
