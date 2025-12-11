@@ -13,6 +13,18 @@ Currently we recommend `Vern9` as a starting point for adaptive timestepping, wi
 
 Take you some time to figure out which algorithm works for your problem!
 
+## Boundary check
+
+When using SciML solvers (e.g. `Vern9`), it is recommended to use `DiscreteCallback` for checking boundary conditions instead of the `isoutofdomain` keyword argument for better performance. For example,
+
+```julia
+isoutofdomain(u, p, t) = norm(u) < Rₑ
+callback = DiscreteCallback(isoutofdomain, terminate!)
+sol = solve(prob, Vern9(); callback)
+```
+
+However, for the native Boris pusher in TestParticle.jl, `isoutofdomain` is still the correct keyword argument to use.
+
 ## Unit conversions
 
 By default SI units are applied within the package. However, users can also define their own units by setting the particle mass and charge (2 constants) and providing the basic scales of magnetic field, length, time, or velocity (3 reference scales required; length, time and velocity are interchangable).

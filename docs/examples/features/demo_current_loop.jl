@@ -69,6 +69,7 @@ solutions = Vector{ODESolution}()
 
 ## Define a domain check to stop tracing if we go too far
 isoutofdomain(u, p, t) = norm(u) > 10.0
+callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for u0 in seeds
    ## Trace in both directions
@@ -76,7 +77,7 @@ for u0 in seeds
 
    for prob in probs
       sol = solve(
-         prob, Vern9(); isoutofdomain, reltol = 1e-6, abstol = 1e-6, verbose = false)
+         prob, Vern9(); callback, reltol = 1e-6, abstol = 1e-6, verbose = false)
       push!(solutions, sol)
    end
 end

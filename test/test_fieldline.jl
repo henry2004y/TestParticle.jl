@@ -36,30 +36,31 @@ using LinearAlgebra: norm
 
       # Terminate at Earth's surface to avoid singularity at origin
       isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
+      callback = DiscreteCallback(isoutofdomain, terminate!)
 
       # Test helper function
       # Forward
       prob = trace_fieldline(stateinit, param, tspan; mode = :forward)
-      sol = solve(prob, Tsit5(); isoutofdomain)
+      sol = solve(prob, Tsit5(); callback)
       @test check_L_shell(sol) < tol
 
       # Backward
       prob_back = trace_fieldline(stateinit, param, tspan; mode = :backward)
-      sol_back = solve(prob_back, Tsit5(); isoutofdomain)
+      sol_back = solve(prob_back, Tsit5(); callback)
       @test check_L_shell(sol_back) < tol
       @test prob_back.tspan[2] < 0
 
       # Both
       probs = trace_fieldline(stateinit, param, tspan; mode = :both)
       @test length(probs) == 2
-      sol1 = solve(probs[1], Tsit5(); isoutofdomain)
-      sol2 = solve(probs[2], Tsit5(); isoutofdomain)
+      sol1 = solve(probs[1], Tsit5(); callback)
+      sol2 = solve(probs[2], Tsit5(); callback)
       @test check_L_shell(sol1) < tol
       @test check_L_shell(sol2) < tol
 
       # Test equation overloading (out-of-place equation)
       prob_op = ODEProblem(trace_fieldline, SA[stateinit...], tspan, param)
-      sol_op = solve(prob_op, Tsit5(); isoutofdomain)
+      sol_op = solve(prob_op, Tsit5(); callback)
       @test check_L_shell(sol_op) < tol
    end
 

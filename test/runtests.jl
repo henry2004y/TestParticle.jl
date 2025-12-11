@@ -159,21 +159,23 @@ end
       param = prepare(x, y, z, E, B, species = Ion, q = 1, m = 16) # O+
       @test param[2] ≈ 16 * mᵢ
 
+      callback = DiscreteCallback(isoutofdomain, terminate!)
+
       param = prepare(x, y, z, E, B)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs = [1], isoutofdomain, verbose = false)
+      sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
       # There are numerical differences on x86 and ARM platforms!
-      @test sol[1, end] ≈ 0.7388945226814018
+      @test sol[1, end] ≈ 0.8540967226885379
       # Because the field is uniform, the order of interpolation does not matter.
       param = prepare(x, y, z, E, B; order = 2)
       prob = remake(prob; p = param)
-      sol = solve(prob, Tsit5(); save_idxs = [1], isoutofdomain, verbose = false)
-      @test sol[1, end] ≈ 0.7388945226814018
+      sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
+      @test sol[1, end] ≈ 0.8540967226885379
 
       param = prepare(x, y, z, E, B; order = 3)
       prob = remake(prob; p = param)
-      sol = solve(prob, Tsit5(); save_idxs = [1], isoutofdomain, verbose = false)
-      @test sol[1, end] ≈ 0.7388945226814018
+      sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
+      @test sol[1, end] ≈ 0.8540967226885379
 
       # GC prepare
       stateinit_gc,

@@ -248,8 +248,9 @@ param = prepare(E, Bcase1; species = Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
+callback = DiscreteCallback(isoutofdomain, terminate!)
 sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
-   isoutofdomain, trajectories, verbose = true);
+   callback, trajectories, verbose = true);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)

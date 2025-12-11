@@ -148,17 +148,17 @@ ensemble_prob = EnsembleProblem(
 ## We use a simpler solver for speed and checking escape condition
 ## We use the `isoutofdomain` check to stop tracing those particles that go out of the mirror structure.
 isoutofdomain(u, p, t) = abs(u[3]) > distance/2
+callback = DiscreteCallback(isoutofdomain, terminate!)
 
 sim = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particles,
-   dt = 3e-9, isoutofdomain = isoutofdomain, verbose = false)
+   dt = 3e-9, callback = callback, verbose = false)
 
 ## Check which particles are trapped
 ## A particle is considered trapped if it remains within the mirror (abs(z) < distance/2)
 ## Since we stop tracing when they leave, we can check the final position.
-## However, because `isoutofdomain` rejects the step that goes out, the final point will be inside.
+## `isoutofdomain` rejects the step that goes out, so the final point will be inside.
+## `DiscreteCallback` accepts the step that goes out, so the final point will be outside.
 ## So we need to check if the simulation finished the full time span or was terminated early.
-## Actually, `isoutofdomain` in OrdinaryDiffEq forces the solver to reduce step size to find the boundary,
-## or if it can't, it might abort.
 ## A robust check here is: if t < tspan[2], it was stopped early (or failed).
 is_trapped = map(sim) do sol
    sol.t[end] ≈ tspan[2]
