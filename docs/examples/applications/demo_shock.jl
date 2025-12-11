@@ -84,7 +84,7 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
 function plot_traj(sols; azimuth = 1.275pi, elevation = pi/8,
       limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)))
-   # limits are in km
+   ## limits are in km
    f = Figure(fontsize = 18)
    ax = Axis3(f[1, 1];
       title="Particles across MHD shock",
