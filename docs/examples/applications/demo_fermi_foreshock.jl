@@ -174,16 +174,20 @@ function plot_multiple(sol)
 end
 
 function plot_dist(sols; t = 0, case = 1, slice = :xy)
-   ##TODO: Optimization
+   n = length(sols)
    vx = Vector{eltype(sols[1].u[1])}(undef, 0)
+   sizehint!(vx, n)
    vy = similar(vx)
+   sizehint!(vy, n)
    vz = similar(vx)
+   sizehint!(vz, n)
+
    for sol in sols
       if (sol.t[end] ≥ t) && (1.5Rₑ - U*sol.t[end] > sol[1, end] > 0.5Rₑ)
          v = sol(t)[4:6] ./ 1e3
-         append!(vx, v[1])
-         append!(vy, v[2])
-         append!(vz, v[3])
+         push!(vx, v[1])
+         push!(vy, v[2])
+         push!(vz, v[3])
       end
    end
 
