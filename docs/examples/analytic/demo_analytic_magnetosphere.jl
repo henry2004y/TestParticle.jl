@@ -68,8 +68,9 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_13, safetycopy = fal
 
 ## See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
 ## for the solver options
+callback = DiscreteCallback(isoutofdomain, terminate!)
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1e-5,
-   trajectories, isoutofdomain, dense = true, save_on = true)
+   trajectories, callback, dense = true, save_on = true)
 
 ### Visualization
 
@@ -142,8 +143,9 @@ trajectories = 1
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
 
+callback = DiscreteCallback(isoutofdomain, terminate!)
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1e-5,
-   trajectories, isoutofdomain, dense = true, save_on = true)
+   trajectories, callback, dense = true, save_on = true)
 
 x = range(-10Rₑ, 10Rₑ, length = 50)
 y = range(-5Rₑ, 5Rₑ, length = 20)
