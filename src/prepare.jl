@@ -129,4 +129,3 @@ function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)
-

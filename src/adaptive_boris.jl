@@ -17,7 +17,8 @@ function AdaptiveBoris(; dtmin, dtmax, safety = 0.1)
    AdaptiveBoris{T}(T(dtmin), T(dtmax), T(safety))
 end
 
-function solve(prob::TraceProblem, alg::AdaptiveBoris, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+function solve(prob::TraceProblem, alg::AdaptiveBoris,
+      ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
       trajectories::Int = 1, savestepinterval::Int = 1,
       isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
       save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true)
@@ -139,10 +140,10 @@ function _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdoma
          B_mag = norm(B)
          omega = abs(q2m) * B_mag
          if omega > 0
-             dt_new = alg.safety / omega
-             dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
+            dt_new = alg.safety / omega
+            dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
          else
-             dt_new = alg.dtmax
+            dt_new = alg.dtmax
          end
 
          # Resync for next step
@@ -160,7 +161,7 @@ function _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdoma
       if save_end
          should_save_final = true
       elseif save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-          should_save_final = true
+         should_save_final = true
       end
 
       if should_save_final
