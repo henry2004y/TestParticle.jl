@@ -10,7 +10,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
                  DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem,
                  LinearInterpolation
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray
-using Meshes: coords, spacing, paramdim, CartesianGrid
+using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
@@ -32,7 +32,7 @@ export get_gyrofrequency,
        energy2velocity,
        getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
-export TraceProblem, Cartesian, CartesianNonUniform, Spherical, SphericalNonUniformR
+export TraceProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 """
 Type for the particles, `Proton`, `Electron`, `Ion`, or `User`.

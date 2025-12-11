@@ -23,8 +23,8 @@ for (iθ, θ_val) in enumerate(θ)
    B[2, :, iθ, :] .= -B₀ * sinθ
 end
 
-# In TestParticle.jl v0.15, we introduced two new grid geometries: `Spherical()` and `SphericalNonUniformR()`.
-# `Spherical()` assumes uniform range (r,θ,ϕ) coordinates, whereas `SphericalNonUniformR()` accepts non-uniform coordinates.
+# In TestParticle.jl v0.15, we introduced support for `Meshes.jl` grid geometries: `StructuredGrid` (formerly `Spherical` and `SphericalNonUniformR`).
+# `StructuredGrid` detects whether the coordinates are uniform or non-uniform and selects the appropriate interpolation method.
 zero_E = TP.ZeroField()
 
 ## Initial condition
@@ -35,7 +35,7 @@ end
 tspan = (0, 18)
 
 param = TP.prepare(
-   r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.SphericalNonUniformR())
+   r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.StructuredGrid)
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

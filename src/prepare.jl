@@ -67,7 +67,7 @@ function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
 end
 
 function _prepare(E, B, F, args...; species::Species = Proton, q = 1.0,
-      m = 1.0, gridtype::Grid = Cartesian(), kw...)
+      m = 1.0, gridtype = CartesianGrid, kw...)
    q, m = getchargemass(species, q, m)
    q2m = q / m
    fE = prepare_field(E, args...; gridtype, kw...)
@@ -93,8 +93,8 @@ other species can be manually specified with `species=Ion/User`, `q` and `m`.
 
 Direct range input for uniform grid in 1/2/3D is supported.
 For 1D grid, an additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
-For 3D grid, the default grid type is `Cartesian`. To use `Spherical` grid, an additional keyword `gridtype` is needed.
-For `Spherical` grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
+For 3D grid, the default grid type is `CartesianGrid`. To use `StructuredGrid` (spherical) grid, an additional keyword `gridtype` is needed.
+For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
 
 # Keywords
 
@@ -103,29 +103,33 @@ For `Spherical` grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
   - `species::Species=Proton`: particle species.
   - `q=1.0`: particle charge. Only works when `Species=User`.
   - `m=1.0`: particle mass. Only works when `Species=User`.
-  - `gridtype::Grid=Cartesian()`: type of grid in `Cartesian()`, `Spherical()`, `SphericalNonUniformR`.
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
 function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
-   _prepare(E, B, F, makegrid(grid)...; gridtype = Cartesian(), order, bc, kw...)
+   _prepare(E, B, F, makegrid(grid)...; gridtype = CartesianGrid, order, bc, kw...)
+end
+
+function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
+   _prepare(E, B, F, makegrid(grid)...; gridtype = RectilinearGrid, order, bc, kw...)
 end
 
 function prepare(x::T, y::T, E, B, F = ZeroField(); order = 1,
       bc = 1, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y; gridtype = Cartesian(), order, bc, kw...)
+   _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
 end
 
 function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
-      bc = 1, gridtype::Grid = Cartesian(), kw...) where {T <: AbstractRange}
+      bc = 1, gridtype = CartesianGrid, kw...) where {T <: AbstractRange}
    _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
 end
 
 function prepare(x::Base.LogRange, y::T, z::T, E, B, F = ZeroField();
       order = 1, bc = 2, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y, z; gridtype = SphericalNonUniformR(), order, bc, kw...)
+   _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
 function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
-   _prepare(E, B, F, x; gridtype = Cartesian(), order, bc, dir, kw...)
+   _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)

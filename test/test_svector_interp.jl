@@ -16,10 +16,10 @@ using Random
    B_svector = reinterpret(reshape, SVector{3, Float64}, B_array)
 
    # Interpolator using Array{Float64, 4} (Implicitly converted internally)
-   itp_implicit = TP.get_interpolator(TP.Cartesian(), B_array, gridx, gridy, gridz)
+   itp_implicit = TP.get_interpolator(TP.CartesianGrid, B_array, gridx, gridy, gridz)
 
    # Interpolator using Array{SVector, 3} (Explicitly passed)
-   itp_explicit = TP.getinterp(TP.Cartesian(), B_svector, gridx, gridy, gridz)
+   itp_explicit = TP.getinterp(TP.CartesianGrid, B_svector, gridx, gridy, gridz)
 
    # Compare
    pt = SA[5.5, 5.5, 5.5]
@@ -34,8 +34,8 @@ using Random
    B_array_sph = rand(3, 10, 10, 10)
    B_svector_sph = reinterpret(reshape, SVector{3, Float64}, B_array_sph)
 
-   itp_sph_implicit = TP.get_interpolator(TP.Spherical(), B_array_sph, r, theta, phi)
-   itp_sph_explicit = TP.getinterp(TP.Spherical(), B_svector_sph, r, theta, phi)
+   itp_sph_implicit = TP.get_interpolator(TP.StructuredGrid, B_array_sph, r, theta, phi)
+   itp_sph_explicit = TP.getinterp(TP.StructuredGrid, B_svector_sph, r, theta, phi)
 
    pt_cart = SA[5.0, 0.0, 0.0] # On x-axis
 
@@ -46,8 +46,8 @@ using Random
    B_array_2d = rand(3, nx, ny)
    B_svector_2d = reinterpret(reshape, SVector{3, Float64}, B_array_2d)
 
-   itp_2d_implicit = TP.getinterp(TP.Cartesian(), B_array_2d, gridx, gridy)
-   itp_2d_explicit = TP.getinterp(TP.Cartesian(), B_svector_2d, gridx, gridy)
+   itp_2d_implicit = TP.getinterp(TP.CartesianGrid, B_array_2d, gridx, gridy)
+   itp_2d_explicit = TP.getinterp(TP.CartesianGrid, B_svector_2d, gridx, gridy)
 
    pt_2d = SA[5.5, 5.5]
    @test itp_2d_implicit(pt_2d) ≈ itp_2d_explicit(pt_2d)
@@ -62,18 +62,18 @@ end
    B = fill(0.0, 3, length(x), length(y), length(z))
    B[1, :, :, :] .= 1.0 # Bx = 1.0
 
-   Bfunc = TP.getinterp(TP.CartesianNonUniform(), B, x, y, z)
+   Bfunc = TP.getinterp(TP.RectilinearGrid, B, x, y, z)
    @test Bfunc(SA[5.0, 5.0, 5.0]) ≈ [1.0, 0.0, 0.0]
 
    # Scalar field
    A = fill(2.0, length(x), length(y), length(z))
-   Afunc = TP.getinterp_scalar(TP.CartesianNonUniform(), A, x, y, z)
+   Afunc = TP.getinterp_scalar(TP.RectilinearGrid, A, x, y, z)
    @test Afunc(SA[5.0, 5.0, 5.0]) ≈ 2.0
 
    # Check interpolation values
    # Linear gradient
    A_grad = [i + j + k for i in x, j in y, k in z]
-   Afunc_grad = TP.getinterp_scalar(TP.CartesianNonUniform(), A_grad, x, y, z)
+   Afunc_grad = TP.getinterp_scalar(TP.RectilinearGrid, A_grad, x, y, z)
 
    # Center point: 5.0, 5.0, 5.0 -> should match exactly for linear interpolation
    # value = 5.0 + 5.0 + 5.0 = 15.0
@@ -85,7 +85,7 @@ end
 
    # SVector array support
    B_sv = [SA[1.0, 0.0, 0.0] for i in x, j in y, k in z]
-   Bfunc_sv = TP.getinterp(TP.CartesianNonUniform(), B_sv, x, y, z)
+   Bfunc_sv = TP.getinterp(TP.RectilinearGrid, B_sv, x, y, z)
    @test Bfunc_sv(SA[5.0, 5.0, 5.0]) ≈ SA[1.0, 0.0, 0.0]
 
    # Non-uniform grid check
@@ -95,7 +95,7 @@ end
    A_nu = [sqrt(i) + sqrt(j) + sqrt(k) for i in x_nu, j in y_nu, k in z_nu]
 
    # Check if we can interpolate on this
-   Afunc_nu = TP.getinterp_scalar(TP.CartesianNonUniform(), A_nu, x_nu, y_nu, z_nu)
+   Afunc_nu = TP.getinterp_scalar(TP.RectilinearGrid, A_nu, x_nu, y_nu, z_nu)
 
    # Point (4.0, 4.0, 4.0) -> sqrt(4)+sqrt(4)+sqrt(4) = 2+2+2=6
    @test Afunc_nu(SA[4.0, 4.0, 4.0]) ≈ 6.0

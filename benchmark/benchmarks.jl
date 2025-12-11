@@ -27,13 +27,8 @@ function setup_numeric_field()
    E_numeric[1, :, :, :] .= 5e-10
    E_numeric[2, :, :, :] .= 5e-10
 
-   Δx = x[2] - x[1]
-   Δy = y[2] - y[1]
-   Δz = z[2] - z[1]
-
-   mesh = CartesianGrid((length(x) - 1, length(y) - 1, length(z) - 1),
-      (x[1], y[1], z[1]),
-      (Δx, Δy, Δz))
+   mesh = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
+      dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
    return mesh, E_numeric, B_numeric
 end
@@ -90,7 +85,7 @@ function setup_spherical_field()
       B[2, :, iθ, :] .= -B₀ * sinθ
    end
 
-   B_field = TP.getinterp(SphericalNonUniformR(), B, r, θ, ϕ)
+   B_field = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
 
    return B_field
 end
