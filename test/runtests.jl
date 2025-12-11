@@ -1,7 +1,7 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
-using Meshes: CartesianGrid
+using Meshes: CartesianGrid, StructuredGrid
 using Random, StableRNGs
 using Test
 
@@ -107,11 +107,11 @@ end
          # Vector field
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
          B[1, :, :, :] .= 1.0
-         Bfunc = TP.getinterp(TP.Spherical(), B, r, θ, ϕ)
+         Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
          @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
-         Afunc = TP.getinterp_scalar(TP.Spherical(), A, r, θ, ϕ)
+         Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
          @test Afunc(SA[1, 1, 1]) == 1.0
          @test Afunc(SA[0, 0, 0]) == 1.0
       end
@@ -123,11 +123,11 @@ end
          # Vector field
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
          B[1, :, :, :] .= 1.0
-         Bfunc = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
+         Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
          @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
-         Afunc = TP.getinterp_scalar(TP.SphericalNonUniformR(), A, r, θ, ϕ)
+         Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
          @test Afunc(SA[1, 1, 1]) == 1.0
          @test Afunc(SA[0, 0, 0]) == 1.0
       end
@@ -221,7 +221,7 @@ end
       end
 
       r, θ, ϕ, B_sph = setup_spherical_field()
-      param = prepare(r, θ, ϕ, zero_E, B_sph; gridtype = SphericalNonUniformR())
+      param = prepare(r, θ, ϕ, zero_E, B_sph; gridtype = StructuredGrid)
       # Check field interpolation Bz
       @test param[4](SA[1.0, 1.0, 1.0])[3] == 9.888387888463716e-9
    end

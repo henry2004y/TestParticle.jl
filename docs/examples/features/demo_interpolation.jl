@@ -25,10 +25,10 @@ function setup_spherical_field()
       A[:, iθ, :] .= B₀ * sinθ
    end
 
-   B_field_nu = TP.getinterp(TP.SphericalNonUniformR(), B, r, θ, ϕ)
-   A_field_nu = TP.getinterp_scalar(TP.SphericalNonUniformR(), A, r, θ, ϕ)
-   B_field = TP.getinterp(TP.Spherical(), B, r_uniform, θ, ϕ)
-   A_field = TP.getinterp_scalar(TP.Spherical(), A, r_uniform, θ, ϕ)
+   B_field_nu = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
+   A_field_nu = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
+   B_field = TP.getinterp(TP.StructuredGrid, B, r_uniform, θ, ϕ)
+   A_field = TP.getinterp_scalar(TP.StructuredGrid, A, r_uniform, θ, ϕ)
 
    return B_field_nu, A_field_nu, B_field, A_field
 end
@@ -57,8 +57,8 @@ function setup_cartesian_nonuniform_field()
    A = zeros(length(x), length(y), length(z)) # scalar
    A[:, :, :] .= 10e-9
 
-   B_field = TP.getinterp(TP.CartesianNonUniform(), B, x, y, z)
-   A_field = TP.getinterp_scalar(TP.CartesianNonUniform(), A, x, y, z)
+   B_field = TP.getinterp(TP.RectilinearGrid, B, x, y, z)
+   A_field = TP.getinterp_scalar(TP.RectilinearGrid, A, x, y, z)
 
    return B_field, A_field
 end
@@ -89,4 +89,4 @@ loc = SA[1.0, 1.0, 1.0];
 @be B_car_nu($loc)
 @be A_car_nu($loc)
 
-# Based on the benchmarks, for the same grid size, gridded interpolation (`SphericalNonuniformR()`, `CartesianNonUniform()`) is 2x slower than uniform mesh interpolation (`Spherical()`, `Cartesian()`).
+# Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
