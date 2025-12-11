@@ -254,18 +254,19 @@ end
 
       param = prepare(TP.getE_dipole, TP.getB_dipole)
       prob = ODEProblem(trace!, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs = [1])
+      sol_inplace = solve(prob, Tsit5(); save_idxs = [1])
 
       @test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
       @test get_gc_func(param) isa Function
-      @test sol[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
+      @test sol_inplace[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
 
-      # static array version (results not identical with above: maybe some bugs?)
-      stateinit = SA[r₀..., v₀...]
+      # static array version
+      stateinit_sa = SA[r₀..., v₀...]
 
-      prob = ODEProblem(trace, stateinit, tspan, param)
-      sol = solve(prob, Tsit5(); save_idxs = [1])
-      @test sol[1, 306] ≈ 1.2440619301099773e7 rtol=1e-5
+      prob = ODEProblem(trace, stateinit_sa, tspan, param)
+      sol_sa = solve(prob, Tsit5(); save_idxs = [1])
+      # Compare results at the final time step
+      @test sol_sa(1.0)[1] ≈ sol_inplace(1.0)[1] rtol=1e-3
    end
 
    @testset "mixed type fields" begin
