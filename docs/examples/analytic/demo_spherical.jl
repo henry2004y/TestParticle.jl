@@ -23,7 +23,7 @@ for (iθ, θ_val) in enumerate(θ)
    B[2, :, iθ, :] .= -B₀ * sinθ
 end
 
-# In TestParticle.jl v0.16, we introduced support for `Meshes.jl` grid geometries: `StructuredGrid`.
+# In TestParticle.jl v0.17, we introduced support for `Meshes.jl` grid geometries: `StructuredGrid`.
 # `StructuredGrid` detects whether the coordinates are uniform or non-uniform and selects the appropriate interpolation method.
 zero_E = TP.ZeroField()
 
