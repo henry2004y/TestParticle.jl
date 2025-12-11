@@ -96,6 +96,7 @@ ax1 = Axis(f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
 lines!(ax1, x[idx_zoom] ./ Rₑ, y[idx_zoom] ./ Rₑ)
 f1 = DisplayAs.PNG(f1) #hide
 
+# These does not look like full circles because the dipole field lines are curved, and as we move away from the equatorial plane, the perpendicular plane is no longer aligned with the X-Y plane.
 # ### 2. Bounce Motion
 # Plot z-coordinate vs time to see bouncing.
 f2 = Figure(size = (800, 400))
