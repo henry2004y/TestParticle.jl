@@ -20,7 +20,7 @@ stateinit = let
    [r₀..., v₀...]
 end
 ## obtain field
-param = prepare(TP.getE_dipole, TP.getB_dipole)
+param = prepare(TP.DipoleField())
 tspan = (0.0, 10.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
