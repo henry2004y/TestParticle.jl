@@ -12,11 +12,7 @@
       B[3, :, :, :] .= 10e-9
       E[3, :, :, :] .= 5e-10
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-      Δz = z[2] - z[1]
-
-      mesh = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+      mesh = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
          dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       vdf = Maxwellian([0.0, 0.0, 0.0], 1e-9, 1e6)

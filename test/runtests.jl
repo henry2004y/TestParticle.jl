@@ -143,11 +143,7 @@ end
       B[3, :, :, :] .= 10e-9
       E[3, :, :, :] .= 5e-10
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-      Δz = z[2] - z[1]
-
-      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+      grid = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
          dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
@@ -283,11 +279,7 @@ end
       E_field(r) = SA[0, 5e-11, 0]  # [V/M]
       F[1, :, :, :] .= 9.10938356e-42
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-      Δz = z[2] - z[1]
-
-      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+      grid = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
          dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
@@ -311,11 +303,7 @@ end
       E_field(r, t) = SA[5e-11 * sin(2π * t), 0, 0]  # [V/M]
       F[2, :, :, :] .= 9.10938356e-42
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-      Δz = z[2] - z[1]
-
-      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+      grid = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
          dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
@@ -446,10 +434,7 @@ end
       # E shall be normalized by E₀
       E ./= E₀
 
-      Δx = x[2] - x[1]
-      Δy = y[2] - y[1]
-
-      grid = CartesianGrid((x[1], y[1]), (x[end], y[end]);
+      grid = CartesianGrid((first(x), first(y)), (last(x), last(y));
          dims = (length(x) - 1, length(y) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
