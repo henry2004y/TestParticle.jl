@@ -61,10 +61,10 @@ end
 # We trace Protons and "Heavy Electrons".
 # Heavy Electron mass is set to m_p / 5 for visualization.
 
-m_heavy = mᵢ / 5.0
-q_heavy = -qᵢ
-v0_p = V₁
-x0 = 1000e3; # 1000 km upstream
+const m_heavy = mᵢ / 5.0
+const q_heavy = -qᵢ
+const v0_p = V₁
+const x0 = 1000e3; # 1000 km upstream
 
 # ### Protons
 
@@ -74,11 +74,12 @@ prob_p = let
    ODEProblem(trace!, u0_p, (0.0, 20.0), param_p)
 end;
 
-# Create ensemble of protons
+"Create ensemble of protons."
 function prob_func_p(prob, i, repeat)
-   # Randomize y and z slightly to separate lines
-   r0 = [x0, (rand()-0.5)*500e3, (rand()-0.5)*500e3]
-   # Small thermal spread
+   ## Randomize y and z slightly to separate lines
+   r = rand(2)
+   r0 = (x0, (r[1]-0.5)*500e3, (r[2]-0.5)*500e3)
+   ## Small thermal spread
    v_th = 50e3 # 50 km/s
    v = v0_p .+ randn(3).*v_th
    remake(prob; u0=[r0..., v...])
