@@ -6,6 +6,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -20,20 +21,20 @@ function getB(xu)
    getB_zpinch(x, y, z, I_current, a_wire)
 end
 
-getE(xu) = SA[0.0, 0.0, 0.0]
+getE = TP.ZeroField()
 
 ### Initialize Particles
 
 ## Protons
-const m = TestParticle.mᵢ
-const q = TestParticle.qᵢ
-const c = TestParticle.c
+const m = TP.mᵢ
+const q = TP.qᵢ
+const c = TP.c
 
 ## Initial state
 ## Position inside the wire to see internal behavior, or outside.
 ## Let's put one outside and one inside.
 r0_in = [0.05, 0.0, 0.0]
-v0_in = [0.0, 1e5, 1e5] # Spiral
+v0_in = [0.0, 2e5, 1e5] # Spiral
 
 r0_out = [0.2, 0.0, 0.0]
 v0_out = [0.0, 1e6, 1e5] # Drift
@@ -48,9 +49,9 @@ prob_in = ODEProblem(trace!, stateinit_in, tspan, param)
 prob_out = ODEProblem(trace!, stateinit_out, tspan, param)
 
 sol_in = solve(prob_in, Vern9())
-sol_out = solve(prob_out, Vern9())
+sol_out = solve(prob_out, Vern9());
 
-### Visualization
+# Visualization
 
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
@@ -58,22 +59,23 @@ ax = Axis3(f[1, 1],
    xlabel = "x [m]",
    ylabel = "y [m]",
    zlabel = "z [m]",
-   aspect = :data
+   aspect = :data,
+   limits = (-0.2, 0.2, -0.2, 0.2, -0.1, 0.6)
 )
 
-lines!(ax, sol_in, label = "Inside (r < a)", color = :blue)
-lines!(ax, sol_out, label = "Outside (r > a)", color = :red)
+lines!(ax, sol_in, idxs=(1,2,3), label = "Inside (r < a)", color = :blue)
+lines!(ax, sol_out, idxs=(1,2,3), label = "Outside (r > a)", color = :red)
 
 ## Plot the wire boundary
 θ = range(0, 2π, length = 100)
-zw = range(minimum(sol_out[3, :]), maximum(sol_out[3, :]), length = 2)
+zw = range(0.0, 0.5, length = 2)
 x_wire = a_wire .* cos.(θ)
 y_wire = a_wire .* sin.(θ)
 
-# Wire cylinder visualization (wireframe)
+## Wire cylinder visualization (wireframe)
 lines!(ax, x_wire, y_wire, fill(zw[1], length(θ)), color = (:gray, 0.5))
 lines!(ax, x_wire, y_wire, fill(zw[2], length(θ)), color = (:gray, 0.5))
-# Vertical lines for wire
+## Vertical lines for wire
 for i in 1:10:100
    lines!(ax, [x_wire[i], x_wire[i]], [y_wire[i], y_wire[i]],
       [zw[1], zw[2]], color = (:gray, 0.3))
