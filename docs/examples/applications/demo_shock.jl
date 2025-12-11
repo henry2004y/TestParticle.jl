@@ -84,32 +84,32 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
 function plot_traj(sols; azimuth = 1.275pi, elevation = pi/8,
       limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)))
+   # limits are in km
    f = Figure(fontsize = 18)
-   ##ax = Axis3(f[1, 1];
-   ##   title="Particles across MHD shock",
-   ##   xlabel="x [km]",
-   ##   ylabel="y [km]",
-   ##   zlabel="z [km]",
-   ##   aspect=:data,
-   ##   limits, azimuth, elevation,
-   ##)
-   ax = LScene(f[1, 1], show_axis = true)
+   ax = Axis3(f[1, 1];
+      title="Particles across MHD shock",
+      xlabel="x [km]",
+      ylabel="y [km]",
+      zlabel="z [km]",
+      aspect=:data,
+      limits, azimuth, elevation,
+   )
+
    for i in eachindex(sols)
-      lines!(ax, sols[i], idxs = (1, 2, 3), label = "$i",
-         color = Makie.wong_colors()[mod(i - 1, 7) + 1])
+      lines!(ax, sols[i][1, :] ./ 1e3, sols[i][2, :] ./ 1e3, sols[i][3, :] ./ 1e3,
+         label = "$i", color = Makie.wong_colors()[mod(i - 1, 7) + 1])
    end
-   invL = 1 / 1e3
-   ## In Makie 0.21.11, scene scaling has issues on Axis3.
-   ##scale!(ax.scene, invL, invL, invL)
 
    ## Represent the shock front
-   p1 = Point3f(0.0, -2e2, -2e2)
-   p2 = Point3f(0.0, 2e2, -2e2)
-   p3 = Point3f(0.0, 2e2, 2e2)
-   p4 = Point3f(0.0, -2e2, 2e2)
+   ## The shock is infinite in y and z, but we only show a part of it.
+   ## We use the limits of the plot for the shock plane.
+   p1 = Point3f(0.0, limits[2][1], limits[3][1])
+   p2 = Point3f(0.0, limits[2][2], limits[3][1])
+   p3 = Point3f(0.0, limits[2][2], limits[3][2])
+   p4 = Point3f(0.0, limits[2][1], limits[3][2])
 
-   mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = Makie.automatic)
-   mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = Makie.automatic)
+   mesh!(ax, [p1, p2, p3], color = (:gray, 0.1), shading = true)
+   mesh!(ax, [p1, p4, p3], color = (:gray, 0.1), shading = true)
 
    f
 end
