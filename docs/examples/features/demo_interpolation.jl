@@ -72,21 +72,21 @@ B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
 loc = SA[1.0, 1.0, 1.0];
 
 @be B_sph_nu($loc)
-@be A_sph_nu($loc)
+##@be A_sph_nu($loc)
 
 # Uniform spherical interpolation:
 
 @be B_sph($loc)
-@be A_sph($loc)
+##@be A_sph($loc)
 
 # Uniform Cartesian interpolation:
 
 @be B_car($loc)
-@be A_car($loc)
+##@be A_car($loc)
 
 # Non-uniform Cartesian interpolation:
 
 @be B_car_nu($loc)
-@be A_car_nu($loc)
+##@be A_car_nu($loc)
 
 # Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
