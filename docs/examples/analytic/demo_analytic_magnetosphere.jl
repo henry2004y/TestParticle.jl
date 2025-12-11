@@ -75,22 +75,23 @@ sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1e-5,
 ### Visualization
 
 f = Figure(fontsize = 18)
-##ax = Axis3(f[1, 1],
-##   title = "5 keV Protons in a vacuum superposition magnetosphere",
-##   xlabel = "x [Re]",
-##   ylabel = "y [Re]",
-##   zlabel = "z [Re]",
-##   aspect = :data,
-##   limits = (-14, 14, -14, 14, -5, 5)
-##)
-ax = LScene(f[1, 1])
+ax = Axis3(f[1, 1],
+   title = "5 keV Protons in a vacuum superposition magnetosphere",
+   xlabel = "x [Re]",
+   ylabel = "y [Re]",
+   zlabel = "z [Re]",
+   aspect = :data,
+   limits = (-14, 14, -14, 14, -5, 5)
+)
+
+invRE = 1 / Rₑ
 
 for (i, sol) in enumerate(sols)
-   l = lines!(ax, sol, idxs = (1, 2, 3), color = Makie.wong_colors()[i])
+   x = sol[1, :] .* invRE
+   y = sol[2, :] .* invRE
+   z = sol[3, :] .* invRE
+   lines!(ax, x, y, z, color = Makie.wong_colors()[i])
 end
-invRE = 1 / Rₑ
-## In Makie 0.21.11, scene scaling has issues on Axis3.
-##scale!(ax.scene, invRE, invRE, invRE)
 
 ## Field lines
 function get_numerical_field(x, y, z, model)
@@ -120,8 +121,7 @@ function trace_field!(ax, x, y, z, unitscale, model = getB_superposition_constan
       x1, y1,
       z1 = FieldTracer.trace(bx, by, bz, xs, ys, zs, x, y, z; ds = 0.1, maxstep = 10000)
 
-      lines!(ax, x1, y1, z1, color = :gray)
-      ##lines!(ax, x1.*unitscale, y1.*unitscale, z1.*unitscale, color=:gray)
+      lines!(ax, x1 .* unitscale, y1 .* unitscale, z1 .* unitscale, color = :gray)
    end
 end
 
@@ -152,14 +152,22 @@ y = range(-5Rₑ, 5Rₑ, length = 20)
 z = range(-10Rₑ, 10Rₑ, length = 50)
 
 f = Figure(fontsize = 18)
-ax = LScene(f[1, 1])
+ax = Axis3(f[1, 1],
+   title = "Superposition model of a dipole and a Harris current sheet",
+   xlabel = "x [Re]",
+   ylabel = "y [Re]",
+   zlabel = "z [Re]",
+   aspect = :data,
+   azimuth = 1.4
+)
 
 for (i, sol) in enumerate(sols)
-   l = lines!(ax, sol, idxs = (1, 2, 3), color = Makie.wong_colors()[i])
+   x = sol[1, :] .* invRE
+   y = sol[2, :] .* invRE
+   z = sol[3, :] .* invRE
+   lines!(ax, x, y, z, color = Makie.wong_colors()[i])
 end
 
-rotate!(ax.scene, Vec3f(0, 0, 1), 1.4)
 trace_field!(ax, x, y, z, invRE, getB_superposition_harris; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
-scale!(ax.scene, 4.0, 4.0, 4.0)
 
 f = DisplayAs.PNG(f) #hide
