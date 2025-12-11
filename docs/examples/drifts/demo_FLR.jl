@@ -58,18 +58,22 @@ ax = Axis3(f[1, 1],
 
 # Plot Proton Guiding Center
 gc_plot_p(x, y, z, vx, vy, vz) = (gc_p(SA[x, y, z, vx, vy, vz])...,)
-lines!(ax, sol_p, idxs = (gc_plot_p, 1, 2, 3, 4, 5, 6), label="Proton GC", color = Makie.wong_colors()[1])
+lines!(ax, sol_p, idxs = (gc_plot_p, 1, 2, 3, 4, 5, 6),
+   label = "Proton GC", color = Makie.wong_colors()[1])
 
 # Plot Electron Guiding Center
 gc_e = param_e |> get_gc_func
 gc_plot_e(x, y, z, vx, vy, vz) = (gc_e(SA[x, y, z, vx, vy, vz])...,)
-lines!(ax, sol_e, idxs = (gc_plot_e, 1, 2, 3, 4, 5, 6), label="Electron GC", color = Makie.wong_colors()[2])
+lines!(ax, sol_e, idxs = (gc_plot_e, 1, 2, 3, 4, 5, 6),
+   label = "Electron GC", color = Makie.wong_colors()[2])
 
 # Plot Analytic ExB Drift
-lines!(ax, sol_exb, idxs = (1, 2, 3), label="Analytic ExB", linestyle = :dash, color = :black)
+lines!(
+   ax, sol_exb, idxs = (1, 2, 3), label = "Analytic ExB", linestyle = :dash, color = :black)
 
 # Plot Analytic FLR Drift
-lines!(ax, sol_flr, idxs = (1, 2, 3), label="Analytic FLR", linestyle = :dash, color = Makie.wong_colors()[3])
+lines!(ax, sol_flr, idxs = (1, 2, 3), label = "Analytic FLR",
+   linestyle = :dash, color = Makie.wong_colors()[3])
 
 axislegend(ax)
 

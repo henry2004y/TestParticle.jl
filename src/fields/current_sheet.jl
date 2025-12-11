@@ -11,7 +11,6 @@ function getB_CS_harris(r, B₀, L, Bn = 0.0)
    SA[B₀ * tanh(z / L), 0.0, Bn]
 end
 
-
 struct HarrisCurrentSheet{T} <: AbstractField{false}
    B₀::T
    L::T

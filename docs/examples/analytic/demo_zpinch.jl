@@ -20,9 +20,7 @@ function getB(xu)
    getB_zpinch(x, y, z, I_current, a_wire)
 end
 
-function getE(xu)
-   SA[0.0, 0.0, 0.0]
-end
+getE(xu) = SA[0.0, 0.0, 0.0]
 
 ### Initialize Particles
 
@@ -63,21 +61,22 @@ ax = Axis3(f[1, 1],
    aspect = :data
 )
 
-lines!(ax, sol_in, label="Inside (r < a)", color=:blue)
-lines!(ax, sol_out, label="Outside (r > a)", color=:red)
+lines!(ax, sol_in, label = "Inside (r < a)", color = :blue)
+lines!(ax, sol_out, label = "Outside (r > a)", color = :red)
 
 ## Plot the wire boundary
-θ = range(0, 2π, length=100)
-zw = range(minimum(sol_out[3, :]), maximum(sol_out[3, :]), length=2)
+θ = range(0, 2π, length = 100)
+zw = range(minimum(sol_out[3, :]), maximum(sol_out[3, :]), length = 2)
 x_wire = a_wire .* cos.(θ)
 y_wire = a_wire .* sin.(θ)
 
 # Wire cylinder visualization (wireframe)
-lines!(ax, x_wire, y_wire, fill(zw[1], length(θ)), color=(:gray, 0.5))
-lines!(ax, x_wire, y_wire, fill(zw[2], length(θ)), color=(:gray, 0.5))
+lines!(ax, x_wire, y_wire, fill(zw[1], length(θ)), color = (:gray, 0.5))
+lines!(ax, x_wire, y_wire, fill(zw[2], length(θ)), color = (:gray, 0.5))
 # Vertical lines for wire
 for i in 1:10:100
-   lines!(ax, [x_wire[i], x_wire[i]], [y_wire[i], y_wire[i]], [zw[1], zw[2]], color=(:gray, 0.3))
+   lines!(ax, [x_wire[i], x_wire[i]], [y_wire[i], y_wire[i]],
+      [zw[1], zw[2]], color = (:gray, 0.3))
 end
 
 axislegend(ax)
