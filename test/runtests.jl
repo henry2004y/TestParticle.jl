@@ -147,9 +147,8 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-         (x[1], y[1], z[1]),
-         (Δx, Δy, Δz))
+      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+         dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
@@ -288,9 +287,8 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-         (x[1], y[1], z[1]),
-         (Δx, Δy, Δz))
+      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+         dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [0.0, 1.0, 0.0] # initial velocity, [m/s]
@@ -317,9 +315,8 @@ end
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      grid = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-         (x[1], y[1], z[1]),
-         (Δx, Δy, Δz))
+      grid = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+         dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position, [m]
       u0 = [0.0, 1.0, 1.0] # initial velocity, [m/s]
@@ -452,7 +449,8 @@ end
       Δx = x[2] - x[1]
       Δy = y[2] - y[1]
 
-      grid = CartesianGrid((length(x)-1, length(y)-1), (x[1], y[1]), (Δx, Δy))
+      grid = CartesianGrid((x[1], y[1]), (x[end], y[end]);
+         dims = (length(x) - 1, length(y) - 1))
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]

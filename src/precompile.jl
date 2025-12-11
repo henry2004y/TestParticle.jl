@@ -16,9 +16,8 @@
       Δy = y[2] - y[1]
       Δz = z[2] - z[1]
 
-      mesh = CartesianGrid((length(x)-1, length(y)-1, length(z)-1),
-         (x[1], y[1], z[1]),
-         (Δx, Δy, Δz))
+      mesh = CartesianGrid((x[1], y[1], z[1]), (x[end], y[end], z[end]);
+         dims = (length(x) - 1, length(y) - 1, length(z) - 1))
 
       vdf = Maxwellian([0.0, 0.0, 0.0], 1e-9, 1e6)
       v = sample(vdf)
