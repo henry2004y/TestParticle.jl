@@ -1,7 +1,7 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
-authors = ["Hongyang Zhou <hyzhou@umich.edu>, and Tiancheng Liu <liutc@mail.nankai.edu.cn>"]
-version = "0.16.1"
+authors = ["Hongyang Zhou <hyzhou@umich.edu>, Tiancheng Liu <liutc@mail.nankai.edu.cn>, and Zijin Zhang <zijin@ucla.edu>"]
+version = "0.16.2"
 
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
@@ -24,7 +24,7 @@ Elliptic = "1"
 ForwardDiff = "0.10, 1"
 Interpolations = "0.14, 0.15, 0.16"
 LinearAlgebra = "1.9"
-Meshes = "0.51, 0.52, 0.53, 0.54, 0.55"
+Meshes = "0.51, 0.52, 0.53, 0.54, 0.55, 0.56"
 PrecompileTools = "1"
 Printf = "1.9"
 SciMLBase = "2.24"
