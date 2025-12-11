@@ -30,23 +30,22 @@ sol = solve(prob, Vern9())
 ### Visualization
 
 f = Figure(fontsize = 18)
-##ax = Axis3(f[1, 1],
-##   title = "50 MeV Proton trajectory in Earth's dipole field",
-##   xlabel = "x [Re]",
-##   ylabel = "y [Re]",
-##   zlabel = "z [Re]",
-##   aspect = :data,
-##   limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
-##)
-ax = LScene(f[1, 1])
-invRE = 1 / Rₑ
+ax = Axis3(f[1, 1],
+   title = "50 MeV Proton trajectory in Earth's dipole field",
+   xlabel = "x [Re]",
+   ylabel = "y [Re]",
+   zlabel = "z [Re]",
+   aspect = :data,
+   limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
+)
 
-l = lines!(ax, sol, idxs = (1, 2, 3))
-## In Makie 0.21.11, scene scaling has no effect on Axis3.
-scale!(ax.scene, invRE, invRE, invRE)
+x = sol[1, :] ./ Rₑ
+y = sol[2, :] ./ Rₑ
+z = sol[3, :] ./ Rₑ
+lines!(ax, x, y, z)
 
 for ϕ in range(0, stop = 2*π, length = 10)
-   lines!(TP.dipole_fieldline(ϕ) .* Rₑ..., color = :tomato, alpha = 0.3)
+   lines!(ax, TP.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
 end
 
 f = DisplayAs.PNG(f) #hide
