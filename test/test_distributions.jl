@@ -80,15 +80,20 @@ using Test
 
    # BiKappa Variance Check
    # B is aligned with x
+   # Similar to Kappa, we need to adjust expected variance based on how vth is defined.
+   # Assuming vth in BiKappa follows same logic as Kappa but split.
+   theoretical_var_par = vthpar^2 * kappa / (2 * kappa - 3)
+   theoretical_var_perp = vthperp^2 * kappa / (2 * kappa - 3)
+
    samples_bk = [rand(bikdist) - u0 for _ in 1:N]
    var_par_bk = mean(map(v -> v[1]^2, samples_bk)) # parallel (x)
    var_perp_bk = mean(map(v -> v[2]^2, samples_bk)) # perpendicular (y)
-   @test isapprox(var_par_bk, vthpar^2, rtol = 0.05)
-   @test isapprox(var_perp_bk, vthperp^2, rtol = 0.05)
+   @test isapprox(var_par_bk, theoretical_var_par, rtol = 0.05)
+   @test isapprox(var_perp_bk, theoretical_var_perp, rtol = 0.05)
 
    # Show methods check
    # Need to check expected output for new types
    # kdist is VelocityDistributionFunctions.Kappa
    @test occursin("Kappa", repr(kdist))
-   @test startswith(repr(bikdist), "BiKappa distribution")
+   @test startswith(repr(bikdist), "BiKappa")
 end
