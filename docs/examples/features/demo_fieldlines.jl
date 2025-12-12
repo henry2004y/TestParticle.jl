@@ -21,9 +21,7 @@ CairoMakie.activate!(type = "png") #hide
 #
 # We use the predefined dipole field functions from `TestParticle`.
 # `getB_dipole` returns the Earth's magnetic field in SI units (Tesla).
-# `getE_dipole` returns a zero electric field.
-
-param = TP.prepare(TP.getE_dipole, TP.getB_dipole);
+getB = TP.getB_dipole;
 
 # ## Trace Field Lines
 #
@@ -51,7 +49,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for (i, u0) in enumerate(seeds)
    ## Returns a vector of two ODEProblems (forward and backward)
-   probs = trace_fieldline(u0, param, s_span; mode = :both)
+   probs = trace_fieldline(u0, getB, s_span; mode = :both)
 
    ## Solve each problem
    for (j, prob) in enumerate(probs)
