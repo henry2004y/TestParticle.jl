@@ -23,7 +23,7 @@ const b = 0.8 # radius of central region
 
 getB(xu) = SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil*N, IPlasma))
 
-getE(xu) = SA[0.0, 0.0, 0.0]
+getE = TP.ZeroField()
 
 ### Initialize particles
 m = TP.mᵢ

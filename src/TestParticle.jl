@@ -27,6 +27,7 @@ export Proton, Electron, Ion, User
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa, SelfSimilar, BiSelfSimilar
 export AdaptiveBoris
+export CurrentLoop, getB_loop
 export get_gyrofrequency,
        get_gyroperiod, get_gyroradius, get_velocity, get_energy,
        energy2velocity,
