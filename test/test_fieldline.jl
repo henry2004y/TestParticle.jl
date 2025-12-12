@@ -59,7 +59,7 @@ using LinearAlgebra: norm
       @test check_L_shell(sol2) < tol
 
       # Test equation overloading (out-of-place equation)
-      prob_op = ODEProblem(trace_fieldline, SA[stateinit...], tspan, param)
+      prob_op = ODEProblem(trace_fieldline, SA[stateinit...], tspan, TP.get_BField(param))
       sol_op = solve(prob_op, Tsit5(); callback)
       @test check_L_shell(sol_op) < tol
    end
