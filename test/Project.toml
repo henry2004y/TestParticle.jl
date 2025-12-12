@@ -13,4 +13,3 @@ VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]
 TestParticle = {path = ".."}
-VelocityDistributionFunctions = {rev = "main", url = "https://github.com/JuliaSpacePhysics/VelocityDistributionFunctions.jl"}
