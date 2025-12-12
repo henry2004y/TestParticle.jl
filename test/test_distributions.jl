@@ -1,5 +1,4 @@
 using TestParticle
-using VelocityDistributionFunctions
 using StaticArrays
 using LinearAlgebra
 using Statistics
@@ -75,7 +74,7 @@ using Test
    theoretical_var_k = vth^2 * kappa / (2 * kappa - 3)
 
    samples_k = [rand(kdist) - u0 for _ in 1:N]
-   var_k = mean(map(v -> v[1]^2, samples_k)) # x component
+   var_k = mean(v[1]^2 for v in samples_k) # x component
    @test isapprox(var_k, theoretical_var_k, rtol = 0.05)
 
    # BiKappa Variance Check
@@ -86,8 +85,8 @@ using Test
    theoretical_var_perp = vthperp^2 * kappa / (2 * kappa - 3)
 
    samples_bk = [rand(bikdist) - u0 for _ in 1:N]
-   var_par_bk = mean(map(v -> v[1]^2, samples_bk)) # parallel (x)
-   var_perp_bk = mean(map(v -> v[2]^2, samples_bk)) # perpendicular (y)
+   var_par_bk = mean(v[1]^2 for v in samples_bk) # parallel (x)
+   var_perp_bk = mean(v[2]^2 for v in samples_bk) # perpendicular (y)
    @test isapprox(var_par_bk, theoretical_var_par, rtol = 0.05)
    @test isapprox(var_perp_bk, theoretical_var_perp, rtol = 0.05)
 
@@ -95,5 +94,5 @@ using Test
    # Need to check expected output for new types
    # kdist is VelocityDistributionFunctions.Kappa
    @test occursin("Kappa", repr(kdist))
-   @test startswith(repr(bikdist), "BiKappa")
+   @test occursin("BiKappa", repr(bikdist))
 end

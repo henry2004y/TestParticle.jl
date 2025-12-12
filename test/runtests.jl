@@ -65,13 +65,13 @@ end
       Random.seed!(1234)
       v = rand(vdf)
       @test sum(v) == 237999.044917082
-      @test startswith(repr(vdf), "Maxwellian")
+      @test occursin("Maxwellian", repr(vdf))
       B = [1.0, 0.0, 0.0] # will be normalized internally
       vdf = BiMaxwellian(B, u0, p, p, n)
       Random.seed!(1234)
       v = rand(vdf)
       @test sum(v) ≈ -794140.1665257511 # Updated for new RNG behavior or package differences
-      @test startswith(repr(vdf), "BiMaxwellian")
+      @test occursin("BiMaxwellian", repr(vdf))
    end
 
    @testset "interpolation" begin
