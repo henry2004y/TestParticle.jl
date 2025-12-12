@@ -79,7 +79,7 @@ function makegrid(grid::CartesianGrid)
    elseif dim == 2
       return gridx, gridy
    elseif dim == 1
-      return (gridx, )
+      return (gridx,)
    end
 end
 

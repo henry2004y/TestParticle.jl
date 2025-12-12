@@ -26,7 +26,8 @@ and `gridz`.
 
 The input array `A` may be modified in-place for memory optimization.
 """
-function getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
+function getinterp(
+      ::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1)
    if eltype(A) <: SVector
       @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
    else
