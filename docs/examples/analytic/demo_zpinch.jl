@@ -63,8 +63,8 @@ ax = Axis3(f[1, 1],
    limits = (-0.2, 0.2, -0.2, 0.2, -0.1, 0.6)
 )
 
-lines!(ax, sol_in, idxs=(1,2,3), label = "Inside (r < a)", color = :blue)
-lines!(ax, sol_out, idxs=(1,2,3), label = "Outside (r > a)", color = :red)
+lines!(ax, sol_in, idxs = (1, 2, 3), label = "Inside (r < a)", color = :blue)
+lines!(ax, sol_out, idxs = (1, 2, 3), label = "Outside (r > a)", color = :red)
 
 ## Plot the wire boundary
 θ = range(0, 2π, length = 100)

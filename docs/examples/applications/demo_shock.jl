@@ -87,12 +87,12 @@ function plot_traj(sols; azimuth = 1.275pi, elevation = pi/8,
    ## limits are in km
    f = Figure(fontsize = 18)
    ax = Axis3(f[1, 1];
-      title="Particles across MHD shock",
-      xlabel="x [km]",
-      ylabel="y [km]",
-      zlabel="z [km]",
-      aspect=:data,
-      limits, azimuth, elevation,
+      title = "Particles across MHD shock",
+      xlabel = "x [km]",
+      ylabel = "y [km]",
+      zlabel = "z [km]",
+      aspect = :data,
+      limits, azimuth, elevation
    )
 
    for i in eachindex(sols)
