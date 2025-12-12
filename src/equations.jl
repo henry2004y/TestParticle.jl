@@ -277,11 +277,11 @@ end
      trace_fieldline!(dx, x, p, s)
 
 Equation for tracing magnetic field lines with in-place form.
-The parameter `p` should contain the magnetic field function, accessible via `get_BField(p)`.
+The parameter `p` is the magnetic field function.
 Note that the independent variable `s` represents the arc length.
 """
 function trace_fieldline!(dx, x, p, s)
-   B = get_BField(p)(x, s)
+   B = p(x, s)
    dx .= normalize(B)
 end
 
@@ -291,6 +291,6 @@ end
 Equation for tracing magnetic field lines with out-of-place form.
 """
 function trace_fieldline(x, p, s)
-   B = get_BField(p)(x, s)
+   B = p(x, s)
    normalize(B)
 end
