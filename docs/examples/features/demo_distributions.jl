@@ -39,7 +39,7 @@ vdf = Maxwellian(u0, p, n; m)
 println(vdf)
 
 ## Sample
-vs = [rand(vdf) for _ in 1:N]
+vs = rand(vdf, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF
@@ -76,9 +76,9 @@ vdf_bi = BiMaxwellian(B, u0, ppar, pperp, n; m)
 println(vdf_bi)
 
 ## Sample
-vs = [rand(vdf_bi) for _ in 1:N]
+vs = rand(vdf_bi, N)
 vpar = [v[3] for v in vs] # Since B is along Z
-vperp = [sqrt(v[1]^2 + v[2]^2) for v in vs]
+vperp = [hypot(v[1], v[2]) for v in vs]
 
 ## Theoretical PDFs
 vthpar = vdf_bi.vth_para
@@ -119,7 +119,7 @@ vdf_kappa = Kappa(u0, p, n, kappa; m)
 println(vdf_kappa)
 
 ## Sample
-vs = [rand(vdf_kappa) for _ in 1:N]
+vs = rand(vdf_kappa, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF (1D projection of 3D Kappa)
@@ -156,7 +156,7 @@ vdf_bikappa = BiKappa(B, u0, ppar, pperp, n, kappa; m)
 println(vdf_bikappa)
 
 ## Sample
-vs = [rand(vdf_bikappa) for _ in 1:N]
+vs = rand(vdf_bikappa, N)
 vpar = [v[3] for v in vs]
 
 ## Theoretical PDF (1D projection)
