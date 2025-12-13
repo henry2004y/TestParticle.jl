@@ -25,11 +25,11 @@ Calculates the magnetic field from a dipole with magnetic moment `M` at `r`.
 function dipole(rIn, M)
    x, y, z = rIn
    r = sqrt(x^2 + y^2 + z^2)
-   Coef = μ₀/(4*π*r^5)
+   Coef = μ₀ / (4 * π * r^5)
 
-   B = SA[3*x^2-r^2 3*x*y 3*x*z;
-          3*y*x 3*y^2-r^2 3*y*z;
-          3*z*x 3*z*y 3*z^2-r^2] * M * Coef
+   B = SA[3 * x^2-r^2 3*x*y 3*x*z;
+          3*y*x 3 * y^2-r^2 3*y*z;
+          3*z*x 3*z*y 3 * z^2-r^2] * M * Coef
 end
 
 """
@@ -40,15 +40,10 @@ dipole magnetic field model, the path along a given L shell can be described as 
 where r is the radial distance (in planetary radii) to a point on the line,
 λ is its co-latitude, and L is the L-shell of interest.
 """
-function dipole_fieldline(ϕ::Float64, L::Float64 = 2.5, nP::Int = 100)
-   xyz = [sph2cart(L*sin(θ)^2, θ, ϕ) for θ in range(0, stop = π, length = nP)]
-   x = Vector{Float64}(undef, length(xyz))
-   y = Vector{Float64}(undef, length(xyz))
-   z = Vector{Float64}(undef, length(xyz))
-
-   for (i, pos) in enumerate(xyz)
-      x[i], y[i], z[i] = pos
-   end
-
+function dipole_fieldline(ϕ, L = 2.5, nP::Int = 100)
+   xyz = [sph2cart(L * sin(θ)^2, θ, ϕ) for θ in range(0, stop = π, length = nP)]
+   x = getindex.(xyz, 1)
+   y = getindex.(xyz, 2)
+   z = getindex.(xyz, 3)
    (x, y, z)
 end

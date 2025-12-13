@@ -14,17 +14,17 @@ A circular current loop.
   - `center::SVector{3, T}`: Position of the loop center [m].
   - `normal::SVector{3, T}`: Unit normal vector of the loop.
 """
-struct CurrentLoop{T <: AbstractFloat}
+struct CurrentLoop{T}
    radius::T
    current::T
    center::SVector{3, T}
    normal::SVector{3, T}
-end
 
-function CurrentLoop(radius::Real, current::Real, center::AbstractVector, normal::AbstractVector)
-   T = promote_type(typeof(radius), typeof(current), eltype(center), eltype(normal))
-   n_hat = LinearAlgebra.normalize(SVector{3, T}(normal))
-   CurrentLoop{T}(T(radius), T(current), SVector{3, T}(center), n_hat)
+   function CurrentLoop(radius, current, center::AbstractVector, normal::AbstractVector)
+      T = promote_type(typeof(radius), typeof(current), eltype(center), eltype(normal))
+      n_hat = LinearAlgebra.normalize(SVector{3, T}(normal))
+      return new{T}(T(radius), T(current), SVector{3, T}(center), n_hat)
+   end
 end
 
 """
@@ -94,7 +94,7 @@ Calculate the magnetic field `B` [T] at point `r` from a current loop with curre
 radius `a` [m], centered at `R`, and normal vector `n`.
 """
 function getB_loop(
-      r::AbstractVector, R::AbstractVector, a::Real, I::Real, n::AbstractVector)
+      r::AbstractVector, R::AbstractVector, a, I, n::AbstractVector)
    loop = CurrentLoop(a, I, R, n)
    getB_loop(r, loop)
 end
