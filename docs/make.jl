@@ -61,6 +61,7 @@ features_order = [
    "demo_performance.jl",
    "demo_interpolation.jl",
    "demo_dimensionless.jl",
+   "demo_unitful.jl",
    "demo_ensemble.jl",
    "demo_distributions.jl",
    "demo_savingcallback.jl",
