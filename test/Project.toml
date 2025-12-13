@@ -12,4 +12,4 @@ TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]
-TestParticle = {path = ".."}
+TestParticle = { path = ".." }
