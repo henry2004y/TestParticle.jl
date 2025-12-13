@@ -5,7 +5,7 @@ import VelocityDistributionFunctions
 # Wrapper functions to avoid type piracy when adding convenience constructors
 
 """
-     Maxwellian(args...)
+     Maxwellian(args...; kw...)
 
 Construct a `Maxwellian` distribution. Forwards to `VelocityDistributionFunctions.Maxwellian`.
 
@@ -20,11 +20,11 @@ function Maxwellian(u0::AbstractVector{T}, p, n; m = mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
    vth = get_thermal_speed(p, n, m)
 
-   VelocityDistributionFunctions.Maxwellian(vth, u0)
+   VelocityDistributionFunctions.Maxwellian(vth; u0)
 end
 
 """
-     BiMaxwellian(args...)
+     BiMaxwellian(args...; kw...)
 
 Construct a `BiMaxwellian` distribution. Forwards to `VelocityDistributionFunctions.BiMaxwellian`.
 
@@ -49,11 +49,11 @@ function BiMaxwellian(
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 
-   VelocityDistributionFunctions.BiMaxwellian(vperp, vpar, u0, B)
+   VelocityDistributionFunctions.BiMaxwellian(vperp, vpar, B; u0)
 end
 
 """
-     Kappa(args...)
+     Kappa(args...; kw...)
 
 Construct a `Kappa` distribution. Forwards to `VelocityDistributionFunctions.Kappa`.
 
@@ -68,11 +68,11 @@ function Kappa(u0::AbstractVector{T}, p, n, kappa; m = mᵢ) where T
    @assert length(u0) == 3 "Bulk velocity must have length 3!"
    vth = get_thermal_speed(p, n, m)
 
-   VelocityDistributionFunctions.Kappa(vth, kappa, u0)
+   VelocityDistributionFunctions.Kappa(vth, kappa; u0)
 end
 
 """
-     BiKappa(args...)
+     BiKappa(args...; kw...)
 
 Construct a `BiKappa` distribution. Forwards to `VelocityDistributionFunctions.BiKappa`.
 
@@ -98,7 +98,7 @@ function BiKappa(
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 
-   VelocityDistributionFunctions.BiKappa(vperp, vpar, kappa, u0, B)
+   VelocityDistributionFunctions.BiKappa(vperp, vpar, kappa, B; u0)
 end
 
 get_thermal_speed(p, n, m) = √(2 * p / (n * m))
