@@ -8,10 +8,11 @@ import LinearAlgebra
 A circular current loop.
 
 # Fields
-- `radius::T`: Radius of the loop [m].
-- `current::T`: Current in the loop [A].
-- `center::SVector{3, T}`: Position of the loop center [m].
-- `normal::SVector{3, T}`: Unit normal vector of the loop.
+
+  - `radius::T`: Radius of the loop [m].
+  - `current::T`: Current in the loop [A].
+  - `center::SVector{3, T}`: Position of the loop center [m].
+  - `normal::SVector{3, T}`: Unit normal vector of the loop.
 """
 struct CurrentLoop{T <: AbstractFloat}
    radius::T
