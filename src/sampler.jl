@@ -27,7 +27,7 @@ end
 
 Construct a `BiMaxwellian` distribution. Forwards to `VelocityDistributionFunctions.BiMaxwellian`.
 
-     BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar, pperp, n; m=mᵢ)
+     BiMaxwellian(B, u0, ppar, pperp, n; m=mᵢ)
 
 Construct a `BiMaxwellian` distribution with magnetic field `B`, bulk velocity `u0`, parallel
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in
@@ -35,14 +35,7 @@ SI units. The default particle is proton.
 """
 BiMaxwellian(args...; kwargs...) = VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
 
-function BiMaxwellian(
-      B,
-      u0,
-      ppar,
-      pperp,
-      n;
-      m = mᵢ
-)
+function BiMaxwellian(B, u0, ppar, pperp, n; m = mᵢ)
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 
@@ -80,15 +73,7 @@ spectral index `kappa` in SI units. The default particle is proton.
 """
 BiKappa(args...; kwargs...) = VelocityDistributionFunctions.BiKappa(args...; kwargs...)
 
-function BiKappa(
-      B,
-      u0,
-      ppar,
-      pperp,
-      n,
-      kappa;
-      m = mᵢ
-)
+function BiKappa(B, u0, ppar, pperp, n, kappa; m = mᵢ)
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 
