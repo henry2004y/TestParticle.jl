@@ -48,7 +48,7 @@ include("confinement.jl")
 Return charge and mass for `species`.
 For `species = Ion`, `q` and `m` are charge and mass numbers. For `species = User`, the input `q` and `m` are returned as is.
 """
-function getchargemass(species::Species, q::Real, m::Real)
+function getchargemass(species::Species, q, m)
    if species == Proton
       q = qᵢ
       m = mᵢ

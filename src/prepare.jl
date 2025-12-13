@@ -61,6 +61,7 @@ get_BField(param) = param[4]
 get_EField(param) = param[3]
 
 prepare_field(f, args...; kwargs...) = Field(f)
+prepare_field(f::ZeroField, args...; kwargs...) = f
 
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
    Field(getinterp(gridtype, f, x..., order, bc; kw...))
