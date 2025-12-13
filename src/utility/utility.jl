@@ -43,26 +43,6 @@ include("loop.jl")
 include("confinement.jl")
 
 """
-     getchargemass(species::Species, q, m)
-
-Return charge and mass for `species`.
-For `species = Ion`, `q` and `m` are charge and mass numbers. For `species = User`, the input `q` and `m` are returned as is.
-"""
-function getchargemass(species::Species, q, m)
-   if species == Proton
-      q = qᵢ
-      m = mᵢ
-   elseif species == Electron
-      q = qₑ
-      m = mₑ
-   elseif species == Ion
-      q *= qᵢ
-      m *= mᵢ
-   end
-   q, m
-end
-
-"""
 Return uniform range from 2D/3D CartesianGrid.
 """
 function makegrid(grid::CartesianGrid)

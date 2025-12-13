@@ -53,7 +53,7 @@ B₀ = 10e-9            # [T]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]
-E₀ = U₀*B₀            # [V/m]
+E₀ = U₀ * B₀            # [V/m]
 ## All quantities are in dimensionless units
 x = range(-10, 10, length = nx) # [l₀]
 y = range(-10, 10, length = ny) # [l₀]
@@ -63,7 +63,7 @@ B = fill(0.0, 3, nx, ny, nz) # [B₀]
 B[3, :, :, :] .= 1.0
 E = fill(0.0, 3, nx, ny, nz) # [E₀]
 
-param = prepare(x, y, z, E, B; species = User)
+param = prepare(x, y, z, E, B; m = 1, q = 1)
 
 ## Initial condition
 stateinit = let
@@ -102,7 +102,7 @@ f = DisplayAs.PNG(f) #hide
 #
 # In the small velocity scenario, it should behave similar to the non-relativistic case:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species = User)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -124,7 +124,7 @@ f = DisplayAs.PNG(f) #hide
 
 # In the large velocity scenario, relativistic effect takes place:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species = User)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
 prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -164,7 +164,7 @@ E_field(x) = SA[Emag_dim, 0.0, 0.0]
 x0_dim = [0.0, 0.0, 0.0] # [m]
 v0_dim = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0_dim..., v0_dim...]
-tspan1 = (0, 2π*t_dim) # [s]
+tspan1 = (0, 2π * t_dim) # [s]
 
 param1 = prepare(E_field, B_field, species = Proton)
 prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
@@ -174,7 +174,7 @@ sol1 = solve(prob1, Vern9(); reltol = 1e-4, abstol = 1e-6)
 B_normalize(x) = SA[0, 0, B_dim / B_dim]
 E_normalize(x) = SA[Emag_dim / E_dim, 0.0, 0.0]
 ## For full EM problems, the normalization of E and B should be done separately.
-param2 = prepare(E_normalize, B_normalize; species = User)
+param2 = prepare(E_normalize, B_normalize; m = 1, q = 1)
 ## Scale initial conditions by the conversion factors
 x0_norm = x0_dim ./ l_dim
 v0_norm = v0_dim ./ U_dim
@@ -219,7 +219,7 @@ B₀ = 10e-9            # [T]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]
-E₀ = U₀*B₀            # [V/m]
+E₀ = U₀ * B₀            # [V/m]
 
 x = range(-10, 10, length = nx) # [l₀]
 y = range(-10, 10, length = ny) # [l₀]
@@ -231,7 +231,7 @@ E_zero(x) = SA[0.0, 0.0, 0.0] # [E₀]
 
 ## If bc == 1, we set a NaN value outside the domain (default);
 ## If bc == 2, we set periodic boundary conditions.
-param = prepare(x, y, E_zero, B; species = User, bc = 2);
+param = prepare(x, y, E_zero, B; m = 1, q = 1, bc = 2);
 
 # Note that we set a radius of 10, so the trajectory extent from -20 to 0 in y, which is beyond the original y range.
 

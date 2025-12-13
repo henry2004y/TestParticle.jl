@@ -151,7 +151,7 @@ end
       stateinit = [x0..., u0...]
       tspan = (0.0, 1.0)
 
-      param = prepare(x, y, z, E, B, species = Ion, q = 1, m = 16) # O+
+      param = prepare(x, y, z, E, B, species = Ion(; q = 1, m = 16)) # O+
       @test param[2] ≈ 16 * mᵢ
 
       callback = DiscreteCallback(isoutofdomain, terminate!)
@@ -373,7 +373,7 @@ end
       x = sol[1:3, end]
       @test get_energy(sol[4:6, end]; m = mₑ, q = qₑ) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
       # Tracing relativistic particle in dimensionless units
-      param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; species = User)
+      param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
       tspan = (0.0, 1.0) # 1/2π period
       stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
       prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
@@ -414,7 +414,7 @@ end
       # E shall be normalized by E₀
       E ./= E₀
 
-      param = prepare(x, y, z, E, B; species = User)
+      param = prepare(x, y, z, E, B; m = 1, q = 1)
 
       x0 = [0.0, 0.0, 0.0] # initial position [l₀]
       u0 = [1.0, 0.0, 0.0] # initial velocity [v₀]

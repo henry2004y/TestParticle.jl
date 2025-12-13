@@ -94,7 +94,7 @@ sols_p = solve(ensemble_p, Vern9(), EnsembleSerial(); trajectories = 10);
 
 prob_e = let
    ## Create parameter object for Heavy Electron.
-   param_e = prepare(x, E, B; species = User, bc = 3, q = q_heavy, m = m_heavy)
+   param_e = prepare(x, E, B; bc = 3, q = q_heavy, m = m_heavy)
 
    u0_e = [x0, 0.0, 0.0, v0_p...]
    ODEProblem(trace!, u0_e, (0.0, 20.0), param_e)

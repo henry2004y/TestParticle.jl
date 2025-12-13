@@ -20,6 +20,6 @@ v0 = [0.0, 0.01, 0.0] * Unitful.c0 # [m/s]
 u0 = [x0..., v0...]
 tspan = (0.0u"s", 2π * t_max) # [s]
 
-param = prepare(E_field, B_field, species = User, q = Unitful.q, m = Unitful.mp)
+param = prepare(E_field, B_field, q = Unitful.q, m = Unitful.mp)
 prob = ODEProblem(trace!, u0, tspan, param)
 solve(prob, Vern9())
