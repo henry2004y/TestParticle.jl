@@ -21,8 +21,9 @@ E(x) = SA[0.0, 0.0, 0.0]
 
 ## Earth's gravity
 function F(x)
-   r = norm(x)
-   return -G * M * TestParticle.mᵢ / r^3 * x
+   r = SA[x[1], x[2], x[3]]
+   rmag = @views norm(r)
+   return -G * M * TestParticle.mᵢ / rmag^3 * r
 end
 
 ## Initial static particle
@@ -61,10 +62,13 @@ y_sphere = Rₑ .* (sin.(u) * sin.(v)')
 z_sphere = Rₑ .* (ones(length(u)) * cos.(v)')
 
 surface!(ax, x_sphere ./ Rₑ, y_sphere ./ Rₑ, z_sphere ./ Rₑ,
-   colormap = (:earth, 0.5), shading = true, transparency = true)
+   colormap = (:turbo, 0.5), shading = true, transparency = true)
 
 ## Plot trajectory
 lines!(ax, sol[1, :] ./ Rₑ, sol[2, :] ./ Rₑ, sol[3, :] ./ Rₑ,
    color = :orangered, linewidth = 2, label = "Trajectory")
 
 f = DisplayAs.PNG(f) #hide
+
+# If we use `lines!(ax, sol, idxs=(1,2,3))`, interpolation will automatically be used.
+# However, there is currently a bug in Makie for `scale!` on the axis.
