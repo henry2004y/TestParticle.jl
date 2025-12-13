@@ -4,7 +4,7 @@
 *.out
 /docs/build/
 /docs/src/generated/
-Manifest.toml
+Manifest*.toml
 report.md
 /.benchmarkci
 /benchmark/*.json

@@ -9,15 +9,14 @@ import VelocityDistributionFunctions
 
 Construct a `Maxwellian` distribution. Forwards to `VelocityDistributionFunctions.Maxwellian`.
 
-     Maxwellian(u0::AbstractVector{T}, p, n; m=mᵢ)
+     Maxwellian(u0, p, n; m=mᵢ)
 
 Construct a `Maxwellian` distribution with bulk velocity `u0`, thermal pressure `p`, and
 number density `n` in SI units. The default particle is proton.
 """
 Maxwellian(args...; kwargs...) = VelocityDistributionFunctions.Maxwellian(args...; kwargs...)
 
-function Maxwellian(u0::AbstractVector{T}, p, n; m = mᵢ) where T
-   @assert length(u0) == 3 "Bulk velocity must have length 3!"
+function Maxwellian(u0, p, n; m = mᵢ)
    vth = get_thermal_speed(p, n, m)
 
    VelocityDistributionFunctions.Maxwellian(vth; u0)
@@ -28,7 +27,7 @@ end
 
 Construct a `BiMaxwellian` distribution. Forwards to `VelocityDistributionFunctions.BiMaxwellian`.
 
-     BiMaxwellian(B::Vector{U}, u0::Vector{T}, ppar, pperp, n; m=mᵢ)
+     BiMaxwellian(B, u0, ppar, pperp, n; m=mᵢ)
 
 Construct a `BiMaxwellian` distribution with magnetic field `B`, bulk velocity `u0`, parallel
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in
@@ -36,16 +35,7 @@ SI units. The default particle is proton.
 """
 BiMaxwellian(args...; kwargs...) = VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
 
-function BiMaxwellian(
-      B::AbstractVector{U},
-      u0::AbstractVector{T},
-      ppar,
-      pperp,
-      n;
-      m = mᵢ
-) where
-      {T <: AbstractFloat, U <: AbstractFloat}
-   @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
+function BiMaxwellian(B, u0, ppar, pperp, n; m = mᵢ)
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 
@@ -57,15 +47,14 @@ end
 
 Construct a `Kappa` distribution. Forwards to `VelocityDistributionFunctions.Kappa`.
 
-     Kappa(u0::AbstractVector{T}, p, n, kappa; m=mᵢ)
+     Kappa(u0, p, n, kappa; m=mᵢ)
 
 Construct a `Kappa` distribution with bulk velocity `u0`, thermal pressure `p`, number density
 `n`, and spectral index `kappa` in SI units. The default particle is proton.
 """
 Kappa(args...; kwargs...) = VelocityDistributionFunctions.Kappa(args...; kwargs...)
 
-function Kappa(u0::AbstractVector{T}, p, n, kappa; m = mᵢ) where T
-   @assert length(u0) == 3 "Bulk velocity must have length 3!"
+function Kappa(u0, p, n, kappa; m = mᵢ)
    vth = get_thermal_speed(p, n, m)
 
    VelocityDistributionFunctions.Kappa(vth, kappa; u0)
@@ -76,7 +65,7 @@ end
 
 Construct a `BiKappa` distribution. Forwards to `VelocityDistributionFunctions.BiKappa`.
 
-     BiKappa(B::Vector{U}, u0::Vector{T}, ppar, pperp, n, kappa; m=mᵢ)
+     BiKappa(B, u0, ppar, pperp, n, kappa; m=mᵢ)
 
 Construct a `BiKappa` distribution with magnetic field `B`, bulk velocity `u0`, parallel
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, number density `n`, and
@@ -84,17 +73,7 @@ spectral index `kappa` in SI units. The default particle is proton.
 """
 BiKappa(args...; kwargs...) = VelocityDistributionFunctions.BiKappa(args...; kwargs...)
 
-function BiKappa(
-      B::AbstractVector{U},
-      u0::AbstractVector{T},
-      ppar,
-      pperp,
-      n,
-      kappa;
-      m = mᵢ
-) where
-      {T <: AbstractFloat, U <: AbstractFloat}
-   @assert length(u0) == 3 && length(B) == 3 "The field vector must have length 3!"
+function BiKappa(B, u0, ppar, pperp, n, kappa; m = mᵢ)
    vpar = get_thermal_speed(ppar, n, m)
    vperp = get_thermal_speed(pperp, n, m)
 

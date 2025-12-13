@@ -12,7 +12,7 @@ using Test
    vth = 1000.0
    n = 1e6
    maxwellian = Maxwellian(u0, vth^2 / 2 * m * n, n)
-   @test maxwellian.base.vth ≈ vth
+   @test maxwellian.vth ≈ vth
    v_m = rand(maxwellian)
    @test length(v_m) == 3
 
@@ -21,24 +21,24 @@ using Test
    vthpar = 1000.0
    vthperp = 500.0
    bimaxwellian = BiMaxwellian(B, u0, vthpar^2 / 2 * m * n, vthperp^2 / 2 * m * n, n)
-   @test bimaxwellian.base.vth_para ≈ vthpar
-   @test bimaxwellian.base.vth_perp ≈ vthperp
+   @test bimaxwellian.vth_para ≈ vthpar
+   @test bimaxwellian.vth_perp ≈ vthperp
    v_bm = rand(bimaxwellian)
    @test length(v_bm) == 3
 
    # Kappa tests
    kappa = 4.0
    kdist = Kappa(u0, vth^2 / 2 * m * n, n, kappa)
-   @test kdist.base.κ == kappa
-   @test kdist.base.vth ≈ vth
+   @test kdist.κ == kappa
+   @test kdist.vth ≈ vth
    v_k = rand(kdist)
    @test length(v_k) == 3
 
    # BiKappa tests
    bikdist = BiKappa(B, u0, vthpar^2 / 2 * m * n, vthperp^2 / 2 * m * n, n, kappa)
-   @test bikdist.base.κ == kappa
-   @test bikdist.base.vth_para ≈ vthpar
-   @test bikdist.base.vth_perp ≈ vthperp
+   @test bikdist.κ == kappa
+   @test bikdist.vth_para ≈ vthpar
+   @test bikdist.vth_perp ≈ vthperp
    v_bk = rand(bikdist)
    @test length(v_bk) == 3
 
