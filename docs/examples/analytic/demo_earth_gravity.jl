@@ -56,14 +56,15 @@ ax = Axis3(f[1, 1],
 ## A simple sphere at the origin
 u = LinRange(0, 2π, 50)
 v = LinRange(0, π, 50)
-x_sphere = [Rₑ * cos(u) * sin(v) for u in u, v in v]
-y_sphere = [Rₑ * sin(u) * sin(v) for u in u, v in v]
-z_sphere = [Rₑ * cos(v) for u in u, v in v]
+x_sphere = Rₑ .* (cos.(u) * sin.(v)')
+y_sphere = Rₑ .* (sin.(u) * sin.(v)')
+z_sphere = Rₑ .* (ones(length(u)) * cos.(v)')
 
 surface!(ax, x_sphere ./ Rₑ, y_sphere ./ Rₑ, z_sphere ./ Rₑ,
    colormap = (:earth, 0.5), shading = true, transparency = true)
 
 ## Plot trajectory
-lines!(ax, sol, idxs = (1, 2, 3) ./ Rₑ, color = :orangered, linewidth = 2, label = "Trajectory")
+lines!(ax, sol[1, :] ./ Rₑ, sol[2, :] ./ Rₑ, sol[3, :] ./ Rₑ,
+   color = :orangered, linewidth = 2, label = "Trajectory")
 
 f = DisplayAs.PNG(f) #hide
