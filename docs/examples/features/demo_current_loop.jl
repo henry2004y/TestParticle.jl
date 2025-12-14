@@ -9,7 +9,7 @@
 import DisplayAs #hide
 import TestParticle as TP
 using TestParticle: getB_loop, trace_fieldline
-using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using StaticArrays
 using LinearAlgebra
 using CairoMakie
