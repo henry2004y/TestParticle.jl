@@ -1,11 +1,11 @@
 # # Sampling from VDFs
 #
 # This example demonstrates how to sample from various velocity distribution functions (VDFs)
-# including Maxwellian, Bi-Maxwellian, Kappa, Bi-Kappa, and Self-Similar distributions.
+# including Maxwellian, Bi-Maxwellian, Kappa, and Bi-Kappa distributions.
 # We compare the sampled distributions with their theoretical probability density functions (PDFs).
 
 using TestParticle
-using TestParticle: gamma
+using SpecialFunctions: gamma
 using Random
 using StaticArrays
 using Statistics
@@ -39,7 +39,7 @@ vdf = Maxwellian(u0, p, n; m)
 println(vdf)
 
 ## Sample
-vs = [sample(vdf) for _ in 1:N]
+vs = rand(vdf, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF
@@ -76,13 +76,13 @@ vdf_bi = BiMaxwellian(B, u0, ppar, pperp, n; m)
 println(vdf_bi)
 
 ## Sample
-vs = [sample(vdf_bi) for _ in 1:N]
+vs = rand(vdf_bi, N)
 vpar = [v[3] for v in vs] # Since B is along Z
-vperp = [sqrt(v[1]^2 + v[2]^2) for v in vs]
+vperp = [hypot(v[1], v[2]) for v in vs]
 
 ## Theoretical PDFs
-vthpar = vdf_bi.vthpar
-vthperp = vdf_bi.vthperp
+vthpar = vdf_bi.vth_para
+vthperp = vdf_bi.vth_perp
 ## Bi-Maxwellian Parallel is identical to the 1D Maxwellian
 pdf_bi_par(v, vth) = pdf_maxwellian(v, vth)
 ## Bi-Maxwellian Perpendicular (2D Speed / Rayleigh)
@@ -119,7 +119,7 @@ vdf_kappa = Kappa(u0, p, n, kappa; m)
 println(vdf_kappa)
 
 ## Sample
-vs = [sample(vdf_kappa) for _ in 1:N]
+vs = rand(vdf_kappa, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF (1D projection of 3D Kappa)
@@ -156,7 +156,7 @@ vdf_bikappa = BiKappa(B, u0, ppar, pperp, n, kappa; m)
 println(vdf_bikappa)
 
 ## Sample
-vs = [sample(vdf_bikappa) for _ in 1:N]
+vs = rand(vdf_bikappa, N)
 vpar = [v[3] for v in vs]
 
 ## Theoretical PDF (1D projection)
@@ -168,46 +168,8 @@ f = Figure()
 ax = Axis(f[1, 1], title = "Bi-Kappa Parallel (Z)",
    xlabel = "v_par", ylabel = "PDF", yscale = log10)
 hist!(ax, vpar, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
-lines!(ax, v_grid, pdf_bikappa_par.(v_grid, vdf_bikappa.vthpar, kappa),
+lines!(ax, v_grid, pdf_bikappa_par.(v_grid, vdf_bikappa.vth_para, kappa),
    label = "Theory", color = :red, linewidth = 2)
-axislegend(ax)
-
-f = DisplayAs.PNG(f) #hide
-
-# ## 5. Self-Similar Distribution
-# ```math
-# v \propto \exp\left(-\left(\frac{|v|}{\alpha}\right)^s\right)
-# ```
-# The implementation samples independent components from a Generalized Normal distribution.
-# ```math
-# v_x \propto \exp\left(-\left(\frac{|v_x|}{\alpha}\right)^s\right)
-# ```
-
-## Parameters
-s = 4.0 # Flattop
-p = 1.0
-
-## Construct distribution
-vdf_ss = SelfSimilar(u0, p, n, s; m)
-println(vdf_ss)
-
-## Sample
-vs = [sample(vdf_ss) for _ in 1:N]
-vx = [v[1] for v in vs]
-
-## Theoretical PDF
-## Generalized Normal Distribution
-## f(x) = s / (2 * alpha * Gamma(1/s)) * exp(-(|x|/alpha)^s)
-## Scale alpha is calculated in the sampler such that variance is vth^2
-alpha = vdf_ss.vth * sqrt(gamma(1 / s) / gamma(3 / s))
-
-pdf_gn(x, alpha, s) = s / (2 * alpha * gamma(1 / s)) * exp(-(abs(x) / alpha)^s)
-
-## Visualization
-f = Figure()
-ax = Axis(f[1, 1], title = "Self-Similar (s=4)", xlabel = "vx", ylabel = "PDF")
-hist!(ax, vx, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
-lines!(ax, v_grid, pdf_gn.(v_grid, alpha, s), label = "Theory", color = :red, linewidth = 2)
 axislegend(ax)
 
 f = DisplayAs.PNG(f) #hide
