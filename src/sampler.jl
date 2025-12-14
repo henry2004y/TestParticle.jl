@@ -14,7 +14,9 @@ Construct a `Maxwellian` distribution. Forwards to `VelocityDistributionFunction
 Construct a `Maxwellian` distribution with bulk velocity `u0`, thermal pressure `p`, and
 number density `n` in SI units. The default particle is proton.
 """
-Maxwellian(args...; kwargs...) = VelocityDistributionFunctions.Maxwellian(args...; kwargs...)
+function Maxwellian(args...; kwargs...)
+   VelocityDistributionFunctions.Maxwellian(args...; kwargs...)
+end
 
 function Maxwellian(u0, p, n; m = mᵢ)
    vth = get_thermal_speed(p, n, m)
@@ -33,7 +35,9 @@ Construct a `BiMaxwellian` distribution with magnetic field `B`, bulk velocity `
 thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number density `n` in
 SI units. The default particle is proton.
 """
-BiMaxwellian(args...; kwargs...) = VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
+function BiMaxwellian(args...; kwargs...)
+   VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
+end
 
 function BiMaxwellian(B, u0, ppar, pperp, n; m = mᵢ)
    vpar = get_thermal_speed(ppar, n, m)
