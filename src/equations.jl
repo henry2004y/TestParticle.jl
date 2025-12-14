@@ -25,7 +25,7 @@ end
 """
     trace!(dy, y, p, t)
 
-ODE equations for charged particle moving in static EM field and external force field with in-place form.
+ODE equations for charged particle moving in EM field and external force field with in-place form.
 """
 function trace!(dy, y, p, t)
    v = get_v(y)
@@ -36,9 +36,9 @@ function trace!(dy, y, p, t)
 end
 
 """
-    trace(y, p, t) -> SVector{6, Float64}
+    trace(y, p, t)::SVector{6}
 
-ODE equations for charged particle moving in static EM field and external force field with out-of-place form.
+ODE equations for charged particle moving in EM field and external force field with out-of-place form.
 """
 function trace(y, p, t)
    v = y[SA[4:6...]]
@@ -49,7 +49,7 @@ end
 """
      trace_relativistic!(dy, y, p, t)
 
-ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
+ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
 function trace_relativistic!(dy, y, p, t)
    γv = get_v(y)
@@ -126,7 +126,7 @@ end
 """
      trace_normalized!(dy, y, p, t)
 
-Normalized ODE equations for charged particle moving in static EM field with in-place form.
+Normalized ODE equations for charged particle moving in EM field with in-place form.
 If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
 the extrapolation function provided by Interpolations.jl.
 """
@@ -144,7 +144,7 @@ end
 """
      trace_relativistic_normalized!(dy, y, p, t)
 
-Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with in-place form.
+Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
 function trace_relativistic_normalized!(dy, y, p, t)
    E = get_EField(p)(y, t)
@@ -161,7 +161,7 @@ end
 """
      trace_relativistic_normalized(y, p, t)
 
-Normalized ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
+Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
 function trace_relativistic_normalized(y, p, t)
    E = get_EField(p)(y, t)
@@ -204,7 +204,7 @@ end
 """
      trace_gc!(dy, y, p, t)
 
-Guiding center equations for nonrelativistic charged particle moving in static EM field with in-place form.
+Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
 function trace_gc!(dy, y, p::GCTuple, t)
