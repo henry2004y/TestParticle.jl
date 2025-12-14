@@ -24,6 +24,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]

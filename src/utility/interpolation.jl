@@ -1,10 +1,6 @@
 # Field interpolations.
 
-function getinterp(A, grid1, grid2, grid3, args...)
-   getinterp(CartesianGrid, A, grid1, grid2, grid3, args...)
-end
-getinterp(A, grid1, grid2, args...) = getinterp(CartesianGrid, A, grid1, grid2, args...)
-getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
+@inline getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
 
 function getinterp_scalar(A, grid1, grid2, grid3, args...)
    getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
