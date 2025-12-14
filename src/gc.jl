@@ -1,10 +1,11 @@
 # Guiding center.
 
 function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
-      species::Species = Proton, q::AbstractFloat = 1.0, m::AbstractFloat = 1.0,
+      species = Proton, q = nothing, m = nothing,
       order::Int = 1,
       bc::Int = 1, removeExB = true) where {T <: AbstractRange, TE, TB}
-   q, m = getchargemass(species, q, m)
+   q = @something q species.q
+   m = @something m species.m
    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
    E = TE <: AbstractArray ?
@@ -18,7 +19,7 @@ function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
    b̂particle = bparticle ./ Bmag_particle
    # vector of Larmor radius
-   ρ = (b̂particle × v) ./ (q/m*Bmag_particle)
+   ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
    # Get the guiding center location
    X = x - ρ
    # Get EM field at guiding center
@@ -42,16 +43,17 @@ function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
    stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
 
-function prepare_gc(xv, E, B; species::Species = Proton, q::AbstractFloat = 1.0,
-      m::AbstractFloat = 1.0, removeExB = true)
-   q, m = getchargemass(species, q, m)
+function prepare_gc(xv, E, B; species = Proton, q = nothing,
+      m = nothing, removeExB = true)
+   q = @something q species.q
+   m = @something m species.m
    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
    bparticle = B(x)
    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
    b̂particle = bparticle ./ Bmag_particle
    # vector of Larmor radius
-   ρ = (b̂particle × v) ./ (q/m*Bmag_particle)
+   ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
    # Get the guiding center location
    X = x - ρ
    # Get EM field at guiding center
@@ -96,7 +98,7 @@ function get_gc(xu, param)
    B = B_field(xu, t)
    B² = B[1]^2 + B[2]^2 + B[3]^2
    # vector of Larmor radius
-   ρ = B × v ./ (q2m*B²)
+   ρ = B × v ./ (q2m * B²)
 
    X = @views xu[1:3] - ρ
 end
@@ -108,7 +110,7 @@ function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
    B² = bx^2 + by^2 + bz^2
    # vector of Larmor radius
-   ρ = B × v ./ (q2m*B²)
+   ρ = B × v ./ (q2m * B²)
 
    X = l - ρ
 end
@@ -133,7 +135,9 @@ function get_gc(
    X
 end
 
-get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m) = get_gc(x, y, z, vx, vy, vz, bx, by, bz, q/m)
+function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m)
+   get_gc(x, y, z, vx, vy, vz, bx, by, bz, q / m)
+end
 
 """
      get_gc_func(param)

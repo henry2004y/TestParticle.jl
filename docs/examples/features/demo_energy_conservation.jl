@@ -102,7 +102,7 @@ const native_solvers = [
 
 uniform_B(x) = SA[0, 0, B₀]
 
-param1 = prepare(ZeroField(), uniform_B; species = User, q = q, m = m)
+param1 = prepare(ZeroField(), uniform_B; q = q, m = m)
 x0_1 = [0.0, 0.0, 0.0]
 v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
@@ -127,7 +127,7 @@ f = DisplayAs.PNG(f) #hide
 
 constant_E(x, t) = SA[E₀, 0.0, 0.0]
 
-param2 = prepare(constant_E, ZeroField(); species = User, q = q, m = m)
+param2 = prepare(constant_E, ZeroField(); q = q, m = m)
 x0_2 = [0.0, 0.0, 0.0]
 v0_2 = [0.0, 0.0, 0.0] # Start from rest
 tspan2 = (0.0, 40.0)
@@ -161,7 +161,7 @@ function mirror_B(x)
    return SA[Bx, By, Bz]
 end
 
-param3 = prepare(ZeroField(), mirror_B; species = User, q = q, m = m)
+param3 = prepare(ZeroField(), mirror_B; q = q, m = m)
 x0_3 = [0.1, 0.0, 0.0]
 v0_3 = [0.5, 0.5, 1.0]
 tspan3 = (0.0, 200.0)

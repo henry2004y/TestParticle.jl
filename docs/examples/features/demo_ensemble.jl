@@ -127,7 +127,7 @@ E_func(x) = SA[0.0, 0.0, 0.0] # E is zero
 
 ## Prepare parameters
 ## bc=2 uses periodic boundary conditions
-param_custom = prepare(x_norm, y_norm, z_norm, E_func, B_norm; species = User, bc = 2)
+param_custom = prepare(x_norm, y_norm, z_norm, E_func, B_norm; m = 1, q = 1, bc = 2)
 
 ## Initial condition
 stateinit_custom = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]

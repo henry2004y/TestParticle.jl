@@ -58,8 +58,8 @@ z /= l₀
 B ./= B₀
 E(x) = SA[0.0 / E₀, 0.0 / E₀, 0.0 / E₀]
 
-## By default User type assumes q=1, m=1; bc=2 uses periodic boundary conditions
-param = prepare(x, y, z, E, B; species = User, bc = 2)
+## bc=2 uses periodic boundary conditions
+param = prepare(x, y, z, E, B; m = 1, q = 1, bc = 2)
 
 tspan = (0.0, π) # half averaged gyroperiod based on B₀
 

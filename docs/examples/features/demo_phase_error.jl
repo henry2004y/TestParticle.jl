@@ -36,7 +36,7 @@ t_end = n_periods * T_period
 tspan = (0.0, t_end)
 
 ## Prepare the problem parameters
-param = prepare(E_func, B_func; species = User, q = q, m = m)
+param = prepare(E_func, B_func; q = q, m = m)
 prob = TraceProblem(u0, tspan, param)
 
 ## Solvers
