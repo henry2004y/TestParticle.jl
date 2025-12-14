@@ -16,7 +16,7 @@ Helper function to create `ODEProblem`s for tracing magnetic field lines.
   - If `mode` is `:forward` or `:backward`, returns a single `ODEProblem`.
   - If `mode` is `:both`, returns a vector of two `ODEProblem`s (forward and backward).
 """
-function trace_fieldline(u0, p, tspan::Tuple{<:Real, <:Real}; mode::Symbol = :both, kw...)
+function trace_fieldline(u0, p, tspan::Tuple; mode::Symbol = :both, kw...)
    if p isa AbstractArray
       order = get(kw, :order, 1)
       bc = get(kw, :bc, 1)

@@ -125,7 +125,7 @@ function set_axes_equal(ax)
 end
 
 """
-     get_rotation_matrix(axis::AbstractVector, angle::Real) --> SMatrix{3,3}
+     get_rotation_matrix(axis::AbstractVector, angle) :: SMatrix{3,3}
 
 Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in
 radians.
@@ -141,8 +141,8 @@ v̂ = normalize(v)
 R = get_rotation_matrix(v̂, θ)
 ```
 """
-function get_rotation_matrix(v::AbstractVector{<:AbstractFloat}, θ::Real)
-   sinθ, cosθ = sincos(eltype(v)(θ))
+function get_rotation_matrix(v::AbstractVector, θ)
+   sinθ, cosθ = sincos(θ)
    tmp = 1 - cosθ
    m = @SMatrix [cosθ+v[1]^2 * tmp v[1] * v[2] * tmp-v[3] * sinθ v[1] * v[3] * tmp+v[2] * sinθ;
                  v[1] * v[2] * tmp+v[3] * sinθ cosθ+v[2]^2 * tmp v[2] * v[3] * tmp-v[1] * sinθ;
@@ -156,15 +156,11 @@ Return the gyrofrequency [rad/s].
 
 # Arguments
 
-  - `B::AbstractFloat`: Magnetic field magnitude [T]. Default is 5 nT.
-  - `q::AbstractFloat`: Charge [C]. Default is proton charge.
-  - `m::AbstractFloat`: Mass [kg]. Default is proton mass.
+  - `B`: Magnetic field magnitude [T]. Default is 5 nT.
+  - `q`: Charge [C]. Default is proton charge.
+  - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyrofrequency(
-      B::AbstractFloat = 5e-9;
-      q::AbstractFloat = qᵢ,
-      m::AbstractFloat = mᵢ
-)
+function get_gyrofrequency(B = 5e-9; q = qᵢ, m = mᵢ)
    ω = q * B / m
 end
 
@@ -175,17 +171,12 @@ Return the gyroradius [m].
 
 # Arguments
 
-  - `V::AbstractFloat`: Velocity magnitude [m/s] (usually perpendicular to the magnetic field).
-  - `B::AbstractFloat`: Magnetic field magnitude [T].
-  - `q::AbstractFloat`: Charge [C]. Default is proton charge.
-  - `m::AbstractFloat`: Mass [kg]. Default is proton mass.
+  - `V`: Velocity magnitude [m/s] (usually perpendicular to the magnetic field).
+  - `B`: Magnetic field magnitude [T].
+  - `q`: Charge [C]. Default is proton charge.
+  - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyroradius(
-      V::AbstractFloat,
-      B::AbstractFloat;
-      q::AbstractFloat = qᵢ,
-      m::AbstractFloat = mᵢ
-)
+function get_gyroradius(V, B; q = qᵢ, m = mᵢ)
    ω = get_gyrofrequency(B; q, m)
    r = V / ω
 end
@@ -197,15 +188,11 @@ Return the gyroperiod [s].
 
 # Arguments
 
-  - `B::AbstractFloat`: Magnetic field magnitude [T]. Default is 5 nT.
-  - `q::AbstractFloat`: Charge [C]. Default is proton charge.
-  - `m::AbstractFloat`: Mass [kg]. Default is proton mass.
+  - `B`: Magnetic field magnitude [T]. Default is 5 nT.
+  - `q`: Charge [C]. Default is proton charge.
+  - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyroperiod(
-      B::AbstractFloat = 5e-9;
-      q::AbstractFloat = qᵢ,
-      m::AbstractFloat = mᵢ
-)
+function get_gyroperiod(B = 5e-9; q = qᵢ, m = mᵢ)
    ω = get_gyrofrequency(B; q, m)
    2π / ω
 end
