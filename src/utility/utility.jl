@@ -263,15 +263,7 @@ function get_number_density_flux(grid::CartesianGrid, sols, dt)
 
    get_val(x) = hasproperty(x, :val) ? x.val : x
 
-   origin = if dim == 1
-       (get_val(g_min.x),)
-   elseif dim == 2
-       (get_val(g_min.x), get_val(g_min.y))
-   elseif dim == 3
-       (get_val(g_min.x), get_val(g_min.y), get_val(g_min.z))
-   else
-       error("Unsupported grid dimension: $dim")
-   end
+   origin = Tuple(get_val(getproperty(g_min, name)) for name in (:x, :y, :z)[1:dim])
 
    spacings = Tuple(get_val(d) for d in Δx)
 
@@ -292,12 +284,7 @@ function get_number_density_flux(grid::CartesianGrid, sols, dt)
       t1 = sol.prob.tspan[2]
       t_start, t_end = t0 < t1 ? (t0, t1) : (t1, t0)
 
-      n_steps = floor(Int, (t_end - t_start) / dt)
-
-      for i in 0:n_steps
-         t = t_start + i * dt
-         if t > t_end break end
-
+      for t in t_start:dt:t_end
          state = sol(t)
          pos = state[1:dim]
 
