@@ -140,9 +140,7 @@ Return the gyrofrequency [rad/s].
   - `q`: Charge [C]. Default is proton charge.
   - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyrofrequency(B = 5e-9; q = qᵢ, m = mᵢ)
-   ω = q * B / m
-end
+get_gyrofrequency(B = 5e-9; q = qᵢ, m = mᵢ) = ω = q * B / m
 
 """
     get_gyroradius(V, B; q=qᵢ, m=mᵢ)
