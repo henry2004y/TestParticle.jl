@@ -237,6 +237,7 @@ function sample_unit_sphere()
    x = sinθ * cos(ϕ)
    y = sinθ * sin(ϕ)
    z = cosθ
+
    return SVector{3}(x, y, z)
 end
 
@@ -307,9 +308,11 @@ function get_number_density_flux(grid::CartesianGrid, sols, dt)
    end
 
    return counts ./ cell_area
-    get_number_density(sols, grid, t)
+end
 
 """
+    get_number_density(sols, grid, t)
+
 Calculate particle number density at time `t` in a given `grid`.
 """
 function get_number_density(sols, grid, t)
