@@ -65,7 +65,7 @@ Random.seed!(1234)
 function prob_func_maxwellian(prob, i, repeat)
    ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
    vdf = Maxwellian([0.0, 0.0, 0.0], 1.0)
-   v = sample(vdf)
+   v = rand(vdf)
    remake(prob; u0 = [prob.u0[1:3]..., v...])
 end
 

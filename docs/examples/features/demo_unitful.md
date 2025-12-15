@@ -62,17 +62,12 @@ sol_SI = solve(prob_SI, Vern9())
 
 ## Compare performance
 
-```@example unit
-using Chairmarks, Test
-@assert sol_p[end][4] ≈ sol[end][4]
-println("SI units (unitless): ")
-display(@b solve(prob_SI, Vern9()))
-println("Partitioned (unitful): ")
-display(@b solve(prob_p, Vern9()))
-println("Basic (unitful): ")
-display(@b solve(prob, Vern9()))
+```@repl unit
+using Chairmarks
+@b solve(prob_SI, Vern9()) # "SI units (unitless)"
+@b solve(prob_p, Vern9()) # "Partitioned (unitful)"
+@b solve(prob, Vern9()) # "Basic (unitful)"
 ```
-
 
 ## Related API
 

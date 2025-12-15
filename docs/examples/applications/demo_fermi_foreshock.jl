@@ -100,7 +100,7 @@ function prob_func(prob, i, repeat)
    T₀ = 10 # [eV]
    vth = √(2T₀*abs(qₑ)/mₑ) # [m/s]
    vdf = Maxwellian(u0, vth)
-   v0 = TP.sample(vdf)
+   v0 = rand(vdf)
 
    prob = remake(prob, u0 = [x0..., v0...])
 end
