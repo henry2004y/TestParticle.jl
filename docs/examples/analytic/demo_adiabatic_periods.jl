@@ -10,7 +10,7 @@
 import DisplayAs #hide
 using TestParticle
 using TestParticle: DipoleField, sph2cart, dipole_fieldline, Rₑ, mᵢ, qᵢ, c
-using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using LinearAlgebra
 using Statistics
 using CairoMakie
