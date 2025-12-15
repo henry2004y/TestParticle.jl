@@ -243,19 +243,10 @@ function get_number_density(sols, grid, t)
       if sol.t[1] <= t <= sol.t[end]
          pos = _strip_units(sol(t))
 
-         if dim == 2
-            idx1 = searchsortedlast(ranges[1], pos[1])
-            idx2 = searchsortedlast(ranges[2], pos[2])
-            if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2]
-               counts[idx1, idx2] += 1
-            end
-         elseif dim == 3
-            idx1 = searchsortedlast(ranges[1], pos[1])
-            idx2 = searchsortedlast(ranges[2], pos[2])
-            idx3 = searchsortedlast(ranges[3], pos[3])
-            if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2] && 1 <= idx3 <= dims[3]
-               counts[idx1, idx2, idx3] += 1
-            end
+         indices = ntuple(i -> searchsortedlast(ranges[i], pos[i]), dim)
+         inbounds = all(ntuple(i -> 1 <= indices[i] <= dims[i], dim))
+         if inbounds
+            counts[indices...] += 1
          end
       end
    end
@@ -285,19 +276,11 @@ function get_number_density(sols, grid, t_start, t_end, dt)
        for sol in sols
           if sol.t[1] <= t <= sol.t[end]
              pos = _strip_units(sol(t))
-             if dim == 2
-                idx1 = searchsortedlast(ranges[1], pos[1])
-                idx2 = searchsortedlast(ranges[2], pos[2])
-                if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2]
-                   counts[idx1, idx2] += 1
-                end
-             elseif dim == 3
-                idx1 = searchsortedlast(ranges[1], pos[1])
-                idx2 = searchsortedlast(ranges[2], pos[2])
-                idx3 = searchsortedlast(ranges[3], pos[3])
-                if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2] && 1 <= idx3 <= dims[3]
-                   counts[idx1, idx2, idx3] += 1
-                end
+
+             indices = ntuple(i -> searchsortedlast(ranges[i], pos[i]), dim)
+             inbounds = all(ntuple(i -> 1 <= indices[i] <= dims[i], dim))
+             if inbounds
+                counts[indices...] += 1
              end
           end
        end
