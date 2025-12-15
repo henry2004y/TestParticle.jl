@@ -81,19 +81,9 @@ println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 #
 # The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source with unit speed. We estimate the particle flux through a sphere at radius r.
 
-function sample_unit_velocity_spherical()
-   ϕ = 2 * π * rand()    # Azimuthal angle in [0, 2π)
-   cosθ = 2 * rand() - 1 # Uniformly sample cos(θ) in [-1, 1]
-   sinθ = sqrt(1 - cosθ^2)
-   x = sinθ * cos(ϕ)
-   y = sinθ * sin(ϕ)
-   z = cosθ
-   return SA[x, y, z]
-end
-
 function prob_func_iso(prob, i, repeat)
    ## initial velocity, [m/s]
-   v₀ = sample_unit_velocity_spherical()
+   v₀ = sample_unit_sphere()
    ## initial position, [m]
    r₀ = prob.u0[1:3]
 

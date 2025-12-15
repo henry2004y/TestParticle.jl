@@ -226,6 +226,91 @@ Return velocity magnitude from energy in [eV].
 energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
 
 """
+    sample_unit_sphere()
+
+Sample a unit vector on a sphere uniformly.
+"""
+function sample_unit_sphere()
+   ϕ = 2π * rand()
+   cosθ = 2 * rand() - 1
+   sinθ = sqrt(1 - cosθ^2)
+   x = sinθ * cos(ϕ)
+   y = sinθ * sin(ϕ)
+   z = cosθ
+
+   return SVector{3}(x, y, z)
+end
+
+"""
+    get_number_density_flux(grid::CartesianGrid, sols, dt)
+
+Calculate the steady state particle number density flux on a uniform Cartesian grid.
+The flux is estimated by accumulating the number of particles in each cell at time steps `dt`,
+divided by the surface area of each cell.
+
+# Arguments
+- `grid`: A `CartesianGrid` from `Meshes.jl`.
+- `sols`: Particle trajectory solutions (e.g. `EnsembleSolution`).
+- `dt`: Time step for sampling particle positions.
+"""
+function get_number_density_flux(grid::CartesianGrid, sols, dt)
+   counts = zeros(Int, size(grid))
+   dim = paramdim(grid)
+
+   g_min = coords(minimum(grid))
+   Δx = spacing(grid)
+
+   get_val(x) = hasproperty(x, :val) ? x.val : x
+
+   origin = Tuple(get_val(getproperty(g_min, name)) for name in (:x, :y, :z)[1:dim])
+
+   spacings = Tuple(get_val(d) for d in Δx)
+
+   if dim == 3
+      dx, dy, dz = spacings
+      cell_area = 2 * (dx * dy + dy * dz + dz * dx)
+   elseif dim == 2
+      dx, dy = spacings
+      cell_area = dx * dy
+   elseif dim == 1
+      cell_area = 1.0
+   end
+
+   sz = size(grid)
+
+   for sol in sols
+      t0 = sol.prob.tspan[1]
+      t1 = sol.prob.tspan[2]
+      t_start, t_end = t0 < t1 ? (t0, t1) : (t1, t0)
+
+      for t in t_start:dt:t_end
+         state = sol(t)
+         pos = state[1:dim]
+
+         idx = MVector{dim, Int}(undef)
+         in_bounds = true
+
+         for d in 1:dim
+            val = floor(Int, (pos[d] - origin[d]) / spacings[d])
+            id = val + 1
+            if 1 <= id <= sz[d]
+               idx[d] = id
+            else
+               in_bounds = false
+               break
+            end
+         end
+
+         if in_bounds
+            counts[CartesianIndex(Tuple(idx))] += 1
+         end
+      end
+   end
+
+   return counts ./ cell_area
+end
+
+"""
     get_number_density(sols, grid, t)
 
 Calculate particle number density at time `t` in a given `grid`.
@@ -340,11 +425,6 @@ function _get_cell_volume(grid::RectilinearGrid)
         dy = diff(y)
         dz = diff(z)
 
-        # We need to construct a volume array
-        # dx is vector of length Nx
-        # vol[i,j,k] = dx[i]*dy[j]*dz[k]
-
-        # Using broadcasting
         vol = zeros(length(dx), length(dy), length(dz))
         for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
             vol[i, j, k] = dx[i] * dy[j] * dz[k]
