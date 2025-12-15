@@ -19,7 +19,7 @@ Random.seed!(1234)
 Set initial conditions.
 """
 function prob_func(prob, i, repeat)
-   v₀ = sample(vdf₁)
+   v₀ = rand(vdf₁)
    r₀ = [5_000e3, 0.0, 0.0]
 
    prob = remake(prob; u0 = [r₀..., v₀...])
@@ -330,11 +330,18 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
-vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
+const vdf₁_para = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+vdf₂_para = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 trajectories = 2
 weight₁ = n₁ / trajectories
+
+function prob_func_para(prob, i, repeat)
+   v₀ = rand(vdf₁_para)
+   r₀ = [5_000e3, 0.0, 0.0]
+
+   prob = remake(prob; u0 = [r₀..., v₀...])
+end
 
 prob = let
    ## BC type 3 is Flat
@@ -343,7 +350,7 @@ prob = let
    tspan = (0.0, 14.0)
    ODEProblem(trace!, stateinit, tspan, param)
 end
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_para, safetycopy = false)
 
 sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
 
