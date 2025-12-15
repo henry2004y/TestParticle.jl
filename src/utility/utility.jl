@@ -226,3 +226,158 @@ end
 Return velocity magnitude from energy in [eV].
 """
 energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
+
+"""
+    get_number_density(sols, grid, t)
+
+Calculate particle number density at time `t` in a given `grid`.
+"""
+function get_number_density(sols, grid, t)
+   dims = size(grid)
+   counts = zeros(Int, dims)
+   ranges = _get_ranges_val(makegrid(grid))
+   dim = paramdim(grid)
+
+   for sol in sols
+      # Check if the solution is defined at time t
+      if sol.t[1] <= t <= sol.t[end]
+         pos = _strip_units(sol(t))
+
+         if dim == 2
+            idx1 = searchsortedlast(ranges[1], pos[1])
+            idx2 = searchsortedlast(ranges[2], pos[2])
+            if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2]
+               counts[idx1, idx2] += 1
+            end
+         elseif dim == 3
+            idx1 = searchsortedlast(ranges[1], pos[1])
+            idx2 = searchsortedlast(ranges[2], pos[2])
+            idx3 = searchsortedlast(ranges[3], pos[3])
+            if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2] && 1 <= idx3 <= dims[3]
+               counts[idx1, idx2, idx3] += 1
+            end
+         end
+      end
+   end
+
+   # Divide by cell volume to get density
+   vol = _get_cell_volume(grid)
+
+   return counts ./ vol
+end
+
+"""
+    get_number_density(sols, grid, t_start, t_end, dt)
+
+Calculate time-averaged particle number density from `t_start` to `t_end` with step `dt`.
+"""
+function get_number_density(sols, grid, t_start, t_end, dt)
+   dims = size(grid)
+   counts = zeros(Int, dims)
+   ranges = _get_ranges_val(makegrid(grid))
+   dim = paramdim(grid)
+
+   # For averaging, we accumulate counts at each time step
+   t_steps = t_start:dt:t_end
+   n_steps = length(t_steps)
+
+   for t in t_steps
+       for sol in sols
+          if sol.t[1] <= t <= sol.t[end]
+             pos = _strip_units(sol(t))
+             if dim == 2
+                idx1 = searchsortedlast(ranges[1], pos[1])
+                idx2 = searchsortedlast(ranges[2], pos[2])
+                if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2]
+                   counts[idx1, idx2] += 1
+                end
+             elseif dim == 3
+                idx1 = searchsortedlast(ranges[1], pos[1])
+                idx2 = searchsortedlast(ranges[2], pos[2])
+                idx3 = searchsortedlast(ranges[3], pos[3])
+                if 1 <= idx1 <= dims[1] && 1 <= idx2 <= dims[2] && 1 <= idx3 <= dims[3]
+                   counts[idx1, idx2, idx3] += 1
+                end
+             end
+          end
+       end
+   end
+
+   vol = _get_cell_volume(grid)
+
+   return (counts ./ n_steps) ./ vol
+end
+
+# Better helper for stripping units
+function _strip_units(x::AbstractArray)
+   return map(v -> _strip_units(v), x)
+end
+
+function _strip_units(x)
+   if hasproperty(x, :val)
+      return x.val
+   else
+      return x
+   end
+end
+
+function _get_ranges_val(ranges::Tuple)
+   return map(_strip_units, ranges)
+end
+
+
+function _get_cell_volume(grid::CartesianGrid)
+    sp = spacing(grid)
+    # Strip units from spacing if necessary, though spacing typically returns Quantities if grid is unitful.
+    # If we want pure float volume, we need to strip.
+    dx = _strip_units(sp[1])
+    dy = _strip_units(sp[2])
+
+    if paramdim(grid) == 3
+        dz = _strip_units(sp[3])
+        return dx * dy * dz
+    elseif paramdim(grid) == 2
+        return dx * dy
+    end
+end
+
+function _get_cell_volume(grid::RectilinearGrid)
+    # Variable cell volume
+    # This is tricky because we return a single array of densities, but cells have different volumes.
+    # We should return density per cell, so we divide counts[i,j,k] by volume[i,j,k].
+
+    xyz = makegrid(grid) # Returns ranges or vectors
+
+    # Strip units for volume calculation if needed, or keep them if consistent.
+    # But spacing(grid) for CartesianGrid returned quantities with units.
+    # So we probably want the value.
+    xyz = _get_ranges_val(xyz)
+
+    if paramdim(grid) == 3
+        x, y, z = xyz
+        dx = diff(x)
+        dy = diff(y)
+        dz = diff(z)
+
+        # We need to construct a volume array
+        # dx is vector of length Nx
+        # vol[i,j,k] = dx[i]*dy[j]*dz[k]
+
+        # Using broadcasting
+        vol = zeros(length(dx), length(dy), length(dz))
+        for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
+            vol[i, j, k] = dx[i] * dy[j] * dz[k]
+        end
+        return vol
+    elseif paramdim(grid) == 2
+        x, y = xyz
+        dx = diff(x)
+        dy = diff(y)
+
+        vol = zeros(length(dx), length(dy))
+        for j in eachindex(dy), i in eachindex(dx)
+            vol[i, j] = dx[i] * dy[j]
+        end
+        return vol
+    end
+end
