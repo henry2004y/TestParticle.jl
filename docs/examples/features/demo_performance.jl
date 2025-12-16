@@ -55,6 +55,8 @@ prob_ode = ODEProblem(trace, stateinit, tspan, param)
 # | Vern7 (adaptive) | `OrdinaryDiffEq` Vern7 with adaptive step |
 # | Vern9 (fixed) | `OrdinaryDiffEq` Vern9 with fixed step |
 # | Vern9 (adaptive) | `OrdinaryDiffEq` Vern9 with adaptive step |
+# | AutoVern7 (adaptive) | `OrdinaryDiffEq` AutoVern7 with adaptive step |
+# | AutoVern9 (adaptive) | `OrdinaryDiffEq` AutoVern9 with adaptive step |
 #
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
 
@@ -74,7 +76,9 @@ solvers = [
    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
-   ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt))
+   ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
+   ("AutoVern7 (adaptive)", () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
+   ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt))
 ]
 
 n_solvers = length(solvers)
