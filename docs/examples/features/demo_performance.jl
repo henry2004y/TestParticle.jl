@@ -59,6 +59,7 @@ prob_ode = ODEProblem(trace, stateinit, tspan, param)
 # | AutoVern9 (adaptive) | `OrdinaryDiffEq` AutoVern9 with adaptive step |
 #
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
+# For adaptive solvers, the default relative tolerance is `1e-3` and absolute tolerance is `1e-6`.
 
 """
 Helper functions to extract the median execution time and memory allocation.
@@ -112,6 +113,8 @@ ax = Axis(f[1, 1],
    ylabel = "Relative Memory (1.0 = Lowest)",
    xgridstyle = :dash,
    ygridstyle = :dash,
+   xscale = log10,
+   yscale = log10,
    xminorticksvisible = true,
    yminorticksvisible = true,
    xminorticks = IntervalsBetween(5),
