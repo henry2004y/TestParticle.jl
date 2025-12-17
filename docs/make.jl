@@ -71,7 +71,8 @@ features_order = [
    "demo_array.md",
    "demo_diskarray.jl",
    "demo_fieldlines.jl",
-   "demo_current_loop.jl"
+   "demo_current_loop.jl",
+   "demo_store_ensemble.jl"
 ]
 
 function process_examples(subdir, order)
