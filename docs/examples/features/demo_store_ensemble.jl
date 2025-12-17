@@ -17,6 +17,8 @@ using StaticArrays
 using JLD2
 using Random
 
+Random.seed!(1234)
+
 # ## Setup: Ensemble Simulation
 #
 # First, we set up a simple ensemble problem: protons in a uniform magnetic field.
@@ -56,44 +58,48 @@ sol = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories);
 ## Strip the solution
 stripped_sol = SciMLBase.strip_solution(sol)
 
-## Save to JLD2
 filename_stripped = tempname() * ".jld2"
-jldsave(filename_stripped; sol = stripped_sol)
-
-## Verify we can load it back
-loaded_data = load(filename_stripped)
-loaded_sol = loaded_data["sol"]
-
-println("Original first particle points: ", length(sol[1].t))
-println("Stripped first particle points: ", length(loaded_sol[1].t))
-println("Stripped solution successfully saved and loaded.")
-
-# ## Case 2: Converting to Float32
-#
-# For visualization or statistical analysis, `Float64` precision is often unnecessary.
-# We can convert the position and time data to `Float32` before saving.
-#
-# Note: Since `sol` is an `EnsembleSolution` containing a vector of `ODESolution`s,
-# we iterate through them.
-
-## Extract and convert data
-## We structure the data as a vector of named tuples or a dictionary for saving
-output_data = map(sol) do s
-   (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
-end
-
-## Save to JLD2
 filename_f32 = tempname() * ".jld2"
-jldsave(filename_f32; data = output_data)
 
-## Verify loading
-loaded_f32 = load(filename_f32)["data"]
-println("Loaded Float32 data type: ", eltype(loaded_f32[1].t))
-println("Float32 conversion successfully saved and loaded.")
+try
+   ## Save to JLD2
+   jldsave(filename_stripped; sol = stripped_sol)
 
-# ## Cleanup
-#
-# Remove the temporary files.
+   ## Verify we can load it back
+   loaded_data = load(filename_stripped)
+   loaded_sol = loaded_data["sol"]
 
-rm(filename_stripped, force=true)
-rm(filename_f32, force=true)
+   println("Original first particle points: ", length(sol[1].t))
+   println("Stripped first particle points: ", length(loaded_sol[1].t))
+   println("Stripped solution successfully saved and loaded.")
+
+   # ## Case 2: Converting to Float32
+   #
+   # For visualization or statistical analysis, `Float64` precision is often unnecessary.
+   # We can convert the position and time data to `Float32` before saving.
+   #
+   # Note: Since `sol` is an `EnsembleSolution` containing a vector of `ODESolution`s,
+   # we iterate through them.
+
+   ## Extract and convert data
+   ## We structure the data as a vector of named tuples or a dictionary for saving
+   output_data = map(sol) do s
+      (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
+   end
+
+   ## Save to JLD2
+   jldsave(filename_f32; data = output_data)
+
+   ## Verify loading
+   loaded_f32 = load(filename_f32)["data"]
+   println("Loaded Float32 data type: ", eltype(loaded_f32[1].t))
+   println("Float32 conversion successfully saved and loaded.")
+
+finally
+   # ## Cleanup
+   #
+   # Remove the temporary files.
+
+   rm(filename_stripped, force = true)
+   rm(filename_f32, force = true)
+end
