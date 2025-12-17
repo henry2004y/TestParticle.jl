@@ -59,7 +59,7 @@ features_order = [
    "demo_energy_conservation.jl",
    "demo_phase_error.jl",
    "demo_performance.jl",
-   "demo_interpolation.jl",
+   "demo_interpolation.md",
    "demo_dimensionless.jl",
    "demo_unitful.md",
    "demo_ensemble.jl",
