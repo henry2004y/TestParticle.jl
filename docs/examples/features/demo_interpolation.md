@@ -64,8 +64,8 @@ function setup_cartesian_nonuniform_field()
    return B_field, A_field
 end
 
-B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field()
-B_car, A_car = setup_cartesian_field()
+B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field();
+B_car, A_car = setup_cartesian_field();
 B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
 loc = SA[1.0, 1.0, 1.0];
 ```
