@@ -158,8 +158,8 @@ lines!(ax, x_range, 5.0 ./ x_range, color = (:gray, 1.0), linestyle = :dot)
 text!(ax, maximum(x_range), 5.0 / maximum(x_range),
    text = "Iso-cost", fontsize = 20, color = :black)
 
-xlims!(ax, minimum(results_time_norm) * 0.9, maximum(results_time_norm) * 1.2)
-ylims!(ax, minimum(results_mem_norm) * 0.9, maximum(results_mem_norm) * 1.1)
+xlims!(ax, minimum(results_time_norm) * 0.5, maximum(results_time_norm) * 1.5)
+ylims!(ax, minimum(results_mem_norm) * 0.5, maximum(results_mem_norm) * 1.5)
 
 f = DisplayAs.PNG(f) #hide
 
