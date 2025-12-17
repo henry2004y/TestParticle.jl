@@ -22,7 +22,7 @@ end
 Update velocity using the Multistep Boris method.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
+@muladd function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
    (; t_n, e_n, v_cross_t, e_cross_t) = paramBoris
    q2m, _, Efunc, Bfunc = param
    E = Efunc(xv, t)
@@ -186,20 +186,13 @@ function _multistep_boris!(
       traj_save = traj
       t = tsave
 
-      dense = false
-      k = nothing
       alg = :multistep_boris
-      alg_choice = nothing
       interp = LinearInterpolation(t, traj_save)
       retcode = ReturnCode.Default
       stats = nothing
-      u_analytic = nothing
-      errors = nothing
-      tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(
-         traj_save, u_analytic, errors, t, k, prob, alg,
-         interp, dense, tslocation, stats, alg_choice, retcode)
+      sols[i] = build_solution(
+         prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats)
    end
 
    return
