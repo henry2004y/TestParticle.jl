@@ -114,10 +114,10 @@ end
 """
 Update location in one timestep `dt`.
 """
-function update_location!(xv, dt)
-   xv[1] += xv[4] * dt
-   xv[2] += xv[5] * dt
-   xv[3] += xv[6] * dt
+@muladd function update_location!(xv, dt)
+   xv[1] = xv[1] + xv[4] * dt
+   xv[2] = xv[2] + xv[5] * dt
+   xv[3] = xv[3] + xv[6] * dt
 
    return
 end
@@ -125,7 +125,7 @@ end
 """
 In-place cross product.
 """
-function cross!(v1, v2, vout)
+@muladd function cross!(v1, v2, vout)
    vout[1] = v1[2] * v2[3] - v1[3] * v2[2]
    vout[2] = v1[3] * v2[1] - v1[1] * v2[3]
    vout[3] = v1[1] * v2[2] - v1[2] * v2[1]

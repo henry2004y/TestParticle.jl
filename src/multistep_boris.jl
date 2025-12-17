@@ -56,21 +56,21 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
       # c_n3 ≈ 2*n^2
       # c_n6 ≈ 4/3*n^3
 
-      c_n1 = 1.0 - 2*n^2*t_n_mag2
-      c_n2 = 2*n - (4.0/3.0)*n^3*t_n_mag2
-      c_n3 = 2.0*n^2
-      c_n6 = (4.0/3.0)*n^3
+      c_n1 = 1.0 - 2 * n * n * t_n_mag2
+      c_n2 = 2 * n - (4.0 / 3.0) * n * n * n * t_n_mag2
+      c_n3 = 2.0 * n * n
+      c_n6 = (4.0 / 3.0) * n * n * n
    else
       alpha_n = atan(t_n_mag)
       n_alpha_n = n * alpha_n
       sin_n_alpha, cos_n_alpha = sincos(n_alpha_n)
       sin_2n_alpha = 2 * sin_n_alpha * cos_n_alpha
-      cos_2n_alpha = cos_n_alpha^2 - sin_n_alpha^2
+      cos_2n_alpha = cos_n_alpha * cos_n_alpha - sin_n_alpha * sin_n_alpha
 
       c_n1 = cos_2n_alpha
       c_n2 = sin_2n_alpha / t_n_mag
-      c_n3 = 2 * sin_n_alpha^2 / t_n_mag2
-      c_n6 = (2*n - c_n2) / t_n_mag2
+      c_n3 = 2 * sin_n_alpha * sin_n_alpha / t_n_mag2
+      c_n6 = (2 * n - c_n2) / t_n_mag2
    end
 
    c_n4 = c_n2
