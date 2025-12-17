@@ -203,6 +203,21 @@ function _solve(
    sols
 end
 
+function _get_sol_type(prob, dt)
+   u0 = prob.u0
+   tspan = prob.tspan
+   T_t = typeof(tspan[1] + dt)
+   t = Vector{T_t}(undef, 0)
+   # Force u to be Vector{SVector{6, T}} as used in _boris!
+   T = eltype(u0)
+   u = Vector{SVector{6, T}}(undef, 0)
+   interp = LinearInterpolation(t, u)
+   alg = :boris
+
+   sol = build_solution(prob, alg, t, u; interp = interp)
+   return typeof(sol)
+end
+
 """
 Prepare for advancing.
 """
@@ -230,7 +245,8 @@ function _prepare(prob::TraceProblem, trajectories, dt, savestepinterval,
       nout += 1
    end
 
-   sols = Vector{AbstractODESolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, dt)
+   sols = Vector{sol_type}(undef, trajectories)
 
    sols, nt, nout
 end

@@ -30,7 +30,8 @@ function _solve(
       ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
       isoutofdomain, save_start, save_end, save_everystep)
    # We cannot precalculate nt for adaptive steps
-   sols = Vector{AbstractODESolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+   sols = Vector{sol_type}(undef, trajectories)
    irange = 1:trajectories
 
    _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdomain,
@@ -42,7 +43,8 @@ end
 function _solve(
       ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
       isoutofdomain, save_start, save_end, save_everystep)
-   sols = Vector{AbstractODESolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+   sols = Vector{sol_type}(undef, trajectories)
 
    nchunks = Threads.nthreads()
    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
