@@ -54,14 +54,14 @@ sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat = 0
 # For visualization or statistical analysis, `Float64` precision is often unnecessary.
 # We can convert the position and time data to `Float32` before saving.
 #
-# Note: Since `sol` is an `EnsembleSolution` containing a vector of `ODESolution`s,
+# Note: Since `sols` is an `EnsembleSolution` containing a vector of `ODESolution`s,
 # we iterate through them.
 
 filename_f32 = tempname() * ".jld2"
 
 ## Extract and convert data
 ## We structure the data as a vector of named tuples or a dictionary for saving
-output_data = map(sol) do s
+output_data = map(sols) do s
    (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
 end
 
