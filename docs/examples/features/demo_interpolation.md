@@ -1,9 +1,10 @@
-# # Field Interpolation
-#
-# A robust field interpolation is the prerequisite for pushing particles.
-# This example demonstrates the construction of scalar/vector field interpolators for Cartesian/Spherical grids.
-# If the field is analytic, you can directly pass the generated function to [`prepare`](@ref).
+# Field Interpolation
 
+A robust field interpolation is the prerequisite for pushing particles.
+This example demonstrates the construction of scalar/vector field interpolators for Cartesian/Spherical grids.
+If the field is analytic, you can directly pass the generated function to [`prepare`](@ref).
+
+```@example interp
 import TestParticle as TP
 using StaticArrays
 using Chairmarks
@@ -66,27 +67,43 @@ end
 B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field()
 B_car, A_car = setup_cartesian_field()
 B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
-
-# Gridded spherical interpolation:
-
 loc = SA[1.0, 1.0, 1.0];
+```
 
+## Gridded spherical interpolation
+
+```@repl interp
 @be B_sph_nu($loc)
-##@be A_sph_nu($loc)
+@be A_sph_nu($loc)
+```
 
-# Uniform spherical interpolation:
+## Uniform spherical interpolation
 
+```@repl interp
 @be B_sph($loc)
-##@be A_sph($loc)
+@be A_sph($loc)
+```
 
-# Uniform Cartesian interpolation:
+## Uniform Cartesian interpolation
 
+```@repl interp
 @be B_car($loc)
-##@be A_car($loc)
+@be A_car($loc)
+```
 
-# Non-uniform Cartesian interpolation:
+## Non-uniform Cartesian interpolation
 
+```@repl interp
 @be B_car_nu($loc)
-##@be A_car_nu($loc)
+@be A_car_nu($loc)
+```
 
-# Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
+Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
+
+## Related API
+
+```@docs; canonical=false
+TestParticle.getinterp
+TestParticle.getinterp_scalar
+TestParticle.prepare
+```
