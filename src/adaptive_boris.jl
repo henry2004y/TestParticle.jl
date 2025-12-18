@@ -30,7 +30,8 @@ function _solve(
       ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
       isoutofdomain, save_start, save_end, save_everystep)
    # We cannot precalculate nt for adaptive steps
-   sols = Vector{TraceSolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+   sols = Vector{sol_type}(undef, trajectories)
    irange = 1:trajectories
 
    _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdomain,
@@ -42,7 +43,8 @@ end
 function _solve(
       ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
       isoutofdomain, save_start, save_end, save_everystep)
-   sols = Vector{TraceSolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+   sols = Vector{sol_type}(undef, trajectories)
 
    nchunks = Threads.nthreads()
    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
@@ -176,20 +178,13 @@ function _adaptive_boris!(sols, prob, irange, alg, savestepinterval, isoutofdoma
       end
 
       # Construct solution
-      dense = false
-      k = nothing
       sol_alg = :adaptive_boris
-      alg_choice = nothing
       interp = LinearInterpolation(tsave, traj)
       retcode = ReturnCode.Default
       stats = nothing
-      u_analytic = nothing
-      errors = nothing
-      tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(
-         traj, u_analytic, errors, tsave, k, prob, sol_alg,
-         interp, dense, tslocation, stats, alg_choice, retcode)
+      sols[i] = build_solution(
+         prob, sol_alg, tsave, traj; interp = interp, retcode = retcode, stats = stats)
    end
 
    return

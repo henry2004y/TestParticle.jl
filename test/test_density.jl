@@ -18,7 +18,7 @@ using OrdinaryDiffEq
    # 1. Test CartesianGrid (2D)
    @testset "CartesianGrid 2D" begin
       # Grid from (0,0) to (10,10) with 10x10 cells. Cell size 1x1. Volume = 1.
-      grid = CartesianGrid((10, 10), (0.0, 0.0), (1.0, 1.0))
+      grid = CartesianGrid((10, 10))
 
       # Particle 1: Stationary at (0.5, 0.5) -> Cell (1,1)
       p1 = MockSol(0.0:1.0:10.0, [], t -> SVector(0.5, 0.5, 0.0))
@@ -94,7 +94,7 @@ using OrdinaryDiffEq
 
    # 3. Test CartesianGrid 3D
    @testset "CartesianGrid 3D" begin
-      grid = CartesianGrid((2, 2, 2), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
+      grid = CartesianGrid((2, 2, 2))
       # Volume = 1*1*1 = 1.
 
       p1 = MockSol(0.0:1.0:1.0, [], t -> SVector(0.5, 0.5, 0.5)) # (1,1,1)

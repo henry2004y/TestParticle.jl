@@ -8,12 +8,13 @@ using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Li
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
                  DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem,
-                 LinearInterpolation
+                 LinearInterpolation, build_solution, ODESolution
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 using ForwardDiff
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
+using MuladdMacro
 using Elliptic
 import Tensors
 import Base: +, *, /, setindex!, getindex

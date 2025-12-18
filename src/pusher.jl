@@ -16,50 +16,8 @@ end
 get_EField(p::AbstractODEProblem) = get_EField(p.p)
 get_BField(p::AbstractODEProblem) = get_BField(p.p)
 
-struct TraceSolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC} <:
-       AbstractODESolution{T, N, uType}
-   "positions and velocities"
-   u::uType
-   u_analytic::uType2
-   errors::DType
-   "time stamps"
-   t::tType
-   k::rateType
-   prob::P
-   alg::A
-   interp::IType
-   dense::Bool
-   tslocation::Int
-   stats::S
-   alg_choice::AC
-   retcode::ReturnCode.T
-end
-
-function TraceSolution{T, N}(u, u_analytic, errors, t, k, prob, alg, interp, dense,
-      tslocation, stats, alg_choice, retcode) where {T, N}
-   return TraceSolution{T, N, typeof(u), typeof(u_analytic), typeof(errors), typeof(t),
-      typeof(k), typeof(prob), typeof(alg), typeof(interp),
-      typeof(stats),
-      typeof(alg_choice)}(u, u_analytic, errors, t, k, prob, alg, interp,
-      dense, tslocation, stats, alg_choice, retcode)
-end
-
 get_BField(sol::AbstractODESolution) = get_BField(sol.prob)
 get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
-
-Base.length(ts::TraceSolution) = length(ts.t)
-
-"""
-Interpolate solution at time `x`. Forward tracing only.
-"""
-function (sol::TraceSolution)(
-      t,
-      ::Type{deriv} = Val{0};
-      idxs = nothing,
-      continuity = :left
-) where {deriv}
-   sol.interp(t, idxs, deriv, sol.prob.p, continuity)
-end
 
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
@@ -117,7 +75,7 @@ end
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
 Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
-function update_velocity!(xv, paramBoris, param, dt, t)
+@muladd function update_velocity!(xv, paramBoris, param, dt, t)
    (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
    q2m, _, Efunc, Bfunc = param
    E = Efunc(xv, t)
@@ -156,10 +114,10 @@ end
 """
 Update location in one timestep `dt`.
 """
-function update_location!(xv, dt)
-   xv[1] += xv[4] * dt
-   xv[2] += xv[5] * dt
-   xv[3] += xv[6] * dt
+@muladd function update_location!(xv, dt)
+   xv[1] = xv[1] + xv[4] * dt
+   xv[2] = xv[2] + xv[5] * dt
+   xv[3] = xv[3] + xv[6] * dt
 
    return
 end
@@ -167,7 +125,7 @@ end
 """
 In-place cross product.
 """
-function cross!(v1, v2, vout)
+@muladd function cross!(v1, v2, vout)
    vout[1] = v1[2] * v2[3] - v1[3] * v2[2]
    vout[2] = v1[3] * v2[1] - v1[1] * v2[3]
    vout[3] = v1[1] * v2[2] - v1[2] * v2[1]
@@ -245,6 +203,21 @@ function _solve(
    sols
 end
 
+function _get_sol_type(prob, dt)
+   u0 = prob.u0
+   tspan = prob.tspan
+   T_t = typeof(tspan[1] + dt)
+   t = Vector{T_t}(undef, 0)
+   # Force u to be Vector{SVector{6, T}} as used in _boris!
+   T = eltype(u0)
+   u = Vector{SVector{6, T}}(undef, 0)
+   interp = LinearInterpolation(t, u)
+   alg = :boris
+
+   sol = build_solution(prob, alg, t, u; interp = interp)
+   return typeof(sol)
+end
+
 """
 Prepare for advancing.
 """
@@ -272,7 +245,8 @@ function _prepare(prob::TraceProblem, trajectories, dt, savestepinterval,
       nout += 1
    end
 
-   sols = Vector{TraceSolution}(undef, trajectories)
+   sol_type = _get_sol_type(prob, dt)
+   sols = Vector{sol_type}(undef, trajectories)
 
    sols, nt, nout
 end
@@ -357,20 +331,13 @@ function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdoma
       traj_save = traj
       t = tsave
 
-      dense = false
-      k = nothing
       alg = :boris
-      alg_choice = nothing
       interp = LinearInterpolation(t, traj_save)
       retcode = ReturnCode.Default
       stats = nothing
-      u_analytic = nothing
-      errors = nothing
-      tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(
-         traj_save, u_analytic, errors, t, k, prob, alg,
-         interp, dense, tslocation, stats, alg_choice, retcode)
+      sols[i] = build_solution(
+         prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats)
    end
 
    return

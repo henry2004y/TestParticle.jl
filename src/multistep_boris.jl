@@ -22,7 +22,7 @@ end
 Update velocity using the Multistep Boris method.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
+@muladd function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
    (; t_n, e_n, v_cross_t, e_cross_t) = paramBoris
    q2m, _, Efunc, Bfunc = param
    E = Efunc(xv, t)
@@ -56,21 +56,21 @@ function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
       # c_n3 ≈ 2*n^2
       # c_n6 ≈ 4/3*n^3
 
-      c_n1 = 1.0 - 2*n^2*t_n_mag2
-      c_n2 = 2*n - (4.0/3.0)*n^3*t_n_mag2
-      c_n3 = 2.0*n^2
-      c_n6 = (4.0/3.0)*n^3
+      c_n1 = 1.0 - 2 * n * n * t_n_mag2
+      c_n2 = 2 * n - (4.0 / 3.0) * n * n * n * t_n_mag2
+      c_n3 = 2.0 * n * n
+      c_n6 = (4.0 / 3.0) * n * n * n
    else
       alpha_n = atan(t_n_mag)
       n_alpha_n = n * alpha_n
       sin_n_alpha, cos_n_alpha = sincos(n_alpha_n)
       sin_2n_alpha = 2 * sin_n_alpha * cos_n_alpha
-      cos_2n_alpha = cos_n_alpha^2 - sin_n_alpha^2
+      cos_2n_alpha = cos_n_alpha * cos_n_alpha - sin_n_alpha * sin_n_alpha
 
       c_n1 = cos_2n_alpha
       c_n2 = sin_2n_alpha / t_n_mag
-      c_n3 = 2 * sin_n_alpha^2 / t_n_mag2
-      c_n6 = (2*n - c_n2) / t_n_mag2
+      c_n3 = 2 * sin_n_alpha * sin_n_alpha / t_n_mag2
+      c_n6 = (2 * n - c_n2) / t_n_mag2
    end
 
    c_n4 = c_n2
@@ -186,20 +186,13 @@ function _multistep_boris!(
       traj_save = traj
       t = tsave
 
-      dense = false
-      k = nothing
       alg = :multistep_boris
-      alg_choice = nothing
       interp = LinearInterpolation(t, traj_save)
       retcode = ReturnCode.Default
       stats = nothing
-      u_analytic = nothing
-      errors = nothing
-      tslocation = 0
 
-      sols[i] = TraceSolution{eltype(u0), 2}(
-         traj_save, u_analytic, errors, t, k, prob, alg,
-         interp, dense, tslocation, stats, alg_choice, retcode)
+      sols[i] = build_solution(
+         prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats)
    end
 
    return
