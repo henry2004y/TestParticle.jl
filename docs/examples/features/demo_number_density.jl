@@ -49,14 +49,14 @@ end
 # Define a single problem template
 u0_dummy = vcat(x0[1], v0[1])
 # Zero fields
-param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(), species=User, q=q, m=m)
+param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(), q=q, m=m)
 prob = TraceProblem(u0_dummy, (0.0, t_end), param)
 
 ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
 
 # Solve
-# We use Vern9 for high accuracy, though free expansion is exact.
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories=N);
+# We use Tsit5 for efficiency, as free expansion is linear.
+sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories=N);
 
 # ## Density Calculation
 
