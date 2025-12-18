@@ -40,9 +40,9 @@ prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
 ## Test for numerical fields
-xrange = range(0.9, 1.1, length = 20)
-yrange = range(-0.45, 0.042, length = 60)
-zrange = range(-0.65, 0.65, length = 40)
+xrange = range(0.9, 1.2, length = 20)
+yrange = range(-0.5, 0.1, length = 60)
+zrange = range(-0.8, 0.8, length = 40)
 
 B_numerical = Array{Float64, 4}(undef, 3, length(xrange), length(yrange), length(zrange))
 
@@ -50,10 +50,10 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
    x = SA[xrange[i], yrange[j], zrange[k]]
    B_numerical[:, i, j, k] = curved_B(x)
 end
-##TODO: Higher order interpolation leads to worse results --- To be investigated!
+
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, xrange, yrange, zrange,
-   uniform_E, B_numerical, species = Proton, removeExB = false, order = 1)
+   uniform_E, B_numerical, species = Proton, removeExB = false, order = 3)
 
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 
