@@ -35,7 +35,7 @@ export get_gyrofrequency,
        sample_unit_sphere, get_number_density_flux,
        getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
-export TraceProblem, CartesianGrid, RectilinearGrid, StructuredGrid, ODESolution
+export TraceProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 """
 Type for the particles: `Proton`, `Electron`.
