@@ -38,9 +38,7 @@ tspan = (0.0, 10.0)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define a prob_func to vary initial velocity slightly
-function prob_func(prob, i, repeat)
-   remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand()))
-end
+prob_func(prob, i, repeat) = remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand()))
 
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 
