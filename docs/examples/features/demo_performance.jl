@@ -36,8 +36,7 @@ const tperiod = 2π / (abs(q2m) * Bmag)
 tspan = (0.0, 200 * tperiod)
 dt = tperiod / 12
 
-## Native Boris method requires a mutable state (Vector or MVector)
-prob_boris = TraceProblem(MVector(stateinit), tspan, param)
+prob_boris = TraceProblem(stateinit, tspan, param)
 ## ODE solvers from DifferentialEquations.jl are optimized for StaticArrays (SVector)
 prob_ode = ODEProblem(trace, stateinit, tspan, param)
 
