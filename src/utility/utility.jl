@@ -85,6 +85,26 @@ function makegrid(grid::RectilinearGrid)
 end
 
 """
+Return cell center coordinates from 2D/3D CartesianGrid.
+"""
+function get_cell_centers(grid::CartesianGrid)
+   grid_coords = makegrid(grid)
+   return map(r -> range(first(r) + step(r) / 2, step = step(r), length = length(r) - 1),
+              grid_coords)
+end
+
+"""
+Return cell center coordinates from 2D/3D RectilinearGrid.
+"""
+function get_cell_centers(grid::RectilinearGrid)
+   grid_coords = makegrid(grid)
+   if grid_coords === nothing
+      return nothing
+   end
+   return map(c -> (c[1:end-1] .+ c[2:end]) ./ 2, grid_coords)
+end
+
+"""
      set_axes_equal(ax)
 
 Set 3D plot axes to equal scale for Matplotlib.
