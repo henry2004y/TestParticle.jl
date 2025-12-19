@@ -29,34 +29,33 @@ t_end = 2.0
 
 # Initialize particles
 # Point source at origin
-x0 = [SVector(0.0, 0.0, 0.0) for _ in 1:N]
+x0 = [SVector(0.0, 0.0, 0.0) for _ in 1:N];
 
 # Maxwellian velocity distribution
 # u0 = 0, p = n*T = 1*1 = 1 (assuming n=1 effectively for distribution shape), n=1
-vdf = TestParticle.Maxwellian([0.0, 0.0, 0.0], T, 1.0; m=m)
+vdf = TestParticle.Maxwellian([0.0, 0.0, 0.0], T, 1.0; m = m)
 # Use the vectorized rand to get a Vector of SVectors
-v0 = rand(vdf, N)
+v0 = rand(vdf, N);
 
 # Create TraceProblem template
 # We need to create a prob for each particle or use an ensemble.
 # TestParticle.trace usually takes one particle.
 # We will construct an EnsembleProblem.
 
-function prob_func(prob, i, repeat)
-    remake(prob, u0 = vcat(x0[i], v0[i]))
-end
+prob_func(prob, i, repeat) = remake(prob, u0 = vcat(x0[i], v0[i]))
 
 # Define a single problem template
 u0_dummy = vcat(x0[1], v0[1])
 # Zero fields
-param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(), q=q, m=m)
-prob = TraceProblem(u0_dummy, (0.0, t_end), param)
+param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)
+tspan = (0.0, t_end)
+prob = ODEProblem(trace, u0_dummy, tspan, param)
 
-ensemble_prob = EnsembleProblem(prob, prob_func=prob_func)
+ensemble_prob = EnsembleProblem(prob; prob_func)
 
 # Solve
 # We use Tsit5 for efficiency, as free expansion is linear.
-sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories=N);
+sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories = N);
 
 # ## Density Calculation
 
@@ -66,22 +65,22 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories=N);
 # Let's cover [-6, 6] to see the tails.
 L = 6.0
 dims = (50, 50, 50)
-grid = CartesianGrid((-L, -L, -L), (L, L, L), dims=dims)
+grid = CartesianGrid((-L, -L, -L), (L, L, L); dims)
 
 # Calculate density at t_end
 # The function expects a vector of solutions.
 # get_number_density returns count / volume
-density = TestParticle.get_number_density(sols, grid, t_end)
+density = TestParticle.get_number_density(sols, grid, t_end);
 
 # Extract a 1D slice along x-axis (y=0, z=0 approx)
 mid_y = dims[2] ÷ 2
 mid_z = dims[3] ÷ 2
-density_x = density[:, mid_y, mid_z]
+density_x = density[:, mid_y, mid_z];
 
 # Grid coordinates for plotting
-# makegrid returns ranges for each dimension
-grid_x, grid_y, grid_z = TestParticle.makegrid(grid)
-xs_plot = collect(grid_x)
+# get_cell_centers returns ranges for each dimension
+grid_x, grid_y, grid_z = TestParticle.get_cell_centers(grid)
+xs_plot = collect(grid_x);
 
 # ## Analytical Solution
 
@@ -101,7 +100,7 @@ xs_plot = collect(grid_x)
 #
 # Let sigma_param = vth * t_end. The exponential is exp(-r^2 / sigma_param^2).
 
-r2 = xs_plot.^2
+r2 = xs_plot .^ 2
 # We are taking a slice at y~0, z~0. So r^2 = x^2.
 # Note: The grid cells have finite volume. get_number_density returns density.
 # So we compare directly with n(x, 0, 0, t).
@@ -111,14 +110,14 @@ n_analytic = @. N / (sqrt(π) * sigma_param)^3 * exp(-r2 / sigma_param^2)
 
 # ## Visualization
 
-f = Figure(fontsize=18)
+f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
-    title = "Free Expansion Density (t = $(t_end))",
-    xlabel = "x",
-    ylabel = "Number Density")
+   title = "Free Expansion Density (t = $(t_end))",
+   xlabel = "x",
+   ylabel = "Number Density")
 
-scatter!(ax, xs_plot, density_x, label="Simulation", color=:blue, markersize=10)
-lines!(ax, xs_plot, n_analytic, label="Analytical", color=:red, linewidth=2)
+scatter!(ax, xs_plot, density_x, label = "Simulation", color = :blue, markersize = 10)
+lines!(ax, xs_plot, n_analytic, label = "Analytical", color = :red, linewidth = 2)
 axislegend(ax)
 
 f = DisplayAs.PNG(f) #hide
