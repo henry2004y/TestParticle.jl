@@ -4,10 +4,9 @@
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
-using SciMLBase
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
-using CairoMakie
+using CairoMakie, Chairmarks
 CairoMakie.activate!(type = "png") #hide
 
 # ## Curved B Field
@@ -71,12 +70,12 @@ sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
 ## 5. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
-b_lines = SciMLBase.ODESolution[]
+b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
    u0 = stateinit[1:3] + [0, 0, dz]
    prob_fl = trace_fieldline(u0, curved_B, (0.0, 20.0), mode = :both)
-   push!(b_lines, solve(prob_fl[1], Vern9()))
-   push!(b_lines, solve(prob_fl[2], Vern9()))
+   push!(b_lines, solve(prob_fl[1], Tsit5()))
+   push!(b_lines, solve(prob_fl[2], Tsit5()))
 end
 
 ## Visualization
@@ -131,6 +130,35 @@ lines!(ax2, sol_gc_analytic, idxs = (1, 3), color = c4)
 lines!(ax2, sol, idxs = (gc_plot_xz, 1, 2, 3, 4, 5, 6), color = c5)
 
 axislegend(ax1, position = :rt)
+
+## Error Analysis (Relative to Analytic GC)
+ts = range(tspan..., length = 100)
+gc_ref = sol_gc_analytic(ts)
+
+## 1. Trace GC Error
+gc_trace = sol_gc(ts)
+err_trace = [norm(u[1:3] - v) for (u, v) in zip(gc_trace.u, gc_ref.u)]
+
+## 2. Numeric B GC Error
+gc_num = sol_gc_numericBfield(ts)
+err_num = [norm(u[1:3] - v) for (u, v) in zip(gc_num.u, gc_ref.u)]
+
+## 3. GC from Particle Error
+gc_part = [gc([sol(t)...]) for t in ts]
+err_part = [norm(u - v) for (u, v) in zip(gc_part, gc_ref.u)]
+
+ax3 = Axis(f[2, 1:2],
+   title = "Deviation from Analytic Guiding Center",
+   xlabel = "Time [s]",
+   ylabel = "Distance [m]",
+   yscale = log10
+)
+
+lines!(ax3, ts, err_trace, color = c2, label = "Trace GC")
+lines!(ax3, ts, err_num, color = c3, label = "Numeric B GC")
+lines!(ax3, ts, err_part, color = c5, label = "GC from Particle")
+
+axislegend(ax3, position = :rt)
 
 f = DisplayAs.PNG(f) #hide
 
@@ -208,3 +236,57 @@ plot_results!(ax_right, results_small, "Small FLR (Strong B)")
 axislegend(ax_left)
 
 f2 = DisplayAs.PNG(f2) #hide
+
+# ## Performance Comparison
+#
+# The Guiding Center approximation allows for much larger time steps because it averages out the rapid gyromotion.
+# This results in significant performance gains, especially for long-term simulations in strong magnetic fields.
+
+## Prepare longer simulation for benchmark
+tspan_bench = (0, 500.0)
+
+## Full Particle Problem
+param_full = prepare(uniform_E, grad_B_small, species = Proton)
+prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
+
+## Guiding Center Problem
+stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
+   species = Proton, removeExB = false)
+prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
+
+## Run simulations for plotting
+sol_full = solve(prob_full, Vern9())
+sol_gc_trace = solve(prob_gc, Vern9())
+
+## Benchmark
+b_full = @be solve(prob_full, Vern9())
+b_gc = @be solve(prob_gc, Vern9())
+
+## Visualization of Benchmark Results
+f3 = Figure(size = (1000, 500), fontsize = 18)
+
+## Left Panel: Trajectories (X-Y plane)
+ax_traj = Axis(f3[1, 1],
+   title = "Trajectories (X-Y)",
+   xlabel = "x [m]",
+   ylabel = "y [m]",
+   aspect = DataAspect()
+)
+
+lines!(ax_traj, sol_full, idxs = (1, 2), label = "Full Orbit")
+lines!(ax_traj, sol_gc_trace, idxs = (1, 2), label = "Guiding Center")
+axislegend(ax_traj)
+
+## Right Panel: Benchmark
+ax_bench = Axis(f3[1, 2],
+   title = "Relative Execution Time",
+   ylabel = "Ratio",
+   xticks = ([1, 2], ["Full Orbit", "Guiding Center"])
+)
+
+times = [median(b_full).time, median(b_gc).time]
+ratios = times ./ minimum(times)
+
+barplot!(ax_bench, [1, 2], ratios, color = Makie.wong_colors()[1:2])
+
+f3 = DisplayAs.PNG(f3) #hide
