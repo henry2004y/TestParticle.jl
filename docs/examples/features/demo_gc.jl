@@ -6,6 +6,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
+using Statistics: median
 using CairoMakie, Chairmarks
 CairoMakie.activate!(type = "png") #hide
 
