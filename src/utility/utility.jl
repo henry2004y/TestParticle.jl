@@ -90,7 +90,7 @@ Return cell center coordinates from 2D/3D CartesianGrid.
 function get_cell_centers(grid::CartesianGrid)
    grid_coords = makegrid(grid)
    return map(r -> range(first(r) + step(r) / 2, step = step(r), length = length(r) - 1),
-              grid_coords)
+      grid_coords)
 end
 
 """
@@ -101,7 +101,7 @@ function get_cell_centers(grid::RectilinearGrid)
    if grid_coords === nothing
       return nothing
    end
-   return map(c -> (c[1:end-1] .+ c[2:end]) ./ 2, grid_coords)
+   return map(c -> (c[1:(end - 1)] .+ c[2:end]) ./ 2, grid_coords)
 end
 
 """
