@@ -14,7 +14,7 @@ using Random
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-Random.seed!(1234)
+Random.seed!(1234);
 
 # ## Simulation Setup
 
@@ -44,15 +44,14 @@ prob_func(prob, i, repeat) = remake(prob, u0 = vcat(x0[i], v0[i]))
 
 # Define a single problem template
 u0_dummy = vcat(x0[1], v0[1])
-# Zero fields
+## Zero fields
 param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)
 tspan = (0.0, t_end)
 prob = ODEProblem(trace, u0_dummy, tspan, param);
 
 ensemble_prob = EnsembleProblem(prob; prob_func)
 
-# Solve
-# We use `Tsit5` for efficiency, as free expansion is linear.
+# ## Solve
 sols = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories = N);
 
 # ## Density Calculation
@@ -95,10 +94,9 @@ xs_plot = collect(grid_x);
 # ```math
 # n(\mathbf{r}, t) = \frac{N}{t^3} f\left(\frac{\mathbf{r}}{t}\right) = \frac{N}{(\sqrt{\pi} v_{th} t)^3} \exp\left(-\frac{r^2}{(v_{th} t)^2}\right)
 # ```
-
-r2 = xs_plot .^ 2
 # Compare with ``n(x, 0, 0, t)``.
 
+r2 = xs_plot .^ 2
 sigma_param = vth * t_end
 n_analytic = @. N / (sqrt(π) * sigma_param)^3 * exp(-r2 / sigma_param^2);
 
