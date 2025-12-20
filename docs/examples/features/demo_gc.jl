@@ -74,13 +74,13 @@ sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
    u0 = stateinit[1:3] + [0, 0, dz]
-   prob_fl = trace_fieldline(u0, curved_B, (0.0, 20.0), mode = :both)
+   prob_fl = trace_fieldline(u0, curved_B, (0.0, 3.0), mode = :both)
    push!(b_lines, solve(prob_fl[1], Tsit5()))
    push!(b_lines, solve(prob_fl[2], Tsit5()))
 end
 
 ## Visualization
-f = Figure(size = (1000, 500), fontsize = 18)
+f = Figure(size = (1000, 800), fontsize = 18)
 
 ## Left Panel: 3D Trajectory
 ax1 = Axis3(f[1, 1],
@@ -121,7 +121,8 @@ lines!(ax1, sol, idxs = (1, 2, 3), color = (c1, 0.5), label = "Particle")
 lines!(ax1, sol_gc, idxs = (1, 2, 3), color = c2, label = "GC (Trace)")
 lines!(ax1, sol_gc_numericBfield, idxs = (1, 2, 3), color = c3, label = "GC (Numeric B)")
 lines!(ax1, sol_gc_analytic, idxs = (1, 2, 3), color = c4, label = "GC (Analytic)")
-lines!(ax1, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = c5, label = "GC (From Particle)")
+lines!(
+   ax1, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = c5, label = "GC (From Particle)")
 
 ## 2D Plotting
 lines!(ax2, sol, idxs = (1, 3), color = (c1, 0.5))
@@ -130,7 +131,7 @@ lines!(ax2, sol_gc_numericBfield, idxs = (1, 3), color = c3)
 lines!(ax2, sol_gc_analytic, idxs = (1, 3), color = c4)
 lines!(ax2, sol, idxs = (gc_plot_xz, 1, 2, 3, 4, 5, 6), color = c5)
 
-axislegend(ax1, position = :rt)
+axislegend(ax1, position = :rt, backgroundcolor = :transparent)
 
 ## Error Analysis (Relative to Analytic GC)
 ts = range(tspan..., length = 100)
@@ -160,6 +161,7 @@ lines!(ax3, ts, err_num, color = c3, label = "Numeric B GC")
 lines!(ax3, ts, err_part, color = c5, label = "GC from Particle")
 
 axislegend(ax3, position = :rt)
+rowsize!(f.layout, 1, Relative(3 / 4))
 
 f = DisplayAs.PNG(f) #hide
 
@@ -181,7 +183,7 @@ function run_grad_B_sim(B_func, tspan)
 
    ## GC (Trace)
    stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, B_func,
-       species = Proton, removeExB = false)
+      species = Proton, removeExB = false)
    prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
    sol_gc = solve(prob_gc, Vern9())
 
@@ -219,7 +221,8 @@ function plot_results!(ax, res, title_str)
    lines!(ax, sol, idxs = (1, 2, 3), color = (c1, 0.4), label = "Particle")
    lines!(ax, sol_gc, idxs = (1, 2, 3), color = c2, label = "GC (Trace)")
    lines!(ax, sol_gc_analytic, idxs = (1, 2, 3), color = c4, label = "GC (Analytic)")
-   lines!(ax, sol_p, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = c5, label = "GC (From Particle)")
+   lines!(ax, sol_p, idxs = (gc_plot, 1, 2, 3, 4, 5, 6),
+      color = c5, label = "GC (From Particle)")
 
    ax.title = title_str
    ax.xlabel = "x [m]"
@@ -264,7 +267,7 @@ b_full = @be solve(prob_full, Vern9())
 b_gc = @be solve(prob_gc, Vern9())
 
 ## Visualization of Benchmark Results
-f3 = Figure(size = (1000, 500), fontsize = 18)
+f3 = Figure(size = (1000, 500), fontsize = 20)
 
 ## Left Panel: Trajectories (X-Y plane)
 ax_traj = Axis(f3[1, 1],
@@ -274,9 +277,10 @@ ax_traj = Axis(f3[1, 1],
    aspect = DataAspect()
 )
 
-lines!(ax_traj, sol_full, idxs = (1, 2), label = "Full Orbit")
-lines!(ax_traj, sol_gc_trace, idxs = (1, 2), label = "Guiding Center")
-axislegend(ax_traj)
+lines!(ax_traj, sol_full, idxs = (1, 2), color = c1, label = "Full Orbit")
+lines!(ax_traj, sol_gc_trace, idxs = (1, 2), color = c2,
+   linewidth = 2, label = "Guiding Center")
+axislegend(ax_traj, backgroundcolor = :transparent)
 
 ## Right Panel: Benchmark
 ax_bench = Axis(f3[1, 2],
@@ -289,5 +293,6 @@ times = [median(b_full).time, median(b_gc).time]
 ratios = times ./ minimum(times)
 
 barplot!(ax_bench, [1, 2], ratios, color = Makie.wong_colors()[1:2])
+colsize!(f3.layout, 1, Relative(5 / 6))
 
 f3 = DisplayAs.PNG(f3) #hide
