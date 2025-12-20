@@ -5,6 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using SciMLBase
 import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -70,7 +71,7 @@ sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
 ## 5. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
-b_lines = []
+b_lines = SciMLBase.ODESolution[]
 for dz in -0.2:0.1:0.2
    u0 = stateinit[1:3] + [0, 0, dz]
    prob_fl = trace_fieldline(u0, curved_B, (0.0, 20.0), mode = :both)
@@ -103,7 +104,7 @@ gc_plot(x, y, z, vx, vy, vz) = (gc([x, y, z, vx, vy, vz])...,)
 gc_plot_xz(x, y, z, vx, vy, vz) = (gc([x, y, z, vx, vy, vz])[[1, 3]]...,)
 
 ## Plot Field Lines
-for (i, bl) in enumerate(b_lines)
+for bl in b_lines
    color = (:grey, 0.5)
    lines!(ax2, bl, idxs = (1, 3), color = color)
 end
@@ -143,7 +144,7 @@ f = DisplayAs.PNG(f) #hide
 # 1. **Large FLR**: Weaker magnetic field, larger gyroradius.
 # 2. **Small FLR**: Stronger magnetic field, smaller gyroradius.
 
-function run_grad_B_sim(B_func, tspan, title_str)
+function run_grad_B_sim(B_func, tspan)
    ## Particle
    param = prepare(uniform_E, B_func, species = Proton)
    prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -170,12 +171,12 @@ end
 ## Case 1: Large FLR
 grad_B_large(x) = SA[0, 0, 1e-8 + 1e-9 * x[2]]
 tspan_large = (0, 20)
-results_large = run_grad_B_sim(grad_B_large, tspan_large, "Large FLR")
+results_large = run_grad_B_sim(grad_B_large, tspan_large)
 
 ## Case 2: Small FLR
 grad_B_small(x) = SA[0, 0, 1e-7 + 1e-8 * x[2]]
 tspan_small = (0, 10)
-results_small = run_grad_B_sim(grad_B_small, tspan_small, "Small FLR")
+results_small = run_grad_B_sim(grad_B_small, tspan_small)
 
 ## Visualization
 f2 = Figure(size = (1000, 500), fontsize = 18)
