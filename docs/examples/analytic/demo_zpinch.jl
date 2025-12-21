@@ -81,6 +81,6 @@ for i in 1:10:100
       [zw[1], zw[2]], color = (:gray, 0.3))
 end
 
-axislegend(ax)
+axislegend(ax, backgroundcolor = :transparent)
 
 f = DisplayAs.PNG(f) #hide

@@ -160,7 +160,7 @@ lines!(ax3, ts, err_trace, color = c2, label = "Trace GC")
 lines!(ax3, ts, err_num, color = c3, label = "Numeric B GC")
 lines!(ax3, ts, err_part, color = c5, label = "GC from Particle")
 
-axislegend(ax3, position = :rt)
+axislegend(ax3, position = :rt, backgroundcolor = :transparent)
 rowsize!(f.layout, 1, Relative(3 / 4))
 
 f = DisplayAs.PNG(f) #hide

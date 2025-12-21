@@ -75,7 +75,7 @@ function plot_trajectory!(fpos, sol, tspan, title, label, color)
    z = sol(ts, idxs = 3) ./ Rₑ |> Vector
 
    lines!(ax, x, y, z, label = label, color = color)
-   axislegend(ax)
+   axislegend(ax, backgroundcolor = :transparent)
    return ax
 end
 

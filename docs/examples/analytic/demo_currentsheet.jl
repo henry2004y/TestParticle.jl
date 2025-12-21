@@ -63,7 +63,7 @@ y = sol(ts, idxs = 2) ./ Rₑ |> Vector
 z = sol(ts, idxs = 3) ./ Rₑ |> Vector
 
 l = lines!(ax, x, y, z, label = "50 MeV proton, B0 = 20 nT")
-axislegend()
+axislegend(ax, backgroundcolor = :transparent)
 
 function plot_B!(ax)
    xrange = range(-5, 3, length = 5)

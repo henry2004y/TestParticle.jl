@@ -165,7 +165,7 @@ is_trapped = map(sim) do sol
    sol.t[end] ≈ tspan[2]
 end
 
-# Visualization of Loss Cone
+## Visualization of Loss Cone
 f2 = Figure(size = (800, 600), fontsize = 18)
 ax = Axis(f2[1, 1],
    title = "Loss Cone Distribution",
