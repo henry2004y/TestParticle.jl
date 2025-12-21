@@ -257,7 +257,7 @@ end
 """
     get_gc_velocity(y, p, t)
 
-Get the guiding center velocity.
+Get the guiding center velocity vector for state `y`, parameters `p` at time `t`.
 """
 function get_gc_velocity(y, p::GCTuple, t)
    v, _ = get_gc_derivatives(y, p, t)
@@ -310,7 +310,7 @@ end
 """
     get_gc_1st_velocity(y, p, t)
 
-Get the guiding center velocity for the 1st order approximation.
+Get the 1st order guiding center velocity for state `y`, parameters `p` at time `t`.
 """
 function get_gc_1st_velocity(y, p::GCTuple, t)
    v, _ = get_gc_1st_derivatives(y, p, t)

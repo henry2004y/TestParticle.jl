@@ -272,7 +272,7 @@ param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
    species = Proton, removeExB = false)
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})
-cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values)
+cb = SavingCallback((u, t, integrator) -> get_gc_1st_velocity(u, integrator.p, t), saved_values)
 ##TODO: trace_gc! shows instability in this case. To be investigated.
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
 
@@ -309,7 +309,8 @@ ax_vel = Axis(f3[1, 2],
 
 lines!(ax_vel, sol_full, idxs = (4), color = c1, label = "Full Orbit")
 lines!(
-   ax_vel, sol_gc_trace, idxs = (4), color = c2, linewidth = 2, label = "Guiding Center")
+   ax_vel, saved_values.t, [v[1] for v in saved_values.saveval], color = c2, linewidth = 2, label = "Guiding Center")
+
 
 f3 = DisplayAs.PNG(f3) #hide
 
