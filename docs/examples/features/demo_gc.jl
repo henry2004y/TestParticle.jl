@@ -8,6 +8,7 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using Statistics: median, norm
 using CairoMakie, Chairmarks
+using DiffEqCallbacks
 CairoMakie.activate!(type = "png") #hide
 
 # ## Curved B Field
@@ -69,7 +70,18 @@ gc_x0 = gc(stateinit) |> Vector
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
-## 5. Trace Magnetic Field Lines
+## 5. GC Simulation with Velocity Saving
+## Save the perpendicular velocities on-the-fly.
+saved_values = SavedValues(Float64, SVector{3, Float64})
+## The callback function must use the form `save_func(u, t, integrator)`
+## where `integrator.p` holds the parameters.
+cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values)
+
+## Reuse the parameters from the previous GC simulation
+prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+sol_gc_saving = solve(prob_gc_saving, Vern9(), callback = cb)
+
+## 6. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
 b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
@@ -258,11 +270,15 @@ prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
    species = Proton, removeExB = false)
+## Save the perpendicular velocities on-the-fly.
+saved_values = SavedValues(Float64, SVector{3, Float64})
+cb = SavingCallback((u, t, integrator) -> get_gc_1st_velocity(u, integrator.p, t), saved_values)
+##TODO: trace_gc! shows instability in this case. To be investigated.
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
 
 ## Run simulations for plotting
 sol_full = solve(prob_full, Vern9())
-sol_gc_trace = solve(prob_gc, Vern9())
+sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
 
 ## Benchmark
 b_full = @be solve(prob_full, Vern9())
@@ -284,17 +300,28 @@ lines!(ax_traj, sol_gc_trace, idxs = (1, 2), color = c2,
    linewidth = 2, label = "Guiding Center")
 axislegend(ax_traj, backgroundcolor = :transparent)
 
-## Right Panel: Benchmark
-ax_bench = Axis(f3[1, 2],
-   title = "Relative Execution Time",
-   ylabel = "Ratio",
-   xticks = ([1, 2], ["Full Orbit", "Guiding Center"])
+## Right Panel: Vx
+ax_vel = Axis(f3[1, 2],
+   title = "Vx",
+   xlabel = "t [s]",
+   ylabel = "Vx [m/s]"
 )
 
-times = [median(b_full).time, median(b_gc).time]
-ratios = times ./ minimum(times)
+lines!(ax_vel, sol_full, idxs = (4), color = c1, label = "Full Orbit")
+lines!(
+   ax_vel, saved_values.t, [v[1] for v in saved_values.saveval], color = c2, linewidth = 2, label = "Guiding Center")
 
-barplot!(ax_bench, [1, 2], ratios, color = Makie.wong_colors()[1:2])
-colsize!(f3.layout, 1, Relative(5 / 6))
 
 f3 = DisplayAs.PNG(f3) #hide
+
+# ## Performance Table
+#
+# | Solver | Time | Memory | Ratio |
+# | :--- | :--- | :--- | :--- |
+# | Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |
+# | Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |
+
+println("| Solver | Time | Memory | Ratio |")
+println("| :--- | :--- | :--- | :--- |")
+println("| Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |")
+println("| Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |")
