@@ -245,11 +245,13 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-function trace_gc!(dy, y, p::GCTuple, t)
-   v, du = get_gc_derivatives(y, p, t)
+@inbounds function trace_gc!(dy, y, p::GCTuple, t)
+   v1, v2, v3, du = get_gc_derivatives(y, p, t)
 
-   @inbounds dy[1:3] = v
-   @inbounds dy[4] = du
+   dy[1] = v1
+   dy[2] = v2
+   dy[3] = v3
+   dy[4] = du
 
    return
 end
@@ -257,11 +259,11 @@ end
 """
     get_gc_velocity(y, p, t)
 
-Get the guiding center velocity vector for state `y`, parameters `p` at time `t`.
+Get the guiding center velocity.
 """
 function get_gc_velocity(y, p::GCTuple, t)
-   v, _ = get_gc_derivatives(y, p, t)
-   return v
+   v1, v2, v3, _ = get_gc_derivatives(y, p, t)
+   return SVector{3}(v1, v2, v3)
 end
 
 function get_gc_derivatives(y, p::GCTuple, t)
@@ -292,17 +294,19 @@ function get_gc_derivatives(y, p::GCTuple, t)
    v3 = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
 
-   SVector{3}(v1, v2, v3), du
+   v1, v2, v3, du
 end
 
 """
 1st order approximation of guiding center equations.
 """
-function trace_gc_1st!(dy, y, p::GCTuple, t)
-   v, du = get_gc_1st_derivatives(y, p, t)
+@inbounds function trace_gc_1st!(dy, y, p::GCTuple, t)
+   v1, v2, v3, du = get_gc_1st_derivatives(y, p, t)
 
-   @inbounds dy[1:3] = v
-   @inbounds dy[4] = du
+   dy[1] = v1
+   dy[2] = v2
+   dy[3] = v3
+   dy[4] = du
 
    return
 end
@@ -310,11 +314,11 @@ end
 """
     get_gc_1st_velocity(y, p, t)
 
-Get the 1st order guiding center velocity for state `y`, parameters `p` at time `t`.
+Get the guiding center velocity for the 1st order approximation.
 """
 function get_gc_1st_velocity(y, p::GCTuple, t)
-   v, _ = get_gc_1st_derivatives(y, p, t)
-   return v
+   v1, v2, v3, _ = get_gc_1st_derivatives(y, p, t)
+   return SVector{3}(v1, v2, v3)
 end
 
 function get_gc_1st_derivatives(y, p::GCTuple, t)
@@ -338,7 +342,7 @@ function get_gc_1st_derivatives(y, p::GCTuple, t)
 
    du = q2m * (b̂ + u * (b̂ × κ) / Ω) ⋅ Eᵉ
 
-   vX, du
+   vX[1], vX[2], vX[3], du
 end
 
 """
