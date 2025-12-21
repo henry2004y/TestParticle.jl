@@ -46,9 +46,26 @@ The Boris pusher follows a similar interface for multithreading.
 
 ## Guiding center drifts
 
-By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`. In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below (see `trace_gc_drifts!`). With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
+By solving the trajectories of particles, we can calculate the actual guiding center orbits by following the definition. This is supported directly via `get_gc`.
 
-An alternative approach is to solve the guiding center approximation equations. In TestParticle.jl, we provide tracing via solving the equations derived from Hamiltonian mechanics and their 1st order approximation.
+TestParticle.jl provides several methods to trace the guiding center, serving different purposes.
+
+### Diagnostic Methods (Reference-based)
+
+These methods require a full particle trajectory solution (`sol`) to calculate drifts. They are useful for analyzing which drift components dominate or checking the validity of drift approximations.
+
+*   `trace_gc_drifts!`: Calculates the guiding center trajectory using standard analytical drift formulas (ExB, Gradient-B, Curvature drifts). It uses the parallel and perpendicular velocities from the full particle simulation.
+*   `trace_gc_exb!`: Calculates the trajectory considering only the $\mathbf{E} \times \mathbf{B}$ drift and parallel motion. Useful for identifying ExB dominance.
+*   `trace_gc_flr!`: Includes Finite Larmor Radius (FLR) corrections to the ExB drift, suitable for nonuniform electric fields.
+
+### Self-consistent Solvers (GCA)
+
+These methods solve the Guiding Center Approximation (GCA) equations directly, without needing a reference particle trajectory. They evolve the guiding center position $\mathbf{X}$ and parallel velocity $v_\parallel$.
+
+*   `trace_gc!`: Solves the full GCA equations derived from Hamiltonian mechanics.
+*   `trace_gc_1st!`: Solves the 1st-order approximation of the GCA equations.
+
+In theoretical treatments, all kinds of drifts have been derived with analytical formulas listed below. With additional ODEs for solving the drifts, we can separate the different effects or check the deviation of actual orbits from the low order analytical formulas.
 
 ### Summary of guiding center drifts
 

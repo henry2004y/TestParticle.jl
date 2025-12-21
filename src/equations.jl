@@ -32,7 +32,7 @@ function trace!(dy, y, p, t)
    @inbounds dy[1:3] = v
    @inbounds dy[4:6] = get_dv(y, v, p, t)
 
-   return nothing
+   return
 end
 
 """
@@ -47,7 +47,7 @@ function trace(y, p, t)
 end
 
 """
-     trace_relativistic!(dy, y, p, t)
+    trace_relativistic!(dy, y, p, t)
 
 ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
@@ -61,7 +61,7 @@ function trace_relativistic!(dy, y, p, t)
 end
 
 """
-     trace_gc_exb!(dx, x, p, t)
+    trace_gc_exb!(dx, x, p, t)
 
 Equations for tracing the guiding center using the ExB drift and parallel velocity from a reference trajectory.
 """
@@ -69,19 +69,20 @@ function trace_gc_exb!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
+   E = Efunc(x, t)
+   B = Bfunc(x, t)
 
-   b = normalize(B)
+   Bmag = norm(B)
+   b = B / Bmag
    v_par = (v ⋅ b) .* b
 
-   dx[1:3] = (E × B) / (B ⋅ B) + v_par
+   dx[1:3] = (E × b) / Bmag + v_par
 
    return
 end
 
 """
-     trace_gc_flr!(dx, x, p, t)
+    trace_gc_flr!(dx, x, p, t)
 
 Equations for tracing the guiding center using the ExB drift with FLR corrections and parallel velocity.
 """
@@ -90,28 +91,35 @@ function trace_gc_flr!(dx, x, p, t)
    xu = sol(t)
    xp = get_x(xu)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
-   Bx = Bfunc(xp)
+   E = Efunc(x, t)
+   B = Bfunc(x, t)
 
-   b = normalize(Bx)
-   v_par = (v ⋅ b) .* b
+   # B at particle position
+   Bx = Bfunc(xp, t)
+   Bmag_particle = norm(Bx)
+   b_particle = Bx / Bmag_particle
+
+   v_par = (v ⋅ b_particle) .* b_particle
    v_perp = v - v_par
 
-   Bmag = norm(Bx)
-   r4 = (norm(v_perp) / q2m / Bmag)^2 / 4
+   r4 = (norm(v_perp) / q2m / Bmag_particle)^2 / 4
 
    # Helper for FLR term: (E × B) / B²
-   EB(x_in) = (Efunc(x_in) × Bfunc(x_in)) / norm(Bfunc(x_in))^2
+   EB(x_in) = begin
+      E_in = Efunc(x_in, t)
+      B_in = Bfunc(x_in, t)
+      (E_in × B_in) / (B_in ⋅ B_in)
+   end
 
    # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
-   dx[1:3] = EB(x) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
+   # EB(x) is redundant, use E and B directly
+   dx[1:3] = (E × B) / (B ⋅ B) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
 
    return
 end
 
 """
-     trace_relativistic(y, p, t) -> SVector{6}
+    trace_relativistic(y, p, t) -> SVector{6}
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
@@ -124,7 +132,7 @@ function trace_relativistic(y, p, t)
 end
 
 """
-     trace_normalized!(dy, y, p, t)
+    trace_normalized!(dy, y, p, t)
 
 Normalized ODE equations for charged particle moving in EM field with in-place form.
 If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
@@ -142,7 +150,7 @@ function trace_normalized!(dy, y, p, t)
 end
 
 """
-     trace_relativistic_normalized!(dy, y, p, t)
+    trace_relativistic_normalized!(dy, y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
@@ -159,7 +167,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 end
 
 """
-     trace_relativistic_normalized(y, p, t)
+    trace_relativistic_normalized(y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
@@ -174,8 +182,35 @@ function trace_relativistic_normalized(y, p, t)
    vcat(v, dv)
 end
 
+@inline function get_B_parameters(x, t, Bfunc)
+   # Compute B and its Jacobian in a single pass using ForwardDiff
+   result = DiffResults.JacobianResult(x)
+   result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
+
+   B = SVector{3}(DiffResults.value(result))
+   JB = SMatrix{3, 3}(DiffResults.jacobian(result))
+
+   Bmag = norm(B)
+   b̂ = B / Bmag
+
+   # ∇|B| = (J_B' * b̂)
+   ∇B = JB' * b̂
+
+   return B, Bmag, b̂, ∇B, JB
+end
+
+@inline function get_E_parameters(x, t, Efunc)
+   result = DiffResults.JacobianResult(x)
+   result = ForwardDiff.jacobian!(result, x -> Efunc(x, t), x)
+
+   E = SVector{3}(DiffResults.value(result))
+   JE = SMatrix{3, 3}(DiffResults.jacobian(result))
+
+   return E, JE
+end
+
 """
-     trace_gc_drifts!(dx, x, p, t)
+    trace_gc_drifts!(dx, x, p, t)
 
 Equations for tracing the guiding center using analytical drifts, including the grad-B drift, curvature drift, and ExB drift.
 Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
@@ -184,25 +219,28 @@ function trace_gc_drifts!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
+   E = Efunc(x, t)
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = ForwardDiff.gradient(Bmag, x)
-   b = normalize(B)
+   B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
+
    v_par = (v ⋅ b) .* b
    v_perp = v - v_par
-   Ω = q2m * norm(B)
-   κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
-   ## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-   @inbounds dx[1:3] = norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
-                       norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
+   Ω = q2m * Bmag
+
+   # Curvature vector κ = (b̂ ⋅ ∇) b̂
+   # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
+   κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
+
+   # v⟂^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + (E×b)/B + v∥
+   @inbounds dx[1:3] = norm(v_perp)^2 * (b × ∇B) / (2 * Ω * Bmag) +
+                       norm(v_par)^2 * (b × κ) / Ω +
+                       (E × b) / Bmag + v_par
 
    return
 end
 
 """
-     trace_gc!(dy, y, p, t)
+    trace_gc!(dy, y, p, t)
 
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
@@ -211,25 +249,20 @@ function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
-   E = Efunc(X, t)
-   B = Bfunc(X, t)
-   b̂ = normalize(B) # unit B field at X
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
+   E, JE = get_E_parameters(X, t, Efunc)
+   B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
 
-   function E2B(x)
-      E² = Efunc(x) ⋅ Efunc(x)
-      B² = Bfunc(x) ⋅ Bfunc(x)
-      vE² = E² / B²
-   end
+   # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
+   # ∇ × B from JB
+   curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
+   curlb = (curlB + b̂ × ∇B) / Bmag
 
-   ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
+   # ∇(E²/B²) = 2/B² * (JE'*E - (E²/B)*∇B)
+   # Uses JE (Jacobian of E) and JB (via ∇B)
+   E² = E ⋅ E
+   ∇vE² = (2 / Bmag^2) * (JE' * E - (E² / Bmag) * ∇B)
 
-   bfunc(x) = normalize(Bfunc(x, t))
-   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
-   # ∇ × b̂
-   curlb = SVector{3}(∇b̂[3, 2] - ∇b̂[2, 3], ∇b̂[1, 3] - ∇b̂[3, 1], ∇b̂[2, 1] - ∇b̂[1, 2])
    # effective EM fields
    Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
    Bᵉ = @. B + y[4] / q2m * curlb
@@ -250,20 +283,19 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
+
    E = Efunc(X, t)
-   B = Bfunc(X, t)
-   b̂ = normalize(B) # unit B field at X
+   B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
+
+   Ω = q * Bmag / m
    u = y[4]
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
-   Ω = q * Bmag(X) / m
-
-   bfunc(x) = normalize(Bfunc(x, t))
-   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # effective EM fields
    Eᵉ = @. E - (μ * ∇B) / q
-   κ = ∇b̂ * b̂  # curvature
+
+   # Curvature vector κ = (b̂ ⋅ ∇) b̂
+   κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+
    vX = u * b̂ + b̂ × (κ * u^2 - q2m * Eᵉ) / Ω
 
    dy[1] = vX[1]
@@ -273,8 +305,9 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
 
    return
 end
+
 """
-     trace_fieldline!(dx, x, p, s)
+    trace_fieldline!(dx, x, p, s)
 
 Equation for tracing magnetic field lines with in-place form.
 The parameter `p` is the magnetic field function.
