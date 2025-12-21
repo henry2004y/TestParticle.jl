@@ -32,7 +32,7 @@ function trace!(dy, y, p, t)
    @inbounds dy[1:3] = v
    @inbounds dy[4:6] = get_dv(y, v, p, t)
 
-   return nothing
+   return
 end
 
 """
@@ -47,7 +47,7 @@ function trace(y, p, t)
 end
 
 """
-     trace_relativistic!(dy, y, p, t)
+    trace_relativistic!(dy, y, p, t)
 
 ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
@@ -61,7 +61,7 @@ function trace_relativistic!(dy, y, p, t)
 end
 
 """
-     trace_gc_exb!(dx, x, p, t)
+    trace_gc_exb!(dx, x, p, t)
 
 Equations for tracing the guiding center using the ExB drift and parallel velocity from a reference trajectory.
 """
@@ -82,7 +82,7 @@ function trace_gc_exb!(dx, x, p, t)
 end
 
 """
-     trace_gc_flr!(dx, x, p, t)
+    trace_gc_flr!(dx, x, p, t)
 
 Equations for tracing the guiding center using the ExB drift with FLR corrections and parallel velocity.
 """
@@ -119,7 +119,7 @@ function trace_gc_flr!(dx, x, p, t)
 end
 
 """
-     trace_relativistic(y, p, t) -> SVector{6}
+    trace_relativistic(y, p, t) -> SVector{6}
 
 ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
 """
@@ -132,7 +132,7 @@ function trace_relativistic(y, p, t)
 end
 
 """
-     trace_normalized!(dy, y, p, t)
+    trace_normalized!(dy, y, p, t)
 
 Normalized ODE equations for charged particle moving in EM field with in-place form.
 If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
@@ -150,7 +150,7 @@ function trace_normalized!(dy, y, p, t)
 end
 
 """
-     trace_relativistic_normalized!(dy, y, p, t)
+    trace_relativistic_normalized!(dy, y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
@@ -167,7 +167,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 end
 
 """
-     trace_relativistic_normalized(y, p, t)
+    trace_relativistic_normalized(y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
@@ -188,7 +188,7 @@ end
    result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
 
    B = SVector{3}(DiffResults.value(result))
-   JB = SMatrix{3,3}(DiffResults.jacobian(result))
+   JB = SMatrix{3, 3}(DiffResults.jacobian(result))
 
    Bmag = norm(B)
    b̂ = B / Bmag
@@ -204,13 +204,13 @@ end
    result = ForwardDiff.jacobian!(result, x -> Efunc(x, t), x)
 
    E = SVector{3}(DiffResults.value(result))
-   JE = SMatrix{3,3}(DiffResults.jacobian(result))
+   JE = SMatrix{3, 3}(DiffResults.jacobian(result))
 
    return E, JE
 end
 
 """
-     trace_gc_drifts!(dx, x, p, t)
+    trace_gc_drifts!(dx, x, p, t)
 
 Equations for tracing the guiding center using analytical drifts, including the grad-B drift, curvature drift, and ExB drift.
 Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
@@ -240,7 +240,7 @@ function trace_gc_drifts!(dx, x, p, t)
 end
 
 """
-     trace_gc!(dy, y, p, t)
+    trace_gc!(dy, y, p, t)
 
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
@@ -255,7 +255,7 @@ function trace_gc!(dy, y, p::GCTuple, t)
 
    # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
    # ∇ × B from JB
-   curlB = SVector{3}(JB[3,2] - JB[2,3], JB[1,3] - JB[3,1], JB[2,1] - JB[1,2])
+   curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
    curlb = (curlB + b̂ × ∇B) / Bmag
 
    # ∇(E²/B²) = 2/B² * (JE'*E - (E²/B)*∇B)
@@ -305,8 +305,9 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
 
    return
 end
+
 """
-     trace_fieldline!(dx, x, p, s)
+    trace_fieldline!(dx, x, p, s)
 
 Equation for tracing magnetic field lines with in-place form.
 The parameter `p` is the magnetic field function.
