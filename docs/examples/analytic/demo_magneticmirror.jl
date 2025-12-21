@@ -193,5 +193,5 @@ lines!(ax, [0, max_v * sin(loss_cone_angle)], [0, max_v * cos(loss_cone_angle)],
 lines!(ax, [0, max_v * sin(loss_cone_angle)],
    [0, -max_v * cos(loss_cone_angle)], color = :black, linestyle = :dash)
 
-axislegend(ax, position = :rt)
+axislegend(ax, position = :rt, backgroundcolor = :transparent)
 f2 = DisplayAs.PNG(f2) #hide
