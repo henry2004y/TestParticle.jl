@@ -3,6 +3,27 @@
 get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
+function get_fields(x, t, Efunc, Bfunc)
+   E = Efunc(x, t)
+   B = Bfunc(x, t)
+   return E, B
+end
+
+function get_B_properties(x, t, Bfunc)
+   B = Bfunc(x, t)
+   Bmag = norm(B)
+   b̂ = B / Bmag
+   # Gradient of B magnitude
+   ∇B = ForwardDiff.gradient(x -> norm(Bfunc(x, t)), x)
+   return B, Bmag, b̂, ∇B
+end
+
+function get_b_jacobian(x, t, Bfunc)
+   bfunc(x) = normalize(Bfunc(x, t))
+   ∇b̂ = ForwardDiff.jacobian(bfunc, x)
+   return ∇b̂
+end
+
 function get_dv(x, v, p, t)
    q2m, m, Efunc, Bfunc, Ffunc = p
    E = Efunc(x, t)
@@ -69,13 +90,13 @@ function trace_gc_exb!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
+   E, B = get_fields(x, t, Efunc, Bfunc)
 
-   b = normalize(B)
+   Bmag = norm(B)
+   b = B / Bmag
    v_par = (v ⋅ b) .* b
 
-   dx[1:3] = (E × B) / (B ⋅ B) + v_par
+   dx[1:3] = (E × b) / Bmag + v_par
 
    return
 end
@@ -90,19 +111,24 @@ function trace_gc_flr!(dx, x, p, t)
    xu = sol(t)
    xp = get_x(xu)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
-   Bx = Bfunc(xp)
+   E, B = get_fields(x, t, Efunc, Bfunc)
 
-   b = normalize(Bx)
-   v_par = (v ⋅ b) .* b
+   # B at particle position
+   Bx = Bfunc(xp, t)
+   Bmag_particle = norm(Bx)
+   b_particle = Bx / Bmag_particle
+
+   v_par = (v ⋅ b_particle) .* b_particle
    v_perp = v - v_par
 
-   Bmag = norm(Bx)
-   r4 = (norm(v_perp) / q2m / Bmag)^2 / 4
+   r4 = (norm(v_perp) / q2m / Bmag_particle)^2 / 4
 
    # Helper for FLR term: (E × B) / B²
-   EB(x_in) = (Efunc(x_in) × Bfunc(x_in)) / norm(Bfunc(x_in))^2
+   EB(x_in) = begin
+      E_in = Efunc(x_in, t)
+      B_in = Bfunc(x_in, t)
+      (E_in × B_in) / (B_in ⋅ B_in)
+   end
 
    # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
    dx[1:3] = EB(x) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
@@ -184,19 +210,22 @@ function trace_gc_drifts!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E = Efunc(x)
-   B = Bfunc(x)
+   E, B = get_fields(x, t, Efunc, Bfunc)
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = ForwardDiff.gradient(Bmag, x)
-   b = normalize(B)
+   # Gradient of B magnitude and other properties
+   _, Bmag, b, ∇B = get_B_properties(x, t, Bfunc)
+
    v_par = (v ⋅ b) .* b
    v_perp = v - v_par
-   Ω = q2m * norm(B)
-   κ = ForwardDiff.jacobian(Bfunc, x) * B  # B⋅∇B
-   ## v⟂^2*(B×∇|B|)/(2*Ω*B^2) + v∥^2*(B×(B⋅∇B))/(Ω*B^3) + (E×B)/B^2 + v∥
-   @inbounds dx[1:3] = norm(v_perp)^2 * (B × ∇B) / (2 * Ω * norm(B)^2) +
-                       norm(v_par)^2 * (B × κ) / Ω / norm(B)^3 + (E × B) / (B ⋅ B) + v_par
+   Ω = q2m * Bmag
+
+   ∇b̂ = get_b_jacobian(x, t, Bfunc)
+   κ = ∇b̂ * b  # curvature vector (b.∇)b
+
+   # v⟂^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + (E×b)/B + v∥
+   @inbounds dx[1:3] = norm(v_perp)^2 * (b × ∇B) / (2 * Ω * Bmag) +
+                       norm(v_par)^2 * (b × κ) / Ω +
+                       (E × b) / Bmag + v_par
 
    return
 end
@@ -211,23 +240,19 @@ function trace_gc!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
-   E = Efunc(X, t)
-   B = Bfunc(X, t)
-   b̂ = normalize(B) # unit B field at X
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
+   E, B = get_fields(X, t, Efunc, Bfunc)
+   _, _, b̂, ∇B = get_B_properties(X, t, Bfunc)
+   ∇b̂ = get_b_jacobian(X, t, Bfunc)
 
    function E2B(x)
-      E² = Efunc(x) ⋅ Efunc(x)
-      B² = Bfunc(x) ⋅ Bfunc(x)
+      E² = Efunc(x, t) ⋅ Efunc(x, t)
+      B² = Bfunc(x, t) ⋅ Bfunc(x, t)
       vE² = E² / B²
    end
 
    ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
 
-   bfunc(x) = normalize(Bfunc(x, t))
-   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # ∇ × b̂
    curlb = SVector{3}(∇b̂[3, 2] - ∇b̂[2, 3], ∇b̂[1, 3] - ∇b̂[3, 1], ∇b̂[2, 1] - ∇b̂[1, 2])
    # effective EM fields
@@ -250,17 +275,14 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
-   E = Efunc(X, t)
-   B = Bfunc(X, t)
-   b̂ = normalize(B) # unit B field at X
+
+   E, B = get_fields(X, t, Efunc, Bfunc)
+   _, Bmag, b̂, ∇B = get_B_properties(X, t, Bfunc)
+   ∇b̂ = get_b_jacobian(X, t, Bfunc)
+
+   Ω = q * Bmag / m
    u = y[4]
 
-   Bmag(x) = √(Bfunc(x) ⋅ Bfunc(x))
-   ∇B = SVector{3}(ForwardDiff.gradient(Bmag, X))
-   Ω = q * Bmag(X) / m
-
-   bfunc(x) = normalize(Bfunc(x, t))
-   ∇b̂ = ForwardDiff.jacobian(bfunc, X)
    # effective EM fields
    Eᵉ = @. E - (μ * ∇B) / q
    κ = ∇b̂ * b̂  # curvature
