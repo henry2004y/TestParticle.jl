@@ -125,7 +125,7 @@ makedocs(;
       "API" => "api.md",
       "Plot Functions" => "plotfunctions.md"
    ],
-   warnonly = [:missing_docs, :cross_references, :linkcheck]
+   warnonly = [:missing_docs, :linkcheck]
 )
 
 DocumenterVitepress.deploydocs(;
