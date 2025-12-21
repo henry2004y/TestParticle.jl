@@ -182,7 +182,8 @@ function run_grad_B_sim(B_func, tspan)
    sol = solve(prob, Vern9())
 
    ## GC (Trace)
-   stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, B_func,
+   stateinit_gc,
+   param_gc = TP.prepare_gc(stateinit, uniform_E, B_func,
       species = Proton, removeExB = false)
    prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
    sol_gc = solve(prob_gc, Vern9())
@@ -254,7 +255,8 @@ param_full = prepare(uniform_E, grad_B_small, species = Proton)
 prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 
 ## Guiding Center Problem
-stateinit_gc, param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
+stateinit_gc,
+param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
    species = Proton, removeExB = false)
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
 
