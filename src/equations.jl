@@ -3,27 +3,6 @@
 get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
-function get_fields(x, t, Efunc, Bfunc)
-   E = Efunc(x, t)
-   B = Bfunc(x, t)
-   return E, B
-end
-
-function get_B_properties(x, t, Bfunc)
-   B = Bfunc(x, t)
-   Bmag = norm(B)
-   b̂ = B / Bmag
-   # Gradient of B magnitude
-   ∇B = ForwardDiff.gradient(x -> norm(Bfunc(x, t)), x)
-   return B, Bmag, b̂, ∇B
-end
-
-function get_b_jacobian(x, t, Bfunc)
-   bfunc(x) = normalize(Bfunc(x, t))
-   ∇b̂ = ForwardDiff.jacobian(bfunc, x)
-   return ∇b̂
-end
-
 function get_dv(x, v, p, t)
    q2m, m, Efunc, Bfunc, Ffunc = p
    E = Efunc(x, t)
@@ -90,7 +69,8 @@ function trace_gc_exb!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E, B = get_fields(x, t, Efunc, Bfunc)
+   E = Efunc(x, t)
+   B = Bfunc(x, t)
 
    Bmag = norm(B)
    b = B / Bmag
@@ -111,7 +91,8 @@ function trace_gc_flr!(dx, x, p, t)
    xu = sol(t)
    xp = get_x(xu)
    v = get_v(xu)
-   E, B = get_fields(x, t, Efunc, Bfunc)
+   E = Efunc(x, t)
+   B = Bfunc(x, t)
 
    # B at particle position
    Bx = Bfunc(xp, t)
@@ -131,7 +112,8 @@ function trace_gc_flr!(dx, x, p, t)
    end
 
    # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
-   dx[1:3] = EB(x) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
+   # EB(x) is redundant, use E and B directly
+   dx[1:3] = (E × B) / (B ⋅ B) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
 
    return
 end
@@ -200,6 +182,37 @@ function trace_relativistic_normalized(y, p, t)
    vcat(v, dv)
 end
 
+function get_B_and_gradient(x, t, Bfunc)
+   # Compute B and its Jacobian in a single pass using ForwardDiff
+   # Optimization: use DiffResults to avoid recomputing B
+   result = DiffResults.JacobianResult(x)
+   result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
+
+   B = SVector{3}(DiffResults.value(result))
+   # SMatrix constructor usage requires careful handling or simple type conversion
+   # DiffResults.jacobian returns a standard Matrix or similar, SMatrix(M) works if imported
+   JB = SMatrix{3,3}(DiffResults.jacobian(result))
+
+   Bmag = norm(B)
+   b̂ = B / Bmag
+
+   # ∇|B| = (J_B' * b̂)
+   ∇B = JB' * b̂
+
+   # ∇b̂ = (J_B - b̂ * (∇|B|)T) / Bmag
+   # Note: Jacobian of vector b̂ is a matrix.
+   # We need ∇b̂ to compute curvature κ = (b̂ ⋅ ∇) b̂ = ∇b̂ * b̂
+   # Transpose issue: ForwardDiff.jacobian returns J_ij = ∂f_i/∂x_j.
+   # In physics notation (b̂⋅∇)b̂ is directional derivative.
+   # vector calculus: (u⋅∇)v = (v' * u')' in row vector convention?
+   # Julia/ForwardDiff: J * u is exactly directional derivative along u.
+   # So κ = J_b̂ * b̂
+
+   Jb̂ = (JB - b̂ * ∇B') / Bmag
+
+   return B, Bmag, b̂, ∇B, Jb̂
+end
+
 """
      trace_gc_drifts!(dx, x, p, t)
 
@@ -210,17 +223,15 @@ function trace_gc_drifts!(dx, x, p, t)
    q2m, _, Efunc, Bfunc, _, sol = p
    xu = sol(t)
    v = get_v(xu)
-   E, B = get_fields(x, t, Efunc, Bfunc)
+   E = Efunc(x, t)
 
-   # Gradient of B magnitude and other properties
-   _, Bmag, b, ∇B = get_B_properties(x, t, Bfunc)
+   B, Bmag, b, ∇B, ∇b̂ = get_B_and_gradient(x, t, Bfunc)
 
    v_par = (v ⋅ b) .* b
    v_perp = v - v_par
    Ω = q2m * Bmag
 
-   ∇b̂ = get_b_jacobian(x, t, Bfunc)
-   κ = ∇b̂ * b  # curvature vector (b.∇)b
+   κ = ∇b̂ * b  # curvature vector (b.∇)b = J_b * b
 
    # v⟂^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + (E×b)/B + v∥
    @inbounds dx[1:3] = norm(v_perp)^2 * (b × ∇B) / (2 * Ω * Bmag) +
@@ -241,9 +252,13 @@ function trace_gc!(dy, y, p::GCTuple, t)
    q2m = q / m
    X = get_x(y)
 
-   E, B = get_fields(X, t, Efunc, Bfunc)
-   _, _, b̂, ∇B = get_B_properties(X, t, Bfunc)
-   ∇b̂ = get_b_jacobian(X, t, Bfunc)
+   E = Efunc(X, t)
+   B, _, b̂, ∇B, ∇b̂ = get_B_and_gradient(X, t, Bfunc)
+
+   # ∇ × b̂ = curl(b̂)
+   # J_b = [∂b1/∂x ∂b1/∂y ∂b1/∂z; ...]
+   # curl_x = ∂b3/∂y - ∂b2/∂z = Jb[3,2] - Jb[2,3]
+   curlb = SVector{3}(∇b̂[3, 2] - ∇b̂[2, 3], ∇b̂[1, 3] - ∇b̂[3, 1], ∇b̂[2, 1] - ∇b̂[1, 2])
 
    function E2B(x)
       E² = Efunc(x, t) ⋅ Efunc(x, t)
@@ -253,8 +268,6 @@ function trace_gc!(dy, y, p::GCTuple, t)
 
    ∇vE² = SVector{3}(ForwardDiff.gradient(E2B, X))
 
-   # ∇ × b̂
-   curlb = SVector{3}(∇b̂[3, 2] - ∇b̂[2, 3], ∇b̂[1, 3] - ∇b̂[3, 1], ∇b̂[2, 1] - ∇b̂[1, 2])
    # effective EM fields
    Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
    Bᵉ = @. B + y[4] / q2m * curlb
@@ -276,9 +289,8 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
    q2m = q / m
    X = get_x(y)
 
-   E, B = get_fields(X, t, Efunc, Bfunc)
-   _, Bmag, b̂, ∇B = get_B_properties(X, t, Bfunc)
-   ∇b̂ = get_b_jacobian(X, t, Bfunc)
+   E = Efunc(X, t)
+   B, Bmag, b̂, ∇B, ∇b̂ = get_B_and_gradient(X, t, Bfunc)
 
    Ω = q * Bmag / m
    u = y[4]

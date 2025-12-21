@@ -9,7 +9,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
                  BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
                  DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem,
                  LinearInterpolation, build_solution, ODESolution
-using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray
+using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray, SMatrix
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 using ForwardDiff
 using ChunkSplitters
