@@ -250,7 +250,7 @@ plot_results!(ax_left, results_large, "Large FLR (Weak B)")
 ax_right = Axis3(f2[1, 2])
 plot_results!(ax_right, results_small, "Small FLR (Strong B)")
 
-axislegend(ax_left)
+axislegend(ax_left, backgroundcolor = :transparent)
 
 f2 = DisplayAs.PNG(f2) #hide
 
@@ -321,7 +321,10 @@ f3 = DisplayAs.PNG(f3) #hide
 # | Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |
 # | Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |
 
-println("| Solver | Time | Memory | Ratio |")
-println("| :--- | :--- | :--- | :--- |")
-println("| Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |")
-println("| Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |")
+using Markdown #hide
+io = IOBuffer() #hide
+println(io, "| Solver | Time | Memory | Ratio |") #hide
+println(io, "| :--- | :--- | :--- | :--- |") #hide
+println(io, "| Full Orbit | $(round(median(b_full).time, digits=4)) | $(round(median(b_full).bytes, digits=4)) | 1.0 |") #hide
+println(io, "| Guiding Center | $(round(median(b_gc).time, digits=4)) | $(round(median(b_gc).bytes, digits=4)) | $(round(median(b_gc).time / median(b_full).time, digits=4)) |") #hide
+Markdown.parse(String(take!(io))) #hide
