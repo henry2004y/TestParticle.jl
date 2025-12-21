@@ -182,7 +182,7 @@ function trace_relativistic_normalized(y, p, t)
    vcat(v, dv)
 end
 
-function get_B_parameters(x, t, Bfunc)
+@inline function get_B_parameters(x, t, Bfunc)
    # Compute B and its Jacobian in a single pass using ForwardDiff
    result = DiffResults.JacobianResult(x)
    result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
@@ -199,7 +199,7 @@ function get_B_parameters(x, t, Bfunc)
    return B, Bmag, b̂, ∇B, JB
 end
 
-function get_E_parameters(x, t, Efunc)
+@inline function get_E_parameters(x, t, Efunc)
    result = DiffResults.JacobianResult(x)
    result = ForwardDiff.jacobian!(result, x -> Efunc(x, t), x)
 
