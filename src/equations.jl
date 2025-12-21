@@ -245,13 +245,13 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-@inbounds function trace_gc!(dy, y, p::GCTuple, t)
+function trace_gc!(dy, y, p::GCTuple, t)
    v1, v2, v3, du = get_gc_derivatives(y, p, t)
 
-   dy[1] = v1
-   dy[2] = v2
-   dy[3] = v3
-   dy[4] = du
+   @inbounds dy[1] = v1
+   @inbounds dy[2] = v2
+   @inbounds dy[3] = v3
+   @inbounds dy[4] = du
 
    return
 end
@@ -300,13 +300,13 @@ end
 """
 1st order approximation of guiding center equations.
 """
-@inbounds function trace_gc_1st!(dy, y, p::GCTuple, t)
+function trace_gc_1st!(dy, y, p::GCTuple, t)
    v1, v2, v3, du = get_gc_1st_derivatives(y, p, t)
 
-   dy[1] = v1
-   dy[2] = v2
-   dy[3] = v3
-   dy[4] = du
+   @inbounds dy[1] = v1
+   @inbounds dy[2] = v2
+   @inbounds dy[3] = v3
+   @inbounds dy[4] = du
 
    return
 end
