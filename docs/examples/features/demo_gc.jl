@@ -79,7 +79,7 @@ cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), s
 
 ## Reuse the parameters from the previous GC simulation
 prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc_saving = solve(prob_gc_saving, Vern9(), callback=cb)
+sol_gc_saving = solve(prob_gc_saving, Vern9(), callback = cb)
 
 ## 6. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
@@ -92,7 +92,7 @@ for dz in -0.2:0.1:0.2
 end
 
 ## Visualization
-f = Figure(size = (1000, 1000), fontsize = 18)
+f = Figure(size = (1000, 800), fontsize = 18)
 
 ## Left Panel: 3D Trajectory
 ax1 = Axis3(f[1, 1],
@@ -173,29 +173,7 @@ lines!(ax3, ts, err_num, color = c3, label = "Numeric B GC")
 lines!(ax3, ts, err_part, color = c5, label = "GC from Particle")
 
 axislegend(ax3, position = :rt, backgroundcolor = :transparent)
-
-## Velocity Comparison
-ax4 = Axis(f[3, 1:2],
-   title = "Velocity Comparison (X-component)",
-   xlabel = "Time [s]",
-   ylabel = "Velocity [m/s]"
-)
-
-## Full particle velocity (oscillating)
-ts_fine = range(tspan..., length = 1000)
-sol_interp = sol(ts_fine)
-vx_particle = [u[4] for u in sol_interp.u]
-
-lines!(ax4, ts_fine, vx_particle, color = (c1, 0.3), label = "Particle Vx")
-
-## Saved GC velocity (smooth)
-lines!(ax4, saved_values.t, [v[1] for v in saved_values.saveval],
-   color = c2, label = "GC Vx (Saved)")
-
-axislegend(ax4, position = :rt, backgroundcolor = :transparent)
-
-rowsize!(f.layout, 1, Relative(0.5))
-rowsize!(f.layout, 2, Relative(0.25))
+rowsize!(f.layout, 1, Relative(3 / 4))
 
 f = DisplayAs.PNG(f) #hide
 
@@ -292,11 +270,15 @@ prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 stateinit_gc,
 param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
    species = Proton, removeExB = false)
+## Save the perpendicular velocities on-the-fly.
+saved_values = SavedValues(Float64, SVector{3, Float64})
+cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values)
+##TODO: trace_gc! shows instability in this case. To be investigated.
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
 
 ## Run simulations for plotting
 sol_full = solve(prob_full, Vern9())
-sol_gc_trace = solve(prob_gc, Vern9())
+sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
 
 ## Benchmark
 b_full = @be solve(prob_full, Vern9())
@@ -318,24 +300,16 @@ lines!(ax_traj, sol_gc_trace, idxs = (1, 2), color = c2,
    linewidth = 2, label = "Guiding Center")
 axislegend(ax_traj, backgroundcolor = :transparent)
 
-## Right Panel: Velocity (Vx-Vy)
+## Right Panel: Vx
 ax_vel = Axis(f3[1, 2],
-   title = "Velocity (Vx-Vy)",
-   xlabel = "Vx [m/s]",
-   ylabel = "Vy [m/s]",
-   aspect = DataAspect()
+   title = "Vx",
+   xlabel = "t [s]",
+   ylabel = "Vx [m/s]"
 )
 
-lines!(ax_vel, sol_full, idxs = (4, 5), color = c1, label = "Full Orbit")
-
-# For GC, we need to extract velocity.
-# We didn't save velocity for `sol_gc_trace` using callback in this section.
-# We can re-calculate it or just use the approximate velocity from state (if we had it).
-# But `sol_gc_trace` state is (x,y,z,u). u is parallel velocity.
-# To plot (Vx, Vy) of GC, we need `get_gc_velocity`.
-# We can compute it for the plot.
-gc_vels = [get_gc_1st_velocity(u, param_gc, t) for (u, t) in zip(sol_gc_trace.u, sol_gc_trace.t)]
-lines!(ax_vel, [v[1] for v in gc_vels], [v[2] for v in gc_vels], color = c2, label = "Guiding Center")
+lines!(ax_vel, sol_full, idxs = (4), color = c1, label = "Full Orbit")
+lines!(
+   ax_vel, sol_gc_trace, idxs = (4), color = c2, linewidth = 2, label = "Guiding Center")
 
 f3 = DisplayAs.PNG(f3) #hide
 
