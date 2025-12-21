@@ -246,6 +246,25 @@ Guiding center equations for nonrelativistic charged particle moving in EM field
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
 function trace_gc!(dy, y, p::GCTuple, t)
+   v, du = get_gc_derivatives(y, p, t)
+
+   @inbounds dy[1:3] = v
+   @inbounds dy[4] = du
+
+   return
+end
+
+"""
+    get_gc_velocity(y, p, t)
+
+Get the guiding center velocity.
+"""
+function get_gc_velocity(y, p::GCTuple, t)
+   v, _ = get_gc_derivatives(y, p, t)
+   return v
+end
+
+function get_gc_derivatives(y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
@@ -268,18 +287,37 @@ function trace_gc!(dy, y, p::GCTuple, t)
    Bᵉ = @. B + y[4] / q2m * curlb
    Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
 
-   dy[1] = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
-   dy[2] = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
-   dy[3] = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
-   dy[4] = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
+   v1 = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
+   v2 = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
+   v3 = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
+   du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
 
-   return
+   SVector{3}(v1, v2, v3), du
 end
 
 """
 1st order approximation of guiding center equations.
 """
 function trace_gc_1st!(dy, y, p::GCTuple, t)
+   v, du = get_gc_1st_derivatives(y, p, t)
+
+   @inbounds dy[1:3] = v
+   @inbounds dy[4] = du
+
+   return
+end
+
+"""
+    get_gc_1st_velocity(y, p, t)
+
+Get the guiding center velocity for the 1st order approximation.
+"""
+function get_gc_1st_velocity(y, p::GCTuple, t)
+   v, _ = get_gc_1st_derivatives(y, p, t)
+   return v
+end
+
+function get_gc_1st_derivatives(y, p::GCTuple, t)
    q, m, μ, Efunc, Bfunc = p
    q2m = q / m
    X = get_x(y)
@@ -298,12 +336,9 @@ function trace_gc_1st!(dy, y, p::GCTuple, t)
 
    vX = u * b̂ + b̂ × (κ * u^2 - q2m * Eᵉ) / Ω
 
-   dy[1] = vX[1]
-   dy[2] = vX[2]
-   dy[3] = vX[3]
-   dy[4] = q2m * (b̂ + u * (b̂ × κ) / Ω) ⋅ Eᵉ
+   du = q2m * (b̂ + u * (b̂ × κ) / Ω) ⋅ Eᵉ
 
-   return
+   vX, du
 end
 
 """

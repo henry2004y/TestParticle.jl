@@ -8,6 +8,7 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using Statistics: median, norm
 using CairoMakie, Chairmarks
+using DiffEqCallbacks
 CairoMakie.activate!(type = "png") #hide
 
 # ## Curved B Field
@@ -69,7 +70,18 @@ gc_x0 = gc(stateinit) |> Vector
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
-## 5. Trace Magnetic Field Lines
+## 5. GC Simulation with Velocity Saving
+## Save the perpendicular velocities on-the-fly.
+saved_values = SavedValues(Float64, SVector{3, Float64})
+## The callback function must use the form `save_func(u, t, integrator)`
+## where `integrator.p` holds the parameters.
+cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values)
+
+## Reuse the parameters from the previous GC simulation
+prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+sol_gc_saving = solve(prob_gc_saving, Vern9(), callback=cb)
+
+## 6. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
 b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
@@ -80,7 +92,7 @@ for dz in -0.2:0.1:0.2
 end
 
 ## Visualization
-f = Figure(size = (1000, 800), fontsize = 18)
+f = Figure(size = (1000, 1000), fontsize = 18)
 
 ## Left Panel: 3D Trajectory
 ax1 = Axis3(f[1, 1],
@@ -161,7 +173,29 @@ lines!(ax3, ts, err_num, color = c3, label = "Numeric B GC")
 lines!(ax3, ts, err_part, color = c5, label = "GC from Particle")
 
 axislegend(ax3, position = :rt, backgroundcolor = :transparent)
-rowsize!(f.layout, 1, Relative(3 / 4))
+
+## Velocity Comparison
+ax4 = Axis(f[3, 1:2],
+   title = "Velocity Comparison (X-component)",
+   xlabel = "Time [s]",
+   ylabel = "Velocity [m/s]"
+)
+
+## Full particle velocity (oscillating)
+ts_fine = range(tspan..., length = 1000)
+sol_interp = sol(ts_fine)
+vx_particle = [u[4] for u in sol_interp.u]
+
+lines!(ax4, ts_fine, vx_particle, color = (c1, 0.3), label = "Particle Vx")
+
+## Saved GC velocity (smooth)
+lines!(ax4, saved_values.t, [v[1] for v in saved_values.saveval],
+   color = c2, label = "GC Vx (Saved)")
+
+axislegend(ax4, position = :rt, backgroundcolor = :transparent)
+
+rowsize!(f.layout, 1, Relative(0.5))
+rowsize!(f.layout, 2, Relative(0.25))
 
 f = DisplayAs.PNG(f) #hide
 
@@ -284,17 +318,35 @@ lines!(ax_traj, sol_gc_trace, idxs = (1, 2), color = c2,
    linewidth = 2, label = "Guiding Center")
 axislegend(ax_traj, backgroundcolor = :transparent)
 
-## Right Panel: Benchmark
-ax_bench = Axis(f3[1, 2],
-   title = "Relative Execution Time",
-   ylabel = "Ratio",
-   xticks = ([1, 2], ["Full Orbit", "Guiding Center"])
+## Right Panel: Velocity (Vx-Vy)
+ax_vel = Axis(f3[1, 2],
+   title = "Velocity (Vx-Vy)",
+   xlabel = "Vx [m/s]",
+   ylabel = "Vy [m/s]",
+   aspect = DataAspect()
 )
 
-times = [median(b_full).time, median(b_gc).time]
-ratios = times ./ minimum(times)
+lines!(ax_vel, sol_full, idxs = (4, 5), color = c1, label = "Full Orbit")
 
-barplot!(ax_bench, [1, 2], ratios, color = Makie.wong_colors()[1:2])
-colsize!(f3.layout, 1, Relative(5 / 6))
+# For GC, we need to extract velocity.
+# We didn't save velocity for `sol_gc_trace` using callback in this section.
+# We can re-calculate it or just use the approximate velocity from state (if we had it).
+# But `sol_gc_trace` state is (x,y,z,u). u is parallel velocity.
+# To plot (Vx, Vy) of GC, we need `get_gc_velocity`.
+# We can compute it for the plot.
+gc_vels = [get_gc_1st_velocity(u, param_gc, t) for (u, t) in zip(sol_gc_trace.u, sol_gc_trace.t)]
+lines!(ax_vel, [v[1] for v in gc_vels], [v[2] for v in gc_vels], color = c2, label = "Guiding Center")
 
 f3 = DisplayAs.PNG(f3) #hide
+
+# ## Performance Table
+#
+# | Solver | Time | Memory | Ratio |
+# | :--- | :--- | :--- | :--- |
+# | Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |
+# | Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |
+
+println("| Solver | Time | Memory | Ratio |")
+println("| :--- | :--- | :--- | :--- |")
+println("| Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |")
+println("| Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |")
