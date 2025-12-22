@@ -14,21 +14,56 @@ stateinit = let
    ## Initial particle energy
    Ek = 5e7 # [eV]
    ## initial velocity, [m/s]
-   v₀ = TP.sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), π/4, 0.0)
+   v₀ = TP.sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
    ## initial position, [m]
-   r₀ = TP.sph2cart(2.5*Rₑ, π/2, 0.0)
+   r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
    [r₀..., v₀...]
 end
 ## obtain field
 param = prepare(TP.DipoleField())
 tspan = (0.0, 10.0)
 
+# ## Full Trajectory Tracing
+# We first show the tracing of full proton trajectory.
 prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern9());
 
-sol = solve(prob, Vern9())
+# ## Guiding Center Tracing
+# Next, we can trace the guiding center (GC) of the particle directly, either via `trace_gc!` or `trace_gc_1st!`.
+# For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
+stateinit_gc, param_gc = prepare_gc(stateinit, TP.getE_dipole, TP.getB_dipole)
+prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+sol_gc = solve(prob_gc, Vern9())
 
-### Visualization
+## Analysis
+function get_curvature_ratio(sol, param, tsample)
+   q, m, μ, Efunc, Bfunc = param
+   ratio = zeros(Float32, length(tsample))
 
+   for i in eachindex(tsample)
+      r = sol(tsample[i])[1:3]
+      B, Bmag, b, ∇B, JB = TP.get_B_parameters(r, 0.0, Bfunc)
+
+      ## Gyroradius
+      ## v_perp^2 = 2 * μ * B / m
+      ## ρ = m * v_perp / (q * B) = m * sqrt(2μB/m) / (qB) = sqrt(2μm/B) / q
+      ρ = sqrt(2 * μ * m / Bmag) / q
+
+      ## Curvature radius
+      ## κ = (b ⋅ ∇) b
+      ## κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
+      κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
+      Rc = 1 / norm(κ)
+
+      ratio[i] = Rc / ρ
+   end
+
+   ratio
+end;
+
+# ## Visualization
+# We show the full proton trajectory and the GC trajectory together with the background dipole field.
+# The GC trajectory is colored by the ratio between the magnetic field curvature and the gyroradius at each location.
 f = Figure(fontsize = 18)
 ax = Axis3(f[1, 1],
    title = "50 MeV Proton trajectory in Earth's dipole field",
@@ -36,17 +71,40 @@ ax = Axis3(f[1, 1],
    ylabel = "y [Re]",
    zlabel = "z [Re]",
    aspect = :data,
+   azimuth = 1.42π,
    limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
 )
 
-x = sol[1, :] ./ Rₑ
-y = sol[2, :] ./ Rₑ
-z = sol[3, :] ./ Rₑ
-lines!(ax, x, y, z)
+nsample = 4000
+tsample = range(tspan[1], tspan[2], length = nsample)
+x = zeros(Float32, nsample)
+y = zeros(Float32, nsample)
+z = zeros(Float32, nsample)
+for i in 1:nsample
+   x[i], y[i], z[i] = sol(tsample[i])[1:3] ./ Rₑ
+end
 
-for ϕ in range(0, stop = 2*π, length = 10)
+lines!(ax, x, y, z, label = "Full Orbit")
+
+for ϕ in range(0, stop = 2 * π, length = 10)
    lines!(ax, TP.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
 end
+
+## Plot GC trajectory
+nsample = 1000
+tsample = range(tspan[1], tspan[2], length = nsample)
+xgc = zeros(Float32, nsample)
+ygc = zeros(Float32, nsample)
+zgc = zeros(Float32, nsample)
+for i in 1:nsample
+   xgc[i], ygc[i], zgc[i] = sol_gc(tsample[i])[1:3] ./ Rₑ
+end
+
+ratio = get_curvature_ratio(sol_gc, param_gc, tsample)
+
+l_gc = lines!(ax, xgc, ygc, zgc, color = ratio, colormap = :plasma,
+   linewidth = 3, label = "Guiding Center")
+Colorbar(f[1, 2], l_gc, label = "Gyroradius / Curvature Radius")
 
 f = DisplayAs.PNG(f) #hide
 
