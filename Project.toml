@@ -8,6 +8,7 @@ projects = ["test", "docs"]
 
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
+DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
 Elliptic = "b305315f-e792-5b7a-8f41-49f472929428"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -31,6 +32,7 @@ TestParticleRecursiveArrayToolsExt = "RecursiveArrayTools"
 
 [compat]
 ChunkSplitters = "3"
+DiffEqCallbacks = "4.10.1"
 DiffResults = "1.1.0"
 Elliptic = "1"
 ForwardDiff = "0.10, 1"
