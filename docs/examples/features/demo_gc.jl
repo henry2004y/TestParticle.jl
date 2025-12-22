@@ -309,8 +309,8 @@ ax_vel = Axis(f3[1, 2],
 
 lines!(ax_vel, sol_full, idxs = (4), color = c1, label = "Full Orbit")
 lines!(
-   ax_vel, saved_values.t, [v[1] for v in saved_values.saveval], color = c2, linewidth = 2, label = "Guiding Center")
-
+   ax_vel, saved_values.t, [v[1] for v in saved_values.saveval],
+   color = c2, linewidth = 2, label = "Guiding Center")
 
 f3 = DisplayAs.PNG(f3) #hide
 
@@ -325,6 +325,8 @@ using Markdown #hide
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Memory | Ratio |") #hide
 println(io, "| :--- | :--- | :--- | :--- |") #hide
-println(io, "| Full Orbit | $(round(median(b_full).time, digits=4)) | $(round(median(b_full).bytes, digits=4)) | 1.0 |") #hide
-println(io, "| Guiding Center | $(round(median(b_gc).time, digits=4)) | $(round(median(b_gc).bytes, digits=4)) | $(round(median(b_gc).time / median(b_full).time, digits=4)) |") #hide
+println(io,
+   "| Full Orbit | $(round(median(b_full).time, digits=4)) | $(round(median(b_full).bytes, digits=4)) | 1.0 |") #hide
+println(io,
+   "| Guiding Center | $(round(median(b_gc).time, digits=4)) | $(round(median(b_gc).bytes, digits=4)) | $(round(median(b_gc).time / median(b_full).time, digits=4)) |") #hide
 Markdown.parse(String(take!(io))) #hide
