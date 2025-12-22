@@ -68,12 +68,9 @@ function gc_to_full(gc_state, p_gc, t)
 
     # Construct a perpendicular vector for phase 0.
     # We need a vector perpendicular to b.
-    # Arbitrary vector non-parallel to b:
-    if abs(b[1]) < 0.9
-        arbitrary = SVector{3}(1.0, 0.0, 0.0)
-    else
-        arbitrary = SVector{3}(0.0, 1.0, 0.0)
-    end
+    # Find the component with the smallest magnitude
+    _, min_idx = findmin(abs.(b))
+    arbitrary = SVector{3}(ntuple(i -> i == min_idx ? 1.0 : 0.0, 3))
 
     perp1 = normalize(arbitrary × b)
     # perp2 = b × perp1
@@ -132,6 +129,40 @@ function full_to_gc(full_state, p_full, t)
     return SVector{4}(R[1], R[2], R[3], u_par)
 end
 
+"""
+    get_gc_state_6d(u, mode, p_gc, p_full, t)
+
+Helper to convert state `u` (either 4D GC or 6D Full) to 6D Guiding Center state (Position + GC Velocity).
+"""
+function get_gc_state_6d(u, mode, p_gc, p_full, t)
+    if mode == :GC
+        # u is 4D GC state
+        v_gc = get_gc_1st_velocity(u, p_gc, t)
+        return vcat(u[SA[1:3...]], v_gc)
+    else # mode == :Full
+        # u is 6D Full state
+        # Convert to 4D GC state first
+        gc_state_4d = full_to_gc(u, p_full, t)
+        v_gc = get_gc_1st_velocity(gc_state_4d, p_gc, t)
+        return vcat(gc_state_4d[SA[1:3...]], v_gc)
+    end
+end
+
+"""
+    process_segment!(times, states, sol, mode, p_gc, p_full)
+
+Process solution segment and append converted GC states to result containers.
+"""
+function process_segment!(times, states, sol, mode, p_gc, p_full)
+    for i in eachindex(sol.t)
+        t_val = sol.t[i]
+        u_val = sol.u[i]
+        state_6d = get_gc_state_6d(u_val, mode, p_gc, p_full, t_val)
+        push!(times, t_val)
+        push!(states, state_6d)
+    end
+end
+
 # Hybrid solver implementation
 
 """
@@ -148,7 +179,7 @@ Guiding Center (GC) tracing and Full Particle tracing based on validity conditio
 - `kwargs`: Additional arguments passed to `solve`.
 
 # Returns
-- A custom result containing the stitched trajectory (in Guiding Center coordinates).
+- A `SciMLBase.ODESolution` containing the stitched trajectory (in Guiding Center coordinates).
 """
 function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
     # 1. Unpack GC parameters
@@ -166,9 +197,11 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
     t_end = tspan[2]
 
     # Results containers
-    # We will store everything as (t, GC_state_6D)
-    times = Float64[]
-    states = SVector{6, Float64}[]
+    # Infer types from problem
+    u_type = eltype(prob.u0)
+    t_type = eltype(prob.tspan)
+    times = t_type[]
+    states = SVector{6, u_type}[]
 
     current_t = tspan[1]
     current_state = prob.u0 # Initial GC state (4-element)
@@ -219,80 +252,36 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
 
         if mode == :GC
             # Setup GC problem
-            prob_gc = ODEProblem(trace_gc_1st!, current_state, remaining_tspan, p_gc)
-
-            # Callback to detect violation
+            prob_current = ODEProblem(trace_gc_1st!, current_state, remaining_tspan, p_gc)
             cb = DiscreteCallback(condition_gc_to_full, terminate!)
-
-            sol = SciMLBase.solve(prob_gc, alg; callback=cb, dt=dt, kwargs...)
-
-            # Process results
-            # Convert 4D GC state to 6D (Pos + GC Velocity)
-            for i in eachindex(sol.t)
-                y = sol.u[i]
-                t_val = sol.t[i]
-                # Get full GC velocity
-                v_gc = get_gc_1st_velocity(y, p_gc, t_val)
-                state_6d = vcat(y[SA[1:3...]], v_gc)
-
-                push!(times, t_val)
-                push!(states, state_6d)
-            end
-
-            # Update state
-            current_t = sol.t[end]
-            final_u = sol.u[end]
-
-            if current_t < t_end || sol.retcode == :Terminated
-                # Switched!
-                mode = :Full
-                # Convert final GC state to Full state
-                current_state = gc_to_full(final_u, p_gc, current_t)
-            else
-                break # Finished
-            end
-
         else # Full Mode
             # Setup Full problem
-            prob_full = ODEProblem(trace!, current_state, remaining_tspan, p_full)
-
-            # Callback to detect validity recovery
+            prob_current = ODEProblem(trace!, current_state, remaining_tspan, p_full)
             cb = DiscreteCallback(condition_full_to_gc, terminate!)
+        end
 
-            sol = SciMLBase.solve(prob_full, alg; callback=cb, dt=dt, kwargs...)
+        sol = SciMLBase.solve(prob_current, alg; callback=cb, dt=dt, kwargs...)
 
-            # Process results
-            # Convert Full state to GC state (6D)
-            for i in eachindex(sol.t)
-                y = sol.u[i]
-                t_val = sol.t[i]
+        # Process results
+        process_segment!(times, states, sol, mode, p_gc, p_full)
 
-                # Get GC position and parallel velocity
-                gc_state_4d = full_to_gc(y, p_full, t_val)
+        # Update state for next step
+        current_t = sol.t[end]
+        final_u = sol.u[end]
 
-                # Get GC velocity at that GC position
-                v_gc = get_gc_1st_velocity(gc_state_4d, p_gc, t_val)
-
-                state_6d = vcat(gc_state_4d[SA[1:3...]], v_gc)
-
-                push!(times, t_val)
-                push!(states, state_6d)
-            end
-
-            # Update state
-            current_t = sol.t[end]
-            final_u = sol.u[end]
-
-             if current_t < t_end || sol.retcode == :Terminated
-                # Switched!
-                mode = :GC
-                # Convert final Full state to GC state
-                current_state = full_to_gc(final_u, p_full, current_t)
+        if current_t < t_end || sol.retcode == :Terminated
+            # Switched!
+            if mode == :GC
+                mode = :Full
+                current_state = gc_to_full(final_u, p_gc, current_t)
             else
-                break
+                mode = :GC
+                current_state = full_to_gc(final_u, p_full, current_t)
             end
+        else
+            break # Finished
         end
     end
 
-    return (t=times, u=states)
+    return SciMLBase.build_solution(prob, alg, times, states)
 end
