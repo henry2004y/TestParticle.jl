@@ -6,6 +6,7 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ
+using LinearAlgebra: ⋅, norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
