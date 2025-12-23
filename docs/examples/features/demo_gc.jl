@@ -272,7 +272,8 @@ param_gc = TP.prepare_gc(stateinit, uniform_E, grad_B_small,
    species = Proton, removeExB = false)
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})
-cb = SavingCallback((u, t, integrator) -> get_gc_1st_velocity(u, integrator.p, t), saved_values)
+cb = SavingCallback(
+   (u, t, integrator) -> get_gc_1st_velocity(u, integrator.p, t), saved_values)
 ##TODO: trace_gc! shows instability in this case. To be investigated.
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
 
@@ -314,19 +315,14 @@ lines!(
 
 f3 = DisplayAs.PNG(f3) #hide
 
-# ## Performance Table
-#
-# | Solver | Time | Memory | Ratio |
-# | :--- | :--- | :--- | :--- |
-# | Full Orbit | $(median(b_full).time) | $(median(b_full).bytes) | 1.0 |
-# | Guiding Center | $(median(b_gc).time) | $(median(b_gc).bytes) | $(median(b_gc).time / median(b_full).time) |
+# ## Performance
 
 using Markdown #hide
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Memory | Ratio |") #hide
 println(io, "| :--- | :--- | :--- | :--- |") #hide
-println(io,
+println(io, #hide
    "| Full Orbit | $(round(median(b_full).time, digits=4)) | $(round(median(b_full).bytes, digits=4)) | 1.0 |") #hide
-println(io,
+println(io, #hide
    "| Guiding Center | $(round(median(b_gc).time, digits=4)) | $(round(median(b_gc).bytes, digits=4)) | $(round(median(b_gc).time / median(b_full).time, digits=4)) |") #hide
 Markdown.parse(String(take!(io))) #hide
