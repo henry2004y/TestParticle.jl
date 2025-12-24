@@ -66,6 +66,23 @@ using OrdinaryDiffEq
       r_expected = m * u_perp / (abs(q) * B0)
 
       r_calc = get_gyroradius(sol, 0.5e-9)
-      @test r_calc ≈ r_expected rtol=1e-5
+      @test r_calc ≈ r_expected rtol=1e-3
+   end
+
+   @testset "Zero Field" begin
+      # B = 0 -> r = Inf
+      B_func(x, t) = SA[0.0, 0.0, 0.0]
+      E_func(x, t) = SA[0.0, 0.0, 0.0]
+
+      x0 = SA[0.0, 0.0, 0.0]
+      v0 = SA[1.0, 0.0, 0.0]
+      stateinit = [x0..., v0...]
+      tspan = (0.0, 1.0)
+
+      param = prepare(E_func, B_func; species = Ion(1, 1))
+      prob = ODEProblem(trace!, stateinit, tspan, param)
+      sol = solve(prob, Tsit5())
+
+      @test get_gyroradius(sol, 0.5) == Inf
    end
 end

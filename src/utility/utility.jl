@@ -199,6 +199,9 @@ function get_gyroradius(sol::AbstractODESolution, t)
    # Calculate B at position x
    B = Bfunc(x, t)
    Bmag = norm(B)
+   if Bmag == 0
+      return Inf
+   end
 
    # Calculate perpendicular velocity
    b̂ = B / Bmag
