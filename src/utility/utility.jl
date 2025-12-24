@@ -180,6 +180,40 @@ function get_gyroradius(V, B; q = qᵢ, m = mᵢ)
 end
 
 """
+    get_gyroradius(sol::AbstractODESolution, t)
+
+Return the gyroradius [m] from the solution `sol` at time `t`.
+The interpolated magnetic field function is obtained from `sol.prob.p`.
+"""
+function get_gyroradius(sol::AbstractODESolution, t)
+   # Interpolate state at time t
+   xu = sol(t)
+   x = xu[SA[1:3...]]
+   v = xu[SA[4:6...]]
+
+   # Extract parameters
+   p = sol.prob.p
+   q2m = p[1]
+   Bfunc = p[4]
+
+   # Calculate B at position x
+   B = Bfunc(x, t)
+   Bmag = norm(B)
+
+   # Calculate perpendicular velocity
+   b̂ = B / Bmag
+   v_par = (v ⋅ b̂) * b̂
+   v_perp = v - v_par
+   V_perp = norm(v_perp)
+
+   # Calculate gyroradius
+   # r = V_perp / (q/m * B) = V_perp / (q2m * B)
+   # This formula holds for both non-relativistic (V=v) and relativistic (V=γv) cases
+   # provided q2m is q/m0 (rest mass).
+   return V_perp / abs(q2m * Bmag)
+end
+
+"""
     get_gyroperiod(B=5e-9; q=qᵢ, m=mᵢ)
 
 Return the gyroperiod [s].
@@ -457,4 +491,38 @@ function _get_cell_volume(grid::RectilinearGrid)
       end
       return vol
    end
+end
+"""
+    get_curvature_radius(x, t, Bfunc)
+
+Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
+Returns `Inf` if the field is zero or the field lines are straight.
+"""
+function get_curvature_radius(x, t, Bfunc)
+   # Compute B and its Jacobian in a single pass using ForwardDiff
+   result = DiffResults.JacobianResult(x)
+   result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
+
+   B = SVector{3}(DiffResults.value(result))
+   JB = SMatrix{3, 3}(DiffResults.jacobian(result))
+
+   Bmag = norm(B)
+   if Bmag == 0
+      return Inf
+   end
+   b̂ = B / Bmag
+
+   # ∇|B| = (J_B' * b̂)
+   ∇B = JB' * b̂
+
+   # Curvature vector κ = (b̂ ⋅ ∇) b̂
+   # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
+   κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+
+   k_mag = norm(κ)
+   if k_mag == 0
+      return Inf
+   end
+
+   return 1 / k_mag
 end
