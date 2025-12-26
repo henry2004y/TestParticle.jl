@@ -30,6 +30,7 @@ using LinearAlgebra
       @test get_curvature_radius(SA[0.0, 0.0, R], 0.0, B_circular) ≈ R
 
       theta = π/4
-      @test get_curvature_radius(SA[R*cos(theta), 0.0, R*sin(theta)], 0.0, B_circular) ≈ R
+      @test get_curvature_radius(SA[R * cos(theta), 0.0, R * sin(theta)], 0.0, B_circular) ≈
+            R
    end
 end
