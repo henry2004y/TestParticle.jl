@@ -32,7 +32,6 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]
-GeometricIntegratorsDiffEq = {rev = "master", url = "https://github.com/SciML/GeometricIntegratorsDiffEq.jl"}
 TestParticle = {path = ".."}
 
 [compat]
