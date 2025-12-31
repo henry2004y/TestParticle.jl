@@ -6,6 +6,7 @@
 using Chairmarks
 using TestParticle
 using OrdinaryDiffEq
+using GeometricIntegratorsDiffEq
 using StaticArrays
 using CairoMakie
 using Statistics
@@ -39,6 +40,8 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 ## ODE solvers from DifferentialEquations.jl are optimized for StaticArrays (SVector)
 prob_ode = ODEProblem(trace, stateinit, tspan, param)
+## GeometricIntegratorsDiffEq.jl requires mutable arrays
+prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 
 # ## Benchmark
 #
@@ -78,7 +81,10 @@ solvers = [
    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
    ("AutoVern7 (adaptive)", () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
-   ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt))
+   ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
+   ("GIEuler", () -> solve(prob_gi, GIEuler(); dt)),
+   ("GIMidpoint", () -> solve(prob_gi, GIMidpoint(); dt)),
+   ("GIRK4", () -> solve(prob_gi, GIRK4(); dt))
 ]
 
 n_solvers = length(solvers)
