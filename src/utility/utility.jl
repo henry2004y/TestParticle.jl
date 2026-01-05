@@ -211,7 +211,8 @@ function get_gyroradius(sol::AbstractODESolution, t)
 
    # Calculate gyroradius
    # r = V_perp / (q/m * B) = V_perp / (q2m * B)
-   #TODO: Check relativistic case
+   # For relativistic cases, `v` represents γv, so this effectively calculates
+   # r = γv_perp / (q/m * B) = γm * v_perp / (q * B), which is correct.
    return V_perp / abs(q2m * Bmag)
 end
 
