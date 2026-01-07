@@ -59,7 +59,7 @@ end
 B0_calc, B1_calc = get_B0_B1(theta, Bmagnitude)
 const B0_val = B0_calc * 1e-9 # T
 const B1_val = B1_calc * 1e-9 # T
-const Bx_val = 5e-9 # T
+const Bx_val = 5e-9; # T
 
 # ## Field Definitions
 # We define custom analytical functions for the electric and magnetic fields across the shock.
@@ -97,7 +97,7 @@ function get_E_shock(r)
    ez = -Vsw * (B1_val - B0_val)
 
    return SVector{3}(ex, ey, ez)
-end
+end;
 
 # ## Simulation Setup
 
@@ -179,7 +179,7 @@ function bin_results(sols, weights)
    return h_x_vx, h_x_vy, h_x_vz
 end
 
-h_x_vx, h_x_vy, h_x_vz = bin_results(sols, weights)
+h_x_vx, h_x_vy, h_x_vz = bin_results(sols, weights);
 
 # ### Phase Space Plots
 
