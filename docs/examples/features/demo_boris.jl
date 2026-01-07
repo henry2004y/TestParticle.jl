@@ -199,7 +199,7 @@ savestepinterval = 1
 trajectories = 2
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-sols = TestParticle.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
+sols = TP.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
 ax = Axis(f[1, 1],
