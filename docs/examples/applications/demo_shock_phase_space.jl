@@ -141,8 +141,10 @@ u0_dummy = [x0_start, y0_start, z0_start, 0.0, 0.0, 0.0]
 prob = ODEProblem(TestParticle.trace!, u0_dummy, (0.0, endtime), param)
 
 println("Starting simulation with $Numparticles particles...")
+
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-sol = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories = Numparticles)
+sol = solve(ensemble_prob, Vern7(), EnsembleThreads();
+   trajectories = Numparticles, saveat = dt_interp)
 println("Simulation complete.")
 
 # ## Analysis and Plotting
@@ -162,15 +164,12 @@ h_x_vx = Hist2D(; binedges = (x_edges, v_edges))
 h_x_vy = Hist2D(; binedges = (x_edges, v_edges))
 h_x_vz = Hist2D(; binedges = (x_edges, v_edges))
 
-t_series = 0:dt_interp:endtime
-
 ## Binning loop
 for i in 1:Numparticles
    s = sol[i]
    w = weights[i]
 
-   for t in t_series
-      state = s(t)
+   for state in s.u
       x = state[1]
       vx = state[4]
       vy = state[5]
