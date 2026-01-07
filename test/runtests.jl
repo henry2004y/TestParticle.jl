@@ -8,11 +8,11 @@ using Test
 """
 Initial state perturbation for EnsembleProblem.
 """
-prob_func(prob, i, repeat) = remake(prob, u0 = rand(StableRNG(i))*prob.u0)
+prob_func(prob, i, repeat) = remake(prob, u0 = rand(StableRNG(i)) * prob.u0)
 
 function prob_func_boris_immutable(prob, i, repeat)
    # Note: prob.u0[5] = i*1e5 is not thread-safe!
-   prob = @views remake(prob; u0 = [prob.u0[1:4]..., i*1e5, prob.u0[6]])
+   prob = @views remake(prob; u0 = [prob.u0[1:4]..., i * 1e5, prob.u0[6]])
 end
 
 """
@@ -79,7 +79,8 @@ end
          x = range(-10, 10, length = 4)
          y = range(-10, 10, length = 6)
          z = range(-10, 10, length = 8)
-         n = [Float32(i+j+k) for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
+         n = [Float32(i + j + k)
+              for i in eachindex(x), j in eachindex(y), k in eachindex(z)]
          nfunc11 = TP.getinterp_scalar(n, x, y, z)
          @test nfunc11(SA[9, 0, 0]) == 11.85
          nfunc12 = TP.getinterp_scalar(n, x, y, z, 1, 2)
@@ -108,7 +109,7 @@ end
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
          B[1, :, :, :] .= 1.0
          Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
-         @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         @test Bfunc(SA[1, 1, 1])≈[0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
          Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
@@ -124,7 +125,7 @@ end
          B = fill(0.0, 3, length(r), length(θ), length(ϕ))
          B[1, :, :, :] .= 1.0
          Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
-         @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol=1e-5
+         @test Bfunc(SA[1, 1, 1])≈[0.57735, 0.57735, 0.57735] atol=1e-5
          # Scalar field
          A = ones(length(r), length(θ), length(ϕ))
          Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
@@ -193,7 +194,7 @@ end
       sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
          trajectories = trajectories, save_idxs = [1])
       x = getindex.(sol.u[10].u, 1)
-      @test x[7] ≈ 0.08230289216655486 rtol=1e-6
+      @test x[7]≈0.08230289216655486 rtol=1e-6
 
       stateinit = SA[x0..., u0...]
       tspan = (0.0, 1.0)
@@ -236,19 +237,19 @@ end
       Rₑ = TP.Rₑ
 
       # initial velocity, [m/s]
-      v₀ = TP.sph2cart(energy2velocity(Ek; q, m), π/4, 0.0)
+      v₀ = TP.sph2cart(energy2velocity(Ek; q, m), π / 4, 0.0)
       # initial position, [m]
-      r₀ = TP.sph2cart(2.5*Rₑ, π/2, 0.0)
+      r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
       stateinit = [r₀..., v₀...]
       tspan = (0.0, 1.0)
 
       @test sum(TP.getB_CS_harris(
          [1.0, 0.0, 1.0], 1.0, 1.0, 2.0)) == 2.761594155955765
 
-      @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] ≈ 0.0 atol=1e-40
+      @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1]≈0.0 atol=1e-40
       @test TP.getB_tokamak_coil(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)[1] ≈
             -1.2473997957952395e-6
-      q_profile(nr) = nr^2 + 2*nr + 0.5
+      q_profile(nr) = nr^2 + 2 * nr + 0.5
       @test TP.getB_tokamak_profile(1.0, 1.0, 1.0, q_profile, 2.0, 1.0, 1.0)[1] ==
             -0.7666260799054282
 
@@ -258,7 +259,7 @@ end
 
       @test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
       @test get_gc_func(param) isa Function
-      @test sol_inplace[1, 300] ≈ 1.2563192407332942e7 rtol=1e-6
+      @test sol_inplace[1, 300]≈1.2563192407332942e7 rtol=1e-6
 
       # static array version
       stateinit_sa = SA[r₀..., v₀...]
@@ -266,7 +267,7 @@ end
       prob = ODEProblem(trace, stateinit_sa, tspan, param)
       sol_sa = solve(prob, Tsit5(); save_idxs = [1])
       # Compare results at the final time step
-      @test sol_sa(1.0)[1] ≈ sol_inplace(1.0)[1] rtol=1e-3
+      @test sol_sa(1.0)[1]≈sol_inplace(1.0)[1] rtol=1e-3
    end
 
    @testset "mixed type fields" begin
@@ -345,8 +346,8 @@ end
    @testset "relativistic particle" begin
       B_field(xu) = SA[0, 0, 0.01]
       function E_field(xu)
-         Ex = 0<=xu[1]<=100 ? -1e5 : 0.0
-         Ey = 0<=xu[2]<=100 ? -1e5 : 0.0
+         Ex = 0 <= xu[1] <= 100 ? -1e5 : 0.0
+         Ey = 0 <= xu[2] <= 100 ? -1e5 : 0.0
          return SA[Ex, Ey, 0.0]
       end
 
@@ -362,8 +363,8 @@ end
       # Test whether the kinetic energy [eV] of the electron
       # is equal to the electric potential energy gained.
       x = sol.u[end][1:3]
-      @test get_energy(sol[4:6, end]; m = mₑ, q = qₑ) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
-      @test get_energy(sol; m = mₑ, q = qₑ)[end] / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test get_energy(sol[4:6, end]; m = mₑ, q = qₑ) / (x[1] - x0[1] + x[2] - x0[2]) ≈ 1e5
+      @test get_energy(sol; m = mₑ, q = qₑ)[end] / (x[1] - x0[1] + x[2] - x0[2]) ≈ 1e5
       # Convert to velocity
       @test get_velocity(sol)[1, end] ≈ -1.6588694948554998e7
 
@@ -371,7 +372,7 @@ end
       sol = solve(prob, Vern6(); dt = 1e-10, adaptive = false)
 
       x = sol[1:3, end]
-      @test get_energy(sol[4:6, end]; m = mₑ, q = qₑ) / (x[1]-x0[1]+x[2]-x0[2]) ≈ 1e5
+      @test get_energy(sol[4:6, end]; m = mₑ, q = qₑ) / (x[1] - x0[1] + x[2] - x0[2]) ≈ 1e5
       # Tracing relativistic particle in dimensionless units
       param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
       tspan = (0.0, 1.0) # 1/2π period
@@ -401,7 +402,7 @@ end
       t₀ = 1 / Ω  # [s]
       U₀ = 1.0    # [m/s]
       l₀ = U₀ * t₀ # [m]
-      E₀ = U₀*B₀ # [V/m]
+      E₀ = U₀ * B₀ # [V/m]
 
       # 3D
       x = range(-10, 10, length = 15)
@@ -523,6 +524,10 @@ end
       prob = TraceProblem(stateinit, tspan, param)
       sol = TP.solve(prob; dt, savestepinterval = 100)[1]
       @test sol[1, end] ≈ -512.8807058314515
+
+      new_tspan = (0.0, 2e-8)
+      new_prob = remake(prob; tspan = new_tspan)
+      @test new_prob.tspan == new_tspan
    end
 
    @testset "MagnetoStatics" begin
@@ -557,7 +562,7 @@ end
       by = [bi[2] for bi in b]
       bz = [bi[3] for bi in b]
       X = get_gc(x, y, z, vx, vy, vz, bx, by, bz, param[1])
-      @test sum(X[end]) ≈ 1.5381703401189195 rtol=1e-6
+      @test sum(X[end])≈1.5381703401189195 rtol=1e-6
 
       stateinit_gc,
       param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
@@ -572,7 +577,7 @@ end
       prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
       sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
       @test sol_gc[1, end] ≈ 0.9896155284173717
-      @test sol_gc_analytic[1, end] ≈ 0.9906923500002904 rtol=1e-5
+      @test sol_gc_analytic[1, end]≈0.9906923500002904 rtol=1e-5
 
       stateinit_gc,
       param_gc = TP.prepare_gc(stateinit, uniform_E, curved_B,
