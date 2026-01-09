@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "0 8 * * 6"
 
 jobs:
   doc-preview-cleanup:
@@ -20,6 +20,7 @@ jobs:
         with:
           version: '1'
       - name: Check for stale PR previews
+        id: cleanup
         shell: julia {0}
         run: |
           using Pkg
@@ -29,6 +30,19 @@ jobs:
           using HTTP
           using JSON3
           using Dates
+
+          # Helper to set output
+          function set_output(key, value)
+              open(ENV["GITHUB_OUTPUT"], "a") do io
+                  println(io, "$key=$value")
+              end
+          end
+
+          if !isdir("previews")
+              @info "Previews directory does not exist. Nothing to clean."
+              set_output("has_deletions", "false")
+              exit(0)
+          end
 
           repo = ENV["GITHUB_REPOSITORY"]
           retention_days = 14
@@ -60,7 +74,8 @@ jobs:
 
           if isempty(stale_previews)
               @info "No stale previews"
-              exit(1)
+              set_output("has_deletions", "false")
+              exit(0)
           end
 
           for pr in stale_previews
@@ -68,7 +83,9 @@ jobs:
               @info "Removing $path"
               run(`git rm -rf $path`)
           end
+          set_output("has_deletions", "true")
       - name: Push changes
+        if: steps.cleanup.outputs.has_deletions == 'true'
         run: |
           git config user.name "Documenter.jl"
           git config user.email "documenter@juliadocs.github.io"
