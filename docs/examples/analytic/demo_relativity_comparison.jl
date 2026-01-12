@@ -39,7 +39,7 @@ param = prepare(getE1, getB1; species = Proton);
 # Initial velocities to test: 10%, 50%, and 90% of speed of light
 rats = [0.1, 0.5, 0.9]
 v_ratios = [rat * c for rat in rats]
-sybols = ["0.1c", "0.5c", "0.9c"]
+labels = ["0.1c", "0.5c", "0.9c"]
 colors = [:darkcyan, :orange, :red];
 
 # Time span: enough for a few gyro-periods.
@@ -67,15 +67,15 @@ for (i, v_mag) in enumerate(v_ratios)
 
    ## Relativistic initial state: [r, γv]
    γ = 1 / sqrt(1 - (v_mag / c)^2)
-   u0_rel = [r0..., (γ .* v0)...]
+   u0_rel = [r0..., (γ * v0)...]
    prob_rel = ODEProblem(trace_relativistic!, u0_rel, tspan, param)
    sol_rel = solve(prob_rel, Vern7())
 
    ## Plot
    lines!(ax1, sol_non; idxs = (1, 2), linestyle = :dash,
-      color = colors[i], label = "Non-rel $(sybols[i])")
+      color = colors[i], label = "Non-rel $(labels[i])")
    lines!(ax1, sol_rel; idxs = (1, 2), linestyle = :solid,
-      color = colors[i], label = "Rel $(sybols[i])")
+      color = colors[i], label = "Rel $(labels[i])")
 end
 
 axislegend(ax1; position = :rt, backgroundcolor = :transparent)
