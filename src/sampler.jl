@@ -15,13 +15,13 @@ Construct a `Maxwellian` distribution with bulk velocity `u0`, thermal pressure 
 number density `n` in SI units. The default particle is proton.
 """
 function Maxwellian(args...; kwargs...)
-   VelocityDistributionFunctions.Maxwellian(args...; kwargs...)
+    return VelocityDistributionFunctions.Maxwellian(args...; kwargs...)
 end
 
 function Maxwellian(u0, p, n; m = mᵢ)
-   vth = get_thermal_speed(p, n, m)
+    vth = get_thermal_speed(p, n, m)
 
-   VelocityDistributionFunctions.Maxwellian(vth; u0)
+    return VelocityDistributionFunctions.Maxwellian(vth; u0)
 end
 
 """
@@ -36,14 +36,14 @@ thermal pressure `ppar`, perpendicular thermal pressure `pperp`, and number dens
 SI units. The default particle is proton.
 """
 function BiMaxwellian(args...; kwargs...)
-   VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
+    return VelocityDistributionFunctions.BiMaxwellian(args...; kwargs...)
 end
 
 function BiMaxwellian(B, u0, ppar, pperp, n; m = mᵢ)
-   vpar = get_thermal_speed(ppar, n, m)
-   vperp = get_thermal_speed(pperp, n, m)
+    vpar = get_thermal_speed(ppar, n, m)
+    vperp = get_thermal_speed(pperp, n, m)
 
-   VelocityDistributionFunctions.BiMaxwellian(vperp, vpar, B; u0)
+    return VelocityDistributionFunctions.BiMaxwellian(vperp, vpar, B; u0)
 end
 
 """
@@ -59,9 +59,9 @@ Construct a `Kappa` distribution with bulk velocity `u0`, thermal pressure `p`, 
 Kappa(args...; kwargs...) = VelocityDistributionFunctions.Kappa(args...; kwargs...)
 
 function Kappa(u0, p, n, kappa; m = mᵢ)
-   vth = get_thermal_speed(p, n, m)
+    vth = get_thermal_speed(p, n, m)
 
-   VelocityDistributionFunctions.Kappa(vth, kappa; u0)
+    return VelocityDistributionFunctions.Kappa(vth, kappa; u0)
 end
 
 """
@@ -78,10 +78,10 @@ spectral index `kappa` in SI units. The default particle is proton.
 BiKappa(args...; kwargs...) = VelocityDistributionFunctions.BiKappa(args...; kwargs...)
 
 function BiKappa(B, u0, ppar, pperp, n, kappa; m = mᵢ)
-   vpar = get_thermal_speed(ppar, n, m)
-   vperp = get_thermal_speed(pperp, n, m)
+    vpar = get_thermal_speed(ppar, n, m)
+    vperp = get_thermal_speed(pperp, n, m)
 
-   VelocityDistributionFunctions.BiKappa(vperp, vpar, kappa, B; u0)
+    return VelocityDistributionFunctions.BiKappa(vperp, vpar, kappa, B; u0)
 end
 
 get_thermal_speed(p, n, m) = √(2 * p / (n * m))

@@ -41,17 +41,17 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 Set initial conditions.
 """
 function prob_func(prob, i, repeat)
-   ## initial velocity, [m/s]
-   ## 50% v=1.0, 50% v=2.0
-   if i % 2 == 1
-      v₀ = [1.0, 0.0, 0.0]
-   else
-      v₀ = [2.0, 0.0, 0.0]
-   end
-   ## initial position, [m]
-   r₀ = prob.u0[1:3]
+    ## initial velocity, [m/s]
+    ## 50% v=1.0, 50% v=2.0
+    if i % 2 == 1
+        v₀ = [1.0, 0.0, 0.0]
+    else
+        v₀ = [2.0, 0.0, 0.0]
+    end
+    ## initial position, [m]
+    r₀ = prob.u0[1:3]
 
-   prob = remake(prob; u0 = [r₀..., v₀...])
+    return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
@@ -61,15 +61,15 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 Estimate the particle flux through a plane x = x0.
 """
 function estimate_flux_plane(sols, x0)
-   count = sum(sols.u) do sol
-      ## Check if particle crossed x0
-      ## Assuming monotonic motion along x, check start and end
-      x_start = sol(sol.prob.tspan[1])[1]
-      x_end = sol(sol.prob.tspan[2])[1]
+    count = sum(sols.u) do sol
+        ## Check if particle crossed x0
+        ## Assuming monotonic motion along x, check start and end
+        x_start = sol(sol.prob.tspan[1])[1]
+        x_end = sol(sol.prob.tspan[2])[1]
 
-      (x_start < x0 <= x_end) || (x_start > x0 >= x_end)
-   end
-   return count * weight
+        (x_start < x0 <= x_end) || (x_start > x0 >= x_end)
+    end
+    return count * weight
 end
 
 plane_loc = 100.0 # [m]
@@ -82,12 +82,12 @@ println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 # The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source with unit speed. We estimate the particle flux through a sphere at radius r.
 
 function prob_func_iso(prob, i, repeat)
-   ## initial velocity, [m/s]
-   v₀ = sample_unit_sphere()
-   ## initial position, [m]
-   r₀ = prob.u0[1:3]
+    ## initial velocity, [m/s]
+    v₀ = sample_unit_sphere()
+    ## initial position, [m]
+    r₀ = prob.u0[1:3]
 
-   prob = remake(prob; u0 = [r₀..., v₀...])
+    return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
 ensemble_prob_iso = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
@@ -97,19 +97,19 @@ sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_
 Estimate the particle flux through a sphere with radius r = r0.
 """
 function estimate_flux_sphere(sols, r0)
-   count = sum(sols.u) do sol
-      u_start = sol(sol.prob.tspan[1])
-      r_start = hypot(u_start[1], u_start[2], u_start[3])
-      u_end = sol(sol.prob.tspan[2])
-      r_end = hypot(u_end[1], u_end[2], u_end[3])
+    count = sum(sols.u) do sol
+        u_start = sol(sol.prob.tspan[1])
+        r_start = hypot(u_start[1], u_start[2], u_start[3])
+        u_end = sol(sol.prob.tspan[2])
+        r_end = hypot(u_end[1], u_end[2], u_end[3])
 
-      (r_start < r0 <= r_end) || (r_start > r0 >= r_end)
-   end
-   return count * weight
+        (r_start < r0 <= r_end) || (r_start > r0 >= r_end)
+    end
+    return count * weight
 end
 
 r = 100.0 # [m]
-area = 4π*r^2 # [m²]
+area = 4π * r^2 # [m²]
 flux = estimate_flux_sphere(sols_iso, r)
 println("Example 2:")
 println("Particle flux through sphere r = $r [m]: ", flux, " /s")

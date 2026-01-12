@@ -17,8 +17,8 @@ const I_current = 1.0e6 # Current [A]
 const a_wire = 0.1 # Radius of the wire [m]
 
 function getB(xu)
-   x, y, z = xu[1], xu[2], xu[3]
-   getB_zpinch(x, y, z, I_current, a_wire)
+    x, y, z = xu[1], xu[2], xu[3]
+    return getB_zpinch(x, y, z, I_current, a_wire)
 end
 
 getE = TP.ZeroField()
@@ -34,16 +34,16 @@ const c = TP.c
 ## Position inside the wire to see internal behavior, or outside.
 ## Let's put one outside and one inside.
 r0_in = [0.05, 0.0, 0.0]
-v0_in = [0.0, 2e5, 1e5] # Spiral
+v0_in = [0.0, 2.0e5, 1.0e5] # Spiral
 
 r0_out = [0.2, 0.0, 0.0]
-v0_out = [0.0, 1e6, 1e5] # Drift
+v0_out = [0.0, 1.0e6, 1.0e5] # Drift
 
 stateinit_in = [r0_in..., v0_in...]
 stateinit_out = [r0_out..., v0_out...]
 
 param = prepare(getE, getB; species = Proton)
-tspan = (0.0, 1e-5)
+tspan = (0.0, 1.0e-5)
 
 prob_in = ODEProblem(trace!, stateinit_in, tspan, param)
 prob_out = ODEProblem(trace!, stateinit_out, tspan, param)
@@ -54,13 +54,14 @@ sol_out = solve(prob_out, Vern9());
 # Visualization
 
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Proton Trajectories in Z-pinch",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   limits = (-0.2, 0.2, -0.2, 0.2, -0.1, 0.6)
+ax = Axis3(
+    f[1, 1],
+    title = "Proton Trajectories in Z-pinch",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data,
+    limits = (-0.2, 0.2, -0.2, 0.2, -0.1, 0.6)
 )
 
 lines!(ax, sol_in, idxs = (1, 2, 3), label = "Inside (r < a)", color = :blue)
@@ -77,8 +78,10 @@ lines!(ax, x_wire, y_wire, fill(zw[1], length(θ)), color = (:gray, 0.5))
 lines!(ax, x_wire, y_wire, fill(zw[2], length(θ)), color = (:gray, 0.5))
 ## Vertical lines for wire
 for i in 1:10:100
-   lines!(ax, [x_wire[i], x_wire[i]], [y_wire[i], y_wire[i]],
-      [zw[1], zw[2]], color = (:gray, 0.3))
+    lines!(
+        ax, [x_wire[i], x_wire[i]], [y_wire[i], y_wire[i]],
+        [zw[1], zw[2]], color = (:gray, 0.3)
+    )
 end
 
 axislegend(ax, backgroundcolor = :transparent)

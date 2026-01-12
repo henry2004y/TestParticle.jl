@@ -6,7 +6,7 @@
 
 using HDF5, DiskArrays, StructArrays, StaticArrays
 import DiskArrays: eachchunk, haschunks, readblock!, writeblock!, GridChunks, Chunked,
-                   Unchunked
+    Unchunked
 using Interpolations
 
 # ## Implement HDF5DiskArray
@@ -14,8 +14,8 @@ using Interpolations
 # First, we define a wrapper around HDF5 Dataset that implements the `DiskArrays` interface.
 
 struct HDF5DiskArray{T, N, CS} <: AbstractDiskArray{T, N}
-   ds::HDF5.Dataset
-   cs::CS
+    ds::HDF5.Dataset
+    cs::CS
 end
 
 Base.size(x::HDF5DiskArray) = size(x.ds)
@@ -26,13 +26,13 @@ readblock!(x::HDF5DiskArray, aout, r::AbstractUnitRange...) = aout .= x.ds[r...]
 writeblock!(x::HDF5DiskArray, v, r::AbstractUnitRange...) = x.ds[r...] = v
 
 function HDF5DiskArray(ds::HDF5.Dataset)
-   chunks = try
-      HDF5.get_chunk(ds)
-   catch
-      nothing
-   end
-   cs = isnothing(chunks) ? nothing : GridChunks(size(ds), chunks)
-   HDF5DiskArray{eltype(ds), ndims(ds), typeof(cs)}(ds, cs)
+    chunks = try
+        HDF5.get_chunk(ds)
+    catch
+        nothing
+    end
+    cs = isnothing(chunks) ? nothing : GridChunks(size(ds), chunks)
+    return HDF5DiskArray{eltype(ds), ndims(ds), typeof(cs)}(ds, cs)
 end
 
 # ## Create Example Data
@@ -42,31 +42,31 @@ end
 filename = "example_field.h5"
 
 h5open(filename, "w") do fid
-   g = create_group(fid, "mygroup")
-   ## Create a dataset with chunking enabled
-   dset_a = create_dataset(g, "A", Float32, (10, 10, 10), chunk = (5, 5, 5))
-   values_a = [Float32(i + j + k) for i in 1:10, j in 1:10, k in 1:10]
-   write(dset_a, values_a)
-   println("Wrote dataset A")
+    g = create_group(fid, "mygroup")
+    ## Create a dataset with chunking enabled
+    dset_a = create_dataset(g, "A", Float32, (10, 10, 10), chunk = (5, 5, 5))
+    values_a = [Float32(i + j + k) for i in 1:10, j in 1:10, k in 1:10]
+    write(dset_a, values_a)
+    println("Wrote dataset A")
 
-   ## Adding Vector Field B (Bx, By, Bz)
+    ## Adding Vector Field B (Bx, By, Bz)
 
-   ## Generate data for the vector components
-   values_bx = [Float32(sin(i) * j) for i in 1:10, j in 1:10, k in 1:10]
-   values_by = [Float32(cos(j) * k) for i in 1:10, j in 1:10, k in 1:10]
-   values_bz = [Float32(i * k / 10) for i in 1:10, j in 1:10, k in 1:10]
+    ## Generate data for the vector components
+    values_bx = [Float32(sin(i) * j) for i in 1:10, j in 1:10, k in 1:10]
+    values_by = [Float32(cos(j) * k) for i in 1:10, j in 1:10, k in 1:10]
+    values_bz = [Float32(i * k / 10) for i in 1:10, j in 1:10, k in 1:10]
 
-   ## Create datasets with the same chunking properties
-   dset_bx = create_dataset(g, "Bx", Float32, (10, 10, 10), chunk = (5, 5, 5))
-   dset_by = create_dataset(g, "By", Float32, (10, 10, 10), chunk = (5, 5, 5))
-   dset_bz = create_dataset(g, "Bz", Float32, (10, 10, 10), chunk = (5, 5, 5))
+    ## Create datasets with the same chunking properties
+    dset_bx = create_dataset(g, "Bx", Float32, (10, 10, 10), chunk = (5, 5, 5))
+    dset_by = create_dataset(g, "By", Float32, (10, 10, 10), chunk = (5, 5, 5))
+    dset_bz = create_dataset(g, "Bz", Float32, (10, 10, 10), chunk = (5, 5, 5))
 
-   ## Write the data
-   write(dset_bx, values_bx)
-   write(dset_by, values_by)
-   write(dset_bz, values_bz)
+    ## Write the data
+    write(dset_bx, values_bx)
+    write(dset_by, values_by)
+    write(dset_bz, values_bz)
 
-   println("Wrote datasets Bx, By, Bz")
+    println("Wrote datasets Bx, By, Bz")
 end
 
 println("Successfully created $filename")
@@ -77,34 +77,36 @@ println("Successfully created $filename")
 
 ## Open the file and wrap the dataset
 h5open(filename, "r") do fid
-   da = HDF5DiskArray(fid["mygroup/A"]) |> DiskArrays.cache
+    da = HDF5DiskArray(fid["mygroup/A"]) |> DiskArrays.cache
 
-   itp = extrapolate(
-      interpolate(da, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
+    itp = extrapolate(
+        interpolate(da, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell())
+    )
 
-   ## Evaluate at a point
-   loc_int = (5.0, 5.0, 5.0)
-   println("Value at $loc_int: ", itp(loc_int...))
+    ## Evaluate at a point
+    loc_int = (5.0, 5.0, 5.0)
+    println("Value at $loc_int: ", itp(loc_int...))
 
-   loc_float = (5.5, 5.5, 5.5)
-   println("Value at $loc_float: ", itp(loc_float...))
+    loc_float = (5.5, 5.5, 5.5)
+    println("Value at $loc_float: ", itp(loc_float...))
 
-   loc_out = (-0.5, 1.0, 1.0)
-   val_periodic = itp(loc_out...)
-   println("Value at $loc_out (Periodic): ", val_periodic)
-   ## Check correctness of Periodic
-   ## Note that we assume cell center values. -0.5 wraps to 9.5 (since period is 10).
-   ## Value at 9.5, 1.0, 1.0. Data is i+j+k.
-   println("Expected Periodic: ", 9.5 + 1 + 1)
+    loc_out = (-0.5, 1.0, 1.0)
+    val_periodic = itp(loc_out...)
+    println("Value at $loc_out (Periodic): ", val_periodic)
+    ## Check correctness of Periodic
+    ## Note that we assume cell center values. -0.5 wraps to 9.5 (since period is 10).
+    ## Value at 9.5, 1.0, 1.0. Data is i+j+k.
+    println("Expected Periodic: ", 9.5 + 1 + 1)
 
-   ## vector field
-   Bx = HDF5DiskArray(fid["mygroup/Bx"]) |> DiskArrays.cache
-   By = HDF5DiskArray(fid["mygroup/By"]) |> DiskArrays.cache
-   Bz = HDF5DiskArray(fid["mygroup/Bz"]) |> DiskArrays.cache
-   B = StructArray{SVector{3, eltype(Bx)}}((Bx, By, Bz))
-   itp = extrapolate(
-      interpolate(B, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell()))
-   println("Value at $loc_out (Periodic): ", itp(loc_out...))
+    ## vector field
+    Bx = HDF5DiskArray(fid["mygroup/Bx"]) |> DiskArrays.cache
+    By = HDF5DiskArray(fid["mygroup/By"]) |> DiskArrays.cache
+    Bz = HDF5DiskArray(fid["mygroup/Bz"]) |> DiskArrays.cache
+    B = StructArray{SVector{3, eltype(Bx)}}((Bx, By, Bz))
+    itp = extrapolate(
+        interpolate(B, BSpline(Linear(Periodic(OnCell())))), Periodic(OnCell())
+    )
+    println("Value at $loc_out (Periodic): ", itp(loc_out...))
 end
 
 # ## Cleanup

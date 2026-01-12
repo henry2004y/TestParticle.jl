@@ -23,7 +23,7 @@ Random.seed!(1234);
 #
 # First, we set up a simple ensemble problem: protons in a uniform magnetic field.
 
-B_uniform(x) = SA[0, 0, 1e-8]
+B_uniform(x) = SA[0, 0, 1.0e-8]
 E_zero = TestParticle.ZeroField()
 
 ## Initialize a proton with some perpendicular velocity
@@ -60,7 +60,7 @@ filename_f32 = tempname() * ".jld2"
 ## Extract and convert data
 ## We structure the data as a vector of named tuples or a dictionary for saving
 output_data = map(sols) do s
-   (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
+    (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
 end
 
 ## Save to JLD2

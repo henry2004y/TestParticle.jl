@@ -52,7 +52,8 @@ f = Figure()
 ax = Axis(f[1, 1], title = "Maxwellian", xlabel = "vx", ylabel = "PDF")
 hist!(ax, vx, normalization = :pdf, bins = 50, label = "Sampled", color = (:blue, 0.5))
 lines!(
-   ax, v_grid, pdf_maxwellian.(v_grid, vth), label = "Theory", color = :red, linewidth = 2)
+    ax, v_grid, pdf_maxwellian.(v_grid, vth), label = "Theory", color = :red, linewidth = 2
+)
 axislegend(ax)
 
 f = DisplayAs.PNG(f) #hide
@@ -93,14 +94,18 @@ f = Figure(size = (800, 400))
 ax1 = Axis(f[1, 1], title = "Bi-Maxwellian Parallel (Z)", xlabel = "v_par", ylabel = "PDF")
 hist!(ax1, vpar, normalization = :pdf, bins = 50, label = "Sampled", color = (:blue, 0.5))
 lines!(
-   ax1, v_grid, pdf_bi_par.(v_grid, vthpar), label = "Theory", color = :red, linewidth = 2)
+    ax1, v_grid, pdf_bi_par.(v_grid, vthpar), label = "Theory", color = :red, linewidth = 2
+)
 
 ax2 = Axis(
-   f[1, 2], title = "Bi-Maxwellian Perpendicular", xlabel = "v_perp", ylabel = "PDF")
+    f[1, 2], title = "Bi-Maxwellian Perpendicular", xlabel = "v_perp", ylabel = "PDF"
+)
 hist!(ax2, vperp, normalization = :pdf, bins = 50, label = "Sampled", color = (:blue, 0.5))
 v_grid_perp = range(0, 4vthperp, length = 100)
-lines!(ax2, v_grid_perp, pdf_bi_perp.(v_grid_perp, vthperp),
-   label = "Theory", color = :red, linewidth = 2)
+lines!(
+    ax2, v_grid_perp, pdf_bi_perp.(v_grid_perp, vthperp),
+    label = "Theory", color = :red, linewidth = 2
+)
 axislegend(ax2)
 
 f = DisplayAs.PNG(f) #hide
@@ -127,17 +132,19 @@ vx = [v[1] for v in vs]
 ## f(v) = A * (1 + v^2 / ((kappa - 1.5) * vth^2))^(-kappa)
 ## Normalization constant A = Gamma(kappa) / (sqrt(pi) * vth * sqrt(kappa - 1.5) * Gamma(kappa - 0.5))
 function pdf_kappa(v, vth, k)
-   theta2 = (k - 1.5) * vth^2
-   A = gamma(k) / (sqrt(π * theta2) * gamma(k - 0.5))
-   return A * (1 + v^2 / theta2)^(-k)
+    theta2 = (k - 1.5) * vth^2
+    A = gamma(k) / (sqrt(π * theta2) * gamma(k - 0.5))
+    return A * (1 + v^2 / theta2)^(-k)
 end
 
 ## Visualization
 f = Figure()
 ax = Axis(f[1, 1], title = "Kappa (kappa=3)", xlabel = "vx", ylabel = "PDF", yscale = log10)
 hist!(ax, vx, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
-lines!(ax, v_grid, pdf_kappa.(v_grid, vdf_kappa.vth, kappa),
-   label = "Theory", color = :red, linewidth = 2)
+lines!(
+    ax, v_grid, pdf_kappa.(v_grid, vdf_kappa.vth, kappa),
+    label = "Theory", color = :red, linewidth = 2
+)
 axislegend(ax)
 
 f = DisplayAs.PNG(f) #hide
@@ -165,11 +172,15 @@ pdf_bikappa_par(v, vth, k) = pdf_kappa(v, vth, k)
 
 ## Visualization
 f = Figure()
-ax = Axis(f[1, 1], title = "Bi-Kappa Parallel (Z)",
-   xlabel = "v_par", ylabel = "PDF", yscale = log10)
+ax = Axis(
+    f[1, 1], title = "Bi-Kappa Parallel (Z)",
+    xlabel = "v_par", ylabel = "PDF", yscale = log10
+)
 hist!(ax, vpar, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
-lines!(ax, v_grid, pdf_bikappa_par.(v_grid, vdf_bikappa.vth_para, kappa),
-   label = "Theory", color = :red, linewidth = 2)
+lines!(
+    ax, v_grid, pdf_bikappa_par.(v_grid, vdf_bikappa.vth_para, kappa),
+    label = "Theory", color = :red, linewidth = 2
+)
 axislegend(ax)
 
 f = DisplayAs.PNG(f) #hide

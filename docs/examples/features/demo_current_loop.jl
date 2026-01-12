@@ -40,9 +40,9 @@ n2 = normalize([1.0, 0.0, 1.0])
 # `getB_loop` handles the Biot-Savart calculation (using elliptic integrals).
 
 function B_total(x)
-   B1 = getB_loop(x, R1, a1, I1, n1)
-   B2 = getB_loop(x, R2, a2, I2, n2)
-   return B1 + B2
+    B1 = getB_loop(x, R1, a1, I1, n1)
+    B2 = getB_loop(x, R2, a2, I2, n2)
+    return B1 + B2
 end
 
 ## Wrap in a TP.prepare-compatible format.
@@ -72,14 +72,15 @@ isoutofdomain(u, p, t) = norm(u) > 10.0
 callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for u0 in seeds
-   ## Trace in both directions
-   probs = trace_fieldline(u0, param, s_span; mode = :both)
+    ## Trace in both directions
+    probs = trace_fieldline(u0, param, s_span; mode = :both)
 
-   for prob in probs
-      sol = solve(
-         prob, Vern9(); callback, reltol = 1e-6, abstol = 1e-6, verbose = false)
-      push!(solutions, sol)
-   end
+    for prob in probs
+        sol = solve(
+            prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
+        )
+        push!(solutions, sol)
+    end
 end
 
 # ## Visualization
@@ -88,41 +89,45 @@ end
 
 ## Helper to visualize the loops
 function plot_loop!(ax, center, radius, normal, color)
-   ## Generate circle points in 2D
-   θ = range(0, 2π, length = 100)
-   x_circ = radius .* cos.(θ)
-   y_circ = radius .* sin.(θ)
-   z_circ = zeros(length(θ))
+    ## Generate circle points in 2D
+    θ = range(0, 2π, length = 100)
+    x_circ = radius .* cos.(θ)
+    y_circ = radius .* sin.(θ)
+    z_circ = zeros(length(θ))
 
-   points = [SVector(x, y, z) for (x, y, z) in zip(x_circ, y_circ, z_circ)]
+    points = [SVector(x, y, z) for (x, y, z) in zip(x_circ, y_circ, z_circ)]
 
-   ## Rotate to align with normal
-   z_axis = [0.0, 0.0, 1.0]
-   if !isapprox(normal, z_axis) && !isapprox(normal, -z_axis)
-      v = cross(z_axis, normal)
-      s = norm(v)
-      c = dot(z_axis, normal)
-      Vx = [0 -v[3] v[2]; v[3] 0 -v[1]; -v[2] v[1] 0]
-      R = I + Vx + Vx^2 * (1 - c) / s^2
-      points = [R * p for p in points]
-   elseif isapprox(normal, -z_axis)
-      points = [SVector(p[1], -p[2], -p[3]) for p in points] # simple flip
-   end
+    ## Rotate to align with normal
+    z_axis = [0.0, 0.0, 1.0]
+    if !isapprox(normal, z_axis) && !isapprox(normal, -z_axis)
+        v = cross(z_axis, normal)
+        s = norm(v)
+        c = dot(z_axis, normal)
+        Vx = [0 -v[3] v[2]; v[3] 0 -v[1]; -v[2] v[1] 0]
+        R = I + Vx + Vx^2 * (1 - c) / s^2
+        points = [R * p for p in points]
+    elseif isapprox(normal, -z_axis)
+        points = [SVector(p[1], -p[2], -p[3]) for p in points] # simple flip
+    end
 
-   ## Translate to center
-   points = [p + center for p in points]
+    ## Translate to center
+    points = [p + center for p in points]
 
-   lines!(ax, [p[1] for p in points], [p[2] for p in points],
-      [p[3] for p in points], color = color, linewidth = 3)
+    return lines!(
+        ax, [p[1] for p in points], [p[2] for p in points],
+        [p[3] for p in points], color = color, linewidth = 3
+    )
 end
 
 f = Figure(size = (900, 600), fontsize = 30)
-ax = Axis3(f[1, 1], aspect = :data, azimuth = 1.6pi,
-   xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]", title = "Magnetic Field of Current Loops")
+ax = Axis3(
+    f[1, 1], aspect = :data, azimuth = 1.6pi,
+    xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]", title = "Magnetic Field of Current Loops"
+)
 
 ## Plot field lines
 for sol in solutions
-   lines!(ax, sol; idxs = (1, 2, 3), linewidth = 1.5, alpha = 0.8)
+    lines!(ax, sol; idxs = (1, 2, 3), linewidth = 1.5, alpha = 0.8)
 end
 
 plot_loop!(ax, R1, a1, n1, :red)

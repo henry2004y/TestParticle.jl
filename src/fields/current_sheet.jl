@@ -7,17 +7,17 @@ Return the magnetic field at location `r` near a current sheet with magnetic str
 and sheet length `L`. The current sheet is assumed to lie in the z = 0 plane.
 """
 function getB_CS_harris(r, B₀, L, Bn = 0.0)
-   z = r[3]
-   SA[B₀ * tanh(z / L), 0.0, Bn]
+    z = r[3]
+    return SA[B₀ * tanh(z / L), 0.0, Bn]
 end
 
 struct HarrisCurrentSheet{T} <: AbstractField{false}
-   B₀::T
-   L::T
-   Bn::T
+    B₀::T
+    L::T
+    Bn::T
 end
 
 function (H::HarrisCurrentSheet)(xu)
-   z = xu[3]
-   SA[H.B₀ * tanh(z / H.L), 0.0, H.Bn]
+    z = xu[3]
+    return SA[H.B₀ * tanh(z / H.L), 0.0, H.Bn]
 end

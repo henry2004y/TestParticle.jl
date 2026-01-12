@@ -6,7 +6,7 @@ Analytic electric field function for testing.
 getE_dipole(xu) = SA[0.0, 0.0, 0.0]
 
 @kwdef struct DipoleField{M} <: AbstractField{false}
-   BMoment::M = BMoment_Earth
+    BMoment::M = BMoment_Earth
 end
 
 (M::DipoleField)(xu) = dipole(xu[1:3], M.BMoment)
@@ -15,21 +15,23 @@ end
 Analytic magnetic field function for testing. Return in SI unit.
 """
 function getB_dipole(xu)
-   BMoment = BMoment_Earth
-   dipole(xu[1:3], BMoment)
+    BMoment = BMoment_Earth
+    return dipole(xu[1:3], BMoment)
 end
 
 """
 Calculates the magnetic field from a dipole with magnetic moment `M` at `r`.
 """
 function dipole(rIn, M)
-   x, y, z = rIn
-   r = sqrt(x^2 + y^2 + z^2)
-   Coef = μ₀ / (4 * π * r^5)
+    x, y, z = rIn
+    r = sqrt(x^2 + y^2 + z^2)
+    Coef = μ₀ / (4 * π * r^5)
 
-   B = SA[3 * x^2-r^2 3*x*y 3*x*z;
-          3*y*x 3 * y^2-r^2 3*y*z;
-          3*z*x 3*z*y 3 * z^2-r^2] * M * Coef
+    return B = SA[
+        3 * x^2 - r^2 3 * x * y 3 * x * z;
+        3 * y * x 3 * y^2 - r^2 3 * y * z;
+        3 * z * x 3 * z * y 3 * z^2 - r^2
+    ] * M * Coef
 end
 
 """
@@ -41,9 +43,9 @@ where r is the radial distance (in planetary radii) to a point on the line,
 λ is its co-latitude, and L is the L-shell of interest.
 """
 function dipole_fieldline(ϕ, L = 2.5, nP::Int = 100)
-   xyz = [sph2cart(L * sin(θ)^2, θ, ϕ) for θ in range(0, stop = π, length = nP)]
-   x = getindex.(xyz, 1)
-   y = getindex.(xyz, 2)
-   z = getindex.(xyz, 3)
-   (x, y, z)
+    xyz = [sph2cart(L * sin(θ)^2, θ, ϕ) for θ in range(0, stop = π, length = nP)]
+    x = getindex.(xyz, 1)
+    y = getindex.(xyz, 2)
+    z = getindex.(xyz, 3)
+    return (x, y, z)
 end

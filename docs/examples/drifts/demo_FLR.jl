@@ -11,13 +11,13 @@ import Tensors: Vec as Vec3
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0, 0, 1e-8]
+uniform_B(x) = SA[0, 0, 1.0e-8]
 
-nonuniform_E(x) = SA[1e-9 * cos(0.3 * x[1]), 0, 0]
+nonuniform_E(x) = SA[1.0e-9 * cos(0.3 * x[1]), 0, 0]
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
-   [x0..., v0...]
+    [x0..., v0...]
 end
 ## Time span
 tspan = (0, 20)
@@ -47,33 +47,41 @@ sol_flr = solve(prob_flr, Vern7(); save_idxs = [1, 2, 3])
 
 ## numeric result and analytic result
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Finite Larmor Radius Effect",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   azimuth = 0.3π
+ax = Axis3(
+    f[1, 1],
+    title = "Finite Larmor Radius Effect",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data,
+    azimuth = 0.3π
 )
 
 ## Plot Proton Guiding Center
 gc_plot_p(x, y, z, vx, vy, vz) = (gc_p(SA[x, y, z, vx, vy, vz])...,)
-lines!(ax, sol_p, idxs = (gc_plot_p, 1, 2, 3, 4, 5, 6),
-   label = "Proton GC", color = Makie.wong_colors()[1])
+lines!(
+    ax, sol_p, idxs = (gc_plot_p, 1, 2, 3, 4, 5, 6),
+    label = "Proton GC", color = Makie.wong_colors()[1]
+)
 
 ## Plot Electron Guiding Center
 gc_e = param_e |> get_gc_func
 gc_plot_e(x, y, z, vx, vy, vz) = (gc_e(SA[x, y, z, vx, vy, vz])...,)
-lines!(ax, sol_e, idxs = (gc_plot_e, 1, 2, 3, 4, 5, 6),
-   label = "Electron GC", color = Makie.wong_colors()[2])
+lines!(
+    ax, sol_e, idxs = (gc_plot_e, 1, 2, 3, 4, 5, 6),
+    label = "Electron GC", color = Makie.wong_colors()[2]
+)
 
 ## Plot Analytic ExB Drift
 lines!(
-   ax, sol_exb, idxs = (1, 2, 3), label = "Analytic ExB", linestyle = :dash, color = :black)
+    ax, sol_exb, idxs = (1, 2, 3), label = "Analytic ExB", linestyle = :dash, color = :black
+)
 
 ## Plot Analytic FLR Drift
-lines!(ax, sol_flr, idxs = (1, 2, 3), label = "Analytic FLR",
-   linestyle = :dash, color = Makie.wong_colors()[3])
+lines!(
+    ax, sol_flr, idxs = (1, 2, 3), label = "Analytic FLR",
+    linestyle = :dash, color = Makie.wong_colors()[3]
+)
 
 axislegend(ax)
 

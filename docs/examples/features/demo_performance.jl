@@ -25,7 +25,7 @@ uniform_B(x) = SA[0.0, 0.0, Bmag]
 zero_E = TP.ZeroField()
 
 x0 = SA[0.0, 0.0, 0.0]
-v0 = SA[0.0, 1e5, 0.0]
+v0 = SA[0.0, 1.0e5, 0.0]
 stateinit = SA[x0..., v0...]
 ## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
@@ -67,24 +67,24 @@ prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 Helper functions to extract the median execution time and memory allocation.
 """
 function get_median_time_memory(b)
-   mb = median(b)
-   return mb.time, mb.bytes
+    mb = median(b)
+    return mb.time, mb.bytes
 end
 
 solvers = [
-   ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
-   ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
-   ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
-   ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
-   ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
-   ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
-   ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
-   ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
-   ("AutoVern7 (adaptive)", () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
-   ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
-   ("GIEuler", () -> solve(prob_gi, GIEuler(); dt)),
-   ("GIMidpoint", () -> solve(prob_gi, GIMidpoint(); dt)),
-   ("GIRK4", () -> solve(prob_gi, GIRK4(); dt))
+    ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
+    ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
+    ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
+    ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
+    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
+    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
+    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
+    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
+    ("AutoVern7 (adaptive)", () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
+    ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
+    ("GIEuler", () -> solve(prob_gi, GIEuler(); dt)),
+    ("GIMidpoint", () -> solve(prob_gi, GIMidpoint(); dt)),
+    ("GIRK4", () -> solve(prob_gi, GIRK4(); dt)),
 ]
 
 n_solvers = length(solvers)
@@ -93,12 +93,12 @@ results_mem = Vector{Float64}(undef, n_solvers)
 names = Vector{String}(undef, n_solvers)
 
 for (i, (name, func)) in enumerate(solvers)
-   println("Benchmarking $name...")
-   b = @be $func() seconds=1
-   mt, mm = get_median_time_memory(b)
-   results_time[i] = mt
-   results_mem[i] = mm
-   names[i] = name
+    println("Benchmarking $name...")
+    b = @be $func() seconds = 1
+    mt, mm = get_median_time_memory(b)
+    results_time[i] = mt
+    results_mem[i] = mm
+    names[i] = name
 end
 
 # Normalize results
@@ -112,56 +112,65 @@ results_mem_norm = results_mem ./ min_mem;
 
 f = Figure(size = (1200, 1000), fontsize = 24)
 
-ax = Axis(f[1, 1],
-   title = "Solver Efficiency (Time vs. Memory)",
-   xlabel = "Relative Time (1.0 = Fastest)",
-   ylabel = "Relative Memory (1.0 = Lowest)",
-   xgridstyle = :dash,
-   ygridstyle = :dash,
-   xscale = log10,
-   yscale = log10,
-   xminorticksvisible = true,
-   yminorticksvisible = true,
-   xminorticks = IntervalsBetween(5),
-   yminorticks = IntervalsBetween(5)
+ax = Axis(
+    f[1, 1],
+    title = "Solver Efficiency (Time vs. Memory)",
+    xlabel = "Relative Time (1.0 = Fastest)",
+    ylabel = "Relative Memory (1.0 = Lowest)",
+    xgridstyle = :dash,
+    ygridstyle = :dash,
+    xscale = log10,
+    yscale = log10,
+    xminorticksvisible = true,
+    yminorticksvisible = true,
+    xminorticks = IntervalsBetween(5),
+    yminorticks = IntervalsBetween(5)
 )
 
-sc = scatter!(ax, results_time_norm, results_mem_norm,
-   color = 1:n_solvers,
-   colormap = :tab10,
-   markersize = 30,
-   strokewidth = 1,
-   strokecolor = :black
+sc = scatter!(
+    ax, results_time_norm, results_mem_norm,
+    color = 1:n_solvers,
+    colormap = :tab10,
+    markersize = 30,
+    strokewidth = 1,
+    strokecolor = :black
 )
 
 ## Add annotations with random offsets to fix overlaps
 rng = Random.MersenneTwister(42)
 offsets = [(10, rand(rng, -30:30)) for _ in 1:n_solvers]
 
-text!(ax, results_time_norm, results_mem_norm,
-   text = names,
-   align = (:left, :center),
-   offset = offsets,
-   fontsize = 24
+text!(
+    ax, results_time_norm, results_mem_norm,
+    text = names,
+    align = (:left, :center),
+    offset = offsets,
+    fontsize = 24
 )
 
 ## Highlight the "Utopia Point" (Theoretical Best)
-scatter!(ax, [1.0], [1.0],
-   marker = :star5,
-   markersize = 20,
-   color = :red,
-   label = "Ideal Limit"
+scatter!(
+    ax, [1.0], [1.0],
+    marker = :star5,
+    markersize = 20,
+    color = :red,
+    label = "Ideal Limit"
 )
-text!(ax, 1.0, 1.0, text = "Utopia Point", align = (:right, :top),
-   offset = (55, -5), color = :red, fontsize = 15)
+text!(
+    ax, 1.0, 1.0, text = "Utopia Point", align = (:right, :top),
+    offset = (55, -5), color = :red, fontsize = 15
+)
 
 ## Add "Iso-Efficiency" curves (Optional visual aid)
 ## Curves where Time * Memory = Constant (Cost invariant)
 x_range = range(
-   minimum(results_time_norm) * 0.8, stop = maximum(results_time_norm) * 1.1, length = 100)
+    minimum(results_time_norm) * 0.8, stop = maximum(results_time_norm) * 1.1, length = 100
+)
 lines!(ax, x_range, 5.0 ./ x_range, color = (:gray, 1.0), linestyle = :dot)
-text!(ax, maximum(x_range), 5.0 / maximum(x_range),
-   text = "Iso-cost", fontsize = 20, color = :black)
+text!(
+    ax, maximum(x_range), 5.0 / maximum(x_range),
+    text = "Iso-cost", fontsize = 20, color = :black
+)
 
 xlims!(ax, minimum(results_time_norm) * 0.5, maximum(results_time_norm) * 1.5)
 ylims!(ax, minimum(results_mem_norm) * 0.5, maximum(results_mem_norm) * 1.5)

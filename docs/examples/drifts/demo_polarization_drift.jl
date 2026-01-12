@@ -8,16 +8,16 @@ using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0, 0, 1e-8]
+uniform_B(x) = SA[0, 0, 1.0e-8]
 
 function time_varying_E(x, t)
-   ## return SA[0, 1e-9*cos(0.1*t), 0]
-   return SA[0, 1e-9 * 0.1 * t, 0]
+    ## return SA[0, 1e-9*cos(0.1*t), 0]
+    return SA[0, 1.0e-9 * 0.1 * t, 0]
 end
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
-   [x0..., v0...]
+    [x0..., v0...]
 end
 ## Time span
 tspan = (0, 100)
@@ -30,14 +30,15 @@ v_perp(xu) = sqrt(xu[4]^2 + xu[5]^2)
 
 ## Visualization
 f = Figure(size = (800, 600), fontsize = 18)
-ax1 = Axis3(f[1:3, 1],
-   title = "Polarization Drift",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   azimuth = 0.9π,
-   elevation = 0.1π
+ax1 = Axis3(
+    f[1:3, 1],
+    title = "Polarization Drift",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data,
+    azimuth = 0.9π,
+    elevation = 0.1π
 )
 ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
 ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = "y [m]")

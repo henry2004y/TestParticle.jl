@@ -11,7 +11,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 ## Constants
-const G = 6.67430e-11 # [m^3 kg^-1 s^-2]
+const G = 6.6743e-11 # [m^3 kg^-1 s^-2]
 const M = 5.972e24    # [kg]
 const Rₑ = TestParticle.Rₑ
 
@@ -21,9 +21,9 @@ E(x) = SA[0.0, 0.0, 0.0]
 
 ## Earth's gravity
 function F(x)
-   r = SA[x[1], x[2], x[3]]
-   rmag = @views norm(r)
-   return -G * M * TestParticle.mᵢ / rmag^3 * r
+    r = SA[x[1], x[2], x[3]]
+    rmag = @views norm(r)
+    return -G * M * TestParticle.mᵢ / rmag^3 * r
 end
 
 ## Initial static particle
@@ -31,7 +31,7 @@ end
 r0 = 2Rₑ
 v0 = sqrt(G * M / r0)
 stateinit = let x0 = [r0, 0.0, 0.0], v0 = [0.0, v0, 0.0]
-   [x0..., v0...]
+    [x0..., v0...]
 end
 
 ## Time span
@@ -47,10 +47,11 @@ sol = solve(prob, Vern9())
 
 ## Visualization
 f = Figure(size = (800, 800))
-ax = Axis3(f[1, 1],
-   title = "Proton in Earth Gravity (No EM field)",
-   xlabel = "X [Re]", ylabel = "Y [Re]", zlabel = "Z [Re]",
-   aspect = :data
+ax = Axis3(
+    f[1, 1],
+    title = "Proton in Earth Gravity (No EM field)",
+    xlabel = "X [Re]", ylabel = "Y [Re]", zlabel = "Z [Re]",
+    aspect = :data
 )
 
 ## Draw Earth
@@ -61,12 +62,16 @@ x_sphere = Rₑ .* (cos.(u) * sin.(v)')
 y_sphere = Rₑ .* (sin.(u) * sin.(v)')
 z_sphere = Rₑ .* (ones(length(u)) * cos.(v)')
 
-surface!(ax, x_sphere ./ Rₑ, y_sphere ./ Rₑ, z_sphere ./ Rₑ,
-   colormap = (:turbo, 0.5), shading = true, transparency = true)
+surface!(
+    ax, x_sphere ./ Rₑ, y_sphere ./ Rₑ, z_sphere ./ Rₑ,
+    colormap = (:turbo, 0.5), shading = true, transparency = true
+)
 
 ## Plot trajectory
-lines!(ax, sol[1, :] ./ Rₑ, sol[2, :] ./ Rₑ, sol[3, :] ./ Rₑ,
-   color = :orangered, linewidth = 2, label = "Trajectory")
+lines!(
+    ax, sol[1, :] ./ Rₑ, sol[2, :] ./ Rₑ, sol[3, :] ./ Rₑ,
+    color = :orangered, linewidth = 2, label = "Trajectory"
+)
 
 f = DisplayAs.PNG(f) #hide
 

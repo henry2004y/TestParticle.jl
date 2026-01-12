@@ -24,19 +24,19 @@ const N = 45 # number of windings
 const distance = 10.0 # distance between solenoids [m]
 const a = 4.0 # radius of each coil [m]
 
-getB(xu) = SVector{3}(TP.getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
+getB(xu) = SVector{3}(TP.getB_mirror(xu[1], xu[2], xu[3], distance, a, I * N))
 
 getE(xu) = SA[0.0, 0.0, 0.0]
 
 ## velocity in the direction perpendicular to the magnetic field
 function v_perp(t, x, y, z, vx, vy, vz)
-   xu = SA[x, y, z, vx, vy, vz]
-   vu = @view xu[4:6]
-   B = getB(xu)
-   b = normalize(B)
-   v_pa = (vu ⋅ b) .* b
+    xu = SA[x, y, z, vx, vy, vz]
+    vu = @view xu[4:6]
+    B = getB(xu)
+    b = normalize(B)
+    v_pa = (vu ⋅ b) .* b
 
-   (t, norm(vu - v_pa))
+    return (t, norm(vu - v_pa))
 end
 
 ## magnetic field
@@ -44,9 +44,9 @@ absB(t, x, y, z) = (t, sqrt(sum(x -> x^2, getB(SA[x, y, z]))))
 
 ## μ, magnetic moment
 function mu(t, x, y, z, vx, vy, vz)
-   xu = SA[x, y, z, vx, vy, vz]
+    xu = SA[x, y, z, vx, vy, vz]
 
-   (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / sqrt(sum(x -> x^2, getB(xu))))
+    return (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / sqrt(sum(x -> x^2, getB(xu))))
 end
 
 Et(xu) = sqrt(xu[4]^2 + xu[5]^2 + xu[6]^2)
@@ -65,24 +65,25 @@ r₀ = [0.8, 0.8, 0.0]  # confined
 stateinit = [r₀..., v₀...]
 
 param = prepare(getE, getB; species = Electron)
-tspan = (0.0, 1e-4)
+tspan = (0.0, 1.0e-4)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Default Tsit5() and many solvers does not work in this case!
 ## AB4() has better performance in maintaining magnetic moment conservation compared to AB3().
-sol_non = solve(prob, AB4(); dt = 3e-9)
+sol_non = solve(prob, AB4(); dt = 3.0e-9)
 
 ### Visualization
 f = Figure(size = (900, 600), fontsize = 18)
-ax1 = Axis3(f[1:3, 1],
-   title = "Magnetic Mirror",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   azimuth = 0.9π,
-   elevation = 0.1π
+ax1 = Axis3(
+    f[1:3, 1],
+    title = "Magnetic Mirror",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data,
+    azimuth = 0.9π,
+    elevation = 0.1π
 )
 ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = "B [T]")
 ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
@@ -97,9 +98,9 @@ lines!(ax4, sol_non, idxs = (mu, 0, 1, 2, 3, 4, 5, 6))
 θ = range(0, 2π, length = 100)
 x = a .* cos.(θ)
 y = a .* sin.(θ)
-z = fill(distance/2, size(x))
+z = fill(distance / 2, size(x))
 lines!(ax1, x, y, z, color = :red)
-z = fill(-distance/2, size(x))
+z = fill(-distance / 2, size(x))
 lines!(ax1, x, y, z, color = :red)
 
 ## # The distribution of magnetic field along the z-axis or x-axis
@@ -134,24 +135,27 @@ n_particles = 100
 pitch_angles = range(0, π, length = n_particles)
 v_mag = norm(v₀)
 ensemble_prob = EnsembleProblem(
-   prob, prob_func = (prob, i, repeat) -> begin
-      α = pitch_angles[i]
-      ## Velocity components: v_z = v cos(α), v_perp = v sin(α)
-      ## We put v_perp in x-direction for simplicity
-      vz = v_mag * cos(α)
-      vx = v_mag * sin(α)
-      vy = 0.0
-      remake(prob, u0 = [r₀..., vx, vy, vz])
-   end)
+    prob, prob_func = (prob, i, repeat) -> begin
+        α = pitch_angles[i]
+        ## Velocity components: v_z = v cos(α), v_perp = v sin(α)
+        ## We put v_perp in x-direction for simplicity
+        vz = v_mag * cos(α)
+        vx = v_mag * sin(α)
+        vy = 0.0
+        remake(prob, u0 = [r₀..., vx, vy, vz])
+    end
+)
 
 ## Trace particles
 ## We use a simpler solver for speed and checking escape condition
 ## We use the `isoutofdomain` check to stop tracing those particles that go out of the mirror structure.
-isoutofdomain(u, p, t) = abs(u[3]) > distance/2
+isoutofdomain(u, p, t) = abs(u[3]) > distance / 2
 callback = DiscreteCallback(isoutofdomain, terminate!)
 
-sim = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particles,
-   dt = 3e-9, callback = callback, verbose = false);
+sim = solve(
+    ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particles,
+    dt = 3.0e-9, callback = callback, verbose = false
+);
 
 # Check which particles are trapped
 # A particle is considered trapped if it remains within the mirror (abs(z) < distance/2)
@@ -162,16 +166,17 @@ sim = solve(ensemble_prob, Vern9(), EnsembleThreads(), trajectories = n_particle
 
 ## A robust check here is: if t < tspan[2], it was stopped early (or failed).
 is_trapped = map(sim) do sol
-   sol.t[end] ≈ tspan[2]
+    sol.t[end] ≈ tspan[2]
 end
 
 ## Visualization of Loss Cone
 f2 = Figure(size = (800, 600), fontsize = 18)
-ax = Axis(f2[1, 1],
-   title = "Loss Cone Distribution",
-   xlabel = L"v_\perp\,[\mathrm{m/s}]",
-   ylabel = L"v_\parallel\,[\mathrm{m/s}]",
-   aspect = 1
+ax = Axis(
+    f2[1, 1],
+    title = "Loss Cone Distribution",
+    xlabel = L"v_\perp\,[\mathrm{m/s}]",
+    ylabel = L"v_\parallel\,[\mathrm{m/s}]",
+    aspect = 1
 )
 
 ## Extract initial velocities
@@ -180,18 +185,24 @@ v_perp_init = v_mag .* sin.(pitch_angles)
 
 ## Plot trapped and lost particles
 scatter!(
-   ax, v_perp_init[is_trapped], v_par_init[is_trapped], label = "Trapped", color = :blue)
+    ax, v_perp_init[is_trapped], v_par_init[is_trapped], label = "Trapped", color = :blue
+)
 scatter!(
-   ax, v_perp_init[.!is_trapped], v_par_init[.!is_trapped], label = "Lost", color = :red)
+    ax, v_perp_init[.!is_trapped], v_par_init[.!is_trapped], label = "Lost", color = :red
+)
 
 ## Draw theoretical loss cone
 ## v_perp = v_par * tan(alpha) -> v_par = v_perp / tan(alpha)
 ## Boundary lines: alpha = loss_cone_angle and alpha = pi - loss_cone_angle
 max_v = v_mag * 1.1
-lines!(ax, [0, max_v * sin(loss_cone_angle)], [0, max_v * cos(loss_cone_angle)],
-   color = :black, linestyle = :dash, label = "Theoretical Loss Cone")
-lines!(ax, [0, max_v * sin(loss_cone_angle)],
-   [0, -max_v * cos(loss_cone_angle)], color = :black, linestyle = :dash)
+lines!(
+    ax, [0, max_v * sin(loss_cone_angle)], [0, max_v * cos(loss_cone_angle)],
+    color = :black, linestyle = :dash, label = "Theoretical Loss Cone"
+)
+lines!(
+    ax, [0, max_v * sin(loss_cone_angle)],
+    [0, -max_v * cos(loss_cone_angle)], color = :black, linestyle = :dash
+)
 
 axislegend(ax, position = :rt, backgroundcolor = :transparent)
 f2 = DisplayAs.PNG(f2) #hide

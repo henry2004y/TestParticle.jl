@@ -12,11 +12,11 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function curved_B(x)
-   ## satisify ∇⋅B=0
-   ## B_θ = 1/r => ∂B_θ/∂θ = 0
-   θ = atan(x[3] / (x[1] + 3))
-   r = sqrt((x[1] + 3)^2 + x[3]^2)
-   return SA[-1e-7 * sin(θ) / r, 0, 1e-7 * cos(θ) / r]
+    ## satisify ∇⋅B=0
+    ## B_θ = 1/r => ∂B_θ/∂θ = 0
+    θ = atan(x[3] / (x[1] + 3))
+    r = sqrt((x[1] + 3)^2 + x[3]^2)
+    return SA[-1.0e-7 * sin(θ) / r, 0, 1.0e-7 * cos(θ) / r]
 end
 
 zero_E(x) = SA[0, 0, 0]
@@ -25,7 +25,7 @@ abs_B(x) = norm(curved_B(x))  # |B|
 
 ## Initial conditions
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
-   [x0..., v0...]
+    [x0..., v0...]
 end
 ## Time span
 tspan = (0, 40)
@@ -41,13 +41,14 @@ sol_gc = solve(prob_gc, Vern7(); save_idxs = [1, 2, 3])
 
 ## Numeric and analytic results
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Curvature Drift",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data,
-   azimuth = 0.3π
+ax = Axis3(
+    f[1, 1],
+    title = "Curvature Drift",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data,
+    azimuth = 0.3π
 )
 
 gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
