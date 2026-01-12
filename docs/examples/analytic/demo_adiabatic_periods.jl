@@ -35,7 +35,7 @@ Ek_MeV = 10.0       # Kinetic energy in MeV
 B₀ = 3.12e-5        # Dipole moment magnitude [T]
 
 ## Constants
-Ek = Ek_MeV * 1e6 * 1.602e-19 # Energy in Joules
+Ek = Ek_MeV * 1.0e6 * 1.602e-19 # Energy in Joules
 γ = 1 + Ek / (mᵢ * c^2)
 v = c * sqrt(1 - 1 / γ^2)       # Velocity [m/s]
 B_eq = B₀ / L^3               # Equatorial field [T]
@@ -46,7 +46,7 @@ B_eq = B₀ / L^3               # Equatorial field [T]
 τ_g_theo = 2π / Ω_eq
 
 ## 2. Bounce period
-τ_b_theo = 4 * L * Rₑ / v * (1.30 - 0.56 * sin(α_eq))
+τ_b_theo = 4 * L * Rₑ / v * (1.3 - 0.56 * sin(α_eq))
 
 ## 3. Drift period
 ## Relativistic correction factor for drift?
@@ -55,9 +55,9 @@ B_eq = B₀ / L^3               # Equatorial field [T]
 ## Let's use the standard approximate formula.
 τ_d_theo = 2π * qᵢ * B₀ * Rₑ^2 / (3 * mᵢ * γ * v^2 * L * (0.35 + 0.15 * sin(α_eq)))
 
-println("Theoretical Gyro Period (Equator): $(round(τ_g_theo, digits=4)) s")
-println("Theoretical Bounce Period:         $(round(τ_b_theo, digits=4)) s")
-println("Theoretical Drift Period:          $(round(τ_d_theo, digits=4)) s")
+println("Theoretical Gyro Period (Equator): $(round(τ_g_theo, digits = 4)) s")
+println("Theoretical Bounce Period:         $(round(τ_b_theo, digits = 4)) s")
+println("Theoretical Drift Period:          $(round(τ_d_theo, digits = 4)) s")
 
 # ## Numerical Simulation
 #
@@ -76,7 +76,7 @@ param = prepare(DipoleField())
 tspan = (0.0, 1.2 * τ_d_theo) # Run for slightly more than one drift period
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9(); reltol = 1e-6, maxiters = 1e8);
+sol = solve(prob, Vern9(); reltol = 1.0e-6, maxiters = 1.0e8);
 
 # ## Analysis and Visualization
 
@@ -91,8 +91,10 @@ z = @view sol[3, :];
 # Note that here we show the raw output; a more smoothed version can be shown via interpolation.
 idx_zoom = 1:min(length(t), 50)
 f1 = Figure(size = (800, 400))
-ax1 = Axis(f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
-   ylabel = "y [Rₑ]", aspect = DataAspect())
+ax1 = Axis(
+    f1[1, 1], title = "Gyro Motion (Zoom)", xlabel = "x [Rₑ]",
+    ylabel = "y [Rₑ]", aspect = DataAspect()
+)
 lines!(ax1, x[idx_zoom] ./ Rₑ, y[idx_zoom] ./ Rₑ)
 f1 = DisplayAs.PNG(f1) #hide
 
@@ -111,20 +113,22 @@ f2 = DisplayAs.PNG(f2) #hide
 signs = sign.(z)
 crossings = findall(diff(signs) .!= 0)
 if length(crossings) > 2
-   t_cross = t[crossings]
-   ## Time between every second crossing is one period.
-   τ_b_sim = mean(diff(t_cross)[1:2:(end - 1)]) * 2
-   println("Simulated Bounce Period: $τ_b_sim s")
+    t_cross = t[crossings]
+    ## Time between every second crossing is one period.
+    τ_b_sim = mean(diff(t_cross)[1:2:(end - 1)]) * 2
+    println("Simulated Bounce Period: $τ_b_sim s")
 else
-   println("Not enough bounces to estimate period.")
-   τ_b_sim = NaN
+    println("Not enough bounces to estimate period.")
+    τ_b_sim = NaN
 end
 
 # ### 3. Drift Motion
 ## Plot x-y trajectory.
 f3 = Figure(size = (600, 600))
-ax3 = Axis(f3[1, 1], title = "Drift Motion (Azimuthal)",
-   xlabel = "x [Rₑ]", ylabel = "y [Rₑ]", aspect = DataAspect())
+ax3 = Axis(
+    f3[1, 1], title = "Drift Motion (Azimuthal)",
+    xlabel = "x [Rₑ]", ylabel = "y [Rₑ]", aspect = DataAspect()
+)
 lines!(ax3, x ./ Rₑ, y ./ Rₑ)
 ## Draw Earth
 theta = LinRange(0, 2π, 100)
@@ -134,18 +138,18 @@ f3 = DisplayAs.PNG(f3) #hide
 # Calculate Drift Period
 ## Calculate azimuthal angle phi, unwrap phi
 phi_unwrap = let offset = 0.0
-   phi = atan.(y, x)
-   phi_unwrap = copy(phi)
-   for i in eachindex(phi)[2:end]
-      dphi = phi[i] - phi[i - 1]
-      if dphi > π
-         offset -= 2π
-      elseif dphi < -π
-         offset += 2π
-      end
-      phi_unwrap[i] += offset
-   end
-   phi_unwrap
+    phi = atan.(y, x)
+    phi_unwrap = copy(phi)
+    for i in eachindex(phi)[2:end]
+        dphi = phi[i] - phi[i - 1]
+        if dphi > π
+            offset -= 2π
+        elseif dphi < -π
+            offset += 2π
+        end
+        phi_unwrap[i] += offset
+    end
+    phi_unwrap
 end
 
 ## Fit line to phi vs t
@@ -160,7 +164,7 @@ using Markdown #hide
 io = IOBuffer() #hide
 println(io, "| Period  | Theoretical | Simulated") #hide
 println(io, "| ------- | ----------- | ---------") #hide
-println(io, "| Gyro    | $(round(τ_g_theo, digits=4))      | N/A (varies)") #hide
-println(io, "| Bounce  | $(round(τ_b_theo, digits=4))      | $(round(τ_b_sim, digits=4))") #hide
-println(io, "| Drift   | $(round(τ_d_theo, digits=4))      | $(round(τ_d_sim, digits=4))") #hide
+println(io, "| Gyro    | $(round(τ_g_theo, digits = 4))      | N/A (varies)") #hide
+println(io, "| Bounce  | $(round(τ_b_theo, digits = 4))      | $(round(τ_b_sim, digits = 4))") #hide
+println(io, "| Drift   | $(round(τ_d_theo, digits = 4))      | $(round(τ_d_sim, digits = 4))") #hide
 Markdown.parse(String(take!(io))) #hide

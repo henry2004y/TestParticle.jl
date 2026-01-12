@@ -14,30 +14,32 @@ SUITE["trace"]["time-dependent field"] = BenchmarkGroup()
 SUITE["interpolation"] = BenchmarkGroup()
 
 # analytic field
-E_analytic(xu) = SA[5e-10, 5e-10, 0]
-B_analytic(xu) = SA[0, 0, 1e-8]
+E_analytic(xu) = SA[5.0e-10, 5.0e-10, 0]
+B_analytic(xu) = SA[0, 0, 1.0e-8]
 
 function setup_numeric_field()
-   x = range(-10, 10, length = 15)
-   y = range(-10, 10, length = 20)
-   z = range(-10, 10, length = 25)
-   B_numeric = fill(0.0, 3, length(x), length(y), length(z))
-   E_numeric = fill(0.0, 3, length(x), length(y), length(z))
-   B_numeric[3, :, :, :] .= 10e-9
-   E_numeric[1, :, :, :] .= 5e-10
-   E_numeric[2, :, :, :] .= 5e-10
+    x = range(-10, 10, length = 15)
+    y = range(-10, 10, length = 20)
+    z = range(-10, 10, length = 25)
+    B_numeric = fill(0.0, 3, length(x), length(y), length(z))
+    E_numeric = fill(0.0, 3, length(x), length(y), length(z))
+    B_numeric[3, :, :, :] .= 10.0e-9
+    E_numeric[1, :, :, :] .= 5.0e-10
+    E_numeric[2, :, :, :] .= 5.0e-10
 
-   mesh = CartesianGrid((first(x), first(y), first(z)), (last(x), last(y), last(z));
-      dims = (length(x) - 1, length(y) - 1, length(z) - 1))
+    mesh = CartesianGrid(
+        (first(x), first(y), first(z)), (last(x), last(y), last(z));
+        dims = (length(x) - 1, length(y) - 1, length(z) - 1)
+    )
 
-   return mesh, E_numeric, B_numeric
+    return mesh, E_numeric, B_numeric
 end
 
 # numerical field
 mesh, E_numeric, B_numeric = setup_numeric_field()
 
-B_td(xu, t) = SA[0, 0, 1e-11 * cos(2π * t)]
-E_td(xu, t) = SA[5e-11 * sin(2π * t), 0, 0]
+B_td(xu, t) = SA[0, 0, 1.0e-11 * cos(2π * t)]
+E_td(xu, t) = SA[5.0e-11 * sin(2π * t), 0, 0]
 F_td(xu) = SA[0, 9.10938356e-42, 0]
 
 tspan = (0.0, 100.0)
@@ -50,11 +52,14 @@ prob_ip = ODEProblem(trace!, stateinit, tspan, param_analytic) # in place
 prob_rel_ip = ODEProblem(trace_relativistic!, stateinit, tspan, param_analytic) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_analytic) # out of place
 SUITE["trace"]["analytic field"]["in place"] = @benchmarkable solve(
-   $prob_ip, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_ip, Tsit5(); save_idxs = [1, 2, 3]
+)
 SUITE["trace"]["analytic field"]["out of place"] = @benchmarkable solve(
-   $prob_oop, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_oop, Tsit5(); save_idxs = [1, 2, 3]
+)
 SUITE["trace"]["analytic field"]["in place relativistic"] = @benchmarkable solve(
-   $prob_rel_ip, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_rel_ip, Tsit5(); save_idxs = [1, 2, 3]
+)
 
 tspan = (0.0, 10.0)
 param_numeric = prepare(mesh, E_numeric, B_numeric)
@@ -63,31 +68,35 @@ prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_numeric) # out of pl
 prob_boris = TraceProblem(stateinit, tspan, param_numeric)
 
 SUITE["trace"]["numerical field"]["in place"] = @benchmarkable solve(
-   $prob_ip, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_ip, Tsit5(); save_idxs = [1, 2, 3]
+)
 SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
-   $prob_oop, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_oop, Tsit5(); save_idxs = [1, 2, 3]
+)
 SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
-   $prob_boris; dt = 1/7, savestepinterval = 10)
+    $prob_boris; dt = 1 / 7, savestepinterval = 10
+)
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
-   $prob_boris; dt = 1/7, savestepinterval = 10, trajectories = 2)
+    $prob_boris; dt = 1 / 7, savestepinterval = 10, trajectories = 2
+)
 
 function setup_spherical_field()
-   r = logrange(0.1, 10.0, length = 15)
-   θ = range(0, π, length = 20)
-   ϕ = range(0, 2π, length = 25)
+    r = logrange(0.1, 10.0, length = 15)
+    θ = range(0, π, length = 20)
+    ϕ = range(0, 2π, length = 25)
 
-   B₀ = 1e-8 # [nT]
-   B = zeros(3, length(r), length(θ), length(ϕ))
+    B₀ = 1.0e-8 # [nT]
+    B = zeros(3, length(r), length(θ), length(ϕ))
 
-   for (iθ, θ_val) in enumerate(θ)
-      sinθ, cosθ = sincos(θ_val)
-      B[1, :, iθ, :] .= B₀ * cosθ
-      B[2, :, iθ, :] .= -B₀ * sinθ
-   end
+    for (iθ, θ_val) in enumerate(θ)
+        sinθ, cosθ = sincos(θ_val)
+        B[1, :, iθ, :] .= B₀ * cosθ
+        B[2, :, iθ, :] .= -B₀ * sinθ
+    end
 
-   B_field = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
+    B_field = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
 
-   return B_field
+    return B_field
 end
 
 B_field_car = TP.get_BField(param_numeric)
@@ -100,13 +109,17 @@ param_td = prepare(E_td, B_td, F_td)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_td) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_td) # out of place
 SUITE["trace"]["time-dependent field"]["in place"] = @benchmarkable solve(
-   $prob_ip, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_ip, Tsit5(); save_idxs = [1, 2, 3]
+)
 SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
-   $prob_oop, Tsit5(); save_idxs = [1, 2, 3])
+    $prob_oop, Tsit5(); save_idxs = [1, 2, 3]
+)
 
 stateinit_gc,
-param_gc = TP.prepare_gc(stateinit, E_analytic, B_analytic,
-   species = Proton, removeExB = true)
+    param_gc = TP.prepare_gc(
+    stateinit, E_analytic, B_analytic,
+    species = Proton, removeExB = true
+)
 prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["1st order"] = @benchmarkable solve($prob_gc, Vern9())
 prob_gc_full = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)

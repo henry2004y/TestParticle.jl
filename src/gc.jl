@@ -1,80 +1,84 @@
 # Guiding center.
 
-function prepare_gc(xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
-      species = Proton, q = nothing, m = nothing,
-      order::Int = 1,
-      bc::Int = 1, removeExB = true) where {T <: AbstractRange, TE, TB}
-   q = @something q species.q
-   m = @something m species.m
-   x, v = xv[SA[1:3...]], xv[SA[4:6...]]
+function prepare_gc(
+        xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
+        species = Proton, q = nothing, m = nothing,
+        order::Int = 1,
+        bc::Int = 1, removeExB = true
+    ) where {T <: AbstractRange, TE, TB}
+    q = @something q species.q
+    m = @something m species.m
+    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
-   E = TE <: AbstractArray ?
-       getinterp(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
-       E
-   B = TB <: AbstractArray ?
-       getinterp(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
-       B
+    E = TE <: AbstractArray ?
+        getinterp(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
+        E
+    B = TB <: AbstractArray ?
+        getinterp(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
+        B
 
-   bparticle = B(x)
-   Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
-   b̂particle = bparticle ./ Bmag_particle
-   # vector of Larmor radius
-   ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
-   # Get the guiding center location
-   X = x - ρ
-   # Get EM field at guiding center
-   b = B(X)
-   Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
-   b̂ = b ./ Bmag
-   vpar = @views b̂ ⋅ v
+    bparticle = B(x)
+    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
+    b̂particle = bparticle ./ Bmag_particle
+    # vector of Larmor radius
+    ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
+    # Get the guiding center location
+    X = x - ρ
+    # Get EM field at guiding center
+    b = B(X)
+    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
+    b̂ = b ./ Bmag
+    vpar = @views b̂ ⋅ v
 
-   vperp = @. v - vpar * b̂
-   if removeExB
-      e = E(X)
-      vE = e × b̂ / Bmag
-      w = vperp - vE
-   else
-      w = vperp
-   end
-   μ = m * (w ⋅ w) / (2 * Bmag)
+    vperp = @. v - vpar * b̂
+    if removeExB
+        e = E(X)
+        vE = e × b̂ / Bmag
+        w = vperp - vE
+    else
+        w = vperp
+    end
+    μ = m * (w ⋅ w) / (2 * Bmag)
 
-   stateinit_gc = [X..., vpar]
+    stateinit_gc = [X..., vpar]
 
-   stateinit_gc, (q, m, μ, Field(E), Field(B))
+    return stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
 
-function prepare_gc(xv, E, B; species = Proton, q = nothing,
-      m = nothing, removeExB = true)
-   q = @something q species.q
-   m = @something m species.m
-   x, v = xv[SA[1:3...]], xv[SA[4:6...]]
+function prepare_gc(
+        xv, E, B; species = Proton, q = nothing,
+        m = nothing, removeExB = true
+    )
+    q = @something q species.q
+    m = @something m species.m
+    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
-   bparticle = B(x)
-   Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
-   b̂particle = bparticle ./ Bmag_particle
-   # vector of Larmor radius
-   ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
-   # Get the guiding center location
-   X = x - ρ
-   # Get EM field at guiding center
-   b = B(X)
-   Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
-   b̂ = b ./ Bmag
-   vpar = @views b̂ ⋅ v
+    bparticle = B(x)
+    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
+    b̂particle = bparticle ./ Bmag_particle
+    # vector of Larmor radius
+    ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
+    # Get the guiding center location
+    X = x - ρ
+    # Get EM field at guiding center
+    b = B(X)
+    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
+    b̂ = b ./ Bmag
+    vpar = @views b̂ ⋅ v
 
-   vperp = @. v - vpar * b̂
-   if removeExB
-      e = E(X)
-      vE = e × b̂ / Bmag
-      w = vperp - vE
-   else
-      w = vperp
-   end
-   μ = m * (w ⋅ w) / (2 * Bmag)
+    vperp = @. v - vpar * b̂
+    if removeExB
+        e = E(X)
+        vE = e × b̂ / Bmag
+        w = vperp - vE
+    else
+        w = vperp
+    end
+    μ = m * (w ⋅ w) / (2 * Bmag)
 
-   stateinit_gc = [X..., vpar]
+    stateinit_gc = [X..., vpar]
 
-   stateinit_gc, (q, m, μ, Field(E), Field(B))
+    return stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
 
 """
@@ -91,52 +95,52 @@ Nonrelativistic definition:
 ```
 """
 function get_gc(xu, param)
-   q2m = get_q2m(param)
-   B_field = get_BField(param)
-   t = length(xu) == 7 ? xu[end] : zero(eltype(xu))
-   v = xu[SA[4:6...]]
-   B = B_field(xu, t)
-   B² = B[1]^2 + B[2]^2 + B[3]^2
-   # vector of Larmor radius
-   ρ = B × v ./ (q2m * B²)
+    q2m = get_q2m(param)
+    B_field = get_BField(param)
+    t = length(xu) == 7 ? xu[end] : zero(eltype(xu))
+    v = xu[SA[4:6...]]
+    B = B_field(xu, t)
+    B² = B[1]^2 + B[2]^2 + B[3]^2
+    # vector of Larmor radius
+    ρ = B × v ./ (q2m * B²)
 
-   X = @views xu[1:3] - ρ
+    return X = @views xu[1:3] - ρ
 end
 
 function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
-   l = SVector{3}(x, y, z)
-   B = SVector{3}(bx, by, bz)
-   v = SVector{3}(vx, vy, vz)
+    l = SVector{3}(x, y, z)
+    B = SVector{3}(bx, by, bz)
+    v = SVector{3}(vx, vy, vz)
 
-   B² = bx^2 + by^2 + bz^2
-   # vector of Larmor radius
-   ρ = B × v ./ (q2m * B²)
+    B² = bx^2 + by^2 + bz^2
+    # vector of Larmor radius
+    ρ = B × v ./ (q2m * B²)
 
-   X = l - ρ
+    return X = l - ρ
 end
 
 function get_gc(
-      x::T,
-      y::T,
-      z::T,
-      vx::T,
-      vy::T,
-      vz::T,
-      bx::U,
-      by::U,
-      bz::U,
-      q2m
-) where {T <: AbstractVector, U <: AbstractVector}
-   X = [zeros(SVector{3, eltype(x)}) for _ in x]
-   for i in eachindex(X)
-      X[i] = get_gc(x[i], y[i], z[i], vx[i], vy[i], vz[i], bx[i], by[i], bz[i], q2m)
-   end
+        x::T,
+        y::T,
+        z::T,
+        vx::T,
+        vy::T,
+        vz::T,
+        bx::U,
+        by::U,
+        bz::U,
+        q2m
+    ) where {T <: AbstractVector, U <: AbstractVector}
+    X = [zeros(SVector{3, eltype(x)}) for _ in x]
+    for i in eachindex(X)
+        X[i] = get_gc(x[i], y[i], z[i], vx[i], vy[i], vz[i], bx[i], by[i], bz[i], q2m)
+    end
 
-   X
+    return X
 end
 
 function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m)
-   get_gc(x, y, z, vx, vy, vz, bx, by, bz, q / m)
+    return get_gc(x, y, z, vx, vy, vz, bx, by, bz, q / m)
 end
 
 """

@@ -48,15 +48,16 @@ isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
 callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for (i, u0) in enumerate(seeds)
-   ## Returns a vector of two ODEProblems (forward and backward)
-   probs = trace_fieldline(u0, getB, s_span; mode = :both)
+    ## Returns a vector of two ODEProblems (forward and backward)
+    probs = trace_fieldline(u0, getB, s_span; mode = :both)
 
-   ## Solve each problem
-   for (j, prob) in enumerate(probs)
-      sol = solve(
-         prob, Vern9(); callback, reltol = 1e-6, abstol = 1e-6, verbose = false)
-      solutions[2 * (i - 1) + j] = sol
-   end
+    ## Solve each problem
+    for (j, prob) in enumerate(probs)
+        sol = solve(
+            prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
+        )
+        solutions[2 * (i - 1) + j] = sol
+    end
 end
 
 #
@@ -66,17 +67,19 @@ end
 # We also overlay analytically calculated field lines for comparison.
 
 f = Figure(size = (800, 600))
-ax = Axis3(f[1, 1], aspect = :data, xlabel = "x [m]", ylabel = "y [m]",
-   zlabel = "z [m]", title = "Dipole Field Lines")
+ax = Axis3(
+    f[1, 1], aspect = :data, xlabel = "x [m]", ylabel = "y [m]",
+    zlabel = "z [m]", title = "Dipole Field Lines"
+)
 
 ## Plot traced field lines
 for sol in solutions
-   lines!(ax, sol; idxs = (1, 2, 3), linewidth = 2)
+    lines!(ax, sol; idxs = (1, 2, 3), linewidth = 2)
 end
 
 ## Plot analytic field lines for reference
 for ϕ in range(0, stop = 2 * π, length = 10)
-   lines!(ax, TP.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
+    lines!(ax, TP.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
 end
 
 f = DisplayAs.PNG(f) #hide

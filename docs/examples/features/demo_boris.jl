@@ -12,32 +12,45 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(
-      sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing; alpha = 0.5)
-   f = Figure(size = (700, 600), fontsize = 18)
-   ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
-      xlabel = "X",
-      ylabel = "Y")
-   idxs = (1, 2)
-   lines!(ax, sol1; idxs, color = (Makie.wong_colors()[1], alpha),
-      linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed")
-   lines!(ax, sol2; idxs, color = (Makie.wong_colors()[2], alpha), linewidth = 2,
-      linestyle = :dashdot, label = "Tsit5 adaptive")
-   lines!(ax, sol_boris; idxs, color = (Makie.wong_colors()[3], alpha),
-      linewidth = 2, label = "Boris n=1")
-   if !isnothing(sol_boris_2)
-      lines!(ax, sol_boris_2; idxs, color = (Makie.wong_colors()[4], alpha),
-         linewidth = 2, label = "Boris n=2")
-   end
-   if !isnothing(sol_boris_4)
-      lines!(ax, sol_boris_4; idxs, color = (Makie.wong_colors()[5], alpha),
-         linewidth = 2, label = "Boris n=4")
-   end
+        sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing; alpha = 0.5
+    )
+    f = Figure(size = (700, 600), fontsize = 18)
+    ax = Axis(
+        f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
+        xlabel = "X",
+        ylabel = "Y"
+    )
+    idxs = (1, 2)
+    lines!(
+        ax, sol1; idxs, color = (Makie.wong_colors()[1], alpha),
+        linewidth = 2, linestyle = :dashdot, label = "Tsit5 fixed"
+    )
+    lines!(
+        ax, sol2; idxs, color = (Makie.wong_colors()[2], alpha), linewidth = 2,
+        linestyle = :dashdot, label = "Tsit5 adaptive"
+    )
+    lines!(
+        ax, sol_boris; idxs, color = (Makie.wong_colors()[3], alpha),
+        linewidth = 2, label = "Boris n=1"
+    )
+    if !isnothing(sol_boris_2)
+        lines!(
+            ax, sol_boris_2; idxs, color = (Makie.wong_colors()[4], alpha),
+            linewidth = 2, label = "Boris n=2"
+        )
+    end
+    if !isnothing(sol_boris_4)
+        lines!(
+            ax, sol_boris_4; idxs, color = (Makie.wong_colors()[5], alpha),
+            linewidth = 2, label = "Boris n=4"
+        )
+    end
 
-   scale!(ax.scene, invrL, invrL)
+    scale!(ax.scene, invrL, invrL)
 
-   axislegend(position = :rt, framevisible = false)
+    axislegend(position = :rt, framevisible = false)
 
-   f
+    return f
 end
 
 const Bmag = 0.01
@@ -45,15 +58,17 @@ uniform_B(x) = SA[0.0, 0.0, Bmag]
 zero_E = TP.ZeroField()
 
 x0 = [0.0, 0.0, 0.0]
-v0 = [0.0, 1e5, 0.0]
+v0 = [0.0, 1.0e5, 0.0]
 stateinit = [x0..., v0...]
 ## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
 q2m = TP.get_q2m(param)
 
 ## Reference parameters
-const tperiod = 2π / (abs(q2m) *
-                 sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+const tperiod = 2π / (
+    abs(q2m) *
+        sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0)))
+)
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(q2m) * Bmag)
 const invrL = 1 / rL;
 
@@ -125,23 +140,25 @@ f = DisplayAs.PNG(f) #hide
 
 E_kin(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
 f = Figure(size = (800, 400), fontsize = 18)
-ax = Axis(f[1, 1],
-   xlabel = "time [period]",
-   ylabel = "Normalized Kinetic Energy")
+ax = Axis(
+    f[1, 1],
+    xlabel = "time [period]",
+    ylabel = "Normalized Kinetic Energy"
+)
 
 sols_to_plot = [
-   (sol_boris, "Boris n=1"),
-   (sol_boris_2, "Boris n=2"),
-   (sol_boris_4, "Boris n=4"),
-   (sol1, "Tsit5 fixed"),
-   (sol2, "Tsit5 adaptive"),
-   (sol3, "Vern7 adaptive"),
-   (sol4, "Vern9 adaptive")
+    (sol_boris, "Boris n=1"),
+    (sol_boris_2, "Boris n=2"),
+    (sol_boris_4, "Boris n=4"),
+    (sol1, "Tsit5 fixed"),
+    (sol2, "Tsit5 adaptive"),
+    (sol3, "Vern7 adaptive"),
+    (sol4, "Vern9 adaptive"),
 ]
 
 for (sol, label) in sols_to_plot
-   energy = map(x -> E_kin(x[4:6]...), sol.u)
-   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth = 2)
+    energy = map(x -> E_kin(x[4:6]...), sol.u)
+    lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label, linewidth = 2)
 end
 
 axislegend(ax, position = :lt)
@@ -158,7 +175,7 @@ f = DisplayAs.PNG(f) #hide
 Set initial states.
 """
 function prob_func(prob, i, repeat)
-   prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i * 2.0, prob.u0[5:6]...])
+    return prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i * 2.0, prob.u0[5:6]...])
 end
 
 isoutofdomain(xv, p, t) = isnan(xv[1])
@@ -166,7 +183,7 @@ isoutofdomain(xv, p, t) = isnan(xv[1])
 ## Number of cells for the field along each dimension
 nx, ny = 4, 6
 ## Unit conversion factors between SI and dimensionless units
-B₀ = 10e-9            # [T]
+B₀ = 10.0e-9            # [T]
 Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
@@ -202,16 +219,17 @@ prob = TraceProblem(stateinit, tspan, param; prob_func)
 sols = TP.solve(prob; dt, savestepinterval, isoutofdomain, trajectories)
 
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Proton trajectory",
-   xlabel = "X",
-   ylabel = "Y",
-   limits = (-10.1, 10.1, -20.1, 0.1),
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    title = "Proton trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    limits = (-10.1, 10.1, -20.1, 0.1),
+    aspect = DataAspect()
 )
 
 for i in eachindex(sols)
-   lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
+    lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
 end
 
 axislegend(position = :lt, framevisible = false)

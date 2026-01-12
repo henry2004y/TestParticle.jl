@@ -51,31 +51,37 @@ tspan = (0.0, 4 * T_non);
 # ### Simulation and Plotting
 
 f1 = Figure(size = (600, 600), fontsize = 20)
-ax1 = Axis(f1[1, 1],
-   title = "Trajectory comparison (XY plane)",
-   xlabel = "x [m]", ylabel = "y [m]", aspect = DataAspect())
+ax1 = Axis(
+    f1[1, 1],
+    title = "Trajectory comparison (XY plane)",
+    xlabel = "x [m]", ylabel = "y [m]", aspect = DataAspect()
+)
 
 for (i, v_mag) in enumerate(v_ratios)
-   ## Let's start at same point (0,0,0) with v in x-dir.
-   r0 = [0.0, 0.0, 0.0]
-   v0 = [v_mag, 0.0, 0.0]
+    ## Let's start at same point (0,0,0) with v in x-dir.
+    r0 = [0.0, 0.0, 0.0]
+    v0 = [v_mag, 0.0, 0.0]
 
-   ## Non-relativistic initial state: [r, v]
-   u0_non = [r0..., v0...]
-   prob_non = ODEProblem(trace!, u0_non, tspan, param)
-   sol_non = solve(prob_non, Vern7())
+    ## Non-relativistic initial state: [r, v]
+    u0_non = [r0..., v0...]
+    prob_non = ODEProblem(trace!, u0_non, tspan, param)
+    sol_non = solve(prob_non, Vern7())
 
-   ## Relativistic initial state: [r, γv]
-   γ = 1 / sqrt(1 - (v_mag / c)^2)
-   u0_rel = [r0..., (γ * v0)...]
-   prob_rel = ODEProblem(trace_relativistic!, u0_rel, tspan, param)
-   sol_rel = solve(prob_rel, Vern7())
+    ## Relativistic initial state: [r, γv]
+    γ = 1 / sqrt(1 - (v_mag / c)^2)
+    u0_rel = [r0..., (γ * v0)...]
+    prob_rel = ODEProblem(trace_relativistic!, u0_rel, tspan, param)
+    sol_rel = solve(prob_rel, Vern7())
 
-   ## Plot
-   lines!(ax1, sol_non; idxs = (1, 2), linestyle = :dash,
-      color = colors[i], label = "Non-rel $(labels[i])")
-   lines!(ax1, sol_rel; idxs = (1, 2), linestyle = :solid,
-      color = colors[i], label = "Rel $(labels[i])")
+    ## Plot
+    lines!(
+        ax1, sol_non; idxs = (1, 2), linestyle = :dash,
+        color = colors[i], label = "Non-rel $(labels[i])"
+    )
+    lines!(
+        ax1, sol_rel; idxs = (1, 2), linestyle = :solid,
+        color = colors[i], label = "Rel $(labels[i])"
+    )
 end
 
 axislegend(ax1; position = :rt, backgroundcolor = :transparent)
@@ -127,14 +133,20 @@ sol_rel_drift = solve(prob_rel_drift, Vern7());
 # Trajectory comparison
 
 f2 = Figure(size = (1000, 300), fontsize = 20)
-ax2 = Axis(f2[1, 1],
-   title = "ExB Drift comparison (XY plane)",
-   xlabel = "x [m]", ylabel = "y [m]", aspect = DataAspect())
+ax2 = Axis(
+    f2[1, 1],
+    title = "ExB Drift comparison (XY plane)",
+    xlabel = "x [m]", ylabel = "y [m]", aspect = DataAspect()
+)
 
-lines!(ax2, sol_non_drift; idxs = (1, 2), linestyle = :dash,
-   color = :darkcyan, label = "Non-rel drift")
-lines!(ax2, sol_rel_drift; idxs = (1, 2), linestyle = :solid,
-   color = :darkorange, label = "Rel drift")
+lines!(
+    ax2, sol_non_drift; idxs = (1, 2), linestyle = :dash,
+    color = :darkcyan, label = "Non-rel drift"
+)
+lines!(
+    ax2, sol_rel_drift; idxs = (1, 2), linestyle = :solid,
+    color = :darkorange, label = "Rel drift"
+)
 
 axislegend(ax2; position = :rb, backgroundcolor = :transparent)
 

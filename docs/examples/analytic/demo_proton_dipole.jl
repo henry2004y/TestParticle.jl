@@ -12,13 +12,13 @@ CairoMakie.activate!(type = "png") #hide
 
 ## Initial condition
 stateinit = let
-   ## Initial particle energy
-   Ek = 5e7 # [eV]
-   ## initial velocity, [m/s]
-   v₀ = TP.sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
-   ## initial position, [m]
-   r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
-   [r₀..., v₀...]
+    ## Initial particle energy
+    Ek = 5.0e7 # [eV]
+    ## initial velocity, [m/s]
+    v₀ = TP.sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
+    ## initial position, [m]
+    r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
+    [r₀..., v₀...]
 end
 ## obtain field
 param = prepare(TP.DipoleField())
@@ -38,42 +38,43 @@ sol_gc = solve(prob_gc, Vern9())
 
 ## Analysis
 function get_curvature_ratio(sol, param, tsample)
-   q, m, μ, Efunc, Bfunc = param
-   ratio = zeros(Float32, length(tsample))
+    q, m, μ, Efunc, Bfunc = param
+    ratio = zeros(Float32, length(tsample))
 
-   for i in eachindex(tsample)
-      r = sol(tsample[i])[1:3]
-      B, Bmag, b, ∇B, JB = TP.get_B_parameters(r, 0.0, Bfunc)
+    for i in eachindex(tsample)
+        r = sol(tsample[i])[1:3]
+        B, Bmag, b, ∇B, JB = TP.get_B_parameters(r, 0.0, Bfunc)
 
-      ## Gyroradius
-      ## v_perp^2 = 2 * μ * B / m
-      ## ρ = m * v_perp / (q * B) = m * sqrt(2μB/m) / (qB) = sqrt(2μm/B) / q
-      ρ = sqrt(2 * μ * m / Bmag) / q
+        ## Gyroradius
+        ## v_perp^2 = 2 * μ * B / m
+        ## ρ = m * v_perp / (q * B) = m * sqrt(2μB/m) / (qB) = sqrt(2μm/B) / q
+        ρ = sqrt(2 * μ * m / Bmag) / q
 
-      ## Curvature radius
-      ## κ = (b ⋅ ∇) b
-      ## κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-      κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-      Rc = 1 / norm(κ)
+        ## Curvature radius
+        ## κ = (b ⋅ ∇) b
+        ## κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
+        κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
+        Rc = 1 / norm(κ)
 
-      ratio[i] = Rc / ρ
-   end
+        ratio[i] = Rc / ρ
+    end
 
-   ratio
+    return ratio
 end;
 
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
 # The GC trajectory is colored by the ratio between the magnetic field curvature and the gyroradius at each location.
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "50 MeV Proton trajectory in Earth's dipole field",
-   xlabel = "x [Re]",
-   ylabel = "y [Re]",
-   zlabel = "z [Re]",
-   aspect = :data,
-   azimuth = 1.42π,
-   limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
+ax = Axis3(
+    f[1, 1],
+    title = "50 MeV Proton trajectory in Earth's dipole field",
+    xlabel = "x [Re]",
+    ylabel = "y [Re]",
+    zlabel = "z [Re]",
+    aspect = :data,
+    azimuth = 1.42π,
+    limits = (-2.5, 2.5, -2.5, 2.5, -1, 1)
 )
 
 nsample = 4000
@@ -82,13 +83,13 @@ x = zeros(Float32, nsample)
 y = zeros(Float32, nsample)
 z = zeros(Float32, nsample)
 for i in 1:nsample
-   x[i], y[i], z[i] = sol(tsample[i])[1:3] ./ Rₑ
+    x[i], y[i], z[i] = sol(tsample[i])[1:3] ./ Rₑ
 end
 
 lines!(ax, x, y, z, label = "Full Orbit")
 
 for ϕ in range(0, stop = 2 * π, length = 10)
-   lines!(ax, TP.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
+    lines!(ax, TP.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
 end
 
 ## Plot GC trajectory
@@ -98,13 +99,15 @@ xgc = zeros(Float32, nsample)
 ygc = zeros(Float32, nsample)
 zgc = zeros(Float32, nsample)
 for i in 1:nsample
-   xgc[i], ygc[i], zgc[i] = sol_gc(tsample[i])[1:3] ./ Rₑ
+    xgc[i], ygc[i], zgc[i] = sol_gc(tsample[i])[1:3] ./ Rₑ
 end
 
 ratio = get_curvature_ratio(sol_gc, param_gc, tsample)
 
-l_gc = lines!(ax, xgc, ygc, zgc, color = ratio, colormap = :plasma,
-   linewidth = 3, label = "Guiding Center")
+l_gc = lines!(
+    ax, xgc, ygc, zgc, color = ratio, colormap = :plasma,
+    linewidth = 3, label = "Guiding Center"
+)
 Colorbar(f[1, 2], l_gc, label = "Gyroradius / Curvature Radius")
 
 f = DisplayAs.PNG(f) #hide
@@ -113,14 +116,14 @@ f = DisplayAs.PNG(f) #hide
 # In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
 
 function get_energy_ratio(sol)
-   vx = @view sol[4, :]
-   vy = @view sol[5, :]
-   vz = @view sol[6, :]
+    vx = @view sol[4, :]
+    vy = @view sol[5, :]
+    vz = @view sol[6, :]
 
-   Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
-   Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
+    Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
+    Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
 
-   (Eend - Einit) / Einit
+    return (Eend - Einit) / Einit
 end
 
 using Markdown
@@ -130,20 +133,20 @@ results = Tuple{String, Float64}[]
 
 ## OrdinaryDiffEq solvers
 ode_solvers = [
-   ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1e-3)),
-   ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1e-4)),
-   ("Vern9", Vern9(), Dict()),
-   ("Trapezoid", Trapezoid(), Dict()),
-   ("Vern6", Vern6(), Dict()),
-   ("Tsit5", Tsit5(), Dict()),
-   ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
-   ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
-   ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1e-4))
+    ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1.0e-3)),
+    ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1.0e-4)),
+    ("Vern9", Vern9(), Dict()),
+    ("Trapezoid", Trapezoid(), Dict()),
+    ("Vern6", Vern6(), Dict()),
+    ("Tsit5", Tsit5(), Dict()),
+    ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
+    ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
+    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1.0e-4)),
 ]
 
 for (name, alg, kwargs) in ode_solvers
-   local sol = solve(prob, alg; kwargs...)
-   push!(results, (name, get_energy_ratio(sol)))
+    local sol = solve(prob, alg; kwargs...)
+    push!(results, (name, get_energy_ratio(sol)))
 end
 
 # Or, for adaptive time step algorithms like `Vern9()`, with the help of callbacks, we can enforce a largest time step smaller than 1/10 of the local gyroperiod:
@@ -161,7 +164,7 @@ push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)));
 # In terms of accuracy, this is roughly equivalent to `solve(prob, Vern9(); reltol=1e-7)`; in terms of performance, it is 2x slower (0.04s v.s. 0.02s) and consumes about the same amount of memory 42 MiB.
 # We can also use the classical [Boris method](https://www.particleincell.com/2011/vxb-rotation/) implemented within the package:
 
-dt = 1e-4
+dt = 1.0e-4
 prob_boris = TraceProblem(stateinit, tspan, param)
 sol_boris = TestParticle.solve(prob_boris; dt)[1]
 push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
@@ -172,7 +175,7 @@ io = IOBuffer() #hide
 println(io, "| Solver | Energy Ratio |") #hide
 println(io, "| :--- | :--- |") #hide
 for (name, ratio) in results #hide
-   Printf.@printf(io, "| %s | %.4e |\n", name, ratio) #hide
+    Printf.@printf(io, "| %s | %.4e |\n", name, ratio) #hide
 end #hide
 Markdown.parse(String(take!(io))) #hide
 

@@ -48,7 +48,7 @@ CairoMakie.activate!(type = "png") #hide
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
 ## Unit conversion factors between SI and dimensionless units
-B₀ = 10e-9            # [T]
+B₀ = 10.0e-9            # [T]
 Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
@@ -67,9 +67,9 @@ param = prepare(x, y, z, E, B; m = 1, q = 1)
 
 ## Initial condition
 stateinit = let
-   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-   u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
-   [x0..., u0...]
+    x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+    u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
+    [x0..., u0...]
 end
 ## Time span
 tspan = (0.0, π) # half gyroperiod
@@ -79,12 +79,13 @@ sol = solve(prob, Vern9())
 
 ### Visualization
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Proton trajectory",
-   xlabel = "X",
-   ylabel = "Y",
-   limits = (-4.1, 4.1, -8.1, 0.1),
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    title = "Proton trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    limits = (-4.1, 4.1, -8.1, 0.1),
+    aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))
@@ -110,12 +111,13 @@ sol = solve(prob, Vern9())
 
 ### Visualization
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Relativistic particle trajectory",
-   xlabel = "X",
-   ylabel = "Y",
-   ##limits = (-0.6, 0.6, -1.1, 0.1),
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    title = "Relativistic particle trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    ##limits = (-0.6, 0.6, -1.1, 0.1),
+    aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))
@@ -132,11 +134,12 @@ sol = solve(prob, Vern9())
 
 ### Visualization
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Relativistic particle trajectory",
-   xlabel = "X",
-   ylabel = "Y",
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    title = "Relativistic particle trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))
@@ -148,14 +151,14 @@ f = DisplayAs.PNG(f) #hide
 # We first solve the Lorentz equation in SI units, and then convert the quantities to normalized units and solve it again in dimensionless units.
 
 ## Unit conversion factors between SI and dimensionless units
-B_dim = 1e-8             # [T]
+B_dim = 1.0e-8             # [T]
 U_dim = c                # [m/s]
 E_dim = U_dim * B_dim    # [V/m]
 Ω_dim = abs(qᵢ) * B_dim / mᵢ # [1/s]
 t_dim = 1 / Ω_dim        # [s]
 l_dim = U_dim * t_dim    # [m]
 ## Electric field magnitude in SI units
-Emag_dim = 1e-8           # [V/m]
+Emag_dim = 1.0e-8           # [V/m]
 ### Solving in SI units
 B_field(x) = SA[0, 0, B_dim]
 E_field(x) = SA[Emag_dim, 0.0, 0.0]
@@ -168,7 +171,7 @@ tspan1 = (0, 2π * t_dim) # [s]
 
 param1 = prepare(E_field, B_field, species = Proton)
 prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
-sol1 = solve(prob1, Vern9(); reltol = 1e-4, abstol = 1e-6)
+sol1 = solve(prob1, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 
 ### Solving in dimensionless units
 B_normalize(x) = SA[0, 0, B_dim / B_dim]
@@ -182,23 +185,24 @@ tspan2 = (0, 2π)
 stateinit2 = [x0_norm..., v0_norm...]
 
 prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
-sol2 = solve(prob2, Vern9(); reltol = 1e-4, abstol = 1e-6)
+sol2 = solve(prob2, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 
 ### Visualization
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   xlabel = "x [km]",
-   ylabel = "y [km]",
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    xlabel = "x [km]",
+    ylabel = "y [km]",
+    aspect = DataAspect()
 )
 
 lines!(ax, sol1, idxs = (1, 2))
 ## Interpolate dimensionless solutions and map back to SI units
 xp, yp = let trange = range(tspan2..., length = 40)
-   sol2.(trange, idxs = 1) .* l_dim, sol2.(trange, idxs = 2) .* l_dim
+    sol2.(trange, idxs = 1) .* l_dim, sol2.(trange, idxs = 2) .* l_dim
 end
 lines!(ax, xp, yp, linestyle = :dashdot, linewidth = 5, color = Makie.wong_colors()[2])
-invL = inv(1e3)
+invL = inv(1.0e3)
 scale!(ax.scene, invL, invL)
 
 f = DisplayAs.PNG(f) #hide
@@ -214,7 +218,7 @@ f = DisplayAs.PNG(f) #hide
 ## Number of cells for the field along each dimension
 nx, ny = 4, 6
 ## Unit conversion factors between SI and dimensionless units
-B₀ = 10e-9            # [T]
+B₀ = 10.0e-9            # [T]
 Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
@@ -237,9 +241,9 @@ param = prepare(x, y, E_zero, B; m = 1, q = 1, bc = 2);
 
 ## Initial conditions
 stateinit = let
-   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-   u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
-   [x0..., u0...]
+    x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+    u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
+    [x0..., u0...]
 end
 ## Time span
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
@@ -249,12 +253,13 @@ sol = solve(prob, Vern9());
 
 # Visualization
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Proton trajectory",
-   xlabel = "X",
-   ylabel = "Y",
-   limits = (-10.1, 10.1, -20.1, 0.1),
-   aspect = DataAspect()
+ax = Axis(
+    f[1, 1],
+    title = "Proton trajectory",
+    xlabel = "X",
+    ylabel = "Y",
+    limits = (-10.1, 10.1, -20.1, 0.1),
+    aspect = DataAspect()
 )
 
 lines!(ax, sol, idxs = (1, 2))

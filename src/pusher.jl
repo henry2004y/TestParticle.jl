@@ -1,16 +1,16 @@
 # Native particle pusher
 
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
-       AbstractODEProblem{uType, tType, isinplace}
-   f::F
-   "initial condition"
-   u0::uType
-   "time span"
-   tspan::tType
-   "(q2m, E, B)"
-   p::P
-   "function for setting initial conditions"
-   prob_func::PF
+    AbstractODEProblem{uType, tType, isinplace}
+    f::F
+    "initial condition"
+    u0::uType
+    "time span"
+    tspan::tType
+    "(q2m, E, B)"
+    p::P
+    "function for setting initial conditions"
+    prob_func::PF
 end
 
 get_EField(p::AbstractODEProblem) = get_EField(p.p)
@@ -22,49 +22,53 @@ get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
 DEFAULT_PROB_FUNC(prob, i, repeat) = prob
 
 function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
-   _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
-   TraceProblem{typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
-      typeof(prob_func)}(
-      _f,
-      u0,
-      tspan,
-      p,
-      prob_func
-   )
+    _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
+    return TraceProblem{
+        typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
+        typeof(prob_func),
+    }(
+        _f,
+        u0,
+        tspan,
+        p,
+        prob_func
+    )
 end
 # For remake
 function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
-   TraceProblem{typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
-      typeof(prob_func)}(
-      f,
-      u0,
-      tspan,
-      p,
-      prob_func
-   )
+    return TraceProblem{
+        typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
+        typeof(prob_func),
+    }(
+        f,
+        u0,
+        tspan,
+        p,
+        prob_func
+    )
 end
 
 struct BorisMethod{TV}
-   # intermediate variables used in the solver
-   v⁻::TV
-   v′::TV
-   v⁺::TV
-   t_rotate::TV
-   s_rotate::TV
-   v⁻_cross_t::TV
-   v′_cross_s::TV
+    # intermediate variables used in the solver
+    v⁻::TV
+    v′::TV
+    v⁺::TV
+    t_rotate::TV
+    s_rotate::TV
+    v⁻_cross_t::TV
+    v′_cross_s::TV
 end
 
 function BorisMethod(T::Type{<:AbstractFloat} = Float64)
-   v⁻ = MVector{3, T}(undef)
-   v′ = MVector{3, T}(undef)
-   v⁺ = MVector{3, T}(undef)
-   t_rotate = MVector{3, T}(undef)
-   s_rotate = MVector{3, T}(undef)
-   v⁻_cross_t = MVector{3, T}(undef)
-   v′_cross_s = MVector{3, T}(undef)
+    v⁻ = MVector{3, T}(undef)
+    v′ = MVector{3, T}(undef)
+    v⁺ = MVector{3, T}(undef)
+    t_rotate = MVector{3, T}(undef)
+    s_rotate = MVector{3, T}(undef)
+    v⁻_cross_t = MVector{3, T}(undef)
+    v′_cross_s = MVector{3, T}(undef)
 
-   BorisMethod{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
+    return BorisMethod{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
 end
 
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
@@ -76,61 +80,61 @@ Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Si
 Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
 @muladd function update_velocity!(xv, paramBoris, param, dt, t)
-   (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-   q2m, _, Efunc, Bfunc = param
-   E = Efunc(xv, t)
-   B = Bfunc(xv, t)
-   # t vector
-   for dim in 1:3
-      t_rotate[dim] = q2m * B[dim] * 0.5 * dt
-   end
-   t_mag2 = sum(abs2, t_rotate)
-   # s vector
-   for dim in 1:3
-      s_rotate[dim] = 2 * t_rotate[dim] / (1 + t_mag2)
-   end
-   # v-
-   for dim in 1:3
-      v⁻[dim] = xv[dim + 3] + q2m * E[dim] * 0.5 * dt
-   end
-   # v′
-   cross!(v⁻, t_rotate, v⁻_cross_t)
-   for dim in 1:3
-      v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
-   end
-   # v+
-   cross!(v′, s_rotate, v′_cross_s)
-   for dim in 1:3
-      v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
-   end
-   # v[n+1/2]
-   for dim in 1:3
-      xv[dim + 3] = v⁺[dim] + q2m * E[dim] * 0.5 * dt
-   end
+    (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
+    q2m, _, Efunc, Bfunc = param
+    E = Efunc(xv, t)
+    B = Bfunc(xv, t)
+    # t vector
+    for dim in 1:3
+        t_rotate[dim] = q2m * B[dim] * 0.5 * dt
+    end
+    t_mag2 = sum(abs2, t_rotate)
+    # s vector
+    for dim in 1:3
+        s_rotate[dim] = 2 * t_rotate[dim] / (1 + t_mag2)
+    end
+    # v-
+    for dim in 1:3
+        v⁻[dim] = xv[dim + 3] + q2m * E[dim] * 0.5 * dt
+    end
+    # v′
+    cross!(v⁻, t_rotate, v⁻_cross_t)
+    for dim in 1:3
+        v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
+    end
+    # v+
+    cross!(v′, s_rotate, v′_cross_s)
+    for dim in 1:3
+        v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
+    end
+    # v[n+1/2]
+    for dim in 1:3
+        xv[dim + 3] = v⁺[dim] + q2m * E[dim] * 0.5 * dt
+    end
 
-   return
+    return
 end
 
 """
 Update location in one timestep `dt`.
 """
 @muladd function update_location!(xv, dt)
-   xv[1] = xv[1] + xv[4] * dt
-   xv[2] = xv[2] + xv[5] * dt
-   xv[3] = xv[3] + xv[6] * dt
+    xv[1] = xv[1] + xv[4] * dt
+    xv[2] = xv[2] + xv[5] * dt
+    xv[3] = xv[3] + xv[6] * dt
 
-   return
+    return
 end
 
 """
 In-place cross product.
 """
 @muladd function cross!(v1, v2, vout)
-   vout[1] = v1[2] * v2[3] - v1[3] * v2[2]
-   vout[2] = v1[3] * v2[1] - v1[1] * v2[3]
-   vout[3] = v1[1] * v2[2] - v1[2] * v2[1]
+    vout[1] = v1[2] * v2[3] - v1[3] * v2[2]
+    vout[2] = v1[3] * v2[1] - v1[1] * v2[3]
+    vout[3] = v1[1] * v2[2] - v1[2] * v2[1]
 
-   return
+    return
 end
 
 """
@@ -151,194 +155,218 @@ Trace particles using the Boris method with specified `prob`.
   - `save_end::Bool`: save the final condition. Default is `true`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
 """
-function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-      trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-      isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
-      save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true)
-   sols = _solve(ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-      save_start, save_end, save_everystep)
+function solve(
+        prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
+        isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
+    )
+    return sols = _solve(
+        ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+        save_start, save_end, save_everystep
+    )
 end
 
 function _dispatch_boris!(
-      sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-      save_start, save_end, save_everystep)
-   is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
-   if n == 1
-      _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-         save_start, save_end, save_everystep, Val(is_td))
-   else
-      _multistep_boris!(
-         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-         save_start, save_end, save_everystep, Val(is_td))
-   end
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+        save_start, save_end, save_everystep
+    )
+    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
+    return if n == 1
+        _boris!(
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+            save_start, save_end, save_everystep, Val(is_td)
+        )
+    else
+        _multistep_boris!(
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            save_start, save_end, save_everystep, Val(is_td)
+        )
+    end
 end
 
 function _solve(
-      ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-      save_start, save_end, save_everystep)
-   sols, nt,
-   nout = _prepare(prob, trajectories, dt, savestepinterval,
-      save_start, save_end, save_everystep)
-   irange = 1:trajectories
-   _dispatch_boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-      save_start, save_end, save_everystep)
+        ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+        save_start, save_end, save_everystep
+    )
+    sols, nt,
+        nout = _prepare(
+        prob, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep
+    )
+    irange = 1:trajectories
+    _dispatch_boris!(
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+        save_start, save_end, save_everystep
+    )
 
-   sols
+    return sols
 end
 
 function _solve(
-      ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-      save_start, save_end, save_everystep)
-   sols, nt,
-   nout = _prepare(prob, trajectories, dt, savestepinterval,
-      save_start, save_end, save_everystep)
+        ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+        save_start, save_end, save_everystep
+    )
+    sols, nt,
+        nout = _prepare(
+        prob, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep
+    )
 
-   nchunks = Threads.nthreads()
-   Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
-      _dispatch_boris!(
-         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-         save_start, save_end, save_everystep)
-   end
+    nchunks = Threads.nthreads()
+    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+        _dispatch_boris!(
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            save_start, save_end, save_everystep
+        )
+    end
 
-   sols
+    return sols
 end
 
 function _get_sol_type(prob, dt)
-   u0 = prob.u0
-   tspan = prob.tspan
-   T_t = typeof(tspan[1] + dt)
-   t = Vector{T_t}(undef, 0)
-   # Force u to be Vector{SVector{6, T}} as used in _boris!
-   T = eltype(u0)
-   u = Vector{SVector{6, T}}(undef, 0)
-   interp = LinearInterpolation(t, u)
-   alg = :boris
+    u0 = prob.u0
+    tspan = prob.tspan
+    T_t = typeof(tspan[1] + dt)
+    t = Vector{T_t}(undef, 0)
+    # Force u to be Vector{SVector{6, T}} as used in _boris!
+    T = eltype(u0)
+    u = Vector{SVector{6, T}}(undef, 0)
+    interp = LinearInterpolation(t, u)
+    alg = :boris
 
-   sol = build_solution(prob, alg, t, u; interp = interp)
-   return typeof(sol)
+    sol = build_solution(prob, alg, t, u; interp = interp)
+    return typeof(sol)
 end
 
 """
 Prepare for advancing.
 """
-function _prepare(prob::TraceProblem, trajectories, dt, savestepinterval,
-      save_start, save_end, save_everystep)
-   ttotal = prob.tspan[2] - prob.tspan[1]
-   nt = round(Int, ttotal / dt) |> abs
+function _prepare(
+        prob::TraceProblem, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep
+    )
+    ttotal = prob.tspan[2] - prob.tspan[1]
+    nt = round(Int, ttotal / dt) |> abs
 
-   nout = 0
-   if save_start
-      nout += 1
-   end
+    nout = 0
+    if save_start
+        nout += 1
+    end
 
-   if save_everystep
-      steps = nt ÷ savestepinterval
-      last_is_step = (nt > 0) && (nt % savestepinterval == 0)
-      nout += steps
-      if !save_end && last_is_step
-         nout -= 1
-      end
-      if save_end && !last_is_step
-         nout += 1
-      end
-   elseif save_end
-      nout += 1
-   end
+    if save_everystep
+        steps = nt ÷ savestepinterval
+        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
+        nout += steps
+        if !save_end && last_is_step
+            nout -= 1
+        end
+        if save_end && !last_is_step
+            nout += 1
+        end
+    elseif save_end
+        nout += 1
+    end
 
-   sol_type = _get_sol_type(prob, dt)
-   sols = Vector{sol_type}(undef, trajectories)
+    sol_type = _get_sol_type(prob, dt)
+    sols = Vector{sol_type}(undef, trajectories)
 
-   sols, nt, nout
+    return sols, nt, nout
 end
 
 """
 Apply Boris method for particles with index in `irange`.
 """
-function _boris!(sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-      save_start, save_end, save_everystep, ::Val{ITD}) where ITD
-   (; tspan, p, u0) = prob
-   T = eltype(u0)
-   paramBoris = BorisMethod(T)
-   xv = MVector{6, T}(undef)
-   v_old = MVector{3, T}(undef)
-   xv_save = MVector{6, T}(undef)
+function _boris!(
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+        save_start, save_end, save_everystep, ::Val{ITD}
+    ) where {ITD}
+    (; tspan, p, u0) = prob
+    T = eltype(u0)
+    paramBoris = BorisMethod(T)
+    xv = MVector{6, T}(undef)
+    v_old = MVector{3, T}(undef)
+    xv_save = MVector{6, T}(undef)
 
-   @fastmath @inbounds for i in irange
-      traj = Vector{SVector{6, T}}(undef, nout)
-      tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+    @fastmath @inbounds for i in irange
+        traj = Vector{SVector{6, T}}(undef, nout)
+        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
-      # set initial conditions for each trajectory i
-      iout = 0
-      new_prob = prob.prob_func(prob, i, false)
-      xv .= new_prob.u0
+        # set initial conditions for each trajectory i
+        iout = 0
+        new_prob = prob.prob_func(prob, i, false)
+        xv .= new_prob.u0
 
-      if save_start
-         iout += 1
-         traj[iout] = SVector{6, T}(xv)
-         tsave[iout] = tspan[1]
-      end
-
-      # push velocity back in time by 1/2 dt
-      update_velocity!(xv, paramBoris, p, -0.5 * dt, tspan[1])
-
-      it = 1
-      while it <= nt
-         v_old .= @view xv[4:6]
-         t = ITD ? (it - 0.5) * dt : zero(dt)
-         update_velocity!(xv, paramBoris, p, dt, t)
-
-         if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+        if save_start
             iout += 1
-            if iout <= nout
-               xv_save .= xv
-               xv_save[4:6] .= v_old
-               t_current = tspan[1] + (it - 1) * dt
-               update_velocity!(xv_save, paramBoris, p, 0.5 * dt,
-                  ITD ? t_current : zero(dt))
-               traj[iout] = SVector{6, T}(xv_save)
-               tsave[iout] = t_current
+            traj[iout] = SVector{6, T}(xv)
+            tsave[iout] = tspan[1]
+        end
+
+        # push velocity back in time by 1/2 dt
+        update_velocity!(xv, paramBoris, p, -0.5 * dt, tspan[1])
+
+        it = 1
+        while it <= nt
+            v_old .= @view xv[4:6]
+            t = ITD ? (it - 0.5) * dt : zero(dt)
+            update_velocity!(xv, paramBoris, p, dt, t)
+
+            if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+                iout += 1
+                if iout <= nout
+                    xv_save .= xv
+                    xv_save[4:6] .= v_old
+                    t_current = tspan[1] + (it - 1) * dt
+                    update_velocity!(
+                        xv_save, paramBoris, p, 0.5 * dt,
+                        ITD ? t_current : zero(dt)
+                    )
+                    traj[iout] = SVector{6, T}(xv_save)
+                    tsave[iout] = t_current
+                end
             end
-         end
 
-         update_location!(xv, dt)
-         if isoutofdomain(xv, p, it * dt)
-            break
-         end
-         it += 1
-      end
+            update_location!(xv, dt)
+            if isoutofdomain(xv, p, it * dt)
+                break
+            end
+            it += 1
+        end
 
-      final_step = min(it, nt)
-      should_save_final = false
-      if save_end
-         should_save_final = true
-      elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
-         should_save_final = true
-      end
+        final_step = min(it, nt)
+        should_save_final = false
+        if save_end
+            should_save_final = true
+        elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
+            should_save_final = true
+        end
 
-      if iout < nout && should_save_final
-         iout += 1
-         t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-         dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-         update_velocity!(xv, paramBoris, p, dt_final, ITD ? t_final : zero(dt))
-         traj[iout] = SVector{6, T}(xv)
-         tsave[iout] = t_final
-      end
+        if iout < nout && should_save_final
+            iout += 1
+            t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
+            dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
+            update_velocity!(xv, paramBoris, p, dt_final, ITD ? t_final : zero(dt))
+            traj[iout] = SVector{6, T}(xv)
+            tsave[iout] = t_final
+        end
 
-      if iout < nout
-         resize!(traj, iout)
-         resize!(tsave, iout)
-      end
-      traj_save = traj
-      t = tsave
+        if iout < nout
+            resize!(traj, iout)
+            resize!(tsave, iout)
+        end
+        traj_save = traj
+        t = tsave
 
-      alg = :boris
-      interp = LinearInterpolation(t, traj_save)
-      retcode = ReturnCode.Default
-      stats = nothing
+        alg = :boris
+        interp = LinearInterpolation(t, traj_save)
+        retcode = ReturnCode.Default
+        stats = nothing
 
-      sols[i] = build_solution(
-         prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats)
-   end
+        sols[i] = build_solution(
+            prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats
+        )
+    end
 
-   return
+    return
 end

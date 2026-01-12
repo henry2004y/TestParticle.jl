@@ -29,10 +29,10 @@ time-dependent field
   - `F`: the type of `field_function`.
 """
 struct Field{itd, F} <: AbstractField{itd}
-   field_function::F
-   function Field{itd, F}(field_function::F) where {itd, F}
-      isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
-   end
+    field_function::F
+    function Field{itd, F}(field_function::F) where {itd, F}
+        return isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
+    end
 end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
@@ -41,14 +41,14 @@ is_time_dependent(::AbstractField{itd}) where {itd} = itd
 
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)
 function (f::AbstractField{true})(xu)
-   throw(ArgumentError("Time-dependent field function must have a time argument."))
+    throw(ArgumentError("Time-dependent field function must have a time argument."))
 end
 (f::AbstractField{false})(xu, t) = SVector{3}(f.field_function(xu))
 (f::AbstractField{false})(xu) = SVector{3}(f.field_function(xu))
 
 function Base.show(io::IO, f::Field)
-   println(io, "Field with interpolation support")
-   println(io, "Time-dependent: ", is_time_dependent(f.field_function))
+    println(io, "Field with interpolation support")
+    return println(io, "Time-dependent: ", is_time_dependent(f.field_function))
 end
 
 """
@@ -64,18 +64,20 @@ prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
 
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
-   Field(getinterp(gridtype, f, x..., order, bc; kw...))
+    return Field(getinterp(gridtype, f, x..., order, bc; kw...))
 end
 
-function _prepare(E, B, F, args...; species = Proton, q = nothing,
-      m = nothing, gridtype = CartesianGrid, kw...)
-   q = @something q species.q
-   m = @something m species.m
-   q2m = q / m
-   fE = prepare_field(E, args...; gridtype, kw...)
-   fB = prepare_field(B, args...; gridtype, kw...)
-   fF = prepare_field(F, args...; gridtype, kw...)
-   q2m, m, fE, fB, fF
+function _prepare(
+        E, B, F, args...; species = Proton, q = nothing,
+        m = nothing, gridtype = CartesianGrid, kw...
+    )
+    q = @something q species.q
+    m = @something m species.m
+    q2m = q / m
+    fE = prepare_field(E, args...; gridtype, kw...)
+    fB = prepare_field(B, args...; gridtype, kw...)
+    fF = prepare_field(F, args...; gridtype, kw...)
+    return q2m, m, fE, fB, fF
 end
 
 """
@@ -109,30 +111,36 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
   - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
 function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
-   _prepare(E, B, F, makegrid(grid)...; gridtype = CartesianGrid, order, bc, kw...)
+    return _prepare(E, B, F, makegrid(grid)...; gridtype = CartesianGrid, order, bc, kw...)
 end
 
 function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
-   _prepare(E, B, F, makegrid(grid)...; gridtype = RectilinearGrid, order, bc, kw...)
+    return _prepare(E, B, F, makegrid(grid)...; gridtype = RectilinearGrid, order, bc, kw...)
 end
 
-function prepare(x::T, y::T, E, B, F = ZeroField(); order = 1,
-      bc = 1, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
+function prepare(
+        x::T, y::T, E, B, F = ZeroField(); order = 1,
+        bc = 1, kw...
+    ) where {T <: AbstractRange}
+    return _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
 end
 
-function prepare(x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
-      bc = 1, gridtype = CartesianGrid, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
+function prepare(
+        x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
+        bc = 1, gridtype = CartesianGrid, kw...
+    ) where {T <: AbstractRange}
+    return _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
 end
 
-function prepare(x::Base.LogRange, y::T, z::T, E, B, F = ZeroField();
-      order = 1, bc = 2, kw...) where {T <: AbstractRange}
-   _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
+function prepare(
+        x::Base.LogRange, y::T, z::T, E, B, F = ZeroField();
+        order = 1, bc = 2, kw...
+    ) where {T <: AbstractRange}
+    return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
 function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
-   _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
+    return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)

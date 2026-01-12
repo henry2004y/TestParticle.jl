@@ -103,10 +103,12 @@ n_analytic = @. N / (sqrt(π) * sigma_param)^3 * exp(-r2 / sigma_param^2);
 # ## Visualization
 
 f = Figure(fontsize = 18)
-ax = Axis(f[1, 1],
-   title = "Free Expansion Density (t = $(t_end))",
-   xlabel = "x",
-   ylabel = "Number Density")
+ax = Axis(
+    f[1, 1],
+    title = "Free Expansion Density (t = $(t_end))",
+    xlabel = "x",
+    ylabel = "Number Density"
+)
 
 scatter!(ax, xs_plot, density_x, label = "Simulation", color = :blue, markersize = 10)
 lines!(ax, xs_plot, n_analytic, label = "Analytical", color = :red, linewidth = 2)

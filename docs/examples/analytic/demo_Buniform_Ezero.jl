@@ -9,12 +9,12 @@ using TestParticle: ZeroField
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0.0, 0.0, 1e-8]
+uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
 zero_E = ZeroField()
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
-   [x0..., v0...]
+    [x0..., v0...]
 end
 ## Time span
 tspan = (0, 18)
@@ -25,12 +25,13 @@ sol = solve(prob, Vern9())
 
 ## Visualization
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Helix Trajectory",
-   xlabel = "x [m]",
-   ylabel = "y [m]",
-   zlabel = "z [m]",
-   aspect = :data
+ax = Axis3(
+    f[1, 1],
+    title = "Helix Trajectory",
+    xlabel = "x [m]",
+    ylabel = "y [m]",
+    zlabel = "z [m]",
+    aspect = :data
 )
 
 plot!(ax, sol, idxs = (1, 2, 3))

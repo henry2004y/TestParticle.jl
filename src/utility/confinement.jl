@@ -15,13 +15,13 @@ Get magnetic field at `[x, y, z]` from a magnetic mirror generated from two coil
   - `I1`: current in the solenoid times number of windings in side coils.
 """
 function getB_mirror(x, y, z, distance, a, I1)
-   r = SA[x, y, z]
-   cl1 = CurrentLoop(a, I1, SA[0.0, 0.0, -0.5 * distance], SA[0.0, 0.0, 1.0])
-   cl2 = CurrentLoop(a, I1, SA[0.0, 0.0, 0.5 * distance], SA[0.0, 0.0, 1.0])
-   B1 = getB_loop(r, cl1)
-   B2 = getB_loop(r, cl2)
+    r = SA[x, y, z]
+    cl1 = CurrentLoop(a, I1, SA[0.0, 0.0, -0.5 * distance], SA[0.0, 0.0, 1.0])
+    cl2 = CurrentLoop(a, I1, SA[0.0, 0.0, 0.5 * distance], SA[0.0, 0.0, 1.0])
+    B1 = getB_loop(r, cl1)
+    B2 = getB_loop(r, cl2)
 
-   return B1 + B2
+    return B1 + B2
 end
 
 """
@@ -41,13 +41,13 @@ Reference: [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles
     central loop in [A].
 """
 function getB_bottle(x, y, z, distance, a, b, I1, I2)
-   B = getB_mirror(x, y, z, distance, a, I1)
+    B = getB_mirror(x, y, z, distance, a, I1)
 
-   # Central loop
-   cl3 = CurrentLoop(b, I2, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
-   B3 = getB_loop(SA[x, y, z], cl3)
+    # Central loop
+    cl3 = CurrentLoop(b, I2, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
+    B3 = getB_loop(SA[x, y, z], cl3)
 
-   return B + B3
+    return B + B3
 end
 
 """
@@ -65,54 +65,54 @@ Original: [Tokamak-Fusion-Reactor](https://github.com/BoschSamuel/Simulation-of-
   - `IPlasma`: current of the plasma in [A].
 """
 function getB_tokamak_coil(x, y, z, a, b, ICoils, IPlasma)
-   a *= 2
+    a *= 2
 
-   Bx, By, Bz = 0.0, 0.0, 0.0
-   r_vec = SA[x, y, z]
+    Bx, By, Bz = 0.0, 0.0, 0.0
+    r_vec = SA[x, y, z]
 
-   # magnetic field of the coils
-   for i in 0:15
-      θ = π / 16 + i * π / 8 # angle between the i-th coil and the x-axis
+    # magnetic field of the coils
+    for i in 0:15
+        θ = π / 16 + i * π / 8 # angle between the i-th coil and the x-axis
 
-      # Coil center and normal
-      # Center at (R_major * cos(θ), R_major * sin(θ), 0)
-      # R_major = b + a
-      R_major = b + a
-      center = SA[R_major * cos(θ), R_major * sin(θ), 0.0]
+        # Coil center and normal
+        # Center at (R_major * cos(θ), R_major * sin(θ), 0)
+        # R_major = b + a
+        R_major = b + a
+        center = SA[R_major * cos(θ), R_major * sin(θ), 0.0]
 
-      # Normal is toroidal direction (perpendicular to poloidal plane)
-      # Poloidal plane is at angle θ. Normal is (-sin(θ), cos(θ), 0)
-      normal = SA[-sin(θ), cos(θ), 0.0]
+        # Normal is toroidal direction (perpendicular to poloidal plane)
+        # Poloidal plane is at angle θ. Normal is (-sin(θ), cos(θ), 0)
+        normal = SA[-sin(θ), cos(θ), 0.0]
 
-      cl = CurrentLoop(a, ICoils, center, normal)
-      B_coil = getB_loop(r_vec, cl)
+        cl = CurrentLoop(a, ICoils, center, normal)
+        B_coil = getB_loop(r_vec, cl)
 
-      Bx += B_coil[1]
-      By += B_coil[2]
-      Bz += B_coil[3]
-   end
+        Bx += B_coil[1]
+        By += B_coil[2]
+        Bz += B_coil[3]
+    end
 
-   # magnetic field of the plasma current
-   σ = a / 3 # parameter of the Gauss curve
-   ϕ = atan(y, x)
-   # distance to centre of plasma ring
-   # Plasma ring radius R_p = a + b
-   R_p = a + b
-   distance = √(z^2 + (x - R_p * cos(ϕ))^2 + (y - R_p * sin(ϕ))^2)
+    # magnetic field of the plasma current
+    σ = a / 3 # parameter of the Gauss curve
+    ϕ = atan(y, x)
+    # distance to centre of plasma ring
+    # Plasma ring radius R_p = a + b
+    R_p = a + b
+    distance = √(z^2 + (x - R_p * cos(ϕ))^2 + (y - R_p * sin(ϕ))^2)
 
-   if distance > 0.0001
-      I2_r_plasma = IPlasma * erf(distance / (σ * √2))
+    if distance > 0.0001
+        I2_r_plasma = IPlasma * erf(distance / (σ * √2))
 
-      # Plasma is a horizontal loop at z=0, radius R_p
-      cl_plasma = CurrentLoop(R_p, I2_r_plasma, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
-      B_plasma = getB_loop(r_vec, cl_plasma)
+        # Plasma is a horizontal loop at z=0, radius R_p
+        cl_plasma = CurrentLoop(R_p, I2_r_plasma, SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
+        B_plasma = getB_loop(r_vec, cl_plasma)
 
-      Bx += B_plasma[1]
-      By += B_plasma[2]
-      Bz += B_plasma[3]
-   end
+        Bx += B_plasma[1]
+        By += B_plasma[2]
+        Bz += B_plasma[3]
+    end
 
-   SA[Bx, By, Bz]
+    return SA[Bx, By, Bz]
 end
 
 """
@@ -130,21 +130,21 @@ Reference: Tokamak, 4th Edition, John Wesson.
   - `Bζ0`: toroidal magnetic field on axis [T].
 """
 function getB_tokamak_profile(x, y, z, q_profile, a, R₀, Bζ0)
-   R = √(x^2 + y^2)
-   r = √((R - R₀)^2 + z^2)
-   if r > a
-      throw(OverflowError("out of vacuum vessel"))
-   end
-   θ = atan(z, R - R₀)
-   Bζ = Bζ0 * R₀ / R
-   Bθ = r * Bζ / R₀ / q_profile(r / a)
-   ζ = atan(y, x)
+    R = √(x^2 + y^2)
+    r = √((R - R₀)^2 + z^2)
+    if r > a
+        throw(OverflowError("out of vacuum vessel"))
+    end
+    θ = atan(z, R - R₀)
+    Bζ = Bζ0 * R₀ / R
+    Bθ = r * Bζ / R₀ / q_profile(r / a)
+    ζ = atan(y, x)
 
-   Bx = -Bζ * sin(ζ) - Bθ * sin(θ) * cos(ζ)
-   By = Bζ * cos(ζ) - Bθ * sin(θ) * sin(ζ)
-   Bz = Bθ * cos(θ)
+    Bx = -Bζ * sin(ζ) - Bθ * sin(θ) * cos(ζ)
+    By = Bζ * cos(ζ) - Bθ * sin(θ) * sin(ζ)
+    Bz = Bθ * cos(θ)
 
-   SA[Bx, By, Bz]
+    return SA[Bx, By, Bz]
 end
 """
      getB_zpinch(x, y, z, I, a) -> StaticVector{Float64, 3}
@@ -159,16 +159,16 @@ Reference: [Z-pinch](https://en.wikipedia.org/wiki/Z-pinch)
   - `a::Float`: radius of the wire [m].
 """
 function getB_zpinch(x, y, z, I, a)
-   r = hypot(x, y)
-   if r < a
-      factor = μ₀ * I / (2π * a^2)
-      Bx = -factor * y
-      By = factor * x
-   else
-      factor = μ₀ * I / (2π * r^2)
-      Bx = -factor * y
-      By = factor * x
-   end
+    r = hypot(x, y)
+    if r < a
+        factor = μ₀ * I / (2π * a^2)
+        Bx = -factor * y
+        By = factor * x
+    else
+        factor = μ₀ * I / (2π * r^2)
+        Bx = -factor * y
+        By = factor * x
+    end
 
-   SA[Bx, By, 0.0]
+    return SA[Bx, By, 0.0]
 end
