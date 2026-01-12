@@ -38,6 +38,7 @@ analytic_order = [
    "demo_proton_dipole.jl",
    "demo_earth_gravity.jl",
    "demo_analytic_magnetosphere.jl",
+   "demo_relativity_comparison.jl",
    "demo_tokamak_coil.jl",
    "demo_tokamak_profile.jl",
    "demo_spherical.jl",
