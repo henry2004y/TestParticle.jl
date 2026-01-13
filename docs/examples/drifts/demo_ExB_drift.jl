@@ -57,9 +57,9 @@ f = DisplayAs.PNG(f) #hide
 # Note that in this simple ExB drift case, the analytic and numeric guiding centers overlaps. Also note that `trace_gc_exb!` here depends on the velocity at time `t` from the particle trajectory, which is not exactly the guiding center velocity.
 # A first-order GC approximation tracker would be the following:
 
-stateinit_gc,
-    param_gc = prepare_gc(stateinit, uniform_E, uniform_B, species = Proton, removeExB = false)
-prob_gc1st = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+stateinit_gc, param_gc =
+    prepare_gc(stateinit, uniform_E, uniform_B, species = Proton, removeExB = false)
+prob_gc1st = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc1st = solve(prob_gc1st, Vern9())
 
 f = Figure(fontsize = 18)

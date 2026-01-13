@@ -40,8 +40,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ## 2. Guiding Center Simulation (Numeric Preparation)
-stateinit_gc,
-    param_gc = TP.prepare_gc(
+stateinit_gc, param_gc = TP.prepare_gc(
     stateinit, uniform_E, curved_B,
     species = Proton, removeExB = false
 )
@@ -59,13 +58,12 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
     B_numerical[:, i, j, k] = curved_B(x)
 end
 
-stateinit_gc_num,
-    param_gc_num = TP.prepare_gc(
+stateinit_gc_num, param_gc_num = TP.prepare_gc(
     stateinit, xrange, yrange, zrange,
     uniform_E, B_numerical, species = Proton, removeExB = false, order = 3
 )
 
-prob_gc_num = ODEProblem(trace_gc_1st!, stateinit_gc_num, tspan, param_gc_num)
+prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
 sol_gc_numericBfield = solve(prob_gc_num, Vern9())
 
 ## 4. Analytic Guiding Center Drift
@@ -207,7 +205,7 @@ function run_grad_B_sim(B_func, tspan)
         stateinit, uniform_E, B_func,
         species = Proton, removeExB = false
     )
-    prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+    prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
     sol_gc = solve(prob_gc, Vern9())
 
     ## GC (Analytic)
@@ -287,10 +285,9 @@ stateinit_gc,
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})
 cb = SavingCallback(
-    (u, t, integrator) -> get_gc_1st_velocity(u, integrator.p, t), saved_values
+    (u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values
 )
-##TODO: trace_gc! shows instability in this case. To be investigated.
-prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan_bench, param_gc)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan_bench, param_gc)
 
 ## Run simulations for plotting
 sol_full = solve(prob_full, Vern9())
