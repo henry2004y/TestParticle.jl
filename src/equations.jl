@@ -240,6 +240,64 @@ function trace_gc_drifts!(dx, x, p, t)
 end
 
 """
+    trace_gc_2nd!(dy, y, p, t)
+
+Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
+Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
+This version includes the polarization drift term and is not fully tested.
+"""
+function trace_gc_2nd!(dy, y, p::GCTuple, t)
+    v1, v2, v3, du = get_gc_derivatives_polarization(y, p, t)
+
+    @inbounds dy[1] = v1
+    @inbounds dy[2] = v2
+    @inbounds dy[3] = v3
+    @inbounds dy[4] = du
+
+    return
+end
+
+"""
+    get_gc_velocity_polarization(y, p, t)
+
+Get the guiding center velocity.
+"""
+function get_gc_velocity_polarization(y, p::GCTuple, t)
+    v1, v2, v3, _ = get_gc_derivatives_polarization(y, p, t)
+    return SVector{3}(v1, v2, v3)
+end
+
+function get_gc_derivatives_polarization(y, p::GCTuple, t)
+    q, m, μ, Efunc, Bfunc = p
+    q2m = q / m
+    X = get_x(y)
+
+    E, JE = get_E_parameters(X, t, Efunc)
+    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
+
+    # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
+    # ∇ × B from JB
+    curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
+    curlb = (curlB + b̂ × ∇B) / Bmag
+
+    # ∇(E²/B²) = 2/B² * (JE'*E - (E²/B)*∇B)
+    # Uses JE (Jacobian of E) and JB (via ∇B)
+    E² = E ⋅ E
+    ∇vE² = (2 / Bmag^2) * (JE' * E - (E² / Bmag) * ∇B)
+
+    # effective EM fields
+    Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
+    Bᵉ = @. B + y[4] / q2m * curlb
+    Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
+
+    v1 = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
+    v2 = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
+    v3 = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
+    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
+    return v1, v2, v3, du
+end
+
+"""
     trace_gc!(dy, y, p, t)
 
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
@@ -271,78 +329,32 @@ function get_gc_derivatives(y, p::GCTuple, t)
     q2m = q / m
     X = get_x(y)
 
-    E, JE = get_E_parameters(X, t, Efunc)
-    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
-
-    # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
-    # ∇ × B from JB
-    curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
-    curlb = (curlB + b̂ × ∇B) / Bmag
-
-    # ∇(E²/B²) = 2/B² * (JE'*E - (E²/B)*∇B)
-    # Uses JE (Jacobian of E) and JB (via ∇B)
-    E² = E ⋅ E
-    ∇vE² = (2 / Bmag^2) * (JE' * E - (E² / Bmag) * ∇B)
-
-    # effective EM fields
-    Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
-    Bᵉ = @. B + y[4] / q2m * curlb
-    Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
-
-    v1 = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
-    v2 = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
-    v3 = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
-    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-
-    return v1, v2, v3, du
-end
-
-"""
-1st order approximation of guiding center equations.
-"""
-function trace_gc_1st!(dy, y, p::GCTuple, t)
-    v1, v2, v3, du = get_gc_1st_derivatives(y, p, t)
-
-    @inbounds dy[1] = v1
-    @inbounds dy[2] = v2
-    @inbounds dy[3] = v3
-    @inbounds dy[4] = du
-
-    return
-end
-
-"""
-    get_gc_1st_velocity(y, p, t)
-
-Get the guiding center velocity for the 1st order approximation.
-"""
-function get_gc_1st_velocity(y, p::GCTuple, t)
-    v1, v2, v3, _ = get_gc_1st_derivatives(y, p, t)
-    return SVector{3}(v1, v2, v3)
-end
-
-function get_gc_1st_derivatives(y, p::GCTuple, t)
-    q, m, μ, Efunc, Bfunc = p
-    q2m = q / m
-    X = get_x(y)
-
     E = Efunc(X, t)
     B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
 
-    Ω = q * Bmag / m
-    u = y[4]
+    # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
+    # ∇ × B from JB (Jacobian of B)
+    curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
+    curlb = (curlB + b̂ × ∇B) / Bmag
 
     # effective EM fields
+    # B* = B + (m/q) u (∇ × b)
+    # E* = E - (μ/q) ∇B
+    # In CGS: B* = B + (c p_par / q) (∇ × b). In SI, c -> 1.
+    Bᵉ = @. B + y[4] / q2m * curlb
     Eᵉ = @. E - (μ * ∇B) / q
 
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+    inv_Bparᵉ = inv(b̂ ⋅ Bᵉ)
 
-    vX = u * b̂ + b̂ × (κ * u^2 - q2m * Eᵉ) / Ω
+    # dx/dt = (p_par/m * B* +  E* × b ) / B*_par
+    #       = (u * B* + E* × b) / B*_par
+    # In CGS: c/q * q E* x b. In SI, c=1.
+    v = (y[4] * Bᵉ + Eᵉ × b̂) * inv_Bparᵉ
 
-    du = q2m * (b̂ + u * (b̂ × κ) / Ω) ⋅ Eᵉ
+    # dp_par/dt = q/B*_par * B* ⋅ E* => du/dt = (q/m)/B*_par * B* ⋅ E*
+    du = q2m * inv_Bparᵉ * Bᵉ ⋅ Eᵉ
 
-    return vX[1], vX[2], vX[3], du
+    return v[1], v[2], v[3], du
 end
 
 """
