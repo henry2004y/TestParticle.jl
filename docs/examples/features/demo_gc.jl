@@ -190,8 +190,8 @@ f = DisplayAs.PNG(f) #hide
 # for the finite-Larmor-radius (FLR) 1st order approximation to be valid.
 #
 # We compare two cases:
-# 1. **Large FLR**: Weaker magnetic field, larger gyroradius.
-# 2. **Small FLR**: Stronger magnetic field, smaller gyroradius.
+# 1. **Large Radius**: Weaker magnetic field, larger gyroradius.
+# 2. **Small Radius**: Stronger magnetic field, smaller gyroradius.
 
 function run_grad_B_sim(B_func, tspan)
     ## Particle
@@ -220,12 +220,12 @@ function run_grad_B_sim(B_func, tspan)
     return sol, sol_gc, sol_gc_analytic, gc_from_particle
 end
 
-## Case 1: Large FLR
+## Case 1: Large radius
 grad_B_large(x) = SA[0, 0, 1.0e-8 + 1.0e-9 * x[2]]
 tspan_large = (0, 20)
 results_large = run_grad_B_sim(grad_B_large, tspan_large)
 
-## Case 2: Small FLR
+## Case 2: Small radius
 grad_B_small(x) = SA[0, 0, 1.0e-7 + 1.0e-8 * x[2]]
 tspan_small = (0, 10)
 results_small = run_grad_B_sim(grad_B_small, tspan_small)
@@ -255,10 +255,10 @@ function plot_results!(ax, res, title_str)
 end
 
 ax_left = Axis3(f2[1, 1])
-plot_results!(ax_left, results_large, "Large FLR (Weak B)")
+plot_results!(ax_left, results_large, "Weak B")
 
 ax_right = Axis3(f2[1, 2])
-plot_results!(ax_right, results_small, "Small FLR (Strong B)")
+plot_results!(ax_right, results_small, "Strong B")
 
 axislegend(ax_left, backgroundcolor = :transparent)
 
@@ -338,12 +338,12 @@ using Markdown #hide
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Memory | Ratio |") #hide
 println(io, "| :--- | :--- | :--- | :--- |") #hide
-println(
+println( #hide
     io, #hide
-    "| Full Orbit | $(round(median(b_full).time, digits = 4)) | $(round(median(b_full).bytes, digits = 4)) | 1.0 |"
+    "| Full Orbit | $(round(median(b_full).time, digits = 4)) | $(round(median(b_full).bytes, digits = 4)) | 1.0 |" #hide
 ) #hide
-println(
+println( #hide
     io, #hide
-    "| Guiding Center | $(round(median(b_gc).time, digits = 4)) | $(round(median(b_gc).bytes, digits = 4)) | $(round(median(b_gc).time / median(b_full).time, digits = 4)) |"
+    "| Guiding Center | $(round(median(b_gc).time, digits = 4)) | $(round(median(b_gc).bytes, digits = 4)) | $(round(median(b_gc).time / median(b_full).time, digits = 4)) |" #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
