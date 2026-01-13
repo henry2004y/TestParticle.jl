@@ -341,8 +341,8 @@ function get_gc_derivatives(y, p::GCTuple, t)
     # B* = B + (m/q) u (∇ × b)
     # E* = E - (μ/q) ∇B
     # In CGS: B* = B + (c p_par / q) (∇ × b). In SI, c -> 1.
-    Bᵉ = @. B + y[4] / q2m * curlb
-    Eᵉ = @. E - (μ * ∇B) / q
+    Bᵉ = B + (y[4] / q2m) * curlb
+    Eᵉ = E - (μ / q) * ∇B
 
     inv_Bparᵉ = inv(b̂ ⋅ Bᵉ)
 
