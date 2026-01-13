@@ -120,7 +120,5 @@ stateinit_gc,
     stateinit, E_analytic, B_analytic,
     species = Proton, removeExB = true
 )
-prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["1st order"] = @benchmarkable solve($prob_gc, Vern9())
-prob_gc_full = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-SUITE["trace"]["GC"]["full"] = @benchmarkable solve($prob_gc_full, Vern9())
