@@ -33,7 +33,7 @@ sol = solve(prob, Vern9());
 # Next, we can trace the guiding center (GC) of the particle directly, either via `trace_gc!` or `trace_gc_1st!`.
 # For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
 stateinit_gc, param_gc = prepare_gc(stateinit, TP.getE_dipole, TP.getB_dipole)
-prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
 ## Analysis

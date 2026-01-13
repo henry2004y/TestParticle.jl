@@ -609,9 +609,9 @@ end
             stateinit, uniform_E, curved_B,
             species = Proton, removeExB = false
         )
-        prob_gc = ODEProblem(trace_gc_1st!, stateinit_gc, tspan, param_gc)
-        sol_gc = solve(prob_gc, Vern9())
-        @test sol_gc.u[end][1] ≈ 0.9896155284164463
+        prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+        sol_gc_new = solve(prob_gc, Vern9())
+        @test sol_gc_new.u[end][1] ≈ 0.9896155284164463
     end
 end
 
