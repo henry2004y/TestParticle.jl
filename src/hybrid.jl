@@ -16,6 +16,10 @@ function check_gc_validity(x, v, p, t; epsilon = 0.1)
 
     B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
 
+    if Bmag < eps(eltype(x))
+        return false
+    end
+
     # Calculate gyroradius r_L
     v_par = (v ⋅ b) .* b
     v_perp = v - v_par
@@ -222,8 +226,8 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
         B_val = B(R, t)
         B_mag = norm(B_val)
 
-        if B_mag < eps()
-            return false
+        if B_mag < eps(eltype(u))
+            return true
         end
 
         v_perp = sqrt(2 * B_mag * mu / m)
@@ -233,7 +237,7 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
         # L_B
         _, _, _, ∇B, _ = get_B_parameters(R, t, B)
         ∇B_mag = norm(∇B)
-        if ∇B_mag < eps()
+        if ∇B_mag < eps(eltype(u))
             return false
         end
 

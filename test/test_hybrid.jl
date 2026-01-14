@@ -90,11 +90,11 @@ using SciMLBase
         @test norm(sol_hybrid_full.u[end][1:3] - sol_pure_full.u[end][1:3]) < 1.0e-4
     end
 
-    @testset "Energy Conservation" begin
+    @testset "Stability" begin
         # Test Energy Conservation during switching
         sol = solve_hybrid(prob_gc, Tsit5(); epsilon = 0.1, dt = 1.0e-7)
 
-        energies = Float64[]
+
         # Check conservation of total energy if possible, or bounded behavior
 
         # Since we don't track mu output easily, we check stability
