@@ -51,7 +51,7 @@ end
 Convert Guiding Center state (4-element) to Full Particle state (6-element).
 Uses a fixed gyrophase of 0.
 """
-function gc_to_full(gc_state, p_gc, t)
+function gc_to_full(gc_state, p_gc, t; phase = nothing)
     R = gc_state[SA[1:3...]]
     u_par = gc_state[4]
 
@@ -62,9 +62,8 @@ function gc_to_full(gc_state, p_gc, t)
     Bmag = norm(B)
     b = B / Bmag
 
-    # v_perp magnitude from magnetic moment mu = m v_perp^2 / (2B)
-    # v_perp = sqrt(2 * B * mu / m)
-    v_perp_mag = sqrt(2 * Bmag * μ / m)
+    # Calculate v_gyro magnitude from magnetic moment mu = m v_gyro^2 / (2B)
+    v_gyro_mag = sqrt(2 * Bmag * μ / m)
 
     # Construct a perpendicular vector for phase 0.
     # We need a vector perpendicular to b.
@@ -73,20 +72,24 @@ function gc_to_full(gc_state, p_gc, t)
     arbitrary = SVector{3}(ntuple(i -> i == min_idx ? 1.0 : 0.0, 3))
 
     perp1 = normalize(arbitrary × b)
-    # perp2 = b × perp1
+    perp2 = b × perp1
 
-    # Fixed gyrophase 0: v_perp direction is perp1
-    v_perp = v_perp_mag * perp1
+    # Random or fixed gyrophase
+    θ = isnothing(phase) ? 2π * rand() : phase
+    v_gyro = v_gyro_mag * (cos(θ) * perp1 + sin(θ) * perp2)
 
-    v = u_par * b + v_perp
+    # ExB drift
+    E = Efunc(R, t)
+    v_E = (E × b) / Bmag
+
+    # Total velocity
+    v = u_par * b + v_gyro + v_E
 
     # Position: x = R + rho.
-    # rho = b × v_perp / Omega ?
-    # Definition: R = x - rho_vec. => x = R + rho_vec.
-    # rho_vec = (b × v) / (qB/m) = (b × v_perp) / Omega
+    # rho = (b × v_gyro) / Omega
     q2m = q / m
     Ω = q2m * Bmag
-    rho_vec = (b × v_perp) / Ω
+    rho_vec = (b × v_gyro) / Ω
 
     x = R + rho_vec
 
@@ -104,29 +107,30 @@ function full_to_gc(full_state, p_full, t)
 
     q2m, m, Efunc, Bfunc, Ffunc = p_full
 
-    # We need to construct a compatible param for existing get_gc
-    # existing get_gc(xu, param) expects param to implement get_q2m and get_BField
-    # p_full matches (q2m, m, E, B, F).
-    # get_q2m(p) = p[1], get_BField(p) = p[4]. This matches.
-
+    # Calculate GC position
     R = get_gc(full_state, p_full)
 
-    # Calculate u_par at guiding center
+    # Calculate u_par and mu at guiding center
     B_gc = Bfunc(R, t)
-    b_gc = normalize(B_gc)
+    Bmag_gc = norm(B_gc)
+    b_gc = B_gc / Bmag_gc
 
-    # u_par is approximately v . b(R) ?
-    # Or v . b(x)?
-    # Standard definition: u_par = v . b(x) (velocity at particle position projected on field at particle position?)
-    # Wait, in GC approximation, v = v_gc + v_gy. v_gc = u_par * b + drifts.
-    # Usually u_par is defined as v . b(x).
+    E_gc = Efunc(R, t)
 
-    # Let's check get_gc_derivatives input. It takes y[4] as u.
-    # In prepare_gc: vpar = b_hat . v (where b_hat is at Guiding Center X)
-
+    # Calculate parallel velocity
     u_par = v ⋅ b_gc
 
-    return SVector{4}(R[1], R[2], R[3], u_par)
+    # Calculate ExB drift at GC
+    v_E = (E_gc × b_gc) / Bmag_gc
+
+    # Calculate gyro-velocity (perpendicular velocity in frame of drift)
+    v_perp_vec = v - u_par * b_gc - v_E
+    v_perp² = v_perp_vec ⋅ v_perp_vec
+
+    # Calculate new magnetic moment to conserve energy (approximately)
+    μ_new = m * v_perp² / (2 * Bmag_gc)
+
+    return SVector{4}(R[1], R[2], R[3], u_par), μ_new
 end
 
 """
@@ -137,13 +141,13 @@ Helper to convert state `u` (either 4D GC or 6D Full) to 6D Guiding Center state
 function get_gc_state_6d(u, mode, p_gc, p_full, t)
     if mode == :GC
         # u is 4D GC state
-        v_gc = get_gc_1st_velocity(u, p_gc, t)
+        v_gc = get_gc_velocity(u, p_gc, t)
         return vcat(u[SA[1:3...]], v_gc)
     else # mode == :Full
         # u is 6D Full state
         # Convert to 4D GC state first
-        gc_state_4d = full_to_gc(u, p_full, t)
-        v_gc = get_gc_1st_velocity(gc_state_4d, p_gc, t)
+        gc_state_4d, _ = full_to_gc(u, p_full, t)
+        v_gc = get_gc_velocity(gc_state_4d, p_gc, t)
         return vcat(gc_state_4d[SA[1:3...]], v_gc)
     end
 end
@@ -257,7 +261,7 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
 
         if mode == :GC
             # Setup GC problem
-            prob_current = ODEProblem(trace_gc_1st!, current_state, remaining_tspan, p_gc)
+            prob_current = ODEProblem(trace_gc!, current_state, remaining_tspan, p_gc)
             cb = DiscreteCallback(condition_gc_to_full, terminate!)
         else # Full Mode
             # Setup Full problem
@@ -281,7 +285,9 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
                 current_state = gc_to_full(final_u, p_gc, current_t)
             else
                 mode = :GC
-                current_state = full_to_gc(final_u, p_full, current_t)
+                current_state, new_mu = full_to_gc(final_u, p_full, current_t)
+                # Update p_gc with new mu
+                p_gc = (q, m, new_mu, E, B)
             end
         else
             break # Finished

@@ -1,4 +1,3 @@
-
 using Test
 using TestParticle
 using OrdinaryDiffEq
@@ -31,7 +30,7 @@ using SciMLBase
     # Parameters
     m = TestParticle.Proton.m
     q = TestParticle.Proton.q
-    Ek = 1e6 * 1.602e-19 # 1 MeV
+    Ek = 1.0e6 * 1.602e-19 # 1 MeV
     v0 = TestParticle.energy2velocity(Ek; m, q)
 
     # Initial condition
@@ -46,14 +45,14 @@ using SciMLBase
     v0_vec = SVector(0.0, v_perp, v_par)
 
     # Construct GC problem
-    state_gc, params_gc = prepare_gc(vcat(x0, v0_vec), E_zero, B_simple; species=TestParticle.Proton)
+    state_gc, params_gc = prepare_gc(vcat(x0, v0_vec), E_zero, B_simple; species = TestParticle.Proton)
 
-    tspan = (0.0, 1e-4)
-    prob_gc = ODEProblem(trace_gc_1st!, state_gc, tspan, params_gc)
+    tspan = (0.0, 1.0e-4)
+    prob_gc = ODEProblem(trace_gc!, state_gc, tspan, params_gc)
 
     @testset "Integration" begin
         # Test Hybrid
-        sol = solve_hybrid(prob_gc, Tsit5(); epsilon=0.1, dt=1e-7)
+        sol = solve_hybrid(prob_gc, Tsit5(); epsilon = 0.1, dt = 1.0e-7)
 
         # Check return type
         @test sol isa SciMLBase.AbstractODESolution
