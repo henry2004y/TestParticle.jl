@@ -11,7 +11,7 @@ Condition: r_L / L_B < epsilon.
 r_L = v_perp / (q B / m)
 L_B = B / |∇B|
 """
-function check_gc_validity(x, v, p, t; epsilon=0.1)
+function check_gc_validity(x, v, p, t; epsilon = 0.1)
     q2m, m, Efunc, Bfunc, _ = p
 
     B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
@@ -161,6 +161,7 @@ function process_segment!(times, states, sol, mode, p_gc, p_full)
         push!(times, t_val)
         push!(states, state_6d)
     end
+    return
 end
 
 # Hybrid solver implementation
@@ -181,7 +182,7 @@ Guiding Center (GC) tracing and Full Particle tracing based on validity conditio
 # Returns
 - A `SciMLBase.ODESolution` containing the stitched trajectory (in Guiding Center coordinates).
 """
-function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
+function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs...)
     # 1. Unpack GC parameters
     p_gc = prob.p # (q, m, mu, E, B)
     q, m, mu, E, B = p_gc
@@ -217,7 +218,9 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
         B_val = B(R, t)
         B_mag = norm(B_val)
 
-        if B_mag < eps() return false end
+        if B_mag < eps()
+            return false
+        end
 
         v_perp = sqrt(2 * B_mag * mu / m)
         Ω = abs(q2m * B_mag)
@@ -226,7 +229,9 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
         # L_B
         _, _, _, ∇B, _ = get_B_parameters(R, t, B)
         ∇B_mag = norm(∇B)
-        if ∇B_mag < eps() return false end
+        if ∇B_mag < eps()
+            return false
+        end
 
         L_B = B_mag / ∇B_mag
 
@@ -260,7 +265,7 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon=0.1, dt=nothing, kwargs...)
             cb = DiscreteCallback(condition_full_to_gc, terminate!)
         end
 
-        sol = SciMLBase.solve(prob_current, alg; callback=cb, dt=dt, kwargs...)
+        sol = SciMLBase.solve(prob_current, alg; callback = cb, dt = dt, kwargs...)
 
         # Process results
         process_segment!(times, states, sol, mode, p_gc, p_full)
