@@ -122,3 +122,34 @@ stateinit_gc,
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["1st order"] = @benchmarkable solve($prob_gc, Vern9())
+
+# Hybrid solver benchmark
+# Define a simple analytic magnetic mirror field
+function B_mirror(x, t)
+    B0_hybrid = 1.0
+    L_hybrid = 2.0
+    xx, yy, zz = x[1], x[2], x[3]
+    Bx = -B0_hybrid * xx * zz / L_hybrid^2
+    By = -B0_hybrid * yy * zz / L_hybrid^2
+    Bz = B0_hybrid * (1 + zz^2 / L_hybrid^2)
+    return SA[Bx, By, Bz]
+end
+# 1-arg version for initialization
+B_mirror(x) = B_mirror(x, 0.0)
+
+E_zero_hybrid(x, t) = SA[0.0, 0.0, 0.0]
+E_zero_hybrid(x) = SA[0.0, 0.0, 0.0]
+
+# Initial condition for hybrid
+x0_hybrid = SA[0.5, 0.0, 0.5]
+Ek_hybrid = 1.0e6 * TP.qᵢ # 1 MeV
+v0_hybrid = TP.energy2velocity(Ek_hybrid; m = TP.Proton.m, q = TP.Proton.q)
+v0_vec_hybrid = SA[0.0, v0_hybrid * sind(45), v0_hybrid * cosd(45)]
+
+state_gc_hybrid, params_gc_hybrid = TP.prepare_gc(vcat(x0_hybrid, v0_vec_hybrid), E_zero_hybrid, B_mirror; species = TP.Proton)
+
+prob_gc_hybrid = ODEProblem(trace_gc!, state_gc_hybrid, tspan, params_gc_hybrid)
+
+SUITE["trace"]["GC"]["hybrid"] = @benchmarkable solve_hybrid(
+    $prob_gc_hybrid, Tsit5(); epsilon = 0.1, dt = 1.0e-7
+)
