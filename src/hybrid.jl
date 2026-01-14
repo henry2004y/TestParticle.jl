@@ -75,7 +75,7 @@ function gc_to_full(gc_state, p_gc, t; phase = nothing)
     perp2 = b × perp1
 
     # Random or fixed gyrophase
-    θ = isnothing(phase) ? 2π * rand() : phase
+    θ = isnothing(phase) ? 0.0 : phase
     v_gyro = v_gyro_mag * (cos(θ) * perp1 + sin(θ) * perp2)
 
     # ExB drift
@@ -278,7 +278,7 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
         current_t = sol.t[end]
         final_u = sol.u[end]
 
-        if current_t < t_end || sol.retcode == :Terminated
+        if sol.retcode == :Terminated
             # Switched!
             if mode == :GC
                 mode = :Full

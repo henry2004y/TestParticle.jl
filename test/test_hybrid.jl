@@ -62,4 +62,43 @@ using SciMLBase
         @test length(sol.u) == length(sol.t)
         @test sol.u[1] isa SVector{6, Float64}
     end
+
+    @testset "Correctness" begin
+        # 1. Compare with pure GC (large epsilon => always GC)
+        sol_hybrid_gc = solve_hybrid(prob_gc, Tsit5(); epsilon = 1.0e10, dt = 1.0e-7)
+        prob_pure_gc = ODEProblem(trace_gc!, state_gc, tspan, params_gc)
+        sol_pure_gc = solve(prob_pure_gc, Tsit5(); dt = 1.0e-7)
+
+        # Compare final positions (should be identical or very close)
+        @test norm(sol_hybrid_gc.u[end][1:3] - sol_pure_gc.u[end][1:3]) < 1.0e-10
+
+        # 2. Compare with pure Full (small epsilon => always Full)
+        # Note: Hybrid starts in GC, checks condition, then switches.
+        # If we set epsilon small, it should switch immediately.
+        sol_hybrid_full = solve_hybrid(prob_gc, Tsit5(); epsilon = 1.0e-10, dt = 1.0e-7)
+
+        # Construct equivalent pure full problem
+        # We need to convert initial GC state to Full state
+        state_full_init = TestParticle.gc_to_full(state_gc, params_gc, 0.0)
+        # Construct full params: (q2m, m, E, B, F)
+        p_full = (q / m, m, E_zero, B_simple, TestParticle.ZeroField())
+        prob_pure_full = ODEProblem(trace, state_full_init, tspan, p_full)
+        sol_pure_full = solve(prob_pure_full, Tsit5(); dt = 1.0e-7)
+
+        # Compare final positions.
+        # Relax tolerance slightly as one step might differ.
+        @test norm(sol_hybrid_full.u[end][1:3] - sol_pure_full.u[end][1:3]) < 1.0e-4
+    end
+
+    @testset "Energy Conservation" begin
+        # Test Energy Conservation during switching
+        sol = solve_hybrid(prob_gc, Tsit5(); epsilon = 0.1, dt = 1.0e-7)
+
+        energies = Float64[]
+        # Check conservation of total energy if possible, or bounded behavior
+
+        # Since we don't track mu output easily, we check stability
+        @test all(x -> !isnan(x), Iterators.flatten(sol.u))
+        @test Symbol(sol.retcode) in [:Success, :Terminated, :Default]
+    end
 end

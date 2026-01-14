@@ -29,6 +29,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     get_gc_velocity, get_gc_velocity_polarization
 export Proton, Electron, Ion
 export solve_hybrid
+export gc_to_full, full_to_gc
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa
 export AdaptiveBoris
