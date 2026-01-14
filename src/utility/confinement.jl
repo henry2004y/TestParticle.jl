@@ -1,7 +1,5 @@
 # Magnetic field topology in fusion research.
 
-using SpecialFunctions: erf
-
 """
      getB_mirror(x, y, z, distance, a, I1) :: StaticVector{3}
 

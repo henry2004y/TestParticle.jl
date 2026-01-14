@@ -16,7 +16,8 @@ using DiffResults
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro
-using Elliptic
+using SpecialFunctions: erf, ellipk, ellipe
+
 import Tensors
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
