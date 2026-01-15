@@ -184,6 +184,8 @@ end
             species = Proton, order = 1
         )
         @test stateinit_gc[2] ≈ -1.0445524701265456
+        # μ = m * v_perp^2 / (2B)
+        @test param_gc[3] ≈ 8.363109618515e-20 rtol = 1.0e-6
 
         param = prepare(grid, E, B)
         prob = ODEProblem(trace!, stateinit, tspan, param)
