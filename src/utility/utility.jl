@@ -178,9 +178,28 @@ Return the gyroradius [m].
   - `q`: Charge [C]. Default is proton charge.
   - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyroradius(V, B; q = qᵢ, m = mᵢ)
+function get_gyroradius(V::Number, B::Number; q = qᵢ, m = mᵢ)
     ω = get_gyrofrequency(B; q, m)
     return r = V / ω
+end
+
+function get_gyroradius(v, B, E = SA[0.0, 0.0, 0.0]; q = qᵢ, m = mᵢ)
+    Bmag = norm(B)
+    if Bmag == 0
+        return Inf
+    end
+
+    v_E = SVector{3}((E × B) / Bmag^2) # ExB drift
+    v_gyro = SVector{3}(v - v_E)
+
+    # Calculate perpendicular component
+    b̂ = SVector{3}(B / Bmag)
+    v_gyro_par = (v_gyro ⋅ b̂) * b̂
+    v_gyro_perp = v_gyro - v_gyro_par
+    V_gyro_perp = norm(v_gyro_perp)
+
+    q2m = q / m
+    return V_gyro_perp / abs(q2m * Bmag)
 end
 
 """
@@ -192,32 +211,63 @@ The interpolated magnetic field function is obtained from `sol.prob.p`.
 function get_gyroradius(sol::AbstractODESolution, t)
     # Interpolate state at time t
     xu = sol(t)
-    x = xu[SA[1:3...]]
-    v = xu[SA[4:6...]]
+    x = get_x(xu)
+    u = get_v(xu)
 
     # Extract parameters
     p = sol.prob.p
     q2m = p[1]
+    m = p[2]
+    Efunc = p[3]
     Bfunc = p[4]
 
-    # Calculate B at position x
+    # Calculate fields at position x
+    E = Efunc(x, t)
     B = Bfunc(x, t)
     Bmag = norm(B)
     if Bmag == 0
         return Inf
     end
 
-    # Calculate perpendicular velocity
+    # Calculate ExB drift
+    v_E = (E × B) / Bmag^2
+
+    # Determine if relativistic
+    # We check the ODE function name to detect relativistic tracing
+    func_name = Symbol(sol.prob.f.f)
+    is_relativistic = func_name === :trace_relativistic! ||
+        func_name === :trace_relativistic ||
+        func_name === :trace_relativistic_normalized! ||
+        func_name === :trace_relativistic_normalized
+
+    # Calculate physical velocity
+    if is_relativistic
+        v_real = get_relativistic_v(u)
+        # For relativistic case, we need gamma for the gyroradius formula
+        # γ = 1 / sqrt(1 - v^2/c^2)
+        # Using the state u (which is γv), we can get γ directly or compute it.
+        # γ = sqrt(1 + (u/c)^2)
+        # However, let's stick to v_real.
+        # v_real magnitude
+        v_mag = norm(v_real)
+        γ = 1 / sqrt(1 - (v_mag / c)^2)
+    else
+        v_real = u
+        γ = 1.0
+    end
+
+    # Subtract drift velocity to get gyro-velocity
+    v_gyro = v_real - v_E
+
+    # Calculate perpendicular component of v_gyro
     b̂ = B / Bmag
-    v_par = (v ⋅ b̂) * b̂
-    v_perp = v - v_par
-    V_perp = norm(v_perp)
+    v_gyro_par = (v_gyro ⋅ b̂) * b̂
+    v_gyro_perp = v_gyro - v_gyro_par
+    V_gyro_perp = norm(v_gyro_perp)
 
     # Calculate gyroradius
-    # r = V_perp / (q/m * B) = V_perp / (q2m * B)
-    # For relativistic cases, `v` represents γv, so this effectively calculates
-    # r = γv_perp / (q/m * B) = γm * v_perp / (q * B), which is correct.
-    return V_perp / abs(q2m * Bmag)
+    # r = γ * m * v_perp / |q * B| = γ * m * v_perp / |q2m * m * B| = γ * v_perp / |q2m * B|
+    return γ * V_gyro_perp / abs(q2m * Bmag)
 end
 
 """
