@@ -1,8 +1,6 @@
 # Guiding center.
 
 function _get_gc_parameters(xv, E, B, q, m)
-    q = @something q species.q
-    m = @something m species.m
     x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
     bparticle = B(x)
