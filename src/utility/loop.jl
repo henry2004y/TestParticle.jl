@@ -61,8 +61,8 @@ function getB_loop(r::AbstractVector, loop::CurrentLoop)
     denom_sq = (radius + rho)^2 + z_local^2
     k_sq = 4 * radius * rho / denom_sq
 
-    K_val = Elliptic.K(k_sq)
-    E_val = Elliptic.E(k_sq)
+    K_val = ellipk(k_sq)
+    E_val = ellipe(k_sq)
 
     # Common factor
     factor = μ₀ * current / (2 * π * sqrt(denom_sq))

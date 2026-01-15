@@ -16,7 +16,8 @@ using DiffResults
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro
-using Elliptic
+using SpecialFunctions: erf, ellipk, ellipe
+
 import Tensors
 import Base: +, *, /, setindex!, getindex
 import LinearAlgebra: ×
@@ -28,6 +29,8 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!, trace_fieldline!, trace_fieldline,
     get_gc_velocity, get_gc_velocity_polarization
 export Proton, Electron, Ion
+export solve_hybrid
+export gc_to_full, full_to_gc
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa
 export AdaptiveBoris
@@ -64,6 +67,7 @@ include("pusher.jl")
 include("multistep_boris.jl")
 include("adaptive_boris.jl")
 include("fieldline.jl")
+include("hybrid.jl")
 
 function orbit end
 

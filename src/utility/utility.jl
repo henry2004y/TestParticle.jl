@@ -282,7 +282,7 @@ function get_energy(γv; m = mᵢ, q = qᵢ)
 end
 
 """
-Return velocity magnitude from energy in [eV].
+Return velocity magnitude in [m/s] from energy in [eV].
 """
 energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
 
