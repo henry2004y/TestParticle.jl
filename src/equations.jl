@@ -231,71 +231,17 @@ function trace_gc_drifts!(dx, x, p, t)
     # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
     κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
 
-    # v⟂^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + (E×b)/B + v∥
-    @inbounds dx[1:3] = norm(v_perp)^2 * (b × ∇B) / (2 * Ω * Bmag) +
+    v_E = (E × b) / Bmag
+    w = v_perp - v_E
+
+    # w^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + v_E + v∥
+    @inbounds dx[1:3] = norm(w)^2 * (b × ∇B) / (2 * Ω * Bmag) +
         norm(v_par)^2 * (b × κ) / Ω +
-        (E × b) / Bmag + v_par
+        v_E + v_par
 
     return
 end
 
-"""
-    trace_gc_2nd!(dy, y, p, t)
-
-Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
-Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
-This version includes the polarization drift term and is not fully tested.
-"""
-function trace_gc_2nd!(dy, y, p::GCTuple, t)
-    v1, v2, v3, du = get_gc_derivatives_polarization(y, p, t)
-
-    @inbounds dy[1] = v1
-    @inbounds dy[2] = v2
-    @inbounds dy[3] = v3
-    @inbounds dy[4] = du
-
-    return
-end
-
-"""
-    get_gc_velocity_polarization(y, p, t)
-
-Get the guiding center velocity.
-"""
-function get_gc_velocity_polarization(y, p::GCTuple, t)
-    v1, v2, v3, _ = get_gc_derivatives_polarization(y, p, t)
-    return SVector{3}(v1, v2, v3)
-end
-
-function get_gc_derivatives_polarization(y, p::GCTuple, t)
-    q, m, μ, Efunc, Bfunc = p
-    q2m = q / m
-    X = get_x(y)
-
-    E, JE = get_E_parameters(X, t, Efunc)
-    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
-
-    # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
-    # ∇ × B from JB
-    curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
-    curlb = (curlB + b̂ × ∇B) / Bmag
-
-    # ∇(E²/B²) = 2/B² * (JE'*E - (E²/B)*∇B)
-    # Uses JE (Jacobian of E) and JB (via ∇B)
-    E² = E ⋅ E
-    ∇vE² = (2 / Bmag^2) * (JE' * E - (E² / Bmag) * ∇B)
-
-    # effective EM fields
-    Eᵉ = @. E - (μ * ∇B - 0.5 * m * ∇vE²) / q
-    Bᵉ = @. B + y[4] / q2m * curlb
-    Bparᵉ = b̂ ⋅ Bᵉ # effective B field parallel to B
-
-    v1 = (y[4] * Bᵉ[1] + Eᵉ[2] * b̂[3] - Eᵉ[3] * b̂[2]) / Bparᵉ
-    v2 = (y[4] * Bᵉ[2] + Eᵉ[3] * b̂[1] - Eᵉ[1] * b̂[3]) / Bparᵉ
-    v3 = (y[4] * Bᵉ[3] + Eᵉ[1] * b̂[2] - Eᵉ[2] * b̂[1]) / Bparᵉ
-    du = q2m / Bparᵉ * Bᵉ ⋅ Eᵉ
-    return v1, v2, v3, du
-end
 
 """
     trace_gc!(dy, y, p, t)
@@ -303,7 +249,7 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-function trace_gc!(dy, y, p::GCTuple, t)
+function trace_gc!(dy, y, p, t)
     v1, v2, v3, du = get_gc_derivatives(y, p, t)
 
     @inbounds dy[1] = v1
@@ -319,14 +265,13 @@ end
 
 Get the guiding center velocity.
 """
-function get_gc_velocity(y, p::GCTuple, t)
+function get_gc_velocity(y, p, t)
     v1, v2, v3, _ = get_gc_derivatives(y, p, t)
     return SVector{3}(v1, v2, v3)
 end
 
-function get_gc_derivatives(y, p::GCTuple, t)
-    q, m, μ, Efunc, Bfunc = p
-    q2m = q / m
+function get_gc_derivatives(y, p, t)
+    q, q2m, μ, Efunc, Bfunc = p
     X = get_x(y)
 
     E = Efunc(X, t)

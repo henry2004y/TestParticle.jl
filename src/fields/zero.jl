@@ -6,6 +6,9 @@ struct ZeroVector end
 (+)(::ZeroVector, x) = x
 (+)(x, ::ZeroVector) = x
 (+)(::ZeroVector, ::ZeroVector) = ZeroVector()
+(-)(::ZeroVector, x) = x
+(-)(x, ::ZeroVector) = x
+(-)(::ZeroVector, ::ZeroVector) = ZeroVector()
 (*)(::ZeroVector, _) = ZeroVector()
 (*)(_, ::ZeroVector) = ZeroVector()
 (/)(::ZeroVector, _) = ZeroVector()

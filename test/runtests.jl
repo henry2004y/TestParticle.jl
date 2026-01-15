@@ -181,15 +181,11 @@ end
         stateinit_gc,
             param_gc = prepare_gc(
             stateinit, x, y, z, E, B;
-            species = Proton, removeExB = false, order = 1
+            species = Proton, order = 1
         )
         @test stateinit_gc[2] ≈ -1.0445524701265456
-        stateinit_gc,
-            param_gc = prepare_gc(
-            stateinit, x, y, z, E, B;
-            species = Proton, removeExB = true, order = 1
-        )
-        @test stateinit_gc[2] ≈ -1.0445524701265456
+        # μ = m * v_perp^2 / (2B)
+        @test param_gc[3] ≈ 8.36778773e-20 rtol = 1.0e-6
 
         param = prepare(grid, E, B)
         prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -590,7 +586,7 @@ end
         stateinit_gc,
             param_gc = TP.prepare_gc(
             stateinit, uniform_E, curved_B,
-            species = Proton, removeExB = true
+            species = Proton
         )
 
         prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
@@ -603,15 +599,6 @@ end
         sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
         @test sol_gc[1, end] ≈ 0.9896155284173717
         @test sol_gc_analytic[1, end] ≈ 0.9906923500002904 rtol = 1.0e-5
-
-        stateinit_gc,
-            param_gc = TP.prepare_gc(
-            stateinit, uniform_E, curved_B,
-            species = Proton, removeExB = false
-        )
-        prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-        sol_gc_new = solve(prob_gc, Vern9())
-        @test sol_gc_new.u[end][1] ≈ 0.9896155284164463
     end
 end
 

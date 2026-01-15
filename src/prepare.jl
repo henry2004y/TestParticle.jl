@@ -51,10 +51,6 @@ function Base.show(io::IO, f::Field)
     return println(io, "Time-dependent: ", is_time_dependent(f.field_function))
 end
 
-"""
-The type of parameter tuple for guiding center problem.
-"""
-GCTuple = Tuple{Float64, Float64, Float64, AbstractField, AbstractField}
 
 get_q2m(param) = param[1]
 get_BField(param) = param[4]

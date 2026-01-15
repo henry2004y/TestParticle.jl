@@ -18,15 +18,15 @@ using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro
 using Elliptic
 import Tensors
-import Base: +, *, /, setindex!, getindex
+import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
 
 export prepare, prepare_gc, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_relativistic_normalized,
-    trace_gc!, trace_gc_2nd!,
+    trace_gc!,
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!, trace_fieldline!, trace_fieldline,
-    get_gc_velocity, get_gc_velocity_polarization
+    get_gc_velocity
 export Proton, Electron, Ion
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa

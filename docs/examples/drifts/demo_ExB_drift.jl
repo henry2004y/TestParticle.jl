@@ -58,7 +58,7 @@ f = DisplayAs.PNG(f) #hide
 # A first-order GC approximation tracker would be the following:
 
 stateinit_gc, param_gc =
-    prepare_gc(stateinit, uniform_E, uniform_B, species = Proton, removeExB = false)
+    prepare_gc(stateinit, uniform_E, uniform_B, species = Proton)
 prob_gc1st = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc1st = solve(prob_gc1st, Vern9())
 
