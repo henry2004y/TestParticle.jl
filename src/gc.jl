@@ -1,14 +1,39 @@
 # Guiding center.
 
-function prepare_gc(
-        xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
-        species = Proton, q = nothing, m = nothing,
-        order::Int = 1,
-        bc::Int = 1, removeExB = true
-    ) where {T <: AbstractRange, TE, TB}
+function _get_gc_parameters(xv, E, B, q, m)
     q = @something q species.q
     m = @something m species.m
     x, v = xv[SA[1:3...]], xv[SA[4:6...]]
+
+    bparticle = B(x)
+    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
+    b̂particle = bparticle ./ Bmag_particle
+    # vector of Larmor radius
+    ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
+    # Get the guiding center location
+    X = x - ρ
+    # Get EM field at guiding center
+    b = B(X)
+    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
+    b̂ = b ./ Bmag
+    vpar = @views b̂ ⋅ v
+
+    vperp = @. v - vpar * b̂
+    e = E(X)
+    vE = e × b̂ / Bmag
+    w = vperp - vE
+    μ = m * (w ⋅ w) / (2 * Bmag)
+
+    return X, vpar, q, m, μ
+end
+
+function prepare_gc(
+        xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
+        species = Proton, q = nothing, m = nothing,
+        order::Int = 1, bc::Int = 1
+    ) where {T <: AbstractRange, TE, TB}
+    q = @something q species.q
+    m = @something m species.m
 
     E = TE <: AbstractArray ?
         getinterp(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
@@ -17,64 +42,18 @@ function prepare_gc(
         getinterp(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
         B
 
-    bparticle = B(x)
-    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
-    b̂particle = bparticle ./ Bmag_particle
-    # vector of Larmor radius
-    ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
-    # Get the guiding center location
-    X = x - ρ
-    # Get EM field at guiding center
-    b = B(X)
-    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
-    b̂ = b ./ Bmag
-    vpar = @views b̂ ⋅ v
-
-    vperp = @. v - vpar * b̂
-    if removeExB
-        e = E(X)
-        vE = e × b̂ / Bmag
-        w = vperp - vE
-    else
-        w = vperp
-    end
-    μ = m * (w ⋅ w) / (2 * Bmag)
+    X, vpar, q, m, μ = _get_gc_parameters(xv, E, B, q, m)
 
     stateinit_gc = [X..., vpar]
 
     return stateinit_gc, (q, m, μ, Field(E), Field(B))
 end
 
-function prepare_gc(
-        xv, E, B; species = Proton, q = nothing,
-        m = nothing, removeExB = true
-    )
+function prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
     q = @something q species.q
     m = @something m species.m
-    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
-    bparticle = B(x)
-    Bmag_particle = √(bparticle[1]^2 + bparticle[2]^2 + bparticle[3]^2)
-    b̂particle = bparticle ./ Bmag_particle
-    # vector of Larmor radius
-    ρ = (b̂particle × v) ./ (q / m * Bmag_particle)
-    # Get the guiding center location
-    X = x - ρ
-    # Get EM field at guiding center
-    b = B(X)
-    Bmag = √(b[1]^2 + b[2]^2 + b[3]^2)
-    b̂ = b ./ Bmag
-    vpar = @views b̂ ⋅ v
-
-    vperp = @. v - vpar * b̂
-    if removeExB
-        e = E(X)
-        vE = e × b̂ / Bmag
-        w = vperp - vE
-    else
-        w = vperp
-    end
-    μ = m * (w ⋅ w) / (2 * Bmag)
+    X, vpar, q, m, μ = _get_gc_parameters(xv, E, B, q, m)
 
     stateinit_gc = [X..., vpar]
 
