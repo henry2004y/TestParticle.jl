@@ -266,14 +266,14 @@ function solve_hybrid(prob::ODEProblem, alg; epsilon = 0.1, dt = nothing, kwargs
         if mode == :GC
             # Setup GC problem
             prob_current = ODEProblem(trace_gc!, current_state, remaining_tspan, p_gc)
-            cb = DiscreteCallback(condition_gc_to_full, terminate!)
+            callback = DiscreteCallback(condition_gc_to_full, terminate!)
         else # Full Mode
             # Setup Full problem
             prob_current = ODEProblem(trace!, current_state, remaining_tspan, p_full)
-            cb = DiscreteCallback(condition_full_to_gc, terminate!)
+            callback = DiscreteCallback(condition_full_to_gc, terminate!)
         end
 
-        sol = SciMLBase.solve(prob_current, alg; callback = cb, dt = dt, kwargs...)
+        sol = SciMLBase.solve(prob_current, alg; callback, dt, kwargs...)
 
         # Process results
         process_segment!(times, states, sol, mode, p_gc, p_full)

@@ -142,7 +142,7 @@ E_zero_hybrid(x) = SA[0.0, 0.0, 0.0]
 
 # Initial condition for hybrid
 x0_hybrid = SA[0.5, 0.0, 0.5]
-Ek_hybrid = 1.0e6 * TP.qᵢ # 1 MeV
+Ek_hybrid = 10.0 # 10 eV
 v0_hybrid = TP.energy2velocity(Ek_hybrid; m = TP.Proton.m, q = TP.Proton.q)
 v0_vec_hybrid = SA[0.0, v0_hybrid * sind(45), v0_hybrid * cosd(45)]
 
@@ -151,5 +151,5 @@ state_gc_hybrid, params_gc_hybrid = TP.prepare_gc(vcat(x0_hybrid, v0_vec_hybrid)
 prob_gc_hybrid = ODEProblem(trace_gc!, state_gc_hybrid, tspan, params_gc_hybrid)
 
 SUITE["trace"]["GC"]["hybrid"] = @benchmarkable solve_hybrid(
-    $prob_gc_hybrid, Tsit5(); epsilon = 0.1, dt = 1.0e-7
+    $prob_gc_hybrid, Tsit5(); epsilon = 0.1, dt = 1.0e-9
 )
