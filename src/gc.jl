@@ -46,7 +46,7 @@ function prepare_gc(
 
     stateinit_gc = [X..., vpar]
 
-    return stateinit_gc, (q, m, μ, Field(E), Field(B))
+    return stateinit_gc, (q, q / m, μ, Field(E), Field(B))
 end
 
 function prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
@@ -57,7 +57,7 @@ function prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
 
     stateinit_gc = [X..., vpar]
 
-    return stateinit_gc, (q, m, μ, Field(E), Field(B))
+    return stateinit_gc, (q, q / m, μ, Field(E), Field(B))
 end
 
 """

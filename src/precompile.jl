@@ -36,6 +36,9 @@
         sol = solve(prob; dt, savestepinterval = 100)
         sol = solve(prob, EnsembleThreads(); dt, savestepinterval = 100)
         # guiding center
-        X = get_gc(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0)
+        stateinit_gc_compiled = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+        stateinit_gc, param_gc = prepare_gc(stateinit_gc_compiled, DipoleField(), DipoleField())
+        prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+        sol_gc = solve(prob_gc; dt, savestepinterval = 100)
     end
 end
