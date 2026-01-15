@@ -42,7 +42,7 @@ sol = solve(prob, Vern9())
 ## 2. Guiding Center Simulation (Numeric Preparation)
 stateinit_gc, param_gc = TP.prepare_gc(
     stateinit, uniform_E, curved_B,
-    species = Proton, removeExB = false
+    species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
@@ -60,7 +60,7 @@ end
 
 stateinit_gc_num, param_gc_num = TP.prepare_gc(
     stateinit, xrange, yrange, zrange,
-    uniform_E, B_numerical, species = Proton, removeExB = false, order = 3
+    uniform_E, B_numerical, species = Proton, order = 3
 )
 
 prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
@@ -203,7 +203,7 @@ function run_grad_B_sim(B_func, tspan)
     stateinit_gc,
         param_gc = TP.prepare_gc(
         stateinit, uniform_E, B_func,
-        species = Proton, removeExB = false
+        species = Proton
     )
     prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
     sol_gc = solve(prob_gc, Vern9())
@@ -280,7 +280,7 @@ prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 stateinit_gc,
     param_gc = TP.prepare_gc(
     stateinit, uniform_E, grad_B_small,
-    species = Proton, removeExB = false
+    species = Proton
 )
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})

@@ -118,7 +118,7 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 stateinit_gc,
     param_gc = TP.prepare_gc(
     stateinit, E_analytic, B_analytic,
-    species = Proton, removeExB = true
+    species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["1st order"] = @benchmarkable solve($prob_gc, Vern9())
