@@ -36,32 +36,6 @@ stateinit_gc, param_gc = prepare_gc(stateinit, TP.getE_dipole, TP.getB_dipole)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
-## Analysis
-function get_curvature_ratio(sol, param, tsample)
-    q, m, μ, Efunc, Bfunc = param
-    ratio = zeros(Float32, length(tsample))
-
-    for i in eachindex(tsample)
-        r = sol(tsample[i])[1:3]
-        B, Bmag, b, ∇B, JB = TP.get_B_parameters(r, 0.0, Bfunc)
-
-        ## Gyroradius
-        ## v_perp^2 = 2 * μ * B / m
-        ## ρ = m * v_perp / (q * B) = m * sqrt(2μB/m) / (qB) = sqrt(2μm/B) / q
-        ρ = sqrt(2 * μ * m / Bmag) / q
-
-        ## Curvature radius
-        ## κ = (b ⋅ ∇) b
-        ## κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-        κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-        Rc = 1 / norm(κ)
-
-        ratio[i] = Rc / ρ
-    end
-
-    return ratio
-end;
-
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
 # The GC trajectory is colored by the ratio between the magnetic field curvature and the gyroradius at each location.
@@ -102,13 +76,21 @@ for i in 1:nsample
     xgc[i], ygc[i], zgc[i] = sol_gc(tsample[i])[1:3] ./ Rₑ
 end
 
-ratio = get_curvature_ratio(sol_gc, param_gc, tsample)
+# Calculate adiabaticity: ρ/Rc
+# We plot Rc/ρ which stands for the adiabaticity parameter inverse.
+# Using the default Proton species
+ratio = let
+    q, q2m, μ, _, Bfunc = param_gc
+    m = q / q2m
+    adiabaticity = [get_adiabaticity(sol_gc(t)[1:3], Bfunc, q, m, μ, t) for t in tsample]
+    1 ./ adiabaticity
+end
 
 l_gc = lines!(
     ax, xgc, ygc, zgc, color = ratio, colormap = :plasma,
     linewidth = 3, label = "Guiding Center"
 )
-Colorbar(f[1, 2], l_gc, label = "Gyroradius / Curvature Radius")
+Colorbar(f[1, 2], l_gc, label = "Curvature Radius / Gyroradius")
 
 f = DisplayAs.PNG(f) #hide
 
