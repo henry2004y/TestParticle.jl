@@ -35,7 +35,7 @@ export CurrentLoop, getB_loop
 export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy,
     energy2velocity,
-    get_curvature_radius,
+    get_curvature_radius, get_adiabaticity,
     sample_unit_sphere, get_number_density_flux,
     getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor

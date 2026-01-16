@@ -583,3 +583,28 @@ function get_curvature_radius(x, t, Bfunc)
 
     return 1 / k_mag
 end
+
+"""
+    get_adiabaticity(r, Bfunc, q, m, μ, t=0.0)
+
+Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
+`ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
+"""
+function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
+    # Calculate B field
+    B = Bfunc(r, t)
+    Bmag = norm(B)
+
+    # Calculate Gyroradius
+    # v_perp^2 = 2 * μ * B / m
+    ρ = sqrt(2 * μ * m / Bmag) / q
+
+    # Calculate Curvature Radius
+    Rc = get_curvature_radius(r, t, Bfunc)
+
+    return ρ / Rc
+end
+
+function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
+    return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
+end
