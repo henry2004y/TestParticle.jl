@@ -79,9 +79,12 @@ end
 # Calculate adiabaticity: ρ/Rc
 # We plot Rc/ρ which stands for the adiabaticity parameter inverse.
 # Using the default Proton species
-q, q2m, μ, _, Bfunc = param_gc
-adiabaticity = [get_adiabaticity(sol_gc(t)[1:3], Bfunc, μ, t) for t in tsample]
-ratio = 1 ./ adiabaticity
+ratio = let
+    q, q2m, μ, _, Bfunc = param_gc
+    m = q / q2m
+    adiabaticity = [get_adiabaticity(sol_gc(t)[1:3], Bfunc, q, m, μ, t) for t in tsample]
+    1 ./ adiabaticity
+end
 
 l_gc = lines!(
     ax, xgc, ygc, zgc, color = ratio, colormap = :plasma,

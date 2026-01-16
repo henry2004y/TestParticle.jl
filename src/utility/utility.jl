@@ -594,10 +594,13 @@ function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
     # Calculate B field
     B = Bfunc(r, t)
     Bmag = norm(B)
+    if Bmag == 0.0
+        return Inf
+    end
 
     # Calculate Gyroradius
     # v_perp^2 = 2 * μ * B / m
-    ρ = sqrt(2 * μ * m / Bmag) / q
+    ρ = sqrt(2 * μ * m / Bmag) / abs(q)
 
     # Calculate Curvature Radius
     Rc = get_curvature_radius(r, t, Bfunc)

@@ -66,5 +66,17 @@ end
         # val_p = get_adiabaticity(r, B_circular, 1e-19, 0.0) # μ ~ 1e-19
         # just check it runs
         @test isfinite(get_adiabaticity(r, B_circular, 1.0e-19, 0.0))
+
+        # Test Negative Charge
+        # Should result in positive adiabaticity due to abs(q)
+        q_neg = -1.0
+        val_neg = get_adiabaticity(r, B_circular, q_neg, m, μ, 0.0)
+        @test val_neg > 0
+        @test val_neg ≈ val
+
+        # Test Zero B Field
+        # Should return Inf
+        B_zero_test(x, t) = SA[0.0, 0.0, 0.0]
+        @test get_adiabaticity(r, B_zero_test, q, m, μ, 0.0) == Inf
     end
 end
