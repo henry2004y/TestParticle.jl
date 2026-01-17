@@ -58,7 +58,7 @@ function prob_func_6(prob, i, repeat)
 end
 
 ## obtain field
-param = prepare(TP.ZeroField(), getB_superposition_constant)
+param = prepare(ZeroField(), getB_superposition_constant)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 2000.0)
 trajectories = 2

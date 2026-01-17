@@ -63,7 +63,7 @@ r₀ = [0.8, 0.8, 0.0]  # confined
 stateinit = [r₀..., v₀...]
 
 param = prepare(TP.ZeroField(), getB; species = Electron)
-tspan = (0.0, 1.0e-4)
+tspan = (0.0, 5.0e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
@@ -94,8 +94,7 @@ ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
 ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = "mu")
 
 lines!(ax1, sol_non, idxs = (1, 2, 3))
-lines!(ax1, sol_gc, idxs = (1, 2, 3), label = "Guiding Center", color = :orange)
-
+lines!(ax1, sol_gc, idxs = (1, 2, 3), label = "Guiding Center", color = :red)
 lines!(ax2, sol_non, idxs = (absB, 0, 1, 2, 3))
 lines!(ax3, sol_non, idxs = (v_perp, 0, 1, 2, 3, 4, 5, 6))
 lines!(ax4, sol_non, idxs = (mu, 0, 1, 2, 3, 4, 5, 6))
