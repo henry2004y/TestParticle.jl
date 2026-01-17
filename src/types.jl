@@ -17,6 +17,3 @@ struct Species{M, Q}
     m::M
     q::Q
 end
-
-Ion(m, q = 1) = Species(m * mᵢ, q * qᵢ)
-Ion(; m = 1, q = 1) = Species(m * mᵢ, q * qᵢ)
