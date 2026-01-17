@@ -43,19 +43,9 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     t_n_mag = sqrt(t_n_mag2)
 
     # Calculate coefficients
-    # c_n1 = cos(2n * alpha_n)
-    # c_n2 = sin(2n * alpha_n) / t_n_mag
-    # c_n3 = 2 * sin^2(n * alpha_n) / t_n_mag2
-    # c_n6 = (2n - c_n2) / t_n_mag2
-
     # Check for small t_n to avoid division by zero or precision loss
     if t_n_mag < 1.0e-4
         # Taylor expansion limits as t_n -> 0
-        # c_n1 ≈ 1 - 2*n^2*t_n^2
-        # c_n2 ≈ 2n - 4/3*n^3*t_n^2
-        # c_n3 ≈ 2*n^2
-        # c_n6 ≈ 4/3*n^3
-
         c_n1 = 1.0 - 2 * n * n * t_n_mag2
         c_n2 = 2 * n - (4.0 / 3.0) * n * n * n * t_n_mag2
         c_n3 = 2.0 * n * n
@@ -93,7 +83,6 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     # Update velocity
     # Equation 39:
     # v_new = c_n1*v + c_n2*(v x t_n) + c_n3*(v . t_n)t_n + c_n4*e_n + c_n5*(e_n x t_n) + c_n6*(e_n . t_n)t_n
-
     @inbounds for i in 1:3
         xv[i + 3] = c_n1 * xv[i + 3] +
             c_n2 * v_cross_t[i] +
