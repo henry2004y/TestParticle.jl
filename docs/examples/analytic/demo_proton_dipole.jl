@@ -20,9 +20,9 @@ stateinit = let
     r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
     [r₀..., v₀...]
 end
-## obtain field
+## Obtain field
 param = prepare(TP.DipoleField())
-tspan = (0.0, 10.0)
+tspan = (0.0, 10.0);
 
 # ## Full Trajectory Tracing
 # We first show the tracing of full proton trajectory.
@@ -34,7 +34,7 @@ sol = solve(prob, Vern9());
 # For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
 stateinit_gc, param_gc = prepare_gc(stateinit, TP.getE_dipole, TP.getB_dipole)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern9())
+sol_gc = solve(prob_gc, Vern9());
 
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
@@ -96,6 +96,8 @@ f = DisplayAs.PNG(f) #hide
 
 # Solver algorithm matters in terms of energy conservation.
 # In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
+# Default stepsize settings may not be enough for our problem.
+# By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost.
 
 function get_energy_ratio(sol)
     vx = @view sol[4, :]
@@ -108,9 +110,6 @@ function get_energy_ratio(sol)
     return (Eend - Einit) / Einit
 end
 
-using Markdown
-using Printf
-
 results = Tuple{String, Float64}[]
 
 ## OrdinaryDiffEq solvers
@@ -121,8 +120,6 @@ ode_solvers = [
     ("Trapezoid", Trapezoid(), Dict()),
     ("Vern6", Vern6(), Dict()),
     ("Tsit5", Tsit5(), Dict()),
-    ## Default stepsize settings may not be enough for our problem. By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost:
-    ## This is roughly equivalent in accuracy and performance with Vern9() and `reltol=1e-3` (default)
     ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1.0e-4)),
 ]
 
@@ -152,6 +149,9 @@ sol_boris = TestParticle.solve(prob_boris; dt)[1]
 push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
 
 # Comparison of energy conservation:
+
+using Markdown #hide
+using Printf #hide
 
 io = IOBuffer() #hide
 println(io, "| Solver | Energy Ratio |") #hide
