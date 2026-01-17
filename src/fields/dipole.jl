@@ -1,10 +1,5 @@
 # Magnetic dipole field.
 
-"""
-Analytic electric field function for testing.
-"""
-getE_dipole(xu) = SA[0.0, 0.0, 0.0]
-
 @kwdef struct DipoleField{M} <: AbstractField{false}
     BMoment::M = BMoment_Earth
 end
@@ -12,10 +7,11 @@ end
 (M::DipoleField)(xu) = dipole(xu[1:3], M.BMoment)
 
 """
-Analytic magnetic field function for testing. Return in SI unit.
+    getB_dipole(xu, BMoment = BMoment_Earth)
+
+Return dipole magnetic field in [T].
 """
-function getB_dipole(xu)
-    BMoment = BMoment_Earth
+function getB_dipole(xu; BMoment = BMoment_Earth)
     return dipole(xu[1:3], BMoment)
 end
 
@@ -35,7 +31,7 @@ function dipole(rIn, M)
 end
 
 """
-     dipole_fieldline(ϕ, L=2.5, nP=100)
+    dipole_fieldline(ϕ, L=2.5, nP=100)
 
 Creates `nP` points on one field line of the magnetic field from a dipole. In a centered
 dipole magnetic field model, the path along a given L shell can be described as r = L*cos²λ,

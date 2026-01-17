@@ -1,6 +1,6 @@
 module TestParticle
 
-using LinearAlgebra: norm, ×, ⋅, diag
+using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using Statistics: mean, normalize
 using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Linear,
     Quadratic, Cubic,

@@ -262,7 +262,7 @@ end
         @test TP.getB_tokamak_profile(1.0, 1.0, 1.0, q_profile, 2.0, 1.0, 1.0)[1] ==
             -0.7666260799054282
 
-        param = prepare(TP.getE_dipole, TP.getB_dipole)
+        param = prepare(TP.ZeroField(), TP.getB_dipole)
         prob = ODEProblem(trace!, stateinit, tspan, param)
         sol_inplace = solve(prob, Tsit5(); save_idxs = [1])
 

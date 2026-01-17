@@ -49,7 +49,7 @@ end
 ## Since the field is static, we can define a function of position only, but TP expects `f(x, t)` or `f(x)`.
 ## The `prepare` function with function arguments handles this automatically.
 
-param = TP.prepare(TP.getE_dipole, B_total); # reusing getE_dipole for zero E field
+param = TP.prepare(TP.ZeroField(), B_total);
 
 # ## Trace Field Lines
 #

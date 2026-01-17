@@ -6,7 +6,6 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ
-using LinearAlgebra: ⋅, norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -30,11 +29,11 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9());
 
 # ## Guiding Center Tracing
-# Next, we can trace the guiding center (GC) of the particle directly, either via `trace_gc!` or `trace_gc_1st!`.
+# Next, we can trace the guiding center (GC) of the particle via [`trace_gc!`](@ref).
 # For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
-stateinit_gc, param_gc = prepare_gc(stateinit, TP.getE_dipole, TP.getB_dipole)
+stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), TP.getB_dipole)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern9());
+sol_gc = solve(prob_gc, Vern7());
 
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
@@ -77,8 +76,7 @@ for i in 1:nsample
 end
 
 # Calculate adiabaticity: ρ/Rc
-# We plot Rc/ρ which stands for the adiabaticity parameter inverse.
-# Using the default Proton species
+# The 1st adiabaticity stands for the ratio between the curvature radius and the gyroradius. Here we show the inverse of adiabaticity for plotting.
 ratio = let
     q, q2m, μ, _, Bfunc = param_gc
     m = q / q2m

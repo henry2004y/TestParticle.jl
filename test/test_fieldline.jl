@@ -7,7 +7,7 @@ using LinearAlgebra: norm
 
 @testset "Field line tracing" begin
     @testset "Dipole field" begin
-        param = prepare(TP.getE_dipole, TP.getB_dipole)
+        param = prepare(TP.ZeroField(), TP.getB_dipole)
         L = 4.0 * TP.Rₑ
         stateinit = [L, 0.0, 0.0]
 
