@@ -233,7 +233,6 @@ function get_gyroradius(sol::AbstractODESolution, t)
     v_E = (E × B) / Bmag^2
 
     # Determine if relativistic
-    # We check the ODE function name to detect relativistic tracing
     func_name = Symbol(sol.prob.f.f)
     is_relativistic = func_name === :trace_relativistic! ||
         func_name === :trace_relativistic ||
@@ -243,12 +242,6 @@ function get_gyroradius(sol::AbstractODESolution, t)
     # Calculate physical velocity
     if is_relativistic
         v_real = get_relativistic_v(u)
-        # For relativistic case, we need gamma for the gyroradius formula
-        # γ = 1 / sqrt(1 - v^2/c^2)
-        # Using the state u (which is γv), we can get γ directly or compute it.
-        # γ = sqrt(1 + (u/c)^2)
-        # However, let's stick to v_real.
-        # v_real magnitude
         v_mag = norm(v_real)
         γ = 1 / sqrt(1 - (v_mag / c)^2)
     else
@@ -256,8 +249,7 @@ function get_gyroradius(sol::AbstractODESolution, t)
         γ = 1.0
     end
 
-    # Subtract drift velocity to get gyro-velocity
-    v_gyro = v_real - v_E
+    v_gyro = v_real - v_E # Subtract drift velocity
 
     # Calculate perpendicular component of v_gyro
     b̂ = B / Bmag
@@ -321,7 +313,7 @@ function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
 end
 
 """
-Calculate the energy [eV] of a relativistic particle from γv.
+Calculate the energy [eV] of a relativistic particle from γv in [m/s].
 """
 function get_energy(γv; m = mᵢ, q = qᵢ)
     γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
@@ -486,7 +478,7 @@ function get_number_density(sols, grid, t_start, t_end, dt)
     return (counts ./ n_steps) ./ vol
 end
 
-# Better helper for stripping units
+"Helper function to strip units from values."
 _strip_units(x::AbstractArray) = map(v -> _strip_units(v), x)
 
 _strip_units(x) =
@@ -521,8 +513,6 @@ function _get_cell_volume(grid::RectilinearGrid)
     xyz = makegrid(grid) # Returns ranges or vectors
 
     # Strip units for volume calculation if needed, or keep them if consistent.
-    # But spacing(grid) for CartesianGrid returned quantities with units.
-    # So we probably want the value.
     xyz = _get_ranges_val(xyz)
 
     if paramdim(grid) == 3
@@ -532,7 +522,7 @@ function _get_cell_volume(grid::RectilinearGrid)
         dz = diff(z)
 
         vol = zeros(length(dx), length(dy), length(dz))
-        for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
+        @inbounds for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
             vol[i, j, k] = dx[i] * dy[j] * dz[k]
         end
         return vol
@@ -542,13 +532,13 @@ function _get_cell_volume(grid::RectilinearGrid)
         dy = diff(y)
 
         vol = zeros(length(dx), length(dy))
-        for j in eachindex(dy), i in eachindex(dx)
-
+        @inbounds for j in eachindex(dy), i in eachindex(dx)
             vol[i, j] = dx[i] * dy[j]
         end
         return vol
     end
 end
+
 """
     get_curvature_radius(x, t, Bfunc)
 
@@ -573,7 +563,6 @@ function get_curvature_radius(x, t, Bfunc)
     ∇B = JB' * b̂
 
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
     κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
 
     k_mag = norm(κ)
@@ -586,23 +575,21 @@ end
 
 """
     get_adiabaticity(r, Bfunc, q, m, μ, t=0.0)
+    get_adiabaticity(r, Bfunc, μ, t=0.0; species = Proton)
 
 Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
 function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    # Calculate B field
     B = Bfunc(r, t)
     Bmag = norm(B)
     if Bmag == 0.0
         return Inf
     end
 
-    # Calculate Gyroradius
     # v_perp^2 = 2 * μ * B / m
-    ρ = sqrt(2 * μ * m / Bmag) / abs(q)
+    ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    # Calculate Curvature Radius
     Rc = get_curvature_radius(r, t, Bfunc)
 
     return ρ / Rc

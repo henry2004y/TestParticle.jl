@@ -41,17 +41,6 @@ export get_gyrofrequency,
 export orbit, monitor
 export TraceProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
-"""
-Type for the particles: `Proton`, `Electron`.
-"""
-struct Species{M, Q}
-    m::M
-    q::Q
-end
-
-Ion(m, q = 1) = Species(m * mᵢ, q * qᵢ)
-Ion(; m = 1, q = 1) = Species(m * mᵢ, q * qᵢ)
-
 include("types.jl")
 include("fields/Fields.jl")
 include("utility/utility.jl")
