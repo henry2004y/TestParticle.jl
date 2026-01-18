@@ -130,4 +130,4 @@ end
 
 f = DisplayAs.PNG(f) #hide
 
-# We see that at 10% of the speed of light, relativistic effects are not significant.
+# We see that at about 12% of the speed of light, relativistic effects are not significant.
