@@ -5,7 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
-using TestParticle: getB_dipole, getE_dipole, sph2cart, mᵢ, qᵢ, c, Rₑ
+using TestParticle: getB_dipole, sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
 using FieldTracer
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -58,7 +58,7 @@ function prob_func_6(prob, i, repeat)
 end
 
 ## obtain field
-param = prepare(getE_dipole, getB_superposition_constant)
+param = prepare(ZeroField(), getB_superposition_constant)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 2000.0)
 trajectories = 2
@@ -141,7 +141,7 @@ f = DisplayAs.PNG(f) #hide
 
 # We now look at another superposition model of a dipole and a Harris current sheet.
 
-param = prepare(getE_dipole, getB_superposition_harris)
+param = prepare(ZeroField(), getB_superposition_harris)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 8000.0)
 trajectories = 1

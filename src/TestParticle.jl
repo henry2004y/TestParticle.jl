@@ -1,7 +1,7 @@
 module TestParticle
 
-using LinearAlgebra: norm, ×, ⋅, diag
-using Statistics: mean, normalize
+using LinearAlgebra: norm, ×, ⋅, diag, normalize
+using Statistics: mean
 using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Linear,
     Quadratic, Cubic,
     Line, OnCell, Periodic, Flat, Gridded
@@ -16,7 +16,7 @@ using DiffResults
 using ChunkSplitters
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro
-using Elliptic
+
 import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×

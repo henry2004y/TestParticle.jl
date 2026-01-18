@@ -26,8 +26,6 @@ const a = 4.0 # radius of each coil [m]
 
 getB(xu) = SVector{3}(TP.getB_mirror(xu[1], xu[2], xu[3], distance, a, I * N))
 
-getE(xu) = SA[0.0, 0.0, 0.0]
-
 ## velocity in the direction perpendicular to the magnetic field
 function v_perp(t, x, y, z, vx, vy, vz)
     xu = SA[x, y, z, vx, vy, vz]
@@ -64,14 +62,20 @@ r₀ = [0.8, 0.8, 0.0]  # confined
 ##r₀ = [1.5, 1.5, 2.4]  # escaped
 stateinit = [r₀..., v₀...]
 
-param = prepare(getE, getB; species = Electron)
-tspan = (0.0, 1.0e-4)
+param = prepare(TP.ZeroField(), getB; species = Electron)
+tspan = (0.0, 5.0e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Default Tsit5() and many solvers does not work in this case!
 ## AB4() has better performance in maintaining magnetic moment conservation compared to AB3().
 sol_non = solve(prob, AB4(); dt = 3.0e-9)
+
+## GC Tracing
+stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), getB; species = Electron)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+sol_gc = solve(prob_gc, Vern7(); dt = 1.0e-9) # Adaptivity should work well for GC
+
 
 ### Visualization
 f = Figure(size = (900, 600), fontsize = 18)
@@ -90,6 +94,7 @@ ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
 ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = "mu")
 
 lines!(ax1, sol_non, idxs = (1, 2, 3))
+lines!(ax1, sol_gc, idxs = (1, 2, 3), label = "Guiding Center", color = :red)
 lines!(ax2, sol_non, idxs = (absB, 0, 1, 2, 3))
 lines!(ax3, sol_non, idxs = (v_perp, 0, 1, 2, 3, 4, 5, 6))
 lines!(ax4, sol_non, idxs = (mu, 0, 1, 2, 3, 4, 5, 6))

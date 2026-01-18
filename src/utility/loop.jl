@@ -1,6 +1,6 @@
 # Magnetic field of a current loop.
 
-import LinearAlgebra
+import SpecialFunctions
 
 """
     CurrentLoop{T}
@@ -22,7 +22,7 @@ struct CurrentLoop{T}
 
     function CurrentLoop(radius, current, center::AbstractVector, normal::AbstractVector)
         T = promote_type(typeof(radius), typeof(current), eltype(center), eltype(normal))
-        n_hat = LinearAlgebra.normalize(SVector{3, T}(normal))
+        n_hat = normalize(SVector{3, T}(normal))
         return new{T}(T(radius), T(current), SVector{3, T}(center), n_hat)
     end
 end
@@ -41,11 +41,11 @@ function getB_loop(r::AbstractVector, loop::CurrentLoop)
     r_rel = r - center
 
     # Project r_rel onto the normal vector to get z component in local coordinates
-    z_local = LinearAlgebra.dot(r_rel, n_hat)
+    z_local = r_rel ⋅ n_hat
 
     # Vector component perpendicular to n (rho vector)
     rho_vec = r_rel - z_local * n_hat
-    rho = LinearAlgebra.norm(rho_vec)
+    rho = norm(rho_vec)
 
     # Handle the singularity on the wire itself (rho = a, z = 0)
     # and the center (rho = 0) separately if needed.
@@ -61,8 +61,8 @@ function getB_loop(r::AbstractVector, loop::CurrentLoop)
     denom_sq = (radius + rho)^2 + z_local^2
     k_sq = 4 * radius * rho / denom_sq
 
-    K_val = Elliptic.K(k_sq)
-    E_val = Elliptic.E(k_sq)
+    K_val = SpecialFunctions.ellipk(k_sq)
+    E_val = SpecialFunctions.ellipe(k_sq)
 
     # Common factor
     factor = μ₀ * current / (2 * π * sqrt(denom_sq))
