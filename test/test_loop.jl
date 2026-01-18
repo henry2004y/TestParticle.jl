@@ -2,7 +2,6 @@ using TestParticle
 using Test
 using StaticArrays
 using LinearAlgebra
-using Elliptic
 
 @testset "Loop Field" begin
     # Parameters
