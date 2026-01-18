@@ -24,8 +24,6 @@ const b = 8.0 # radius of central coil
 
 getB(xu) = SVector{3}(TP.getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1 * N1, I2 * N2))
 
-getE(xu) = SA[0.0, 0.0, 0.0]
-
 ### Initialize particles
 m = TP.mₑ
 q = TP.qₑ
@@ -41,7 +39,7 @@ stateinit = [r₀..., v₀...]
 ## accelerate particles, so that γ remains constant. However, we are not doing
 ## that here since it is not generally true in the EM field.
 
-param = prepare(getE, getB; species = Electron)
+param = prepare(TP.ZeroField(), getB; species = Electron)
 tspan = (0.0, 1.0e-5)
 
 prob_rel = ODEProblem(trace_relativistic!, stateinit, tspan, param)
@@ -131,3 +129,5 @@ for i in 0:8
 end
 
 f = DisplayAs.PNG(f) #hide
+
+# We see that at about 12% of the speed of light, relativistic effects are not significant.
