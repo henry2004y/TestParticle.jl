@@ -62,10 +62,10 @@ These methods require a full particle trajectory solution (`sol`) to calculate d
 
 `trace_gc!`[@ref] solves the 1st order Guiding Center Approximation (GCA) equations. This approximation holds when the characteristic scale of field variations $L$ is much larger than the Larmor radius $\rho$ ($L \gg \rho$).
 
-**State Variables**: The solver evolves the 4D state $[\mathbf{R}, p_\parallel]$:
+**State Variables**: The solver evolves the 4D state $[\mathbf{R}, v_\parallel]$:
 
 - $\mathbf{R}$: The spatial position of the guiding center.
-- $p_{\parallel} = m \gamma v_{\parallel}$: The relativistic kinetic momentum parallel to the magnetic field.
+- $v_{\parallel}$: The velocity parallel to the magnetic field.
 
 **Parameters**:
 
@@ -76,7 +76,7 @@ These methods require a full particle trajectory solution (`sol`) to calculate d
 To incorporate geometric drifts (curvature) and mirror forces naturally, we define the effective magnetic and electric fields:
 
 $$
-\mathbf{B}^* = \mathbf{B} + \frac{p_{\parallel}}{q} \nabla \times \mathbf{b}
+\mathbf{B}^* = \mathbf{B} + \frac{m v_{\parallel}}{q} \nabla \times \mathbf{b}
 $$
 
 $$
@@ -90,11 +90,11 @@ where $\mathbf{b} = \mathbf{B}/B$ is the unit vector along the magnetic field.
 The time evolution of the guiding center is governed by:
 
 $$
-\dot{\mathbf{R}} = \frac{1}{B^*_{\parallel}} \left[ \frac{p_{\parallel}}{m \gamma} \mathbf{B}^* + \mathbf{E}^* \times \mathbf{b} \right]
+\dot{\mathbf{R}} = \frac{1}{B^*_{\parallel}} \left[ v_{\parallel} \mathbf{B}^* + \mathbf{E}^* \times \mathbf{b} \right]
 $$
 
 $$
-\dot{p}_{\parallel} = \frac{q}{B^\ast_{\parallel}} \mathbf{B}^* \cdot \mathbf{E}^\ast
+\dot{v}_{\parallel} = \frac{q}{m B^*_{\parallel}} \mathbf{B}^* \cdot \mathbf{E}^*
 $$
 
 where $B^*_{\parallel} = \mathbf{b} \cdot \mathbf{B}^*$.
