@@ -11,11 +11,11 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     LinearInterpolation, build_solution, ODESolution
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray, SMatrix
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
-using ForwardDiff
-using DiffResults
-using ChunkSplitters
+import ForwardDiff
+import DiffResults
+using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
-using MuladdMacro
+using MuladdMacro: @muladd
 
 import Tensors
 import Base: +, -, *, /, setindex!, getindex
