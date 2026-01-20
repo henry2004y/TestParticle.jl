@@ -25,6 +25,13 @@ function _get_gc_parameters(xv, E, B, q, m)
     return X, vpar, q, m, μ
 end
 
+"""
+    prepare_gc(xv, xrange, yrange, zrange, E, B;
+        species = Proton, q = nothing, m = nothing, order::Int = 1, bc::Int = 1)
+    prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
+
+Prepare the guiding center parameters for a particle.
+"""
 function prepare_gc(
         xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
         species = Proton, q = nothing, m = nothing,
@@ -124,8 +131,8 @@ function gc_to_full(state_gc, param, μ, phase = 0)
 end
 
 """
-     get_gc(xu, param)
-     get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
+    get_gc(xu, param)
+    get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
 Reference: [wiki](https://en.wikipedia.org/wiki/Guiding_center)
@@ -186,7 +193,7 @@ function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m)
 end
 
 """
-     get_gc_func(param)
+    get_gc_func(param)
 
 Return the function for plotting the orbit of guiding center.
 
