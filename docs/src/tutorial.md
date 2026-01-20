@@ -76,11 +76,10 @@ These methods require a full particle trajectory solution (`sol`) to calculate d
 To incorporate geometric drifts (curvature) and mirror forces naturally, we define the effective magnetic and electric fields:
 
 ```math
-\mathbf{B}^* = \mathbf{B} + \frac{m v_{\parallel}}{q} \nabla \times \mathbf{b}
-```
-
-```math
-\mathbf{E}^* = \mathbf{E} - \frac{1}{q} \nabla ( \mu B )
+\begin{aligned}
+\mathbf{B}^* &= \mathbf{B} + \frac{m v_{\parallel}}{q} \nabla \times \mathbf{b} \\
+\mathbf{E}^* &= \mathbf{E} - \frac{1}{q} \nabla ( \mu B )
+\end{aligned}
 ```
 
 where ``\mathbf{b} = \mathbf{B}/B`` is the unit vector along the magnetic field.
@@ -90,11 +89,10 @@ where ``\mathbf{b} = \mathbf{B}/B`` is the unit vector along the magnetic field.
 The time evolution of the guiding center is governed by:
 
 ```math
-\dot{\mathbf{R}} = \frac{1}{B^*_{\parallel}} \left[ v_{\parallel} \mathbf{B}^* + \mathbf{E}^* \times \mathbf{b} \right]
-```
-
-```math
-\dot{v}_{\parallel} = \frac{q}{m B^*_{\parallel}} \mathbf{B}^* \cdot \mathbf{E}^*
+\begin{aligned}
+\dot{\mathbf{R}} &= \frac{1}{B^*_{\parallel}} \left[ v_{\parallel} \mathbf{B}^* + \mathbf{E}^* \times \mathbf{b} \right] \\
+\dot{v}_{\parallel} &= \frac{q}{m B^*_{\parallel}} \mathbf{B}^* \cdot \mathbf{E}^*
+\end{aligned}
 ```
 
 where ``B^*_{\parallel} = \mathbf{b} \cdot \mathbf{B}^*``.
