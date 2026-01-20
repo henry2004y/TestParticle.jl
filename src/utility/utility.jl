@@ -154,6 +154,21 @@ function get_rotation_matrix(v::AbstractVector, θ)
 end
 
 """
+     get_perp_vector(b::AbstractVector)
+
+Obtain two unit vectors `e1` and `e2` such that `(e1, e2, b)` form a right-handed orthonormal
+system.
+"""
+function get_perp_vector(b::AbstractVector)
+    T = eltype(b)
+    b̂ = normalize(b)
+    v = abs(b̂[3]) < 0.9 ? SA[zero(T), zero(T), one(T)] : SA[zero(T), one(T), zero(T)]
+    e1 = normalize(v × b̂)
+    e2 = b̂ × e1
+    return e1, e2
+end
+
+"""
     get_gyrofrequency(B=5e-9; q=qᵢ, m=mᵢ)
 
 Return the gyrofrequency [rad/s].
