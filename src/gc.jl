@@ -25,6 +25,13 @@ function _get_gc_parameters(xv, E, B, q, m)
     return X, vpar, q, m, μ
 end
 
+"""
+    prepare_gc(xv, xrange, yrange, zrange, E, B;
+        species = Proton, q = nothing, m = nothing, order::Int = 1, bc::Int = 1)
+    prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
+
+Prepare the guiding center parameters for a particle.
+"""
 function prepare_gc(
         xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
         species = Proton, q = nothing, m = nothing,
@@ -59,8 +66,73 @@ function prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
 end
 
 """
-     get_gc(xu, param)
-     get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
+    full_to_gc(xu, param)
+
+Convert full particle state `xu` to guiding center state `state_gc` and magnetic moment `μ`.
+Returns `(state_gc, μ)`, where `state_gc = [R..., vpar]`.
+"""
+function full_to_gc(xu, param)
+    q2m = get_q2m(param)
+    m = param[2]
+    q = q2m * m
+    E = get_EField(param)
+    B = get_BField(param)
+
+    X, vpar, q, m, μ = _get_gc_parameters(xu, E, B, q, m)
+    state_gc = SVector{4}(X[1], X[2], X[3], vpar)
+
+    return state_gc, μ
+end
+
+"""
+    gc_to_full(state_gc, param, μ, phase=0)
+
+Convert guiding center state `state_gc` to full particle state `xu`.
+Returns `xu = [x, y, z, vx, vy, vz]`.
+"""
+function gc_to_full(state_gc, param, μ, phase = 0)
+    R = state_gc[SA[1, 2, 3]]
+    # Handle both StaticVector and standard Vector
+    R = SVector{3}(R)
+    vpar = state_gc[4]
+
+    q2m = get_q2m(param)
+    m = param[2]
+    q = q2m * m
+    E_field = get_EField(param)
+    B_field = get_BField(param)
+
+    E = E_field(R)
+    B = B_field(R)
+    Bmag = norm(B)
+    b̂ = B / Bmag
+
+    # drift
+    v_E = (E × b̂) / Bmag
+
+    # perp speed
+    # μ = m * w^2 / (2B) -> w = sqrt(2 * μ * B / m)
+    w = sqrt(2 * μ * Bmag / m)
+
+    # perp vector
+    e1, e2 = get_perp_vector(b̂)
+    v_gyr = w * (cos(phase) * e1 + sin(phase) * e2)
+    v_perp = v_gyr + v_E
+
+    v = vpar * b̂ + v_perp
+
+    # gyroradius
+    Ω = q * Bmag / m
+    ρ_vec = (b̂ × v_perp) / Ω
+
+    x = R + ρ_vec
+
+    return vcat(x, v)
+end
+
+"""
+    get_gc(xu, param)
+    get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
 Reference: [wiki](https://en.wikipedia.org/wiki/Guiding_center)
@@ -121,7 +193,7 @@ function get_gc(x, y, z, vx, vy, vz, bx, by, bz, q, m)
 end
 
 """
-     get_gc_func(param)
+    get_gc_func(param)
 
 Return the function for plotting the orbit of guiding center.
 
