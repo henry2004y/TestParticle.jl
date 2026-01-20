@@ -120,7 +120,7 @@ function gc_to_full(state_gc, param, μ, phase = 0)
 
     x = R + ρ_vec
 
-    return [x; v]
+    return vcat(x, v)
 end
 
 """

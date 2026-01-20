@@ -609,11 +609,10 @@ include("test_gyroradius.jl")
 include("test_loop.jl")
 include("test_fieldline.jl")
 
-#if "makie" in ARGS
-#   include("test_Makie.jl")
-#end
+if "makie" in ARGS
+    include("test_Makie.jl")
+end
 include("test_save_flags.jl")
 include("test_distributions.jl")
-include("test_gc_dispatch.jl")
 include("test_density.jl")
-include("test_gc_conversion.jl")
+include("test_gc.jl")
