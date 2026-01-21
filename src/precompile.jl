@@ -39,9 +39,9 @@
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), DipoleField())
         stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z, E, B)
-        # native GC
-        prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-        sol = solve(prob_gc; dt, alg = :rk4)
-        sol = solve(prob_gc; dt, alg = :rk45)
+        # native GC solvers
+        prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
+        sol_native_rk4 = solve(prob_native; dt = 0.1, alg = :rk4)
+        sol_native_rk45 = solve(prob_native; alg = :rk45)
     end
 end
