@@ -3,6 +3,7 @@ using StaticArrays
 using Test
 using LinearAlgebra
 using SciMLBase
+using OrdinaryDiffEq
 
 @testset "GC" begin
 
@@ -208,6 +209,24 @@ using SciMLBase
             sol_rk4 = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk4)
             diff = norm(sol_tight[1].u[end] - sol_rk4[1].u[end])
             @test diff < 10.0
+        end
+
+        @testset "Comparison with DiffEq" begin
+            # Solve using DiffEq (Vern9, high accuracy)
+            prob_diffeq = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+            sol_diffeq = solve(prob_diffeq, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
+            u_diffeq = sol_diffeq[end]
+
+            # Solve using Native RK4
+            dt = 1.0e-4
+            sol_native = TestParticle.solve(prob; dt, alg = :rk4)
+            u_native = sol_native[1].u[end]
+
+            # Position difference
+            @test norm(u_diffeq[1:3] - u_native[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
+
+            # Parallel velocity difference
+            @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
         end
 
         @testset "Ensemble" begin
