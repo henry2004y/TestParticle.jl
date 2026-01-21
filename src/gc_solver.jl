@@ -319,14 +319,11 @@ function _rk4!(
     xv = MVector{4, T}(undef)
     dx = MVector{4, T}(undef)
 
-    # safe and thread-local
+    paramRK4 = RK4Method(MVector{4, T}(undef))
+
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{4, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
-
-        # New method instance for each trajectory to avoid race conditions if shared (though strictly local here)
-        # Using u0 type for RK4Method
-        paramRK4 = RK4Method(MVector{4, T}(undef))
 
         # set initial conditions for each trajectory i
         iout = 0
@@ -414,11 +411,11 @@ function _rk45!(
     max_growth = 5.0
     min_growth = 0.2
 
+    method = DP5Method(MVector{4, T}(undef))
+
     @fastmath @inbounds for i in irange
         traj = SVector{4, T}[]
         tsave = typeof(tspan[1] + one(T))[]
-
-        method = DP5Method(MVector{4, T}(undef))
 
         new_prob = prob.prob_func(prob, i, false)
         xv .= new_prob.u0

@@ -8,7 +8,7 @@ const μ₀ = 4π * 1.0e-7          # Vacuum permeability, [H/m]
 const ϵ₀ = 1 / (c^2 * μ₀)       # Vacuum permittivity, [F/m]
 const kB = 1.38064852e-23   # Boltzmann constant, [m²kg/(s²K)]
 const Rₑ = 6371.0e3           # Earth radius, [m]
-const BMoment_Earth = [0.0, 0.0, -7.94e22] # [V*s/(A*m)]
+const BMoment_Earth = SVector(0.0, 0.0, -7.94e22) # [V*s/(A*m)]
 
 const Proton = Species(mᵢ, qᵢ)
 const Electron = Species(mₑ, qₑ)
