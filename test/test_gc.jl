@@ -216,7 +216,7 @@ using OrdinaryDiffEq
             # Solve using DiffEq (Vern9, high accuracy)
             prob_diffeq = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
             sol_diffeq = solve(prob_diffeq, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
-            u_diffeq = sol_diffeq[end]
+            u_diffeq = sol_diffeq.u[end]
 
             # Solve using Native RK4
             dt = 1.0e-4

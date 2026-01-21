@@ -140,8 +140,9 @@ Returns (dy, E), where dy is the update and E is the error estimate.
     a71, a72, a73, a74, a75, a76 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
 
     # Coefficients for 5th order solution and error estimate
-    b1, b2, b3, b4, b5, b6, b7 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0.0
-    e1, e2, e3, e4, e5, e6, e7 = 71 / 57600, 0.0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
+    # b2 = b7 = e2 = 0.0
+    b1, b3, b4, b5, b6 = 35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
+    e1, e3, e4, e5, e6, e7 = 71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
 
     trace_gc!(k1, y, param, t)
 
@@ -483,7 +484,7 @@ function _rk45!(
             if error_ratio == 0.0
                 scale = max_growth
             else
-                scale = safety * (1.0 / error_ratio)^(1.0 / 5.0)
+                scale = safety * (1.0 / error_ratio)^0.2
             end
             scale = max(min_growth, min(scale, max_growth))
             dt *= scale
