@@ -91,9 +91,7 @@ Convert guiding center state `state_gc` to full particle state `xu`.
 Returns `xu = [x, y, z, vx, vy, vz]`.
 """
 function gc_to_full(state_gc, param, μ, phase = 0)
-    R = state_gc[SA[1, 2, 3]]
-    # Handle both StaticVector and standard Vector
-    R = SVector{3}(R)
+    R = get_x(state_gc)
     vpar = state_gc[4]
 
     q2m = get_q2m(param)
@@ -107,11 +105,9 @@ function gc_to_full(state_gc, param, μ, phase = 0)
     Bmag = norm(B)
     b̂ = B / Bmag
 
-    # drift
     v_E = (E × b̂) / Bmag
 
-    # perp speed
-    # μ = m * w^2 / (2B) -> w = sqrt(2 * μ * B / m)
+    # perp speed, μ = m * w^2 / (2B)
     w = sqrt(2 * μ * Bmag / m)
 
     # perp vector

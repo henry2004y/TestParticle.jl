@@ -2,6 +2,8 @@ using TestParticle
 using StaticArrays
 using Test
 using LinearAlgebra
+using SciMLBase
+using OrdinaryDiffEq
 
 @testset "GC" begin
 
@@ -155,6 +157,97 @@ using LinearAlgebra
 
             # v90 should be in y direction
             @test isapprox(normalize(v90), SA[0.0, 1.0, 0.0], atol = 1.0e-5)
+        end
+    end
+
+
+    @testset "Native Solvers" begin
+        # Setup simple dipole field
+        Ek = 5.0e7 # [eV]
+        m = TestParticle.mᵢ
+        q = TestParticle.qᵢ
+        c = TestParticle.c
+        Rₑ = TestParticle.Rₑ
+
+        # Initial condition
+        v₀ = TestParticle.sph2cart(energy2velocity(Ek; q, m), π / 4, 0.0)
+        r₀ = TestParticle.sph2cart(2.5 * Rₑ, π / 2, 0.0)
+        stateinit = [r₀..., v₀...]
+        tspan = (0.0, 1.0)
+
+        stateinit_gc, param_gc = TestParticle.prepare_gc(
+            stateinit, TestParticle.ZeroField(), TestParticle.getB_dipole;
+            species = Proton
+        )
+
+        prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
+
+        @testset "Fixed RK4" begin
+            dt = 1.0e-4
+            sol = TestParticle.solve(prob; dt, alg = :rk4)
+            @test length(sol) == 1
+            @test length(sol[1].t) == 10001
+            @test sol[1].retcode == ReturnCode.Default
+
+            # Test save_everystep=false
+            sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
+            @test length(sol_no_save[1].t) == 2 # start and end
+        end
+
+        @testset "Adaptive RK45" begin
+            # Default tolerances
+            sol_def = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45)
+            @test length(sol_def[1].t) == 61
+            @test sol_def[1].retcode == ReturnCode.Success
+
+            # Tight tolerances
+            sol_tight = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8)
+            @test length(sol_tight[1].t) > length(sol_def[1].t)
+
+            # Accuracy check
+            sol_rk4 = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk4)
+            diff = norm(sol_tight[1].u[end] - sol_rk4[1].u[end])
+            @test diff < 10.0
+        end
+
+        @testset "Comparison with DiffEq" begin
+            # Solve using DiffEq (Vern9, high accuracy)
+            prob_diffeq = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+            sol_diffeq = solve(prob_diffeq, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
+            u_diffeq = sol_diffeq.u[end]
+
+            # Solve using Native RK4
+            dt = 1.0e-4
+            sol_native = TestParticle.solve(prob; dt, alg = :rk4)
+            u_native = sol_native[1].u[end]
+
+            # Position difference
+            @test norm(u_diffeq[1:3] - u_native[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
+
+            # Parallel velocity difference
+            @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
+        end
+
+        @testset "Automatic Initial dt" begin
+            # Test that we can call solve without dt for adaptive method
+            sol_auto = TestParticle.solve(prob; alg = :rk45)
+            @test sol_auto[1].retcode == ReturnCode.Success
+            @test length(sol_auto[1].t) == 58
+        end
+
+        @testset "Ensemble" begin
+            trajectories = 10
+            prob_ens = TraceGCProblem(stateinit_gc, tspan, param_gc)
+
+            # Serial
+            sol_serial = TestParticle.solve(prob_ens; trajectories, dt = 1.0e-4, alg = :rk45)
+            @test length(sol_serial) == trajectories
+            @test all(s.retcode == ReturnCode.Success for s in sol_serial)
+
+            # Threads
+            sol_threads = TestParticle.solve(prob_ens, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45)
+            @test length(sol_threads) == trajectories
+            @test all(s.retcode == ReturnCode.Success for s in sol_threads)
         end
     end
 end

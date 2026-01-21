@@ -261,6 +261,16 @@ function trace_gc!(dy, y, p, t)
 end
 
 """
+    trace_gc(y, p, t)
+
+Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
+"""
+function trace_gc(y, p, t)
+    v1, v2, v3, du = get_gc_derivatives(y, p, t)
+    return SVector{4}(v1, v2, v3, du)
+end
+
+"""
     get_gc_velocity(y, p, t)
 
 Get the guiding center velocity.

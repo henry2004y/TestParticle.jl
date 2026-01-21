@@ -39,7 +39,7 @@ export get_gyrofrequency,
     sample_unit_sphere, get_number_density_flux,
     getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
-export TraceProblem, CartesianGrid, RectilinearGrid, StructuredGrid
+export TraceProblem, TraceGCProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 include("types.jl")
 include("fields/Fields.jl")
@@ -48,6 +48,7 @@ include("utility/interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
 include("gc.jl")
+include("gc_solver.jl") # Added gc_solver.jl
 include("equations.jl")
 include("pusher.jl")
 include("multistep_boris.jl")
