@@ -229,6 +229,13 @@ using OrdinaryDiffEq
             @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
         end
 
+        @testset "Automatic Initial dt" begin
+            # Test that we can call solve without dt for adaptive method
+            sol_auto = TestParticle.solve(prob; alg = :rk45)
+            @test sol_auto[1].retcode == ReturnCode.Success
+            @test length(sol_auto[1].t) == 59
+        end
+
         @testset "Ensemble" begin
             trajectories = 10
             prob_ens = TraceGCProblem(stateinit_gc, tspan, param_gc)

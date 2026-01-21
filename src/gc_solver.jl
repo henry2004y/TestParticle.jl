@@ -180,7 +180,7 @@ If `alg` is `:rk45`, uses adaptive time stepping.
 """
 function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
+        trajectories::Int = 1, savestepinterval::Int = 1, dt::Union{AbstractFloat, Nothing} = nothing,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000
@@ -252,7 +252,8 @@ end
 function _get_sol_type(prob::TraceGCProblem, dt, alg)
     u0 = prob.u0
     tspan = prob.tspan
-    T_t = typeof(tspan[1] + dt)
+    dt_guess = isnothing(dt) ? one(eltype(u0)) : dt
+    T_t = typeof(tspan[1] + dt_guess)
     t = Vector{T_t}(undef, 0)
     # Force u to be Vector{SVector{4, T}}
     T = eltype(u0)
@@ -268,7 +269,14 @@ function _prepare_gc(
         save_start, save_end, save_everystep, alg = :rk4
     )
     ttotal = prob.tspan[2] - prob.tspan[1]
-    nt = round(Int, ttotal / dt) |> abs
+    if isnothing(dt)
+        if alg == :rk4
+            error("dt must be provided for fixed step solver :rk4")
+        end
+        nt = 0
+    else
+        nt = round(Int, ttotal / dt) |> abs
+    end
 
     nout = 0
     if save_start
@@ -406,7 +414,7 @@ function _rk45!(
 
     @fastmath @inbounds for i in irange
         traj = SVector{4, T}[]
-        tsave = typeof(tspan[1] + dt_initial)[]
+        tsave = typeof(tspan[1] + one(T))[]
 
         method = DP5Method(MVector{4, T}(undef))
 
@@ -414,7 +422,25 @@ function _rk45!(
         xv .= new_prob.u0
 
         t = tspan[1]
-        dt = dt_initial
+
+        if isnothing(dt_initial)
+            # Estimate initial step size based on gyroperiod
+            # p = (q, q2m, μ, E, B)
+            q2m = p[2]
+            B_field = p[5]
+            R = SVector{3}(xv[1], xv[2], xv[3])
+            B_vec = B_field(R, t)
+            Bmag = norm(B_vec)
+
+            if Bmag == 0 || q2m == 0
+                dt = 1.0e-6
+            else
+                omega = abs(q2m * Bmag)
+                dt = 0.1 * 2π / omega
+            end
+        else
+            dt = dt_initial
+        end
 
         if save_start
             push!(traj, SVector{4, T}(xv))
