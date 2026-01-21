@@ -11,23 +11,30 @@ end
 
 Return dipole magnetic field in [T].
 """
-function getB_dipole(xu; BMoment = BMoment_Earth)
+@inline function getB_dipole(xu; BMoment = BMoment_Earth)
     return dipole(xu[1:3], BMoment)
 end
 
 """
 Calculates the magnetic field from a dipole with magnetic moment `M` at `r`.
 """
-function dipole(rIn, M)
+@inline function dipole(rIn::AbstractVector, M::SVector{3})
     x, y, z = rIn
     r = sqrt(x^2 + y^2 + z^2)
     Coef = μ₀ / (4 * π * r^5)
 
-    return B = SA[
-        3 * x^2 - r^2 3 * x * y 3 * x * z;
-        3 * y * x 3 * y^2 - r^2 3 * y * z;
-        3 * z * x 3 * z * y 3 * z^2 - r^2
-    ] * M * Coef
+    m11 = 3 * x^2 - r^2
+    m12 = 3 * x * y
+    m13 = 3 * x * z
+    m21 = 3 * y * x
+    m22 = 3 * y^2 - r^2
+    m23 = 3 * y * z
+    m31 = 3 * z * x
+    m32 = 3 * z * y
+    m33 = 3 * z^2 - r^2
+
+    mat = SMatrix{3, 3}(m11, m21, m31, m12, m22, m32, m13, m23, m33)
+    return mat * M * Coef
 end
 
 """
