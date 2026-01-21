@@ -197,8 +197,6 @@ using OrdinaryDiffEq
         @testset "Adaptive RK45" begin
             # Default tolerances
             sol_def = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45)
-            # In verification, usually takes ~61 steps with default tol
-            # In verification, usually takes ~61 steps with default tol
             @test length(sol_def[1].t) == 61
             @test sol_def[1].retcode == ReturnCode.Success
 
