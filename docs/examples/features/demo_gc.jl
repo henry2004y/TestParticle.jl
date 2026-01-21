@@ -47,6 +47,14 @@ stateinit_gc, param_gc = TP.prepare_gc(
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
+## 2.1 Native GC Solver (RK4)
+prob_native_rk4 = TraceGCProblem(stateinit_gc, tspan, param_gc)
+sol_native_rk4 = solve(prob_native_rk4; dt = 0.1, alg = :rk4)
+
+## 2.2 Native GC Solver (RK45)
+prob_native_rk45 = TraceGCProblem(stateinit_gc, tspan, param_gc)
+sol_native_rk45 = solve(prob_native_rk45; alg = :rk45)
+
 ## 3. Guiding Center Simulation with Numeric B Field Interpolation
 xrange = range(0.9, 1.2, length = 20)
 yrange = range(-0.5, 0.1, length = 60)
@@ -135,6 +143,8 @@ c5 = Makie.wong_colors()[5]
 ## 3D Plotting
 lines!(ax1, sol, idxs = (1, 2, 3), color = (c1, 0.5), label = "Particle")
 lines!(ax1, sol_gc, idxs = (1, 2, 3), color = c2, label = "GC (Trace)")
+lines!(ax1, sol_native_rk4, idxs = (1, 2, 3), color = c2, linestyle = :dash, label = "Native GC (RK4)")
+lines!(ax1, sol_native_rk45, idxs = (1, 2, 3), color = c2, linestyle = :dot, label = "Native GC (RK45)")
 lines!(ax1, sol_gc_numericBfield, idxs = (1, 2, 3), color = c3, label = "GC (Numeric B)")
 lines!(ax1, sol_gc_analytic, idxs = (1, 2, 3), color = c4, label = "GC (Analytic)")
 lines!(
@@ -144,6 +154,8 @@ lines!(
 ## 2D Plotting
 lines!(ax2, sol, idxs = (1, 3), color = (c1, 0.5))
 lines!(ax2, sol_gc, idxs = (1, 3), color = c2)
+lines!(ax2, sol_native_rk4, idxs = (1, 3), color = c2, linestyle = :dash)
+lines!(ax2, sol_native_rk45, idxs = (1, 3), color = c2, linestyle = :dot)
 lines!(ax2, sol_gc_numericBfield, idxs = (1, 3), color = c3)
 lines!(ax2, sol_gc_analytic, idxs = (1, 3), color = c4)
 lines!(ax2, sol, idxs = (gc_plot_xz, 1, 2, 3, 4, 5, 6), color = c5)
@@ -289,6 +301,9 @@ cb = SavingCallback(
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan_bench, param_gc)
 
+## Native GC Problem
+prob_native_gc = TraceGCProblem(stateinit_gc, tspan_bench, param_gc)
+
 ## Run simulations for plotting
 sol_full = solve(prob_full, Vern9())
 sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
@@ -296,6 +311,8 @@ sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
 ## Benchmark
 b_full = @be solve(prob_full, Vern9())
 b_gc = @be solve(prob_gc, Vern9())
+b_native_rk4 = @be solve(prob_native_gc; dt = 1.0, alg = :rk4)
+b_native_rk45 = @be solve(prob_native_gc; alg = :rk45)
 
 ## Visualization of Benchmark Results
 f3 = Figure(size = (1000, 500), fontsize = 20)
@@ -345,5 +362,13 @@ println( #hide
 println( #hide
     io, #hide
     "| Guiding Center | $(round(median(b_gc).time, digits = 4)) | $(round(median(b_gc).bytes, digits = 4)) | $(round(median(b_gc).time / median(b_full).time, digits = 4)) |" #hide
+) #hide
+println( #hide
+    io, #hide
+    "| Native GC (RK4) | $(round(median(b_native_rk4).time, digits = 4)) | $(round(median(b_native_rk4).bytes, digits = 4)) | $(round(median(b_native_rk4).time / median(b_full).time, digits = 4)) |" #hide
+) #hide
+println( #hide
+    io, #hide
+    "| Native GC (RK45) | $(round(median(b_native_rk45).time, digits = 4)) | $(round(median(b_native_rk45).bytes, digits = 4)) | $(round(median(b_native_rk45).time / median(b_full).time, digits = 4)) |" #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
