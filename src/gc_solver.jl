@@ -290,6 +290,8 @@ function _rk4!(
             dx = update_rk4(xv, p, dt, t)
             xv += dx
 
+            isoutofdomain(xv, p, t + dt) && break
+
             if save_everystep && (it % savestepinterval == 0)
                 iout += 1
                 if iout <= nout
@@ -298,9 +300,6 @@ function _rk4!(
                 end
             end
 
-            if isoutofdomain(xv, p, t + dt)
-                break
-            end
             it += 1
         end
 
@@ -406,13 +405,11 @@ function _rk45!(
                 t += dt
                 xv = y_next # SVector update
 
+                isoutofdomain(xv, p, t) && break
+
                 if save_everystep
                     push!(traj, xv)
                     push!(tsave, t)
-                end
-
-                if isoutofdomain(xv, p, t)
-                    break
                 end
 
                 steps += 1
@@ -426,9 +423,7 @@ function _rk45!(
             scale = max(min_growth, min(scale, max_growth))
             dt *= scale
 
-            if dt < 1.0e-14
-                break
-            end
+            dt < 1.0e-14 && break
         end
 
         if save_end && (isempty(tsave) || tsave[end] != t)
