@@ -11,6 +11,7 @@ SUITE["trace"] = BenchmarkGroup()
 SUITE["trace"]["analytic field"] = BenchmarkGroup()
 SUITE["trace"]["numerical field"] = BenchmarkGroup()
 SUITE["trace"]["time-dependent field"] = BenchmarkGroup()
+SUITE["trace"]["GC"] = BenchmarkGroup()
 SUITE["interpolation"] = BenchmarkGroup()
 
 # analytic field
@@ -121,4 +122,14 @@ stateinit_gc,
     species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-SUITE["trace"]["GC"]["1st order"] = @benchmarkable solve($prob_gc, Vern9())
+SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
+
+prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
+SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable TP.solve(
+    $prob_native_gc;
+    dt = 1.0e-4, savestepinterval = 100, alg = :rk4
+)
+SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
+    $prob_native_gc;
+    dt = 1.0e-4, savestepinterval = 100, alg = :rk45
+)
