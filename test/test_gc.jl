@@ -198,7 +198,8 @@ using OrdinaryDiffEq
             # Default tolerances
             sol_def = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45)
             # In verification, usually takes ~61 steps with default tol
-            @test length(sol_def[1].t) < 1000
+            # In verification, usually takes ~61 steps with default tol
+            @test length(sol_def[1].t) == 61
             @test sol_def[1].retcode == ReturnCode.Success
 
             # Tight tolerances
@@ -233,7 +234,7 @@ using OrdinaryDiffEq
             # Test that we can call solve without dt for adaptive method
             sol_auto = TestParticle.solve(prob; alg = :rk45)
             @test sol_auto[1].retcode == ReturnCode.Success
-            @test length(sol_auto[1].t) == 59
+            @test length(sol_auto[1].t) == 58
         end
 
         @testset "Ensemble" begin

@@ -275,7 +275,10 @@ function _prepare_gc(
         end
         nt = 0
     else
-        nt = round(Int, ttotal / dt) |> abs
+        if alg == :rk4 && sign(dt) != sign(ttotal) && ttotal != 0
+            error("dt must have the same sign as tspan[2] - tspan[1] for fixed step solver :rk4")
+        end
+        nt = round(Int, ttotal / dt)
     end
 
     nout = 0
@@ -284,7 +287,6 @@ function _prepare_gc(
     end
 
     # For :rk45, we initialize nout=0 since we don't know the exact steps.
-
     if alg == :rk4 && save_everystep
         steps = nt ÷ savestepinterval
         last_is_step = (nt > 0) && (nt % savestepinterval == 0)
@@ -436,7 +438,7 @@ function _rk45!(
                 dt = 1.0e-6
             else
                 omega = abs(q2m * Bmag)
-                dt = 0.1 * 2π / omega
+                dt = 0.5 * 2π / omega # 0.5 gyroperiod
             end
         else
             dt = dt_initial
