@@ -46,6 +46,32 @@ function TraceGCProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
     )
 end
 
+struct DP5Method{T, N}
+    # intermediate variables used in the solver
+    k1::MVector{N, T}
+    k2::MVector{N, T}
+    k3::MVector{N, T}
+    k4::MVector{N, T}
+    k5::MVector{N, T}
+    k6::MVector{N, T}
+    k7::MVector{N, T}
+    y_tmp::MVector{N, T}
+end
+
+function DP5Method(u0::AbstractArray{T}) where {T}
+    N = length(u0)
+    k1 = MVector{N, T}(undef)
+    k2 = MVector{N, T}(undef)
+    k3 = MVector{N, T}(undef)
+    k4 = MVector{N, T}(undef)
+    k5 = MVector{N, T}(undef)
+    k6 = MVector{N, T}(undef)
+    k7 = MVector{N, T}(undef)
+    y_tmp = MVector{N, T}(undef)
+
+    return DP5Method{T, N}(k1, k2, k3, k4, k5, k6, k7, y_tmp)
+end
+
 struct RK4Method{T, N}
     # intermediate variables used in the solver
     k1::MVector{N, T}
@@ -67,11 +93,11 @@ function RK4Method(u0::AbstractArray{T}) where {T}
 end
 
 """
-    update_rk4!(xv, method, param, dt, t)
+    update_rk4!(dy, y, method, param, dt, t)
 
 Update state using the RK4 method.
 """
-@muladd function update_rk4!(dy, y, method, param, dt, t)
+@muladd function update_rk4!(dy, y, method::RK4Method, param, dt, t)
     (; k1, k2, k3, k4, y_tmp) = method
 
     # k1 = f(t, y)
@@ -96,58 +122,96 @@ Update state using the RK4 method.
 end
 
 """
+    update_dp5!(dy, y, method, param, dt, t)
+
+Update state using the Dormand-Prince 5(4) method.
+Returns (dy, E), where dy is the update and E is the error estimate.
+"""
+@muladd function update_dp5!(dy, E, y, method::DP5Method, param, dt, t)
+    (; k1, k2, k3, k4, k5, k6, k7, y_tmp) = method
+
+    # Coefficients for DP5
+    c2, c3, c4, c5, c6 = 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0
+    a21 = 1 / 5
+    a31, a32 = 3 / 40, 9 / 40
+    a41, a42, a43 = 44 / 45, -56 / 15, 32 / 9
+    a51, a52, a53, a54 = 19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729
+    a61, a62, a63, a64, a65 = 9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656
+    a71, a72, a73, a74, a75, a76 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
+
+    # Coefficients for 5th order solution and error estimate
+    b1, b2, b3, b4, b5, b6, b7 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0.0
+    e1, e2, e3, e4, e5, e6, e7 = 71 / 57600, 0.0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
+
+    trace_gc!(k1, y, param, t)
+
+    @. y_tmp = y + dt * (a21 * k1)
+    trace_gc!(k2, y_tmp, param, t + c2 * dt)
+
+    @. y_tmp = y + dt * (a31 * k1 + a32 * k2)
+    trace_gc!(k3, y_tmp, param, t + c3 * dt)
+
+    @. y_tmp = y + dt * (a41 * k1 + a42 * k2 + a43 * k3)
+    trace_gc!(k4, y_tmp, param, t + c4 * dt)
+
+    @. y_tmp = y + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
+    trace_gc!(k5, y_tmp, param, t + c5 * dt)
+
+    @. y_tmp = y + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
+    trace_gc!(k6, y_tmp, param, t + c6 * dt)
+
+    @. y_tmp = y + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
+    trace_gc!(k7, y_tmp, param, t + dt)
+
+    # y_{n+1} update
+    @. dy = dt * (b1 * k1 + b3 * k3 + b4 * k4 + b5 * k5 + b6 * k6)
+    @. E = dt * (e1 * k1 + e3 * k3 + e4 * k4 + e5 * k5 + e6 * k6 + e7 * k7)
+
+    return
+end
+
+"""
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
-    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN)
+    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+    alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000)
 
 Trace guiding centers using the RK4 method with specified `prob`.
+If `alg` is `:rk45`, uses adaptive time stepping.
 """
 function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        alg::Symbol = :rk4
+        alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000
     )
-    if alg != :rk4
-        @warn "Only :rk4 algorithm is supported for native TraceGCProblem currently. Using :rk4."
+    if alg != :rk4 && alg != :rk45
+        @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
     end
 
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
     )
 end
 
 function _solve(
         ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
     )
     sols, nt,
         nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, alg
     )
     irange = 1:trajectories
-    _rk4!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep
-    )
 
-    return sols
-end
-
-function _solve(
-        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
-    )
-    sols, nt,
-        nout = _prepare_gc(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
-    )
-
-    nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    if alg == :rk45
+        _rk45!(
+            sols, prob, irange, dt, isoutofdomain,
+            save_start, save_end, save_everystep, abstol, reltol, maxiters
+        )
+    else
         _rk4!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
             save_start, save_end, save_everystep
@@ -157,7 +221,35 @@ function _solve(
     return sols
 end
 
-function _get_sol_type(prob::TraceGCProblem, dt)
+function _solve(
+        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
+    )
+    sols, nt,
+        nout = _prepare_gc(
+        prob, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep, alg
+    )
+
+    nchunks = Threads.nthreads()
+    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+        if alg == :rk45
+            _rk45!(
+                sols, prob, irange, dt, isoutofdomain,
+                save_start, save_end, save_everystep, abstol, reltol, maxiters
+            )
+        else
+            _rk4!(
+                sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                save_start, save_end, save_everystep
+            )
+        end
+    end
+
+    return sols
+end
+
+function _get_sol_type(prob::TraceGCProblem, dt, alg)
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
@@ -166,7 +258,6 @@ function _get_sol_type(prob::TraceGCProblem, dt)
     T = eltype(u0)
     u = Vector{SVector{4, T}}(undef, 0)
     interp = LinearInterpolation(t, u)
-    alg = :rk4
 
     sol = build_solution(prob, alg, t, u; interp = interp)
     return typeof(sol)
@@ -174,7 +265,7 @@ end
 
 function _prepare_gc(
         prob::TraceGCProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, alg = :rk4
     )
     ttotal = prob.tspan[2] - prob.tspan[1]
     nt = round(Int, ttotal / dt) |> abs
@@ -184,7 +275,9 @@ function _prepare_gc(
         nout += 1
     end
 
-    if save_everystep
+    # For :rk45, we initialize nout=0 since we don't know the exact steps.
+
+    if alg == :rk4 && save_everystep
         steps = nt ÷ savestepinterval
         last_is_step = (nt > 0) && (nt % savestepinterval == 0)
         nout += steps
@@ -194,11 +287,11 @@ function _prepare_gc(
         if save_end && !last_is_step
             nout += 1
         end
-    elseif save_end
+    elseif alg == :rk4 && save_end
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt)
+    sol_type = _get_sol_type(prob, dt, alg)
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
@@ -216,11 +309,7 @@ function _rk4!(
     xv = MVector{4, T}(undef)
     dx = MVector{4, T}(undef)
 
-    # We need a reusable method struct for each thread/trajectory?
-    # For serial/chunks, we can reuse if defined inside loop or per thread.
-    # To be safe and thread-local, we create it here or inside the loop.
-    # Since specific types might depend on u0, let's create inside.
-
+    # safe and thread-local
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{4, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
@@ -295,5 +384,105 @@ function _rk4!(
         )
     end
 
+    return
+end
+
+"""
+Apply RK45 method for particles with index in `irange`.
+"""
+function _rk45!(
+        sols, prob, irange, dt_initial, isoutofdomain,
+        save_start, save_end, save_everystep, abstol, reltol, maxiters
+    )
+    (; tspan, p, u0) = prob
+    T = eltype(u0)
+    xv = MVector{4, T}(undef)
+    dx = MVector{4, T}(undef)
+    E = MVector{4, T}(undef)
+
+    safety = 0.9
+    max_growth = 5.0
+    min_growth = 0.2
+
+    @fastmath @inbounds for i in irange
+        traj = SVector{4, T}[]
+        tsave = typeof(tspan[1] + dt_initial)[]
+
+        method = DP5Method(MVector{4, T}(undef))
+
+        new_prob = prob.prob_func(prob, i, false)
+        xv .= new_prob.u0
+
+        t = tspan[1]
+        dt = dt_initial
+
+        if save_start
+            push!(traj, SVector{4, T}(xv))
+            push!(tsave, t)
+        end
+
+        steps = 0
+        while t < tspan[2] && steps < maxiters
+            if t + dt > tspan[2]
+                dt = tspan[2] - t
+            end
+
+            update_dp5!(dx, E, xv, method, p, dt, t)
+
+            error_ratio = 0.0
+
+            y_next = xv + dx
+            sum_sq_error = 0.0
+            for k in 1:4
+                sc = abstol + max(abs(xv[k]), abs(y_next[k])) * reltol
+                sum_sq_error += (E[k] / sc)^2
+            end
+            error_ratio = sqrt(sum_sq_error / 4)
+
+            if error_ratio <= 1.0
+                t += dt
+                @. xv = y_next
+
+                if save_everystep
+                    push!(traj, SVector{4, T}(xv))
+                    push!(tsave, t)
+                end
+
+                if isoutofdomain(xv, p, t)
+                    break
+                end
+
+                steps += 1
+            end
+
+            if error_ratio == 0.0
+                scale = max_growth
+            else
+                scale = safety * (1.0 / error_ratio)^(1.0 / 5.0)
+            end
+            scale = max(min_growth, min(scale, max_growth))
+            dt *= scale
+
+            if dt < 1.0e-14
+                break
+            end
+        end
+
+        if save_end && (isempty(tsave) || tsave[end] != t)
+            push!(traj, SVector{4, T}(xv))
+            push!(tsave, t)
+        end
+
+        alg = :rk45
+        t_final = tsave
+        u_final = traj
+        interp = LinearInterpolation(t_final, u_final)
+        retcode = steps >= maxiters ? ReturnCode.MaxIters : ReturnCode.Success
+        stats = nothing
+
+        sols[i] = build_solution(
+            prob, alg, t_final, u_final; interp = interp, retcode = retcode, stats = stats
+        )
+    end
     return
 end
