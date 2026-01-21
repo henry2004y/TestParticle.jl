@@ -46,91 +46,13 @@ function TraceGCProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
     )
 end
 
-struct DP5Method{T, N}
-    # intermediate variables used in the solver
-    k1::MVector{N, T}
-    k2::MVector{N, T}
-    k3::MVector{N, T}
-    k4::MVector{N, T}
-    k5::MVector{N, T}
-    k6::MVector{N, T}
-    k7::MVector{N, T}
-    y_tmp::MVector{N, T}
-end
-
-function DP5Method(u0::AbstractArray{T}) where {T}
-    N = length(u0)
-    k1 = MVector{N, T}(undef)
-    k2 = MVector{N, T}(undef)
-    k3 = MVector{N, T}(undef)
-    k4 = MVector{N, T}(undef)
-    k5 = MVector{N, T}(undef)
-    k6 = MVector{N, T}(undef)
-    k7 = MVector{N, T}(undef)
-    y_tmp = MVector{N, T}(undef)
-
-    return DP5Method{T, N}(k1, k2, k3, k4, k5, k6, k7, y_tmp)
-end
-
-struct RK4Method{T, N}
-    # intermediate variables used in the solver
-    k1::MVector{N, T}
-    k2::MVector{N, T}
-    k3::MVector{N, T}
-    k4::MVector{N, T}
-    y_tmp::MVector{N, T}
-end
-
-function RK4Method(u0::AbstractArray{T}) where {T}
-    N = length(u0)
-    k1 = MVector{N, T}(undef)
-    k2 = MVector{N, T}(undef)
-    k3 = MVector{N, T}(undef)
-    k4 = MVector{N, T}(undef)
-    y_tmp = MVector{N, T}(undef)
-
-    return RK4Method{T, N}(k1, k2, k3, k4, y_tmp)
-end
-
 """
-    update_rk4!(dy, y, method, param, dt, t)
-
-Update state using the RK4 method.
-"""
-@muladd function update_rk4!(dy, y, method::RK4Method, param, dt, t)
-    (; k1, k2, k3, k4, y_tmp) = method
-
-    # k1 = f(t, y)
-    trace_gc!(k1, y, param, t)
-
-    # k2 = f(t + dt/2, y + dt/2 * k1)
-    @. y_tmp = y + 0.5 * dt * k1
-    trace_gc!(k2, y_tmp, param, t + 0.5 * dt)
-
-    # k3 = f(t + dt/2, y + dt/2 * k2)
-    @. y_tmp = y + 0.5 * dt * k2
-    trace_gc!(k3, y_tmp, param, t + 0.5 * dt)
-
-    # k4 = f(t + dt, y + dt * k3)
-    @. y_tmp = y + dt * k3
-    trace_gc!(k4, y_tmp, param, t + dt)
-
-    # y_{n+1} = y_n + dt/6 * (k1 + 2k2 + 2k3 + k4)
-    @. dy = (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-
-    return
-end
-
-
-"""
-    update_dp5(y, method, param, dt, t)
+    update_dp5(y, param, dt, t)::(dy, E)
 
 Update state using the Dormand-Prince 5(4) method.
-Returns (dy, E), where dy is the update and E is the error estimate, both as SArrays.
+Returns dy as the update and E as the error estimate, both as SArrays.
 """
-@muladd function update_dp5(y, method::DP5Method, param, dt, t)
-    (; k1, k2, k3, k4, k5, k6, k7, y_tmp) = method
-
+@muladd function update_dp5(y, param, dt, t)
     # Coefficients for DP5
     c2, c3, c4, c5, c6 = 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0
     a21 = 1 / 5
@@ -145,112 +67,56 @@ Returns (dy, E), where dy is the update and E is the error estimate, both as SAr
     b1, b3, b4, b5, b6 = 35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
     e1, e3, e4, e5, e6, e7 = 71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
 
-    trace_gc!(k1, y, param, t)
-    sk1 = SVector(k1)
+    k1 = trace_gc(y, param, t)
 
-    @. y_tmp = y + dt * (a21 * sk1)
-    trace_gc!(k2, y_tmp, param, t + c2 * dt)
-    sk2 = SVector(k2)
+    y_tmp = y + dt * (a21 * k1)
+    k2 = trace_gc(y_tmp, param, t + c2 * dt)
 
-    @. y_tmp = y + dt * (a31 * sk1 + a32 * sk2)
-    trace_gc!(k3, y_tmp, param, t + c3 * dt)
-    sk3 = SVector(k3)
+    y_tmp = y + dt * (a31 * k1 + a32 * k2)
+    k3 = trace_gc(y_tmp, param, t + c3 * dt)
 
-    @. y_tmp = y + dt * (a41 * sk1 + a42 * sk2 + a43 * sk3)
-    trace_gc!(k4, y_tmp, param, t + c4 * dt)
-    sk4 = SVector(k4)
+    y_tmp = y + dt * (a41 * k1 + a42 * k2 + a43 * k3)
+    k4 = trace_gc(y_tmp, param, t + c4 * dt)
 
-    @. y_tmp = y + dt * (a51 * sk1 + a52 * sk2 + a53 * sk3 + a54 * sk4)
-    trace_gc!(k5, y_tmp, param, t + c5 * dt)
-    sk5 = SVector(k5)
+    y_tmp = y + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
+    k5 = trace_gc(y_tmp, param, t + c5 * dt)
 
-    @. y_tmp = y + dt * (a61 * sk1 + a62 * sk2 + a63 * sk3 + a64 * sk4 + a65 * sk5)
-    trace_gc!(k6, y_tmp, param, t + c6 * dt)
-    sk6 = SVector(k6)
+    y_tmp = y + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
+    k6 = trace_gc(y_tmp, param, t + c6 * dt)
 
-    @. y_tmp = y + dt * (a71 * sk1 + a72 * sk2 + a73 * sk3 + a74 * sk4 + a75 * sk5 + a76 * sk6)
-    trace_gc!(k7, y_tmp, param, t + dt)
-    sk7 = SVector(k7)
+    y_tmp = y + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
+    k7 = trace_gc(y_tmp, param, t + dt)
 
     # y_{n+1} update
-    dy = dt * (b1 * sk1 + b3 * sk3 + b4 * sk4 + b5 * sk5 + b6 * sk6)
-    E = dt * (e1 * sk1 + e3 * sk3 + e4 * sk4 + e5 * sk5 + e6 * sk6 + e7 * sk7)
+    dy = dt * (b1 * k1 + b3 * k3 + b4 * k4 + b5 * k5 + b6 * k6)
+    E = dt * (e1 * k1 + e3 * k3 + e4 * k4 + e5 * k5 + e6 * k6 + e7 * k7)
 
     return dy, E
 end
 
 """
-    update_dp5!(dy, E, y, method, param, dt, t)
+    update_rk4(y, param, dt, t)
 
-Update state using the Dormand-Prince 5(4) method.
-Returns (dy, E), where dy is the update and E is the error estimate.
+Update state using the RK4 method.
+Returns dy as the update SArray.
 """
-@muladd function update_dp5!(dy, E, y, method::DP5Method, param, dt, t)
-    # Redirect to the new implementation and update in place for backward compatibility if needed,
-    # though usage in _rk45! will be replaced.
-    # Actually, to minimize duplication, we can keep the logic or just use the new one.
-    # But since the user asked to "Check if we need xv, dx, E to be MVector", and we decided they should be local (SVector),
-    # maintaining update_dp5! as it was is fine for now, or we can deprecate it.
-    # For now, I'll essentially keep it but we are creating the new one above.
-    # Wait, copying the code is bad practice. Let's make update_dp5! call update_dp5?
-    # No, update_dp5! expects MVector inputs dy and E. calling update_dp5 creates SVector then we write back.
-    # That might be slightly inefficient but cleaner code. However, let's just stick to the plan:
-    # "Create a new version update_dp5" - done above.
-    # Below is the original update_dp5! kept for safety or modified if I want to delete it.
-    # I will KEEP the original update_dp5! for now to avoid breaking anything else,
-    # although grep showed no other usages.
+@muladd function update_rk4(y, param, dt, t)
+    k1 = trace_gc(y, param, t)
 
-    # ... Original body of update_dp5! ...
-    # Actually, I will replace the whole file content from line 130 to the end of _rk45! with the new versions.
-    # I will leave update_dp5! as is but maybe rewritten? No, I will just paste the new one BEFORE it
-    # and then rewrite _rk45!.
+    y_tmp = y + 0.5 * dt * k1
+    k2 = trace_gc(y_tmp, param, t + 0.5 * dt)
 
-    # Wait, I am replacing a chunk. I should just add update_dp5 and then rewrite _rk45!.
-    # The tool `replace_file_content` replaces a contiguous block.
-    # I will replace `update_dp5!` AND `_rk45!` in one go.
+    y_tmp = y + 0.5 * dt * k2
+    k3 = trace_gc(y_tmp, param, t + 0.5 * dt)
 
-    (; k1, k2, k3, k4, k5, k6, k7, y_tmp) = method
+    y_tmp = y + dt * k3
+    k4 = trace_gc(y_tmp, param, t + dt)
 
-    # Coefficients for DP5
-    c2, c3, c4, c5, c6 = 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0
-    a21 = 1 / 5
-    a31, a32 = 3 / 40, 9 / 40
-    a41, a42, a43 = 44 / 45, -56 / 15, 32 / 9
-    a51, a52, a53, a54 = 19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729
-    a61, a62, a63, a64, a65 = 9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656
-    a71, a72, a73, a74, a75, a76 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
+    dy = (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
 
-    # Coefficients for 5th order solution and error estimate
-    # b2 = b7 = e2 = 0.0
-    b1, b3, b4, b5, b6 = 35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
-    e1, e3, e4, e5, e6, e7 = 71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
-
-    trace_gc!(k1, y, param, t)
-
-    @. y_tmp = y + dt * (a21 * k1)
-    trace_gc!(k2, y_tmp, param, t + c2 * dt)
-
-    @. y_tmp = y + dt * (a31 * k1 + a32 * k2)
-    trace_gc!(k3, y_tmp, param, t + c3 * dt)
-
-    @. y_tmp = y + dt * (a41 * k1 + a42 * k2 + a43 * k3)
-    trace_gc!(k4, y_tmp, param, t + c4 * dt)
-
-    @. y_tmp = y + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
-    trace_gc!(k5, y_tmp, param, t + c5 * dt)
-
-    @. y_tmp = y + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
-    trace_gc!(k6, y_tmp, param, t + c6 * dt)
-
-    @. y_tmp = y + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
-    trace_gc!(k7, y_tmp, param, t + dt)
-
-    # y_{n+1} update
-    @. dy = dt * (b1 * k1 + b3 * k3 + b4 * k4 + b5 * k5 + b6 * k6)
-    @. E = dt * (e1 * k1 + e3 * k3 + e4 * k4 + e5 * k5 + e6 * k6 + e7 * k7)
-
-    return
+    return dy
 end
+
 
 """
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
@@ -398,38 +264,37 @@ function _rk4!(
     )
     (; tspan, p, u0) = prob
     T = eltype(u0)
-    xv = MVector{4, T}(undef)
-    dx = MVector{4, T}(undef)
-
-    paramRK4 = RK4Method(MVector{4, T}(undef))
+    # xv, dx are now local SVector variables
 
     @fastmath @inbounds for i in irange
-        traj = Vector{SVector{4, T}}(undef, nout)
-        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+        traj = SVector{4, T}[]
+        sizehint!(traj, nout)
+        tsave = typeof(tspan[1] + dt)[]
+        sizehint!(tsave, nout)
 
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
-        xv .= new_prob.u0
+        xv = SVector{4, T}(new_prob.u0)
 
         if save_start
             iout += 1
-            traj[iout] = SVector{4, T}(xv)
-            tsave[iout] = tspan[1]
+            push!(traj, xv)
+            push!(tsave, tspan[1])
         end
 
         it = 1
         while it <= nt
             t = tspan[1] + (it - 1) * dt
 
-            update_rk4!(dx, xv, paramRK4, p, dt, t)
-            @. xv += dx
+            dx = update_rk4(xv, p, dt, t)
+            xv += dx
 
             if save_everystep && (it % savestepinterval == 0)
                 iout += 1
                 if iout <= nout
-                    traj[iout] = SVector{4, T}(xv)
-                    tsave[iout] = t + dt
+                    push!(traj, xv)
+                    push!(tsave, t + dt)
                 end
             end
 
@@ -448,19 +313,14 @@ function _rk4!(
             should_save_final = true
         end
 
-        if iout < nout && should_save_final && iout > 0 && tsave[iout] != tspan[2]
-            # If we haven't saved the very last step yet (and we should)
-            # Note: if it ran to completion, t + dt could be tspan[2].
-            # If we broke early, we save the last state.
+        if iout < nout && should_save_final && iout > 0 && (isempty(tsave) || tsave[end] != tspan[2])
             iout += 1
-            traj[iout] = SVector{4, T}(xv)
-            tsave[iout] = (it > nt) ? tspan[2] : (tspan[1] + it * dt)
+            push!(traj, xv)
+            push!(tsave, (it > nt) ? tspan[2] : (tspan[1] + it * dt))
         end
 
-        if iout < nout
-            resize!(traj, iout)
-            resize!(tsave, iout)
-        end
+        # If we used push!, we don't need resize! unless we overshot?
+        # Use simple push! logic.
 
         alg = :rk4
         t = tsave
@@ -490,8 +350,6 @@ function _rk45!(
     safety = 0.9
     max_growth = 5.0
     min_growth = 0.2
-
-    method = DP5Method(MVector{4, T}(undef))
 
     @fastmath @inbounds for i in irange
         traj = SVector{4, T}[]
@@ -532,7 +390,7 @@ function _rk45!(
                 dt = tspan[2] - t
             end
 
-            dx, E = update_dp5(xv, method, p, dt, t) # Returns SVector, SVector
+            dx, E = update_dp5(xv, p, dt, t)
 
             error_ratio = 0.0
 
