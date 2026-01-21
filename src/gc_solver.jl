@@ -112,7 +112,7 @@ function solve(
         @warn "Only :rk4 algorithm is supported for native TraceGCProblem currently. Using :rk4."
     end
 
-    return sols = _solve(
+    return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep
     )
@@ -214,7 +214,6 @@ function _rk4!(
     (; tspan, p, u0) = prob
     T = eltype(u0)
     xv = MVector{4, T}(undef)
-    xv_new = MVector{4, T}(undef)
     dx = MVector{4, T}(undef)
 
     # We need a reusable method struct for each thread/trajectory?

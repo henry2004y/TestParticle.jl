@@ -40,9 +40,6 @@ using Statistics
     u_diffeq = sol_diffeq[end]
     u_native = sol_native[1].u[end]
 
-    println("DiffEq end state: $u_diffeq")
-    println("Native end state: $u_native")
-
     # Position difference
     @test norm(u_diffeq[1:3] - u_native[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
 
