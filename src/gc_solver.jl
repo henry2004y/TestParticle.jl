@@ -463,7 +463,7 @@ function _rk45!(
                 sc = abstol + max(abs(xv[k]), abs(y_next[k])) * reltol
                 sum_sq_error += (E[k] / sc)^2
             end
-            error_ratio = sqrt(sum_sq_error / 4)
+            error_ratio = 0.5 * sqrt(sum_sq_error)
 
             if error_ratio <= 1.0
                 t += dt
@@ -481,10 +481,10 @@ function _rk45!(
                 steps += 1
             end
 
-            if error_ratio == 0.0
-                scale = max_growth
+            scale = if error_ratio == 0.0
+                max_growth
             else
-                scale = safety * (1.0 / error_ratio)^0.2
+                safety * (1.0 / error_ratio)^0.2
             end
             scale = max(min_growth, min(scale, max_growth))
             dt *= scale
