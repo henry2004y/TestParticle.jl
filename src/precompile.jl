@@ -43,5 +43,10 @@
         prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
         sol_native_rk4 = solve(prob_native; dt = 0.1, alg = :rk4)
         sol_native_rk45 = solve(prob_native; alg = :rk45)
+
+        # hybrid solver
+        prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
+        alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0)
+        sol_hybrid = solve(prob_hybrid, alg_hybrid)
     end
 end
