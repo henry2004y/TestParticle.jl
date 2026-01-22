@@ -10,10 +10,6 @@ Initial state perturbation for EnsembleProblem.
 """
 prob_func(prob, i, repeat) = remake(prob, u0 = rand(StableRNG(i)) * prob.u0)
 
-function prob_func_boris_immutable(prob, i, repeat)
-    # Note: prob.u0[5] = i*1e5 is not thread-safe!
-    return prob = @views remake(prob; u0 = [prob.u0[1:4]..., i * 1.0e5, prob.u0[6]])
-end
 
 """
 Test boundary check method.
@@ -499,55 +495,6 @@ end
         @test length(sol) == 9 && sol[1, end] ≈ 0.9999998697180689
     end
 
-    @testset "Boris pusher" begin
-        x0 = [0.0, 0.0, 0.0]
-        v0 = [0.0, 1.0e5, 0.0]
-        stateinit = [x0..., v0...]
-        tspan = (0.0, 3.0e-8)
-        dt = 3.0e-11
-        param = prepare(zero_E, uniform_B2, species = Electron)
-        prob = TraceProblem(stateinit, tspan, param)
-
-        sol = TP.solve(prob; dt, savestepinterval = 10)[1]
-
-        @test sol.u[end] ≈ [
-            -0.00010199139098074829, 3.4634030517007745e-5, 0.0,
-            -60893.0154034644, -79322.38445151183, 0.0,
-        ]
-        @test length(sol.t) == length(sol.u)
-
-        t = tspan[2] / 2
-        @test sol(t) ≈ [
-            -3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
-            -94689.59405645168, 32154.016505320025, 0.0,
-        ]
-
-        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
-        trajectories = 4
-        savestepinterval = 1000
-        sols = TP.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
-        @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.1540346438
-
-        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
-        trajectories = 2
-        savestepinterval = 1000
-        sols = TP.solve(prob; dt, savestepinterval, trajectories)
-        @test sum(s -> sum(s.u[end]), sols) ≈ -420646.1997670008
-
-        x0 = [-1.0, 0.0, 0.0]
-        v0 = [1.0e6, 0.0, 0.0]
-        stateinit = [x0..., v0...]
-        tspan = (0.0, 0.01)
-        dt = 1.0e-4
-        param = prepare(zero_E, time_varying_B, species = Electron)
-        prob = TraceProblem(stateinit, tspan, param)
-        sol = TP.solve(prob; dt, savestepinterval = 100)[1]
-        @test sol[1, end] ≈ -512.8807058314515
-
-        new_tspan = (0.0, 2.0e-8)
-        new_prob = remake(prob; tspan = new_tspan)
-        @test new_prob.tspan == new_tspan
-    end
 
     @testset "MagnetoStatics" begin
         B = TP.getB_mirror(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
@@ -602,7 +549,7 @@ end
     end
 end
 
-include("test_multistep_boris.jl")
+include("test_boris.jl")
 include("test_svector_interp.jl")
 include("test_curvature.jl")
 include("test_gyroradius.jl")
