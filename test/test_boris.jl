@@ -18,6 +18,14 @@ using LinearAlgebra
         end
         return SA[0.0, 0.0, Bz]
     end
+    # Gradient B field: B = [0, 0, 0.01 * (1 + x)]
+    # Strong gradient to test adaptive stepping
+    gradient_B(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + x[1])]
+
+    # Constant E field for ExB drift
+    # E = [0, 1e5, 0]
+    constant_E(x, t) = SA[0.0, 1.0e5, 0.0]
+
     zero_E = TP.ZeroField()
 
     function prob_func_boris_immutable(prob, i, repeat)
@@ -142,34 +150,36 @@ using LinearAlgebra
         alg1 = AdaptiveBoris(dtmax = 2.0)
         @test alg1.dtmin == 0.02
 
-        # Check simulation
         x0 = [0.0, 0.0, 0.0]
-        v0 = [0.0, 1.0e5, 0.0]
+        v0 = [1.0e7, 0.0, 0.0]
         stateinit = [x0..., v0...]
-        # Gyroperiod for electron in 0.01T is ~3.57e-10 s
-        # Let's run for 100 periods
+
         tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
-        tspan = (0.0, 100 * tperiod)
+        tspan = (0.0, 200 * tperiod)
 
         alg_adaptive = AdaptiveBoris(dtmax = tperiod, safety = 0.1)
-        # dtmin should be 0.01 * tperiod
 
-        param = prepare(zero_E, uniform_B2, species = Electron)
+        param = prepare(constant_E, gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol = TP.solve(prob, alg_adaptive)[1]
 
-        # Energy conservation check
-        # |v| should be conserved
-        v_end = sol.u[end][4:6]
-        v_start = stateinit[4:6]
-        @test norm(v_end) ≈ norm(v_start) atol = 1.0e-3 * norm(v_start)
+        dt_end = sol.t[end - 1] - sol.t[end - 2]
+        dt_start = sol.t[11] - sol.t[10]
 
-        # Check that we took reasonable number of steps
-        # Expect dt ~ safety / Omega = safety / (2pi/tperiod) = safety * tperiod / 2pi
-        # dt ~ 0.1 * tperiod / 6.28 ~ 0.015 * tperiod
-        # total / dt ~ 100 / 0.015 ~ 6666 steps
-        # Warning: if length is 2, it means it triggered early exit or all steps rejected?
-        @test 100 < length(sol.t) < 20000
+        @test dt_end < 0.8 * dt_start
+
+        function total_energy(u)
+            v = u[4:6]
+            y = u[2]
+            K = 0.5 * TP.mₑ * norm(v)^2 # Kinetic Energy
+            U = TP.qₑ * (-1.0e5 * y) # Potential Energy
+            return K + U
+        end
+
+        E_start = total_energy(sol.u[1])
+        E_end = total_energy(sol.u[end])
+
+        @test isapprox(E_end, E_start, rtol = 1.0e-4)
     end
 end

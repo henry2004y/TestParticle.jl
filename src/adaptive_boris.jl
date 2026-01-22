@@ -143,9 +143,7 @@ function _adaptive_boris!(
             update_location!(xv, dt)
             t += dt
 
-            if isoutofdomain(xv, p, t)
-                break
-            end
+            isoutofdomain(xv, p, t) && break
             it += 1
 
             # Calculate new dt for next step
