@@ -184,10 +184,6 @@ function _hybrid_adaptive!(
     q2m, m, Efunc, Bfunc = p[1], p[2], p[3], p[4]
     q = q2m * m
     T = eltype(u0)
-    paramBoris = BorisMethod(T)
-    xv_fo = MVector{6, T}(undef)
-    v_old = MVector{3, T}(undef)
-    xv_save = MVector{6, T}(undef)
 
     # Determine if fields are time dependent
     is_td = is_time_dependent(Efunc) || is_time_dependent(Bfunc)
@@ -202,13 +198,15 @@ function _hybrid_adaptive!(
         tsave = typeof(tspan[1])[]
 
         new_prob = prob.prob_func(prob, i, false)
-        xv_fo .= new_prob.u0
+        xv_fo = SVector{6, T}(new_prob.u0)
+        r = xv_fo[SVector(1, 2, 3)]
+        v = xv_fo[SVector(4, 5, 6)]
         t = tspan[1]
 
         # Initial Mode Determination
-        X_gc, vpar, μ = _get_gc_parameters_at_t(SVector{6, T}(xv_fo), Efunc, Bfunc, q, m, t)
+        X_gc, vpar, μ = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
 
-        ϵ = get_adiabaticity(xv_fo[SA[1:3...]], Bfunc, q, m, μ, t)
+        ϵ = get_adiabaticity(r, Bfunc, q, m, μ, t)
         is_adiabatic = ϵ < alg.threshold
 
         if is_adiabatic
@@ -223,12 +221,12 @@ function _hybrid_adaptive!(
         else
             mode = :FO
             # Initial dt for FO
-            B_vec = Bfunc(xv_fo[SA[1:3...]], t)
+            B_vec = Bfunc(r, t)
             Bmag = norm(B_vec)
             omega = abs(q2m) * Bmag
             dt = alg.safety_fo / omega
             dt = clamp(dt, alg.dtmin, alg.dtmax)
-            update_velocity!(xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), -0.5 * dt, t)
+            v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt, t)
         end
 
         if save_start
@@ -241,22 +239,20 @@ function _hybrid_adaptive!(
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
                 # Adiabaticity check
-                ϵ = get_adiabaticity(xv_gc[SA[1:3...]], Bfunc, q, m, μ, t)
+                ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
                 if ϵ >= alg.threshold
                     # Switch to FO (GC -> FO)
                     mode = :FO
                     xv_fo_vec = _gc_to_full_at_t(
                         xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
                     )
-                    xv_fo .= xv_fo_vec
+                    xv_fo = xv_fo_vec
 
-                    B_mag = norm(Bfunc(xv_fo[SA[1:3...]], t))
+                    B_mag = norm(Bfunc(r, t))
                     omega = abs(q2m * B_mag)
                     dt = alg.safety_fo / omega
                     dt = clamp(dt, alg.dtmin, alg.dtmax)
-                    update_velocity!(
-                        xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), -0.5 * dt, t
-                    )
+                    v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt, t)
                     continue
                 end
 
@@ -296,13 +292,10 @@ function _hybrid_adaptive!(
 
             else # Mode == :FO
                 t_sync = is_td ? t : zero(T)
-                xv_save .= xv_fo
-                update_velocity!(
-                    xv_save, paramBoris, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
-                )
+                v_check = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
 
                 X_gc, vpar, μ = _get_gc_parameters_at_t(
-                    SVector{6, T}(xv_save), Efunc, Bfunc, q, m, t
+                    vcat(r, v_check), Efunc, Bfunc, q, m, t
                 )
                 ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
                 if ϵ < alg.threshold
@@ -319,38 +312,34 @@ function _hybrid_adaptive!(
 
                 if t + dt > tspan[2]
                     dt_step = tspan[2] - t
-                    update_velocity!(
-                        xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
-                    )
-                    update_velocity!(
-                        xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), -0.5 * dt_step, t_sync
+                    v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
+                    v = update_velocity(
+                        v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt_step, t_sync
                     )
                     dt = dt_step
                 end
 
-                v_old .= @view xv_fo[4:6]
+                v_prev = v
 
                 if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                    xv_save .= xv_fo
-                    xv_save[4:6] .= v_old
-                    update_velocity!(
-                        xv_save, paramBoris, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
+                    v_save = update_velocity(
+                        v_prev, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
                     )
-                    push!(traj, SVector{6, T}(xv_save))
+                    push!(traj, vcat(r, v_save))
                     push!(tsave, t)
                 end
 
                 t_mid = is_td ? t + 0.5 * dt : zero(T)
-                update_velocity!(xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), dt, t_mid)
-                update_location!(xv_fo, dt)
+                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), dt, t_mid)
+                r += v * dt
                 t += dt
 
-                isoutofdomain(xv_fo, (q2m, m, Efunc, Bfunc), t) && break
+                isoutofdomain(vcat(r, v), (q2m, m, Efunc, Bfunc), t) && break
                 it += 1
                 steps += 1
 
                 # New dt for FO
-                Bmag = norm(Bfunc(xv_fo[SA[1:3...]], t))
+                Bmag = norm(Bfunc(r, t))
                 if Bmag > 0
                     dt_new = alg.safety_fo / (abs(q2m) * Bmag)
                     dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
@@ -359,12 +348,8 @@ function _hybrid_adaptive!(
                 end
 
                 t_sync = is_td ? t : zero(T)
-                update_velocity!(
-                    xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
-                )
-                update_velocity!(
-                    xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), -0.5 * dt_new, t_sync
-                )
+                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
+                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt_new, t_sync)
                 dt = dt_new
             end
         end
@@ -375,10 +360,8 @@ function _hybrid_adaptive!(
                 push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
             else
                 t_final = is_td ? t : zero(T)
-                update_velocity!(
-                    xv_fo, paramBoris, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_final
-                )
-                push!(traj, SVector{6, T}(xv_fo))
+                v_final = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_final)
+                push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)
         end
