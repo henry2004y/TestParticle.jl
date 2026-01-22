@@ -12,7 +12,7 @@ end
 Adaptive Boris method with adaptive time stepping based on local gyrofrequency.
 The time step is determined by `dt = safety / |qB/m|`, clamped by `dtmin` and `dtmax`.
 """
-function AdaptiveBoris(; dtmin, dtmax, safety = 0.1)
+function AdaptiveBoris(; dtmax, dtmin = 1.0e-2 * dtmax, safety = 0.1)
     T = promote_type(typeof(dtmin), typeof(dtmax), typeof(safety))
     return AdaptiveBoris{T}(T(dtmin), T(dtmax), T(safety))
 end
