@@ -34,12 +34,12 @@ end
 ## Time span
 tspan = (0, 41)
 
-## 1. Particle Simulation
+## 1. Full Orbit Simulation
 param = prepare(uniform_E, curved_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
-## 2. Guiding Center Simulation (Numeric Preparation)
+## 2. Guiding Center Simulations
 stateinit_gc, param_gc = TP.prepare_gc(
     stateinit, uniform_E, curved_B,
     species = Proton
@@ -47,15 +47,12 @@ stateinit_gc, param_gc = TP.prepare_gc(
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
-## 2.1 Native GC Solver (RK4)
-prob_native_rk4 = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_native_rk4 = solve(prob_native_rk4; dt = 0.1, alg = :rk4)
+## Native GC Solvers
+prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
+sol_native_rk4 = TP.solve(prob_native; dt = 0.1, alg = :rk4)[1]
+sol_native_rk45 = TP.solve(prob_native; alg = :rk45)[1]
 
-## 2.2 Native GC Solver (RK45)
-prob_native_rk45 = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_native_rk45 = solve(prob_native_rk45; alg = :rk45)
-
-## 3. Guiding Center Simulation with Numeric B Field Interpolation
+## Guiding Center Simulation with Numeric B Field Interpolation
 xrange = range(0.9, 1.2, length = 20)
 yrange = range(-0.5, 0.1, length = 60)
 zrange = range(-0.8, 0.8, length = 40)
@@ -74,13 +71,13 @@ stateinit_gc_num, param_gc_num = TP.prepare_gc(
 prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
 sol_gc_numericBfield = solve(prob_gc_num, Vern9())
 
-## 4. Analytic Guiding Center Drift
+## 3. Analytic Guiding Center Drift
 gc = param |> get_gc_func
 gc_x0 = gc(stateinit) |> Vector
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
-## 5. GC Simulation with Velocity Saving
+## 4. GC Simulation with Velocity Saving
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})
 ## The callback function must use the form `save_func(u, t, integrator)`
@@ -91,7 +88,7 @@ cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), s
 prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc_saving = solve(prob_gc_saving, Vern9(), callback = cb)
 
-## 6. Trace Magnetic Field Lines
+## 5. Trace Magnetic Field Lines
 ## Trace from the initial position and a few neighbors to show topology
 b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
@@ -311,8 +308,8 @@ sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
 ## Benchmark
 b_full = @be solve(prob_full, Vern9())
 b_gc = @be solve(prob_gc, Vern9())
-b_native_rk4 = @be solve(prob_native_gc; dt = 1.0, alg = :rk4)
-b_native_rk45 = @be solve(prob_native_gc; alg = :rk45)
+b_native_rk4 = @be TP.solve(prob_native_gc; dt = 1.0, alg = :rk4)
+b_native_rk45 = @be TP.solve(prob_native_gc; alg = :rk45)
 
 ## Visualization of Benchmark Results
 f3 = Figure(size = (1000, 500), fontsize = 20)
