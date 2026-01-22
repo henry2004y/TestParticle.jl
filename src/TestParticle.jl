@@ -30,7 +30,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
 export Proton, Electron, Ion
 export Maxwellian, BiMaxwellian
 export Kappa, BiKappa
-export AdaptiveBoris
+export AdaptiveBoris, AdaptiveHybrid
 export CurrentLoop, getB_loop
 export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy,
@@ -39,7 +39,7 @@ export get_gyrofrequency,
     sample_unit_sphere, get_number_density_flux,
     getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
-export TraceProblem, TraceGCProblem, CartesianGrid, RectilinearGrid, StructuredGrid
+export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 include("types.jl")
 include("fields/Fields.jl")
@@ -53,6 +53,7 @@ include("equations.jl")
 include("pusher.jl")
 include("multistep_boris.jl")
 include("adaptive_boris.jl")
+include("hybrid.jl")
 include("fieldline.jl")
 
 function orbit end
