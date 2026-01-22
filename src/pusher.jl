@@ -74,6 +74,29 @@ end
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
+    update_velocity(v, r, param, dt, t)
+
+Update velocity using the Boris method, returning the new velocity as an SVector.
+"""
+function update_velocity(v, r, param, dt, t)
+    q2m, _, Efunc, Bfunc = param
+    E = Efunc(r, t)
+    B = Bfunc(r, t)
+
+    t_rotate = q2m * B * 0.5 * dt
+    t_mag2 = sum(abs2, t_rotate)
+    s_rotate = 2 * t_rotate / (1 + t_mag2)
+
+    v_minus = v + q2m * E * 0.5 * dt
+    v_prime = v_minus + (v_minus × t_rotate)
+    v_plus = v_minus + (v_prime × s_rotate)
+
+    v_new = v_plus + q2m * E * 0.5 * dt
+
+    return v_new
+end
+
+"""
     update_velocity!(xv, paramBoris, param, dt, t)
 
 Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
@@ -283,10 +306,6 @@ function _boris!(
     ) where {ITD}
     (; tspan, p, u0) = prob
     T = eltype(u0)
-    paramBoris = BorisMethod(T)
-    xv = MVector{6, T}(undef)
-    v_old = MVector{3, T}(undef)
-    xv_save = MVector{6, T}(undef)
 
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{6, T}}(undef, nout)
@@ -295,40 +314,45 @@ function _boris!(
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
-        xv .= new_prob.u0
+        # Load independent r and v SVector from u0
+        u0_i = SVector{6, T}(new_prob.u0)
+        r = u0_i[SVector(1, 2, 3)]
+        v = u0_i[SVector(4, 5, 6)]
 
         if save_start
             iout += 1
-            traj[iout] = SVector{6, T}(xv)
+            traj[iout] = u0_i
             tsave[iout] = tspan[1]
         end
 
         # push velocity back in time by 1/2 dt
-        update_velocity!(xv, paramBoris, p, -0.5 * dt, tspan[1])
+        v = update_velocity(v, r, p, -0.5 * dt, tspan[1])
 
         it = 1
         while it <= nt
-            v_old .= @view xv[4:6]
+            v_prev = v
             t = ITD ? (it - 0.5) * dt : zero(dt)
-            update_velocity!(xv, paramBoris, p, dt, t)
+            v = update_velocity(v, r, p, dt, t)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                 iout += 1
                 if iout <= nout
-                    xv_save .= xv
-                    xv_save[4:6] .= v_old
                     t_current = tspan[1] + (it - 1) * dt
-                    update_velocity!(
-                        xv_save, paramBoris, p, 0.5 * dt,
+                    # Approximate v_n from v_{n-1/2} (v_prev)
+                    # Use v_prev because update_velocity logic is:
+                    # v_{n+1/2} = update(v_{n-1/2}, ...)
+                    # We want v_n = update(v_{n-1/2}, dt/2, ...)
+                    v_save = update_velocity(
+                        v_prev, r, p, 0.5 * dt,
                         ITD ? t_current : zero(dt)
                     )
-                    traj[iout] = SVector{6, T}(xv_save)
+                    traj[iout] = vcat(r, v_save)
                     tsave[iout] = t_current
                 end
             end
 
-            update_location!(xv, dt)
-            if isoutofdomain(xv, p, it * dt)
+            r += v * dt
+            if isoutofdomain(vcat(r, v), p, it * dt)
                 break
             end
             it += 1
@@ -346,8 +370,8 @@ function _boris!(
             iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            update_velocity!(xv, paramBoris, p, dt_final, ITD ? t_final : zero(dt))
-            traj[iout] = SVector{6, T}(xv)
+            v_final = update_velocity(v, r, p, dt_final, ITD ? t_final : zero(dt))
+            traj[iout] = vcat(r, v_final)
             tsave[iout] = t_final
         end
 
