@@ -12,7 +12,8 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(
-        sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing, sol_boris_adaptive = nothing; alpha = 0.5
+        sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing, sol_boris_adaptive = nothing;
+        alpha = 0.5
     )
     f = Figure(size = (700, 600), fontsize = 18)
     ax = Axis(
@@ -115,13 +116,12 @@ prob = TraceProblem(stateinit, tspan, param)
 sol_boris = TP.solve(prob; dt)[1];
 sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
 sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
-sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, sol_boris_adaptive; alpha = 1)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
 # ## Energy Conservation
@@ -137,7 +137,10 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 36)[1];
 sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2)[1];
 sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 4)[1];
-sol_boris_adaptive = TP.solve(prob_boris, alg_adaptive)[1]
+sol_boris_adaptive = TP.solve(
+    prob_boris,
+    AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.2)
+)[1]
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 sol3 = solve(prob, Vern7());
