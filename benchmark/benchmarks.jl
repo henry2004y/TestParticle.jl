@@ -12,6 +12,7 @@ SUITE["trace"]["analytic field"] = BenchmarkGroup()
 SUITE["trace"]["numerical field"] = BenchmarkGroup()
 SUITE["trace"]["time-dependent field"] = BenchmarkGroup()
 SUITE["trace"]["GC"] = BenchmarkGroup()
+SUITE["trace"]["Hybrid"] = BenchmarkGroup()
 SUITE["interpolation"] = BenchmarkGroup()
 
 # analytic field
@@ -132,4 +133,29 @@ SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable TP.solve(
 SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
     $prob_native_gc;
     dt = 1.0e-4, savestepinterval = 100, alg = :rk45
+)
+
+# Hybrid Solver Setup
+
+alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0e-4)
+
+# Switching Case (FO mode / Switching)
+function sheared_B_func(x)
+    B0 = 0.01
+    k = 100.0 # High curvature to force FO mode or switching
+    return SA[B0 * cos(k * x[1]), B0 * sin(k * x[1]), 0.0]
+end
+
+# Reuse E_analytic
+param_sheared = TP.prepare(E_analytic, sheared_B_func)
+
+x0_h = SA[0.0, 0.0, 0.0]
+v0_h = SA[1.0e4, 0.0, 1.0e3]
+u0_h = vcat(x0_h, v0_h)
+tspan_h = (0.0, 1.0e-5)
+
+prob_hybrid_sheared = TraceHybridProblem(u0_h, tspan_h, param_sheared)
+
+SUITE["trace"]["Hybrid"]["Sheared"] = @benchmarkable TP.solve(
+    $prob_hybrid_sheared, $alg_hybrid
 )
