@@ -321,6 +321,59 @@ function _prepare(
     return sols, nt, nout
 end
 
+function calculate_state(
+        r::SVector{3, T}, v::SVector{3, T}, t, q2m, m, Efunc, Bfunc, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}
+    ) where {T, SAVE_FIELDS, SAVE_WORK}
+    if !SAVE_FIELDS && !SAVE_WORK
+        return vcat(r, v)
+    end
+
+    local state_fields, state_extra
+
+    if SAVE_FIELDS || SAVE_WORK
+        E = Efunc(r, t)
+    end
+
+    if SAVE_WORK
+        B_vec, Bmag, b_hat, ∇B, JB = TestParticle.get_B_parameters(r, t, Bfunc)
+        Ω = q2m * Bmag
+
+        v_par_vec = (v ⋅ b_hat) .* b_hat
+        q = q2m * m
+        P_par = q * (v_par_vec ⋅ E)
+
+        v_perp = v - v_par_vec
+        mu = m * norm(v_perp)^2 / (2 * Bmag)
+
+        term_gradB = norm(v_perp)^2 / (2 * Ω)
+        v_gradB_vec = term_gradB * (b_hat × ∇B) / Bmag
+        P_gradB = q * (v_gradB_vec ⋅ E)
+
+        κ = (JB * b_hat + b_hat * (-∇B ⋅ b_hat)) / Bmag
+        v_curv_vec = norm(v_par_vec)^2 * (b_hat × κ) / Ω
+        P_curv = q * (v_curv_vec ⋅ E)
+
+        dB_dt = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t)
+        P_ind = mu * dB_dt
+
+        state_extra = SVector{4, T}(P_par, P_gradB, P_curv, P_ind)
+    end
+
+    if SAVE_FIELDS
+        B = Bfunc(r, t)
+        state_fields = vcat(E, B)
+    end
+
+    if SAVE_FIELDS && SAVE_WORK
+        return vcat(r, v, state_fields, state_extra)
+    elseif SAVE_FIELDS
+        return vcat(r, v, state_fields)
+    elseif SAVE_WORK
+        return vcat(r, v, state_extra)
+    end
+end
+
+
 """
 Apply Boris method for particles with index in `irange`.
 """
@@ -355,71 +408,7 @@ function _boris!(
 
         if save_start
             iout += 1
-            if !SAVE_FIELDS && !SAVE_WORK
-                traj[iout] = u0_i
-            else
-                t0 = tspan[1]
-
-                E = Efunc(r, t0)
-                if SAVE_WORK
-                    B_vec, Bmag, b_hat, ∇B, JB = TestParticle.get_B_parameters(r, t0, Bfunc)
-                    # For work at t=0, everything is instantaneous.
-                    v_par_vec = (v ⋅ b_hat) .* b_hat
-                    Ω = q2m * Bmag
-                    # P_par = q v_par . E
-                    # P_gradB = q v_gradB . E
-                    # P_curv = q v_curv . E
-                    # P_ind = mu dB/dt
-
-                    # We need q. q = q2m * m.
-                    q = q2m * m
-                    P_par = q * (v_par_vec ⋅ E)
-
-                    # v_gradB = (m v_perp^2 / (2 q B^2)) * (b x ∇B)
-                    # v_perp = v - v_par_vec
-                    # Instead of manual calc, use existing drifts formula implicitly or re-derive
-                    v_perp = v - v_par_vec
-                    # m/q = 1/q2m
-                    mu = m * norm(v_perp)^2 / (2 * Bmag) # magnetic moment
-                    # gradB drift term: (mu/q) * (b x ∇B)
-                    # (mu/q) = (m v_perp^2 / 2B) / q = (v_perp^2 / 2 * q2m * B) ?
-                    # q/m * B = Omega.
-                    # mu/q = (m/q) * v_perp^2 / 2B = v_perp^2 / (2 * q2m * B)
-                    term_gradB = norm(v_perp)^2 / (2 * Ω)
-                    v_gradB_vec = term_gradB * (b_hat × ∇B) / Bmag # b x ∇B / B
-                    # Actually eq 238: norm(w)^2 * (b × ∇B) / (2 * Ω * Bmag)
-                    # Matches.
-                    P_gradB = q * (v_gradB_vec ⋅ E)
-
-                    # v_curv
-                    # eq 239: norm(v_par)^2 * (b × κ) / Ω
-                    # κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-                    κ = (JB * b_hat + b_hat * (-∇B ⋅ b_hat)) / Bmag
-                    v_curv_vec = norm(v_par_vec)^2 * (b_hat × κ) / Ω
-                    P_curv = q * (v_curv_vec ⋅ E)
-
-                    # P_ind = mu * dB/dt
-                    # dB/dt needs ForwardDiff on magnitude of B
-                    dB_dt = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t0)
-                    P_ind = mu * dB_dt
-
-                    state_extra = SVector{4, T}(P_par, P_gradB, P_curv, P_ind)
-                end
-
-                if SAVE_FIELDS
-                    B = Bfunc(r, t0)
-                    state_fields = vcat(E, B)
-                end
-
-                if SAVE_FIELDS && SAVE_WORK
-
-                    traj[iout] = vcat(r, v, state_fields, state_extra)
-                elseif SAVE_FIELDS
-                    traj[iout] = vcat(r, v, state_fields)
-                elseif SAVE_WORK
-                    traj[iout] = vcat(r, v, state_extra)
-                end
-            end
+            traj[iout] = calculate_state(r, v, tspan[1], q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
             tsave[iout] = tspan[1]
         end
 
@@ -446,49 +435,7 @@ function _boris!(
                         ITD ? t_current : zero(dt)
                     )
 
-                    if !SAVE_FIELDS && !SAVE_WORK
-                        traj[iout] = vcat(r, v_save)
-                    else
-                        if SAVE_WORK
-
-                            B_vec, Bmag_val, b_hat, ∇B, JB = TestParticle.get_B_parameters(r, t_current, Bfunc)
-                            Ω = q2m * Bmag_val
-
-                            E_val = Efunc(r, t_current)
-                            v_par_vec = (v_save ⋅ b_hat) .* b_hat
-                            q = q2m * m
-                            P_par = q * (v_par_vec ⋅ E_val)
-
-                            v_perp = v_save - v_par_vec
-                            mu = m * norm(v_perp)^2 / (2 * Bmag_val)
-
-                            term_gradB = norm(v_perp)^2 / (2 * Ω)
-                            v_gradB_vec = term_gradB * (b_hat × ∇B) / Bmag_val
-                            P_gradB = q * (v_gradB_vec ⋅ E_val)
-
-                            κ = (JB * b_hat + b_hat * (-∇B ⋅ b_hat)) / Bmag_val
-                            v_curv_vec = norm(v_par_vec)^2 * (b_hat × κ) / Ω
-                            P_curv = q * (v_curv_vec ⋅ E_val)
-
-                            dB_dt = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t_current)
-                            P_ind = mu * dB_dt
-
-                            state_extra = SVector{4, T}(P_par, P_gradB, P_curv, P_ind)
-                        end
-                        if SAVE_FIELDS
-                            E_val = Efunc(r, t_current)
-                            B_val = Bfunc(r, t_current)
-                            state_fields = vcat(E_val, B_val)
-                        end
-
-                        if SAVE_FIELDS && SAVE_WORK
-                            traj[iout] = vcat(r, v_save, state_fields, state_extra)
-                        elseif SAVE_FIELDS
-                            traj[iout] = vcat(r, v_save, state_fields)
-                        elseif SAVE_WORK
-                            traj[iout] = vcat(r, v_save, state_extra)
-                        end
-                    end
+                    traj[iout] = calculate_state(r, v_save, t_current, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
                     tsave[iout] = t_current
                 end
             end
@@ -515,49 +462,7 @@ function _boris!(
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
             v_final = update_velocity(v, r, p, dt_final, ITD ? t_final : zero(dt))
 
-            if !SAVE_FIELDS && !SAVE_WORK
-                traj[iout] = vcat(r, v_final)
-            else
-                # Calculate extra (reusing logic would be better but simple copy-paste for now to ensure capturing local vars)
-                if SAVE_WORK
-                    B_vec, Bmag_val, b_hat, ∇B, JB = TestParticle.get_B_parameters(r, t_final, Bfunc)
-                    Ω = q2m * Bmag_val
-
-                    E_val = Efunc(r, t_final)
-                    v_par_vec = (v_final ⋅ b_hat) .* b_hat
-                    q = q2m * m
-                    P_par = q * (v_par_vec ⋅ E_val)
-
-                    v_perp = v_final - v_par_vec
-                    mu = m * norm(v_perp)^2 / (2 * Bmag_val)
-
-                    term_gradB = norm(v_perp)^2 / (2 * Ω)
-                    v_gradB_vec = term_gradB * (b_hat × ∇B) / Bmag_val
-                    P_gradB = q * (v_gradB_vec ⋅ E_val)
-
-                    κ = (JB * b_hat + b_hat * (-∇B ⋅ b_hat)) / Bmag_val
-                    v_curv_vec = norm(v_par_vec)^2 * (b_hat × κ) / Ω
-                    P_curv = q * (v_curv_vec ⋅ E_val)
-
-                    dB_dt = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t_final)
-                    P_ind = mu * dB_dt
-
-                    state_extra = SVector{4, T}(P_par, P_gradB, P_curv, P_ind)
-                end
-                if SAVE_FIELDS
-                    E_val = Efunc(r, t_final)
-                    B_val = Bfunc(r, t_final)
-                    state_fields = vcat(E_val, B_val)
-                end
-
-                if SAVE_FIELDS && SAVE_WORK
-                    traj[iout] = vcat(r, v_final, state_fields, state_extra)
-                elseif SAVE_FIELDS
-                    traj[iout] = vcat(r, v_final, state_fields)
-                elseif SAVE_WORK
-                    traj[iout] = vcat(r, v_final, state_extra)
-                end
-            end
+            traj[iout] = calculate_state(r, v_final, t_final, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
             tsave[iout] = t_final
 
         end

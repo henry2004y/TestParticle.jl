@@ -78,6 +78,32 @@ using LinearAlgebra
         sol = TP.solve(prob; dt, savestepinterval = 100)[1]
         @test sol[1, end] ≈ -512.8807058314515
 
+        @testset "Boris with Saving" begin
+            x0 = [0.0, 0.0, 0.0]
+            v0 = [0.0, 1.0e5, 0.0]
+            stateinit = [x0..., v0...]
+            tspan = (0.0, 3.0e-8)
+            dt = 3.0e-11
+            param = prepare(constant_E, uniform_B2, species = Electron)
+            prob = TraceProblem(stateinit, tspan, param)
+
+            # Test both save_fields and save_work
+            sol = TP.solve(prob; dt, save_fields = true, save_work = true)[1]
+
+            # 3 pos + 3 vel + 6 fields + 4 work = 16
+            @test length(sol.u[1]) == 16
+
+            # Test just save_fields
+            sol_f = TP.solve(prob; dt, save_fields = true, save_work = false)[1]
+            # 3 pos + 3 vel + 6 fields = 12
+            @test length(sol_f.u[1]) == 12
+
+            # Test just save_work
+            sol_w = TP.solve(prob; dt, save_fields = false, save_work = true)[1]
+            # 3 pos + 3 vel + 4 work = 10
+            @test length(sol_w.u[1]) == 10
+        end
+
         new_tspan = (0.0, 2.0e-8)
         new_prob = remake(prob; tspan = new_tspan)
         @test new_prob.tspan == new_tspan
