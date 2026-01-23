@@ -201,73 +201,23 @@ function _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
         save_start, save_end, save_everystep, save_fields, save_work
     )
-    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
-
-    # Calculate dimensions for type stability
-    dim = 6
-    if save_fields
-        dim += 6
-    end
-    if save_work
-        dim += 4
-    end
-
     return if n == 1
-        # Explicit branching to ensure type stability (dim is known at compile time relative to the call)
-        if is_td
-            if dim == 6
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(true), Val(false), Val(false), Val(6)
-                )
-            elseif dim == 10
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(true), Val(false), Val(true), Val(10)
-                )
-            elseif dim == 12
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(true), Val(true), Val(false), Val(12)
-                )
-            elseif dim == 16
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(true), Val(true), Val(true), Val(16)
-                )
-            else
-                error("Unsupported dimension: $dim")
-            end
-        else
-            if dim == 6
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(false), Val(false), Val(false), Val(6)
-                )
-            elseif dim == 10
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(false), Val(false), Val(true), Val(10)
-                )
-            elseif dim == 12
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(false), Val(true), Val(false), Val(12)
-                )
-            elseif dim == 16
-                _boris!(
-                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                    save_start, save_end, save_everystep, Val(false), Val(true), Val(true), Val(16)
-                )
-            else
-                error("Unsupported dimension: $dim")
-            end
-        end
+        _boris!(
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+            save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
+        )
     else
         # Multi-step boris does not support extra savings yet
         if save_fields || save_work
             @warn "Multi-step Boris does not support save_fields or save_work yet. Ignoring."
         end
+        # Multi-step boris still uses the old signature potentially?
+        # Checking _multistep_boris! signature in the file...
+        # It takes Val(is_td). We should probably preserve that behavior or refactor it too?
+        # The user only asked about "boris method", which usually implies the standard one.
+        # But for consistency, let's leave multistep as is for now,
+        # but we need to pass is_td.
+        is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
         _multistep_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
             save_start, save_end, save_everystep, Val(is_td)
@@ -440,14 +390,20 @@ Apply Boris method for particles with index in `irange`.
 """
 function _boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{ITD}, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}, ::Val{DIM}
-    ) where {ITD, SAVE_FIELDS, SAVE_WORK, DIM}
+        save_start, save_end, save_everystep, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}
+    ) where {SAVE_FIELDS, SAVE_WORK}
     (; tspan, p, u0) = prob
     T = eltype(u0)
 
     q2m, m, Efunc, Bfunc, _ = p
 
-    # dim is now a compile-time constant DIM via dispatch
+    DIM = 6
+    if SAVE_FIELDS
+        DIM += 6
+    end
+    if SAVE_WORK
+        DIM += 4
+    end
 
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{DIM, T}}(undef, nout)
@@ -463,7 +419,9 @@ function _boris!(
 
         if save_start
             iout += 1
-            traj[iout] = calculate_state(r, v, tspan[1], q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
+            traj[iout] = calculate_state(
+                r, v, tspan[1], q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK)
+            )
             tsave[iout] = tspan[1]
         end
 
@@ -473,7 +431,7 @@ function _boris!(
         it = 1
         while it <= nt
             v_prev = v
-            t = ITD ? (it - 0.5) * dt : zero(dt)
+            t = (it - 0.5) * dt
             v = update_velocity(v, r, p, dt, t)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
@@ -484,21 +442,18 @@ function _boris!(
                     # Use v_prev because update_velocity logic is:
                     # v_{n+1/2} = update(v_{n-1/2}, ...)
                     # We want v_n = update(v_{n-1/2}, dt/2, ...)
-                    v_save = update_velocity(
-                        v_prev, r, p, 0.5 * dt,
-                        ITD ? t_current : zero(dt)
-                    )
+                    v_save = update_velocity(v_prev, r, p, 0.5 * dt, t_current)
 
-                    traj[iout] = calculate_state(r, v_save, t_current, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
+                    traj[iout] = calculate_state(
+                        r, v_save, t_current, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS),
+                        Val(SAVE_WORK)
+                    )
                     tsave[iout] = t_current
                 end
             end
 
-
             r += v * dt
-            if isoutofdomain(vcat(r, v), p, it * dt)
-                break
-            end
+            isoutofdomain(vcat(r, v), p, it * dt) && break
             it += 1
         end
 
@@ -514,11 +469,12 @@ function _boris!(
             iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            v_final = update_velocity(v, r, p, dt_final, ITD ? t_final : zero(dt))
+            v_final = update_velocity(v, r, p, dt_final, t_final)
 
-            traj[iout] = calculate_state(r, v_final, t_final, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
+            traj[iout] = calculate_state(
+                r, v_final, t_final, q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK)
+            )
             tsave[iout] = t_final
-
         end
 
         if iout < nout
