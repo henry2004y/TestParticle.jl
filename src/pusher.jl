@@ -340,16 +340,9 @@ function _get_sol_type(prob, dt, save_fields, save_work)
     tType = Vector{T_t}
     InterpType = LinearInterpolation{tType, uType}
 
-    # Dummy construction to determine return type robustly
-    u_dummy = uType()
-    t_dummy = tType()
-    interp = LinearInterpolation(t_dummy, u_dummy)
-
-    # We use a dummy build to get the type, effectively:
-    # return Core.Compiler.return_type(_dummy_build_sol, Tuple{typeof(prob), tType, uType, InterpType})
-    # But explicitly:
-    sol_dummy = _dummy_build_sol(prob, t_dummy, u_dummy, interp)
-    return typeof(sol_dummy)
+    return Core.Compiler.return_type(
+        _dummy_build_sol, Tuple{typeof(prob), tType, uType, InterpType}
+    )
 end
 
 
