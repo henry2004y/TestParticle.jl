@@ -202,11 +202,67 @@ function _dispatch_boris!(
         save_start, save_end, save_everystep, save_fields, save_work
     )
     is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
+
+    # Calculate dimensions for type stability
+    dim = 6
+    if save_fields
+        dim += 6
+    end
+    if save_work
+        dim += 4
+    end
+
     return if n == 1
-        _boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-            save_start, save_end, save_everystep, Val(is_td), Val(save_fields), Val(save_work)
-        )
+        # Explicit branching to ensure type stability (dim is known at compile time relative to the call)
+        if is_td
+            if dim == 6
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(true), Val(false), Val(false), Val(6)
+                )
+            elseif dim == 10
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(true), Val(false), Val(true), Val(10)
+                )
+            elseif dim == 12
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(true), Val(true), Val(false), Val(12)
+                )
+            elseif dim == 16
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(true), Val(true), Val(true), Val(16)
+                )
+            else
+                error("Unsupported dimension: $dim")
+            end
+        else
+            if dim == 6
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(false), Val(false), Val(false), Val(6)
+                )
+            elseif dim == 10
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(false), Val(false), Val(true), Val(10)
+                )
+            elseif dim == 12
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(false), Val(true), Val(false), Val(12)
+                )
+            elseif dim == 16
+                _boris!(
+                    sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                    save_start, save_end, save_everystep, Val(false), Val(true), Val(true), Val(16)
+                )
+            else
+                error("Unsupported dimension: $dim")
+            end
+        end
     else
         # Multi-step boris does not support extra savings yet
         if save_fields || save_work
@@ -284,9 +340,16 @@ function _get_sol_type(prob, dt, save_fields, save_work)
     tType = Vector{T_t}
     InterpType = LinearInterpolation{tType, uType}
 
-    return Core.Compiler.return_type(
-        _dummy_build_sol, Tuple{typeof(prob), tType, uType, InterpType}
-    )
+    # Dummy construction to determine return type robustly
+    u_dummy = uType()
+    t_dummy = tType()
+    interp = LinearInterpolation(t_dummy, u_dummy)
+
+    # We use a dummy build to get the type, effectively:
+    # return Core.Compiler.return_type(_dummy_build_sol, Tuple{typeof(prob), tType, uType, InterpType})
+    # But explicitly:
+    sol_dummy = _dummy_build_sol(prob, t_dummy, u_dummy, interp)
+    return typeof(sol_dummy)
 end
 
 
@@ -384,23 +447,17 @@ Apply Boris method for particles with index in `irange`.
 """
 function _boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{ITD}, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}
-    ) where {ITD, SAVE_FIELDS, SAVE_WORK}
+        save_start, save_end, save_everystep, ::Val{ITD}, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}, ::Val{DIM}
+    ) where {ITD, SAVE_FIELDS, SAVE_WORK, DIM}
     (; tspan, p, u0) = prob
     T = eltype(u0)
 
     q2m, m, Efunc, Bfunc, _ = p
 
-    dim = 6
-    if SAVE_FIELDS
-        dim += 6
-    end
-    if SAVE_WORK
-        dim += 4
-    end
+    # dim is now a compile-time constant DIM via dispatch
 
     @fastmath @inbounds for i in irange
-        traj = Vector{SVector{dim, T}}(undef, nout)
+        traj = Vector{SVector{DIM, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
         # set initial conditions for each trajectory i
@@ -416,7 +473,6 @@ function _boris!(
             traj[iout] = calculate_state(r, v, tspan[1], q2m, m, Efunc, Bfunc, Val(SAVE_FIELDS), Val(SAVE_WORK))
             tsave[iout] = tspan[1]
         end
-
 
         # push velocity back in time by 1/2 dt
         v = update_velocity(v, r, p, -0.5 * dt, tspan[1])
