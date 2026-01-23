@@ -211,12 +211,6 @@ function _dispatch_boris!(
         if save_fields || save_work
             @warn "Multi-step Boris does not support save_fields or save_work yet. Ignoring."
         end
-        # Multi-step boris still uses the old signature potentially?
-        # Checking _multistep_boris! signature in the file...
-        # It takes Val(is_td). We should probably preserve that behavior or refactor it too?
-        # The user only asked about "boris method", which usually implies the standard one.
-        # But for consistency, let's leave multistep as is for now,
-        # but we need to pass is_td.
         is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
         _multistep_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
@@ -368,9 +362,10 @@ function calculate_state(
         P_ind = mu * dB_dt
 
         state_extra = SVector{4, T}(P_par, P_gradB, P_curv, P_ind)
-    end
-
-    if SAVE_FIELDS
+        if SAVE_FIELDS
+            state_fields = vcat(E, B_vec)
+        end
+    elseif SAVE_FIELDS # !SAVE_WORK
         B = Bfunc(r, t)
         state_fields = vcat(E, B)
     end
