@@ -180,8 +180,8 @@ function _hybrid_adaptive!(
         save_start, save_end, save_everystep
     )
     (; tspan, p, u0) = prob
-    # p = (q2m, m, Efunc, Bfunc, Ffunc)
-    q2m, m, Efunc, Bfunc = p[1], p[2], p[3], p[4]
+
+    q2m, m, Efunc, Bfunc, _ = p
     q = q2m * m
     T = eltype(u0)
 
@@ -226,7 +226,7 @@ function _hybrid_adaptive!(
             omega = abs(q2m) * Bmag
             dt = alg.safety_fo / omega
             dt = clamp(dt, alg.dtmin, alg.dtmax)
-            v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt, t)
+            v = update_velocity(v, r, p, -0.5 * dt, t)
         end
 
         if save_start
@@ -252,7 +252,7 @@ function _hybrid_adaptive!(
                     omega = abs(q2m * B_mag)
                     dt = alg.safety_fo / omega
                     dt = clamp(dt, alg.dtmin, alg.dtmax)
-                    v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt, t)
+                    v = update_velocity(v, r, p, -0.5 * dt, t)
                     continue
                 end
 
@@ -292,7 +292,7 @@ function _hybrid_adaptive!(
 
             else # Mode == :FO
                 t_sync = is_td ? t : zero(T)
-                v_check = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
+                v_check = update_velocity(v, r, p, 0.5 * dt, t_sync)
 
                 X_gc, vpar, μ = _get_gc_parameters_at_t(
                     vcat(r, v_check), Efunc, Bfunc, q, m, t
@@ -312,9 +312,9 @@ function _hybrid_adaptive!(
 
                 if t + dt > tspan[2]
                     dt_step = tspan[2] - t
-                    v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
+                    v = update_velocity(v, r, p, 0.5 * dt, t_sync)
                     v = update_velocity(
-                        v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt_step, t_sync
+                        v, r, p, -0.5 * dt_step, t_sync
                     )
                     dt = dt_step
                 end
@@ -323,18 +323,18 @@ function _hybrid_adaptive!(
 
                 if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                     v_save = update_velocity(
-                        v_prev, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync
+                        v_prev, r, p, 0.5 * dt, t_sync
                     )
                     push!(traj, vcat(r, v_save))
                     push!(tsave, t)
                 end
 
                 t_mid = is_td ? t + 0.5 * dt : zero(T)
-                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), dt, t_mid)
+                v = update_velocity(v, r, p, dt, t_mid)
                 r += v * dt
                 t += dt
 
-                isoutofdomain(vcat(r, v), (q2m, m, Efunc, Bfunc), t) && break
+                isoutofdomain(vcat(r, v), p, t) && break
                 it += 1
                 steps += 1
 
@@ -348,8 +348,8 @@ function _hybrid_adaptive!(
                 end
 
                 t_sync = is_td ? t : zero(T)
-                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_sync)
-                v = update_velocity(v, r, (q2m, m, Efunc, Bfunc), -0.5 * dt_new, t_sync)
+                v = update_velocity(v, r, p, 0.5 * dt, t_sync)
+                v = update_velocity(v, r, p, -0.5 * dt_new, t_sync)
                 dt = dt_new
             end
         end
@@ -360,7 +360,7 @@ function _hybrid_adaptive!(
                 push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
             else
                 t_final = is_td ? t : zero(T)
-                v_final = update_velocity(v, r, (q2m, m, Efunc, Bfunc), 0.5 * dt, t_final)
+                v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
                 push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)

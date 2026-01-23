@@ -35,7 +35,7 @@ function _solve(
         isoutofdomain, save_start, save_end, save_everystep
     )
     # We cannot precalculate nt for adaptive steps
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), false, false)
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
@@ -51,7 +51,7 @@ function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
         isoutofdomain, save_start, save_end, save_everystep
     )
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), false, false)
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
@@ -70,7 +70,7 @@ function _adaptive_boris!(
         save_start, save_end, save_everystep
     )
     (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc = p
+    q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
     paramBoris = BorisMethod(T)
     xv = MVector{6, T}(undef)

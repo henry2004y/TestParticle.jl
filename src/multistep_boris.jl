@@ -24,7 +24,7 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
 @muladd function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
     (; t_n, e_n, v_cross_t, e_cross_t) = paramBoris
-    q2m, _, Efunc, Bfunc = param
+    q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(xv, t)
     B = Bfunc(xv, t)
 
