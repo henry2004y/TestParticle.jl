@@ -261,11 +261,14 @@ function _solve(
 end
 
 
+function _dummy_build_sol(prob, t, u, interp)
+    return build_solution(prob, :boris, t, u; interp = interp)
+end
+
 function _get_sol_type(prob, dt, save_fields, save_work)
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
-    t = Vector{T_t}(undef, 0)
     T = eltype(u0)
 
     dim = 6
@@ -276,12 +279,14 @@ function _get_sol_type(prob, dt, save_fields, save_work)
         dim += 4
     end
 
-    u = Vector{SVector{dim, T}}(undef, 0)
-    interp = LinearInterpolation(t, u)
-    alg = :boris
+    SVecType = SVector{dim, T}
+    uType = Vector{SVecType}
+    tType = Vector{T_t}
+    InterpType = LinearInterpolation{tType, uType}
 
-    sol = build_solution(prob, alg, t, u; interp = interp)
-    return typeof(sol)
+    return Core.Compiler.return_type(
+        _dummy_build_sol, Tuple{typeof(prob), tType, uType, InterpType}
+    )
 end
 
 
