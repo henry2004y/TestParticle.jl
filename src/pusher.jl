@@ -233,7 +233,7 @@ function _solve(
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, save_fields, save_work
+        save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
     )
     irange = 1:trajectories
     _dispatch_boris!(
@@ -252,7 +252,7 @@ function _solve(
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, save_fields, save_work
+        save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
     )
 
     nchunks = Threads.nthreads()
@@ -271,17 +271,17 @@ function _dummy_build_sol(prob, t, u, interp)
     return build_solution(prob, :boris, t, u; interp = interp)
 end
 
-function _get_sol_type(prob, dt, save_fields, save_work)
+function _get_sol_type(prob, dt, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}) where {SAVE_FIELDS, SAVE_WORK}
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
     T = eltype(u0)
 
     dim = 6
-    if save_fields
+    if SAVE_FIELDS
         dim += 6
     end
-    if save_work
+    if SAVE_WORK
         dim += 4
     end
 
@@ -301,8 +301,8 @@ Prepare for advancing.
 """
 function _prepare(
         prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, save_fields, save_work
-    )
+        save_start, save_end, save_everystep, ::Val{SAVE_FIELDS}, ::Val{SAVE_WORK}
+    ) where {SAVE_FIELDS, SAVE_WORK}
 
     ttotal = prob.tspan[2] - prob.tspan[1]
     nt = round(Int, ttotal / dt) |> abs
@@ -326,7 +326,7 @@ function _prepare(
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt, save_fields, save_work)
+    sol_type = _get_sol_type(prob, dt, Val(SAVE_FIELDS), Val(SAVE_WORK))
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
