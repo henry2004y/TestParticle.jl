@@ -22,8 +22,12 @@ function solve(
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        save_fields::Bool = false
     )
+    if save_fields
+        error("save_fields=true is not yet supported for Adaptive Boris Method")
+    end
     return _solve(
         ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep
@@ -35,7 +39,7 @@ function _solve(
         isoutofdomain, save_start, save_end, save_everystep
     )
     # We cannot precalculate nt for adaptive steps
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(false))
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
@@ -51,7 +55,7 @@ function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
         isoutofdomain, save_start, save_end, save_everystep
     )
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(false))
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()

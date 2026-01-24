@@ -182,44 +182,45 @@ function solve(
         prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        save_fields::Bool = false
     )
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
 end
 
 function _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
     return if n == 1
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-            save_start, save_end, save_everystep
+            save_start, save_end, save_everystep, Val(save_fields)
         )
     else
         _multistep_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-            save_start, save_end, save_everystep
+            save_start, save_end, save_everystep, Val(save_fields)
         )
     end
 end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
     irange = 1:trajectories
     _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
 
     return sols
@@ -227,33 +228,35 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-            save_start, save_end, save_everystep
+            save_start, save_end, save_everystep, save_fields
         )
     end
 
     return sols
 end
 
-function _get_sol_type(prob, dt)
+function _get_sol_type(prob, dt, ::Val{SaveFields}) where {SaveFields}
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
     t = Vector{T_t}(undef, 0)
     # Force u to be Vector{SVector{6, T}} as used in _boris!
     T = eltype(u0)
-    u = Vector{SVector{6, T}}(undef, 0)
+
+    n_vars = SaveFields ? 12 : 6
+    u = Vector{SVector{n_vars, T}}(undef, 0)
     interp = LinearInterpolation(t, u)
     alg = :boris
 
@@ -266,7 +269,7 @@ Prepare for advancing.
 """
 function _prepare(
         prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, save_fields
     )
     ttotal = prob.tspan[2] - prob.tspan[1]
     nt = round(Int, ttotal / dt) |> abs
@@ -290,7 +293,7 @@ function _prepare(
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt)
+    sol_type = _get_sol_type(prob, dt, Val(save_fields))
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
@@ -299,15 +302,17 @@ end
 """
 Apply Boris method for particles with index in `irange`.
 """
-function _boris!(
+@muladd function _boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep
-    )
+        save_start, save_end, save_everystep, ::Val{SaveFields}
+    ) where {SaveFields}
     (; tspan, p, u0) = prob
     T = eltype(u0)
 
+    vars_dim = SaveFields ? 12 : 6
+
     @fastmath @inbounds for i in irange
-        traj = Vector{SVector{6, T}}(undef, nout)
+        traj = Vector{SVector{vars_dim, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
         # set initial conditions for each trajectory i
@@ -320,7 +325,14 @@ function _boris!(
 
         if save_start
             iout += 1
-            traj[iout] = u0_i
+            if SaveFields
+                q2m, _, Efunc, Bfunc, _ = p
+                E = SVector{3, T}(Efunc(r, tspan[1]))
+                B = SVector{3, T}(Bfunc(r, tspan[1]))
+                traj[iout] = vcat(u0_i, E, B)
+            else
+                traj[iout] = u0_i
+            end
             tsave[iout] = tspan[1]
         end
 
@@ -345,7 +357,15 @@ function _boris!(
                         v_prev, r, p, 0.5 * dt,
                         t_current
                     )
-                    traj[iout] = vcat(r, v_save)
+
+                    if SaveFields
+                        q2m, _, Efunc, Bfunc, _ = p
+                        E = SVector{3, T}(Efunc(r, t_current))
+                        B = SVector{3, T}(Bfunc(r, t_current))
+                        traj[iout] = vcat(r, v_save, E, B)
+                    else
+                        traj[iout] = vcat(r, v_save)
+                    end
                     tsave[iout] = t_current
                 end
             end
@@ -368,7 +388,14 @@ function _boris!(
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
             v_final = update_velocity(v, r, p, dt_final, t_final)
-            traj[iout] = vcat(r, v_final)
+            if SaveFields
+                q2m, _, Efunc, Bfunc, _ = p
+                E = SVector{3, T}(Efunc(r, t_final))
+                B = SVector{3, T}(Bfunc(r, t_final))
+                traj[iout] = vcat(r, v_final, E, B)
+            else
+                traj[iout] = vcat(r, v_final)
+            end
             tsave[iout] = t_final
         end
 

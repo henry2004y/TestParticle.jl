@@ -97,8 +97,11 @@ end
 
 function _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
-        save_start, save_end, save_everystep
-    )
+        save_start, save_end, save_everystep, ::Val{SaveFields}
+    ) where {SaveFields}
+    if SaveFields
+        error("save_fields=true is not yet supported for Multistep Boris Method")
+    end
     (; tspan, p, u0) = prob
     T = eltype(u0)
     paramBoris = MultistepBorisMethod(T)
