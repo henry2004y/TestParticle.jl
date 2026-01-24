@@ -7,7 +7,7 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     u0::uType
     "time span"
     tspan::tType
-    "(q2m, E, B)"
+    "(q2m, m, E, B, F)"
     p::P
     "function for setting initial conditions"
     prob_func::PF
@@ -79,7 +79,7 @@ end
 Update velocity using the Boris method, returning the new velocity as an SVector.
 """
 function update_velocity(v, r, param, dt, t)
-    q2m, _, Efunc, Bfunc = param
+    q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
 
@@ -104,7 +104,7 @@ Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
 """
 @muladd function update_velocity!(xv, paramBoris, param, dt, t)
     (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-    q2m, _, Efunc, Bfunc = param
+    q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(xv, t)
     B = Bfunc(xv, t)
     # t vector
@@ -184,7 +184,7 @@ function solve(
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
     )
-    return sols = _solve(
+    return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
         save_start, save_end, save_everystep
     )
@@ -194,7 +194,6 @@ function _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
         save_start, save_end, save_everystep
     )
-    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
     return if n == 1
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
@@ -352,9 +351,7 @@ function _boris!(
             end
 
             r += v * dt
-            if isoutofdomain(vcat(r, v), p, it * dt)
-                break
-            end
+            isoutofdomain(vcat(r, v), p, it * dt) && break
             it += 1
         end
 
