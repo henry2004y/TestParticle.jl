@@ -18,7 +18,7 @@ using Test
     u0 = vcat(x0, v0)
     tspan = (0.0, 1.0e-4)
 
-    p = (q2m, m, E_field, B_field)
+    p = (q2m, m, E_field, B_field, TestParticle.ZeroField())
     alg = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0e-6)
 
     sols = TestParticle.solve(TraceHybridProblem(u0, tspan, p), alg)
@@ -34,7 +34,7 @@ using Test
     end
     sheared_B = TestParticle.Field(sheared_B_func)
 
-    p2 = (q2m, m, E_field, sheared_B)
+    p2 = (q2m, m, E_field, sheared_B, TestParticle.ZeroField())
     # Threshold is 0.1. ρ ≈ 0.01. Rc ≈ 1/k = 0.01.
     # ϵ = ρ / Rc ≈ 1.0 > 0.1 => Should start in FO or switch to FO.
 

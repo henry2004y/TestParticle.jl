@@ -24,7 +24,7 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
 @muladd function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
     (; t_n, e_n, v_cross_t, e_cross_t) = paramBoris
-    q2m, _, Efunc, Bfunc = param
+    q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(xv, t)
     B = Bfunc(xv, t)
 
@@ -97,8 +97,8 @@ end
 
 function _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
-        save_start, save_end, save_everystep, ::Val{ITD}
-    ) where {ITD}
+        save_start, save_end, save_everystep
+    )
     (; tspan, p, u0) = prob
     T = eltype(u0)
     paramBoris = MultistepBorisMethod(T)
@@ -127,7 +127,7 @@ function _multistep_boris!(
         it = 1
         while it <= nt
             v_old .= @view xv[4:6]
-            t = ITD ? (it - 0.5) * dt : zero(dt)
+            t = (it - 0.5) * dt
             update_velocity_multistep!(xv, paramBoris, p, dt, t, n_steps)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
@@ -138,7 +138,7 @@ function _multistep_boris!(
                     t_current = tspan[1] + (it - 1) * dt
                     update_velocity_multistep!(
                         xv_save, paramBoris, p, 0.5 * dt,
-                        ITD ? t_current : zero(dt), n_steps
+                        t_current, n_steps
                     )
                     traj[iout] = SVector{6, T}(xv_save)
                     tsave[iout] = t_current
@@ -166,7 +166,7 @@ function _multistep_boris!(
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
             update_velocity_multistep!(
                 xv, paramBoris, p, dt_final,
-                ITD ? t_final : zero(dt), n_steps
+                t_final, n_steps
             )
             traj[iout] = SVector{6, T}(xv)
             tsave[iout] = t_final

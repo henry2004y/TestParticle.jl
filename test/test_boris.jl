@@ -92,8 +92,8 @@ using LinearAlgebra
         B(x, t) = SA[0.0, 0.0, 1.0]
 
         # q = 1, m = 1
-        # The solver expects param to be (q2m, m, E, B)
-        param = (1.0, 1.0, E, B)
+        # The solver expects param to be (q2m, m, E, B, F)
+        param = (1.0, 1.0, E, B, TP.ZeroField())
 
         # Initial condition
         # Start at origin with drift velocity
@@ -122,7 +122,7 @@ using LinearAlgebra
         # Gyroradius r = mv/qB = 1*1/1*1 = 1
         # Gyroperiod T = 2*pi*m/qB = 2*pi
 
-        param_gyro = (1.0, 1.0, TP.ZeroField(), B)
+        param_gyro = (1.0, 1.0, TP.ZeroField(), B, TP.ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)

@@ -70,7 +70,7 @@ function _adaptive_boris!(
         save_start, save_end, save_everystep
     )
     (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc = p
+    q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
     paramBoris = BorisMethod(T)
     xv = MVector{6, T}(undef)
