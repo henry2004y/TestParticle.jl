@@ -217,17 +217,17 @@ end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, val_save_fields::Val{SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}
     ) where {SaveFields}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, val_save_fields
+        save_start, save_end, save_everystep, Val(SaveFields)
     )
     irange = 1:trajectories
     _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-        save_start, save_end, save_everystep, val_save_fields
+        save_start, save_end, save_everystep, Val(SaveFields)
     )
 
     return sols
@@ -235,19 +235,19 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, val_save_fields::Val{SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}
     ) where {SaveFields}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, val_save_fields
+        save_start, save_end, save_everystep, Val(SaveFields)
     )
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-            save_start, save_end, save_everystep, val_save_fields
+            save_start, save_end, save_everystep, Val(SaveFields)
         )
     end
 
@@ -276,7 +276,7 @@ Prepare for advancing.
 """
 function _prepare(
         prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, val_save_fields::Val{SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}
     ) where {SaveFields}
     ttotal = prob.tspan[2] - prob.tspan[1]
     nt = round(Int, ttotal / dt) |> abs
@@ -300,7 +300,7 @@ function _prepare(
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt, val_save_fields)
+    sol_type = _get_sol_type(prob, dt, Val(SaveFields))
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
