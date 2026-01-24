@@ -185,10 +185,17 @@ function solve(
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false
     )
-    return _solve(
-        ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, Val(save_fields)
-    )
+    return if save_fields
+        _solve(
+            ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+            save_start, save_end, save_everystep, Val(true)
+        )
+    else
+        _solve(
+            ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+            save_start, save_end, save_everystep, Val(false)
+        )
+    end
 end
 
 function _dispatch_boris!(
