@@ -198,12 +198,12 @@ function _dispatch_boris!(
     return if n == 1
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-            save_start, save_end, save_everystep, Val(is_td)
+            save_start, save_end, save_everystep
         )
     else
         _multistep_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-            save_start, save_end, save_everystep, Val(is_td)
+            save_start, save_end, save_everystep
         )
     end
 end
@@ -302,8 +302,8 @@ Apply Boris method for particles with index in `irange`.
 """
 function _boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{ITD}
-    ) where {ITD}
+        save_start, save_end, save_everystep
+    )
     (; tspan, p, u0) = prob
     T = eltype(u0)
 
@@ -331,7 +331,7 @@ function _boris!(
         it = 1
         while it <= nt
             v_prev = v
-            t = ITD ? (it - 0.5) * dt : zero(dt)
+            t = (it - 0.5) * dt
             v = update_velocity(v, r, p, dt, t)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
@@ -344,7 +344,7 @@ function _boris!(
                     # We want v_n = update(v_{n-1/2}, dt/2, ...)
                     v_save = update_velocity(
                         v_prev, r, p, 0.5 * dt,
-                        ITD ? t_current : zero(dt)
+                        t_current
                     )
                     traj[iout] = vcat(r, v_save)
                     tsave[iout] = t_current
@@ -370,7 +370,7 @@ function _boris!(
             iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            v_final = update_velocity(v, r, p, dt_final, ITD ? t_final : zero(dt))
+            v_final = update_velocity(v, r, p, dt_final, t_final)
             traj[iout] = vcat(r, v_final)
             tsave[iout] = t_final
         end
