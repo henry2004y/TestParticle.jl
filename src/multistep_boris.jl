@@ -1,43 +1,19 @@
-using LinearAlgebra: dot
-
-struct MultistepBorisMethod{TV}
-    t_n::TV
-    e_n::TV
-    v_cross_t::TV
-    e_cross_t::TV
-end
-
-function MultistepBorisMethod(T::Type{<:AbstractFloat} = Float64)
-    t_n = MVector{3, T}(undef)
-    e_n = MVector{3, T}(undef)
-    v_cross_t = MVector{3, T}(undef)
-    e_cross_t = MVector{3, T}(undef)
-
-    return MultistepBorisMethod{typeof(t_n)}(t_n, e_n, v_cross_t, e_cross_t)
-end
-
 """
-    update_velocity_multistep!(xv, paramBoris, param, dt, t, n)
+    update_velocity_multistep(v, r, param, dt, t, n)
 
-Update velocity using the Multistep Boris method.
+Update velocity using the Multistep Boris method, returning the new velocity as an SVector.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-@muladd function update_velocity_multistep!(xv, paramBoris, param, dt, t, n::Int)
-    (; t_n, e_n, v_cross_t, e_cross_t) = paramBoris
+@muladd function update_velocity_multistep(v, r, param, dt, t, n::Int)
     q2m, _, Efunc, Bfunc, _ = param
-    E = Efunc(xv, t)
-    B = Bfunc(xv, t)
+    E = Efunc(r, t)
+    B = Bfunc(r, t)
 
     # t_n and e_n vectors
-    # Note: t_n in paper is (q/m * dt/(2n)) * B
-    # e_n in paper is (q/m * dt/(2n)) * E
-    # q2m is q/m
     factor = q2m * dt / (2 * n)
 
-    @inbounds for dim in 1:3
-        t_n[dim] = factor * B[dim]
-        e_n[dim] = factor * E[dim]
-    end
+    t_n = factor * B # (q/m * dt/(2n)) * B
+    e_n = factor * E # (q/m * dt/(2n)) * E
 
     t_n_mag2 = sum(abs2, t_n)
     t_n_mag = sqrt(t_n_mag2)
@@ -46,10 +22,10 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     # Check for small t_n to avoid division by zero or precision loss
     if t_n_mag < 1.0e-4
         # Taylor expansion limits as t_n -> 0
-        c_n1 = 1.0 - 2 * n * n * t_n_mag2
-        c_n2 = 2 * n - (4.0 / 3.0) * n * n * n * t_n_mag2
-        c_n3 = 2.0 * n * n
-        c_n6 = (4.0 / 3.0) * n * n * n
+        c_n1 = 1 - 2 * n * n * t_n_mag2
+        c_n2 = 2 * n - (4 / 3) * n * n * n * t_n_mag2
+        c_n3 = 2 * n * n
+        c_n6 = (4 / 3) * n * n * n
     else
         alpha_n = atan(t_n_mag)
         n_alpha_n = n * alpha_n
@@ -66,33 +42,23 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     c_n4 = c_n2
     c_n5 = c_n3
 
-    # Extract velocity
-    v = @view xv[4:6]
+    v_dot_t = v ⋅ t_n
+    e_dot_t = e_n ⋅ t_n
 
-    # Dot products
-    v_dot_t = dot(v, t_n)
-    e_dot_t = dot(e_n, t_n)
-
-    # Cross products
-    # v x t_n
-    cross!(v, t_n, v_cross_t)
-
-    # e_n x t_n
-    cross!(e_n, t_n, e_cross_t)
+    v_cross_t = v × t_n
+    e_cross_t = e_n × t_n
 
     # Update velocity
     # Equation 39:
     # v_new = c_n1*v + c_n2*(v x t_n) + c_n3*(v . t_n)t_n + c_n4*e_n + c_n5*(e_n x t_n) + c_n6*(e_n . t_n)t_n
-    @inbounds for i in 1:3
-        xv[i + 3] = c_n1 * xv[i + 3] +
-            c_n2 * v_cross_t[i] +
-            c_n3 * v_dot_t * t_n[i] +
-            c_n4 * e_n[i] +
-            c_n5 * e_cross_t[i] +
-            c_n6 * e_dot_t * t_n[i]
-    end
+    v_new = c_n1 * v +
+        c_n2 * v_cross_t +
+        c_n3 * v_dot_t * t_n +
+        c_n4 * e_n +
+        c_n5 * e_cross_t +
+        c_n6 * e_dot_t * t_n
 
-    return
+    return v_new
 end
 
 function _multistep_boris!(
@@ -102,11 +68,7 @@ function _multistep_boris!(
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
-    paramBoris = MultistepBorisMethod(T)
     vars_dim = SaveFields ? 12 : 6
-    xv = MVector{6, T}(undef)
-    xv_save = MVector{6, T}(undef)
-    v_old = MVector{3, T}(undef)
 
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{vars_dim, T}}(undef, nout)
@@ -115,16 +77,16 @@ function _multistep_boris!(
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
-        xv .= new_prob.u0
         # Load independent r and v SVector from u0
         u0_i = SVector{6, T}(new_prob.u0)
         r = u0_i[SVector(1, 2, 3)]
+        v = u0_i[SVector(4, 5, 6)]
 
         if save_start
             iout += 1
             if SaveFields
-                E = SVector{3, T}(Efunc(r, tspan[1]))
-                B = SVector{3, T}(Bfunc(r, tspan[1]))
+                E = SVector{3, T}(Efunc(u0_i, tspan[1]))
+                B = SVector{3, T}(Bfunc(u0_i, tspan[1]))
                 traj[iout] = vcat(u0_i, E, B)
             else
                 traj[iout] = u0_i
@@ -133,41 +95,38 @@ function _multistep_boris!(
         end
 
         # push velocity back in time by 1/2 dt
-        update_velocity_multistep!(xv, paramBoris, p, -0.5 * dt, tspan[1], n_steps)
+        v = update_velocity_multistep(v, r, p, -0.5 * dt, tspan[1], n_steps)
 
         it = 1
         while it <= nt
-            v_old .= @view xv[4:6]
+            v_prev = v
             t = (it - 0.5) * dt
-            update_velocity_multistep!(xv, paramBoris, p, dt, t, n_steps)
+            v = update_velocity_multistep(v, r, p, dt, t, n_steps)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                 iout += 1
                 if iout <= nout
-                    xv_save .= xv
-                    xv_save[4:6] .= v_old
                     t_current = tspan[1] + (it - 1) * dt
-                    update_velocity_multistep!(
-                        xv_save, paramBoris, p, 0.5 * dt,
+                    v_save = update_velocity_multistep(
+                        v_prev, r, p, 0.5 * dt,
                         t_current, n_steps
-                    )
-                    r_save = xv_save[SVector(1, 2, 3)]
-                    v_save = xv_save[SVector(4, 5, 6)]
+                    ) # v at t_current
+
+                    xv_s = vcat(r, v_save)
+
                     if SaveFields
-                        E = SVector{3, T}(Efunc(r_save, t_current))
-                        B = SVector{3, T}(Bfunc(r_save, t_current))
-                        traj[iout] = vcat(r_save, v_save, E, B)
+                        E = SVector{3, T}(Efunc(xv_s, t_current))
+                        B = SVector{3, T}(Bfunc(xv_s, t_current))
+                        traj[iout] = vcat(xv_s, E, B)
                     else
-                        traj[iout] = vcat(r_save, v_save)
+                        traj[iout] = xv_s
                     end
                     tsave[iout] = t_current
                 end
             end
 
-            update_location!(xv, dt)
-            if isoutofdomain(xv, p, it * dt)
-                break
-            end
+            r += v * dt
+            isoutofdomain(vcat(r, v), p, it * dt) && break
             it += 1
         end
 
@@ -183,18 +142,18 @@ function _multistep_boris!(
             iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            update_velocity_multistep!(
-                xv, paramBoris, p, dt_final,
+            v_final = update_velocity_multistep(
+                v, r, p, dt_final,
                 t_final, n_steps
             )
-            r_final = xv[SVector(1, 2, 3)]
-            v_final = xv[SVector(4, 5, 6)]
+
+            xv_s = vcat(r, v_final)
             if SaveFields
-                E = SVector{3, T}(Efunc(r_final, t_final))
-                B = SVector{3, T}(Bfunc(r_final, t_final))
-                traj[iout] = vcat(r_final, v_final, E, B)
+                E = SVector{3, T}(Efunc(xv_s, t_final))
+                B = SVector{3, T}(Bfunc(xv_s, t_final))
+                traj[iout] = vcat(xv_s, E, B)
             else
-                traj[iout] = vcat(r_final, v_final)
+                traj[iout] = xv_s
             end
             tsave[iout] = t_final
         end
