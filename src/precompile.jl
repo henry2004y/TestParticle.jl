@@ -35,6 +35,15 @@
         prob = TraceProblem(stateinit, tspan, param)
         sol = solve(prob; dt, savestepinterval = 100)
         sol = solve(prob, EnsembleThreads(); dt, savestepinterval = 100)
+
+        # Adaptive Boris
+        alg_adaptive = AdaptiveBoris(dtmax = 1.0)
+        sol_adaptive = solve(prob, alg_adaptive)
+        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true)
+
+        # Multistep Boris
+        sol_multistep = solve(prob; dt, n = 2)
+        sol_multistep_sf = solve(prob; dt, n = 2, save_fields = true)
         # guiding center
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), DipoleField())

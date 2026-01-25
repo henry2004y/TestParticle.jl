@@ -50,7 +50,7 @@ include("prepare.jl")
 include("gc.jl")
 include("gc_solver.jl") # Added gc_solver.jl
 include("equations.jl")
-include("pusher.jl")
+include("boris.jl")
 include("multistep_boris.jl")
 include("adaptive_boris.jl")
 include("hybrid.jl")
