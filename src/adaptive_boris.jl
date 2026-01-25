@@ -121,16 +121,7 @@ function _adaptive_boris!(
         t = tspan[1]
 
         if save_start
-            data = u0_i
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, t))
-                B = SVector{3, T}(Bfunc(r, t))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(u0_i, p, t)
-                data = vcat(data, work)
-            end
+            data = _prepare_saved_data(u0_i, p, t, Val(SaveFields), Val(SaveWork))
             push!(traj, data)
             push!(tsave, t)
         end
@@ -166,16 +157,7 @@ function _adaptive_boris!(
                 v_save = update_velocity(v_prev, r, p, 0.5 * dt, t_save)
 
                 xv_s = vcat(r, v_save)
-                data = xv_s
-                if SaveFields
-                    E = SVector{3, T}(Efunc(r, t_save))
-                    B = SVector{3, T}(Bfunc(r, t_save))
-                    data = vcat(data, E, B)
-                end
-                if SaveWork
-                    work = get_work_rates(xv_s, p, t_save)
-                    data = vcat(data, work)
-                end
+                data = _prepare_saved_data(xv_s, p, t_save, Val(SaveFields), Val(SaveWork))
                 push!(traj, data)
                 push!(tsave, t)
             end
@@ -229,16 +211,7 @@ function _adaptive_boris!(
             v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
 
             xv_s = vcat(r, v_final)
-            data = xv_s
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, t_final))
-                B = SVector{3, T}(Bfunc(r, t_final))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(xv_s, p, t_final)
-                data = vcat(data, work)
-            end
+            data = _prepare_saved_data(xv_s, p, t_final, Val(SaveFields), Val(SaveWork))
             push!(traj, data)
             push!(tsave, t)
         end

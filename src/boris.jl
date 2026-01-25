@@ -330,6 +330,23 @@ function _prepare(
     return sols, nt, nout
 end
 
+function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
+    data = xv
+    T = eltype(xv)
+    if SaveFields
+        r = get_x(xv)
+        _, _, Efunc, Bfunc, _ = p
+        E = SVector{3, T}(Efunc(r, t))
+        B = SVector{3, T}(Bfunc(r, t))
+        data = vcat(data, E, B)
+    end
+    if SaveWork
+        work = get_work_rates(xv, p, t)
+        data = vcat(data, work)
+    end
+    return data
+end
+
 """
 Apply Boris method for particles with index in `irange`.
 """
@@ -364,17 +381,7 @@ Apply Boris method for particles with index in `irange`.
 
         if save_start
             iout += 1
-            data = u0_i
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, tspan[1]))
-                B = SVector{3, T}(Bfunc(r, tspan[1]))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(u0_i, p, tspan[1])
-                data = vcat(data, work)
-            end
-            traj[iout] = data
+            traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
             tsave[iout] = tspan[1]
         end
 
@@ -398,16 +405,7 @@ Apply Boris method for particles with index in `irange`.
                     )
 
                     data = vcat(r, v_save)
-                    if SaveFields
-                        E = SVector{3, T}(Efunc(r, t_current))
-                        B = SVector{3, T}(Bfunc(r, t_current))
-                        data = vcat(data, E, B)
-                    end
-                    if SaveWork
-                        work = get_work_rates(vcat(r, v_save), p, t_current)
-                        data = vcat(data, work)
-                    end
-                    traj[iout] = data
+                    traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
                     tsave[iout] = t_current
                 end
             end
@@ -432,16 +430,7 @@ Apply Boris method for particles with index in `irange`.
             v_final = velocity_updater(v, r, p, dt_final, t_final)
 
             data = vcat(r, v_final)
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, t_final))
-                B = SVector{3, T}(Bfunc(r, t_final))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(vcat(r, v_final), p, t_final)
-                data = vcat(data, work)
-            end
-            traj[iout] = data
+            traj[iout] = _prepare_saved_data(data, p, t_final, Val(SaveFields), Val(SaveWork))
             tsave[iout] = t_final
         end
 
