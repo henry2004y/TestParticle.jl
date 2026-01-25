@@ -13,6 +13,8 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     prob_func::PF
 end
 
+const TN_MAG_THRESHOLD = 1.0e-4
+
 get_EField(p::AbstractODEProblem) = get_EField(p.p)
 get_BField(p::AbstractODEProblem) = get_BField(p.p)
 
@@ -493,7 +495,7 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 
     # Calculate coefficients
     # Check for small t_n to avoid division by zero or precision loss
-    if t_n_mag < 1.0e-4
+    if t_n_mag < TN_MAG_THRESHOLD
         # Taylor expansion limits as t_n -> 0
         c_n1 = 1 - 2 * n * n * t_n_mag2
         c_n2 = 2 * n - (4 / 3) * n * n * n * t_n_mag2
