@@ -565,18 +565,15 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
 - `b̂`: Unit magnetic field vector
 - `Bmag`: Magnitude of B
 """
-function get_magnetic_properties(x, t, Bfunc)
+@inline function get_magnetic_properties(x, t, Bfunc)
     # Compute B and its Jacobian in a single pass using ForwardDiff
-    result = DiffResults.JacobianResult(x)
-    result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
-
-    B = SVector{3}(DiffResults.value(result))
-    JB = SMatrix{3, 3}(DiffResults.jacobian(result))
+    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
+    B = Bfunc(x, t)
 
     Bmag = norm(B)
     if Bmag == 0
-        zero_vec = zero(B)
-        return zero_vec, zero_vec, zero_vec, zero_vec, Bmag
+        vzero = zero(x)
+        return vzero, vzero, vzero, vzero, Bmag
     end
     b̂ = B / Bmag
 
@@ -595,15 +592,11 @@ end
 Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
 Returns `Inf` if the field is zero or the field lines are straight.
 """
-function get_curvature_radius(x, t, Bfunc)
+@inline function get_curvature_radius(x, t, Bfunc)
     _, _, κ, _, _ = get_magnetic_properties(x, t, Bfunc)
 
     k_mag = norm(κ)
-    if k_mag == 0
-        return Inf
-    end
-
-    return 1 / k_mag
+    return iszero(k_mag) ? Inf : inv(k_mag)
 end
 
 """
@@ -613,19 +606,18 @@ end
 Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
-function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    B = Bfunc(r, t)
-    Bmag = norm(B)
-    if Bmag == 0.0
-        return Inf
-    end
+@inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
+    Bmag = Bfunc(r, t) |> norm
+    iszero(Bmag) && return Inf
 
-    # v_perp^2 = 2 * μ * B / m
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    Rc = get_curvature_radius(r, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(r, t, Bfunc)
 
-    return ρ / Rc
+    k_mag = norm(κ)
+    invRc = iszero(k_mag) ? zero(k_mag) : k_mag
+
+    return ρ * invRc
 end
 
 function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)

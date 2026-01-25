@@ -12,7 +12,6 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray, SMatrix
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 import ForwardDiff
-import DiffResults
 using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd

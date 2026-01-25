@@ -361,6 +361,7 @@ function _hybrid_adaptive!(
         end
 
         # Final Save
+
         if save_end && (isempty(tsave) || tsave[end] != t)
             if mode == :GC
                 push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))

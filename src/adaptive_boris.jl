@@ -71,7 +71,7 @@ function _adaptive_boris!(
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc, _ = p
+    q2m, _, _, Bfunc, _ = p
     T = eltype(u0)
     vars_dim = 6
     if SaveFields
@@ -80,9 +80,6 @@ function _adaptive_boris!(
     if SaveWork
         vars_dim += 4
     end
-
-    # Determine if fields are time dependent
-    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
 
     @fastmath @inbounds for i in irange
         # Initialize solution containers
@@ -121,9 +118,8 @@ function _adaptive_boris!(
             if t + dt > tspan[2]
                 dt_step = tspan[2] - t
                 # Resync v from `t - 0.5*dt` to `t - 0.5*dt_step`
-                t_sync = is_td ? t : zero(T)
-                v = update_velocity(v, r, p, 0.5 * dt, t_sync)
-                v = update_velocity(v, r, p, -0.5 * dt_step, t_sync)
+                v = update_velocity(v, r, p, 0.5 * dt, t)
+                v = update_velocity(v, r, p, -0.5 * dt_step, t)
                 dt = dt_step
             end
 
@@ -131,18 +127,17 @@ function _adaptive_boris!(
 
             # Saving logic (start of step)
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                t_save = is_td ? t : zero(T)
                 # Advance to t to get v_n
-                v_save = update_velocity(v_prev, r, p, 0.5 * dt, t_save)
+                v_save = update_velocity(v_prev, r, p, 0.5 * dt, t)
 
                 xv_s = vcat(r, v_save)
-                data = _prepare_saved_data(xv_s, p, t_save, Val(SaveFields), Val(SaveWork))
+                data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
                 push!(traj, data)
                 push!(tsave, t)
             end
 
             # Update velocity to v_{n+1/2}
-            t_mid = is_td ? t + 0.5 * dt : zero(T)
+            t_mid = t + 0.5 * dt
             v = update_velocity(v, r, p, dt, t_mid)
 
             # Update location x_{n} -> x_{n+1}
@@ -166,9 +161,8 @@ function _adaptive_boris!(
             # Resync for next step
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
             # i.e. it is v_{n+1/2} from step we just took.
-            t_sync = is_td ? t : zero(T)
-            v = update_velocity(v, r, p, 0.5 * dt, t_sync)
-            v = update_velocity(v, r, p, -0.5 * dt_new, t_sync)
+            v = update_velocity(v, r, p, 0.5 * dt, t)
+            v = update_velocity(v, r, p, -0.5 * dt_new, t)
 
             dt = dt_new
         end
@@ -184,13 +178,11 @@ function _adaptive_boris!(
         if should_save_final
             # xv currently has x at t (which is >= tspan[2] or boundary)
             # xv[4:6] has v at t - 0.5*dt (start of next step)
-            # We want v at t.
-            # So we just need to advance by 0.5 * dt
-            t_final = is_td ? t : zero(T)
-            v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
+            # We want v at t, so we just need to advance by 0.5 * dt
+            v_final = update_velocity(v, r, p, 0.5 * dt, t)
 
             xv_s = vcat(r, v_final)
-            data = _prepare_saved_data(xv_s, p, t_final, Val(SaveFields), Val(SaveWork))
+            data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
             push!(traj, data)
             push!(tsave, t)
         end
