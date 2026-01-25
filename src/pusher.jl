@@ -78,7 +78,7 @@ end
 
 Update velocity using the Boris method, returning the new velocity as an SVector.
 """
-function update_velocity(v, r, param, dt, t)
+@muladd function update_velocity(v, r, param, dt, t)
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -357,9 +357,6 @@ Apply Boris method for particles with index in `irange`.
                 if iout <= nout
                     t_current = tspan[1] + (it - 1) * dt
                     # Approximate v_n from v_{n-1/2} (v_prev)
-                    # Use v_prev because update_velocity logic is:
-                    # v_{n+1/2} = update(v_{n-1/2}, ...)
-                    # We want v_n = update(v_{n-1/2}, dt/2, ...)
                     v_save = update_velocity(
                         v_prev, r, p, 0.5 * dt,
                         t_current
