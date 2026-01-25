@@ -23,33 +23,47 @@ function solve(
         trajectories::Int = 1, savestepinterval::Int = 1,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false
+        save_fields::Bool = false, save_work::Bool = false
     )
     return if save_fields
-        _solve(
-            ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(true)
-        )
+        if save_work
+            _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(true), Val(true)
+            )
+        else
+            _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(true), Val(false)
+            )
+        end
     else
-        _solve(
-            ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(false)
-        )
+        if save_work
+            _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(false), Val(true)
+            )
+        else
+            _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(false), Val(false)
+            )
+        end
     end
 end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     # We cannot precalculate nt for adaptive steps
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(false))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
     _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, Val(SaveFields)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
     return sols
@@ -57,16 +71,16 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(false))
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _adaptive_boris!(
             sols, prob, irange, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(SaveFields)
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
 
@@ -75,12 +89,18 @@ end
 
 function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
-    vars_dim = SaveFields ? 12 : 6
+    vars_dim = 6
+    if SaveFields
+        vars_dim += 6
+    end
+    if SaveWork
+        vars_dim += 4
+    end
 
     # Determine if fields are time dependent
     is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
@@ -101,13 +121,17 @@ function _adaptive_boris!(
         t = tspan[1]
 
         if save_start
+            data = u0_i
             if SaveFields
                 E = SVector{3, T}(Efunc(r, t))
                 B = SVector{3, T}(Bfunc(r, t))
-                push!(traj, vcat(u0_i, E, B))
-            else
-                push!(traj, u0_i)
+                data = vcat(data, E, B)
             end
+            if SaveWork
+                work = get_work_rates(u0_i, p, t)
+                data = vcat(data, work)
+            end
+            push!(traj, data)
             push!(tsave, t)
         end
 
@@ -143,13 +167,19 @@ function _adaptive_boris!(
 
                 xv_s = vcat(r, v_save)
 
+                xv_s = vcat(r, v_save)
+
+                data = xv_s
                 if SaveFields
                     E = SVector{3, T}(Efunc(r, t_save))
                     B = SVector{3, T}(Bfunc(r, t_save))
-                    push!(traj, vcat(xv_s, E, B))
-                else
-                    push!(traj, xv_s)
+                    data = vcat(data, E, B)
                 end
+                if SaveWork
+                    work = get_work_rates(xv_s, p, t_save)
+                    data = vcat(data, work)
+                end
+                push!(traj, data)
                 push!(tsave, t)
             end
 
@@ -202,13 +232,18 @@ function _adaptive_boris!(
             v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
 
             xv_s = vcat(r, v_final)
+            xv_s = vcat(r, v_final)
+            data = xv_s
             if SaveFields
                 E = SVector{3, T}(Efunc(r, t_final))
                 B = SVector{3, T}(Bfunc(r, t_final))
-                push!(traj, vcat(xv_s, E, B))
-            else
-                push!(traj, xv_s)
+                data = vcat(data, E, B)
             end
+            if SaveWork
+                work = get_work_rates(xv_s, p, t_final)
+                data = vcat(data, work)
+            end
+            push!(traj, data)
             push!(tsave, t)
         end
 
