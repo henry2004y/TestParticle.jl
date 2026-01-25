@@ -84,6 +84,13 @@ SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
     $prob_boris; dt = 1 / 7, savestepinterval = 10, trajectories = 2
 )
+SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
+    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2
+)
+alg_adaptive = AdaptiveBoris(dtmax = 1.0e-3)
+SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
+    $prob_boris, $alg_adaptive
+)
 
 function setup_spherical_field()
     r = logrange(0.1, 10.0, length = 15)

@@ -99,28 +99,36 @@ function _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
         save_start, save_end, save_everystep, ::Val{SaveFields}
     ) where {SaveFields}
-    if SaveFields
-        error("save_fields=true is not yet supported for Multistep Boris Method")
-    end
     (; tspan, p, u0) = prob
+    q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
     paramBoris = MultistepBorisMethod(T)
+    vars_dim = SaveFields ? 12 : 6
     xv = MVector{6, T}(undef)
     xv_save = MVector{6, T}(undef)
     v_old = MVector{3, T}(undef)
 
     @fastmath @inbounds for i in irange
-        traj = Vector{SVector{6, T}}(undef, nout)
+        traj = Vector{SVector{vars_dim, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
         xv .= new_prob.u0
+        # Load independent r and v SVector from u0
+        u0_i = SVector{6, T}(new_prob.u0)
+        r = u0_i[SVector(1, 2, 3)]
 
         if save_start
             iout += 1
-            traj[iout] = SVector{6, T}(xv)
+            if SaveFields
+                E = SVector{3, T}(Efunc(r, tspan[1]))
+                B = SVector{3, T}(Bfunc(r, tspan[1]))
+                traj[iout] = vcat(u0_i, E, B)
+            else
+                traj[iout] = u0_i
+            end
             tsave[iout] = tspan[1]
         end
 
@@ -143,7 +151,15 @@ function _multistep_boris!(
                         xv_save, paramBoris, p, 0.5 * dt,
                         t_current, n_steps
                     )
-                    traj[iout] = SVector{6, T}(xv_save)
+                    r_save = xv_save[SVector(1, 2, 3)]
+                    v_save = xv_save[SVector(4, 5, 6)]
+                    if SaveFields
+                        E = SVector{3, T}(Efunc(r_save, t_current))
+                        B = SVector{3, T}(Bfunc(r_save, t_current))
+                        traj[iout] = vcat(r_save, v_save, E, B)
+                    else
+                        traj[iout] = vcat(r_save, v_save)
+                    end
                     tsave[iout] = t_current
                 end
             end
@@ -171,7 +187,15 @@ function _multistep_boris!(
                 xv, paramBoris, p, dt_final,
                 t_final, n_steps
             )
-            traj[iout] = SVector{6, T}(xv)
+            r_final = xv[SVector(1, 2, 3)]
+            v_final = xv[SVector(4, 5, 6)]
+            if SaveFields
+                E = SVector{3, T}(Efunc(r_final, t_final))
+                B = SVector{3, T}(Bfunc(r_final, t_final))
+                traj[iout] = vcat(r_final, v_final, E, B)
+            else
+                traj[iout] = vcat(r_final, v_final)
+            end
             tsave[iout] = t_final
         end
 
