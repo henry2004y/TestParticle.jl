@@ -162,8 +162,9 @@ end
 
 """
     solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
-    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-        n::Int=1)
+        savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+        n::Int=1, save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
+        save_fields::Bool=false, save_work::Bool=false)
 
 Trace particles using the Boris method with specified `prob`.
 
@@ -177,37 +178,56 @@ Trace particles using the Boris method with specified `prob`.
   - `save_start::Bool`: save the initial condition. Default is `true`.
   - `save_end::Bool`: save the final condition. Default is `true`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
+  - `save_fields::Bool`: save the electric and magnetic fields. Default is `false`.
+  - `save_work::Bool`: save the work done by the electric field. Default is `false`.
 """
 @inline function solve(
         prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false
+        save_fields::Bool = false, save_work::Bool = false
     )
     return if save_fields
-        _solve(
-            ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-            save_start, save_end, save_everystep, Val(true)
-        )
+        if save_work
+            _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+                save_start, save_end, save_everystep, Val(true), Val(true)
+            )
+        else
+            _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+                save_start, save_end, save_everystep, Val(true), Val(false)
+            )
+        end
     else
-        _solve(
-            ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-            save_start, save_end, save_everystep, Val(false)
-        )
+        if save_work
+            _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+                save_start, save_end, save_everystep, Val(false), Val(true)
+            )
+        else
+            _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+                save_start, save_end, save_everystep, Val(false), Val(false)
+            )
+        end
     end
 end
 
 function _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     return if n == 1
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-            save_start, save_end, save_everystep, Val(SaveFields)
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     else
+        if SaveWork
+            error("save_work=true is not supported for multistep Boris (n > 1) yet.")
+        end
         _multistep_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
             save_start, save_end, save_everystep, Val(SaveFields)
@@ -217,17 +237,17 @@ end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
     irange = 1:trajectories
     _dispatch_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-        save_start, save_end, save_everystep, Val(SaveFields)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
     return sols
@@ -235,26 +255,26 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
-            save_start, save_end, save_everystep, Val(SaveFields)
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
 
     return sols
 end
 
-function _get_sol_type(prob, dt, ::Val{SaveFields}) where {SaveFields}
+function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
@@ -262,7 +282,14 @@ function _get_sol_type(prob, dt, ::Val{SaveFields}) where {SaveFields}
     # Force u to be Vector{SVector{6, T}} as used in _boris!
     T = eltype(u0)
 
-    n_vars = SaveFields ? 12 : 6
+    n_vars = 6
+    if SaveFields
+        n_vars += 6
+    end
+    if SaveWork
+        n_vars += 4
+    end
+
     u = Vector{SVector{n_vars, T}}(undef, 0)
     interp = LinearInterpolation(t, u)
     alg = :boris
@@ -276,8 +303,8 @@ Prepare for advancing.
 """
 function _prepare(
         prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
     nt = round(Int, ttotal / dt) |> abs
 
@@ -300,7 +327,7 @@ function _prepare(
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt, Val(SaveFields))
+    sol_type = _get_sol_type(prob, dt, Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
@@ -311,13 +338,19 @@ Apply Boris method for particles with index in `irange`.
 """
 @muladd function _boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
-    vars_dim = SaveFields ? 12 : 6
+    vars_dim = 6
+    if SaveFields
+        vars_dim += 6
+    end
+    if SaveWork
+        vars_dim += 4
+    end
 
     @fastmath @inbounds for i in irange
         traj = Vector{SVector{vars_dim, T}}(undef, nout)
@@ -333,13 +366,17 @@ Apply Boris method for particles with index in `irange`.
 
         if save_start
             iout += 1
+            data = u0_i
             if SaveFields
                 E = SVector{3, T}(Efunc(r, tspan[1]))
                 B = SVector{3, T}(Bfunc(r, tspan[1]))
-                traj[iout] = vcat(u0_i, E, B)
-            else
-                traj[iout] = u0_i
+                data = vcat(data, E, B)
             end
+            if SaveWork
+                work = get_work_rates(u0_i, p, tspan[1])
+                data = vcat(data, work)
+            end
+            traj[iout] = data
             tsave[iout] = tspan[1]
         end
 
@@ -362,13 +399,17 @@ Apply Boris method for particles with index in `irange`.
                         t_current
                     )
 
+                    data = vcat(r, v_save)
                     if SaveFields
                         E = SVector{3, T}(Efunc(r, t_current))
                         B = SVector{3, T}(Bfunc(r, t_current))
-                        traj[iout] = vcat(r, v_save, E, B)
-                    else
-                        traj[iout] = vcat(r, v_save)
+                        data = vcat(data, E, B)
                     end
+                    if SaveWork
+                        work = get_work_rates(vcat(r, v_save), p, t_current)
+                        data = vcat(data, work)
+                    end
+                    traj[iout] = data
                     tsave[iout] = t_current
                 end
             end
@@ -391,13 +432,18 @@ Apply Boris method for particles with index in `irange`.
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
             v_final = update_velocity(v, r, p, dt_final, t_final)
+
+            data = vcat(r, v_final)
             if SaveFields
                 E = SVector{3, T}(Efunc(r, t_final))
                 B = SVector{3, T}(Bfunc(r, t_final))
-                traj[iout] = vcat(r, v_final, E, B)
-            else
-                traj[iout] = vcat(r, v_final)
+                data = vcat(data, E, B)
             end
+            if SaveWork
+                work = get_work_rates(vcat(r, v_final), p, t_final)
+                data = vcat(data, work)
+            end
+            traj[iout] = data
             tsave[iout] = t_final
         end
 

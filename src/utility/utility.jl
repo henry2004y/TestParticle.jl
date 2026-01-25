@@ -555,12 +555,17 @@ function _get_cell_volume(grid::RectilinearGrid)
 end
 
 """
-    get_curvature_radius(x, t, Bfunc)
+    get_magnetic_properties(x, t, Bfunc)
 
-Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
-Returns `Inf` if the field is zero or the field lines are straight.
+Calculate magnetic field properties at position `x` and time `t`.
+Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
+- `B`: Magnetic field vector
+- `∇B`: Gradient of magnetic field magnitude
+- `κ`: Curvature vector
+- `b̂`: Unit magnetic field vector
+- `Bmag`: Magnitude of B
 """
-function get_curvature_radius(x, t, Bfunc)
+function get_magnetic_properties(x, t, Bfunc)
     # Compute B and its Jacobian in a single pass using ForwardDiff
     result = DiffResults.JacobianResult(x)
     result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
@@ -570,7 +575,8 @@ function get_curvature_radius(x, t, Bfunc)
 
     Bmag = norm(B)
     if Bmag == 0
-        return Inf
+        zero_vec = zero(B)
+        return zero_vec, zero_vec, zero_vec, zero_vec, Bmag
     end
     b̂ = B / Bmag
 
@@ -579,6 +585,18 @@ function get_curvature_radius(x, t, Bfunc)
 
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
     κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+
+    return B, ∇B, κ, b̂, Bmag
+end
+
+"""
+    get_curvature_radius(x, t, Bfunc)
+
+Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
+Returns `Inf` if the field is zero or the field lines are straight.
+"""
+function get_curvature_radius(x, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(x, t, Bfunc)
 
     k_mag = norm(κ)
     if k_mag == 0

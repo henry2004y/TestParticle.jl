@@ -333,3 +333,50 @@ function trace_fieldline(x, p, s)
     B = p(x, s)
     return normalize(B)
 end
+
+"""
+    get_work_rates(xu, p, t)
+
+Calculate the work rates done by the electric field and the betatron acceleration.
+Returns a tuple `(P_par, P_fermi, P_grad, P_betatron)`.
+"""
+function get_work_rates(xu, p, t)
+    q2m, m, Efunc, Bfunc, _ = p
+    r = get_x(xu)
+    v = get_v(xu)
+    q = q2m * m
+    E = Efunc(r, t)
+
+    B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+
+    if Bmag == 0
+        return SVector{4, eltype(xu)}(0, 0, 0, 0)
+    end
+
+    # Parallel velocity
+    v_par_val = v ⋅ b̂
+    v_par = v_par_val .* b̂
+    v_perp = v - v_par
+
+    # Magnetic moment
+    w_sq = v_perp ⋅ v_perp
+    μ = m * w_sq / (2 * Bmag)
+
+    # 1. Parallel Work: q v_par (E ⋅ b)
+    P_par = q * v_par_val * (E ⋅ b̂)
+
+    # 2. Fermi Work: m v_par^2 / B (b × κ) ⋅ E
+    P_fermi = (m * v_par_val^2 / Bmag) * ((b̂ × κ) ⋅ E)
+
+    # 3. Gradient Drift Work: μ / B (b × ∇B) ⋅ E
+    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
+
+    # 4. Betatron Work: μ ∂B/∂t
+    # We need ∂B/∂t magnitude.
+    # Using ForwardDiff to get derivative of norm(B) w.r.t t
+    dBdt_val = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t)
+
+    P_betatron = μ * dBdt_val
+
+    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
+end
