@@ -178,7 +178,7 @@ Trace particles using the Boris method with specified `prob`.
   - `save_end::Bool`: save the final condition. Default is `true`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
 """
-function solve(
+@inline function solve(
         prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
