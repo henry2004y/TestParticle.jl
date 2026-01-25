@@ -166,9 +166,6 @@ function _adaptive_boris!(
                 v_save = update_velocity(v_prev, r, p, 0.5 * dt, t_save)
 
                 xv_s = vcat(r, v_save)
-
-                xv_s = vcat(r, v_save)
-
                 data = xv_s
                 if SaveFields
                     E = SVector{3, T}(Efunc(r, t_save))
@@ -231,7 +228,6 @@ function _adaptive_boris!(
             t_final = is_td ? t : zero(T)
             v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
 
-            xv_s = vcat(r, v_final)
             xv_s = vcat(r, v_final)
             data = xv_s
             if SaveFields

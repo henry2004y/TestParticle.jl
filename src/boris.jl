@@ -333,9 +333,10 @@ end
 """
 Apply Boris method for particles with index in `irange`.
 """
-@muladd function _boris!(
+@muladd function _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        velocity_updater, alg_name
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc, _ = p
@@ -378,20 +379,20 @@ Apply Boris method for particles with index in `irange`.
         end
 
         # push velocity back in time by 1/2 dt
-        v = update_velocity(v, r, p, -0.5 * dt, tspan[1])
+        v = velocity_updater(v, r, p, -0.5 * dt, tspan[1])
 
         it = 1
         while it <= nt
             v_prev = v
             t = (it - 0.5) * dt
-            v = update_velocity(v, r, p, dt, t)
+            v = velocity_updater(v, r, p, dt, t)
 
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                 iout += 1
                 if iout <= nout
                     t_current = tspan[1] + (it - 1) * dt
                     # Approximate v_n from v_{n-1/2} (v_prev)
-                    v_save = update_velocity(
+                    v_save = velocity_updater(
                         v_prev, r, p, 0.5 * dt,
                         t_current
                     )
@@ -428,7 +429,7 @@ Apply Boris method for particles with index in `irange`.
             iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
             dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            v_final = update_velocity(v, r, p, dt_final, t_final)
+            v_final = velocity_updater(v, r, p, dt_final, t_final)
 
             data = vcat(r, v_final)
             if SaveFields
@@ -451,7 +452,7 @@ Apply Boris method for particles with index in `irange`.
         traj_save = traj
         t = tsave
 
-        alg = :boris
+        alg = alg_name
         interp = LinearInterpolation(t, traj_save)
         retcode = ReturnCode.Default
         stats = nothing
@@ -460,6 +461,23 @@ Apply Boris method for particles with index in `irange`.
             prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats
         )
     end
+
+    return
+end
+
+"""
+Apply Boris method for particles with index in `irange`.
+"""
+@muladd function _boris!(
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+
+    _generic_boris!(
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+        update_velocity, :boris
+    )
 
     return
 end
@@ -527,136 +545,18 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     return v_new
 end
 
-function _multistep_boris!(
+@muladd function _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc, _ = p
-    T = eltype(u0)
-    vars_dim = 6
-    if SaveFields
-        vars_dim += 6
-    end
-    if SaveWork
-        vars_dim += 4
-    end
 
-    @fastmath @inbounds for i in irange
-        traj = Vector{SVector{vars_dim, T}}(undef, nout)
-        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+    velocity_updater = (v, r, p, dt, t) -> update_velocity_multistep(v, r, p, dt, t, n_steps)
 
-        # set initial conditions for each trajectory i
-        iout = 0
-        new_prob = prob.prob_func(prob, i, false)
-        # Load independent r and v SVector from u0
-        u0_i = SVector{6, T}(new_prob.u0)
-        r = u0_i[SVector(1, 2, 3)]
-        v = u0_i[SVector(4, 5, 6)]
-
-        if save_start
-            iout += 1
-            data = u0_i
-            if SaveFields
-                E = SVector{3, T}(Efunc(u0_i, tspan[1]))
-                B = SVector{3, T}(Bfunc(u0_i, tspan[1]))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(u0_i, p, tspan[1])
-                data = vcat(data, work)
-            end
-            traj[iout] = data
-            tsave[iout] = tspan[1]
-        end
-
-        # push velocity back in time by 1/2 dt
-        v = update_velocity_multistep(v, r, p, -0.5 * dt, tspan[1], n_steps)
-
-        it = 1
-        while it <= nt
-            v_prev = v
-            t = (it - 0.5) * dt
-            v = update_velocity_multistep(v, r, p, dt, t, n_steps)
-
-            if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                iout += 1
-                if iout <= nout
-                    t_current = tspan[1] + (it - 1) * dt
-                    v_save = update_velocity_multistep(
-                        v_prev, r, p, 0.5 * dt,
-                        t_current, n_steps
-                    ) # v at t_current
-
-                    xv_s = vcat(r, v_save)
-                    data = xv_s
-                    if SaveFields
-                        E = SVector{3, T}(Efunc(xv_s, t_current))
-                        B = SVector{3, T}(Bfunc(xv_s, t_current))
-                        data = vcat(data, E, B)
-                    end
-                    if SaveWork
-                        work = get_work_rates(xv_s, p, t_current)
-                        data = vcat(data, work)
-                    end
-                    traj[iout] = data
-                    tsave[iout] = t_current
-                end
-            end
-
-            r += v * dt
-            isoutofdomain(vcat(r, v), p, it * dt) && break
-            it += 1
-        end
-
-        final_step = min(it, nt)
-        should_save_final = false
-        if save_end
-            should_save_final = true
-        elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
-            should_save_final = true
-        end
-
-        if iout < nout && should_save_final
-            iout += 1
-            t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-            dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            v_final = update_velocity_multistep(
-                v, r, p, dt_final,
-                t_final, n_steps
-            )
-
-            xv_s = vcat(r, v_final)
-            data = xv_s
-            if SaveFields
-                E = SVector{3, T}(Efunc(xv_s, t_final))
-                B = SVector{3, T}(Bfunc(xv_s, t_final))
-                data = vcat(data, E, B)
-            end
-            if SaveWork
-                work = get_work_rates(xv_s, p, t_final)
-                data = vcat(data, work)
-            end
-            traj[iout] = data
-            tsave[iout] = t_final
-        end
-
-        if iout < nout
-            resize!(traj, iout)
-            resize!(tsave, iout)
-        end
-        traj_save = traj
-        t = tsave
-
-        alg = :multistep_boris
-        interp = LinearInterpolation(t, traj_save)
-        retcode = ReturnCode.Default
-        stats = nothing
-
-        sols[i] = build_solution(
-            prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats
-        )
-    end
+    _generic_boris!(
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+        velocity_updater, :multistep_boris
+    )
 
     return
 end
