@@ -78,6 +78,9 @@ SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
 SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
     $prob_boris; dt = 1 / 7, savestepinterval = 10
 )
+SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve(
+    $prob_boris; dt = 1 / 7, savestepinterval = 10, save_fields = true
+)
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
     $prob_boris; dt = 1 / 7, savestepinterval = 10, trajectories = 2
 )
