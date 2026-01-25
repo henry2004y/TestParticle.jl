@@ -194,8 +194,12 @@ function _hybrid_adaptive!(
     min_growth = 0.2
 
     @fastmath @inbounds for i in irange
-        traj = SVector{6, T}[]
-        tsave = typeof(tspan[1])[]
+        # Initialize solution containers with sizehint!
+        initial_capacity = 1000
+        traj = Vector{SVector{6, T}}(undef, 0)
+        tsave = Vector{typeof(tspan[1])}(undef, 0)
+        sizehint!(traj, initial_capacity)
+        sizehint!(tsave, initial_capacity)
 
         new_prob = prob.prob_func(prob, i, false)
         xv_fo = SVector{6, T}(new_prob.u0)
@@ -247,6 +251,8 @@ function _hybrid_adaptive!(
                         xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
                     )
                     xv_fo = xv_fo_vec
+                    r = xv_fo[SVector(1, 2, 3)]
+                    v = xv_fo[SVector(4, 5, 6)]
 
                     B_mag = norm(Bfunc(r, t))
                     omega = abs(q2m * B_mag)
