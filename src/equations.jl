@@ -366,8 +366,6 @@ function get_work_rates(xu, p, t)
     P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
 
     # 4. Betatron Work: μ ∂B/∂t
-    # We need ∂B/∂t magnitude.
-    # Using ForwardDiff to get derivative of norm(B) w.r.t t
     dBdt_val = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t)
 
     P_betatron = μ * dBdt_val

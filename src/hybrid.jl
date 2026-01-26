@@ -172,7 +172,7 @@ function _gc_to_full_at_t(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
 
     x = R + ρ_vec
 
-    return vcat(x, v)
+    return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
 end
 
 function _hybrid_adaptive!(
@@ -195,7 +195,10 @@ function _hybrid_adaptive!(
 
     @fastmath @inbounds for i in irange
         # Initialize solution containers with sizehint!
-        initial_capacity = 1000
+        # Estimate initial capacity based on timespan and maximum possible dt
+        estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / alg.dtmax)
+        # Add 10% buffer and cap at reasonable maximum
+        initial_capacity = min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
         traj = Vector{SVector{6, T}}(undef, 0)
         tsave = Vector{typeof(tspan[1])}(undef, 0)
         sizehint!(traj, initial_capacity)
@@ -300,8 +303,11 @@ function _hybrid_adaptive!(
                 t_sync = is_td ? t : zero(T)
                 v_check = update_velocity(v, r, p, 0.5 * dt, t_sync)
 
+                xv_check = SVector{6, T}(
+                    r[1], r[2], r[3], v_check[1], v_check[2], v_check[3]
+                )
                 X_gc, vpar, μ = _get_gc_parameters_at_t(
-                    vcat(r, v_check), Efunc, Bfunc, q, m, t
+                    xv_check, Efunc, Bfunc, q, m, t
                 )
                 ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
                 if ϵ < alg.threshold
@@ -331,7 +337,10 @@ function _hybrid_adaptive!(
                     v_save = update_velocity(
                         v_prev, r, p, 0.5 * dt, t_sync
                     )
-                    push!(traj, vcat(r, v_save))
+                    xv_save = SVector{6, T}(
+                        r[1], r[2], r[3], v_save[1], v_save[2], v_save[3]
+                    )
+                    push!(traj, xv_save)
                     push!(tsave, t)
                 end
 
@@ -340,7 +349,8 @@ function _hybrid_adaptive!(
                 r += v * dt
                 t += dt
 
-                isoutofdomain(vcat(r, v), p, t) && break
+                xv_check_domain = SVector{6, T}(r[1], r[2], r[3], v[1], v[2], v[3])
+                isoutofdomain(xv_check_domain, p, t) && break
                 it += 1
                 steps += 1
 
@@ -368,7 +378,10 @@ function _hybrid_adaptive!(
             else
                 t_final = is_td ? t : zero(T)
                 v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
-                push!(traj, vcat(r, v_final))
+                xv_final = SVector{6, T}(
+                    r[1], r[2], r[3], v_final[1], v_final[2], v_final[3]
+                )
+                push!(traj, xv_final)
             end
             push!(tsave, t)
         end

@@ -64,19 +64,9 @@ function makegrid(grid::CartesianGrid)
 end
 
 """
-Return ranges from 2D/3D RectilinearGrid.
+Return ranges from 2D/3D Meshes.jl RectilinearGrid.
 """
 function makegrid(grid::RectilinearGrid)
-    # Meshes.RectilinearGrid stores coordinates as vectors.
-    # Access pattern: grid.x, grid.y, grid.z is typical if properties are exposed.
-    # Based on Meshes.jl docs: RectilinearGrid(x, y, z).
-    # We need to access these fields. Assuming standard field access works (xyz fields).
-    # If not, we might need a specific accessor.
-    # Checking current Meshes.jl implementation via GitHub source link in docs:
-    # struct RectilinearGrid{M,C,T} <: Grid{M,C,T}
-    #   xyz::Tuple
-    # end
-
     if paramdim(grid) == 3
         return grid.xyz[1], grid.xyz[2], grid.xyz[3]
     elseif paramdim(grid) == 2
