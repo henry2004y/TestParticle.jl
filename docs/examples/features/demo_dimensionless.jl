@@ -4,6 +4,15 @@
 #
 # Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
 #
+# It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.
+# This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 under magnetic field magnitude 1 will possess a gyro-radius of 1.
+# In the dimensionless spatial coordinates, we can zoom in/out the EM field to control the number of discrete points encountered in a gyroperiod.
+# For example, if `dx=dy=dz=1`, it means that a particle with perpendicular velocity 1 will "see" one discrete point along a certain direction oriented from the gyro-center within the gyro-radius;
+# if `dx=dy=dz=0.5`, then the particle will "see" two discrete points.
+# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we need to convert for computation.
+# If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
+# However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
+#
 # ## Normalization
 #
 # After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``.

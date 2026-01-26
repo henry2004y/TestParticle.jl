@@ -1,17 +1,11 @@
 # # Additional Diagnostics
 #
 # This example demonstrates tracing one proton in an analytic E field and numerical B field.
-# It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.
-# This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 under magnetic field magnitude 1 will possess a gyro-radius of 1.
-# In the dimensionless spatial coordinates, we can zoom in/out the EM field to control the number of discrete points encountered in a gyroperiod.
-# For example, if `dx=dy=dz=1`, it means that a particle with perpendicular velocity 1 will "see" one discrete point along a certain direction oriented from the gyro-center within the gyro-radius;
-# if `dx=dy=dz=0.5`, then the particle will "see" two discrete points.
-# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we needs to convert the dimensionless units for computing.
-# If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
-# However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
-
+#
 # The `SavingCallback` from DiffEqCallbacks.jl can be used to save additional outputs for diagnosis. Here we save the magnetic field along the trajectory, together with the parallel velocity.
 # Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see [Demo: ensemble tracing with extra saving](@ref Ensemble-Tracing).
+#
+# For the native Boris solvers, we also support `save_fields` and `save_work` keywords to save the fields and work done by the fields. These options are more efficient than using `SavingCallback` and are compatible with ensemble problems.
 
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: qᵢ, mᵢ
@@ -100,3 +94,75 @@ sol = solve(prob, Vern9(); callback = cb);
 # The extra values are saved in `saved_values`:
 
 saved_values
+
+# ## Native Boris Solver with Additional Diagnostics
+#
+# The native Boris solver supports additional diagnostic outputs through the `save_fields` and `save_work` keywords.
+# These options allow you to save the electric and magnetic fields along the trajectory, as well as various work rate components without using callbacks.
+#
+# When `save_fields=true`, the solution will include 6 additional values per time step:
+# - E field components (Ex, Ey, Ez) at indices 7, 8, 9
+# - B field components (Bx, By, Bz) at indices 10, 11, 12
+#
+# When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
+# - P_par: parallel work rate (index 7 or 13 depending on save_fields)
+# - P_fermi: Fermi work rate (index 8 or 14)
+# - P_grad: gradient drift work rate (index 9 or 15)
+# - P_betatron: betatron work rate (index 10 or 16)
+
+## Set up a simple test problem
+x_boris = range(-0.5, 0.5, length = 4)
+y_boris = range(-0.5, 0.5, length = 4)
+z_boris = range(-0.5, 0.5, length = 4)
+
+B_boris = zeros(Float32, 3, 4, 4, 4)
+B_boris[3, :, :, :] .= 1.0
+
+E_boris(x) = SA[0.0, 0.0, 0.0]
+
+param_boris = prepare(x_boris, y_boris, z_boris, E_boris, B_boris; m = 1, q = 1, bc = 2);
+
+## Create TraceProblem for Boris solver
+u0_boris = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+tspan_boris = (0.0, 2π)
+
+prob_boris = TraceProblem(u0_boris, tspan_boris, param_boris)
+
+## Solve with field saving enabled
+sol_fields = TestParticle.solve(prob_boris; dt = 0.1, save_fields = true)[1];
+
+# The solution now contains 12 values per time step (6 for state + 6 for fields)
+## Access the magnetic field along the trajectory
+B_trajectory = [u[10:12] for u in sol_fields.u];
+
+## Verify that the saved B field matches the expected values
+println("First saved B field: ", B_trajectory[1])
+println("Last saved B field: ", B_trajectory[end])
+
+# Solve with work saving enabled
+sol_work = TestParticle.solve(prob_boris; dt = 0.1, save_work = true)[1];
+
+# The solution now contains 10 values per time step (6 for state + 4 for work rates)
+## Access the work rates along the trajectory
+P_par = [u[7] for u in sol_work.u]
+P_fermi = [u[8] for u in sol_work.u]
+P_grad = [u[9] for u in sol_work.u]
+P_betatron = [u[10] for u in sol_work.u];
+
+using Printf #hide
+
+println("\nWork Rates Table:") #hide
+println("="^70) #hide
+@printf("%-10s %-15s %-15s %-15s %-15s\n", "Time", "P_par", "P_fermi", "P_grad", "P_betatron") #hide
+println("-"^70) #hide
+
+# Show work rates at selected time steps
+indices = [1, length(sol_work.u) ÷ 4, length(sol_work.u) ÷ 2, 3 * length(sol_work.u) ÷ 4, length(sol_work.u)]
+for i in indices #hide
+    t = sol_work.t[i] #hide
+    @printf( #hide
+        "%-10.3f %-15.6e %-15.6e %-15.6e %-15.6e\n", #hide
+        t, P_par[i], P_fermi[i], P_grad[i], P_betatron[i] #hide
+    ) #hide
+end #hide
+println("="^70) #hide
