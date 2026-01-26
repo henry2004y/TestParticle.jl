@@ -152,11 +152,10 @@ function _adaptive_boris!(
             B = Bfunc(r, t)
             B_mag = norm(B)
             omega = abs(q2m) * B_mag
-            if omega > 0
-                dt_new = alg.safety / omega
-                dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
+            dt_new = if omega > 0
+                clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
             else
-                dt_new = alg.dtmax
+                alg.dtmax
             end
 
             # Resync for next step
