@@ -110,17 +110,18 @@ saved_values
 # - P_grad: gradient drift work rate (index 9 or 15)
 # - P_betatron: betatron work rate (index 10 or 16)
 
-## Set up a simple test problem
-x_boris = range(-0.5, 0.5, length = 4)
-y_boris = range(-0.5, 0.5, length = 4)
-z_boris = range(-0.5, 0.5, length = 4)
+## Set up a test problem with analytic fields
+## Electric field: constant non-zero to generate parallel work
+E_boris(x, t) = SA[0.1, 0.1, 0.1]
 
-B_boris = zeros(Float32, 3, 4, 4, 4)
-B_boris[3, :, :, :] .= 1.0
+## Magnetic field: spatially varying and time-dependent
+## - x[2] dependence creates gradients (Gradient drift work)
+## - Time dependence creates Betatron work
+## - Curvature is implicit in the field structure (Fermi work)
+##   Use a field with curvature: B = [y, x, 1]
+B_boris(x, t) = SA[x[2], x[1], 1.0] * (1.0 + 0.1 * t)
 
-E_boris(x) = SA[0.0, 0.0, 0.0]
-
-param_boris = prepare(x_boris, y_boris, z_boris, E_boris, B_boris; m = 1, q = 1, bc = 2);
+param_boris = prepare(E_boris, B_boris; m = 1, q = 1);
 
 ## Create TraceProblem for Boris solver
 u0_boris = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
@@ -143,7 +144,7 @@ println("Last saved B field: ", B_trajectory[end])
 sol_work = TestParticle.solve(prob_boris; dt = 0.1, save_work = true)[1];
 
 # The solution now contains 10 values per time step (6 for state + 4 for work rates)
-## Access the work rates along the trajectory
+## Access the work rates along the trajectory, show at selected time steps
 P_par = [u[7] for u in sol_work.u]
 P_fermi = [u[8] for u in sol_work.u]
 P_grad = [u[9] for u in sol_work.u]
@@ -156,7 +157,6 @@ println("="^70) #hide
 @printf("%-10s %-15s %-15s %-15s %-15s\n", "Time", "P_par", "P_fermi", "P_grad", "P_betatron") #hide
 println("-"^70) #hide
 
-# Show work rates at selected time steps
 indices = [1, length(sol_work.u) ÷ 4, length(sol_work.u) ÷ 2, 3 * length(sol_work.u) ÷ 4, length(sol_work.u)]
 for i in indices #hide
     t = sol_work.t[i] #hide
