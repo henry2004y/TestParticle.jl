@@ -64,19 +64,9 @@ function makegrid(grid::CartesianGrid)
 end
 
 """
-Return ranges from 2D/3D RectilinearGrid.
+Return ranges from 2D/3D Meshes.jl RectilinearGrid.
 """
 function makegrid(grid::RectilinearGrid)
-    # Meshes.RectilinearGrid stores coordinates as vectors.
-    # Access pattern: grid.x, grid.y, grid.z is typical if properties are exposed.
-    # Based on Meshes.jl docs: RectilinearGrid(x, y, z).
-    # We need to access these fields. Assuming standard field access works (xyz fields).
-    # If not, we might need a specific accessor.
-    # Checking current Meshes.jl implementation via GitHub source link in docs:
-    # struct RectilinearGrid{M,C,T} <: Grid{M,C,T}
-    #   xyz::Tuple
-    # end
-
     if paramdim(grid) == 3
         return grid.xyz[1], grid.xyz[2], grid.xyz[3]
     elseif paramdim(grid) == 2
@@ -555,22 +545,25 @@ function _get_cell_volume(grid::RectilinearGrid)
 end
 
 """
-    get_curvature_radius(x, t, Bfunc)
+    get_magnetic_properties(x, t, Bfunc)
 
-Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
-Returns `Inf` if the field is zero or the field lines are straight.
+Calculate magnetic field properties at position `x` and time `t`.
+Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
+- `B`: Magnetic field vector
+- `∇B`: Gradient of magnetic field magnitude
+- `κ`: Curvature vector
+- `b̂`: Unit magnetic field vector
+- `Bmag`: Magnitude of B
 """
-function get_curvature_radius(x, t, Bfunc)
+@inline function get_magnetic_properties(x, t, Bfunc)
     # Compute B and its Jacobian in a single pass using ForwardDiff
-    result = DiffResults.JacobianResult(x)
-    result = ForwardDiff.jacobian!(result, x -> Bfunc(x, t), x)
-
-    B = SVector{3}(DiffResults.value(result))
-    JB = SMatrix{3, 3}(DiffResults.jacobian(result))
+    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
+    B = Bfunc(x, t)
 
     Bmag = norm(B)
     if Bmag == 0
-        return Inf
+        vzero = zero(x)
+        return vzero, vzero, vzero, vzero, Bmag
     end
     b̂ = B / Bmag
 
@@ -580,12 +573,20 @@ function get_curvature_radius(x, t, Bfunc)
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
     κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
 
-    k_mag = norm(κ)
-    if k_mag == 0
-        return Inf
-    end
+    return B, ∇B, κ, b̂, Bmag
+end
 
-    return 1 / k_mag
+"""
+    get_curvature_radius(x, t, Bfunc)
+
+Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
+Returns `Inf` if the field is zero or the field lines are straight.
+"""
+@inline function get_curvature_radius(x, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(x, t, Bfunc)
+
+    k_mag = norm(κ)
+    return iszero(k_mag) ? Inf : inv(k_mag)
 end
 
 """
@@ -595,19 +596,18 @@ end
 Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
-function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    B = Bfunc(r, t)
-    Bmag = norm(B)
-    if Bmag == 0.0
-        return Inf
-    end
+@inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
+    Bmag = Bfunc(r, t) |> norm
+    iszero(Bmag) && return Inf
 
-    # v_perp^2 = 2 * μ * B / m
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    Rc = get_curvature_radius(r, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(r, t, Bfunc)
 
-    return ρ / Rc
+    k_mag = norm(κ)
+    invRc = iszero(k_mag) ? zero(k_mag) : k_mag
+
+    return ρ * invRc
 end
 
 function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)

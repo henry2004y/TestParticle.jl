@@ -270,4 +270,85 @@ using LinearAlgebra
         @test sol_fields.u[end][7:9] == [0.0, 0.0, 0.0]
         @test sol_fields.u[end][10:12] == [0.0, 0.0, 0.01]
     end
+
+    @testset "Save work" begin
+        # Case 1: Gradient Drift Work
+        # E = [0, 1e5, 0]
+        # B = [0, 0, 0.01 * (1 + x)] => b=[0,0,1], ∇B=[0.01, 0, 0]
+        # b x ∇B = [0, 0.01, 0]
+        # P_grad ~ (b x ∇B) . E = 1000
+        # P_par = 0 (E.b = 0)
+        # P_fermi = 0 (b constant direction => κ=0)
+        # P_betatron = 0 (static B)
+
+        x0 = [0.0, 0.0, 0.0]
+        v0 = [1.0e5, 0.0, 0.0] # v perp to B
+        stateinit = [x0..., v0...]
+        tspan = (0.0, 1.0e-9)
+        dt = 1.0e-11
+
+        param = prepare(constant_E, gradient_B, species = Electron)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        # Test save_work=true
+        sol = TP.solve(prob; dt, savestepinterval = 1, save_work = true, save_everystep = true)[1]
+
+        # Dimension check: 6 (state) + 4 (work) = 10
+        @test length(sol.u[1]) == 10
+
+        # Check values
+        # Index 7: P_par
+        # Index 8: P_fermi
+        # Index 9: P_grad
+        # Index 10: P_betatron
+
+        work = sol.u[1][7:10]
+        @test work[1] ≈ 0.0 atol = 1.0e-10 # P_par
+        @test work[2] ≈ 0.0 atol = 1.0e-10 # P_fermi
+        @test abs(work[3]) > 0.0       # P_grad should be non-zero
+        @test work[4] ≈ 0.0 atol = 1.0e-10 # P_betatron
+
+        # Case 2: Betatron Acceleration
+        # B = [0, 0, 0.01 * (1 + 1e7 * t)]
+        # E = 0
+        # dB/dt = 0.01 * 1e7 = 1e5
+        # P_betatron = mu * dB/dt
+
+        function time_varying_B_linear(x, t)
+            return SA[0.0, 0.0, 0.01 * (1.0 + 1.0e7 * t)]
+        end
+
+        param_beta = prepare(zero_E, time_varying_B_linear, species = Electron)
+        prob_beta = TraceProblem(stateinit, tspan, param_beta)
+
+        sol_beta = TP.solve(prob_beta; dt, savestepinterval = 1, save_work = true)[1]
+
+        work_beta = sol_beta.u[1][7:10]
+        @test work_beta[4] > 0.0 # P_betatron should be positive
+
+        # Test with save_fields=true AND save_work=true
+        sol_both = TP.solve(prob; dt, savestepinterval = 1, save_fields = true, save_work = true)[1]
+        # Dim: 6 + 6 + 4 = 16
+        @test length(sol_both.u[1]) == 16
+        # E, B at 7-12
+        # Work at 13-16
+        @test sol_both.u[1][13:16] == sol.u[1][7:10]
+
+        # Test Multistep Boris with save_work
+        sol_ms = TP.solve(prob; dt, n = 2, save_work = true, savestepinterval = 1)[1]
+        @test length(sol_ms.u[1]) == 10
+        work_ms = sol_ms.u[1][7:10]
+        @test work_ms[1] ≈ 0.0 atol = 1.0e-10
+        @test abs(work_ms[3]) > 0.0
+
+        # Test Adaptive Boris with save_work
+        # Use simple AdaptiveBoris
+        alg_adaptive = AdaptiveBoris(dtmax = 1.0e-9)
+        sol_adaptive = TP.solve(prob, alg_adaptive; save_work = true, save_everystep = true)[1]
+        @test length(sol_adaptive.u[1]) == 10
+        work_adaptive = sol_adaptive.u[1][7:10]
+        @test work_adaptive[1] ≈ 0.0 atol = 1.0e-10
+        @test abs(work_adaptive[3]) > 0.0
+    end
+
 end

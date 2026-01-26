@@ -23,33 +23,27 @@ function solve(
         trajectories::Int = 1, savestepinterval::Int = 1,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false
+        save_fields::Bool = false, save_work::Bool = false
     )
-    return if save_fields
-        _solve(
-            ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(true)
-        )
-    else
-        _solve(
-            ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(false)
-        )
-    end
+    return _solve(
+        ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+        save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
+    )
 end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        isoutofdomain, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     # We cannot precalculate nt for adaptive steps
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields))
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
     _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, Val(SaveFields)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
     return sols
@@ -57,16 +51,16 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields))
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _adaptive_boris!(
             sols, prob, irange, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep, Val(SaveFields)
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
 
@@ -75,15 +69,18 @@ end
 
 function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, ::Val{SaveFields}
-    ) where {SaveFields}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc, _ = p
+    q2m, _, _, Bfunc, _ = p
     T = eltype(u0)
-    vars_dim = SaveFields ? 12 : 6
-
-    # Determine if fields are time dependent
-    is_td = is_time_dependent(get_EField(prob)) || is_time_dependent(get_BField(prob))
+    vars_dim = 6
+    if SaveFields
+        vars_dim += 6
+    end
+    if SaveWork
+        vars_dim += 4
+    end
 
     @fastmath @inbounds for i in irange
         # Initialize solution containers
@@ -101,13 +98,8 @@ function _adaptive_boris!(
         t = tspan[1]
 
         if save_start
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, t))
-                B = SVector{3, T}(Bfunc(r, t))
-                push!(traj, vcat(u0_i, E, B))
-            else
-                push!(traj, u0_i)
-            end
+            data = _prepare_saved_data(u0_i, p, t, Val(SaveFields), Val(SaveWork))
+            push!(traj, data)
             push!(tsave, t)
         end
 
@@ -127,9 +119,8 @@ function _adaptive_boris!(
             if t + dt > tspan[2]
                 dt_step = tspan[2] - t
                 # Resync v from `t - 0.5*dt` to `t - 0.5*dt_step`
-                t_sync = is_td ? t : zero(T)
-                v = update_velocity(v, r, p, 0.5 * dt, t_sync)
-                v = update_velocity(v, r, p, -0.5 * dt_step, t_sync)
+                v = update_velocity(v, r, p, 0.5 * dt, t)
+                v = update_velocity(v, r, p, -0.5 * dt_step, t)
                 dt = dt_step
             end
 
@@ -137,24 +128,17 @@ function _adaptive_boris!(
 
             # Saving logic (start of step)
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                t_save = is_td ? t : zero(T)
                 # Advance to t to get v_n
-                v_save = update_velocity(v_prev, r, p, 0.5 * dt, t_save)
+                v_save = update_velocity(v_prev, r, p, 0.5 * dt, t)
 
                 xv_s = vcat(r, v_save)
-
-                if SaveFields
-                    E = SVector{3, T}(Efunc(r, t_save))
-                    B = SVector{3, T}(Bfunc(r, t_save))
-                    push!(traj, vcat(xv_s, E, B))
-                else
-                    push!(traj, xv_s)
-                end
+                data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
+                push!(traj, data)
                 push!(tsave, t)
             end
 
             # Update velocity to v_{n+1/2}
-            t_mid = is_td ? t + 0.5 * dt : zero(T)
+            t_mid = t + 0.5 * dt
             v = update_velocity(v, r, p, dt, t_mid)
 
             # Update location x_{n} -> x_{n+1}
@@ -168,19 +152,17 @@ function _adaptive_boris!(
             B = Bfunc(r, t)
             B_mag = norm(B)
             omega = abs(q2m) * B_mag
-            if omega > 0
-                dt_new = alg.safety / omega
-                dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
+            dt_new = if omega > 0
+                clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
             else
-                dt_new = alg.dtmax
+                alg.dtmax
             end
 
             # Resync for next step
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
             # i.e. it is v_{n+1/2} from step we just took.
-            t_sync = is_td ? t : zero(T)
-            v = update_velocity(v, r, p, 0.5 * dt, t_sync)
-            v = update_velocity(v, r, p, -0.5 * dt_new, t_sync)
+            v = update_velocity(v, r, p, 0.5 * dt, t)
+            v = update_velocity(v, r, p, -0.5 * dt_new, t)
 
             dt = dt_new
         end
@@ -196,19 +178,12 @@ function _adaptive_boris!(
         if should_save_final
             # xv currently has x at t (which is >= tspan[2] or boundary)
             # xv[4:6] has v at t - 0.5*dt (start of next step)
-            # We want v at t.
-            # So we just need to advance by 0.5 * dt
-            t_final = is_td ? t : zero(T)
-            v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
+            # We want v at t, so we just need to advance by 0.5 * dt
+            v_final = update_velocity(v, r, p, 0.5 * dt, t)
 
             xv_s = vcat(r, v_final)
-            if SaveFields
-                E = SVector{3, T}(Efunc(r, t_final))
-                B = SVector{3, T}(Bfunc(r, t_final))
-                push!(traj, vcat(xv_s, E, B))
-            else
-                push!(traj, xv_s)
-            end
+            data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
+            push!(traj, data)
             push!(tsave, t)
         end
 
