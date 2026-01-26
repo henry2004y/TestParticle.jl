@@ -133,7 +133,7 @@ sol_fields = solve(prob_boris; dt = 0.1, save_fields = true);
 
 # The solution now contains 12 values per time step (6 for state + 6 for fields)
 ## Access the magnetic field along the trajectory
-B_trajectory = [sol_fields.u[i][10:12] for i in 1:length(sol_fields.u)];
+B_trajectory = [u[10:12] for u in sol_fields.u];
 
 ## Verify that the saved B field matches the expected values
 println("First saved B field: ", B_trajectory[1])
@@ -144,10 +144,10 @@ sol_work = solve(prob_boris; dt = 0.1, save_work = true);
 
 # The solution now contains 10 values per time step (6 for state + 4 for work rates)
 ## Access the work rates along the trajectory
-P_par = [sol_work.u[i][7] for i in eachindex(sol_work.u)]
-P_fermi = [sol_work.u[i][8] for i in eachindex(sol_work.u)]
-P_grad = [sol_work.u[i][9] for i in eachindex(sol_work.u)]
-P_betatron = [sol_work.u[i][10] for i in eachindex(sol_work.u)];
+P_par = [u[7] for u in sol_work.u]
+P_fermi = [u[8] for u in sol_work.u]
+P_grad = [u[9] for u in sol_work.u]
+P_betatron = [u[10] for u in sol_work.u];
 
 using Printf #hide
 

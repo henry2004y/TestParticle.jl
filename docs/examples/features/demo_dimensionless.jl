@@ -9,7 +9,7 @@
 # In the dimensionless spatial coordinates, we can zoom in/out the EM field to control the number of discrete points encountered in a gyroperiod.
 # For example, if `dx=dy=dz=1`, it means that a particle with perpendicular velocity 1 will "see" one discrete point along a certain direction oriented from the gyro-center within the gyro-radius;
 # if `dx=dy=dz=0.5`, then the particle will "see" two discrete points.
-# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we needs to convert the dimensionless units for computing.
+# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we need to convert for computation.
 # If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
 # However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
 #
