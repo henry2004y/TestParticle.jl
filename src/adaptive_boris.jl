@@ -33,7 +33,8 @@ end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        isoutofdomain, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     # We cannot precalculate nt for adaptive steps
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
