@@ -311,14 +311,13 @@ function _prepare(
     return sols, nt, nout
 end
 
-function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
+@inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
-    T = eltype(xv)
     if SaveFields
         r = get_x(xv)
-        _, _, Efunc, Bfunc, _ = p
-        E = SVector{3, T}(Efunc(r, t))
-        B = SVector{3, T}(Bfunc(r, t))
+        T = eltype(xv)
+        E = SVector{3, T}(get_EField(p)(r, t))
+        B = SVector{3, T}(get_BField(p)(r, t))
         data = vcat(data, E, B)
     end
     if SaveWork
@@ -362,7 +361,9 @@ Apply Boris method for particles with index in `irange`.
 
         if save_start
             iout += 1
-            traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
+            traj[iout] = _prepare_saved_data(
+                u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork)
+            )
             tsave[iout] = tspan[1]
         end
 
@@ -386,7 +387,9 @@ Apply Boris method for particles with index in `irange`.
                     )
 
                     data = vcat(r, v_save)
-                    traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
+                    traj[iout] = _prepare_saved_data(
+                        data, p, t_current, Val(SaveFields), Val(SaveWork)
+                    )
                     tsave[iout] = t_current
                 end
             end
@@ -411,7 +414,9 @@ Apply Boris method for particles with index in `irange`.
             v_final = velocity_updater(v, r, p, dt_final, t_final)
 
             data = vcat(r, v_final)
-            traj[iout] = _prepare_saved_data(data, p, t_final, Val(SaveFields), Val(SaveWork))
+            traj[iout] = _prepare_saved_data(
+                data, p, t_final, Val(SaveFields), Val(SaveWork)
+            )
             tsave[iout] = t_final
         end
 
@@ -520,7 +525,8 @@ end
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
 
-    velocity_updater = (v, r, p, dt, t) -> update_velocity_multistep(v, r, p, dt, t, n_steps)
+    velocity_updater = (v, r, p, dt, t) ->
+    update_velocity_multistep(v, r, p, dt, t, n_steps)
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
