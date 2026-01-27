@@ -46,12 +46,6 @@ function curved_B(x)
 end
 
 @testset "TestParticle.jl" begin
-    @testset "utility" begin
-        V, B = 440.0e3, 5.0e-9
-        r = get_gyroradius(V, B)
-        @test r ≈ 919206.1737113602
-        @test get_gyroperiod(B) ≈ 13.126233465754511
-    end
 
     @testset "sampling" begin
         u0 = SA[0.0, 0.0, 0.0]
@@ -70,67 +64,6 @@ end
         @test occursin("BiMaxwellian", repr(vdf))
     end
 
-    @testset "interpolation" begin
-        begin # scalar interpolation
-            x = range(-10, 10, length = 4)
-            y = range(-10, 10, length = 6)
-            z = range(-10, 10, length = 8)
-            n = [
-                Float32(i + j + k)
-                    for i in eachindex(x), j in eachindex(y), k in eachindex(z)
-            ]
-            nfunc11 = TP.getinterp_scalar(n, x, y, z)
-            @test nfunc11(SA[9, 0, 0]) == 11.85
-            nfunc12 = TP.getinterp_scalar(n, x, y, z, 1, 2)
-            @test nfunc12(SA[20, 0, 0]) == 9.5
-            nfunc13 = TP.getinterp_scalar(n, x, y, z, 1, 3)
-            @test nfunc13(SA[20, 0, 0]) == 12.0
-            nfunc21 = TP.getinterp_scalar(n, x, y, z, 2)
-            @test nfunc21(SA[9, 0, 0]) == 11.898528302013874
-            nfunc22 = TP.getinterp_scalar(n, x, y, z, 2, 2)
-            @test nfunc22(SA[20, 0, 0]) == 9.166666686534882
-            nfunc23 = TP.getinterp_scalar(n, x, y, z, 2, 3)
-            @test nfunc23(SA[20, 0, 0]) == 12.14705765247345
-            nfunc31 = TP.getinterp_scalar(n, x, y, z, 3)
-            @test nfunc31(SA[9, 0, 0]) == 11.882999392215163
-            nfunc32 = TP.getinterp_scalar(n, x, y, z, 3, 2)
-            @test nfunc32(SA[20, 0, 0]) == 9.124999547351358
-            nfunc33 = TP.getinterp_scalar(n, x, y, z, 3, 3)
-            @test nfunc33(SA[20, 0, 0]) == 12.191176189381315
-        end
-
-        begin # spherical interpolation
-            r = range(0, 10, length = 11)
-            θ = range(0, π, length = 11)
-            ϕ = range(0, 2π, length = 11)
-            # Vector field
-            B = fill(0.0, 3, length(r), length(θ), length(ϕ))
-            B[1, :, :, :] .= 1.0
-            Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
-            @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
-            # Scalar field
-            A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
-            @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
-        end
-
-        begin # non-uniform spherical interpolation
-            r = logrange(1.0, 10.0, length = 11)
-            θ = range(0, π, length = 11)
-            ϕ = range(0, 2π, length = 11)
-            # Vector field
-            B = fill(0.0, 3, length(r), length(θ), length(ϕ))
-            B[1, :, :, :] .= 1.0
-            Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
-            @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
-            # Scalar field
-            A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
-            @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
-        end
-    end
 
     @testset "numerical field" begin
         x = range(-10, 10, length = 15)
@@ -550,10 +483,7 @@ end
 end
 
 include("test_boris.jl")
-include("test_svector_interp.jl")
-include("test_curvature.jl")
-include("test_gyroradius.jl")
-include("test_loop.jl")
+include("test_utility.jl")
 include("test_fieldline.jl")
 
 if "makie" in ARGS

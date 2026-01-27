@@ -1,4 +1,4 @@
-# # Additional Diagnostics
+# # Extra Diagnostics
 #
 # This example demonstrates tracing one proton in an analytic E field and numerical B field.
 #
@@ -14,14 +14,6 @@ using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks
 
-function getmeanB(B)
-    B₀sum = eltype(B)(0)
-    for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
-        B₀sum += B[1, i, j, k]^2 + B[2, i, j, k]^2 + B[3, i, j, k]^2
-    end
-
-    return sqrt(B₀sum / prod(size(B)[2:4]))
-end
 
 ## Number of cells for the field along each dimension
 nx, ny, nz = 4, 6, 8
@@ -37,7 +29,7 @@ B[2, :, :, :] .= 0.0
 B[3, :, :, :] .= 2.0
 
 ## Reference values for unit conversions between the customized and dimensionless units
-const B₀ = getmeanB(B)
+const B₀ = get_mean_magnitude(B)
 const U₀ = 1.0
 const l₀ = 4 * nx
 const t₀ = l₀ / U₀
@@ -106,10 +98,10 @@ saved_values
 # - B field components (Bx, By, Bz) at indices 10, 11, 12
 #
 # When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
-# - P_par $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
-# - P_fermi $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
-# - P_grad $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
-# - P_betatron $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
+# - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
+# - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
+# - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
+# - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
 # Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
 
 E_boris(x, t) = SA[0.1, 0.1, 0.1]
