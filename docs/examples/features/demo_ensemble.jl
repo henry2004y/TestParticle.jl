@@ -97,7 +97,7 @@ f = DisplayAs.PNG(f) #hide
 # Here, we save the magnetic field and the cosine of the pitch angle ($\mu$) along the trajectory.
 #
 # We use a numerical field for this example to demonstrate a more complex setup.
-# See [Demo: single tracing with additional diagnostics](@ref Additional-Diagnostics) for details on unit conversion.
+# See [Demo: Dimensionless Units](@ref Dimensionless-Units-and-Normalization) for details on unit conversion.
 
 ## Generate a numerical magnetic field
 nx, ny, nz = 4, 6, 8
