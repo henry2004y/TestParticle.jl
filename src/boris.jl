@@ -536,3 +536,30 @@ end
 
     return
 end
+
+"""
+    get_fields(sol::AbstractODESolution)
+
+Return the electric and magnetic fields from the solution `sol`.
+"""
+function get_fields(sol::AbstractODESolution)
+    p = sol.prob.p
+    T = eltype(sol.u[1])
+    Efunc = get_EField(p)
+    Bfunc = get_BField(p)
+
+    E = [SVector{3, T}(Efunc(get_x(u), t)) for (u, t) in zip(sol.u, sol.t)]
+    B = [SVector{3, T}(Bfunc(get_x(u), t)) for (u, t) in zip(sol.u, sol.t)]
+
+    return E, B
+end
+
+"""
+    get_work(sol::AbstractODESolution)
+
+Return the work done by the electric field from the solution `sol`.
+"""
+function get_work(sol::AbstractODESolution)
+    p = sol.prob.p
+    return [get_work_rates(u, p, t) for (u, t) in zip(sol.u, sol.t)]
+end

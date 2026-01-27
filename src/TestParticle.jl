@@ -38,6 +38,7 @@ export get_gyrofrequency,
     sample_unit_sphere, get_number_density_flux,
     getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
+export get_fields, get_work
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 include("types.jl")

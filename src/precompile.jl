@@ -38,8 +38,11 @@
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(dtmax = 1.0)
-        sol_adaptive = solve(prob, alg_adaptive)
-        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true)
+        sol_adaptive = solve(prob, alg_adaptive)[1]
+
+        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)
+        E_trace, B_trace = get_fields(sol_adaptive)
+        work = get_work(sol_adaptive)
 
         # Multistep Boris
         sol_multistep = solve(prob; dt, n = 2)

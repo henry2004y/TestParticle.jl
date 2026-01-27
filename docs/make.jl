@@ -66,7 +66,7 @@ features_order = [
     "demo_unitful.md",
     "demo_ensemble.jl",
     "demo_distributions.jl",
-    "demo_savingcallback.jl",
+    "demo_extrasaving.jl",
     "demo_flux.jl",
     "demo_gc.jl",
     "demo_gpu.md",

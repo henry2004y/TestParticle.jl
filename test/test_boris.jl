@@ -351,4 +351,38 @@ using LinearAlgebra
         @test abs(work_adaptive[3]) > 0.0
     end
 
+    @testset "Post-processing fields and work" begin
+        x0 = [0.0, 0.0, 0.0]
+        v0 = [1.0e5, 0.0, 0.0]
+        stateinit = [x0..., v0...]
+        tspan = (0.0, 1.0e-9)
+        dt = 1.0e-11
+
+        param = prepare(constant_E, gradient_B, species = Electron)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        # Reference solution with saved data
+        sol_ref = TP.solve(prob; dt, savestepinterval = 1, save_fields = true, save_work = true)[1]
+
+        # Solution without saved data
+        sol = TP.solve(prob; dt, savestepinterval = 1)[1]
+
+        # Post-process
+        E_post, B_post = get_fields(sol)
+        work_post = get_work(sol)
+
+        # Comparison
+        # Reference indices:
+        # 1-6: state
+        # 7-9: E
+        # 10-12: B
+        # 13-16: work
+
+        for i in eachindex(sol)
+            @test E_post[i] ≈ sol_ref.u[i][7:9]
+            @test B_post[i] ≈ sol_ref.u[i][10:12]
+            @test work_post[i] ≈ sol_ref.u[i][13:16]
+        end
+    end
+
 end
