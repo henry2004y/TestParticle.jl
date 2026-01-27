@@ -140,11 +140,35 @@ function solve(
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
     end
 
-    return _solve(
-        ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-        Val(save_fields), Val(save_work)
-    )
+    return if save_fields
+        if save_work
+            return _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+                Val(true), Val(true)
+            )
+        else
+            return _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+                Val(true), Val(false)
+            )
+        end
+    else
+        if save_work
+            return _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+                Val(false), Val(true)
+            )
+        else
+            return _solve(
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+                Val(false), Val(false)
+            )
+        end
+    end
 end
 
 function _solve(
