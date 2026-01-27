@@ -129,7 +129,8 @@ If `alg` is `:rk45`, uses adaptive time stepping.
 """
 function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1, dt::Union{AbstractFloat, Nothing} = nothing,
+        trajectories::Int = 1, savestepinterval::Int = 1,
+        dt::Union{AbstractFloat, Nothing} = nothing,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000,
@@ -147,12 +148,11 @@ function solve(
 end
 
 function _solve(
-        ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval,
+        isoutofdomain, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    sols, nt,
-        nout = _prepare_gc(
+    sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep, alg, Val(SaveFields), Val(SaveWork)
     )
@@ -176,8 +176,8 @@ function _solve(
 end
 
 function _solve(
-        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval,
+        isoutofdomain, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     sols, nt,
@@ -300,7 +300,6 @@ function _rk4!(
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     T = eltype(u0)
-    # xv, dx are now local SVector variables
 
     vars_dim = 4
     if SaveFields
@@ -339,7 +338,12 @@ function _rk4!(
             if save_everystep && (it % savestepinterval == 0)
                 iout += 1
                 if iout <= nout
-                    push!(traj, _prepare_saved_data_gc(xv, p, t + dt, Val(SaveFields), Val(SaveWork)))
+                    push!(
+                        traj,
+                        _prepare_saved_data_gc(
+                            xv, p, t + dt, Val(SaveFields), Val(SaveWork)
+                        )
+                    )
                     push!(tsave, t + dt)
                 end
             end
@@ -356,15 +360,17 @@ function _rk4!(
             should_save_final = true
         end
 
-        if iout < nout && should_save_final && iout > 0 && (isempty(tsave) || tsave[end] != tspan[2])
+        if iout < nout && should_save_final && iout > 0 &&
+                (isempty(tsave) || tsave[end] != tspan[2])
             iout += 1
             t_final = (it > nt) ? tspan[2] : (tspan[1] + it * dt)
-            push!(traj, _prepare_saved_data_gc(xv, p, t_final, Val(SaveFields), Val(SaveWork)))
+            push!(
+                traj, _prepare_saved_data_gc(
+                    xv, p, t_final, Val(SaveFields), Val(SaveWork)
+                )
+            )
             push!(tsave, t_final)
         end
-
-        # If we used push!, we don't need resize! unless we overshot?
-        # Use simple push! logic.
 
         alg = :rk4
         t = tsave
@@ -372,9 +378,7 @@ function _rk4!(
         retcode = ReturnCode.Default
         stats = nothing
 
-        sols[i] = build_solution(
-            prob, alg, t, traj; interp = interp, retcode = retcode, stats = stats
-        )
+        sols[i] = build_solution(prob, alg, t, traj; interp, retcode, stats)
     end
 
     return
@@ -390,7 +394,6 @@ function _rk45!(
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     T = eltype(u0)
-    # xv, dx, E are now local SVector variables, not MVector
 
     safety = 0.9
     max_growth = 5.0
@@ -409,7 +412,7 @@ function _rk45!(
         tsave = typeof(tspan[1] + one(T))[]
 
         new_prob = prob.prob_func(prob, i, false)
-        xv = SVector{4, T}(new_prob.u0) # Initialize as SVector
+        xv = SVector{4, T}(new_prob.u0)
 
         t = tspan[1]
 
@@ -457,12 +460,16 @@ function _rk45!(
 
             if error_ratio <= 1.0
                 t += dt
-                xv = y_next # SVector update
+                xv = y_next
 
                 isoutofdomain(xv, p, t) && break
 
                 if save_everystep
-                    push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
+                    push!(
+                        traj, _prepare_saved_data_gc(
+                            xv, p, t, Val(SaveFields), Val(SaveWork)
+                        )
+                    )
                     push!(tsave, t)
                 end
 
@@ -492,9 +499,7 @@ function _rk45!(
         retcode = steps >= maxiters ? ReturnCode.MaxIters : ReturnCode.Success
         stats = nothing
 
-        sols[i] = build_solution(
-            prob, alg, t_final, u_final; interp = interp, retcode = retcode, stats = stats
-        )
+        sols[i] = build_solution(prob, alg, t_final, u_final; interp, retcode, stats)
     end
     return
 end
