@@ -25,10 +25,31 @@ function solve(
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false
     )
-    return _solve(
-        ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
-    )
+    return if save_fields
+        if save_work
+            return _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(true), Val(true)
+            )
+        else
+            return _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(true), Val(false)
+            )
+        end
+    else
+        if save_work
+            return _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(false), Val(true)
+            )
+        else
+            return _solve(
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(false), Val(false)
+            )
+        end
+    end
 end
 
 function _solve(

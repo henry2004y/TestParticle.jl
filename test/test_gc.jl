@@ -249,5 +249,44 @@ using OrdinaryDiffEq
             @test length(sol_threads) == trajectories
             @test all(s.retcode == ReturnCode.Success for s in sol_threads)
         end
+
+        @testset "GC Extra Saving" begin
+            trajectories = 2
+            # Use simple dipole and protons
+            param_gc_saving = TestParticle.prepare(TestParticle.getB_dipole; species = Proton)
+            tspan_saving = (0.0, 1.0e-4)
+            # Simple initial condition
+            r0 = [1.5 * TestParticle.Rₑ, 0.0, 0.0]
+            v0 = [0.0, 1.0e5, 1.0e5] # Arbitrary
+            # Conversion to GC not strictly needed for the test mechanics, but good for consistency
+            state_gc_0, param_gc_ready = TestParticle.prepare_gc(
+                vcat(r0, v0), TestParticle.ZeroField(), TestParticle.getB_dipole; species = Proton
+            )
+            prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
+
+            # Solve with saving enabled
+            sol = TestParticle.solve(
+                prob_saving; trajectories, dt = 1.0e-5, save_fields = true, save_work = true
+            )
+
+            for s in sol
+                E, B = get_fields(s)
+                W = get_work(s)
+
+                @test length(E) == length(s.t)
+                @test length(B) == length(s.t)
+                @test length(W) == length(s.t)
+
+                # Check types and basic values
+                @test E[1] isa SVector{3}
+                @test B[1] isa SVector{3}
+                @test W[1] isa SVector{4}
+
+                # Dipole field should have B magnitude non-zero
+                @test norm(B[1]) > 0.0
+                # Zero E-field
+                @test norm(E[1]) == 0.0
+            end
+        end
     end
 end
