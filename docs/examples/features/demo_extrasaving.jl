@@ -164,3 +164,21 @@ for i in indices #hide
     ) #hide
 end #hide
 println("="^70) #hide
+
+# ## Post-processing with `get_fields` and `get_work`
+#
+# If you didn't save the fields or work during the simulation (e.g., to save memory or if you decided to inspect them later), you can compute them from the trajectory solution using `get_fields` and `get_work`.
+#
+# Note: This requires the problem parameters (fields) to be accessible from the solution object.
+
+# Solving without saving extra data
+sol = TestParticle.solve(prob_boris; dt = 0.1)[1];
+
+# Compute fields and work post-simulation
+E_post, B_post = get_fields(sol);
+work_post = get_work(sol);
+
+println("\nPost-processed Data Check:") #hide
+println("Computed $(length(E_post)) field points.") #hide
+println("Computed $(length(work_post)) work points.") #hide
+println("Difference in P_grad at step 10: ", abs(work_post[10][3] - P_grad[10])) #hide
