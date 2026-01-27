@@ -1,6 +1,8 @@
 # Collection of utility functions and commonly used constants.
 
 """
+    sph2cart(r, θ, ϕ)
+
 Convert from spherical to Cartesian coordinates vector.
 """
 function sph2cart(r, θ, ϕ)
@@ -12,6 +14,8 @@ end
 @inline @inbounds sph2cart(x) = sph2cart(x[1], x[2], x[3])
 
 """
+    cart2sph(x, y, z)
+
 Convert from Cartesian to spherical coordinates vector.
 """
 function cart2sph(x, y, z)
@@ -27,7 +31,9 @@ end
 @inline @inbounds cart2sph(x) = cart2sph(x[1], x[2], x[3])
 
 """
-Convert a vector from spherical to Cartesian.
+    sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
+
+Convert a vector from spherical to Cartesian coordinates. θ and ϕ are defined in radians.
 """
 function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
     sinθ, cosθ = sincos(θ)
@@ -97,7 +103,7 @@ function get_cell_centers(grid::RectilinearGrid)
 end
 
 """
-     set_axes_equal(ax)
+    set_axes_equal(ax)
 
 Set 3D plot axes to equal scale for Matplotlib.
 Make axes of 3D plot have equal scale so that spheres appear as spheres and cubes as cubes.
@@ -117,7 +123,7 @@ function set_axes_equal(ax)
 end
 
 """
-     get_rotation_matrix(axis::AbstractVector, angle) :: SMatrix{3,3}
+    get_rotation_matrix(axis::AbstractVector, angle) :: SMatrix{3,3}
 
 Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in
 radians.
@@ -133,7 +139,7 @@ v̂ = normalize(v)
 R = get_rotation_matrix(v̂, θ)
 ```
 """
-function get_rotation_matrix(v::AbstractVector, θ)
+function get_rotation_matrix(v, θ)
     sinθ, cosθ = sincos(θ)
     tmp = 1 - cosθ
     return m = @SMatrix [
@@ -144,12 +150,12 @@ function get_rotation_matrix(v::AbstractVector, θ)
 end
 
 """
-     get_perp_vector(b::AbstractVector)
+    get_perp_vector(b::AbstractVector)
 
 Obtain two unit vectors `e1` and `e2` such that `(e1, e2, b)` form a right-handed orthonormal
 system.
 """
-function get_perp_vector(b::AbstractVector)
+function get_perp_vector(b)
     T = eltype(b)
     b̂ = normalize(b)
     v = abs(b̂[3]) < 0.9 ? SA[zero(T), zero(T), one(T)] : SA[zero(T), one(T), zero(T)]
@@ -157,6 +163,15 @@ function get_perp_vector(b::AbstractVector)
     e2 = b̂ × e1
     return e1, e2
 end
+
+"""
+    get_mean_magnitude(B)
+
+Calculate the Root Mean Square (RMS) magnitude of a vector field `B`.
+It is assumed that the first dimension of `B` represents the vector components.
+This function is compatible with any spatial dimension.
+"""
+@inline get_mean_magnitude(B) = norm(B) / sqrt(length(B) / size(B, 1))
 
 """
     get_gyrofrequency(B=5e-9; q=qᵢ, m=mᵢ)

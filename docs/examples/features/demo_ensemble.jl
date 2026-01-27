@@ -110,16 +110,7 @@ B_num[2, :, :, :] .= 0.0
 B_num[3, :, :, :] .= 2.0
 
 ## Compute reference values
-function getmeanB(B)
-    B₀sum = eltype(B)(0)
-    for k in axes(B, 4), j in axes(B, 3), i in axes(B, 2)
-        B₀sum += B[1, i, j, k]^2 + B[2, i, j, k]^2 + B[3, i, j, k]^2
-    end
-
-    return sqrt(B₀sum / prod(size(B)[2:4]))
-end
-
-B₀ = getmeanB(B_num)
+B₀ = get_mean_magnitude(B_num)
 U₀ = 1.0
 l₀ = 2 * nx
 E₀ = U₀ * B₀
