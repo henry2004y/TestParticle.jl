@@ -38,12 +38,14 @@ export get_gyrofrequency,
     getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
 export orbit, monitor
 export get_fields, get_work
+export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 include("types.jl")
 include("fields/Fields.jl")
 include("utility/utility.jl")
 include("utility/interpolation.jl")
+include("utility/time_interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
 include("gc.jl")

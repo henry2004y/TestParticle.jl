@@ -127,6 +127,14 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
     $prob_oop, Tsit5(); save_idxs = [1, 2, 3]
 )
 
+# lazy time-dependent numerical field
+times = [0.0, 100.0]
+loader_E = i -> (x -> SA[5.0e-11 * sin(2π * times[i]), 0.0, 0.0])
+itp_E = LazyTimeInterpolator(times, loader_E)
+t_p = 50.0
+
+SUITE["interpolation"]["time-dependent"] = @benchmarkable $itp_E($loc, $t_p)
+
 stateinit_gc,
     param_gc = TP.prepare_gc(
     stateinit, E_analytic, B_analytic,
