@@ -99,22 +99,20 @@ saved_values
 #
 # The native Boris solver supports additional diagnostic outputs through the `save_fields` and `save_work` keywords.
 # These options allow you to save the electric and magnetic fields along the trajectory, as well as various work rate components without using callbacks.
+# Here, we set an E field with constant non-zero to generate parallel work, and a B field that is spatially varying and time-dependent.
 #
 # When `save_fields=true`, the solution will include 6 additional values per time step:
 # - E field components (Ex, Ey, Ez) at indices 7, 8, 9
 # - B field components (Bx, By, Bz) at indices 10, 11, 12
 #
 # When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
-# - P_par: parallel work rate (index 7 or 13 depending on save_fields)
-# - P_fermi: Fermi work rate (index 8 or 14)
-# - P_grad: gradient drift work rate (index 9 or 15)
-# - P_betatron: betatron work rate (index 10 or 16)
+# - P_par $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
+# - P_fermi $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
+# - P_grad $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
+# - P_betatron $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
+# Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
 
-## Set up a test problem with analytic fields
-## Electric field: constant non-zero to generate parallel work
 E_boris(x, t) = SA[0.1, 0.1, 0.1]
-
-## Magnetic field: spatially varying and time-dependent
 ## - x[2] dependence creates gradients (Gradient drift work)
 ## - Time dependence creates Betatron work
 ## - Curvature is implicit in the field structure (Fermi work)
@@ -144,11 +142,11 @@ println("Last saved B field: ", B_trajectory[end])
 sol_work = TestParticle.solve(prob_boris; dt = 0.1, save_work = true)[1];
 
 # The solution now contains 10 values per time step (6 for state + 4 for work rates)
-## Access the work rates along the trajectory, show at selected time steps
+# We access the work rates along the trajectory and show at selected time steps:
 P_par = [u[7] for u in sol_work.u]
 P_fermi = [u[8] for u in sol_work.u]
 P_grad = [u[9] for u in sol_work.u]
-P_betatron = [u[10] for u in sol_work.u];
+P_betatron = [u[10] for u in sol_work.u]
 
 using Printf #hide
 
@@ -157,7 +155,7 @@ println("="^70) #hide
 @printf("%-10s %-15s %-15s %-15s %-15s\n", "Time", "P_par", "P_fermi", "P_grad", "P_betatron") #hide
 println("-"^70) #hide
 
-indices = [1, length(sol_work.u) ÷ 4, length(sol_work.u) ÷ 2, 3 * length(sol_work.u) ÷ 4, length(sol_work.u)]
+indices = [1, length(sol_work.u) ÷ 4, length(sol_work.u) ÷ 2, 3 * length(sol_work.u) ÷ 4, length(sol_work.u)] #hide
 for i in indices #hide
     t = sol_work.t[i] #hide
     @printf( #hide
