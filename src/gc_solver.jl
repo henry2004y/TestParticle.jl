@@ -121,7 +121,8 @@ end
 """
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
     savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-    alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000)
+    alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000,
+    save_fields::Bool=false, save_work::Bool=false)
 
 Trace guiding centers using the RK4 method with specified `prob`.
 If `alg` is `:rk45`, uses adaptive time stepping.
@@ -131,7 +132,8 @@ function solve(
         trajectories::Int = 1, savestepinterval::Int = 1, dt::Union{AbstractFloat, Nothing} = nothing,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000
+        alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000,
+        save_fields::Bool = false, save_work::Bool = false
     )
     if alg != :rk4 && alg != :rk45
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
@@ -139,30 +141,34 @@ function solve(
 
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        Val(save_fields), Val(save_work)
     )
 end
 
 function _solve(
         ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
-    )
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg
+        save_start, save_end, save_everystep, alg, Val(SaveFields), Val(SaveWork)
     )
     irange = 1:trajectories
 
     if alg == :rk45
         _rk45!(
             sols, prob, irange, dt, isoutofdomain,
-            save_start, save_end, save_everystep, abstol, reltol, maxiters
+            save_start, save_end, save_everystep, abstol, reltol, maxiters,
+            Val(SaveFields), Val(SaveWork)
         )
     else
         _rk4!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-            save_start, save_end, save_everystep
+            save_start, save_end, save_everystep,
+            Val(SaveFields), Val(SaveWork)
         )
     end
 
@@ -171,12 +177,13 @@ end
 
 function _solve(
         ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters
-    )
+        save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg
+        save_start, save_end, save_everystep, alg, Val(SaveFields), Val(SaveWork)
     )
 
     nchunks = Threads.nthreads()
@@ -184,12 +191,14 @@ function _solve(
         if alg == :rk45
             _rk45!(
                 sols, prob, irange, dt, isoutofdomain,
-                save_start, save_end, save_everystep, abstol, reltol, maxiters
+                save_start, save_end, save_everystep, abstol, reltol, maxiters,
+                Val(SaveFields), Val(SaveWork)
             )
         else
             _rk4!(
                 sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-                save_start, save_end, save_everystep
+                save_start, save_end, save_everystep,
+                Val(SaveFields), Val(SaveWork)
             )
         end
     end
@@ -197,7 +206,7 @@ function _solve(
     return sols
 end
 
-function _get_sol_type(prob::TraceGCProblem, dt, alg)
+function _get_sol_type(prob::TraceGCProblem, dt, alg, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     u0 = prob.u0
     tspan = prob.tspan
     dt_guess = isnothing(dt) ? one(eltype(u0)) : dt
@@ -205,7 +214,16 @@ function _get_sol_type(prob::TraceGCProblem, dt, alg)
     t = Vector{T_t}(undef, 0)
     # Force u to be Vector{SVector{4, T}}
     T = eltype(u0)
-    u = Vector{SVector{4, T}}(undef, 0)
+
+    n_vars = 4
+    if SaveFields
+        n_vars += 6
+    end
+    if SaveWork
+        n_vars += 4
+    end
+
+    u = Vector{SVector{n_vars, T}}(undef, 0)
     interp = LinearInterpolation(t, u)
 
     sol = build_solution(prob, alg, t, u; interp = interp)
@@ -214,8 +232,8 @@ end
 
 function _prepare_gc(
         prob::TraceGCProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg = :rk4
-    )
+        save_start, save_end, save_everystep, alg, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
     if isnothing(dt)
         if alg == :rk4
@@ -249,10 +267,27 @@ function _prepare_gc(
         nout += 1
     end
 
-    sol_type = _get_sol_type(prob, dt, alg)
+    sol_type = _get_sol_type(prob, dt, alg, Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
 
     return sols, nt, nout
+end
+
+@inline function _prepare_saved_data_gc(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
+    data = xv
+    if SaveFields
+        # p = (q, q2m, μ, Efunc, Bfunc)
+        r = get_x(xv)
+        T = eltype(xv)
+        E = SVector{3, T}(p[4](r, t))
+        B = SVector{3, T}(p[5](r, t))
+        data = vcat(data, E, B)
+    end
+    if SaveWork
+        work = get_work_rates_gc(xv, p, t)
+        data = vcat(data, work)
+    end
+    return data
 end
 
 """
@@ -260,14 +295,23 @@ Apply RK4 method for particles with index in `irange`.
 """
 function _rk4!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
-        save_start, save_end, save_everystep
-    )
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     T = eltype(u0)
     # xv, dx are now local SVector variables
 
+    vars_dim = 4
+    if SaveFields
+        vars_dim += 6
+    end
+    if SaveWork
+        vars_dim += 4
+    end
+
     @fastmath @inbounds for i in irange
-        traj = SVector{4, T}[]
+        traj = SVector{vars_dim, T}[]
         sizehint!(traj, nout)
         tsave = typeof(tspan[1] + dt)[]
         sizehint!(tsave, nout)
@@ -279,7 +323,7 @@ function _rk4!(
 
         if save_start
             iout += 1
-            push!(traj, xv)
+            push!(traj, _prepare_saved_data_gc(xv, p, tspan[1], Val(SaveFields), Val(SaveWork)))
             push!(tsave, tspan[1])
         end
 
@@ -295,7 +339,7 @@ function _rk4!(
             if save_everystep && (it % savestepinterval == 0)
                 iout += 1
                 if iout <= nout
-                    push!(traj, xv)
+                    push!(traj, _prepare_saved_data_gc(xv, p, t + dt, Val(SaveFields), Val(SaveWork)))
                     push!(tsave, t + dt)
                 end
             end
@@ -314,8 +358,9 @@ function _rk4!(
 
         if iout < nout && should_save_final && iout > 0 && (isempty(tsave) || tsave[end] != tspan[2])
             iout += 1
-            push!(traj, xv)
-            push!(tsave, (it > nt) ? tspan[2] : (tspan[1] + it * dt))
+            t_final = (it > nt) ? tspan[2] : (tspan[1] + it * dt)
+            push!(traj, _prepare_saved_data_gc(xv, p, t_final, Val(SaveFields), Val(SaveWork)))
+            push!(tsave, t_final)
         end
 
         # If we used push!, we don't need resize! unless we overshot?
@@ -340,8 +385,9 @@ Apply RK45 method for particles with index in `irange`.
 """
 function _rk45!(
         sols, prob, irange, dt_initial, isoutofdomain,
-        save_start, save_end, save_everystep, abstol, reltol, maxiters
-    )
+        save_start, save_end, save_everystep, abstol, reltol, maxiters,
+        ::Val{SaveFields}, ::Val{SaveWork},
+    ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     T = eltype(u0)
     # xv, dx, E are now local SVector variables, not MVector
@@ -350,8 +396,16 @@ function _rk45!(
     max_growth = 5.0
     min_growth = 0.2
 
+    vars_dim = 4
+    if SaveFields
+        vars_dim += 6
+    end
+    if SaveWork
+        vars_dim += 4
+    end
+
     @fastmath @inbounds for i in irange
-        traj = SVector{4, T}[]
+        traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
         new_prob = prob.prob_func(prob, i, false)
@@ -379,7 +433,7 @@ function _rk45!(
         end
 
         if save_start
-            push!(traj, xv)
+            push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
             push!(tsave, t)
         end
 
@@ -408,7 +462,7 @@ function _rk45!(
                 isoutofdomain(xv, p, t) && break
 
                 if save_everystep
-                    push!(traj, xv)
+                    push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
                     push!(tsave, t)
                 end
 
@@ -427,7 +481,7 @@ function _rk45!(
         end
 
         if save_end && (isempty(tsave) || tsave[end] != t)
-            push!(traj, xv)
+            push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
             push!(tsave, t)
         end
 
