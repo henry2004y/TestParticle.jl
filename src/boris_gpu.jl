@@ -13,7 +13,7 @@ using Interpolations: AbstractInterpolation, AbstractExtrapolation
 Check if a field function is an interpolation object that can be adapted to GPU.
 """
 function is_interpolation_field(f)
-    return f isa AbstractInterpolation || f isa AbstractExtrapolation
+    return f isa AbstractInterpolation || f isa AbstractExtrapolation || f isa FieldInterpolator
 end
 
 """
@@ -25,8 +25,11 @@ Analytic functions are returned unchanged.
 function adapt_field_to_gpu(field::Field, backend::KA.Backend)
     f = field.field_function
     if is_interpolation_field(f)
+        # Unwrap FieldInterpolator to get the inner interpolation object
+        itp = f isa FieldInterpolator ? f.itp : f
+
         # Adapt interpolation object to GPU
-        adapted_func = Adapt.adapt(backend, f)
+        adapted_func = Adapt.adapt(backend, itp)
         return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
     end
     # Analytic fields don't need adaptation

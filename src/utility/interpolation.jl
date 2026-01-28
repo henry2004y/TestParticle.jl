@@ -2,6 +2,20 @@
 
 @inline getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
 
+"""
+    FieldInterpolator{T}
+
+A callable struct that wraps an interpolation object.
+It enables compatibility with `boris_gpu` by exposing the inner `itp` object for GPU adaptation.
+"""
+struct FieldInterpolator{T} <: Function
+    itp::T
+end
+
+function (fi::FieldInterpolator)(xu)
+    return fi.itp(xu[1], xu[2], xu[3])
+end
+
 function getinterp_scalar(A, grid1, grid2, grid3, args...)
     return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
 end
@@ -242,13 +256,7 @@ function get_interpolator(
     interp = scale(itp, gridx, gridy, gridz)
 
     # Return field value at a given location.
-    function get_field(xu)
-        r = @view xu[1:3]
-
-        return interp(r...)
-    end
-
-    return get_field
+    return FieldInterpolator(interp)
 end
 
 function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
