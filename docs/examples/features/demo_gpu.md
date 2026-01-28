@@ -103,3 +103,58 @@ end
 
 f
 ```
+
+## Native GPU Boris Solver
+
+TestParticle provides a native GPU Boris solver implemented with
+[KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl), which enables
+backend-agnostic GPU execution. The solver uses method dispatch on `KA.Backend` type.
+
+```julia
+using TestParticle, KernelAbstractions
+using StaticArrays
+
+# Define fields
+B(x) = SA[0, 0, 1e-8]  # Uniform B field
+E(x) = SA[0, 0, 0]     # No E field
+
+# Initial conditions
+x0 = [0.0, 0.0, 0.0]
+v0 = [1.0e5, 0.0, 0.0]
+stateinit = [x0..., v0...]
+tspan = (0.0, 1.0e-6)
+
+# Prepare problem
+param = prepare(E, B; species=Proton)
+prob = TraceProblem(stateinit, tspan, param)
+
+# Solve on CPU backend (GPU backend requires CUDA.jl, AMDGPU.jl, etc.)
+using KernelAbstractions
+const KA = KernelAbstractions
+backend = CPU()
+sols = solve(prob, backend; dt=1e-9, trajectories=1000, savestepinterval=10)
+```
+
+The native GPU Boris solver:
+- Uses `@kernel` macro from KernelAbstractions.jl for backend-agnostic execution
+- Supports multiple GPU backends (CUDA, ROCm, Metal, oneAPI) and CPU fallback
+- Dispatches on `KA.Backend` type for GPU execution
+- Processes particles in parallel on the GPU
+- Returns solutions in the same format as the CPU solver
+
+To use actual GPU acceleration, install the appropriate backend package and create the corresponding backend:
+```julia
+# For NVIDIA GPUs
+using CUDA
+backend = CUDABackend()
+sols = solve(prob, backend; dt=1e-9, trajectories=1000)
+
+# For AMD GPUs
+using AMDGPU
+backend = ROCBackend()
+sols = solve(prob, backend; dt=1e-9, trajectories=1000)
+```
+
+> **Note**: The native GPU solver currently supports analytic field functions.
+> Complex interpolated numerical fields may require additional optimization for GPU execution.
+
