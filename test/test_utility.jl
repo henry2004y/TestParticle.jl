@@ -4,6 +4,7 @@ using StaticArrays
 using LinearAlgebra
 using OrdinaryDiffEq
 using Random
+using Unitful
 import TestParticle as TP
 
 @testset "Utility" begin
@@ -581,5 +582,75 @@ import TestParticle as TP
             B_zero_test(x, t) = SA[0.0, 0.0, 0.0]
             @test get_adiabaticity(r, B_zero_test, q, m, μ, 0.0) == Inf
         end
+    end
+    @testset "ZeroField Unitful" begin
+        # Check that ZeroField returns ZeroVector for Unitful types
+        zf = TP.ZeroField()
+        # Unitful input
+        x = [1.0, 0.0, 0.0]u"m"
+        t = 0.0u"s"
+
+        # Call with (y, t) check line 34 in zero.jl
+        res = zf(x, t)
+        @test res isa TP.ZeroVector
+
+        # Call with (y) check line 43 in zero.jl
+        res2 = zf(x)
+        @test res2 isa TP.ZeroVector
+
+        # Check operations
+        B_val = [0.0, 0.0, 1.0]u"T"
+        @test res + B_val == B_val
+        @test B_val + res == B_val
+    end
+
+    @testset "ZeroVector Operations" begin
+        zv = TP.ZeroVector()
+        v = SA[1.0, 2.0, 3.0]
+
+        # Arithmetic
+        @test (zv + zv) isa TP.ZeroVector
+        @test (zv - zv) isa TP.ZeroVector
+        @test (zv + v) == v
+        @test (v + zv) == v
+        @test (zv - v) == -v
+        @test (v - zv) == v
+        @test (zv * 5) isa TP.ZeroVector
+        @test (5 * zv) isa TP.ZeroVector
+        @test (zv / 5) isa TP.ZeroVector
+        @test (zv × v) isa TP.ZeroVector
+        @test (v × zv) isa TP.ZeroVector
+
+        # Array Assignment
+        # 1. Array{Any}
+        A_any = Any[1, 2]
+        A_any[1] = zv
+        @test A_any[1] === zv
+
+        # 2. Array{Float64} (Standard Array)
+        A_float = zeros(3)
+        A_float[1] = 1.0
+        A_float[1] = zv
+        @test A_float[1] == 0.0
+
+        # 3. Custom AbstractArray (AbstractArray fallback line 22)
+        # Define a minimal AbstractArray
+        struct MockArray{T, N} <: AbstractArray{T, N}
+            data::Array{T, N}
+        end
+        MockArray(A::Array{T, N}) where {T, N} = MockArray{T, N}(A)
+        Base.size(M::MockArray) = size(M.data)
+        Base.getindex(M::MockArray, I...) = getindex(M.data, I...)
+        Base.setindex!(M::MockArray, v::Number, I...) = setindex!(M.data, v, I...)
+
+        A_mock = MockArray(zeros(3))
+        # This calls setindex!(::AbstractArray, ::ZeroVector, I...)
+        A_mock[1] = zv
+        @test A_mock[1] == 0.0
+
+        # Test multidimensional
+        A_mock2 = MockArray(zeros(2, 2))
+        A_mock2[2, 2] = zv
+        @test A_mock2[2, 2] == 0.0
     end
 end
