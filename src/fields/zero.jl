@@ -6,7 +6,7 @@ struct ZeroVector end
 (+)(::ZeroVector, x) = x
 (+)(x, ::ZeroVector) = x
 (+)(::ZeroVector, ::ZeroVector) = ZeroVector()
-(-)(::ZeroVector, x) = x
+(-)(::ZeroVector, x) = -x
 (-)(x, ::ZeroVector) = x
 (-)(::ZeroVector, ::ZeroVector) = ZeroVector()
 (*)(::ZeroVector, _) = ZeroVector()
@@ -32,7 +32,6 @@ Base.length(::ZeroVector) = 3
 Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)
 
 # Field interface
-Field(x::ZeroField) = x
 function (::ZeroField)(y, t)
     T = eltype(y)
     if T <: AbstractFloat || T <: Complex{<:AbstractFloat}
