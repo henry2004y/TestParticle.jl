@@ -26,5 +26,7 @@ Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)
 
 # Field interface
 Field(x::ZeroField) = x
-(::ZeroField)(y, t) = ZeroVector()
-(::ZeroField)(_) = ZeroVector()
+# Returning ZeroVector() causes compatibility issue with DiffEqGPU.
+# Here we return a zero SVector instead.
+(::ZeroField)(y, t) = zero(SVector{3, eltype(y)})
+(::ZeroField)(y) = zero(SVector{3, eltype(y)})
