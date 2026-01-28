@@ -19,7 +19,14 @@ struct ZeroVector end
 (::Type{T})(::ZeroVector) where {T <: StaticArray} = T(0, 0, 0)
 
 # Make ZeroVector work with array assignment
-Base.setindex!(A::AbstractArray, ::ZeroVector, I...) = fill!(view(A, I...), 0)
+Base.setindex!(A::AbstractArray, ::ZeroVector, I...) = fill!(view(A, I...), zero(eltype(A)))
+Base.setindex!(A::Array{Any}, z::ZeroVector, i::Int) =
+    invoke(Base.setindex!, Tuple{Array{Any}, Any, Int}, A, z, i)
+
+function Base.setindex!(A::Array, ::ZeroVector, i::Int)
+    return A[i] = zero(eltype(A))
+end
+
 Base.getindex(::ZeroVector, I...) = 0
 Base.length(::ZeroVector) = 3
 Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)

@@ -4,6 +4,7 @@ using StaticArrays
 using LinearAlgebra
 using OrdinaryDiffEq
 using Random
+using Unitful
 import TestParticle as TP
 
 @testset "Utility" begin
@@ -581,5 +582,25 @@ import TestParticle as TP
             B_zero_test(x, t) = SA[0.0, 0.0, 0.0]
             @test get_adiabaticity(r, B_zero_test, q, m, μ, 0.0) == Inf
         end
+    end
+    @testset "ZeroField Unitful" begin
+        # Check that ZeroField returns ZeroVector for Unitful types
+        zf = TP.ZeroField()
+        # Unitful input
+        x = [1.0, 0.0, 0.0]u"m"
+        t = 0.0u"s"
+
+        # Call with (y, t) check line 34 in zero.jl
+        res = zf(x, t)
+        @test res isa TP.ZeroVector
+
+        # Call with (y) check line 43 in zero.jl
+        res2 = zf(x)
+        @test res2 isa TP.ZeroVector
+
+        # Check operations
+        B_val = [0.0, 0.0, 1.0]u"T"
+        @test res + B_val == B_val
+        @test B_val + res == B_val
     end
 end
