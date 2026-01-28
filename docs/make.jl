@@ -62,6 +62,7 @@ features_order = [
     "demo_phase_error.jl",
     "demo_performance.jl",
     "demo_interpolation.md",
+    "demo_coevolution.jl",
     "demo_dimensionless.jl",
     "demo_unitful.md",
     "demo_ensemble.jl",
