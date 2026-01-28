@@ -6,21 +6,21 @@ function getinterp_scalar(A, grid1, grid2, grid3, args...)
     return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
 end
 
-"""
-     getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
-
-Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
-and `gridz`.
-
-# Arguments
-
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-  - `dir::Int`: 1/2/3, representing x/y/z direction.
-
-# Notes
-
-The input array `A` may be modified in-place for memory optimization.
+"""
+     getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+
+Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
+and `gridz`.
+
+# Arguments
+
+  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+  - `dir::Int`: 1/2/3, representing x/y/z direction.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function getinterp(
         ::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
@@ -181,17 +181,17 @@ function _getinterp(gridtype::Type{<:StructuredGrid}, Ax, Ay, Az, order::Int, bc
     return itpr, itpθ, itpϕ
 end
 
-"""
-     getinterp_scalar(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
-
-Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`,
-and `gridz`. Currently only 3D arrays are supported.
-
-# Arguments
-
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-  - `dir::Int`: 1/2/3, representing x/y/z direction.
+"""
+     getinterp_scalar(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+
+Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`,
+and `gridz`. Currently only 3D arrays are supported.
+
+# Arguments
+
+  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+  - `dir::Int`: 1/2/3, representing x/y/z direction.
 """
 function getinterp_scalar(
         ::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
@@ -212,23 +212,23 @@ function getinterp_scalar(
     return get_interpolator(StructuredGrid, A, gridr, gridθ, gridϕ, order, bc)
 end
 
-"""
-     get_interpolator(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
-     get_interpolator(gridtype, A, grid1, grid2, grid3, order::Int=1, bc::Int=1)
-
-Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
-and `gridz`.
-
-# Arguments
-
-  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
-  - `A`: field array. For vector field, the first dimension should be 3.
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-
-# Notes
-
-The input array `A` may be modified in-place for memory optimization.
+"""
+     get_interpolator(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+     get_interpolator(gridtype, A, grid1, grid2, grid3, order::Int=1, bc::Int=1)
+
+Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`,
+and `gridz`.
+
+# Arguments
+
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
+  - `A`: field array. For vector field, the first dimension should be 3.
+  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+
+# Notes
+
+The input array `A` may be modified in-place for memory optimization.
 """
 function get_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
@@ -401,4 +401,75 @@ function _get_interp_object(::Type{<:StructuredGrid}, A, order::Int, bc::Int)
     end
 
     return itp = extrapolate(interpolate(A, itp_type), bctype)
+end
+
+
+# Time-dependent field interpolation.
+
+"""
+    LazyTimeInterpolator{T, F, L}
+
+A callable struct for handling time-dependent fields with lazy loading and linear time interpolation.
+
+# Fields
+- `times::Vector{T}`: Sorted vector of time points.
+- `loader::L`: Function `i -> field` that loads the field at index `i`.
+- `buffer::Dict{Int, F}`: Cache for loaded fields.
+- `lock::ReentrantLock`: Lock for thread safety.
+"""
+struct LazyTimeInterpolator{T, F, L} <: Function
+    times::Vector{T}
+    loader::L
+    buffer::Dict{Int, F}
+    lock::ReentrantLock
+end
+
+function LazyTimeInterpolator(times::AbstractVector, loader::Function)
+    # Determine the field type by loading the first field
+    f1 = loader(1)
+    return _LazyTimeInterpolator(times, loader, f1)
+end
+
+function _LazyTimeInterpolator(times::AbstractVector, loader::Function, f1::F) where {F}
+    buffer = Dict{Int, F}(1 => f1)
+    lock = ReentrantLock()
+    return LazyTimeInterpolator{eltype(times), F, typeof(loader)}(
+        times, loader, buffer, lock
+    )
+end
+
+function (itp::LazyTimeInterpolator)(x, t)
+    # Find the time interval [t1, t2] such that t1 <= t <= t2 (assume times is sorted)
+    idx = searchsortedlast(itp.times, t)
+
+    # Handle out-of-bounds
+    if idx == 0
+        return _get_field!(itp, 1)(x) # clamp to start
+    elseif idx >= length(itp.times)
+        return _get_field!(itp, length(itp.times))(x) # clamp to end
+    end
+
+    t1 = itp.times[idx]
+    t2 = itp.times[idx + 1]
+
+    w = (t - t1) / (t2 - t1) # linear weights
+
+    # Load fields (lazily)
+    f1 = _get_field!(itp, idx)
+    f2 = _get_field!(itp, idx + 1)
+
+    return (1 - w) * f1(x) + w * f2(x)
+end
+
+function _get_field!(itp::LazyTimeInterpolator, idx::Int)
+    return lock(itp.lock) do
+        if !haskey(itp.buffer, idx)
+            # Remove far-away indices
+            filter!(p -> abs(p.first - idx) <= 1, itp.buffer)
+
+            field = itp.loader(idx)
+            itp.buffer[idx] = field
+        end
+        return itp.buffer[idx]
+    end
 end
