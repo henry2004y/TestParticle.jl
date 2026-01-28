@@ -253,6 +253,52 @@ import TestParticle as TP
         # Test extrapolation/clamping
         @test itp(x, 3.0) ≈ itp(x, 2.0) # Should clamp to end
         @test itp(x, -1.0) ≈ itp(x, 0.0) # Should clamp to start
+
+        # 2. Numerical field time-dependent test
+        let
+            # Define grid
+            x_grid = range(0.0, 1.0, length = 4)
+            y_grid = range(0.0, 1.0, length = 4)
+            z_grid = range(0.0, 1.0, length = 4)
+
+            # Create localized fields for t=0 and t=1
+            B0 = fill(0.0, 3, 4, 4, 4)
+            B1 = fill(0.0, 3, 4, 4, 4)
+
+            # t=0: B = [1, 0, 0] everywhere
+            B0[1, :, :, :] .= 1.0
+
+            # t=1: B = [0, 2, 0] everywhere
+            B1[2, :, :, :] .= 2.0
+
+            times_num = [0.0, 1.0]
+
+            # Loader for numerical field
+            function loader_num(i)
+                if i == 1
+                    return TP.getinterp(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
+                elseif i == 2
+                    return TP.getinterp(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
+                end
+            end
+
+            itp_num = LazyTimeInterpolator(times_num, loader_num)
+
+            # Test point at center of grid
+            pt = SA[0.5, 0.5, 0.5]
+
+            # t=0 -> [1, 0, 0]
+            @test itp_num(pt, 0.0) ≈ SA[1.0, 0.0, 0.0]
+
+            # t=1 -> [0, 2, 0]
+            @test itp_num(pt, 1.0) ≈ SA[0.0, 2.0, 0.0]
+
+            # t=0.5 -> 0.5*B0 + 0.5*B1 = [0.5, 1.0, 0.0]
+            @test itp_num(pt, 0.5) ≈ SA[0.5, 1.0, 0.0]
+
+            # t=0.25 -> 0.75*B0 + 0.25*B1 = [0.75, 0.5, 0]
+            @test itp_num(pt, 0.25) ≈ SA[0.75, 0.5, 0.0]
+        end
     end
 
     @testset "Gyroradius Utility" begin

@@ -21,7 +21,10 @@ end
 function LazyTimeInterpolator(times::AbstractVector, loader::Function)
     # Determine the field type by loading the first field
     f1 = loader(1)
-    F = typeof(f1)
+    return _LazyTimeInterpolator(times, loader, f1)
+end
+
+function _LazyTimeInterpolator(times::AbstractVector, loader::Function, f1::F) where {F}
     buffer = Dict{Int, F}(1 => f1)
     lock = ReentrantLock()
     return LazyTimeInterpolator{eltype(times), F, typeof(loader)}(
