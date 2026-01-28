@@ -248,7 +248,7 @@ import TestParticle as TP
 
         # Test t=1.5 (interpolation between 1 and 2)
         @test itp(x, 1.5) ≈ SVector(1.5, 3.0, 4.5)
-        @test load_counts[3] == 1
+        @test load_counts[3] == 2
 
         # Test extrapolation/clamping
         @test itp(x, 3.0) ≈ itp(x, 2.0) # Should clamp to end

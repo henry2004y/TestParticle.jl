@@ -35,9 +35,9 @@ function (itp::LazyTimeInterpolator)(x, t)
 
     # Handle out-of-bounds
     if idx == 0
-        return itp.loader(1)(x) # clamp to start
+        return _get_field!(itp, 1)(x) # clamp to start
     elseif idx >= length(itp.times)
-        return itp.loader(length(itp.times))(x) # clamp to end
+        return _get_field!(itp, length(itp.times))(x) # clamp to end
     end
 
     t1 = itp.times[idx]
@@ -56,11 +56,7 @@ function _get_field!(itp::LazyTimeInterpolator, idx::Int)
     return lock(itp.lock) do
         if !haskey(itp.buffer, idx)
             # Remove far-away indices
-            for k in keys(itp.buffer)
-                if abs(k - idx) > 1
-                    delete!(itp.buffer, k)
-                end
-            end
+            filter!(p -> abs(p.first - idx) <= 1, itp.buffer)
 
             field = itp.loader(idx)
             itp.buffer[idx] = field
