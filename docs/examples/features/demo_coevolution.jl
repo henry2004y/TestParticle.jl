@@ -12,6 +12,7 @@
 # For numerical field, the time-dependency can be specified with `LazyTimeInterpolator` that performs linear interpolation between time points.
 # We will simulate a charged particle moving in a spatially uniform magnetic field that increases in magnitude over time.
 # As the magnetic field strengthens, the particle's gyroradius is expected to shrink, demonstrating the co-evolution of the particle's orbit with the changing field.
+# For simplicity, we neglect the electric field induced by the time-varying magnetic field, making particle's kinetic energy constant.
 
 import DisplayAs #hide
 using TestParticle
@@ -76,7 +77,7 @@ sol = solve(prob, Vern7());
 # We visualize the results in two ways:
 # 1. A 3D plot of the particle trajectory.
 # 2. A time-series plot of the gyroradius $r_g = v_\perp / \Omega_c$ to see it shrinking.
-# Calculate Gyroradius: $r_g = m v_\perp / (|q| B)$. Here m=1, q=1, v_perp ~ 1. $B(t) = 1.0 + 0.1 t$
+# Calculate Gyroradius: $r_g = m v_\perp / (|q| B)$. Here m=1, q=1, v_perp = 1. $B(t) = 1.0 + 0.1 t$
 
 f = Figure(size = (1000, 400))
 
