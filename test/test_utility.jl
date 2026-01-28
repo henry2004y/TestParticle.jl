@@ -205,6 +205,102 @@ import TestParticle as TP
         @test Afunc_nu(SA[1.0, 4.0, 9.0]) ≈ 6.0
     end
 
+    @testset "Time-dependent field interpolation" begin
+        # 1. Setup simple time-dependent field E(x, t) = x * t
+        # We will use a dummy grid for spatial interpolation just to map x -> x
+        # But effectively we want the loader to return a function E_t(x) = x * t_fixed.
+
+        # 3 time steps: t = 0, 1, 2.
+        times = [0.0, 1.0, 2.0]
+
+        # Loader function: returns a callable E(x) -> SVector{3}
+        # For testing, we verify that it is called lazily.
+        load_counts = Dict{Int, Int}()
+
+        function loader(i)
+            if !haskey(load_counts, i)
+                load_counts[i] = 0
+            end
+            load_counts[i] += 1
+
+            t_val = times[i]
+            # E = scalar * t * x
+            return x -> SVector{3}(x[1] * t_val, x[2] * t_val, x[3] * t_val)
+        end
+
+        itp = LazyTimeInterpolator(times, loader)
+
+        x = SVector(1.0, 2.0, 3.0)
+
+        # Test t=0.0 (exact match)
+        @test itp(x, 0.0) ≈ SVector(0.0, 0.0, 0.0)
+        @test load_counts[1] == 1
+
+        # Test t=1.0 (exact match)
+        @test itp(x, 1.0) ≈ SVector(1.0, 2.0, 3.0)
+        @test load_counts[2] == 1
+
+        # Test t=0.5 (interpolation)
+        # E(0.5) should be 0.5 * x
+        @test itp(x, 0.5) ≈ SVector(0.5, 1.0, 1.5)
+        # Should reuse loaded fields
+        @test load_counts[3] == 1
+
+        # Test t=1.5 (interpolation between 1 and 2)
+        @test itp(x, 1.5) ≈ SVector(1.5, 3.0, 4.5)
+        @test load_counts[3] == 2
+
+        # Test extrapolation/clamping
+        @test itp(x, 3.0) ≈ itp(x, 2.0) # Should clamp to end
+        @test itp(x, -1.0) ≈ itp(x, 0.0) # Should clamp to start
+
+        # 2. Numerical field time-dependent test
+        let
+            # Define grid
+            x_grid = range(0.0, 1.0, length = 4)
+            y_grid = range(0.0, 1.0, length = 4)
+            z_grid = range(0.0, 1.0, length = 4)
+
+            # Create localized fields for t=0 and t=1
+            B0 = fill(0.0, 3, 4, 4, 4)
+            B1 = fill(0.0, 3, 4, 4, 4)
+
+            # t=0: B = [1, 0, 0] everywhere
+            B0[1, :, :, :] .= 1.0
+
+            # t=1: B = [0, 2, 0] everywhere
+            B1[2, :, :, :] .= 2.0
+
+            times_num = [0.0, 1.0]
+
+            # Loader for numerical field
+            function loader_num(i)
+                if i == 1
+                    return TP.getinterp(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
+                elseif i == 2
+                    return TP.getinterp(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
+                end
+            end
+
+            itp_num = LazyTimeInterpolator(times_num, loader_num)
+
+            # Test point at center of grid
+            pt = SA[0.5, 0.5, 0.5]
+
+            # t=0 -> [1, 0, 0]
+            @test itp_num(pt, 0.0) ≈ SA[1.0, 0.0, 0.0]
+
+            # t=1 -> [0, 2, 0]
+            @test itp_num(pt, 1.0) ≈ SA[0.0, 2.0, 0.0]
+
+            # t=0.5 -> 0.5*B0 + 0.5*B1 = [0.5, 1.0, 0.0]
+            @test itp_num(pt, 0.5) ≈ SA[0.5, 1.0, 0.0]
+
+            # t=0.25 -> 0.75*B0 + 0.25*B1 = [0.75, 0.5, 0]
+            @test itp_num(pt, 0.25) ≈ SA[0.75, 0.5, 0.0]
+        end
+    end
+
     @testset "Gyroradius Utility" begin
         # From test_gyroradius.jl
         @testset "Non-relativistic" begin

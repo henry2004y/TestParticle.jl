@@ -64,9 +64,41 @@ function setup_cartesian_nonuniform_field()
    return B_field, A_field
 end
 
+function setup_time_dependent_field()
+   x = range(-10, 10, length = 16)
+   y = range(-10, 10, length = 16)
+   z = range(-10, 10, length = 16)
+
+   # Create two time snapshots
+   B0 = zeros(3, length(x), length(y), length(z))
+   B0[3, :, :, :] .= 1.0 # Bz = 1 at t=0
+
+   B1 = zeros(3, length(x), length(y), length(z))
+   B1[3, :, :, :] .= 2.0 # Bz = 2 at t=1
+
+   times = [0.0, 1.0]
+
+   function loader(i)
+       if i == 1
+           # For demonstration, we assume we load from disk here
+           return TP.getinterp(TP.CartesianGrid, B0, x, y, z)
+       elseif i == 2
+           return TP.getinterp(TP.CartesianGrid, B1, x, y, z)
+       else
+           error("Index out of bounds")
+       end
+   end
+
+   # B_field_t(x, t)
+   B_field_t = TP.LazyTimeInterpolator(times, loader)
+
+   return B_field_t
+end
+
 B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field();
 B_car, A_car = setup_cartesian_field();
 B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
+B_td = setup_time_dependent_field();
 loc = SA[1.0, 1.0, 1.0];
 ```
 
@@ -99,6 +131,14 @@ loc = SA[1.0, 1.0, 1.0];
 ```
 
 Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
+
+## Time-dependent field interpolation
+
+For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a list of time points and a loader function that returns a spatial interpolator for a given time index. The interpolator will linearly interpolate between the two nearest time points.
+
+```@repl interp
+@be B_td($loc, 0.5)
+```
 
 ## Related API
 
