@@ -155,6 +155,4 @@ backend = ROCBackend()
 sols = solve(prob, backend; dt=1e-9, trajectories=1000)
 ```
 
-> **Note**: The native GPU solver currently supports analytic field functions.
-> Complex interpolated numerical fields may require additional optimization for GPU execution.
-
+> **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.
