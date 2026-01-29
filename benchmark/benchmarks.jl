@@ -128,7 +128,7 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 )
 
 # lazy time-dependent numerical field
-let
+itp_num, t_p = let
     # Define grid
     x_grid = range(0.0, 1.0, length = 4)
     y_grid = range(0.0, 1.0, length = 4)
@@ -151,11 +151,10 @@ let
         end
     end
 
-    itp_num = LazyTimeInterpolator(times_num, loader_num)
-    t_p = 0.5
-
-    SUITE["interpolation"]["time-dependent"] = @benchmarkable $itp_num($loc, $t_p)
+    LazyTimeInterpolator(times_num, loader_num), 0.5
 end
+
+SUITE["interpolation"]["time-dependent"] = @benchmarkable $itp_num($loc, $t_p)
 
 stateinit_gc,
     param_gc = TP.prepare_gc(
