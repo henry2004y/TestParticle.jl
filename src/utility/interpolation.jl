@@ -6,7 +6,7 @@
     FieldInterpolator{T}
 
 A callable struct that wraps an interpolation object.
-It enables compatibility with `boris_gpu` by exposing the inner `itp` object for GPU adaptation.
+It enables compatibility with `boris_kernel` by exposing the inner `itp` object for GPU adaptation.
 """
 struct FieldInterpolator{T} <: Function
     itp::T
