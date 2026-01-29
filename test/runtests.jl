@@ -494,3 +494,5 @@ include("test_distributions.jl")
 include("test_density.jl")
 include("test_gc.jl")
 include("test_hybrid.jl")
+
+include("test_boris_kernel.jl")

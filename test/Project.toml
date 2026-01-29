@@ -11,6 +11,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 
 [sources]
 TestParticle = {path = ".."}
