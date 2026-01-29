@@ -146,6 +146,38 @@ function evaluate_fields_on_particles!(
     return
 end
 
+function gpu_field_evaluation!(
+        backend, use_gpu_interp, eval_kernel!,
+        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
+        xv_current,
+        Efunc, Bfunc, # Adapted fields
+        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, # CPU buffers
+        t, n_particles
+    )
+    return if use_gpu_interp
+        # Use GPU kernel for interpolation
+        eval_kernel!(
+            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
+            xv_current, Efunc.field_function, Bfunc.field_function, t;
+            ndrange = n_particles
+        )
+        KA.synchronize(backend)
+    else
+        # CPU evaluation for analytic fields
+        evaluate_fields_on_particles!(
+            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
+            xv_current, Efunc, Bfunc, t
+        )
+        copyto!(Ex_arr, Ex_cpu)
+        copyto!(Ey_arr, Ey_cpu)
+        copyto!(Ez_arr, Ez_cpu)
+        copyto!(Bx_arr, Bx_cpu)
+        copyto!(By_arr, By_cpu)
+        copyto!(Bz_arr, Bz_cpu)
+    end
+end
+
+
 function solve(
         prob::TraceProblem, backend::KA.Backend;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
@@ -211,28 +243,18 @@ function solve(
     Bz_cpu = zeros(T, n_particles)
 
     # Initial field evaluation
-    if use_gpu_interp
-        # Use GPU kernel for interpolation
-        eval_kernel! = evaluate_interp_fields_kernel!(backend, 256)
-        eval_kernel!(
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-            xv_current, Efunc_gpu.field_function, Bfunc_gpu.field_function, tspan[1];
-            ndrange = n_particles
-        )
-        KA.synchronize(backend)
-    else
-        # CPU evaluation for analytic fields
-        evaluate_fields_on_particles!(
-            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_current, Efunc, Bfunc, tspan[1]
-        )
-        copyto!(Ex_arr, Ex_cpu)
-        copyto!(Ey_arr, Ey_cpu)
-        copyto!(Ez_arr, Ez_cpu)
-        copyto!(Bx_arr, Bx_cpu)
-        copyto!(By_arr, By_cpu)
-        copyto!(Bz_arr, Bz_cpu)
-    end
+    # Determine integration strategy and prepare kernel if needed
+    eval_kernel! = use_gpu_interp ? evaluate_interp_fields_kernel!(backend, 256) : nothing
+
+    # Initial field evaluation
+    gpu_field_evaluation!(
+        backend, use_gpu_interp, eval_kernel!,
+        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
+        xv_current,
+        Efunc_gpu, Bfunc_gpu,
+        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
+        tspan[1], n_particles
+    )
 
     kernel! = boris_push_kernel!(backend, 256)
 
@@ -299,28 +321,14 @@ function solve(
     for it in 1:nt
         t = tspan[1] + (it - 0.5) * dt
 
-        if use_gpu_interp
-            # Use GPU kernel for interpolation - no CPU-GPU transfers needed
-            eval_kernel! = evaluate_interp_fields_kernel!(backend, 256)
-            eval_kernel!(
-                Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-                xv_current, Efunc_gpu.field_function, Bfunc_gpu.field_function, t;
-                ndrange = n_particles
-            )
-            KA.synchronize(backend)
-        else
-            # Fallback to CPU evaluation for analytic fields
-            evaluate_fields_on_particles!(
-                Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-                xv_current, Efunc, Bfunc, t
-            )
-            copyto!(Ex_arr, Ex_cpu)
-            copyto!(Ey_arr, Ey_cpu)
-            copyto!(Ez_arr, Ez_cpu)
-            copyto!(Bx_arr, Bx_cpu)
-            copyto!(By_arr, By_cpu)
-            copyto!(Bz_arr, Bz_cpu)
-        end
+        gpu_field_evaluation!(
+            backend, use_gpu_interp, eval_kernel!,
+            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
+            xv_current,
+            Efunc_gpu, Bfunc_gpu,
+            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
+            t, n_particles
+        )
 
         kernel!(
             xv_current, xv_next, q2m, dt,
