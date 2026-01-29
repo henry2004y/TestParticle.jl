@@ -13,7 +13,8 @@ using Interpolations: AbstractInterpolation, AbstractExtrapolation
 Check if a field function is an interpolation object that can be adapted to GPU.
 """
 function is_interpolation_field(f)
-    return f isa AbstractInterpolation || f isa AbstractExtrapolation || f isa FieldInterpolator
+    return f isa AbstractInterpolation || f isa AbstractExtrapolation ||
+        f isa FieldInterpolator
 end
 
 """
@@ -154,10 +155,9 @@ This eliminates CPU-GPU data transfers for numerical fields.
 end
 
 function evaluate_fields_on_particles!(
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, xv, Efunc, Bfunc, t
+        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, xv_cpu, Efunc, Bfunc, t
     )
-    n_particles = size(xv, 2)
-    xv_cpu = Array(xv)
+    n_particles = size(xv_cpu, 2)
 
     for i in 1:n_particles
         r = SVector(xv_cpu[1, i], xv_cpu[2, i], xv_cpu[3, i])
@@ -181,6 +181,7 @@ function gpu_field_evaluation!(
         xv_current,
         Efunc, Bfunc, # Adapted fields
         Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, # CPU buffers
+        xv_cpu, # CPU buffer for positions
         t, n_particles
     )
     return if use_gpu_interp
@@ -193,16 +194,28 @@ function gpu_field_evaluation!(
         KA.synchronize(backend)
     else
         # CPU evaluation for analytic fields
+        # If xv_current is not on CPU, copy to xv_cpu buffer
+        if xv_current isa Array
+            xv_target = xv_current
+        else
+            copyto!(xv_cpu, xv_current)
+            xv_target = xv_cpu
+        end
+
         evaluate_fields_on_particles!(
             Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_current, Efunc, Bfunc, t
+            xv_target, Efunc, Bfunc, t
         )
-        copyto!(Ex_arr, Ex_cpu)
-        copyto!(Ey_arr, Ey_cpu)
-        copyto!(Ez_arr, Ez_cpu)
-        copyto!(Bx_arr, Bx_cpu)
-        copyto!(By_arr, By_cpu)
-        copyto!(Bz_arr, Bz_cpu)
+
+        # Copy back if needed (if Ex_arr is not aliased to Ex_cpu)
+        if Ex_arr !== Ex_cpu
+            copyto!(Ex_arr, Ex_cpu)
+            copyto!(Ey_arr, Ey_cpu)
+            copyto!(Ez_arr, Ez_cpu)
+            copyto!(Bx_arr, Bx_cpu)
+            copyto!(By_arr, By_cpu)
+            copyto!(Bz_arr, Bz_cpu)
+        end
     end
 end
 
@@ -265,12 +278,29 @@ function solve(
     end
     copyto!(xv_current, xv_init)
 
-    Ex_cpu = zeros(T, n_particles)
-    Ey_cpu = zeros(T, n_particles)
-    Ez_cpu = zeros(T, n_particles)
-    Bx_cpu = zeros(T, n_particles)
-    By_cpu = zeros(T, n_particles)
-    Bz_cpu = zeros(T, n_particles)
+    args_cpu = (T, n_particles)
+    if Ex_arr isa Array
+        Ex_cpu = Ex_arr
+        Ey_cpu = Ey_arr
+        Ez_cpu = Ez_arr
+        Bx_cpu = Bx_arr
+        By_cpu = By_arr
+        Bz_cpu = Bz_arr
+    else
+        Ex_cpu = zeros(args_cpu...)
+        Ey_cpu = zeros(args_cpu...)
+        Ez_cpu = zeros(args_cpu...)
+        Bx_cpu = zeros(args_cpu...)
+        By_cpu = zeros(args_cpu...)
+        Bz_cpu = zeros(args_cpu...)
+    end
+
+    # Buffer for particle positions on CPU (if needed)
+    xv_cpu_buffer = if xv_current isa Array
+        xv_current # Placeholder, will use actual xv_current dynamically
+    else
+        zeros(T, 6, n_particles)
+    end
 
     # Initial field evaluation
     # Determine integration strategy and prepare kernel if needed
@@ -283,6 +313,7 @@ function solve(
         xv_current,
         Efunc_gpu, Bfunc_gpu,
         Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
+        xv_cpu_buffer,
         tspan[1], n_particles
     )
 
@@ -321,6 +352,7 @@ function solve(
             xv_current,
             Efunc_gpu, Bfunc_gpu,
             Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
+            xv_cpu_buffer,
             t, n_particles
         )
 

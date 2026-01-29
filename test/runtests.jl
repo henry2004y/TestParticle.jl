@@ -495,7 +495,4 @@ include("test_density.jl")
 include("test_gc.jl")
 include("test_hybrid.jl")
 
-# GPU tests are disabled by default, enable with test_args=["gpu"]
-if "gpu" in ARGS
-    include("test_gpu_boris.jl")
-end
+include("test_boris_kernel.jl")
