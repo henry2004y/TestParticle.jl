@@ -40,29 +40,7 @@ end
 adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
 
 
-@kernel function boris_push_kernel!(
-        @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
-        @Const(Ex_arr), @Const(Ey_arr), @Const(Ez_arr),
-        @Const(Bx_arr), @Const(By_arr), @Const(Bz_arr)
-    )
-    i = @index(Global)
-
-    x = xv_in[1, i]
-    y = xv_in[2, i]
-    z = xv_in[3, i]
-    vx = xv_in[4, i]
-    vy = xv_in[5, i]
-    vz = xv_in[6, i]
-
-    Ex = Ex_arr[i]
-    Ey = Ey_arr[i]
-    Ez = Ez_arr[i]
-    Bx = Bx_arr[i]
-    By = By_arr[i]
-    Bz = Bz_arr[i]
-
-    qdt_2m = q2m * 0.5 * dt
-
+@inline function boris_velocity_update(vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m)
     vx_minus = vx + qdt_2m * Ex
     vy_minus = vy + qdt_2m * Ey
     vz_minus = vz + qdt_2m * Ez
@@ -89,6 +67,36 @@ adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
     vy_new = vy_plus + qdt_2m * Ey
     vz_new = vz_plus + qdt_2m * Ez
 
+    return vx_new, vy_new, vz_new
+end
+
+@kernel function boris_push_kernel!(
+        @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
+        @Const(Ex_arr), @Const(Ey_arr), @Const(Ez_arr),
+        @Const(Bx_arr), @Const(By_arr), @Const(Bz_arr)
+    )
+    i = @index(Global)
+
+    x = xv_in[1, i]
+    y = xv_in[2, i]
+    z = xv_in[3, i]
+    vx = xv_in[4, i]
+    vy = xv_in[5, i]
+    vz = xv_in[6, i]
+
+    Ex = Ex_arr[i]
+    Ey = Ey_arr[i]
+    Ez = Ez_arr[i]
+    Bx = Bx_arr[i]
+    By = By_arr[i]
+    Bz = Bz_arr[i]
+
+    qdt_2m = q2m * 0.5 * dt
+
+    vx_new, vy_new, vz_new = boris_velocity_update(
+        vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m
+    )
+
     xv_out[1, i] = x + vx_new * dt
     xv_out[2, i] = y + vy_new * dt
     xv_out[3, i] = z + vz_new * dt
@@ -96,6 +104,27 @@ adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
     xv_out[5, i] = vy_new
     xv_out[6, i] = vz_new
 end
+
+@kernel function velocity_back_kernel!(
+        xv_out, @Const(xv_in), @Const(q2m_val), @Const(dt_val),
+        @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz)
+    )
+    i = @index(Global)
+    vx = xv_in[4, i]
+    vy = xv_in[5, i]
+    vz = xv_in[6, i]
+
+    qdt_2m = q2m_val * 0.5 * dt_val
+
+    vx_new, vy_new, vz_new = boris_velocity_update(
+        vx, vy, vz, Ex[i], Ey[i], Ez[i], Bx[i], By[i], Bz[i], qdt_2m
+    )
+
+    xv_out[4, i] = vx_new
+    xv_out[5, i] = vy_new
+    xv_out[6, i] = vz_new
+end
+
 
 """
 GPU kernel to evaluate interpolated fields directly on GPU.
@@ -181,7 +210,8 @@ end
 function solve(
         prob::TraceProblem, backend::KA.Backend;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        workgroup_size::Int = 256
     )
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc, _ = p
@@ -244,7 +274,7 @@ function solve(
 
     # Initial field evaluation
     # Determine integration strategy and prepare kernel if needed
-    eval_kernel! = use_gpu_interp ? evaluate_interp_fields_kernel!(backend, 256) : nothing
+    eval_kernel! = use_gpu_interp ? evaluate_interp_fields_kernel!(backend, workgroup_size) : nothing
 
     # Initial field evaluation
     gpu_field_evaluation!(
@@ -256,45 +286,9 @@ function solve(
         tspan[1], n_particles
     )
 
-    kernel! = boris_push_kernel!(backend, 256)
+    kernel! = boris_push_kernel!(backend, workgroup_size)
 
-    @kernel function velocity_back_kernel!(
-            xv_out, @Const(xv_in), @Const(q2m_val), @Const(dt_val),
-            @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz)
-        )
-        i = @index(Global)
-        vx = xv_in[4, i]
-        vy = xv_in[5, i]
-        vz = xv_in[6, i]
-
-        qdt_2m = q2m_val * 0.5 * dt_val
-        vx_minus = vx + qdt_2m * Ex[i]
-        vy_minus = vy + qdt_2m * Ey[i]
-        vz_minus = vz + qdt_2m * Ez[i]
-
-        tx = qdt_2m * Bx[i]
-        ty = qdt_2m * By[i]
-        tz = qdt_2m * Bz[i]
-        t_mag2 = tx * tx + ty * ty + tz * tz
-        factor = 2 / (1 + t_mag2)
-        sx = factor * tx
-        sy = factor * ty
-        sz = factor * tz
-
-        vpx = vx_minus + (vy_minus * tz - vz_minus * ty)
-        vpy = vy_minus + (vz_minus * tx - vx_minus * tz)
-        vpz = vz_minus + (vx_minus * ty - vy_minus * tx)
-
-        vx_plus = vx_minus + (vpy * sz - vpz * sy)
-        vy_plus = vy_minus + (vpz * sx - vpx * sz)
-        vz_plus = vz_minus + (vpx * sy - vpy * sx)
-
-        xv_out[4, i] = vx_plus + qdt_2m * Ex[i]
-        xv_out[5, i] = vy_plus + qdt_2m * Ey[i]
-        xv_out[6, i] = vz_plus + qdt_2m * Ez[i]
-    end
-
-    vback_kernel! = velocity_back_kernel!(backend, 256)
+    vback_kernel! = velocity_back_kernel!(backend, workgroup_size)
     vback_kernel!(
         xv_current, xv_current, q2m, -0.5 * dt,
         Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr; ndrange = n_particles
