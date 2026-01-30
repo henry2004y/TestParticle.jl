@@ -96,19 +96,19 @@ saved_values
 # When `save_fields=true`, the solution will include 6 additional values per time step:
 # - E field components (Ex, Ey, Ez) at indices 7, 8, 9
 # - B field components (Bx, By, Bz) at indices 10, 11, 12
-#
 # When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
 # - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
 # - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
 # - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
 # - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
 # Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
+#
+# Here, we use a constant electric field and design a magnetic field that has gradient, time dependence, and curvature.
+# - y dependence creates gradients (gradient drift work)
+# - Time dependence creates Betatron work
+# - Curvature is implicit in the field structure (Fermi work)
 
 E_boris(x, t) = SA[0.1, 0.1, 0.1]
-## - x[2] dependence creates gradients (Gradient drift work)
-## - Time dependence creates Betatron work
-## - Curvature is implicit in the field structure (Fermi work)
-##   Use a field with curvature: B = [y, x, 1]
 B_boris(x, t) = SA[x[2], x[1], 1.0] * (1.0 + 0.1 * t)
 
 param_boris = prepare(E_boris, B_boris; m = 1, q = 1);
@@ -130,7 +130,7 @@ B_trajectory = [u[10:12] for u in sol_fields.u];
 println("First saved B field: ", B_trajectory[1])
 println("Last saved B field: ", B_trajectory[end])
 
-# Solve with work saving enabled
+## Solve with work saving enabled
 sol_work = TestParticle.solve(prob_boris; dt = 0.1, save_work = true)[1];
 
 # The solution now contains 10 values per time step (6 for state + 4 for work rates)
@@ -151,7 +151,7 @@ indices = [1, length(sol_work.u) ÷ 4, length(sol_work.u) ÷ 2, 3 * length(sol_w
 for i in indices #hide
     t = sol_work.t[i] #hide
     @printf( #hide
-        "%-10.3f %-15.6e %-15.6e %-15.6e %-15.6e\n", #hide
+        "%-10.2f %-15.3e %-15.3e %-15.3e %-15.3e\n", #hide
         t, P_par[i], P_fermi[i], P_grad[i], P_betatron[i] #hide
     ) #hide
 end #hide
@@ -160,17 +160,16 @@ println("="^70) #hide
 # ## Post-processing with `get_fields` and `get_work`
 #
 # If you didn't save the fields or work during the simulation (e.g., to save memory or if you decided to inspect them later), you can compute them from the trajectory solution using `get_fields` and `get_work`.
-#
 # Note: This requires the problem parameters (fields) to be accessible from the solution object.
 
-# Solving without saving extra data
+## Solving without saving extra data
 sol = TestParticle.solve(prob_boris; dt = 0.1)[1];
 
-# Compute fields and work post-simulation
+## Compute fields and work post-simulation
 E_post, B_post = get_fields(sol);
 work_post = get_work(sol);
 
 println("\nPost-processed Data Check:") #hide
 println("Computed $(length(E_post)) field points.") #hide
 println("Computed $(length(work_post)) work points.") #hide
-println("Difference in P_grad at step 10: ", abs(work_post[10][3] - P_grad[10])) #hide
+println("Differences at step 10: P_par: ", abs(work_post[10][1] - P_par[10]), ", P_fermi: ", abs(work_post[10][2] - P_fermi[10]), ", P_grad: ", abs(work_post[10][3] - P_grad[10]), ", P_betatron: ", abs(work_post[10][4] - P_betatron[10])) #hide
