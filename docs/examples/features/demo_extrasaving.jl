@@ -93,14 +93,14 @@ saved_values
 # These options allow you to save the electric and magnetic fields along the trajectory, as well as various work rate components without using callbacks.
 # Here, we set an E field with constant non-zero to generate parallel work, and a B field that is spatially varying and time-dependent.
 #
-# When `save_fields=true`, the solution will include 6 additional values per time step:
-# - E field components (Ex, Ey, Ez) at indices 7, 8, 9
-# - B field components (Bx, By, Bz) at indices 10, 11, 12
-# When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
-# - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
-# - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
-# - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
-# - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
+# - When `save_fields=true`, the solution will include 6 additional values per time step:
+#   - E field components (Ex, Ey, Ez) at indices 7, 8, 9
+#   - B field components (Bx, By, Bz) at indices 10, 11, 12
+# - When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
+#   - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
+#   - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
+#   - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
+#   - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
 # Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
 #
 # Here, we use a constant electric field and design a magnetic field that has gradient, time dependence, and curvature.
@@ -169,7 +169,14 @@ sol = TestParticle.solve(prob_boris; dt = 0.1)[1];
 E_post, B_post = get_fields(sol);
 work_post = get_work(sol);
 
-println("\nPost-processed Data Check:") #hide
-println("Computed $(length(E_post)) field points.") #hide
-println("Computed $(length(work_post)) work points.") #hide
-println("Differences at step 10: P_par: ", abs(work_post[10][1] - P_par[10]), ", P_fermi: ", abs(work_post[10][2] - P_fermi[10]), ", P_grad: ", abs(work_post[10][3] - P_grad[10]), ", P_betatron: ", abs(work_post[10][4] - P_betatron[10])) #hide
+using Markdown #hide
+io = IOBuffer() #hide
+println(io, "| Metric | Value |") #hide
+println(io, "| :--- | :--- |") #hide
+println(io, "| Field Points | $(length(E_post)) |") #hide
+println(io, "| Work Points | $(length(work_post)) |") #hide
+println(io, "| Diff P_par | $(abs(work_post[10][1] - P_par[10])) |") #hide
+println(io, "| Diff P_fermi | $(abs(work_post[10][2] - P_fermi[10])) |") #hide
+println(io, "| Diff P_grad | $(abs(work_post[10][3] - P_grad[10])) |") #hide
+println(io, "| Diff P_betatron | $(abs(work_post[10][4] - P_betatron[10])) |") #hide
+Markdown.parse(String(take!(io))) #hide
