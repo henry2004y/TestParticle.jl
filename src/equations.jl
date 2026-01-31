@@ -334,18 +334,28 @@ end
 Calculate the work rates done by the electric field and the betatron acceleration.
 Returns a tuple `(P_par, P_fermi, P_grad, P_betatron)`.
 """
-function get_work_rates(xu, p, t)
+@inline function get_work_rates(xu, p, t, magnetic_properties = nothing, E_field = nothing)
     q2m, m, Efunc, Bfunc, _ = p
     r = get_x(xu)
-    v = get_v(xu)
     q = q2m * m
-    E = Efunc(r, t)
 
-    B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    if E_field === nothing
+        E = Efunc(r, t)
+    else
+        E = E_field
+    end
+
+    if magnetic_properties === nothing
+        B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    else
+        B, ∇B, κ, b̂, Bmag = magnetic_properties
+    end
 
     if Bmag == 0
         return SVector{4, eltype(xu)}(0, 0, 0, 0)
     end
+
+    v = get_v(xu)
 
     # Parallel velocity
     v_par_val = v ⋅ b̂
