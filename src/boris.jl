@@ -313,17 +313,78 @@ end
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
-    if SaveFields
+    # If we need both or just work, we might as well compute the full properties once if possible,
+    # but get_work_rates needs derivatives.
+    # Case 1: Just Fields
+    if SaveFields && !SaveWork
         r = get_x(xv)
         T = eltype(xv)
         E = SVector{3, T}(get_EField(p)(r, t))
         B = SVector{3, T}(get_BField(p)(r, t))
         data = vcat(data, E, B)
     end
-    if SaveWork
+    # Case 2: Just Work
+    if !SaveFields && SaveWork
         work = get_work_rates(xv, p, t)
         data = vcat(data, work)
     end
+    # Case 3: Both
+    if SaveFields && SaveWork
+        q2m, m, Efunc, Bfunc, _ = p
+        r = get_x(xv)
+        T = eltype(xv)
+
+        E = Efunc(r, t)
+        # get_work_rates calls get_magnetic_properties which computes B and derivatives.
+        # to avoid re-computing B, we can manually do what get_work_rates does but reuse B.
+        # However, get_work_rates has logic for μ etc.
+        # Let's call get_magnetic_properties first.
+        B, ∇B, κ, b̂, Bmag, _ = get_magnetic_properties(r, t, Bfunc)
+
+        SE = SVector{3, T}(E)
+        SB = SVector{3, T}(B)
+        data = vcat(data, SE, SB)
+
+        # Inlined get_work_rates logic to use pre-calculated fields
+        # This duplicates logic from get_work_rates but avoids re-computation.
+        # Alternatively we could add a method to get_work_rates that accepts fields.
+        # Given the task to optimize, inlining or helper is better.
+
+        if Bmag == 0
+            work = SVector{4, T}(0, 0, 0, 0)
+        else
+            v = get_v(xv)
+            q = q2m * m
+
+            # Parallel velocity
+            v_par_val = v ⋅ b̂
+            v_par = v_par_val .* b̂
+            v_perp = v - v_par
+
+            # Magnetic moment
+            w_sq = v_perp ⋅ v_perp
+            μ_val = m * w_sq / (2 * Bmag)
+
+            # 1. Parallel Work: q v_par (E ⋅ b)
+            P_par = q * v_par_val * (E ⋅ b̂)
+
+            # 2. Fermi Work: m v_par^2 / B (b × κ) ⋅ E
+            P_fermi = (m * v_par_val^2 / Bmag) * ((b̂ × κ) ⋅ E)
+
+            # 3. Gradient Drift Work: μ / B (b × ∇B) ⋅ E
+            P_grad = (μ_val / Bmag) * ((b̂ × ∇B) ⋅ E)
+
+            # 4. Betatron Work: μ ∂B/∂t
+            dBdt_val = ForwardDiff.derivative(tau -> norm(Bfunc(r, tau)), t)
+
+            P_betatron = μ_val * dBdt_val
+
+            work = SVector{4, T}(P_par, P_fermi, P_grad, P_betatron)
+        end
+
+        data = vcat(data, work)
+    end
+
     return data
 end
 

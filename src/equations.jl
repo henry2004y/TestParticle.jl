@@ -105,16 +105,18 @@ function trace_gc_flr!(dx, x, p, t)
     r4 = (norm(v_perp) / q2m / Bmag_particle)^2 / 4
 
     # Helper for FLR term: (E × B) / B²
-    EB(x_in) = begin
-        E_in = Efunc(x_in, t)
-        B_in = Bfunc(x_in, t)
-        (E_in × B_in) / (B_in ⋅ B_in)
-    end
+    # EB(x) is redundant, use E and B directly
+    # Lifted closure to avoid capture issues
+    dx[1:3] = (E × B) / (B ⋅ B) + r4 * Tensors.laplace.(
+        (x_in) -> begin
+            E_in = Efunc(x_in, t)
+            B_in = Bfunc(x_in, t)
+            (E_in × B_in) / (B_in ⋅ B_in)
+        end, Tensors.Vec(x...)
+    ) + v_par
 
     # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
     # EB(x) is redundant, use E and B directly
-    dx[1:3] = (E × B) / (B ⋅ B) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
-
     return
 end
 
@@ -182,20 +184,6 @@ function trace_relativistic_normalized(y, p, t)
     return vcat(v, dv)
 end
 
-@inline function get_B_parameters(x, t, Bfunc)
-    # Compute B and its Jacobian in a single pass using ForwardDiff
-    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
-    B = Bfunc(x, t)
-
-    Bmag = norm(B)
-    b̂ = B / Bmag
-
-    # ∇|B| = (J_B' * b̂)
-    ∇B = JB' * b̂
-
-    return B, Bmag, b̂, ∇B, JB
-end
-
 @inline function get_E_parameters(x, t, Efunc)
     JE = ForwardDiff.jacobian(r -> Efunc(r, t), x)
     E = Efunc(x, t)
@@ -215,15 +203,11 @@ function trace_gc_drifts!(dx, x, p, t)
     v = get_v(xu)
     E = Efunc(x, t)
 
-    B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
+    B, ∇B, κ, b, Bmag, JB = get_magnetic_properties(x, t, Bfunc)
 
     v_par = (v ⋅ b) .* b
     v_perp = v - v_par
     Ω = q2m * Bmag
-
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
-    κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
 
     v_E = (E × b) / Bmag
     w = v_perp - v_E
@@ -279,7 +263,7 @@ function get_gc_derivatives(y, p, t)
     X = get_x(y)
 
     E = Efunc(X, t)
-    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
+    B, ∇B, κ, b̂, Bmag, JB = get_magnetic_properties(X, t, Bfunc)
 
     # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
     # ∇ × B from JB (Jacobian of B)
@@ -341,7 +325,7 @@ function get_work_rates(xu, p, t)
     q = q2m * m
     E = Efunc(r, t)
 
-    B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    B, ∇B, κ, b̂, Bmag, _ = get_magnetic_properties(r, t, Bfunc)
 
     if Bmag == 0
         return SVector{4, eltype(xu)}(0, 0, 0, 0)
@@ -385,7 +369,7 @@ function get_work_rates_gc(xv, p, t)
     v_par = xv[4]
     E = Efunc(r, t)
 
-    B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    B, ∇B, κ, b̂, Bmag, _ = get_magnetic_properties(r, t, Bfunc)
 
     if Bmag == 0
         return SVector{4, eltype(xv)}(0, 0, 0, 0)
