@@ -563,32 +563,12 @@ end
     get_magnetic_properties(x, t, Bfunc)
 
 Calculate magnetic field properties at position `x` and time `t`.
-Returns tuple `(B, ∇B, κ, b̂, Bmag, JB)`:
+Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
 - `B`: Magnetic field vector
 - `∇B`: Gradient of magnetic field magnitude
 - `κ`: Curvature vector
 - `b̂`: Unit magnetic field vector
 - `Bmag`: Magnitude of B
-- `JB`: Jacobian of B
-"""
-@inline function _get_curvature(B, Bmag, b̂, JB)
-    # ∇|B| = (J_B' * b̂)
-    ∇B = JB' * b̂
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    return (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag, ∇B
-end
-
-"""
-    get_magnetic_properties(x, t, Bfunc)
-
-Calculate magnetic field properties at position `x` and time `t`.
-Returns tuple `(B, ∇B, κ, b̂, Bmag, JB)`:
-- `B`: Magnetic field vector
-- `∇B`: Gradient of magnetic field magnitude
-- `κ`: Curvature vector
-- `b̂`: Unit magnetic field vector
-- `Bmag`: Magnitude of B
-- `JB`: Jacobian of B
 """
 @inline function get_magnetic_properties(x, t, Bfunc)
     # Compute B and its Jacobian in a single pass using ForwardDiff
@@ -598,35 +578,17 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag, JB)`:
     Bmag = norm(B)
     if Bmag == 0
         vzero = zero(x)
-        mzero = zero(JB)
-        return vzero, vzero, vzero, vzero, Bmag, mzero
+        return vzero, vzero, vzero, vzero, Bmag
     end
     b̂ = B / Bmag
 
-    # Share curvature calculation logic
-    κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
+    # ∇|B| = (J_B' * b̂)
+    ∇B = JB' * b̂
 
-    return B, ∇B, κ, b̂, Bmag, JB
-end
+    # Curvature vector κ = (b̂ ⋅ ∇) b̂
+    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
 
-"""
-    get_curvature(x, t, Bfunc)
-
-Calculate the curvature vector `κ` of the magnetic field at position `x` and time `t`.
-"""
-@inline function get_curvature(x, t, Bfunc)
-    # Compute B and its Jacobian in a single pass using ForwardDiff
-    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
-    B = Bfunc(x, t)
-
-    Bmag = norm(B)
-    if Bmag == 0
-        return zero(x)
-    end
-    b̂ = B / Bmag
-
-    κ, _ = _get_curvature(B, Bmag, b̂, JB)
-    return κ
+    return B, ∇B, κ, b̂, Bmag
 end
 
 """
@@ -636,7 +598,7 @@ Calculate the radius of curvature of the magnetic field at position `x` and time
 Returns `Inf` if the field is zero or the field lines are straight.
 """
 @inline function get_curvature_radius(x, t, Bfunc)
-    κ = get_curvature(x, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(x, t, Bfunc)
 
     k_mag = norm(κ)
     return iszero(k_mag) ? Inf : inv(k_mag)
@@ -655,7 +617,7 @@ Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    κ = get_curvature(r, t, Bfunc)
+    _, _, κ, _, _ = get_magnetic_properties(r, t, Bfunc)
 
     k_mag = norm(κ)
     invRc = iszero(k_mag) ? zero(k_mag) : k_mag
