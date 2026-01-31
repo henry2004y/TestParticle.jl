@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Finite-Larmor-Radius effect · TestParticle.jl</title><meta name="title" content="Finite-Larmor-Radius effect · TestParticle.jl"/><meta property="og:title" content="Finite-Larmor-Radius effect · TestParticle.jl"/><meta property="twitter:title" content="Finite-Larmor-Radius effect · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_FLR/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_FLR/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_FLR/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Finite-Larmor-Radius effect</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Finite-Larmor-Radius effect</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/basics/demo_FLR.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_FLR"><a class="docs-heading-anchor" href="#demo_FLR">Finite-Larmor-Radius effect</a><a id="demo_FLR-1"></a><a class="docs-heading-anchor-permalink" href="#demo_FLR" title="Permalink"></a></h1><p><a href="../demo_FLR.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.10.0-blue.svg" alt="compat"/> <a href="https://github.com/TCLiuu"><img src="https://img.shields.io/badge/Author-Tiancheng%20Liu-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1681862400" alt="Update time"/></p><p>The general FLR effect refers to the correction terms introduced when considering the field difference at the particle location and the guiding center location. More theoretical details can be found in <a href="https://henry2004y.github.io/KeyNotes/contents/single.html#sec-nonuniform_E">Non-uniform E Field</a>.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using LinearAlgebra: ×, ⋅, norm, normalize
+using Tensors: laplace
+import Tensors: Vec as Vec3
+# using SpecialFunctions
+using CairoMakie
+
+uniform_B(x) = SA[0, 0, 1e-8]
+
+nonuniform_E(x) = SA[1e-9 * cos(0.3 * x[1]), 0, 0]
+
+# trace the orbit of the guiding center
+function trace_gc!(dx, x, p, t)
+   q2m, _, E, B, _, sol = p
+   xu = sol(t)
+   xp = @view xu[1:3]
+   Bv = B(xp)
+   b = normalize(Bv)
+   v_par = (xu[4:6] ⋅ b) .* b # (v ⋅ b)b
+   v_perp = xu[4:6] - v_par
+   r4 = (norm(v_perp) / q2m / norm(Bv))^2 / 4
+   EB(x) = (E(x) × B(x)) / norm(B(x))^2
+   # dx[1:3] = EB(xp) + v_par
+   dx[1:3] = EB(x) + r4*laplace.(EB, Vec3(x...)) + v_par
+
+   # more accurate
+   # dx[1:3] = besselj0(0.3*norm(v_perp)/q2m/norm(Bv))*EB(x) + v_par
+end
+
+# Initial condition
+stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
+   [x0..., v0...]
+end
+# Time span
+tspan = (0, 20)
+param = prepare(nonuniform_E, uniform_B, species = Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+gc = param |&gt; get_gc_func
+gc_x0 = gc(stateinit) |&gt; Vector
+prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Vern7(); save_idxs = [1, 2, 3])
+
+# numeric result and analytic result
+f = Figure(fontsize = 18)
+ax = Axis3(f[1, 1],
+   title = &quot;Finite Larmor Radius Effect&quot;,
+   xlabel = &quot;x [m]&quot;,
+   ylabel = &quot;y [m]&quot;,
+   zlabel = &quot;z [m]&quot;,
+   aspect = :data,
+   azimuth = 0.3π
+)
+
+gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
+
+lines!(ax, sol, idxs = (1, 2, 3), color = Makie.wong_colors()[1])
+lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = Makie.wong_colors()[2])
+lines!(ax, sol_gc, idxs = (1, 2, 3), color = Makie.wong_colors()[3])
+</code></pre><p><img src="../demo_FLR-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Monday 26 May 2025 02:20">Monday 26 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
