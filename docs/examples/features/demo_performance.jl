@@ -46,20 +46,32 @@ prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 # ## Benchmark
 #
 # We benchmark the following solvers:
-#
-# | Solver | Description |
-# | :--- | :--- |
-# | Boris (n=1) | Native Boris with n=1 |
-# | Boris (n=2) | Native Multistep Boris with n=2 |
-# | Tsit5 (fixed) | `OrdinaryDiffEq` Tsit5 with fixed step |
-# | Tsit5 (adaptive) | `OrdinaryDiffEq` Tsit5 with adaptive step |
-# | Vern7 (fixed) | `OrdinaryDiffEq` Vern7 with fixed step |
-# | Vern7 (adaptive) | `OrdinaryDiffEq` Vern7 with adaptive step |
-# | Vern9 (fixed) | `OrdinaryDiffEq` Vern9 with fixed step |
-# | Vern9 (adaptive) | `OrdinaryDiffEq` Vern9 with adaptive step |
-# | AutoVern7 (adaptive) | `OrdinaryDiffEq` AutoVern7 with adaptive step |
-# | AutoVern9 (adaptive) | `OrdinaryDiffEq` AutoVern9 with adaptive step |
-#
+
+solvers = [
+    ("Boris (n=1)", "Native Boris with n=1", :Boris, () -> TP.solve(prob_boris; dt)),
+    ("Boris (n=2)", "Native Multistep Boris with n=2", :Boris, () -> TP.solve(prob_boris; dt, n = 2)),
+    ("Tsit5 (fixed)", "`OrdinaryDiffEq` Tsit5 with fixed step", :Fixed, () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
+    ("Tsit5 (adaptive)", "`OrdinaryDiffEq` Tsit5 with adaptive step", :Adaptive, () -> solve(prob_ode, Tsit5(); saveat = dt)),
+    ("Vern7 (fixed)", "`OrdinaryDiffEq` Vern7 with fixed step", :Fixed, () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
+    ("Vern7 (adaptive)", "`OrdinaryDiffEq` Vern7 with adaptive step", :Adaptive, () -> solve(prob_ode, Vern7(); saveat = dt)),
+    ("Vern9 (fixed)", "`OrdinaryDiffEq` Vern9 with fixed step", :Fixed, () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
+    ("Vern9 (adaptive)", "`OrdinaryDiffEq` Vern9 with adaptive step", :Adaptive, () -> solve(prob_ode, Vern9(); saveat = dt)),
+    ("AutoVern7 (adaptive)", "`OrdinaryDiffEq` AutoVern7 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
+    ("AutoVern9 (adaptive)", "`OrdinaryDiffEq` AutoVern9 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
+    ("GIEuler", "GeometricIntegrators Euler", :GI, () -> solve(prob_gi, GIEuler(); dt)),
+    ("GIMidpoint", "GeometricIntegrators Midpoint", :GI, () -> solve(prob_gi, GIMidpoint(); dt)),
+    ("GIRK4", "GeometricIntegrators RK4", :GI, () -> solve(prob_gi, GIRK4(); dt)),
+]
+
+using Markdown #hide
+io = IOBuffer() #hide
+println(io, "| Solver | Description |") #hide
+println(io, "| :--- | :--- |") #hide
+for (name, desc, group, _) in solvers #hide
+    println(io, "| $name | $desc |") #hide
+end #hide
+Markdown.parse(String(take!(io))) #hide
+
 # To simulate realistic applications, we save the solution at fixed intervals for all solvers.
 # For adaptive solvers, the default relative tolerance is `1e-3` and absolute tolerance is `1e-6`.
 
@@ -71,34 +83,20 @@ function get_median_time_memory(b)
     return mb.time, mb.bytes
 end
 
-solvers = [
-    ("Boris (n=1)", () -> TP.solve(prob_boris; dt)),
-    ("Boris (n=2)", () -> TP.solve(prob_boris; dt, n = 2)),
-    ("Tsit5 (fixed)", () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
-    ("Tsit5 (adaptive)", () -> solve(prob_ode, Tsit5(); saveat = dt)),
-    ("Vern7 (fixed)", () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
-    ("Vern7 (adaptive)", () -> solve(prob_ode, Vern7(); saveat = dt)),
-    ("Vern9 (fixed)", () -> solve(prob_ode, Vern9(); adaptive = false, dt, dense = false)),
-    ("Vern9 (adaptive)", () -> solve(prob_ode, Vern9(); saveat = dt)),
-    ("AutoVern7 (adaptive)", () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
-    ("AutoVern9 (adaptive)", () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
-    ("GIEuler", () -> solve(prob_gi, GIEuler(); dt)),
-    ("GIMidpoint", () -> solve(prob_gi, GIMidpoint(); dt)),
-    ("GIRK4", () -> solve(prob_gi, GIRK4(); dt)),
-]
-
 n_solvers = length(solvers)
 results_time = Vector{Float64}(undef, n_solvers)
 results_mem = Vector{Float64}(undef, n_solvers)
 names = Vector{String}(undef, n_solvers)
+groups = Vector{Symbol}(undef, n_solvers)
 
-for (i, (name, func)) in enumerate(solvers)
+for (i, (name, desc, group, func)) in enumerate(solvers)
     println("Benchmarking $name...")
     b = @be $func() seconds = 1
     mt, mm = get_median_time_memory(b)
     results_time[i] = mt
     results_mem[i] = mm
     names[i] = name
+    groups[i] = group
 end
 
 # Normalize results
@@ -110,7 +108,7 @@ results_mem_norm = results_mem ./ min_mem;
 
 # ## Visualization
 
-f = Figure(size = (1200, 1000), fontsize = 24)
+f = Figure(size = (1200, 800), fontsize = 24)
 
 ax = Axis(
     f[1, 1],
@@ -127,26 +125,27 @@ ax = Axis(
     yminorticks = IntervalsBetween(5)
 )
 
-sc = scatter!(
-    ax, results_time_norm, results_mem_norm,
-    color = 1:n_solvers,
-    colormap = :tab10,
-    markersize = 30,
-    strokewidth = 1,
-    strokecolor = :black
-)
+# Defined groups and colors
+unique_groups = unique(groups)
+colors = Makie.wong_colors()
+group_colors = Dict(g => colors[i] for (i, g) in enumerate(unique_groups))
+group_markers = Dict(:Boris => :circle, :Fixed => :rect, :Adaptive => :utriangle, :GI => :diamond)
 
-## Add annotations with random offsets to fix overlaps
-rng = Random.MersenneTwister(42)
-offsets = [(10, rand(rng, -30:30)) for _ in 1:n_solvers]
+for g in unique_groups
+    idxs = findall(==(g), groups)
+    scatter!(
+        ax, results_time_norm[idxs], results_mem_norm[idxs],
+        color = group_colors[g],
+        marker = get(group_markers, g, :circle),
+        markersize = 25,
+        strokewidth = 1,
+        strokecolor = :black,
+        label = string(g)
+    )
+end
 
-text!(
-    ax, results_time_norm, results_mem_norm,
-    text = names,
-    align = (:left, :center),
-    offset = offsets,
-    fontsize = 24
-)
+# Add Legend outside the plot
+Legend(f[1, 2], ax, "Solver Groups", framevisible = false)
 
 ## Highlight the "Utopia Point" (Theoretical Best)
 scatter!(

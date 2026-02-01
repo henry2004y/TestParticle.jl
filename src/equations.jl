@@ -150,6 +150,20 @@ function trace_normalized!(dy, y, p, t)
 end
 
 """
+    trace_normalized(y, p, t)
+
+Normalized ODE equations for charged particle moving in EM field with out-of-place form.
+"""
+function trace_normalized(y, p, t)
+    v = get_v(y)
+    E = get_EField(p)(y, t)
+    B = get_BField(p)(y, t)
+    dv = SVector{3}(v × B + E)
+
+    return vcat(v, dv)
+end
+
+"""
     trace_relativistic_normalized!(dy, y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
