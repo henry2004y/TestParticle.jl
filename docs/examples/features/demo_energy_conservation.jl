@@ -6,12 +6,16 @@
 # 3. Magnetic Mirror.
 #
 # The tests are performed in dimensionless units with q=1, m=1.
-# We compare multiple solvers: `Tsit5`, `Vern7`, `Vern9`, `BS3`, `ImplicitMidpoint`, `Boris`, and `Boris Multistep`.
+# We compare three groups of solvers:
+# - Common solvers from OrdinaryDiffEq.
+# - Geometric integrators from GeometricIntegratorsDiffEq.
+# - Native Boris solvers.
 
 import DisplayAs #hide
 using TestParticle
 using TestParticle: ZeroField
 using OrdinaryDiffEq
+using GeometricIntegratorsDiffEq
 using StaticArrays
 using LinearAlgebra: ×, norm
 using CairoMakie
@@ -31,6 +35,7 @@ function run_test(
     )
     u0 = [x0..., v0...]
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
+    prob_gi = ODEProblem(trace_normalized, u0, tspan, param)
     prob_tp = TraceProblem(u0, tspan, param)
 
     f = Figure(size = (1000, 600), fontsize = 18)
@@ -68,12 +73,18 @@ function run_test(
         ## Error (Avoid division by zero if E_ref is 0)
         error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1.0e-16)
 
-        return scatter!(ax, t, error, label = label, marker = marker)
+        return scatter!(ax, t[1:length(error)], error, label = label, marker = marker)
     end
 
     ## Run ODE solvers
     for (name, alg, marker) in ode_solvers
         sol = solve(prob_ode, alg; adaptive = false, dt, dense = false)
+        plot_energy_error!(sol, name, marker)
+    end
+
+    ## Run Geometric Integrators
+    for (name, alg, marker) in gi_solvers
+        sol = solve(prob_gi, alg; dt)
         plot_energy_error!(sol, name, marker)
     end
 
@@ -95,6 +106,10 @@ const ode_solvers = [
     ("Vern9", Vern9(), :diamond),
     ("BS3", BS3(), :utriangle),
     ("ImplicitMidpoint", ImplicitMidpoint(), :pentagon),
+]
+
+const gi_solvers = [
+    ("GIRK4", GIRK4(), :hex),
 ]
 
 const native_solvers = [
