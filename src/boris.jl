@@ -313,17 +313,38 @@ end
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
+
+    # Pre-declare variables to share between blocks if both are true
+    local E_field, magnetic_props
+
     if SaveFields
         r = get_x(xv)
         T = eltype(xv)
-        E = SVector{3, T}(get_EField(p)(r, t))
-        B = SVector{3, T}(get_BField(p)(r, t))
-        data = vcat(data, E, B)
+        E_field = SVector{3, T}(get_EField(p)(r, t))
+
+        # We need magnetic properties for work, so if SaveWork is also true, compute them now
+        if SaveWork
+            q2m, m, Efunc, Bfunc, _ = p
+            # get_magnetic_properties returns (B, ∇B, κ, b̂, Bmag)
+            magnetic_props = get_magnetic_properties(r, t, Bfunc)
+            B_vec = SVector{3, T}(magnetic_props[1])
+            data = vcat(data, E_field, B_vec)
+        else
+            B_vec = SVector{3, T}(get_BField(p)(r, t))
+            data = vcat(data, E_field, B_vec)
+        end
     end
+
     if SaveWork
-        work = get_work_rates(xv, p, t)
+        # If SaveFields was true, we already computed E_field and magnetic_props
+        if SaveFields
+            work = get_work_rates(xv, p, t, magnetic_props, E_field)
+        else
+            work = get_work_rates(xv, p, t)
+        end
         data = vcat(data, work)
     end
+
     return data
 end
 
