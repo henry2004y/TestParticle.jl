@@ -559,6 +559,20 @@ function _get_cell_volume(grid::RectilinearGrid)
     end
 end
 
+@inline function _get_curvature(B, Bmag, b̂, JB)
+    # ∇|B| = (J_B' * b̂)
+    ∇B = JB' * b̂
+    # Curvature vector κ = (b̂ ⋅ ∇) b̂
+    return (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag, ∇B
+end
+
+@inline function _get_B_jacobian(x, t, Bfunc)
+    #TODO: We may consider DiffResults to get JB and B in one pass.
+    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
+    B = Bfunc(x, t)
+    return B, JB
+end
+
 """
     get_magnetic_properties(x, t, Bfunc)
 
@@ -571,9 +585,7 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
 - `Bmag`: Magnitude of B
 """
 @inline function get_magnetic_properties(x, t, Bfunc)
-    # Compute B and its Jacobian in a single pass using ForwardDiff
-    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
-    B = Bfunc(x, t)
+    B, JB = _get_B_jacobian(x, t, Bfunc)
 
     Bmag = norm(B)
     if Bmag == 0
@@ -582,13 +594,28 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
     end
     b̂ = B / Bmag
 
-    # ∇|B| = (J_B' * b̂)
-    ∇B = JB' * b̂
-
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+    # Share curvature calculation logic
+    κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
 
     return B, ∇B, κ, b̂, Bmag
+end
+
+"""
+    get_curvature(x, t, Bfunc)
+
+Calculate the curvature vector `κ` of the magnetic field at position `x` and time `t`.
+"""
+@inline function get_curvature(x, t, Bfunc)
+    B, JB = _get_B_jacobian(x, t, Bfunc)
+
+    Bmag = norm(B)
+    if Bmag == 0
+        return zero(x)
+    end
+    b̂ = B / Bmag
+
+    κ, _ = _get_curvature(B, Bmag, b̂, JB)
+    return κ
 end
 
 """
