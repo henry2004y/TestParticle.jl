@@ -80,7 +80,7 @@ function setup_spherical_field()
     θ = range(0, π, length = 20)
     ϕ = range(0, 2π, length = 25)
 
-    B₀ = 1.0e-8 # [nT]
+    B₀ = 1.0e-8 # [T]
     B = zeros(3, length(r), length(θ), length(ϕ))
 
     for (iθ, θ_val) in enumerate(θ)
