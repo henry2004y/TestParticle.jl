@@ -608,14 +608,10 @@ Calculate the curvature vector `κ` of the magnetic field at position `x` and ti
 @inline function get_curvature(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
 
-    Bmag = norm(B)
-    if Bmag == 0
-        return zero(x)
-    end
-    b̂ = B / Bmag
+    # Curvature vector κ = (b̂ ⋅ ∇) b̂
+    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
 
-    κ, _ = _get_curvature(B, Bmag, b̂, JB)
-    return κ
+    return B, ∇B, κ, b̂, Bmag
 end
 
 """

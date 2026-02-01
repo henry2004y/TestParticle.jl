@@ -128,33 +128,30 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 )
 
 # lazy time-dependent numerical field
-itp_num, t_p = let
+itp_num, t1, t2 = let
     # Define grid
     x_grid = range(0.0, 1.0, length = 4)
     y_grid = range(0.0, 1.0, length = 4)
     z_grid = range(0.0, 1.0, length = 4)
 
-    B0 = fill(0.0, 3, 4, 4, 4) # t = 0
-    B1 = fill(0.0, 3, 4, 4, 4) # t = 1
+    B_fields = ntuple(_ -> fill(0.0, 3, 4, 4, 4), 4)
+    B_fields[1][1, :, :, :] .= 1.0
+    B_fields[2][2, :, :, :] .= 2.0
+    B_fields[3][3, :, :, :] .= 3.0
+    B_fields[4][1, :, :, :] .= 4.0
 
-    B0[1, :, :, :] .= 1.0
-    B1[2, :, :, :] .= 2.0
-
-    times_num = [0.0, 1.0]
+    times_num = [0.0, 1.0, 2.0, 3.0]
 
     # Loader for numerical field
-    function loader_num(i)
-        if i == 1
-            return TP.getinterp(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
-        elseif i == 2
-            return TP.getinterp(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
-        end
-    end
+    loader_num(i) = TP.getinterp(TP.CartesianGrid, B_fields[i], x_grid, y_grid, z_grid)
 
-    LazyTimeInterpolator(times_num, loader_num), 0.5
+    LazyTimeInterpolator(times_num, loader_num), 0.5, 2.5
 end
 
-SUITE["interpolation"]["time-dependent"] = @benchmarkable $itp_num($loc, $t_p)
+SUITE["interpolation"]["time-dependent"] = @benchmarkable begin
+    $itp_num($loc, $t1)
+    $itp_num($loc, $t2)
+end
 
 stateinit_gc,
     param_gc = TP.prepare_gc(
