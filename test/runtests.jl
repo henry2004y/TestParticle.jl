@@ -396,6 +396,10 @@ end
         sol = solve(prob, Tsit5(); save_idxs = [1])
         @test length(sol) == 9 && sol[1, end] ≈ 0.9999998697180689
 
+        prob = ODEProblem(trace_normalized, SA[stateinit...], tspan, param)
+        sol = solve(prob, Tsit5(); save_idxs = [1])
+        @test length(sol) == 9 && sol[1, end] ≈ 0.9999998697180689
+
         # Because the field is uniform, the order of interpolation does not matter.
         param = prepare(grid, E, B; order = 2)
         prob = remake(prob; p = param)
