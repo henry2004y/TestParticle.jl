@@ -219,6 +219,32 @@ function gpu_field_evaluation!(
     end
 end
 
+function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
+    T = eltype(xv)
+    # Extract position and velocity (v^{n-1/2})
+    x_p = xv[1]
+    y_p = xv[2]
+    z_p = xv[3]
+    vx = xv[4]
+    vy = xv[5]
+    vz = xv[6]
+
+    # Evaluate fields at current position and time
+    r_vec = SVector(x_p, y_p, z_p)
+    E_val = Efunc(r_vec, t)
+    B_val = Bfunc(r_vec, t)
+
+    # Correct velocity to v^n using half-step push
+    vx_n, vy_n, vz_n = boris_velocity_update(
+        vx, vy, vz,
+        E_val[1], E_val[2], E_val[3],
+        B_val[1], B_val[2], B_val[3],
+        qdt_2m_half
+    )
+
+    return SVector{6, T}(x_p, y_p, z_p, vx_n, vy_n, vz_n)
+end
+
 
 function solve(
         prob::TraceProblem, backend::KA.Backend;
@@ -319,13 +345,6 @@ function solve(
 
     kernel! = boris_push_kernel!(backend, workgroup_size)
 
-    vback_kernel! = velocity_back_kernel!(backend, workgroup_size)
-    vback_kernel!(
-        xv_current, xv_current, q2m, -0.5 * dt,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr; ndrange = n_particles
-    )
-    KA.synchronize(backend)
-
     sols = Vector{
         typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(u0)])),
     }(undef, trajectories)
@@ -342,6 +361,13 @@ function solve(
             saved_times[i][iout_counters[i]] = tspan[1]
         end
     end
+
+    vback_kernel! = velocity_back_kernel!(backend, workgroup_size)
+    vback_kernel!(
+        xv_current, xv_current, q2m, -0.5 * dt,
+        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr; ndrange = n_particles
+    )
+    KA.synchronize(backend)
 
     for it in 1:nt
         t = tspan[1] + (it - 0.5) * dt
@@ -367,11 +393,16 @@ function solve(
 
         if save_everystep && it % savestepinterval == 0
             xv_cpu = Array(xv_current)
+            t_current = tspan[1] + it * dt
+            qdt_2m_half = q2m * 0.5 * (0.5 * dt)
+
             for i in 1:n_particles
                 if iout_counters[i] < nout
                     iout_counters[i] += 1
-                    saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu[:, i])
-                    saved_times[i][iout_counters[i]] = tspan[1] + it * dt
+                    saved_data[i][iout_counters[i]] = _leapfrog_to_output(
+                        @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                    )
+                    saved_times[i][iout_counters[i]] = t_current
                 end
             end
         end
@@ -379,11 +410,16 @@ function solve(
 
     if save_end
         xv_cpu = Array(xv_current)
+        t_current = tspan[2]
+        qdt_2m_half = q2m * 0.5 * (0.5 * dt)
+
         for i in 1:n_particles
             if iout_counters[i] < nout
                 iout_counters[i] += 1
-                saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu[:, i])
-                saved_times[i][iout_counters[i]] = tspan[2]
+                saved_data[i][iout_counters[i]] = _leapfrog_to_output(
+                    @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                )
+                saved_times[i][iout_counters[i]] = t_current
             end
         end
     end
