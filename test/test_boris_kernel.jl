@@ -66,8 +66,8 @@ const KA = KernelAbstractions
 
         # Check only first and last steps to avoid excessive test printing
         @test sol_gpu[1].t ≈ sol_cpu[1].t atol = 1.0e-6
-        # Relax tolerances for subtle numerical differences between standard and KA implementations
-        @test sol_gpu[1].u[end] ≈ sol_cpu[1].u[end] rtol = 0.05 atol = 1.0e-4
+        # Tight tolerances as the implementations should be algorithmically equivalent
+        @test sol_gpu[1].u[end] ≈ sol_cpu[1].u[end] rtol = 1.0e-10 atol = 1.0e-10
     end
 
     @testset "Energy Conservation" begin

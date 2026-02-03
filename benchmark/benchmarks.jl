@@ -4,6 +4,7 @@ using BenchmarkTools
 using TestParticle
 import TestParticle as TP
 using OrdinaryDiffEq, Meshes, StaticArrays
+using TestParticle: CPU
 
 const SUITE = BenchmarkGroup()
 
@@ -162,6 +163,9 @@ SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
 alg_adaptive = AdaptiveBoris(dtmax = 1.0e-3)
 SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
     $prob_boris, $alg_adaptive
+)
+SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable TP.solve(
+    $prob_boris, CPU(); dt = 1 / 7, savestepinterval = 10
 )
 
 # Time-Dependent Field
