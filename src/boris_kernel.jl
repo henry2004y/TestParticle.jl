@@ -31,9 +31,13 @@ function adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
         # Adapt interpolation object to GPU
         adapted_func = Adapt.adapt(backend, itp)
-        return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
+
+        # Re-wrap in FieldInterpolator to maintain calling convention f(r)
+        adapted_wrapper = FieldInterpolator(adapted_func)
+
+        return Field{is_time_dependent(field), typeof(adapted_wrapper)}(adapted_wrapper)
     end
-    # Analytic fields don't need adaptation
+    # Analytic fields don't need adaptation (assuming they are GPU compatible functions)
     return field
 end
 
@@ -73,8 +77,7 @@ end
 
 @kernel function boris_push_kernel!(
         @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
-        @Const(Ex_arr), @Const(Ey_arr), @Const(Ez_arr),
-        @Const(Bx_arr), @Const(By_arr), @Const(Bz_arr)
+        Efunc, Bfunc, @Const(t)
     )
     i = @index(Global)
 
@@ -85,12 +88,17 @@ end
     vy = xv_in[5, i]
     vz = xv_in[6, i]
 
-    Ex = Ex_arr[i]
-    Ey = Ey_arr[i]
-    Ez = Ez_arr[i]
-    Bx = Bx_arr[i]
-    By = By_arr[i]
-    Bz = Bz_arr[i]
+    # Evaluate fields directly
+    r_vec = SVector{3}(x, y, z)
+    E_val = Efunc(r_vec, t)
+    B_val = Bfunc(r_vec, t)
+
+    Ex = E_val[1]
+    Ey = E_val[2]
+    Ez = E_val[3]
+    Bx = B_val[1]
+    By = B_val[2]
+    Bz = B_val[3]
 
     qdt_2m = q2m * 0.5 * dt
 
@@ -108,17 +116,22 @@ end
 
 @kernel function velocity_back_kernel!(
         xv_out, @Const(xv_in), @Const(q2m_val), @Const(dt_val),
-        @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz)
+        Efunc, Bfunc, @Const(t)
     )
     i = @index(Global)
     vx = xv_in[4, i]
     vy = xv_in[5, i]
     vz = xv_in[6, i]
 
+    # Evaluate fields at current position
+    r_vec = SVector{3}(xv_in[1, i], xv_in[2, i], xv_in[3, i])
+    E_val = Efunc(r_vec, t)
+    B_val = Bfunc(r_vec, t)
+
     qdt_2m = q2m_val * 0.5 * dt_val
 
     vx_new, vy_new, vz_new = boris_velocity_update(
-        vx, vy, vz, Ex[i], Ey[i], Ez[i], Bx[i], By[i], Bz[i], qdt_2m
+        vx, vy, vz, E_val[1], E_val[2], E_val[3], B_val[1], B_val[2], B_val[3], qdt_2m
     )
 
     xv_out[4, i] = vx_new
@@ -126,98 +139,6 @@ end
     xv_out[6, i] = vz_new
 end
 
-
-"""
-GPU kernel to evaluate interpolated fields directly on GPU.
-This eliminates CPU-GPU data transfers for numerical fields.
-"""
-@kernel function evaluate_interp_fields_kernel!(
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        @Const(xv), E_interp, B_interp, t
-    )
-    i = @index(Global)
-
-    x = xv[1, i]
-    y = xv[2, i]
-    z = xv[3, i]
-
-    # Evaluate interpolation directly on GPU
-    # For 3D interpolation, call with (x, y, z)
-    E_val = E_interp(x, y, z)
-    B_val = B_interp(x, y, z)
-
-    Ex_arr[i] = E_val[1]
-    Ey_arr[i] = E_val[2]
-    Ez_arr[i] = E_val[3]
-    Bx_arr[i] = B_val[1]
-    By_arr[i] = B_val[2]
-    Bz_arr[i] = B_val[3]
-end
-
-function evaluate_fields_on_particles!(
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, xv_cpu, Efunc, Bfunc, t
-    )
-    n_particles = size(xv_cpu, 2)
-
-    for i in 1:n_particles
-        r = SVector(xv_cpu[1, i], xv_cpu[2, i], xv_cpu[3, i])
-        E_val = Efunc(r, t)
-        B_val = Bfunc(r, t)
-
-        Ex_cpu[i] = E_val[1]
-        Ey_cpu[i] = E_val[2]
-        Ez_cpu[i] = E_val[3]
-        Bx_cpu[i] = B_val[1]
-        By_cpu[i] = B_val[2]
-        Bz_cpu[i] = B_val[3]
-    end
-
-    return
-end
-
-function gpu_field_evaluation!(
-        backend, use_gpu_interp, eval_kernel!,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        xv_current,
-        Efunc, Bfunc, # Adapted fields
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, # CPU buffers
-        xv_cpu, # CPU buffer for positions
-        t, n_particles
-    )
-    return if use_gpu_interp
-        # Use GPU kernel for interpolation
-        eval_kernel!(
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-            xv_current, Efunc.field_function, Bfunc.field_function, t;
-            ndrange = n_particles
-        )
-        KA.synchronize(backend)
-    else
-        # CPU evaluation for analytic fields
-        # If xv_current is not on CPU, copy to xv_cpu buffer
-        if xv_current isa Array
-            xv_target = xv_current
-        else
-            copyto!(xv_cpu, xv_current)
-            xv_target = xv_cpu
-        end
-
-        evaluate_fields_on_particles!(
-            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_target, Efunc, Bfunc, t
-        )
-
-        # Copy back if needed (if Ex_arr is not aliased to Ex_cpu)
-        if Ex_arr !== Ex_cpu
-            copyto!(Ex_arr, Ex_cpu)
-            copyto!(Ey_arr, Ey_cpu)
-            copyto!(Ez_arr, Ez_cpu)
-            copyto!(Bx_arr, Bx_cpu)
-            copyto!(By_arr, By_cpu)
-            copyto!(Bz_arr, Bz_cpu)
-        end
-    end
-end
 
 function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
     T = eltype(xv)
@@ -256,10 +177,6 @@ function solve(
     q2m, m, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
-    # Check if fields are interpolation objects and adapt to GPU
-    use_gpu_interp = is_interpolation_field(Efunc.field_function) ||
-        is_interpolation_field(Bfunc.field_function)
-
     # Adapt interpolation fields to GPU memory
     Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
     Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
@@ -289,13 +206,7 @@ function solve(
     xv_current = KA.zeros(backend, T, 6, n_particles)
     xv_next = KA.zeros(backend, T, 6, n_particles)
 
-    Ex_arr = KA.zeros(backend, T, n_particles)
-    Ey_arr = KA.zeros(backend, T, n_particles)
-    Ez_arr = KA.zeros(backend, T, n_particles)
-    Bx_arr = KA.zeros(backend, T, n_particles)
-    By_arr = KA.zeros(backend, T, n_particles)
-    Bz_arr = KA.zeros(backend, T, n_particles)
-
+    # xv_init on CPU
     xv_init = zeros(T, 6, n_particles)
     for i in 1:n_particles
         new_prob = prob.prob_func(prob, i, false)
@@ -304,44 +215,8 @@ function solve(
     end
     copyto!(xv_current, xv_init)
 
-    args_cpu = (T, n_particles)
-    if Ex_arr isa Array
-        Ex_cpu = Ex_arr
-        Ey_cpu = Ey_arr
-        Ez_cpu = Ez_arr
-        Bx_cpu = Bx_arr
-        By_cpu = By_arr
-        Bz_cpu = Bz_arr
-    else
-        Ex_cpu = zeros(args_cpu...)
-        Ey_cpu = zeros(args_cpu...)
-        Ez_cpu = zeros(args_cpu...)
-        Bx_cpu = zeros(args_cpu...)
-        By_cpu = zeros(args_cpu...)
-        Bz_cpu = zeros(args_cpu...)
-    end
-
-    # Buffer for particle positions on CPU (if needed)
-    xv_cpu_buffer = if xv_current isa Array
-        xv_current # Placeholder, will use actual xv_current dynamically
-    else
-        zeros(T, 6, n_particles)
-    end
-
-    # Initial field evaluation
-    # Determine integration strategy and prepare kernel if needed
-    eval_kernel! = use_gpu_interp ? evaluate_interp_fields_kernel!(backend, workgroup_size) : nothing
-
-    # Initial field evaluation
-    gpu_field_evaluation!(
-        backend, use_gpu_interp, eval_kernel!,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        xv_current,
-        Efunc_gpu, Bfunc_gpu,
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-        xv_cpu_buffer,
-        tspan[1], n_particles
-    )
+    # Buffer for particle positions on CPU (used for saving data)
+    xv_cpu_buffer = zeros(T, 6, n_particles)
 
     kernel! = boris_push_kernel!(backend, workgroup_size)
 
@@ -354,10 +229,10 @@ function solve(
     iout_counters = zeros(Int, trajectories)
 
     if save_start
-        xv_cpu = Array(xv_current)
+        copyto!(xv_cpu_buffer, xv_current)
         for i in 1:n_particles
             iout_counters[i] += 1
-            saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu[:, i])
+            saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu_buffer[:, i])
             saved_times[i][iout_counters[i]] = tspan[1]
         end
     end
@@ -365,26 +240,16 @@ function solve(
     vback_kernel! = velocity_back_kernel!(backend, workgroup_size)
     vback_kernel!(
         xv_current, xv_current, q2m, -0.5 * dt,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr; ndrange = n_particles
+        Efunc_gpu, Bfunc_gpu, tspan[1]; ndrange = n_particles
     )
     KA.synchronize(backend)
 
     for it in 1:nt
         t = tspan[1] + (it - 0.5) * dt
 
-        gpu_field_evaluation!(
-            backend, use_gpu_interp, eval_kernel!,
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-            xv_current,
-            Efunc_gpu, Bfunc_gpu,
-            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_cpu_buffer,
-            t, n_particles
-        )
-
         kernel!(
             xv_current, xv_next, q2m, dt,
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr;
+            Efunc_gpu, Bfunc_gpu, t;
             ndrange = n_particles
         )
         KA.synchronize(backend)
@@ -392,7 +257,7 @@ function solve(
         xv_current, xv_next = xv_next, xv_current
 
         if save_everystep && it % savestepinterval == 0
-            xv_cpu = Array(xv_current)
+            copyto!(xv_cpu_buffer, xv_current)
             t_current = tspan[1] + it * dt
             qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
@@ -400,7 +265,7 @@ function solve(
                 if iout_counters[i] < nout
                     iout_counters[i] += 1
                     saved_data[i][iout_counters[i]] = _leapfrog_to_output(
-                        @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                        @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
                     )
                     saved_times[i][iout_counters[i]] = t_current
                 end
@@ -409,7 +274,7 @@ function solve(
     end
 
     if save_end
-        xv_cpu = Array(xv_current)
+        copyto!(xv_cpu_buffer, xv_current)
         t_current = tspan[2]
         qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
@@ -417,7 +282,7 @@ function solve(
             if iout_counters[i] < nout
                 iout_counters[i] += 1
                 saved_data[i][iout_counters[i]] = _leapfrog_to_output(
-                    @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                    @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
                 )
                 saved_times[i][iout_counters[i]] = t_current
             end
