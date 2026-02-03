@@ -34,7 +34,7 @@ function adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
         # Re-wrap in FieldInterpolator to maintain calling convention f(r)
         adapted_wrapper = FieldInterpolator(adapted_func)
-
+        #TODO: time interpolation support needs to be checked
         return Field{is_time_dependent(field), typeof(adapted_wrapper)}(adapted_wrapper)
     end
     # Analytic fields don't need adaptation (assuming they are GPU compatible functions)
