@@ -47,68 +47,25 @@ end
 adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
 
 
-@inline function boris_velocity_update(vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m)
-    vx_minus = vx + qdt_2m * Ex
-    vy_minus = vy + qdt_2m * Ey
-    vz_minus = vz + qdt_2m * Ez
-
-    tx = qdt_2m * Bx
-    ty = qdt_2m * By
-    tz = qdt_2m * Bz
-
-    t_mag2 = tx * tx + ty * ty + tz * tz
-    factor = 2 / (1 + t_mag2)
-    sx = factor * tx
-    sy = factor * ty
-    sz = factor * tz
-
-    vpx = vx_minus + (vy_minus * tz - vz_minus * ty)
-    vpy = vy_minus + (vz_minus * tx - vx_minus * tz)
-    vpz = vz_minus + (vx_minus * ty - vy_minus * tx)
-
-    vx_plus = vx_minus + (vpy * sz - vpz * sy)
-    vy_plus = vy_minus + (vpz * sx - vpx * sz)
-    vz_plus = vz_minus + (vpx * sy - vpy * sx)
-
-    vx_new = vx_plus + qdt_2m * Ex
-    vy_new = vy_plus + qdt_2m * Ey
-    vz_new = vz_plus + qdt_2m * Ez
-
-    return vx_new, vy_new, vz_new
+@inline function get_particle(xv, i)
+    return SVector(xv[1, i], xv[2, i], xv[3, i]), SVector(xv[4, i], xv[5, i], xv[6, i])
 end
 
 @inline function boris_push_node!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
-    x = xv_in[1, i]
-    y = xv_in[2, i]
-    z = xv_in[3, i]
-    vx = xv_in[4, i]
-    vy = xv_in[5, i]
-    vz = xv_in[6, i]
+    r_vec, v_vec = get_particle(xv_in, i)
 
     # Evaluate fields directly
-    r_vec = SVector{3}(x, y, z)
     E_val = Efunc(r_vec, t)
     B_val = Bfunc(r_vec, t)
 
-    Ex = E_val[1]
-    Ey = E_val[2]
-    Ez = E_val[3]
-    Bx = B_val[1]
-    By = B_val[2]
-    Bz = B_val[3]
-
     qdt_2m = q2m * 0.5 * dt
 
-    vx_new, vy_new, vz_new = boris_velocity_update(
-        vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m
-    )
+    v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
 
-    xv_out[1, i] = x + vx_new * dt
-    xv_out[2, i] = y + vy_new * dt
-    xv_out[3, i] = z + vz_new * dt
-    xv_out[4, i] = vx_new
-    xv_out[5, i] = vy_new
-    return xv_out[6, i] = vz_new
+    xv_out[1:3, i] = r_vec + v_new * dt
+    xv_out[4:6, i] = v_new
+
+    return
 end
 
 @kernel function boris_push_kernel!(
@@ -120,23 +77,17 @@ end
 end
 
 @inline function velocity_back_node!(i, xv_out, xv_in, q2m_val, dt_val, Efunc, Bfunc, t)
-    x, y, z = xv_in[1, i], xv_in[2, i], xv_in[3, i]
-    vx, vy, vz = xv_in[4, i], xv_in[5, i], xv_in[6, i]
+    r_vec, v_vec = get_particle(xv_in, i)
 
     # Evaluate fields at current position
-    r_vec = SVector{3}(x, y, z)
     E_val = Efunc(r_vec, t)
     B_val = Bfunc(r_vec, t)
 
     qdt_2m = q2m_val * 0.5 * dt_val
 
-    vx_new, vy_new, vz_new = boris_velocity_update(
-        vx, vy, vz, E_val[1], E_val[2], E_val[3], B_val[1], B_val[2], B_val[3], qdt_2m
-    )
+    xv_out[4:6, i] = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
 
-    xv_out[4, i] = vx_new
-    xv_out[5, i] = vy_new
-    return xv_out[6, i] = vz_new
+    return
 end
 
 @kernel function velocity_back_kernel!(
@@ -147,7 +98,7 @@ end
     velocity_back_node!(i, xv_out, xv_in, q2m_val, dt_val, Efunc, Bfunc, t)
 end
 
-function boris_step!(
+@inline function boris_step!(
         backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
@@ -157,7 +108,7 @@ function boris_step!(
     return
 end
 
-function boris_step!(
+@inline function boris_step!(
         ::KA.CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
         workgroup_size
     )
@@ -167,7 +118,7 @@ function boris_step!(
     return
 end
 
-function velocity_back_step!(
+@inline function velocity_back_step!(
         backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
         t, n_particles, workgroup_size
     )
@@ -177,7 +128,7 @@ function velocity_back_step!(
     return
 end
 
-function velocity_back_step!(
+@inline function velocity_back_step!(
         ::KA.CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
@@ -191,34 +142,28 @@ end
 function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
     T = eltype(xv)
     # Extract position and velocity (v^{n-1/2})
-    x_p, y_p, z_p = xv[1], xv[2], xv[3]
-    vx, vy, vz = xv[4], xv[5], xv[6]
+    r_vec = SVector(xv[1], xv[2], xv[3])
+    v_vec = SVector{3}(xv[4], xv[5], xv[6])
 
     # Evaluate fields at current position and time
-    r_vec = SVector(x_p, y_p, z_p)
     E_val = Efunc(r_vec, t)
     B_val = Bfunc(r_vec, t)
 
     # Correct velocity to v^n using half-step push
-    vx_n, vy_n, vz_n = boris_velocity_update(
-        vx, vy, vz,
-        E_val[1], E_val[2], E_val[3],
-        B_val[1], B_val[2], B_val[3],
-        qdt_2m_half
-    )
+    v_n = boris_velocity_update(v_vec, E_val, B_val, qdt_2m_half)
 
-    return SVector{6, T}(x_p, y_p, z_p, vx_n, vy_n, vz_n)
+    return vcat(r_vec, v_n)
 end
 
 
-function solve(
+@inbounds function solve(
         prob::TraceProblem, backend::KA.Backend;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
     )
     (; tspan, p, u0) = prob
-    q2m, m, Efunc, Bfunc, _ = p
+    q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
     # Adapt interpolation fields to GPU memory
@@ -275,7 +220,6 @@ function solve(
     else
         xv_cpu_buffer = zeros(T, 6, n_particles)
     end
-
 
     sols = Vector{
         typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(u0)])),

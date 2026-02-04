@@ -76,6 +76,26 @@ end
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
+    boris_velocity_update(v, E, B, qdt_2m)
+
+Update velocity using the Boris method, returning the new velocity as an SVector.
+This is the core logic shared between the standard solver and the kernel solver.
+"""
+@inline @muladd function boris_velocity_update(v, E, B, qdt_2m)
+    t_rotate = qdt_2m * B
+    t_mag2 = sum(abs2, t_rotate)
+    s_rotate = 2 * t_rotate / (1 + t_mag2)
+
+    v_minus = v + qdt_2m * E
+    v_prime = v_minus + (v_minus × t_rotate)
+    v_plus = v_minus + (v_prime × s_rotate)
+
+    v_new = v_plus + qdt_2m * E
+
+    return v_new
+end
+
+"""
     update_velocity(v, r, param, dt, t)
 
 Update velocity using the Boris method, returning the new velocity as an SVector.
@@ -84,18 +104,9 @@ Update velocity using the Boris method, returning the new velocity as an SVector
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
+    qdt_2m = q2m * 0.5 * dt
 
-    t_rotate = q2m * B * 0.5 * dt
-    t_mag2 = sum(abs2, t_rotate)
-    s_rotate = 2 * t_rotate / (1 + t_mag2)
-
-    v_minus = v + q2m * E * 0.5 * dt
-    v_prime = v_minus + (v_minus × t_rotate)
-    v_plus = v_minus + (v_prime × s_rotate)
-
-    v_new = v_plus + q2m * E * 0.5 * dt
-
-    return v_new
+    return boris_velocity_update(v, E, B, qdt_2m)
 end
 
 """
