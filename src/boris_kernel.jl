@@ -209,7 +209,6 @@ function solve(
     xv_next = KA.zeros(backend, T, 6, n_particles)
 
     # Optimization for CPU backend: alias buffers to avoid allocations
-    # On CPU, KA.zeros returns an Array, so we can check this to detect CPU backend availability
     is_cpu_accessible = xv_current isa Array
 
     if is_cpu_accessible
@@ -229,7 +228,6 @@ function solve(
     end
 
     # Buffer for particle positions on CPU (used for saving data)
-    # If xv_current is already on CPU, we don't need a separate buffer allocation
     if is_cpu_accessible
         xv_cpu_buffer = xv_current
     else
@@ -299,7 +297,9 @@ function solve(
     end
 
     if save_end
-        copyto!(xv_cpu_buffer, xv_current)
+        if !is_cpu_accessible
+            copyto!(xv_cpu_buffer, xv_current)
+        end
         t_current = tspan[2]
         qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
