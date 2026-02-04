@@ -61,9 +61,13 @@ end
     qdt_2m = q2m * 0.5 * dt
 
     v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
-
-    xv_out[1:3, i] = r_vec + v_new * dt
-    xv_out[4:6, i] = v_new
+    # Use scalar indexing for GPU compilation
+    xv_out[1, i] = r_vec[1] + v_new[1] * dt
+    xv_out[2, i] = r_vec[2] + v_new[2] * dt
+    xv_out[3, i] = r_vec[3] + v_new[3] * dt
+    xv_out[4, i] = v_new[1]
+    xv_out[5, i] = v_new[2]
+    xv_out[6, i] = v_new[3]
 
     return
 end
@@ -85,7 +89,11 @@ end
 
     qdt_2m = q2m_val * 0.5 * dt_val
 
-    xv_out[4:6, i] = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
+    v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
+    # Use scalar indexing for GPU compilation
+    xv_out[4, i] = v_new[1]
+    xv_out[5, i] = v_new[2]
+    xv_out[6, i] = v_new[3]
 
     return
 end
