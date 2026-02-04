@@ -197,9 +197,11 @@ function trace_relativistic_normalized(y, p, t)
 end
 
 @inline function get_B_parameters(x, t, Bfunc)
-    # Compute B and its Jacobian in a single pass using ForwardDiff
-    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
-    B = Bfunc(x, t)
+    # Compute B and its Jacobian in a single pass using DiffResults
+    result = DiffResults.JacobianResult(x)
+    result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
+    JB = DiffResults.jacobian(result)
+    B = DiffResults.value(result)
 
     Bmag = norm(B)
     b̂ = B / Bmag
@@ -211,8 +213,10 @@ end
 end
 
 @inline function get_E_parameters(x, t, Efunc)
-    JE = ForwardDiff.jacobian(r -> Efunc(r, t), x)
-    E = Efunc(x, t)
+    result = DiffResults.JacobianResult(x)
+    result = ForwardDiff.jacobian!(result, r -> Efunc(r, t), x)
+    JE = DiffResults.jacobian(result)
+    E = DiffResults.value(result)
 
     return E, JE
 end

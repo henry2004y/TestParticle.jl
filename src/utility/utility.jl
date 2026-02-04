@@ -567,9 +567,10 @@ end
 end
 
 @inline function _get_B_jacobian(x, t, Bfunc)
-    #TODO: We may consider DiffResults to get JB and B in one pass.
-    JB = ForwardDiff.jacobian(r -> Bfunc(r, t), x)
-    B = Bfunc(x, t)
+    result = DiffResults.JacobianResult(x)
+    result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
+    JB = DiffResults.jacobian(result)
+    B = DiffResults.value(result)
     return B, JB
 end
 
