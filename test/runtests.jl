@@ -483,6 +483,13 @@ end
         sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
         @test sol_gc[1, end] ≈ 0.9896155284173717
         @test sol_gc_analytic[1, end] ≈ 0.9906923500002904 rtol = 1.0e-5
+
+        # Test get_E_parameters with constant E field (not used currently)
+        E_const(x, t) = SA[1.0e-9, 0.0, 0.0]  # Time-dependent signature
+        x_test, t_test = SA[1.0, 0.0, 0.0], 0.0
+        E_expected = E_const(x_test, t_test)
+        E, JE = TP.get_E_parameters(x_test, t_test, E_const)
+        @test E == E_expected && JE == zeros(3, 3)
     end
 end
 
