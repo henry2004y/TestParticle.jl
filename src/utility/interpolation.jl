@@ -16,6 +16,10 @@ function (fi::FieldInterpolator)(xu)
     return fi.itp(xu[1], xu[2], xu[3])
 end
 
+function (fi::FieldInterpolator)(xu, t)
+    return fi(xu)
+end
+
 function getinterp_scalar(A, grid1, grid2, grid3, args...)
     return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
 end

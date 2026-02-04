@@ -24,6 +24,9 @@ Adapt interpolation fields to GPU memory using Adapt.jl.
 Analytic functions are returned unchanged.
 """
 function adapt_field_to_gpu(field::Field, backend::KA.Backend)
+    if backend isa KA.CPU
+        return field
+    end
     f = field.field_function
     if is_interpolation_field(f)
         # Unwrap FieldInterpolator to get the inner interpolation object
@@ -34,7 +37,6 @@ function adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
         # Re-wrap in FieldInterpolator to maintain calling convention f(r)
         adapted_wrapper = FieldInterpolator(adapted_func)
-        #TODO: time interpolation support needs to be checked
         return Field{is_time_dependent(field), typeof(adapted_wrapper)}(adapted_wrapper)
     end
     # Analytic fields don't need adaptation (assuming they are GPU compatible functions)
@@ -206,17 +208,33 @@ function solve(
     xv_current = KA.zeros(backend, T, 6, n_particles)
     xv_next = KA.zeros(backend, T, 6, n_particles)
 
-    # xv_init on CPU
-    xv_init = zeros(T, 6, n_particles)
+    # Optimization for CPU backend: alias buffers to avoid allocations
+    # On CPU, KA.zeros returns an Array, so we can check this to detect CPU backend availability
+    is_cpu_accessible = xv_current isa Array
+
+    if is_cpu_accessible
+        xv_init = xv_current
+    else
+        xv_init = zeros(T, 6, n_particles)
+    end
+
     for i in 1:n_particles
         new_prob = prob.prob_func(prob, i, false)
         u0_i = new_prob.u0
         xv_init[:, i] .= u0_i
     end
-    copyto!(xv_current, xv_init)
+
+    if !is_cpu_accessible
+        copyto!(xv_current, xv_init)
+    end
 
     # Buffer for particle positions on CPU (used for saving data)
-    xv_cpu_buffer = zeros(T, 6, n_particles)
+    # If xv_current is already on CPU, we don't need a separate buffer allocation
+    if is_cpu_accessible
+        xv_cpu_buffer = xv_current
+    else
+        xv_cpu_buffer = zeros(T, 6, n_particles)
+    end
 
     kernel! = boris_push_kernel!(backend, workgroup_size)
 
@@ -229,7 +247,11 @@ function solve(
     iout_counters = zeros(Int, trajectories)
 
     if save_start
-        copyto!(xv_cpu_buffer, xv_current)
+        if !is_cpu_accessible
+            copyto!(xv_cpu_buffer, xv_current)
+        end
+        # If is_cpu_accessible, xv_cpu_buffer aliases xv_current, so it's already up to date
+
         for i in 1:n_particles
             iout_counters[i] += 1
             saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu_buffer[:, i])
@@ -257,7 +279,10 @@ function solve(
         xv_current, xv_next = xv_next, xv_current
 
         if save_everystep && it % savestepinterval == 0
-            copyto!(xv_cpu_buffer, xv_current)
+            if !is_cpu_accessible
+                copyto!(xv_cpu_buffer, xv_current)
+            end
+
             t_current = tspan[1] + it * dt
             qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
