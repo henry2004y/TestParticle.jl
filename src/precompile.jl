@@ -36,6 +36,9 @@
         sol = solve(prob; dt, savestepinterval = 100)
         sol = solve(prob, EnsembleThreads(); dt, savestepinterval = 100)
 
+        # Kernel Boris (CPU)
+        sol_kernel = solve(prob, CPU(); dt, savestepinterval = 100)
+
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(dtmax = 1.0)
         sol_adaptive = solve(prob, alg_adaptive)[1]
