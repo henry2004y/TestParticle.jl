@@ -1,20 +1,13 @@
 # GPU Boris solver using KernelAbstractions.jl
 
-using KernelAbstractions
-const KA = KernelAbstractions
-using Adapt
-using Interpolations: AbstractInterpolation, AbstractExtrapolation
-
-# Helper functions for GPU interpolation support
-
 """
     adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
 Adapt interpolation fields to GPU memory using Adapt.jl.
 Analytic functions are returned unchanged.
 """
-function adapt_field_to_gpu(field::Field, backend::KA.Backend)
-    backend isa KA.CPU && return field
+function adapt_field_to_gpu(field::Field, backend::Backend)
+    backend isa CPU && return field
 
     # Adapt the inner function (FieldInterpolator or analytic)
     adapted_func = Adapt.adapt(backend, field.field_function)
@@ -23,7 +16,7 @@ function adapt_field_to_gpu(field::Field, backend::KA.Backend)
 end
 
 # Fallback for ZeroField
-adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
+adapt_field_to_gpu(field::ZeroField, backend::Backend) = field
 
 
 @inline function get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
@@ -75,17 +68,17 @@ end
 end
 
 @inline function boris_step!(
-        backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
     kernel! = boris_update_kernel!(backend, workgroup_size)
     kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
-    KA.synchronize(backend)
+    synchronize(backend)
     return
 end
 
 @inline function boris_step!(
-        ::KA.CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
         workgroup_size
     )
     @inbounds for i in 1:n_particles
@@ -95,17 +88,17 @@ end
 end
 
 @inline function boris_velocity_step!(
-        backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
         t, n_particles, workgroup_size
     )
     kernel! = boris_velocity_kernel!(backend, workgroup_size)
     kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
-    KA.synchronize(backend)
+    synchronize(backend)
     return
 end
 
 @inline function boris_velocity_step!(
-        ::KA.CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
     @inbounds for i in 1:n_particles
@@ -136,7 +129,7 @@ end
 
 
 @inbounds function solve(
-        prob::TraceProblem, backend::KA.Backend;
+        prob::TraceProblem, backend::Backend;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
