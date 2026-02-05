@@ -159,7 +159,7 @@ end
 
 @inbounds function solve(
         prob::TraceProblem, backend::Backend,
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleThreads();
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
