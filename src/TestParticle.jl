@@ -15,7 +15,7 @@ import ForwardDiff
 using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
-using KernelAbstractions: @kernel, @index, @Const, @synchronize, Backend, CPU
+using KernelAbstractions: @kernel, @index, @Const, synchronize, Backend, CPU
 
 import KernelAbstractions as KA
 import Adapt
