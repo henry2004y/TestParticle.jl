@@ -19,6 +19,7 @@ using MuladdMacro: @muladd
 import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
+import Adapt
 
 export prepare, prepare_gc, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,

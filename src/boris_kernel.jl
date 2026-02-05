@@ -8,39 +8,18 @@ using Interpolations: AbstractInterpolation, AbstractExtrapolation
 # Helper functions for GPU interpolation support
 
 """
-    is_interpolation_field(f)
-
-Check if a field function is an interpolation object that can be adapted to GPU.
-"""
-function is_interpolation_field(f)
-    return f isa AbstractInterpolation || f isa AbstractExtrapolation ||
-        f isa FieldInterpolator
-end
-
-"""
     adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
 Adapt interpolation fields to GPU memory using Adapt.jl.
 Analytic functions are returned unchanged.
 """
 function adapt_field_to_gpu(field::Field, backend::KA.Backend)
-    if backend isa KA.CPU
-        return field
-    end
-    f = field.field_function
-    if is_interpolation_field(f)
-        # Unwrap FieldInterpolator to get the inner interpolation object
-        itp = f isa FieldInterpolator ? f.itp : f
+    backend isa KA.CPU && return field
 
-        # Adapt interpolation object to GPU
-        adapted_func = Adapt.adapt(backend, itp)
+    # Adapt the inner function (FieldInterpolator or analytic)
+    adapted_func = Adapt.adapt(backend, field.field_function)
 
-        # Re-wrap in FieldInterpolator to maintain calling convention f(r)
-        adapted_wrapper = FieldInterpolator(adapted_func)
-        return Field{is_time_dependent(field), typeof(adapted_wrapper)}(adapted_wrapper)
-    end
-    # Analytic fields don't need adaptation (assuming they are GPU compatible functions)
-    return field
+    return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
 end
 
 # Fallback for ZeroField

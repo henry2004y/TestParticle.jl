@@ -38,7 +38,7 @@ end
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
 is_time_dependent(::AbstractField{itd}) where {itd} = itd
-is_time_dependent(::FieldInterpolator) = false # Always treat as static by default
+is_time_dependent(::AbstractFieldInterpolator) = false # Always treat as static by default
 
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)
 function (f::AbstractField{true})(xu)

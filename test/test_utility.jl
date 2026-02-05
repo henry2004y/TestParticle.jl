@@ -638,7 +638,6 @@ import TestParticle as TP
         struct MockArray{T, N} <: AbstractArray{T, N}
             data::Array{T, N}
         end
-        MockArray(A::Array{T, N}) where {T, N} = MockArray{T, N}(A)
         Base.size(M::MockArray) = size(M.data)
         Base.getindex(M::MockArray, I...) = getindex(M.data, I...)
         Base.setindex!(M::MockArray, v::Number, I...) = setindex!(M.data, v, I...)
