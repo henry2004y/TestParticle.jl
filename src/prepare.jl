@@ -38,6 +38,10 @@ end
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
 is_time_dependent(::AbstractField{itd}) where {itd} = itd
+# Note: Without it, AbstractFieldInterpolators are treated as time-dependent (due to their (x,t) method).
+# This causes TestParticle to wrap them in Field{true}, which forbids calling f(x) (without time).
+# Several components/tests rely on f(x) for static fields, leading to ArgumentError.
+#TODO: Have a proper treatment for the time dependency with LazyTimeInterpolator.
 is_time_dependent(::AbstractFieldInterpolator) = false # Always treat as static by default
 
 (f::AbstractField{true})(xu, t) = f.field_function(xu, t)

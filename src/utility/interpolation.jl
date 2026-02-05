@@ -95,38 +95,6 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
-"""
-    SphericalVectorFieldInterpolator{Tr, Tth, Tph}
-
-A callable struct for spherical vector field interpolation where components are interpolated separately.
-"""
-struct SphericalVectorFieldInterpolator{Tr, Tth, Tph} <: AbstractFieldInterpolator
-    itpr::Tr
-    itpθ::Tth
-    itpϕ::Tph
-end
-
-function (fi::SphericalVectorFieldInterpolator)(xu)
-    r_val, θ_val, ϕ_val = cart2sph(xu)
-
-    Br = fi.itpr(r_val, θ_val, ϕ_val)
-    Bθ = fi.itpθ(r_val, θ_val, ϕ_val)
-    Bϕ = fi.itpϕ(r_val, θ_val, ϕ_val)
-
-    return sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
-end
-
-function (fi::SphericalVectorFieldInterpolator)(xu, t)
-    return fi(xu)
-end
-
-Adapt.adapt_structure(to, fi::SphericalVectorFieldInterpolator) = SphericalVectorFieldInterpolator(
-    Adapt.adapt(to, fi.itpr),
-    Adapt.adapt(to, fi.itpθ),
-    Adapt.adapt(to, fi.itpϕ)
-)
-
-
 function getinterp_scalar(A, grid1, grid2, grid3, args...)
     return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
 end
