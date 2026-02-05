@@ -69,7 +69,7 @@ end
 
 @inline function boris_step!(
         backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
-        n_particles, workgroup_size
+        n_particles, workgroup_size, ensemblealg::BasicEnsembleAlgorithm
     )
     kernel! = boris_update_kernel!(backend, workgroup_size)
     kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
@@ -79,7 +79,7 @@ end
 
 @inline function boris_step!(
         ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
-        workgroup_size
+        workgroup_size, ::EnsembleSerial
     )
     @inbounds for i in 1:n_particles
         boris_update!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
@@ -87,9 +87,22 @@ end
     return
 end
 
+@inline function boris_step!(
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
+        workgroup_size, ::EnsembleThreads
+    )
+    nchunks = Threads.nthreads()
+    Threads.@threads for irange in index_chunks(1:n_particles; n = nchunks)
+        @inbounds for i in irange
+            boris_update!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+        end
+    end
+    return
+end
+
 @inline function boris_velocity_step!(
         backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
-        t, n_particles, workgroup_size
+        t, n_particles, workgroup_size, ensemblealg::BasicEnsembleAlgorithm
     )
     kernel! = boris_velocity_kernel!(backend, workgroup_size)
     kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
@@ -99,13 +112,29 @@ end
 
 @inline function boris_velocity_step!(
         ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
-        n_particles, workgroup_size
+        n_particles, workgroup_size, ::EnsembleSerial
     )
     @inbounds for i in 1:n_particles
         v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
         xv_out[4, i] = v_new[1]
         xv_out[5, i] = v_new[2]
         xv_out[6, i] = v_new[3]
+    end
+    return
+end
+
+@inline function boris_velocity_step!(
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
+        n_particles, workgroup_size, ::EnsembleThreads
+    )
+    nchunks = Threads.nthreads()
+    Threads.@threads for irange in index_chunks(1:n_particles; n = nchunks)
+        @inbounds for i in irange
+            v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+            xv_out[4, i] = v_new[1]
+            xv_out[5, i] = v_new[2]
+            xv_out[6, i] = v_new[3]
+        end
     end
     return
 end
@@ -129,7 +158,8 @@ end
 
 
 @inbounds function solve(
-        prob::TraceProblem, backend::Backend;
+        prob::TraceProblem, backend::Backend,
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
@@ -216,7 +246,7 @@ end
     # Initial backward half-step
     boris_velocity_step!(
         backend, xv_current, xv_current, q2m, -0.5 * dt,
-        Efunc_gpu, Bfunc_gpu, tspan[1], n_particles, workgroup_size
+        Efunc_gpu, Bfunc_gpu, tspan[1], n_particles, workgroup_size, ensemblealg
     )
 
     for it in 1:nt
@@ -224,7 +254,7 @@ end
 
         boris_step!(
             backend, xv_current, xv_next, q2m, dt,
-            Efunc_gpu, Bfunc_gpu, t, n_particles, workgroup_size
+            Efunc_gpu, Bfunc_gpu, t, n_particles, workgroup_size, ensemblealg
         )
 
         xv_current, xv_next = xv_next, xv_current
