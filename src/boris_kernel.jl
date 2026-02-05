@@ -47,12 +47,9 @@ end
 adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
 
 
-@inline function get_particle(xv, i)
-    return SVector(xv[1, i], xv[2, i], xv[3, i]), SVector(xv[4, i], xv[5, i], xv[6, i])
-end
-
-@inline function boris_push_node!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
-    r_vec, v_vec = get_particle(xv_in, i)
+@inline function get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    r_vec = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
+    v_vec = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
     # Evaluate fields directly
     E_val = Efunc(r_vec, t)
@@ -61,10 +58,16 @@ end
     qdt_2m = q2m * 0.5 * dt
 
     v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
-    # Use scalar indexing for GPU compilation
-    xv_out[1, i] = r_vec[1] + v_new[1] * dt
-    xv_out[2, i] = r_vec[2] + v_new[2] * dt
-    xv_out[3, i] = r_vec[3] + v_new[3] * dt
+
+    return v_new
+end
+
+@inline @muladd function boris_update!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    # Scalar write for GPU compatibility
+    xv_out[1, i] = xv_in[1, i] + v_new[1] * dt
+    xv_out[2, i] = xv_in[2, i] + v_new[2] * dt
+    xv_out[3, i] = xv_in[3, i] + v_new[3] * dt
     xv_out[4, i] = v_new[1]
     xv_out[5, i] = v_new[2]
     xv_out[6, i] = v_new[3]
@@ -72,45 +75,31 @@ end
     return
 end
 
-@kernel function boris_push_kernel!(
+@kernel function boris_velocity_kernel!(
+        xv_out, @Const(xv_in), @Const(q2m), @Const(dt),
+        Efunc, Bfunc, @Const(t)
+    )
+    i = @index(Global)
+    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    # Scalar write for GPU compatibility
+    xv_out[4, i] = v_new[1]
+    xv_out[5, i] = v_new[2]
+    xv_out[6, i] = v_new[3]
+end
+
+@kernel function boris_update_kernel!(
         @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
         Efunc, Bfunc, @Const(t)
     )
     i = @index(Global)
-    boris_push_node!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
-end
-
-@inline function velocity_back_node!(i, xv_out, xv_in, q2m_val, dt_val, Efunc, Bfunc, t)
-    r_vec, v_vec = get_particle(xv_in, i)
-
-    # Evaluate fields at current position
-    E_val = Efunc(r_vec, t)
-    B_val = Bfunc(r_vec, t)
-
-    qdt_2m = q2m_val * 0.5 * dt_val
-
-    v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
-    # Use scalar indexing for GPU compilation
-    xv_out[4, i] = v_new[1]
-    xv_out[5, i] = v_new[2]
-    xv_out[6, i] = v_new[3]
-
-    return
-end
-
-@kernel function velocity_back_kernel!(
-        xv_out, @Const(xv_in), @Const(q2m_val), @Const(dt_val),
-        Efunc, Bfunc, @Const(t)
-    )
-    i = @index(Global)
-    velocity_back_node!(i, xv_out, xv_in, q2m_val, dt_val, Efunc, Bfunc, t)
+    boris_update!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
 end
 
 @inline function boris_step!(
         backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
-    kernel! = boris_push_kernel!(backend, workgroup_size)
+    kernel! = boris_update_kernel!(backend, workgroup_size)
     kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
     KA.synchronize(backend)
     return
@@ -121,27 +110,30 @@ end
         workgroup_size
     )
     @inbounds for i in 1:n_particles
-        boris_push_node!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+        boris_update!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
     end
     return
 end
 
-@inline function velocity_back_step!(
+@inline function boris_velocity_step!(
         backend::KA.Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
         t, n_particles, workgroup_size
     )
-    kernel! = velocity_back_kernel!(backend, workgroup_size)
+    kernel! = boris_velocity_kernel!(backend, workgroup_size)
     kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
     KA.synchronize(backend)
     return
 end
 
-@inline function velocity_back_step!(
+@inline function boris_velocity_step!(
         ::KA.CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
         n_particles, workgroup_size
     )
     @inbounds for i in 1:n_particles
-        velocity_back_node!(i, xv_out, xv_in, q2m, dt, Efunc, Bfunc, t)
+        v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+        xv_out[4, i] = v_new[1]
+        xv_out[5, i] = v_new[2]
+        xv_out[6, i] = v_new[3]
     end
     return
 end
@@ -150,8 +142,8 @@ end
 function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
     T = eltype(xv)
     # Extract position and velocity (v^{n-1/2})
-    r_vec = SVector(xv[1], xv[2], xv[3])
-    v_vec = SVector{3}(xv[4], xv[5], xv[6])
+    r_vec = SVector{3, T}(xv[1], xv[2], xv[3])
+    v_vec = SVector{3, T}(xv[4], xv[5], xv[6])
 
     # Evaluate fields at current position and time
     E_val = Efunc(r_vec, t)
@@ -250,7 +242,7 @@ end
     end
 
     # Initial backward half-step
-    velocity_back_step!(
+    boris_velocity_step!(
         backend, xv_current, xv_current, q2m, -0.5 * dt,
         Efunc_gpu, Bfunc_gpu, tspan[1], n_particles, workgroup_size
     )
