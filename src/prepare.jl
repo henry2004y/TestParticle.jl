@@ -44,12 +44,12 @@ is_time_dependent(::AbstractField{itd}) where {itd} = itd
 #TODO: Have a proper treatment for the time dependency with LazyTimeInterpolator.
 is_time_dependent(::AbstractFieldInterpolator) = false # Always treat as static by default
 
-(f::AbstractField{true})(xu, t) = f.field_function(xu, t)
-function (f::AbstractField{true})(xu)
+@inline (f::Field{true})(xu, t) = f.field_function(xu, t)
+@inline function (f::Field{true})(xu)
     throw(ArgumentError("Time-dependent field function must have a time argument."))
 end
-(f::AbstractField{false})(xu, t) = SVector{3}(f.field_function(xu))
-(f::AbstractField{false})(xu) = SVector{3}(f.field_function(xu))
+@inline (f::Field{false})(xu, t) = SVector{3, eltype(xu)}(f.field_function(xu))
+@inline (f::Field{false})(xu) = SVector{3, eltype(xu)}(f.field_function(xu))
 
 function Base.show(io::IO, f::Field)
     println(io, "Field with interpolation support")
