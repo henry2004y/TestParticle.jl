@@ -100,7 +100,7 @@ end
 
 Update velocity using the Boris method, returning the new velocity as an SVector.
 """
-@muladd function update_velocity(v, r, param, dt, t)
+@inline @muladd function update_velocity(v, r, param::P, dt, t) where {P}
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -195,12 +195,12 @@ Trace particles using the Boris method with specified `prob`.
   - `save_work::Bool`: save the work done by the electric field. Default is `false`.
 """
 @inline function solve(
-        prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-        isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
+        isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false
-    )
+    ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
         save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
@@ -208,9 +208,9 @@ Trace particles using the Boris method with specified `prob`.
 end
 
 function _dispatch_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F, n,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
+    ) where {SaveFields, SaveWork, F}
     return if n == 1
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
@@ -224,10 +224,10 @@ function _dispatch_boris!(
     end
 end
 
-function _solve(
-        ::EnsembleSerial, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+@inline function _solve(
+        ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
+    ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
@@ -242,10 +242,10 @@ function _solve(
     return sols
 end
 
-function _solve(
-        ::EnsembleThreads, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+@inline function _solve(
+        ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
+    ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
@@ -362,13 +362,41 @@ end
 """
 Apply Boris method for particles with index in `irange`.
 """
-@muladd function _generic_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+@inline function _boris_loop!(
+        traj, tsave, iout, r, v, p, dt, nt, tspan,
+        savestepinterval, save_everystep, isoutofdomain::F1, velocity_updater::F2,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {F1, F2, SaveFields, SaveWork}
+    it = 1
+    while it <= nt
+        v_prev = v
+        t = (it - 0.5) * dt
+        v = velocity_updater(v, r, p, dt, t)
+
+        if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+            iout += 1
+            if iout <= length(traj)
+                t_current = tspan[1] + (it - 1) * dt
+                v_save = velocity_updater(v_prev, r, p, 0.5 * dt, t_current)
+                data = vcat(r, v_save)
+                traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
+                tsave[iout] = t_current
+            end
+        end
+
+        r += v * dt
+        isoutofdomain(vcat(r, v), p, it * dt) && break
+        it += 1
+    end
+    return it, iout, r, v
+end
+
+@inline @muladd function _generic_boris!(
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater, alg_name
-    ) where {SaveFields, SaveWork}
+        velocity_updater::F2, alg_name
+    ) where {SaveFields, SaveWork, F1, F2}
     (; tspan, p, u0) = prob
-    q2m, m, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
     vars_dim = 6
@@ -379,57 +407,31 @@ Apply Boris method for particles with index in `irange`.
         vars_dim += 4
     end
 
-    @fastmath @inbounds for i in irange
+    @inbounds for i in irange
         traj = Vector{SVector{vars_dim, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
-        # Load independent r and v SVector from u0
         u0_i = SVector{6, T}(new_prob.u0)
         r = u0_i[SVector(1, 2, 3)]
         v = u0_i[SVector(4, 5, 6)]
 
         if save_start
             iout += 1
-            traj[iout] = _prepare_saved_data(
-                u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork)
-            )
+            traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
             tsave[iout] = tspan[1]
         end
 
         # push velocity back in time by 1/2 dt
         v = velocity_updater(v, r, p, -0.5 * dt, tspan[1])
 
-        it = 1
-        while it <= nt
-            v_prev = v
-            t = (it - 0.5) * dt
-            v = velocity_updater(v, r, p, dt, t)
-
-            if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                iout += 1
-                if iout <= nout
-                    t_current = tspan[1] + (it - 1) * dt
-                    # Approximate v_n from v_{n-1/2} (v_prev)
-                    v_save = velocity_updater(
-                        v_prev, r, p, 0.5 * dt,
-                        t_current
-                    )
-
-                    data = vcat(r, v_save)
-                    traj[iout] = _prepare_saved_data(
-                        data, p, t_current, Val(SaveFields), Val(SaveWork)
-                    )
-                    tsave[iout] = t_current
-                end
-            end
-
-            r += v * dt
-            isoutofdomain(vcat(r, v), p, it * dt) && break
-            it += 1
-        end
+        it, iout, r, v = _boris_loop!(
+            traj, tsave, iout, r, v, p, dt, nt, tspan,
+            savestepinterval, save_everystep, isoutofdomain, velocity_updater,
+            Val(SaveFields), Val(SaveWork)
+        )
 
         final_step = min(it, nt)
         should_save_final = false
@@ -475,10 +477,10 @@ end
 """
 Apply Boris method for particles with index in `irange`.
 """
-@muladd function _boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+@inline @muladd function _boris!(
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
+    ) where {SaveFields, SaveWork, F}
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
@@ -552,10 +554,10 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     return v_new
 end
 
-@muladd function _multistep_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n_steps::Int,
+@inline @muladd function _multistep_boris!(
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F, n_steps::Int,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
+    ) where {SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, p, dt, t) ->
     update_velocity_multistep(v, r, p, dt, t, n_steps)
