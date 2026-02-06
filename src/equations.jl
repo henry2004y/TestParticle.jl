@@ -9,7 +9,7 @@ function get_dv(x, v, p, t)
     B = Bfunc(x, t)
     F = Ffunc(x, t)
 
-    return SVector{3}(q2m * (v × B + E) + F / m)
+    return q2m * (v × B + E) + F / m
 end
 
 function get_relativistic_v(γv; c = c)
@@ -144,7 +144,7 @@ function trace_normalized!(dy, y, p, t)
     B = get_BField(p)(y, t)
 
     @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = SVector{3}(v × B + E)
+    @inbounds dy[4:6] = v × B + E
 
     return
 end
@@ -158,7 +158,7 @@ function trace_normalized(y, p, t)
     v = get_v(y)
     E = get_EField(p)(y, t)
     B = get_BField(p)(y, t)
-    dv = SVector{3}(v × B + E)
+    dv = v × B + E
 
     return vcat(v, dv)
 end
@@ -175,7 +175,7 @@ function trace_relativistic_normalized!(dy, y, p, t)
 
     v = get_relativistic_v(γv; c = 1)
     @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = SVector{3}(v × B + E)
+    @inbounds dy[4:6] = v × B + E
 
     return
 end
@@ -191,7 +191,7 @@ function trace_relativistic_normalized(y, p, t)
     γv = get_v(y)
 
     v = get_relativistic_v(γv; c = 1)
-    dv = SVector{3}(v × B + E)
+    dv = v × B + E
 
     return vcat(v, dv)
 end

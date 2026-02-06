@@ -303,8 +303,8 @@ end
         # p = (q, q2m, μ, Efunc, Bfunc)
         r = get_x(xv)
         T = eltype(xv)
-        E = SVector{3, T}(p[4](r, t))
-        B = SVector{3, T}(p[5](r, t))
+        E = p[4](r, t)
+        B = p[5](r, t)
         data = vcat(data, E, B)
     end
     if SaveWork
@@ -342,11 +342,14 @@ function _rk4!(
         # set initial conditions for each trajectory i
         iout = 0
         new_prob = prob.prob_func(prob, i, false)
-        xv = SVector{4, T}(new_prob.u0)
+        xv = new_prob.u0
 
         if save_start
             iout += 1
-            push!(traj, _prepare_saved_data_gc(xv, p, tspan[1], Val(SaveFields), Val(SaveWork)))
+            push!(
+                traj,
+                _prepare_saved_data_gc(xv, p, tspan[1], Val(SaveFields), Val(SaveWork))
+            )
             push!(tsave, tspan[1])
         end
 
@@ -436,7 +439,7 @@ function _rk45!(
         tsave = typeof(tspan[1] + one(T))[]
 
         new_prob = prob.prob_func(prob, i, false)
-        xv = SVector{4, T}(new_prob.u0)
+        xv = new_prob.u0
 
         t = tspan[1]
 
@@ -445,7 +448,7 @@ function _rk45!(
             # p = (q, q2m, μ, E, B)
             q2m = p[2]
             B_field = p[5]
-            R = SVector{3}(xv[1], xv[2], xv[3])
+            R = get_x(xv)
             B_vec = B_field(R, t)
             Bmag = norm(B_vec)
 
