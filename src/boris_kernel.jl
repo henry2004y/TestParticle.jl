@@ -48,10 +48,10 @@ end
 end
 
 @kernel function boris_velocity_kernel!(
-        xv_out, @Const(xv_in), @Const(q2m), @Const(dt),
-        Efunc, Bfunc, @Const(t)
+        xv_out, @Const(xv_in), @Const(q2m), @Const(dt), Efunc, Bfunc,
+        @Const(t), @Const(offset)
     )
-    i = @index(Global)
+    i = @index(Global) + offset
     v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
     # Scalar write for GPU compatibility
     xv_out[4, i] = v_new[1]
@@ -60,48 +60,48 @@ end
 end
 
 @kernel function boris_update_kernel!(
-        @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
-        Efunc, Bfunc, @Const(t)
+        @Const(xv_in), xv_out, @Const(q2m), @Const(dt), Efunc, Bfunc,
+        @Const(t), @Const(offset)
     )
-    i = @index(Global)
+    i = @index(Global) + offset
     boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
 end
 
 @inline function boris_step!(
-        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
-        n_particles, workgroup_size, ensemblealg::BasicEnsembleAlgorithm
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
     )
+    offset = irange.start - 1
+    n_particles = length(irange)
     kernel! = boris_update_kernel!(backend, workgroup_size)
-    kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
+    kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
     synchronize(backend)
     return
 end
 
 @inline function boris_step!(
-        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, n_particles,
-        workgroup_size, ::EnsembleSerial
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
     )
-    @inbounds for i in 1:n_particles
+    @inbounds for i in irange
         boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
     end
     return
 end
 
 @inline function boris_velocity_step!(
-        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc,
-        t, n_particles, workgroup_size, ensemblealg::BasicEnsembleAlgorithm
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
     )
+    offset = irange.start - 1
+    n_particles = length(irange)
     kernel! = boris_velocity_kernel!(backend, workgroup_size)
-    kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t; ndrange = n_particles)
+    kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
     synchronize(backend)
     return
 end
 
 @inline function boris_velocity_step!(
-        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t,
-        n_particles, workgroup_size, ::EnsembleSerial
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
     )
-    @inbounds for i in 1:n_particles
+    @inbounds for i in irange
         v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
         xv_out[4, i] = v_new[1]
         xv_out[5, i] = v_new[2]
@@ -110,7 +110,7 @@ end
     return
 end
 
-function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
+@inline function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
     T = eltype(xv)
     # Extract position and velocity (v^{n-1/2})
     r_vec = SVector{3, T}(xv[1], xv[2], xv[3])
@@ -154,14 +154,17 @@ end
         for (local_i, i) in enumerate(irange)
             iout_counters[local_i] += 1
             saved_data[local_i][iout_counters[local_i]] =
-                SVector{6, T}(xv_cpu_buffer[:, i])
+                SVector{6, T}(
+                xv_cpu_buffer[1, i], xv_cpu_buffer[2, i], xv_cpu_buffer[3, i],
+                xv_cpu_buffer[4, i], xv_cpu_buffer[5, i], xv_cpu_buffer[6, i]
+            )
             saved_times[local_i][iout_counters[local_i]] = tspan[1]
         end
     end
 
     boris_velocity_step!(
         backend, xv_current, xv_current, q2m, -0.5 * dt,
-        Efunc_gpu, Bfunc_gpu, tspan[1], n_particles, workgroup_size, EnsembleSerial()
+        Efunc_gpu, Bfunc_gpu, tspan[1], irange, workgroup_size
     )
 
     for it in 1:nt
@@ -169,7 +172,7 @@ end
 
         boris_step!(
             backend, xv_current, xv_next, q2m, dt,
-            Efunc_gpu, Bfunc_gpu, t, n_particles, workgroup_size, EnsembleSerial()
+            Efunc_gpu, Bfunc_gpu, t, irange, workgroup_size
         )
 
         xv_current, xv_next = xv_next, xv_current
