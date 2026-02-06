@@ -48,8 +48,8 @@ is_time_dependent(::AbstractFieldInterpolator) = false # Always treat as static 
 @inline function (f::Field{true})(xu)
     throw(ArgumentError("Time-dependent field function must have a time argument."))
 end
-@inline (f::Field{false})(xu, t) = SVector{3, eltype(xu)}(f.field_function(xu))
-@inline (f::Field{false})(xu) = SVector{3, eltype(xu)}(f.field_function(xu))
+@inline (f::Field{false})(xu, t) = SVector{3}(f.field_function(xu))
+@inline (f::Field{false})(xu) = SVector{3}(f.field_function(xu))
 
 function Base.show(io::IO, f::Field)
     println(io, "Field with interpolation support")
