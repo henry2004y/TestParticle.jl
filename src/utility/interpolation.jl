@@ -3,18 +3,97 @@
 @inline getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
 
 """
+    AbstractFieldInterpolator
+
+Abstract type for all field interpolators.
+"""
+abstract type AbstractFieldInterpolator <: Function end
+
+"""
     FieldInterpolator{T}
 
-A callable struct that wraps an interpolation object.
-It enables compatibility with `boris_kernel` by exposing the inner `itp` object for GPU adaptation.
+A callable struct that wraps a 3D interpolation object.
 """
-struct FieldInterpolator{T} <: Function
+struct FieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
 
 function (fi::FieldInterpolator)(xu)
     return fi.itp(xu[1], xu[2], xu[3])
 end
+
+function (fi::FieldInterpolator)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp))
+
+"""
+    FieldInterpolator2D{T}
+
+A callable struct that wraps a 2D interpolation object.
+"""
+struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
+    itp::T
+end
+
+function (fi::FieldInterpolator2D)(xu)
+    # 2D interpolation usually involves x and y
+    return fi.itp(xu[1], xu[2])
+end
+
+function (fi::FieldInterpolator2D)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator2D) = FieldInterpolator2D(Adapt.adapt(to, fi.itp))
+
+"""
+    FieldInterpolator1D{T}
+
+A callable struct that wraps a 1D interpolation object.
+"""
+struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
+    itp::T
+    dir::Int
+end
+
+function (fi::FieldInterpolator1D)(xu)
+    return fi.itp(xu[fi.dir])
+end
+
+function (fi::FieldInterpolator1D)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator1D) = FieldInterpolator1D(Adapt.adapt(to, fi.itp), fi.dir)
+
+"""
+    SphericalFieldInterpolator{T}
+
+A callable struct for spherical grid interpolation (scalar or combined vector).
+"""
+struct SphericalFieldInterpolator{T} <: AbstractFieldInterpolator
+    itp::T
+end
+
+function (fi::SphericalFieldInterpolator)(xu)
+    r_val, θ_val, ϕ_val = cart2sph(xu)
+    res = fi.itp(r_val, θ_val, ϕ_val)
+    if length(res) > 1
+        # Convert vector result from spherical to cartesian basis
+        Br, Bθ, Bϕ = res
+        return sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
+    else
+        return res
+    end
+end
+
+function (fi::SphericalFieldInterpolator)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
 function getinterp_scalar(A, grid1, grid2, grid3, args...)
     return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
@@ -78,17 +157,9 @@ function getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, order::Int = 1, bc:
     end
 
     itp = _get_interp_object(As, order, bc)
-
     interp = scale(itp, gridx, gridy)
 
-    # Return field value at a given location.
-    function get_field(xu)
-        r = @view xu[1:2]
-
-        return interp(r...)
-    end
-
-    return get_field
+    return FieldInterpolator2D(interp)
 end
 
 function get_interpolator(
@@ -121,12 +192,7 @@ function get_interpolator(
 
     itp = extrapolate(interpolate!((gridx, gridy, gridz), A, Gridded(Linear())), bctype)
 
-    function get_field(xu)
-        r = @view xu[1:3]
-        return itp(r...)
-    end
-
-    return get_field
+    return FieldInterpolator(itp)
 end
 
 function getinterp(::Type{<:CartesianGrid}, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
@@ -139,17 +205,9 @@ function getinterp(::Type{<:CartesianGrid}, A, gridx, order::Int = 1, bc::Int = 
     end
 
     itp = _get_interp_object(As, order, bc)
-
     interp = scale(itp, gridx)
 
-    # Return field value at a given location.
-    function get_field(xu)
-        r = xu[dir]
-
-        return interp(r)
-    end
-
-    return get_field
+    return FieldInterpolator1D(interp, dir)
 end
 
 function _get_bspline(order::Int, periodic::Bool)
@@ -252,7 +310,6 @@ function get_interpolator(
         gridx, gridy, gridz, order::Int = 1, bc::Int = 1
     ) where {T}
     itp = _get_interp_object(A, order, bc)
-
     interp = scale(itp, gridx, gridy, gridz)
 
     # Return field value at a given location.
@@ -310,35 +367,6 @@ function get_interpolator(
     return get_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
 end
 
-function _create_spherical_vector_field_interpolator(interpr, interpθ, interpϕ)
-    function get_field(xu)
-        r_val, θ_val, ϕ_val = cart2sph(xu)
-
-        Br = interpr(r_val, θ_val, ϕ_val)
-        Bθ = interpθ(r_val, θ_val, ϕ_val)
-        Bϕ = interpϕ(r_val, θ_val, ϕ_val)
-
-        Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
-
-        return Bvec
-    end
-    return get_field
-end
-
-function _create_spherical_vector_field_interpolator(itp)
-    function get_field(xu)
-        r_val, θ_val, ϕ_val = cart2sph(xu)
-
-        B_local = itp(r_val, θ_val, ϕ_val)
-        Br, Bθ, Bϕ = B_local
-
-        Bvec = sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
-
-        return Bvec
-    end
-    return get_field
-end
-
 function get_interpolator(
         ::Type{<:StructuredGrid},
         A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
@@ -357,19 +385,7 @@ function get_interpolator(
         itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
     end
 
-    if T <: SVector
-        return _create_spherical_vector_field_interpolator(itp)
-    else
-        return _create_spherical_scalar_field_interpolator(itp)
-    end
-end
-
-function _create_spherical_scalar_field_interpolator(interp)
-    function get_field(xu)
-        r_val, θ_val, ϕ_val = cart2sph(xu[1], xu[2], xu[3])
-        return interp(r_val, θ_val, ϕ_val)
-    end
-    return get_field
+    return SphericalFieldInterpolator(itp)
 end
 
 function _get_interp_object(A, order::Int, bc::Int)

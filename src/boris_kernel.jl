@@ -1,264 +1,316 @@
 # GPU Boris solver using KernelAbstractions.jl
 
-using KernelAbstractions
-const KA = KernelAbstractions
-using Adapt
-using Interpolations: AbstractInterpolation, AbstractExtrapolation
-
-# Helper functions for GPU interpolation support
-
-"""
-    is_interpolation_field(f)
-
-Check if a field function is an interpolation object that can be adapted to GPU.
-"""
-function is_interpolation_field(f)
-    return f isa AbstractInterpolation || f isa AbstractExtrapolation ||
-        f isa FieldInterpolator
-end
-
 """
     adapt_field_to_gpu(field::Field, backend::KA.Backend)
 
 Adapt interpolation fields to GPU memory using Adapt.jl.
 Analytic functions are returned unchanged.
 """
-function adapt_field_to_gpu(field::Field, backend::KA.Backend)
-    f = field.field_function
-    if is_interpolation_field(f)
-        # Unwrap FieldInterpolator to get the inner interpolation object
-        itp = f isa FieldInterpolator ? f.itp : f
+function adapt_field_to_gpu(field::Field, backend::Backend)
+    backend isa CPU && return field
 
-        # Adapt interpolation object to GPU
-        adapted_func = Adapt.adapt(backend, itp)
-        return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
-    end
-    # Analytic fields don't need adaptation
-    return field
+    # Adapt the inner function (FieldInterpolator or analytic)
+    adapted_func = Adapt.adapt(backend, field.field_function)
+
+    return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
 end
 
 # Fallback for ZeroField
-adapt_field_to_gpu(field::ZeroField, backend::KA.Backend) = field
+adapt_field_to_gpu(field::ZeroField, backend::Backend) = field
 
 
-@inline function boris_velocity_update(vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m)
-    vx_minus = vx + qdt_2m * Ex
-    vy_minus = vy + qdt_2m * Ey
-    vz_minus = vz + qdt_2m * Ez
+@inline function get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    r_vec = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
+    v_vec = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
-    tx = qdt_2m * Bx
-    ty = qdt_2m * By
-    tz = qdt_2m * Bz
-
-    t_mag2 = tx * tx + ty * ty + tz * tz
-    factor = 2 / (1 + t_mag2)
-    sx = factor * tx
-    sy = factor * ty
-    sz = factor * tz
-
-    vpx = vx_minus + (vy_minus * tz - vz_minus * ty)
-    vpy = vy_minus + (vz_minus * tx - vx_minus * tz)
-    vpz = vz_minus + (vx_minus * ty - vy_minus * tx)
-
-    vx_plus = vx_minus + (vpy * sz - vpz * sy)
-    vy_plus = vy_minus + (vpz * sx - vpx * sz)
-    vz_plus = vz_minus + (vpx * sy - vpy * sx)
-
-    vx_new = vx_plus + qdt_2m * Ex
-    vy_new = vy_plus + qdt_2m * Ey
-    vz_new = vz_plus + qdt_2m * Ez
-
-    return vx_new, vy_new, vz_new
-end
-
-@kernel function boris_push_kernel!(
-        @Const(xv_in), xv_out, @Const(q2m), @Const(dt),
-        @Const(Ex_arr), @Const(Ey_arr), @Const(Ez_arr),
-        @Const(Bx_arr), @Const(By_arr), @Const(Bz_arr)
-    )
-    i = @index(Global)
-
-    x = xv_in[1, i]
-    y = xv_in[2, i]
-    z = xv_in[3, i]
-    vx = xv_in[4, i]
-    vy = xv_in[5, i]
-    vz = xv_in[6, i]
-
-    Ex = Ex_arr[i]
-    Ey = Ey_arr[i]
-    Ez = Ez_arr[i]
-    Bx = Bx_arr[i]
-    By = By_arr[i]
-    Bz = Bz_arr[i]
+    # Evaluate fields directly
+    E_val = Efunc(r_vec, t)
+    B_val = Bfunc(r_vec, t)
 
     qdt_2m = q2m * 0.5 * dt
 
-    vx_new, vy_new, vz_new = boris_velocity_update(
-        vx, vy, vz, Ex, Ey, Ez, Bx, By, Bz, qdt_2m
-    )
+    v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
 
-    xv_out[1, i] = x + vx_new * dt
-    xv_out[2, i] = y + vy_new * dt
-    xv_out[3, i] = z + vz_new * dt
-    xv_out[4, i] = vx_new
-    xv_out[5, i] = vy_new
-    xv_out[6, i] = vz_new
+    return v_new
 end
 
-@kernel function velocity_back_kernel!(
-        xv_out, @Const(xv_in), @Const(q2m_val), @Const(dt_val),
-        @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz)
-    )
-    i = @index(Global)
-    vx = xv_in[4, i]
-    vy = xv_in[5, i]
-    vz = xv_in[6, i]
-
-    qdt_2m = q2m_val * 0.5 * dt_val
-
-    vx_new, vy_new, vz_new = boris_velocity_update(
-        vx, vy, vz, Ex[i], Ey[i], Ez[i], Bx[i], By[i], Bz[i], qdt_2m
-    )
-
-    xv_out[4, i] = vx_new
-    xv_out[5, i] = vy_new
-    xv_out[6, i] = vz_new
-end
-
-
-"""
-GPU kernel to evaluate interpolated fields directly on GPU.
-This eliminates CPU-GPU data transfers for numerical fields.
-"""
-@kernel function evaluate_interp_fields_kernel!(
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        @Const(xv), E_interp, B_interp, t
-    )
-    i = @index(Global)
-
-    x = xv[1, i]
-    y = xv[2, i]
-    z = xv[3, i]
-
-    # Evaluate interpolation directly on GPU
-    # For 3D interpolation, call with (x, y, z)
-    E_val = E_interp(x, y, z)
-    B_val = B_interp(x, y, z)
-
-    Ex_arr[i] = E_val[1]
-    Ey_arr[i] = E_val[2]
-    Ez_arr[i] = E_val[3]
-    Bx_arr[i] = B_val[1]
-    By_arr[i] = B_val[2]
-    Bz_arr[i] = B_val[3]
-end
-
-function evaluate_fields_on_particles!(
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, xv_cpu, Efunc, Bfunc, t
-    )
-    n_particles = size(xv_cpu, 2)
-
-    for i in 1:n_particles
-        r = SVector(xv_cpu[1, i], xv_cpu[2, i], xv_cpu[3, i])
-        E_val = Efunc(r, t)
-        B_val = Bfunc(r, t)
-
-        Ex_cpu[i] = E_val[1]
-        Ey_cpu[i] = E_val[2]
-        Ez_cpu[i] = E_val[3]
-        Bx_cpu[i] = B_val[1]
-        By_cpu[i] = B_val[2]
-        Bz_cpu[i] = B_val[3]
-    end
+@inline @muladd function boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    # Scalar write for GPU compatibility
+    xv_out[1, i] = xv_in[1, i] + v_new[1] * dt
+    xv_out[2, i] = xv_in[2, i] + v_new[2] * dt
+    xv_out[3, i] = xv_in[3, i] + v_new[3] * dt
+    xv_out[4, i] = v_new[1]
+    xv_out[5, i] = v_new[2]
+    xv_out[6, i] = v_new[3]
 
     return
 end
 
-function gpu_field_evaluation!(
-        backend, use_gpu_interp, eval_kernel!,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        xv_current,
-        Efunc, Bfunc, # Adapted fields
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu, # CPU buffers
-        xv_cpu, # CPU buffer for positions
-        t, n_particles
+@kernel function boris_velocity_kernel!(
+        xv_out, @Const(xv_in), @Const(q2m), @Const(dt), Efunc, Bfunc,
+        @Const(t), @Const(offset)
     )
-    return if use_gpu_interp
-        # Use GPU kernel for interpolation
-        eval_kernel!(
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-            xv_current, Efunc.field_function, Bfunc.field_function, t;
-            ndrange = n_particles
-        )
-        KA.synchronize(backend)
-    else
-        # CPU evaluation for analytic fields
-        # If xv_current is not on CPU, copy to xv_cpu buffer
-        if xv_current isa Array
-            xv_target = xv_current
-        else
-            copyto!(xv_cpu, xv_current)
-            xv_target = xv_cpu
-        end
-
-        evaluate_fields_on_particles!(
-            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_target, Efunc, Bfunc, t
-        )
-
-        # Copy back if needed (if Ex_arr is not aliased to Ex_cpu)
-        if Ex_arr !== Ex_cpu
-            copyto!(Ex_arr, Ex_cpu)
-            copyto!(Ey_arr, Ey_cpu)
-            copyto!(Ez_arr, Ez_cpu)
-            copyto!(Bx_arr, Bx_cpu)
-            copyto!(By_arr, By_cpu)
-            copyto!(Bz_arr, Bz_cpu)
-        end
-    end
+    i = @index(Global) + offset
+    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+    # Scalar write for GPU compatibility
+    xv_out[4, i] = v_new[1]
+    xv_out[5, i] = v_new[2]
+    xv_out[6, i] = v_new[3]
 end
 
-function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
+@kernel function boris_update_kernel!(
+        @Const(xv_in), xv_out, @Const(q2m), @Const(dt), Efunc, Bfunc,
+        @Const(t), @Const(offset)
+    )
+    i = @index(Global) + offset
+    boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+end
+
+@inline function boris_step!(
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+    )
+    offset = irange.start - 1
+    n_particles = length(irange)
+    kernel! = boris_update_kernel!(backend, workgroup_size)
+    kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
+    synchronize(backend)
+    return
+end
+
+@inline function boris_step!(
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+    )
+    @inbounds for i in irange
+        boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+    end
+    return
+end
+
+@inline function boris_velocity_step!(
+        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+    )
+    offset = irange.start - 1
+    n_particles = length(irange)
+    kernel! = boris_velocity_kernel!(backend, workgroup_size)
+    kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
+    synchronize(backend)
+    return
+end
+
+@inline function boris_velocity_step!(
+        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+    )
+    @inbounds for i in irange
+        v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
+        xv_out[4, i] = v_new[1]
+        xv_out[5, i] = v_new[2]
+        xv_out[6, i] = v_new[3]
+    end
+    return
+end
+
+@inline function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
     T = eltype(xv)
     # Extract position and velocity (v^{n-1/2})
-    x_p = xv[1]
-    y_p = xv[2]
-    z_p = xv[3]
-    vx = xv[4]
-    vy = xv[5]
-    vz = xv[6]
+    r_vec = SVector{3, T}(xv[1], xv[2], xv[3])
+    v_vec = SVector{3, T}(xv[4], xv[5], xv[6])
 
     # Evaluate fields at current position and time
-    r_vec = SVector(x_p, y_p, z_p)
     E_val = Efunc(r_vec, t)
     B_val = Bfunc(r_vec, t)
 
     # Correct velocity to v^n using half-step push
-    vx_n, vy_n, vz_n = boris_velocity_update(
-        vx, vy, vz,
-        E_val[1], E_val[2], E_val[3],
-        B_val[1], B_val[2], B_val[3],
-        qdt_2m_half
-    )
+    v_n = boris_velocity_update(v_vec, E_val, B_val, qdt_2m_half)
 
-    return SVector{6, T}(x_p, y_p, z_p, vx_n, vy_n, vz_n)
+    return vcat(r_vec, v_n)
 end
 
 
-function solve(
-        prob::TraceProblem, backend::KA.Backend;
+@inbounds function _solve_serial(
+        prob::TraceProblem, backend::Backend, irange;
+        dt::AbstractFloat, savestepinterval::Int, save_start::Bool,
+        save_end::Bool, save_everystep::Bool, workgroup_size::Int,
+        xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
+    )
+    (; tspan, p) = prob
+    q2m, _, _, _, _ = p
+    T = eltype(xv_current)
+    n_particles = length(irange)
+
+    sols = Vector{
+        typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(prob.u0)])),
+    }(undef, n_particles)
+
+    saved_data = [Vector{SVector{6, T}}(undef, nout) for _ in 1:n_particles]
+    saved_times = [Vector{typeof(tspan[1] + dt)}(undef, nout) for _ in 1:n_particles]
+    iout_counters = zeros(Int, n_particles)
+
+    if save_start
+        if !is_cpu_accessible
+            copyto!(xv_cpu_buffer, xv_current)
+        end
+        for (local_i, i) in enumerate(irange)
+            iout_counters[local_i] += 1
+            saved_data[local_i][iout_counters[local_i]] =
+                SVector{6, T}(
+                xv_cpu_buffer[1, i], xv_cpu_buffer[2, i], xv_cpu_buffer[3, i],
+                xv_cpu_buffer[4, i], xv_cpu_buffer[5, i], xv_cpu_buffer[6, i]
+            )
+            saved_times[local_i][iout_counters[local_i]] = tspan[1]
+        end
+    end
+
+    boris_velocity_step!(
+        backend, xv_current, xv_current, q2m, -0.5 * dt,
+        Efunc_gpu, Bfunc_gpu, tspan[1], irange, workgroup_size
+    )
+
+    for it in 1:nt
+        t = tspan[1] + (it - 0.5) * dt
+
+        boris_step!(
+            backend, xv_current, xv_next, q2m, dt,
+            Efunc_gpu, Bfunc_gpu, t, irange, workgroup_size
+        )
+
+        xv_current, xv_next = xv_next, xv_current
+
+        if save_everystep && it % savestepinterval == 0
+            if !is_cpu_accessible
+                copyto!(xv_cpu_buffer, xv_current)
+            end
+
+            t_current = tspan[1] + it * dt
+            qdt_2m_half = q2m * 0.5 * (0.5 * dt)
+
+            for (local_i, i) in enumerate(irange)
+                if iout_counters[local_i] < nout
+                    iout_counters[local_i] += 1
+                    saved_data[local_i][iout_counters[local_i]] = _leapfrog_to_output(
+                        @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                    )
+                    saved_times[local_i][iout_counters[local_i]] = t_current
+                end
+            end
+        end
+    end
+
+    if save_end
+        if !is_cpu_accessible
+            copyto!(xv_cpu_buffer, xv_current)
+        end
+        t_current = tspan[2]
+        qdt_2m_half = q2m * 0.5 * (0.5 * dt)
+
+        for (local_i, i) in enumerate(irange)
+            if iout_counters[local_i] < nout
+                iout_counters[local_i] += 1
+                saved_data[local_i][iout_counters[local_i]] = _leapfrog_to_output(
+                    @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                )
+                saved_times[local_i][iout_counters[local_i]] = t_current
+            end
+        end
+    end
+
+    for local_i in 1:n_particles
+        actual_len = iout_counters[local_i]
+        if actual_len < nout
+            resize!(saved_data[local_i], actual_len)
+            resize!(saved_times[local_i], actual_len)
+        end
+
+        interp = LinearInterpolation(saved_times[local_i], saved_data[local_i])
+        sols[local_i] = build_solution(
+            prob, :boris, saved_times[local_i], saved_data[local_i];
+            interp = interp, retcode = ReturnCode.Default, stats = nothing
+        )
+    end
+
+    return sols
+end
+
+@inbounds function solve(
+        prob::TraceProblem, backend::Backend, ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
     )
     (; tspan, p, u0) = prob
-    q2m, m, Efunc, Bfunc, _ = p
+    q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
-    # Check if fields are interpolation objects and adapt to GPU
-    use_gpu_interp = is_interpolation_field(Efunc.field_function) ||
-        is_interpolation_field(Bfunc.field_function)
+    Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
+    Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
+
+    ttotal = tspan[2] - tspan[1]
+    nt = round(Int, abs(ttotal / dt))
+
+    nout = 0
+    if save_start
+        nout += 1
+    end
+    if save_everystep
+        steps = nt ÷ savestepinterval
+        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
+        nout += steps
+        if !save_end && last_is_step
+            nout -= 1
+        end
+        if save_end && !last_is_step
+            nout += 1
+        end
+    elseif save_end
+        nout += 1
+    end
+
+    n_particles = trajectories
+    xv_current = KA.zeros(backend, T, 6, n_particles)
+    xv_next = KA.zeros(backend, T, 6, n_particles)
+
+    is_cpu_accessible = xv_current isa Array
+
+    if is_cpu_accessible
+        xv_init = xv_current
+    else
+        xv_init = zeros(T, 6, n_particles)
+    end
+
+    for i in 1:n_particles
+        new_prob = prob.prob_func(prob, i, false)
+        u0_i = new_prob.u0
+        xv_init[:, i] .= u0_i
+    end
+
+    if !is_cpu_accessible
+        copyto!(xv_current, xv_init)
+    end
+
+    if is_cpu_accessible
+        xv_cpu_buffer = xv_current
+    else
+        xv_cpu_buffer = zeros(T, 6, n_particles)
+    end
+
+    return _solve_serial(
+        prob, backend, 1:trajectories;
+        dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
+        xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
+    )
+end
+
+@inbounds function solve(
+        prob::TraceProblem, backend::Backend, ::EnsembleThreads;
+        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        workgroup_size::Int = 256
+    )
+    (; tspan, p, u0) = prob
+    q2m, _, Efunc, Bfunc, _ = p
+    T = eltype(u0)
 
     # Adapt interpolation fields to GPU memory
     Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
@@ -289,154 +341,62 @@ function solve(
     xv_current = KA.zeros(backend, T, 6, n_particles)
     xv_next = KA.zeros(backend, T, 6, n_particles)
 
-    Ex_arr = KA.zeros(backend, T, n_particles)
-    Ey_arr = KA.zeros(backend, T, n_particles)
-    Ez_arr = KA.zeros(backend, T, n_particles)
-    Bx_arr = KA.zeros(backend, T, n_particles)
-    By_arr = KA.zeros(backend, T, n_particles)
-    Bz_arr = KA.zeros(backend, T, n_particles)
+    # Optimization for CPU backend: alias buffers to avoid allocations
+    is_cpu_accessible = xv_current isa Array
 
-    xv_init = zeros(T, 6, n_particles)
+    if is_cpu_accessible
+        xv_init = xv_current
+    else
+        xv_init = zeros(T, 6, n_particles)
+    end
+
     for i in 1:n_particles
         new_prob = prob.prob_func(prob, i, false)
         u0_i = new_prob.u0
         xv_init[:, i] .= u0_i
     end
-    copyto!(xv_current, xv_init)
 
-    args_cpu = (T, n_particles)
-    if Ex_arr isa Array
-        Ex_cpu = Ex_arr
-        Ey_cpu = Ey_arr
-        Ez_cpu = Ez_arr
-        Bx_cpu = Bx_arr
-        By_cpu = By_arr
-        Bz_cpu = Bz_arr
-    else
-        Ex_cpu = zeros(args_cpu...)
-        Ey_cpu = zeros(args_cpu...)
-        Ez_cpu = zeros(args_cpu...)
-        Bx_cpu = zeros(args_cpu...)
-        By_cpu = zeros(args_cpu...)
-        Bz_cpu = zeros(args_cpu...)
+    if !is_cpu_accessible
+        copyto!(xv_current, xv_init)
     end
 
-    # Buffer for particle positions on CPU (if needed)
-    xv_cpu_buffer = if xv_current isa Array
-        xv_current # Placeholder, will use actual xv_current dynamically
+    # Buffer for particle positions on CPU (used for saving data)
+    if is_cpu_accessible
+        xv_cpu_buffer = xv_current
     else
-        zeros(T, 6, n_particles)
+        xv_cpu_buffer = zeros(T, 6, n_particles)
     end
-
-    # Initial field evaluation
-    # Determine integration strategy and prepare kernel if needed
-    eval_kernel! = use_gpu_interp ? evaluate_interp_fields_kernel!(backend, workgroup_size) : nothing
-
-    # Initial field evaluation
-    gpu_field_evaluation!(
-        backend, use_gpu_interp, eval_kernel!,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-        xv_current,
-        Efunc_gpu, Bfunc_gpu,
-        Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-        xv_cpu_buffer,
-        tspan[1], n_particles
-    )
-
-    kernel! = boris_push_kernel!(backend, workgroup_size)
 
     sols = Vector{
         typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(u0)])),
     }(undef, trajectories)
 
-    saved_data = [Vector{SVector{6, T}}(undef, nout) for _ in 1:trajectories]
-    saved_times = [Vector{typeof(tspan[1] + dt)}(undef, nout) for _ in 1:trajectories]
-    iout_counters = zeros(Int, trajectories)
-
-    if save_start
-        xv_cpu = Array(xv_current)
-        for i in 1:n_particles
-            iout_counters[i] += 1
-            saved_data[i][iout_counters[i]] = SVector{6, T}(xv_cpu[:, i])
-            saved_times[i][iout_counters[i]] = tspan[1]
-        end
-    end
-
-    vback_kernel! = velocity_back_kernel!(backend, workgroup_size)
-    vback_kernel!(
-        xv_current, xv_current, q2m, -0.5 * dt,
-        Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr; ndrange = n_particles
-    )
-    KA.synchronize(backend)
-
-    for it in 1:nt
-        t = tspan[1] + (it - 0.5) * dt
-
-        gpu_field_evaluation!(
-            backend, use_gpu_interp, eval_kernel!,
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr,
-            xv_current,
-            Efunc_gpu, Bfunc_gpu,
-            Ex_cpu, Ey_cpu, Ez_cpu, Bx_cpu, By_cpu, Bz_cpu,
-            xv_cpu_buffer,
-            t, n_particles
+    nchunks = Threads.nthreads()
+    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+        chunk_sols = _solve_serial(
+            prob, backend, irange;
+            dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
+            xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+            Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
         )
-
-        kernel!(
-            xv_current, xv_next, q2m, dt,
-            Ex_arr, Ey_arr, Ez_arr, Bx_arr, By_arr, Bz_arr;
-            ndrange = n_particles
-        )
-        KA.synchronize(backend)
-
-        xv_current, xv_next = xv_next, xv_current
-
-        if save_everystep && it % savestepinterval == 0
-            xv_cpu = Array(xv_current)
-            t_current = tspan[1] + it * dt
-            qdt_2m_half = q2m * 0.5 * (0.5 * dt)
-
-            for i in 1:n_particles
-                if iout_counters[i] < nout
-                    iout_counters[i] += 1
-                    saved_data[i][iout_counters[i]] = _leapfrog_to_output(
-                        @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
-                    )
-                    saved_times[i][iout_counters[i]] = t_current
-                end
-            end
+        for (local_i, i) in enumerate(irange)
+            sols[i] = chunk_sols[local_i]
         end
-    end
-
-    if save_end
-        xv_cpu = Array(xv_current)
-        t_current = tspan[2]
-        qdt_2m_half = q2m * 0.5 * (0.5 * dt)
-
-        for i in 1:n_particles
-            if iout_counters[i] < nout
-                iout_counters[i] += 1
-                saved_data[i][iout_counters[i]] = _leapfrog_to_output(
-                    @view(xv_cpu[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
-                )
-                saved_times[i][iout_counters[i]] = t_current
-            end
-        end
-    end
-
-    for i in 1:trajectories
-        actual_len = iout_counters[i]
-        if actual_len < nout
-            resize!(saved_data[i], actual_len)
-            resize!(saved_times[i], actual_len)
-        end
-
-        interp = LinearInterpolation(saved_times[i], saved_data[i])
-        sols[i] = build_solution(
-            prob, :boris, saved_times[i], saved_data[i];
-            interp = interp, retcode = ReturnCode.Default, stats = nothing
-        )
     end
 
     return sols
+end
+
+@inbounds function solve(
+        prob::TraceProblem, backend::Backend,
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        workgroup_size::Int = 256
+    )
+    return solve(
+        prob, backend, ensemblealg;
+        dt, trajectories, savestepinterval, save_start, save_end, save_everystep,
+        workgroup_size
+    )
 end

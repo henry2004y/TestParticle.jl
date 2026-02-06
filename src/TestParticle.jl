@@ -16,7 +16,10 @@ import DiffResults
 using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
+using KernelAbstractions: @kernel, @index, @Const, synchronize, Backend, CPU
 
+import KernelAbstractions as KA
+import Adapt
 import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×

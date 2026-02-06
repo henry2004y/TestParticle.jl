@@ -56,6 +56,28 @@ const KA = KernelAbstractions
         end
     end
 
+    @testset "EnsembleThreads" begin
+        backend = CPU()
+
+        prob_func_gpu(prob, i, repeat) = remake(
+            prob; u0 = [prob.u0[1:3]..., i * 1.0e4, 0.0, 0.0]
+        )
+        prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
+
+        trajectories = 10
+        sols_serial = TP.solve(
+            prob_multi, backend, EnsembleSerial();
+            dt, trajectories, savestepinterval = 100
+        )
+        sols_threads = TP.solve(
+            prob_multi, backend, EnsembleThreads();
+            dt, trajectories, savestepinterval = 100
+        )
+
+        @test length(sols_threads) == trajectories
+        @test sum(sol.u[end] for sol in sols_threads) ≈ sum(sol.u[end] for sol in sols_serial)
+    end
+
     @testset "Kernel vs Native Solver Equivalence" begin
         backend = CPU()
 
