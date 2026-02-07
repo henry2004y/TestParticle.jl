@@ -5,6 +5,8 @@
 
 import DisplayAs #hide
 using TestParticle
+import TestParticle as TP
+using VelocityDistributionFunctions
 using Meshes
 using OrdinaryDiffEq
 using StaticArrays
@@ -33,7 +35,7 @@ x0 = [SVector(0.0, 0.0, 0.0) for _ in 1:N];
 
 # Maxwellian velocity distribution
 # ``u_0 = 0``, ``p = n k_B T = 1`` (assuming ``n=1`` effectively for distribution shape)
-vdf = TestParticle.Maxwellian([0.0, 0.0, 0.0], T, 1.0; m = m)
+vdf = TP.Maxwellian([0.0, 0.0, 0.0], T, 1.0; m = m)
 # Use the vectorized rand to get a Vector of SVectors
 v0 = rand(vdf, N);
 
@@ -45,7 +47,7 @@ prob_func(prob, i, repeat) = remake(prob, u0 = vcat(x0[i], v0[i]))
 # Define a single problem template
 u0_dummy = vcat(x0[1], v0[1])
 ## Zero fields
-param = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)
+param = prepare(TP.ZeroField(), TP.ZeroField(); q, m)
 tspan = (0.0, t_end)
 prob = ODEProblem(trace, u0_dummy, tspan, param);
 
@@ -66,7 +68,7 @@ grid = CartesianGrid((-L, -L, -L), (L, L, L); dims)
 
 # Calculate density at ``t_{end}``
 # `get_number_density` returns count / volume
-density = TestParticle.get_number_density(sols, grid, t_end);
+density = TP.get_number_density(sols, grid, t_end);
 
 # Extract a 1D slice along x-axis (approx. ``y=0, z=0``)
 mid_y = dims[2] ÷ 2
@@ -75,7 +77,7 @@ density_x = density[:, mid_y, mid_z];
 
 # Grid coordinates for plotting
 # `get_cell_centers` returns ranges for each dimension
-grid_x, grid_y, grid_z = TestParticle.get_cell_centers(grid)
+grid_x, grid_y, grid_z = TP.get_cell_centers(grid)
 xs_plot = collect(grid_x);
 
 # ## Analytical Solution
