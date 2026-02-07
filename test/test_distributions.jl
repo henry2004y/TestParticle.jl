@@ -43,6 +43,23 @@ import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
     v_bk = rand(bikdist)
     @test length(v_bk) == 3
 
+    # Standard VDF constructor tests (forwarders)
+    maxwellian_std = Maxwellian(u0, vth)
+    @test maxwellian_std.vth ≈ vth
+
+    bimaxwellian_std = BiMaxwellian(B, u0, vthpar, vthperp)
+    @test bimaxwellian_std.vth_para ≈ vthpar
+    @test bimaxwellian_std.vth_perp ≈ vthperp
+
+    kappa_std = Kappa(u0, vth, kappa)
+    @test kappa_std.κ == kappa
+    @test kappa_std.vth ≈ vth
+
+    bikappa_std = BiKappa(B, u0, vthpar, vthperp, kappa)
+    @test bikappa_std.κ == kappa
+    @test bikappa_std.vth_para ≈ vthpar
+    @test bikappa_std.vth_perp ≈ vthperp
+
     # Statistical tests (variance check)
     N = 100000
 
