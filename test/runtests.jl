@@ -2,7 +2,10 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
 using Random, StableRNGs
+using VelocityDistributionFunctions
 using Test
+
+import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 
 """
 Initial state perturbation for EnsembleProblem.
