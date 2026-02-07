@@ -5,6 +5,8 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner
 using TestParticle: mᵢ, kB
+import TestParticle as TP
+using VelocityDistributionFunctions
 using LinearAlgebra
 using Statistics: mean, std
 using Printf
@@ -60,8 +62,8 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁ = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
-vdf₂ = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
+const vdf₁ = TP.Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+vdf₂ = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 println(vdf₁)
 println(vdf₂)
@@ -348,8 +350,8 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁_para = Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
-vdf₂_para = Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
+const vdf₁_para = TP.Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
+vdf₂_para = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 
 trajectories = 2
 weight₁ = n₁ / trajectories

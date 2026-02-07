@@ -9,7 +9,8 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: get_BField
+import TestParticle as TP
+using VelocityDistributionFunctions
 using OrdinaryDiffEqVerner
 using StaticArrays
 using Statistics
@@ -66,7 +67,7 @@ Random.seed!(1234)
 ## Define a new prob_func that samples from a Maxwellian
 function prob_func_maxwellian(prob, i, repeat)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
-    vdf = Maxwellian([0.0, 0.0, 0.0], 1.0)
+    vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
     v = rand(vdf)
     return remake(prob; u0 = [prob.u0[1:3]..., v...])
 end
@@ -134,7 +135,7 @@ prob_custom = ODEProblem(trace_normalized!, stateinit_custom, tspan_custom, para
 
 ## Define prob_func to initialize particles with different pitch angles
 function prob_func_custom(prob, i, repeat)
-    B0 = get_BField(prob)(prob.u0)
+    B0 = TP.get_BField(prob)(prob.u0)
     B0 = normalize(B0)
 
     Bperp1 = normalize(SA[0.0, -B0[3], B0[2]])
@@ -150,7 +151,7 @@ end
 
 ## Define output_func to save specific data
 function output_func_custom(sol, i)
-    getB = get_BField(sol)
+    getB = TP.get_BField(sol)
     b = getB.(sol.u)
 
     ## Calculate cosine of pitch angle
