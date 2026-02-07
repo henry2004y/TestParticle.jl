@@ -1,7 +1,6 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
-using Meshes: CartesianGrid, StructuredGrid
 using Random, StableRNGs
 using Test
 
