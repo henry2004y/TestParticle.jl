@@ -3,6 +3,7 @@ using StaticArrays
 using LinearAlgebra
 using Statistics
 using Test
+import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 
 @testset "Distributions" begin
     m = TestParticle.mᵢ
