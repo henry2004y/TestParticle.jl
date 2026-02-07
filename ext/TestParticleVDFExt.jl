@@ -1,16 +1,17 @@
 module TestParticleVDFExt
 
 using TestParticle
-import VelocityDistributionFunctions: VelocityDistributionFunctions as VDF
-import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa, get_thermal_speed, mᵢ
+import TestParticle as TP
+import VelocityDistributionFunctions as VDF
+import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 using PrecompileTools: @setup_workload, @compile_workload
 
 function Maxwellian(args...; kwargs...)
     return VDF.Maxwellian(args...; kwargs...)
 end
 
-function Maxwellian(u0, p, n; m = mᵢ)
-    vth = get_thermal_speed(p, n, m)
+function Maxwellian(u0, p, n; m = TP.mᵢ)
+    vth = TP.get_thermal_speed(p, n, m)
 
     return VDF.Maxwellian(vth; u0)
 end
@@ -19,26 +20,26 @@ function BiMaxwellian(args...; kwargs...)
     return VDF.BiMaxwellian(args...; kwargs...)
 end
 
-function BiMaxwellian(B, u0, ppar, pperp, n; m = mᵢ)
-    vpar = get_thermal_speed(ppar, n, m)
-    vperp = get_thermal_speed(pperp, n, m)
+function BiMaxwellian(B, u0, ppar, pperp, n; m = TP.mᵢ)
+    vpar = TP.get_thermal_speed(ppar, n, m)
+    vperp = TP.get_thermal_speed(pperp, n, m)
 
     return VDF.BiMaxwellian(vperp, vpar, B; u0)
 end
 
 Kappa(args...; kwargs...) = VDF.Kappa(args...; kwargs...)
 
-function Kappa(u0, p, n, kappa; m = mᵢ)
-    vth = get_thermal_speed(p, n, m)
+function Kappa(u0, p, n, kappa; m = TP.mᵢ)
+    vth = TP.get_thermal_speed(p, n, m)
 
     return VDF.Kappa(vth, kappa; u0)
 end
 
 BiKappa(args...; kwargs...) = VDF.BiKappa(args...; kwargs...)
 
-function BiKappa(B, u0, ppar, pperp, n, kappa; m = mᵢ)
-    vpar = get_thermal_speed(ppar, n, m)
-    vperp = get_thermal_speed(pperp, n, m)
+function BiKappa(B, u0, ppar, pperp, n, kappa; m = TP.mᵢ)
+    vpar = TP.get_thermal_speed(ppar, n, m)
+    vperp = TP.get_thermal_speed(pperp, n, m)
 
     return VDF.BiKappa(vperp, vpar, kappa, B; u0)
 end
