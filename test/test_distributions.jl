@@ -47,15 +47,15 @@ import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
     maxwellian_std = Maxwellian(u0, vth)
     @test maxwellian_std.vth ≈ vth
 
-    bimaxwellian_std = BiMaxwellian(B, u0, vthpar, vthperp)
+    bimaxwellian_std = BiMaxwellian(vthperp, vthpar, B; u0)
     @test bimaxwellian_std.vth_para ≈ vthpar
     @test bimaxwellian_std.vth_perp ≈ vthperp
 
-    kappa_std = Kappa(u0, vth, kappa)
+    kappa_std = Kappa(vth, kappa; u0)
     @test kappa_std.κ == kappa
     @test kappa_std.vth ≈ vth
 
-    bikappa_std = BiKappa(B, u0, vthpar, vthperp, kappa)
+    bikappa_std = BiKappa(vthperp, vthpar, kappa, B; u0)
     @test bikappa_std.κ == kappa
     @test bikappa_std.vth_para ≈ vthpar
     @test bikappa_std.vth_perp ≈ vthperp
