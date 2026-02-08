@@ -59,5 +59,27 @@
         prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
         alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0)
         sol_hybrid = solve(prob_hybrid, alg_hybrid)
+
+        # explicit trace functions
+        t = 0.0
+        out6, out4, out3 = zeros(6), zeros(4), zeros(3)
+        # non-relativistic
+        trace(stateinit, param, t)
+        trace!(out6, stateinit, param, t)
+        # relativistic
+        trace_relativistic(stateinit, param, t)
+        trace_relativistic!(out6, stateinit, param, t)
+        # normalized
+        trace_normalized(stateinit, param, t)
+        trace_normalized!(out6, stateinit, param, t)
+        # relativistic normalized
+        trace_relativistic_normalized(stateinit, param, t)
+        trace_relativistic_normalized!(out6, stateinit, param, t)
+        # guiding center
+        trace_gc(stateinit_gc, param_gc, t)
+        trace_gc!(out4, stateinit_gc, param_gc, t)
+        # field line
+        trace_fieldline(stateinit[1:3], param[4], t)
+        trace_fieldline!(out3, stateinit[1:3], param[4], t)
     end
 end
