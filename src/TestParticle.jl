@@ -31,8 +31,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!, trace_fieldline!, trace_fieldline,
     get_gc_velocity, full_to_gc, gc_to_full
 export Proton, Electron, Ion
-export Maxwellian, BiMaxwellian
-export Kappa, BiKappa
+export Maxwellian, BiMaxwellian, Kappa, BiKappa
 export AdaptiveBoris, AdaptiveHybrid
 export CurrentLoop, getB_loop
 export get_gyrofrequency,

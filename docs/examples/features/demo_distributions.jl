@@ -5,6 +5,8 @@
 # We compare the sampled distributions with their theoretical probability density functions (PDFs).
 
 using TestParticle
+import TestParticle as TP
+using VelocityDistributionFunctions
 using SpecialFunctions: gamma
 using Random
 using StaticArrays
@@ -35,7 +37,7 @@ n = 1.0 # Number density
 m = 1.0 # Mass
 
 ## Construct distribution
-vdf = Maxwellian(u0, p, n; m)
+vdf = TP.Maxwellian(u0, p, n; m)
 println(vdf)
 
 ## Sample
@@ -73,7 +75,7 @@ ppar = 2.0
 pperp = 0.5
 
 ## Construct distribution
-vdf_bi = BiMaxwellian(B, u0, ppar, pperp, n; m)
+vdf_bi = TP.BiMaxwellian(B, u0, ppar, pperp, n; m)
 println(vdf_bi)
 
 ## Sample
@@ -120,7 +122,7 @@ f = DisplayAs.PNG(f) #hide
 kappa = 3.0
 
 ## Construct distribution
-vdf_kappa = Kappa(u0, p, n, kappa; m)
+vdf_kappa = TP.Kappa(u0, p, n, kappa; m)
 println(vdf_kappa)
 
 ## Sample
@@ -159,7 +161,7 @@ pperp = 1.0
 kappa = 4.0
 
 ## Construct distribution
-vdf_bikappa = BiKappa(B, u0, ppar, pperp, n, kappa; m)
+vdf_bikappa = TP.BiKappa(B, u0, ppar, pperp, n, kappa; m)
 println(vdf_bikappa)
 
 ## Sample

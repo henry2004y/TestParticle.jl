@@ -3,6 +3,7 @@ using StaticArrays
 using LinearAlgebra
 using Statistics
 using Test
+import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 
 @testset "Distributions" begin
     m = TestParticle.mᵢ
@@ -41,6 +42,23 @@ using Test
     @test bikdist.vth_perp ≈ vthperp
     v_bk = rand(bikdist)
     @test length(v_bk) == 3
+
+    # Standard VDF constructor tests (forwarders)
+    maxwellian_std = Maxwellian(u0, vth)
+    @test maxwellian_std.vth ≈ vth
+
+    bimaxwellian_std = BiMaxwellian(vthperp, vthpar, B; u0)
+    @test bimaxwellian_std.vth_para ≈ vthpar
+    @test bimaxwellian_std.vth_perp ≈ vthperp
+
+    kappa_std = Kappa(vth, kappa; u0)
+    @test kappa_std.κ == kappa
+    @test kappa_std.vth ≈ vth
+
+    bikappa_std = BiKappa(vthperp, vthpar, kappa, B; u0)
+    @test bikappa_std.κ == kappa
+    @test bikappa_std.vth_para ≈ vthpar
+    @test bikappa_std.vth_perp ≈ vthperp
 
     # Statistical tests (variance check)
     N = 100000

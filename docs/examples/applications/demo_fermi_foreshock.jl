@@ -24,6 +24,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
+using VelocityDistributionFunctions
 using TestParticle: mₑ, Rₑ, qₑ
 using TestParticle: get_EField, get_BField
 using Random
@@ -99,7 +100,7 @@ function prob_func(prob, i, repeat)
     u0 = SA[0.0, 0.0, 0.0]
     T₀ = 10 # [eV]
     vth = √(2T₀ * abs(qₑ) / mₑ) # [m/s]
-    vdf = Maxwellian(u0, vth)
+    vdf = TP.Maxwellian(u0, vth)
     v0 = rand(vdf)
 
     return prob = remake(prob, u0 = [x0..., v0...])

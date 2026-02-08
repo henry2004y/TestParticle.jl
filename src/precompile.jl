@@ -17,10 +17,6 @@
             dims = (length(x) - 1, length(y) - 1, length(z) - 1)
         )
 
-        vdf = Maxwellian([0.0, 0.0, 0.0], 1.0e-9, 1.0e6)
-        v = rand(vdf)
-        vdf = BiMaxwellian([1.0, 0.0, 0.0], [0.0, 0.0, 0.0], 1.0e-9, 1.0e-9, 1.0e6)
-        v = rand(vdf)
         # numerical field
         param = prepare(x, y, z, E, B)
         param = prepare(mesh, E, B)
