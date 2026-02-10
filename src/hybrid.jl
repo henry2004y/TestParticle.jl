@@ -58,7 +58,7 @@ function TraceHybridProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
     )
 end
 
-function solve(
+@inline function solve(
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,

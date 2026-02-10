@@ -194,7 +194,7 @@ Trace particles using the Boris method with specified `prob`.
   - `save_fields::Bool`: save the electric and magnetic fields. Default is `false`.
   - `save_work::Bool`: save the work done by the electric field. Default is `false`.
 """
-function solve(
+@inline function solve(
         prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
