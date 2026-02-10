@@ -60,45 +60,52 @@ end
 
 function solve(
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
-        isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true
-    )
+        isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        save_start::Bool = true, save_end::Bool = true,
+        save_everystep::Bool = true, verbose::Bool = false
+    ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
-        ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
+        ensemblealg, prob, trajectories, alg,
+        savestepinterval, isoutofdomain,
+        save_start, save_end, save_everystep, verbose
     )
 end
 
-function _solve(
-        ::EnsembleSerial, prob, trajectories, alg::AdaptiveHybrid, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep
-    )
+@inline function _solve(
+        ::EnsembleSerial, prob::TraceHybridProblem,
+        trajectories, alg::AdaptiveHybrid,
+        savestepinterval, isoutofdomain::F,
+        save_start, save_end, save_everystep, verbose
+    ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
     _hybrid_adaptive!(
-        sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
+        sols, prob, irange, alg, savestepinterval,
+        isoutofdomain, save_start, save_end, save_everystep, verbose
     )
 
     return sols
 end
 
-function _solve(
-        ::EnsembleThreads, prob, trajectories, alg::AdaptiveHybrid, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep
-    )
+@inline function _solve(
+        ::EnsembleThreads, prob::TraceHybridProblem,
+        trajectories, alg::AdaptiveHybrid,
+        savestepinterval, isoutofdomain::F,
+        save_start, save_end, save_everystep, verbose
+    ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _hybrid_adaptive!(
-            sols, prob, irange, alg, savestepinterval, isoutofdomain,
-            save_start, save_end, save_everystep
+            sols, prob, irange, alg, savestepinterval,
+            isoutofdomain, save_start, save_end,
+            save_everystep, verbose
         )
     end
 
@@ -175,17 +182,16 @@ function _gc_to_full_at_t(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
     return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
 end
 
-function _hybrid_adaptive!(
-        sols, prob, irange, alg, savestepinterval, isoutofdomain,
-        save_start, save_end, save_everystep
-    )
+@inline function _hybrid_adaptive!(
+        sols, prob::TraceHybridProblem, irange, alg,
+        savestepinterval, isoutofdomain::F,
+        save_start, save_end, save_everystep, verbose
+    ) where {F}
     (; tspan, p, u0) = prob
-    # p = (q2m, m, Efunc, Bfunc, Ffunc)
     q2m, m, Efunc, Bfunc, _ = p
     q = q2m * m
     T = eltype(u0)
 
-    # Determine if fields are time dependent
     is_td = is_time_dependent(Efunc) || is_time_dependent(Bfunc)
 
     # Safety parameters for RK45 (from gc_solver.jl)
@@ -193,7 +199,7 @@ function _hybrid_adaptive!(
     max_growth = 5.0
     min_growth = 0.2
 
-    @fastmath @inbounds for i in irange
+    @inbounds for i in irange
         # Initialize solution containers with sizehint!
         # Estimate initial capacity based on timespan and maximum possible dt
         estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / alg.dtmax)
@@ -225,6 +231,7 @@ function _hybrid_adaptive!(
             Bmag = norm(B_vec)
             omega = abs(q2m * Bmag)
             dt = 0.5 * 2π / omega
+            verbose && @info "Initial mode: GC" ϵ t
         else
             mode = :FO
             # Initial dt for FO
@@ -234,6 +241,7 @@ function _hybrid_adaptive!(
             dt = alg.safety_fo / omega
             dt = clamp(dt, alg.dtmin, alg.dtmax)
             v = update_velocity(v, r, p, -0.5 * dt, t)
+            verbose && @info "Initial mode: FO" ϵ t
         end
 
         if save_start
@@ -250,6 +258,7 @@ function _hybrid_adaptive!(
                 if ϵ >= alg.threshold
                     # Switch to FO (GC -> FO)
                     mode = :FO
+                    verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
                     xv_fo_vec = _gc_to_full_at_t(
                         xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
                     )
@@ -313,6 +322,7 @@ function _hybrid_adaptive!(
                 if ϵ < alg.threshold
                     # Switch to GC
                     mode = :GC
+                    verbose && @info "Switch FO → GC" ϵ t r = X_gc
                     xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                     p_gc = (q, q2m, μ, Efunc, Bfunc)
 
@@ -371,7 +381,6 @@ function _hybrid_adaptive!(
         end
 
         # Final Save
-
         if save_end && (isempty(tsave) || tsave[end] != t)
             if mode == :GC
                 push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))

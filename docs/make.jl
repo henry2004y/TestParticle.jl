@@ -70,6 +70,7 @@ features_order = [
     "demo_extrasaving.jl",
     "demo_flux.jl",
     "demo_gc.jl",
+    "demo_hybrid.jl",
     "demo_gpu.md",
     "demo_array.md",
     "demo_diskarray.jl",

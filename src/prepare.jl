@@ -6,7 +6,7 @@ Judge whether the field function is time dependent.
 is_time_dependent(f::Function) = applicable(f, zeros(6), 0.0) ? true : false
 
 """
-     Field{itd, F} <: AbstractField{itd}
+    Field{itd, F} <: AbstractField{itd}
 
 A representation of a field function `f`, defined by:
 
