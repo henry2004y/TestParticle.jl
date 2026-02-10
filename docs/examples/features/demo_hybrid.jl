@@ -8,7 +8,7 @@
 # near the midplane `ε` is large (non-adiabatic → FO), and near the mirror
 # points `ε` is small (adiabatic → GC).
 
-# import DisplayAs #hide
+import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using LinearAlgebra, Random
@@ -243,22 +243,22 @@ t_norm = sol.t ./ T_gyro
 
 ## Shade FO and GC regions
 is_fo = ε_hybrid .>= threshold
-i_region = 1
-while i_region <= length(t_norm)
-    mode_fo = is_fo[i_region]
-    j_region = i_region
-    while j_region < length(t_norm) &&
-            is_fo[j_region + 1] == mode_fo
-        j_region += 1
+let i_region = 1
+    while i_region <= length(t_norm)
+        mode_fo = is_fo[i_region]
+        j_region = i_region
+        while j_region < length(t_norm) && is_fo[j_region + 1] == mode_fo
+            j_region += 1
+        end
+        t_lo = t_norm[i_region]
+        t_hi = t_norm[j_region]
+        if mode_fo
+            vspan!(ax_ts, t_lo, t_hi; color = (:red, 0.2))
+        else
+            vspan!(ax_ts, t_lo, t_hi; color = (:blue, 0.2))
+        end
+        i_region = j_region + 1
     end
-    t_lo = t_norm[i_region]
-    t_hi = t_norm[j_region]
-    if mode_fo
-        vspan!(ax_ts, t_lo, t_hi; color = (:red, 0.2))
-    else
-        vspan!(ax_ts, t_lo, t_hi; color = (:blue, 0.2))
-    end
-    global i_region = j_region + 1
 end
 
 lines!(ax_ts, t_norm, ε_hybrid; color = :black, linewidth = 1.0)
@@ -282,5 +282,4 @@ Legend(f[3, 1:4], ax_ts; orientation = :horizontal)
 
 rowsize!(f.layout, 1, Relative(0.55))
 
-f
-# f = DisplayAs.PNG(f) #hide
+f = DisplayAs.PNG(f) #hide
