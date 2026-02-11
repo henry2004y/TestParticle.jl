@@ -78,9 +78,7 @@ end
 # Calculate adiabaticity: ρ/Rc
 # The 1st adiabaticity stands for the ratio between the curvature radius and the gyroradius. Here we show the inverse of adiabaticity for plotting.
 ratio = let
-    q, q2m, μ, _, Bfunc = param_gc
-    m = q / q2m
-    adiabaticity = [get_adiabaticity(sol_gc(t)[1:3], Bfunc, q, m, μ, t) for t in tsample]
+    adiabaticity = [get_adiabaticity(sol_gc, t) for t in tsample]
     1 ./ adiabaticity
 end
 

@@ -698,3 +698,41 @@ function get_adiabaticity(sol::AbstractODESolution)
 
     return ε
 end
+
+"""
+    get_adiabaticity(sol::AbstractODESolution, t)
+
+Calculate the adiabaticity parameter `ϵ` from a solution `sol` at time `t`.
+`t` must be a scalar.
+"""
+function get_adiabaticity(sol::AbstractODESolution, t)
+    state_len = length(sol.u[1])
+
+    if state_len == 6 # FO or Hybrid
+        q2m, m, Efunc, Bfunc, _ = sol.prob.p
+        q = q2m * m
+
+        xv = sol(t)
+        x = xv[SA[1, 2, 3]]
+        v = xv[SA[4, 5, 6]]
+
+        B = Bfunc(x, t)
+        Bmag = norm(B)
+        b̂ = B / Bmag
+        vpar_val = v ⋅ b̂
+        vperp_vec = v - vpar_val * b̂
+        μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
+
+        return get_adiabaticity(x, Bfunc, q, m, μ, t)
+
+    elseif state_len == 4 # GC
+        q, q2m, μ, Efunc, Bfunc = sol.prob.p
+        m = q / q2m
+
+        xv = sol(t)
+        x = xv[SA[1, 2, 3]]
+        return get_adiabaticity(x, Bfunc, q, m, μ, t)
+    else
+        error("Unsupported solution state dimension: $state_len")
+    end
+end
