@@ -62,6 +62,8 @@ using Test
     # field strengthens and becomes more uniform → GC.
     # A bouncing particle triggers repeated GC → FO → GC
     # transitions.
+    #
+    # Also tests EnsembleThreads against EnsembleSerial.
     let
         B0 = 1.0e-4   # [T] background field
         α = 1.0e-4     # [m⁻²] mirror ratio parameter
@@ -74,8 +76,6 @@ using Test
         end
         B_bottle = TestParticle.Field(bottle_B)
 
-        # Proton with moderate perpendicular velocity
-        # and parallel velocity to bounce in the bottle
         x0 = SA[0.0, 0.0, 0.0]
         v_perp = 5.0e4   # [m/s]
         v_par = 2.0e5     # [m/s]
@@ -86,31 +86,40 @@ using Test
         T_gyro = 2π / Ω
         tspan = (0.0, 50 * T_gyro)
 
-        p = (
-            q2m, m, E_field, B_bottle,
-            TestParticle.ZeroField(),
-        )
+        p = (q2m, m, E_field, B_bottle, TestParticle.ZeroField())
         alg = AdaptiveHybrid(;
             threshold = 0.05,
             dtmax = T_gyro,
             dtmin = 1.0e-4 * T_gyro,
         )
 
-        sols = TestParticle.solve(TraceHybridProblem(u0, tspan, p), alg)
-        sol = sols[1]
-        @test sol.retcode == TestParticle.ReturnCode.Success
-        @test length(sol.t) > 10
-
-        # Energy conservation: kinetic energy should be
-        # approximately conserved (no E field)
+        ntraj = 4
         KE_init = 0.5 * m * sum(abs2, v0)
-        v_end = sol.u[end][SA[4, 5, 6]]
-        KE_end = 0.5 * m * sum(abs2, v_end)
-        @test KE_end ≈ KE_init rtol = 0.1
 
-        # The particle should remain confined by the
-        # mirror: z should not diverge
-        z_vals = [u[3] for u in sol.u]
-        @test maximum(abs, z_vals) < 1.0e6
+        # Serial
+        sols_serial = TestParticle.solve(
+            TraceHybridProblem(u0, tspan, p), alg, EnsembleSerial();
+            trajectories = ntraj,
+        )
+
+        @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols_serial)
+        @test all(s -> length(s.t) > 10, sols_serial)
+        @test all(sols_serial) do s
+            isapprox(0.5 * m * sum(abs2, s.u[end][SA[4, 5, 6]]), KE_init; rtol = 0.1)
+        end
+        @test all(s -> maximum(u -> abs(u[3]), s.u) < 1.0e6, sols_serial)
+
+        # Threaded — should match serial
+        sols_threads = TestParticle.solve(
+            TraceHybridProblem(u0, tspan, p), alg, EnsembleThreads();
+            trajectories = ntraj,
+        )
+
+        @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols_threads)
+        @test all(i -> length(sols_threads[i].t) == length(sols_serial[i].t), 1:ntraj)
+        @test all(sols_threads) do s
+            isapprox(0.5 * m * sum(abs2, s.u[end][SA[4, 5, 6]]), KE_init; rtol = 0.1)
+        end
+        @test all(s -> maximum(u -> abs(u[3]), s.u) < 1.0e6, sols_threads)
     end
 end
