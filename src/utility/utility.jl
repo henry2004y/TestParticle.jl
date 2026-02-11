@@ -652,3 +652,49 @@ end
 function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
     return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
 end
+
+"""
+    get_adiabaticity(sol::AbstractODESolution)
+
+Calculate the adiabaticity parameter `ϵ` from a solution `sol`.
+The parameters `q`, `m`, `Bfunc` are extracted from `sol.prob.p`.
+"""
+function get_adiabaticity(sol::AbstractODESolution)
+    n = length(sol.t)
+    ε = Vector{Float64}(undef, n)
+    state_len = length(sol.u[1])
+
+    if state_len == 6 # FO or Hybrid
+        q2m, m, Efunc, Bfunc, _ = sol.prob.p
+        q = q2m * m
+
+        for i in 1:n
+            xv = sol.u[i]
+            x = xv[SA[1, 2, 3]]
+            v = xv[SA[4, 5, 6]]
+            t = sol.t[i]
+
+            B = Bfunc(x, t)
+            Bmag = norm(B)
+            b̂ = B / Bmag
+            vpar_val = v ⋅ b̂
+            vperp_vec = v - vpar_val * b̂
+            μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
+
+            ε[i] = get_adiabaticity(x, Bfunc, q, m, μ, t)
+        end
+    elseif state_len == 4 # GC
+        q, q2m, μ, Efunc, Bfunc = sol.prob.p
+        m = q / q2m
+
+        for i in 1:n
+            x = sol.u[i][SA[1, 2, 3]]
+            t = sol.t[i]
+            ε[i] = get_adiabaticity(x, Bfunc, q, m, μ, t)
+        end
+    else
+        error("Unsupported solution state dimension: $state_len")
+    end
+
+    return ε
+end
