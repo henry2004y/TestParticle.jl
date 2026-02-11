@@ -652,3 +652,60 @@ end
 function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
     return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
 end
+
+function get_adiabaticity(xv, p::Tuple, t)
+    state_len = length(xv)
+
+    if state_len == 6 # FO or Hybrid
+        q2m, m, Efunc, Bfunc, _ = p
+        q = q2m * m
+
+        x = xv[SA[1, 2, 3]]
+        v = xv[SA[4, 5, 6]]
+
+        B = Bfunc(x, t)
+        Bmag = norm(B)
+        b̂ = B / Bmag
+        vpar_val = v ⋅ b̂
+        vperp_vec = v - vpar_val * b̂
+        μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
+
+        return get_adiabaticity(x, Bfunc, q, m, μ, t)
+    elseif state_len == 4 # GC
+        q, q2m, μ, Efunc, Bfunc = p
+        m = q / q2m
+
+        x = xv[SA[1, 2, 3]]
+        return get_adiabaticity(x, Bfunc, q, m, μ, t)
+    else
+        error("Unsupported solution state dimension: $state_len")
+    end
+end
+
+"""
+    get_adiabaticity(sol::AbstractODESolution)
+
+Calculate the adiabaticity parameter `ϵ` from a solution `sol` at all time steps.
+The parameters `q`, `m`, `Bfunc` are extracted from `sol.prob.p`.
+"""
+function get_adiabaticity(sol::AbstractODESolution)
+    n = length(sol.t)
+    ε = Vector{Float64}(undef, n)
+    p = sol.prob.p
+
+    for i in 1:n
+        ε[i] = get_adiabaticity(sol.u[i], p, sol.t[i])
+    end
+
+    return ε
+end
+
+"""
+    get_adiabaticity(sol::AbstractODESolution, t)
+
+Calculate the adiabaticity parameter `ϵ` from a solution `sol` at time `t`.
+`t` must be a scalar.
+"""
+function get_adiabaticity(sol::AbstractODESolution, t)
+    return get_adiabaticity(sol(t), sol.prob.p, t)
+end

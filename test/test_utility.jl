@@ -581,8 +581,50 @@ import TestParticle as TP
             # Should return Inf
             B_zero_test(x, t) = SA[0.0, 0.0, 0.0]
             @test get_adiabaticity(r, B_zero_test, q, m, μ, 0.0) == Inf
+            # Simple setup for Solution Dispatch
+            B0 = 1.0e-8
+            # Define fields as closures to capture B0, or just use constant
+            B_func_disp(x, t) = SA[0.0, 0.0, 1.0e-8]
+            B_func_disp(x) = B_func_disp(x, 0.0)
+            E_func_disp(x, t) = SA[0.0, 0.0, 0.0]
+            E_func_disp(x) = E_func_disp(x, 0.0)
+
+            # FO Solution
+            x0 = SA[1.0, 0.0, 0.0]
+            v0 = SA[0.0, 1.0e5, 0.0]
+            stateinit = [x0..., v0...]
+            tspan = (0.0, 1.0e-4) # Short duration
+            param_fo = prepare(E_func_disp, B_func_disp; species = Ion(1, 1))
+            prob_fo = ODEProblem(trace!, stateinit, tspan, param_fo)
+            sol_fo = solve(prob_fo, Tsit5())
+
+            # Test vector output
+            ε_fo = get_adiabaticity(sol_fo)
+            @test length(ε_fo) == length(sol_fo.t)
+            @test all(isfinite, ε_fo)
+            # Uniform field -> 0
+            @test all(ε_fo .== 0.0)
+
+            # Test scalar output
+            ε_fo_scalar = get_adiabaticity(sol_fo, 0.5e-4)
+            @test ε_fo_scalar == 0.0
+
+            # GC Solution
+            stateinit_gc, param_gc = prepare_gc(stateinit, E_func_disp, B_func_disp; species = Ion(1, 1))
+            prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+            sol_gc = solve(prob_gc, Tsit5())
+
+            # Test vector output
+            ε_gc = get_adiabaticity(sol_gc)
+            @test length(ε_gc) == length(sol_gc.t)
+            @test all(ε_gc .== 0.0)
+
+            # Test scalar output
+            ε_gc_scalar = get_adiabaticity(sol_gc, 0.5e-4)
+            @test ε_gc_scalar == 0.0
         end
     end
+
     @testset "ZeroField Unitful" begin
         # Check that ZeroField returns ZeroVector for Unitful types
         zf = TP.ZeroField()

@@ -41,7 +41,7 @@ E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 
 m = TP.mᵢ
 q = TP.qᵢ
-q2m = q / m
+q2m = q / m;
 
 # ## Step 1: Full Orbit Reference Trace
 #
@@ -62,7 +62,7 @@ tspan = (0.0, 30 * T_gyro)
 
 param_fo = prepare(E_field, B_field; species = Proton)
 prob_fo = ODEProblem(trace, u0, tspan, param_fo)
-sol_fo = solve(prob_fo, Vern9(); save_everystep = true)
+sol_fo = solve(prob_fo, Vern9())
 
 ## Verify trapping: z should oscillate, not diverge
 z_fo = [u[3] for u in sol_fo.u]
@@ -79,7 +79,7 @@ stateinit_gc, param_gc = TP.prepare_gc(
     u0, bottle_E_static, bottle_B_static; species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern9())
+sol_gc = solve(prob_gc, Vern9());
 
 # ## Step 3: Hybrid Solver
 #
@@ -100,7 +100,7 @@ alg = AdaptiveHybrid(;
 
 Random.seed!(1234)
 ## Set verbose = true to see the dynamic switching
-sol = TP.solve(TraceHybridProblem(u0, tspan, p), alg; verbose = false)[1]
+sol = TP.solve(TraceHybridProblem(u0, tspan, p), alg; verbose = false)[1];
 
 # ## Step 4: Compute Adiabaticity
 #
@@ -108,41 +108,9 @@ sol = TP.solve(TraceHybridProblem(u0, tspan, p), alg; verbose = false)[1]
 # guiding center approximation holds. When `ε < threshold`, GC is
 # valid; when `ε ≥ threshold`, we need full orbit tracing.
 
-function compute_adiabaticity(sol, Bfunc, q, m)
-    n = length(sol.t)
-    ε = Vector{Float64}(undef, n)
-    for i in 1:n
-        xv = sol.u[i]
-        x = xv[SA[1, 2, 3]]
-        v = xv[SA[4, 5, 6]]
-        t = sol.t[i]
-
-        B = Bfunc(x, t)
-        Bmag = norm(B)
-        b̂ = B / Bmag
-        vpar_val = v ⋅ b̂
-        vperp_vec = v - vpar_val * b̂
-        μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
-
-        ε[i] = get_adiabaticity(x, Bfunc, q, m, μ, t)
-    end
-    return ε
-end
-
-function compute_adiabaticity_gc(sol_gc, Bfunc, q, m, μ)
-    n = length(sol_gc.t)
-    ε = Vector{Float64}(undef, n)
-    for i in 1:n
-        x = sol_gc.u[i][SA[1, 2, 3]]
-        t = sol_gc.t[i]
-        ε[i] = get_adiabaticity(x, Bfunc, q, m, μ, t)
-    end
-    return ε
-end
-
-ε_fo = compute_adiabaticity(sol_fo, B_field, q, m)
-ε_gc = compute_adiabaticity_gc(sol_gc, B_field, q, m, param_gc[3])
-ε_hybrid = compute_adiabaticity(sol, B_field, q, m)
+ε_fo = get_adiabaticity(sol_fo)
+ε_gc = get_adiabaticity(sol_gc)
+ε_hybrid = get_adiabaticity(sol)
 
 ## Common colorbar range across all solvers
 ε_clamp_lo = 1.0e-3
