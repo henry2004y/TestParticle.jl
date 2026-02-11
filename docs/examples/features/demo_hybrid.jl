@@ -260,9 +260,9 @@ f = DisplayAs.PNG(f) #hide
 # Finally, we compare the execution time and memory allocations of the three solvers.
 
 io = IOBuffer() #hide
-println(io, "| Solver | Time | Allocations |") #hide
+println(io, "| Solver | Time (s) | Allocations (bytes) |") #hide
 println(io, "| :--- | :--- | :--- |") #hide
-Printf.@printf(io, "| Full Orbit | %.4e s | %.4e bytes |\n", stats_fo.time, stats_fo.bytes) #hide
-Printf.@printf(io, "| Guiding Center | %.4e s | %.4e bytes |\n", stats_gc.time, stats_gc.bytes) #hide
-Printf.@printf(io, "| Hybrid | %.4e s | %.4e bytes |\n", stats_hybrid.time, stats_hybrid.bytes) #hide
+Printf.@printf(io, "| Full Orbit | %.2e | %.2e |\n", stats_fo.time, stats_fo.bytes) #hide
+Printf.@printf(io, "| Guiding Center | %.2e | %.2e |\n", stats_gc.time, stats_gc.bytes) #hide
+Printf.@printf(io, "| Hybrid | %.2e | %.2e |\n", stats_hybrid.time, stats_hybrid.bytes) #hide
 Markdown.parse(String(take!(io))) #hide
