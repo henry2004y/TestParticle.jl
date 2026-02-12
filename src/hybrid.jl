@@ -15,18 +15,21 @@ struct AdaptiveHybrid{T}
     abstol::T
     reltol::T
     maxiters::Int
+    check_interval::Int
 end
 
 function AdaptiveHybrid(;
         threshold = 0.1, dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
-        abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000
+        abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10
     )
+    check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     T = promote_type(
         typeof(threshold), typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
         typeof(reltol)
     )
     return AdaptiveHybrid{T}(
-        T(threshold), T(dtmin), T(dtmax), T(safety_fo), T(abstol), T(reltol), maxiters
+        T(threshold), T(dtmin), T(dtmax), T(safety_fo), T(abstol), T(reltol), maxiters,
+        check_interval
     )
 end
 
@@ -254,24 +257,26 @@ end
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
                 # Adiabaticity check
-                ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
-                if ϵ >= alg.threshold
-                    # Switch to FO (GC -> FO)
-                    mode = :FO
-                    verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
-                    xv_fo_vec = _gc_to_full_at_t(
-                        xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
-                    )
-                    xv_fo = xv_fo_vec
-                    r = xv_fo[SVector(1, 2, 3)]
-                    v = xv_fo[SVector(4, 5, 6)]
+                if it % alg.check_interval == 0
+                    ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
+                    if ϵ >= alg.threshold
+                        # Switch to FO (GC -> FO)
+                        mode = :FO
+                        verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
+                        xv_fo_vec = _gc_to_full_at_t(
+                            xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
+                        )
+                        xv_fo = xv_fo_vec
+                        r = xv_fo[SVector(1, 2, 3)]
+                        v = xv_fo[SVector(4, 5, 6)]
 
-                    B_mag = norm(Bfunc(r, t))
-                    omega = abs(q2m * B_mag)
-                    dt = alg.safety_fo / omega
-                    dt = clamp(dt, alg.dtmin, alg.dtmax)
-                    v = update_velocity(v, r, p, -0.5 * dt, t)
-                    continue
+                        B_mag = norm(Bfunc(r, t))
+                        omega = abs(q2m * B_mag)
+                        dt = alg.safety_fo / omega
+                        dt = clamp(dt, alg.dtmin, alg.dtmax)
+                        v = update_velocity(v, r, p, -0.5 * dt, t)
+                        continue
+                    end
                 end
 
                 if t + dt > tspan[2]
@@ -312,24 +317,26 @@ end
                 t_sync = is_td ? t : zero(T)
                 v_check = update_velocity(v, r, p, 0.5 * dt, t_sync)
 
-                xv_check = SVector{6, T}(
-                    r[1], r[2], r[3], v_check[1], v_check[2], v_check[3]
-                )
-                X_gc, vpar, μ = _get_gc_parameters_at_t(
-                    xv_check, Efunc, Bfunc, q, m, t
-                )
-                ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
-                if ϵ < alg.threshold
-                    # Switch to GC
-                    mode = :GC
-                    verbose && @info "Switch FO → GC" ϵ t r = X_gc
-                    xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-                    p_gc = (q, q2m, μ, Efunc, Bfunc)
+                if it % alg.check_interval == 0
+                    xv_check = SVector{6, T}(
+                        r[1], r[2], r[3], v_check[1], v_check[2], v_check[3]
+                    )
+                    X_gc, vpar, μ = _get_gc_parameters_at_t(
+                        xv_check, Efunc, Bfunc, q, m, t
+                    )
+                    ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
+                    if ϵ < alg.threshold
+                        # Switch to GC
+                        mode = :GC
+                        verbose && @info "Switch FO → GC" ϵ t r = X_gc
+                        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
+                        p_gc = (q, q2m, μ, Efunc, Bfunc)
 
-                    Bmag = norm(Bfunc(X_gc, t))
-                    omega = abs(q2m * Bmag)
-                    dt = 0.5 * 2π / omega
-                    continue
+                        Bmag = norm(Bfunc(X_gc, t))
+                        omega = abs(q2m * Bmag)
+                        dt = 0.5 * 2π / omega
+                        continue
+                    end
                 end
 
                 if t + dt > tspan[2]
