@@ -98,7 +98,7 @@ using Test
 
         # Serial
         sols_serial = TestParticle.solve(
-            TraceHybridProblem(u0, tspan, p), alg, EnsembleSerial();
+            TraceHybridProblem(u0, tspan, p), alg, TestParticle.EnsembleSerial();
             trajectories = ntraj,
         )
 
@@ -111,7 +111,7 @@ using Test
 
         # Threaded — should match serial
         sols_threads = TestParticle.solve(
-            TraceHybridProblem(u0, tspan, p), alg, EnsembleThreads();
+            TraceHybridProblem(u0, tspan, p), alg, TestParticle.EnsembleThreads();
             trajectories = ntraj,
         )
 

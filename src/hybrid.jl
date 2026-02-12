@@ -22,6 +22,7 @@ function AdaptiveHybrid(;
         threshold = 0.1, dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10
     )
+    check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     T = promote_type(
         typeof(threshold), typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
         typeof(reltol)
