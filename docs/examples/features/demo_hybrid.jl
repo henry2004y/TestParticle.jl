@@ -97,6 +97,7 @@ alg = AdaptiveHybrid(;
     dtmax = T_gyro,
     dtmin = 1.0e-4 * T_gyro,
     maxiters = 500_000,
+    check_interval = 100,
 )
 
 Random.seed!(1234)
