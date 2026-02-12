@@ -12,6 +12,7 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using LinearAlgebra, Random, Printf, Markdown
+using Chairmarks, Statistics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -62,8 +63,7 @@ tspan = (0.0, 30 * T_gyro)
 
 param_fo = prepare(E_field, B_field; species = Proton)
 prob_fo = ODEProblem(trace, u0, tspan, param_fo)
-stats_fo = @timed solve(prob_fo, Vern9(); save_everystep = true)
-sol_fo = stats_fo.value;
+sol_fo = solve(prob_fo, Vern6())
 
 ## Verify trapping: z should oscillate, not diverge
 z_fo = [u[3] for u in sol_fo.u]
@@ -80,8 +80,7 @@ stateinit_gc, param_gc = TP.prepare_gc(
     u0, bottle_E_static, bottle_B_static; species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-stats_gc = @timed solve(prob_gc, Vern9())
-sol_gc = stats_gc.value;
+sol_gc = solve(prob_gc, Vern6())
 
 # ## Step 3: Hybrid Solver
 #
@@ -102,8 +101,8 @@ alg = AdaptiveHybrid(;
 
 Random.seed!(1234)
 ## Set verbose = true to see the dynamic switching
-stats_hybrid = @timed TP.solve(TraceHybridProblem(u0, tspan, p), alg; verbose = false)
-sol = stats_hybrid.value[1];
+prob_hybrid = TraceHybridProblem(u0, tspan, p)
+sol = TP.solve(prob_hybrid, alg; verbose = false)[1]
 
 # ## Step 4: Compute Adiabaticity
 #
@@ -259,10 +258,14 @@ f = DisplayAs.PNG(f) #hide
 #
 # Finally, we compare the execution time and memory allocations of the three solvers.
 
+b_fo = @be solve(prob_fo, Vern6())
+b_gc = @be solve(prob_gc, Vern6())
+b_hy = @be TP.solve(prob_hybrid, alg; verbose = false)
+
 io = IOBuffer() #hide
-println(io, "| Solver | Time (s) | Allocations (bytes) |") #hide
+println(io, "| Solver | Time | Allocations |") #hide
 println(io, "| :--- | :--- | :--- |") #hide
-Printf.@printf(io, "| Full Orbit | %.2e | %.2e |\n", stats_fo.time, stats_fo.bytes) #hide
-Printf.@printf(io, "| Guiding Center | %.2e | %.2e |\n", stats_gc.time, stats_gc.bytes) #hide
-Printf.@printf(io, "| Hybrid | %.2e | %.2e |\n", stats_hybrid.time, stats_hybrid.bytes) #hide
+Printf.@printf(io, "| Full Orbit | %s | %d |\n", median(b_fo).time, median(b_fo).bytes) #hide
+Printf.@printf(io, "| Guiding Center | %s | %d |\n", median(b_gc).time, median(b_gc).bytes) #hide
+Printf.@printf(io, "| Hybrid | %s | %d |\n", median(b_hy).time, median(b_hy).bytes) #hide
 Markdown.parse(String(take!(io))) #hide
