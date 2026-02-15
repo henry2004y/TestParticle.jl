@@ -21,7 +21,7 @@
   self-explanatory, no special docstring is needed.
 
 # Running test code
-Please make sure to test new code when you wrote.
+Please make sure to test new code that you write.
 
 If explicit test file or code is provided, prioritize running that.
 Otherwise, you can run the entire test suite for the TestParticle project by executing
