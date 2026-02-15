@@ -24,7 +24,7 @@
 Please make sure to test new code when you wrote.
 
 If explicit test file or code is provided, prioritize running that.
-Otherwise, you can run the entire test suite for the Batsrus project by executing
+Otherwise, you can run the entire test suite for the TestParticle project by executing
 `using Pkg; Pkg.test()` from the root directory of this repository.
 
 # Test code structure
