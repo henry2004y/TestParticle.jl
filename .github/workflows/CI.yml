@@ -5,6 +5,8 @@ on:
       - master
     paths-ignore:
       - 'README.md'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
       - 'examples/**'
   push:
     branches:
@@ -12,6 +14,8 @@ on:
     tags: '*'
     paths-ignore:
       - 'README.md'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
       - 'examples/**'
 env:
   JULIA_NUM_THREADS: 2
