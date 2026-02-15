@@ -44,7 +44,7 @@ end # module test_feature
 And `test/test_feature.jl` is included from `test/runtests.jl` like this:
 > test/runtests.jl
 ```julia
-@testset "Batsrus.jl" begin
+@testset "TestParticle.jl" begin
    ...
    @testset "feature" include("test_feature.jl")
    ...
