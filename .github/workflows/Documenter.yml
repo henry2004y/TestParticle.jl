@@ -5,10 +5,14 @@ on:
     tags: ['*']
     paths-ignore:
       - 'README.md'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
   pull_request:
     branches: [master]
     paths-ignore:
       - 'README.md'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
