@@ -32,14 +32,7 @@ julia --project=test test/runtests.jl
 
 ## Code Style
 
-We use [JuliaFormatter.jl](https://github.com/domluna/JuliaFormatter.jl) with the **SciML** style and **3-space indentation**.
-
-To format your code:
-
-```julia
-using JuliaFormatter
-format(".")
-```
+We use [Runic.jl](https://github.com/fredrikekre/Runic.jl), with the recommended line character limit of 92.
 
 ## Building Documentation
 
