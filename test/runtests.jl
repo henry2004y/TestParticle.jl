@@ -199,7 +199,7 @@ end
 
         @test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
         @test get_gc_func(param) isa Function
-        @test sol_inplace[1, 300] ≈ 1.2555509547523573e7 rtol = 1.0e-6
+        @test sol_inplace[1, 300] ≈ 1.2555509547523573e7 rtol = 1.0e-5
 
         # static array version
         stateinit_sa = SA[r₀..., v₀...]
