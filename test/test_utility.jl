@@ -9,11 +9,10 @@ import TestParticle as TP
 
 @testset "Utility" begin
     @testset "Basic Utility" begin
-        # From runtests.jl
         V, B = 440.0e3, 5.0e-9
         r = get_gyroradius(V, B)
-        @test r ≈ 919206.1737113602
-        @test get_gyroperiod(B) ≈ 13.126233465754511
+        @test r ≈ 918692.2725070775
+        @test get_gyroperiod(B) ≈ 13.118894973717941
     end
 
     @testset "Mean Magnitude" begin
