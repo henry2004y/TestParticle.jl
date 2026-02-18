@@ -15,7 +15,7 @@ classifiers = [
 dependencies = ["juliacall>=0.9.20"]
 
 [project.urls]
-Homepage = "https://henry2004y.github.io/TestParticle.jl/dev/
+Homepage = "https://henry2004y.github.io/TestParticle.jl/dev/"
 Repository = "https://github.com/henry2004y/TestParticle.jl"
 
 [build-system]
