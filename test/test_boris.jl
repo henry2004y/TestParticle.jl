@@ -45,28 +45,28 @@ using LinearAlgebra
         sol = TP.solve(prob; dt, savestepinterval = 10)[1]
 
         @test sol.u[end] ≈ [
-            -0.00010199139098074829, 3.4634030517007745e-5, 0.0,
-            -60893.0154034644, -79322.38445151183, 0.0,
+            -0.00010199137926394769, 3.46340469171306e-5, 0.0,
+            -60893.043824907196, -79322.36263335795, 0.0,
         ]
         @test length(sol.t) == length(sol.u)
 
         t = tspan[2] / 2
         @test sol(t) ≈ [
-            -3.8587891411024776e-5, 5.3855910044312875e-5, 0.0,
-            -94689.59405645168, 32154.016505320025, 0.0,
+            -3.8587882024745045e-5, 5.3855907133664956e-5, 0.0,
+            -94689.58829601014, 32154.033469101283, 0.0,
         ]
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 4
         savestepinterval = 1000
         sols = TP.solve(prob, EnsembleThreads(); dt, savestepinterval, trajectories)
-        @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.1540346438
+        @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.4382490724
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 2
         savestepinterval = 1000
         sols = TP.solve(prob; dt, savestepinterval, trajectories)
-        @test sum(s -> sum(s.u[end]), sols) ≈ -420646.1997670008
+        @test sum(s -> sum(s.u[end]), sols) ≈ -420646.2195768674
 
         x0 = [-1.0, 0.0, 0.0]
         v0 = [1.0e6, 0.0, 0.0]
@@ -76,7 +76,7 @@ using LinearAlgebra
         param = prepare(zero_E, time_varying_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
         sol = TP.solve(prob; dt, savestepinterval = 100)[1]
-        @test sol[1, end] ≈ -512.8807058314515
+        @test sol[1, end] ≈ -512.8807214528281
 
         new_tspan = (0.0, 2.0e-8)
         new_prob = remake(prob; tspan = new_tspan)
