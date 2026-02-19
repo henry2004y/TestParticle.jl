@@ -25,7 +25,7 @@ const N = 45 # number of windings
 const distance = 10.0 # distance between solenoids [m]
 const a = 4.0 # radius of each coil [m]
 
-getB(xu) = SVector{3}(MS.getB_mirror(xu[1], xu[2], xu[3], distance, a, I * N))
+getB(xu) = MS.getB_mirror(xu[1], xu[2], xu[3], distance, a, I * N)
 
 ## velocity in the direction perpendicular to the magnetic field
 function v_perp(t, x, y, z, vx, vy, vz)

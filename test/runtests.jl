@@ -187,11 +187,6 @@ end
         ) == 2.761594155955765
 
         @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] ≈ 0.0 atol = 1.0e-40
-        @test TP.getB_tokamak_coil(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)[1] ≈
-            -1.2473997957952395e-6
-        q_profile(nr) = nr^2 + 2 * nr + 0.5
-        @test TP.getB_tokamak_profile(1.0, 1.0, 1.0, q_profile, 2.0, 1.0, 1.0)[1] ==
-            -0.7666260799054282
 
         param = prepare(TP.ZeroField(), TP.getB_dipole)
         prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -432,14 +427,6 @@ end
         prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
         @test length(sol) == 9 && sol[1, end] ≈ 0.9999998697180689
-    end
-
-
-    @testset "MagnetoStatics" begin
-        B = TP.getB_mirror(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
-        @test B[3] ≈ 8.99176285573213e-7
-        B = TP.getB_bottle(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-        @test B[3] ≈ 1.5274948162911718e-6
     end
 
     @testset "ZeroVector" begin
