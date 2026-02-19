@@ -43,7 +43,6 @@ export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 
 include("types.jl")
-include("fields/Fields.jl")
 include("utility/utility.jl")
 include("utility/interpolation.jl")
 include("sampler.jl")

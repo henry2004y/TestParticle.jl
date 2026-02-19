@@ -17,11 +17,7 @@ CairoMakie.activate!(type = "png") #hide
 const I_current = 1.0e6 # Current [A]
 const a_wire = 0.1 # Radius of the wire [m]
 
-function getB(xu)
-    x, y, z = xu[1], xu[2], xu[3]
-    return MS.getB_zpinch(x, y, z, I_current, a_wire)
-end
-
+getB(xu) = MS.getB_zpinch(xu[1], xu[2], xu[3], I_current, a_wire)
 getE = TP.ZeroField()
 
 ### Initialize Particles

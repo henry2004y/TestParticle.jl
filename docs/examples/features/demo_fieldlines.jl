@@ -79,7 +79,7 @@ end
 
 ## Plot analytic field lines for reference
 for ϕ in range(0, stop = 2 * π, length = 10)
-    lines!(ax, TP.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
+    lines!(ax, MS.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
 end
 
 f = DisplayAs.PNG(f) #hide

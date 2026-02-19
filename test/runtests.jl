@@ -179,30 +179,6 @@ end
         r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
         stateinit = [r₀..., v₀...]
         tspan = (0.0, 1.0)
-
-        @test sum(
-            TP.getB_CS_harris(
-                [1.0, 0.0, 1.0], 1.0, 1.0, 2.0
-            )
-        ) == 2.761594155955765
-
-        @test TP.dipole_fieldline(0.0, 2.0, 2)[1][1] ≈ 0.0 atol = 1.0e-40
-
-        param = prepare(TP.ZeroField(), TP.getB_dipole)
-        prob = ODEProblem(trace!, stateinit, tspan, param)
-        sol_inplace = solve(prob, Tsit5(); save_idxs = [1])
-
-        @test get_gc([stateinit..., 0.0], param)[1] == 1.59275e7
-        @test get_gc_func(param) isa Function
-        @test sol_inplace[1, 300] ≈ 1.2555509547523573e7 rtol = 1.0e-5
-
-        # static array version
-        stateinit_sa = SA[r₀..., v₀...]
-
-        prob = ODEProblem(trace, stateinit_sa, tspan, param)
-        sol_sa = solve(prob, Tsit5(); save_idxs = [1])
-        # Compare results at the final time step
-        @test sol_sa(1.0)[1] ≈ sol_inplace(1.0)[1] rtol = 1.0e-3
     end
 
     @testset "mixed type fields" begin

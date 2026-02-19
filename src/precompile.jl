@@ -21,7 +21,8 @@
         param = prepare(x, y, z, E, B)
         param = prepare(mesh, E, B)
         # analytical field
-        param = prepare(DipoleField())
+        B_analytic(r) = SA[0.0, 0.0, 1.0e-9]
+        param = prepare(B_analytic)
         # Boris pusher
         stateinit = let x0 = [0.0, 0.0, 0.0], v0 = [0.0, 1.0e5, 0.0]
             [x0..., v0...]
@@ -48,7 +49,7 @@
         sol_multistep_sf = solve(prob; dt, n = 2, save_fields = true)
         # guiding center
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-        stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), DipoleField())
+        stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), B_analytic)
         stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z, E, B)
         # native GC solvers
         prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)

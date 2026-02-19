@@ -1,6 +1,7 @@
 # Collection of utility functions and commonly used constants.
 
 include("constants.jl")
+include("zero.jl")
 
 """
     sph2cart(r, θ, ϕ)

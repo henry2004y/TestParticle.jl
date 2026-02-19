@@ -6,6 +6,7 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ
+import Magnetostatics as MS
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -20,7 +21,9 @@ stateinit = let
     [r₀..., v₀...]
 end
 ## Obtain field
-param = prepare(TP.DipoleField())
+field = MS.Dipole(TP.BMoment_Earth)
+B_func(r) = field(r)
+param = prepare(TP.ZeroField(), B_func)
 tspan = (0.0, 10.0);
 
 # ## Full Trajectory Tracing
@@ -31,7 +34,8 @@ sol = solve(prob, Vern9());
 # ## Guiding Center Tracing
 # Next, we can trace the guiding center (GC) of the particle via [`trace_gc!`](@ref).
 # For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
-stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), TP.getB_dipole)
+param = prepare(B_func)
+stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), B_func)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern7());
 
@@ -62,7 +66,7 @@ end
 lines!(ax, x, y, z, label = "Full Orbit")
 
 for ϕ in range(0, stop = 2 * π, length = 10)
-    lines!(ax, TP.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
+    lines!(ax, MS.dipole_fieldline(ϕ)..., color = :tomato, alpha = 0.3)
 end
 
 ## Plot GC trajectory
