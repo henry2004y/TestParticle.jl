@@ -9,7 +9,7 @@ import Magnetostatics as MS
 @testset "Field line tracing" begin
     @testset "Dipole field" begin
         dipole = MS.Dipole(TP.BMoment_Earth)
-        param = prepare(TP.ZeroField(), r -> dipole(r[1], r[2], r[3]))
+        param = prepare(TP.ZeroField(), r -> @inbounds dipole(r[1], r[2], r[3]))
         L = 4.0 * TP.Rₑ
         stateinit = [L, 0.0, 0.0]
 
