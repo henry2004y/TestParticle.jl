@@ -22,7 +22,7 @@ stateinit = let
 end
 ## Obtain field
 field = MS.Dipole(TP.BMoment_Earth)
-B_func(r) = field(r)
+B_func(r) = field(r[1], r[2], r[3])
 param = prepare(TP.ZeroField(), B_func)
 tspan = (0.0, 10.0);
 

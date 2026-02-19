@@ -75,7 +75,7 @@ v₀ = [0.0, vmag * sin(α_eq), -vmag * cos(α_eq)]
 
 stateinit = [r₀..., v₀...]
 field = MS.Dipole(TP.BMoment_Earth)
-param = prepare(TP.ZeroField(), r -> field(r))
+param = prepare(TP.ZeroField(), r -> field(r[1], r[2], r[3]))
 tspan = (0.0, 1.2 * τ_d_theo) # Run for slightly more than one drift period
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
