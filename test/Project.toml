@@ -1,5 +1,7 @@
 [deps]
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Magnetostatics = "e551bd30-f216-4325-9989-532520624021"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -10,7 +12,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 
 [sources]
 TestParticle = {path = ".."}

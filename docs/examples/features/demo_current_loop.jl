@@ -8,7 +8,7 @@
 
 import DisplayAs #hide
 import TestParticle as TP
-using TestParticle: getB_loop, trace_fieldline
+import Magnetostatics as MS
 using OrdinaryDiffEqVerner
 using StaticArrays
 using LinearAlgebra
@@ -40,8 +40,8 @@ n2 = normalize([1.0, 0.0, 1.0])
 # `getB_loop` handles the Biot-Savart calculation (using elliptic integrals).
 
 function B_total(x)
-    B1 = getB_loop(x, R1, a1, I1, n1)
-    B2 = getB_loop(x, R2, a2, I2, n2)
+    B1 = MS.getB_loop(x, R1, a1, I1, n1)
+    B2 = MS.getB_loop(x, R2, a2, I2, n2)
     return B1 + B2
 end
 
@@ -73,7 +73,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for u0 in seeds
     ## Trace in both directions
-    probs = trace_fieldline(u0, param, s_span; mode = :both)
+    probs = TP.trace_fieldline(u0, param, s_span; mode = :both)
 
     for prob in probs
         sol = solve(

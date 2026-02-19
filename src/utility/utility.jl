@@ -1,5 +1,7 @@
 # Collection of utility functions and commonly used constants.
 
+include("constants.jl")
+
 """
     sph2cart(r, θ, ϕ)
 
@@ -43,10 +45,6 @@ function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
     vz = cosθ * vr - sinθ * vθ
     return SVector{3}(vx, vy, vz)
 end
-
-include("constants.jl")
-include("loop.jl")
-include("confinement.jl")
 
 """
 Return uniform range from 2D/3D CartesianGrid.

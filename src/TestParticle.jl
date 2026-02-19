@@ -33,12 +33,10 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
 export Proton, Electron, Ion
 export Maxwellian, BiMaxwellian, Kappa, BiKappa
 export AdaptiveBoris, AdaptiveHybrid
-export CurrentLoop, getB_loop
 export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy, get_mean_magnitude,
     energy2velocity, get_curvature_radius, get_adiabaticity,
-    sample_unit_sphere, get_number_density_flux,
-    getB_zpinch, getB_bottle, getB_mirror, getB_tokamak_coil
+    sample_unit_sphere, get_number_density_flux
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator

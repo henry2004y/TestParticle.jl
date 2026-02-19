@@ -7,6 +7,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
+import Magnetostatics as MS
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -18,7 +19,7 @@ const a_wire = 0.1 # Radius of the wire [m]
 
 function getB(xu)
     x, y, z = xu[1], xu[2], xu[3]
-    return getB_zpinch(x, y, z, I_current, a_wire)
+    return MS.getB_zpinch(x, y, z, I_current, a_wire)
 end
 
 getE = TP.ZeroField()
