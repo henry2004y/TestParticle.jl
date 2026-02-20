@@ -178,7 +178,7 @@ import TestParticle as TP
         tspan = (0.0, 1.0)
 
         dipole = MS.Dipole(TP.BMoment_Earth)
-        getB_dipole(r) = @inbounds dipole(r[1], r[2], r[3])
+        getB_dipole(r) = dipole(r)
 
         stateinit_gc, param_gc = TestParticle.prepare_gc(
             stateinit, TestParticle.ZeroField(), getB_dipole;

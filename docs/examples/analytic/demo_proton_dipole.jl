@@ -21,8 +21,8 @@ stateinit = let
     [r₀..., v₀...]
 end
 ## Obtain field
-field = MS.Dipole(TP.BMoment_Earth)
-B_func(r) = @inbounds field(r[1], r[2], r[3])
+Bfield = MS.Dipole(TP.BMoment_Earth)
+B_func(r) = Bfield(r)
 param = prepare(TP.ZeroField(), B_func)
 tspan = (0.0, 10.0);
 
