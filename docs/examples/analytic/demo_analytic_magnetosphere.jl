@@ -6,7 +6,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
-import MagnetoStatics as MS
+import Magnetostatics as MS
 using FieldTracer
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

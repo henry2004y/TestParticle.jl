@@ -10,7 +10,7 @@
 
 import DisplayAs #hide
 import TestParticle as TP
-import MagnetoStatics as MS
+import Magnetostatics as MS
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
