@@ -5,10 +5,14 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
-using TestParticle: getB_dipole, sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
+using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
+import MagnetoStatics as MS
 using FieldTracer
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
+
+dipole = MS.Dipole(TP.BMoment_Earth)
+getB_dipole(r) = dipole(r)
 
 getB_superposition_constant(xu) = getB_dipole(xu) + SA[0.0, 0.0, -10.0e-9]
 
