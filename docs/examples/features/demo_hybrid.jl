@@ -80,7 +80,7 @@ stateinit_gc, param_gc = TP.prepare_gc(
     u0, bottle_E_static, bottle_B_static; species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern6())
+sol_gc = solve(prob_gc, Vern6());
 
 # ## Step 3: Hybrid Solver
 #
@@ -103,7 +103,7 @@ alg = AdaptiveHybrid(;
 Random.seed!(1234)
 ## Set verbose = true to see the dynamic switching
 prob_hybrid = TraceHybridProblem(u0, tspan, p)
-sol = TP.solve(prob_hybrid, alg; verbose = false)[1]
+sol = TP.solve(prob_hybrid, alg; verbose = false)[1];
 
 # ## Step 4: Compute Adiabaticity
 #
