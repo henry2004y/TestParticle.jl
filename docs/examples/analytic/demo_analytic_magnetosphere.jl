@@ -128,7 +128,7 @@ function trace_field!(
         ys = r * sin(ϕ)
 
         x1, y1,
-            z1 = FieldTracer.trace(bx, by, bz, xs, ys, zs, x, y, z; ds = 0.1, maxstep = 10000)
+            z1 = FieldTracer.trace(bx, by, bz, xs, ys, zs, x, y, z; ds = 0.1Rₑ, maxstep = 10000)
 
         lines!(ax, x1 .* unitscale, y1 .* unitscale, z1 .* unitscale, color = :gray)
     end
