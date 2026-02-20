@@ -10,7 +10,7 @@
 
 import DisplayAs #hide
 import TestParticle as TP
-using TestParticle: trace_fieldline
+import Magnetostatics as MS
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
@@ -19,9 +19,9 @@ CairoMakie.activate!(type = "png") #hide
 
 # ## Define the Magnetic Field
 #
-# We use the predefined dipole field functions from `TestParticle`.
-# `getB_dipole` returns the Earth's magnetic field in SI units (Tesla).
-getB = TP.getB_dipole;
+# We use the predefined dipole field functions that returns the Earth's magnetic field in SI units (Tesla).
+dipole = MS.Dipole(TP.BMoment_Earth)
+getB = r -> dipole(r)
 
 # ## Trace Field Lines
 #
@@ -49,7 +49,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for (i, u0) in enumerate(seeds)
     ## Returns a vector of two ODEProblems (forward and backward)
-    probs = trace_fieldline(u0, getB, s_span; mode = :both)
+    probs = TP.trace_fieldline(u0, getB, s_span; mode = :both)
 
     ## Solve each problem
     for (j, prob) in enumerate(probs)
@@ -79,7 +79,7 @@ end
 
 ## Plot analytic field lines for reference
 for ϕ in range(0, stop = 2 * π, length = 10)
-    lines!(ax, TP.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
+    lines!(ax, MS.dipole_fieldline(ϕ) .* TP.Rₑ..., color = :tomato)
 end
 
 f = DisplayAs.PNG(f) #hide

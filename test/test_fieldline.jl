@@ -4,10 +4,12 @@ using StaticArrays
 using Test
 import TestParticle as TP
 using LinearAlgebra: norm
+import Magnetostatics as MS
 
 @testset "Field line tracing" begin
     @testset "Dipole field" begin
-        param = prepare(TP.ZeroField(), TP.getB_dipole)
+        dipole = MS.Dipole(TP.BMoment_Earth)
+        param = prepare(TP.ZeroField(), r -> dipole(r))
         L = 4.0 * TP.Rₑ
         stateinit = [L, 0.0, 0.0]
 

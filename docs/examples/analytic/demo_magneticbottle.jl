@@ -7,6 +7,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
+import Magnetostatics as MS
 using Printf
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -22,7 +23,7 @@ const distance = 10.0 # distance between solenoids
 const a = 4.0 # radius of each coil
 const b = 8.0 # radius of central coil
 
-getB(xu) = SVector{3}(TP.getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1 * N1, I2 * N2))
+getB(xu) = MS.getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1 * N1, I2 * N2)
 
 ### Initialize particles
 m = TP.mₑ

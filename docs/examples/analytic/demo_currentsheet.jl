@@ -7,6 +7,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
+import Magnetostatics as MS
 using TestParticle: Rₑ
 using LinearAlgebra: norm
 using CairoMakie
@@ -16,8 +17,8 @@ CairoMakie.activate!(type = "png") #hide
 
 ## Harris current sheet parameters in SI units. Bn is the z-component.
 const B₀, Bn, L = 20.0e-9, 2.0e-9, 0.4Rₑ
-
-const getB = TP.HarrisCurrentSheet(B₀, L, Bn)
+const field = MS.HarrisSheet(B₀, L)
+const getB(xu) = field(xu) + SA[0.0, 0.0, Bn]
 
 getE(xu) = SA[0.0, 0.0, 0.0]
 

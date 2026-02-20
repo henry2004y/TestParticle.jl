@@ -8,7 +8,7 @@
 
 import DisplayAs #hide
 import TestParticle as TP
-using TestParticle: getB_loop, trace_fieldline
+import Magnetostatics as MS
 using OrdinaryDiffEqVerner
 using StaticArrays
 using LinearAlgebra
@@ -26,29 +26,30 @@ R1 = [0.0, 0.0, 0.0]
 a1 = 1.0
 I1 = 1.0e6
 n1 = [0.0, 0.0, 1.0]
+loop1 = MS.CurrentLoop(a1, I1, R1, n1)
 
 ## Loop 2: Radius 0.5, Current 0.5 MA, located at [2, 0, 0], tilted 45 degrees
 R2 = [2.0, 0.0, 0.0]
 a2 = 0.5
 I2 = 0.5e6
 n2 = normalize([1.0, 0.0, 1.0])
+loop2 = MS.CurrentLoop(a2, I2, R2, n2)
 
 # ## Define the Magnetic Field Function
 #
 # The total magnetic field is the vector sum of the fields from each loop.
 # We define a function `B_total(x)` that calculates this sum.
-# `getB_loop` handles the Biot-Savart calculation (using elliptic integrals).
+# `getB_loop` handles the Biot-Savart calculation.
 
-function B_total(x)
-    B1 = getB_loop(x, R1, a1, I1, n1)
-    B2 = getB_loop(x, R2, a2, I2, n2)
-    return B1 + B2
+function get_B_total(loop1, loop2)
+    return x -> begin
+        B1 = MS.getB_loop(x, loop1)
+        B2 = MS.getB_loop(x, loop2)
+        return B1 + B2
+    end
 end
 
-## Wrap in a TP.prepare-compatible format.
-## Since the field is static, we can define a function of position only, but TP expects `f(x, t)` or `f(x)`.
-## The `prepare` function with function arguments handles this automatically.
-
+B_total = get_B_total(loop1, loop2)
 param = TP.prepare(TP.ZeroField(), B_total);
 
 # ## Trace Field Lines
@@ -73,7 +74,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for u0 in seeds
     ## Trace in both directions
-    probs = trace_fieldline(u0, param, s_span; mode = :both)
+    probs = TP.trace_fieldline(u0, param, s_span; mode = :both)
 
     for prob in probs
         sol = solve(

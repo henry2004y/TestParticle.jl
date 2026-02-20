@@ -4,6 +4,8 @@ using Test
 using LinearAlgebra
 using SciMLBase
 using OrdinaryDiffEq
+import Magnetostatics as MS
+import TestParticle as TP
 
 @testset "GC" begin
 
@@ -175,8 +177,11 @@ using OrdinaryDiffEq
         stateinit = [r₀..., v₀...]
         tspan = (0.0, 1.0)
 
+        dipole = MS.Dipole(TP.BMoment_Earth)
+        getB_dipole(r) = dipole(r)
+
         stateinit_gc, param_gc = TestParticle.prepare_gc(
-            stateinit, TestParticle.ZeroField(), TestParticle.getB_dipole;
+            stateinit, TestParticle.ZeroField(), getB_dipole;
             species = Proton
         )
 
@@ -253,14 +258,14 @@ using OrdinaryDiffEq
         @testset "GC Extra Saving" begin
             trajectories = 2
             # Use simple dipole and protons
-            param_gc_saving = TestParticle.prepare(TestParticle.getB_dipole; species = Proton)
+            param_gc_saving = TestParticle.prepare(getB_dipole; species = Proton)
             tspan_saving = (0.0, 1.0e-4)
             # Simple initial condition
             r0 = [1.5 * TestParticle.Rₑ, 0.0, 0.0]
             v0 = [0.0, 1.0e5, 1.0e5] # Arbitrary
             # Conversion to GC not strictly needed for the test mechanics, but good for consistency
             state_gc_0, param_gc_ready = TestParticle.prepare_gc(
-                vcat(r0, v0), TestParticle.ZeroField(), TestParticle.getB_dipole; species = Proton
+                vcat(r0, v0), TestParticle.ZeroField(), getB_dipole; species = Proton
             )
             prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 

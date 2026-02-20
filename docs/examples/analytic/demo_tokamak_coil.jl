@@ -7,6 +7,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
+import Magnetostatics as MS
 using Statistics: mean
 using Printf
 using CairoMakie
@@ -21,7 +22,7 @@ const IPlasma = 1.0e6 # current in the plasma
 const a = 1.5 # radius of each coil
 const b = 0.8 # radius of central region
 
-getB(xu) = SVector{3}(TP.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil * N, IPlasma))
+getB(xu) = MS.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil * N, IPlasma)
 
 getE = TP.ZeroField()
 

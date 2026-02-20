@@ -6,6 +6,7 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 import TestParticle as TP
+import Magnetostatics as MS
 using GeometryBasics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -18,8 +19,7 @@ const a = 2.0 # Minor radius [m]
 ## Variable must be a radius normalized by minor radius.
 q_profile(nr::Float64) = nr^2 + 2 * nr + 0.5
 
-B(xu) = SVector{3}(TP.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0))
-
+B(xu) = MS.getB_tokamak_profile(xu[1], xu[2], xu[3], q_profile, a, R₀, Bζ0)
 E(xu) = SA[0.0, 0.0, 0.0]
 
 """
