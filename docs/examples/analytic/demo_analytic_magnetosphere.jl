@@ -11,7 +11,7 @@ using FieldTracer
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-dipole = MS.Dipole(TP.BMoment_Earth)
+dipole = MS.Dipole(TestParticle.BMoment_Earth)
 getB_dipole(r) = dipole(r)
 
 getB_superposition_constant(xu) = getB_dipole(xu) + SA[0.0, 0.0, -10.0e-9]
@@ -175,10 +175,10 @@ ax = Axis3(
 )
 
 for (i, sol) in enumerate(sols)
-    x = sol[1, :] .* invRE
-    y = sol[2, :] .* invRE
-    z = sol[3, :] .* invRE
-    lines!(ax, x, y, z, color = Makie.wong_colors()[i])
+    x_plot = sol[1, :] .* invRE
+    y_plot = sol[2, :] .* invRE
+    z_plot = sol[3, :] .* invRE
+    lines!(ax, x_plot, y_plot, z_plot, color = Makie.wong_colors()[i])
 end
 
 trace_field!(ax, x, y, z, invRE, getB_superposition_harris; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
