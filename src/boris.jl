@@ -199,11 +199,11 @@ Trace particles using the Boris method with specified `prob`.
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false, save_work::Bool = false
+        save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, Val(save_fields), Val(save_work)
+        save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters
     )
 end
 
@@ -226,12 +226,12 @@ end
 
 @inline function _solve(
         ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
     )
     irange = 1:trajectories
     _dispatch_boris!(
@@ -244,12 +244,12 @@ end
 
 @inline function _solve(
         ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
     )
 
     nchunks = Threads.nthreads()
@@ -292,10 +292,21 @@ Prepare for advancing.
 """
 function _prepare(
         prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
     ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
+    T = eltype(prob.tspan)
+    min_dt = 10 * eps(T)
+
+    if abs(dt) < min_dt
+        throw(ArgumentError("dt must be larger than $min_dt"))
+    end
+
     nt = round(Int, ttotal / dt) |> abs
+
+    if nt > maxiters
+        throw(ArgumentError("Maxiters exceeded. You may want to increase maxiters or dt."))
+    end
 
     nout = 0
     if save_start

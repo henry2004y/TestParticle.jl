@@ -236,7 +236,7 @@ end
         prob::TraceProblem, backend::Backend, ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
@@ -246,7 +246,16 @@ end
     Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
 
     ttotal = tspan[2] - tspan[1]
+    min_dt = 10 * eps(eltype(tspan))
+    if abs(dt) < min_dt
+        throw(ArgumentError("dt must be larger than $min_dt"))
+    end
+
     nt = round(Int, abs(ttotal / dt))
+
+    if nt > maxiters
+        throw(ArgumentError("Maxiters exceeded. You may want to increase maxiters or dt."))
+    end
 
     nout = 0
     if save_start
@@ -306,7 +315,7 @@ end
         prob::TraceProblem, backend::Backend, ::EnsembleThreads;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
@@ -317,7 +326,16 @@ end
     Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
 
     ttotal = tspan[2] - tspan[1]
+    min_dt = 10 * eps(eltype(tspan))
+    if abs(dt) < min_dt
+        throw(ArgumentError("dt must be larger than $min_dt"))
+    end
+
     nt = round(Int, abs(ttotal / dt))
+
+    if nt > maxiters
+        throw(ArgumentError("Maxiters exceeded. You may want to increase maxiters or dt."))
+    end
 
     nout = 0
     if save_start
@@ -392,11 +410,11 @@ end
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     return solve(
         prob, backend, ensemblealg;
         dt, trajectories, savestepinterval, save_start, save_end, save_everystep,
-        workgroup_size
+        workgroup_size, maxiters
     )
 end
