@@ -294,7 +294,7 @@ function _prepare_boris_solve(
 
     return (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, q2m, tspan, p, u0, T
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, q2m, tspan, p, u0, T,
     )
 end
 
@@ -304,8 +304,10 @@ end
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
     )
-    (; nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc) = _prepare_boris_solve(
+    (;
+        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc,
+    ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep
     )
@@ -324,8 +326,10 @@ end
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
     )
-    (; nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T) = _prepare_boris_solve(
+    (;
+        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T,
+    ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep
     )
