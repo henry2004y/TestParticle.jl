@@ -232,11 +232,9 @@ end
     return sols
 end
 
-@inbounds function solve(
-        prob::TraceProblem, backend::Backend, ::EnsembleSerial;
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+function _prepare_boris_solve(
+        prob::TraceProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
+        savestepinterval::Int, save_start::Bool, save_end::Bool, save_everystep::Bool
     )
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
@@ -293,6 +291,24 @@ end
     else
         xv_cpu_buffer = zeros(T, 6, n_particles)
     end
+
+    return (;
+        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, q2m, tspan, p, u0, T
+    )
+end
+
+@inbounds function solve(
+        prob::TraceProblem, backend::Backend, ::EnsembleSerial;
+        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
+        workgroup_size::Int = 256
+    )
+    (; nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc) = _prepare_boris_solve(
+        prob, backend, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep
+    )
 
     return _solve_serial(
         prob, backend, 1:trajectories;
@@ -308,64 +324,11 @@ end
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256
     )
-    (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc, _ = p
-    T = eltype(u0)
-
-    # Adapt interpolation fields to GPU memory
-    Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
-    Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
-
-    ttotal = tspan[2] - tspan[1]
-    nt = round(Int, abs(ttotal / dt))
-
-    nout = 0
-    if save_start
-        nout += 1
-    end
-    if save_everystep
-        steps = nt ÷ savestepinterval
-        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
-        nout += steps
-        if !save_end && last_is_step
-            nout -= 1
-        end
-        if save_end && !last_is_step
-            nout += 1
-        end
-    elseif save_end
-        nout += 1
-    end
-
-    n_particles = trajectories
-    xv_current = KA.zeros(backend, T, 6, n_particles)
-    xv_next = KA.zeros(backend, T, 6, n_particles)
-
-    # Optimization for CPU backend: alias buffers to avoid allocations
-    is_cpu_accessible = xv_current isa Array
-
-    if is_cpu_accessible
-        xv_init = xv_current
-    else
-        xv_init = zeros(T, 6, n_particles)
-    end
-
-    for i in 1:n_particles
-        new_prob = prob.prob_func(prob, i, false)
-        u0_i = new_prob.u0
-        xv_init[:, i] .= u0_i
-    end
-
-    if !is_cpu_accessible
-        copyto!(xv_current, xv_init)
-    end
-
-    # Buffer for particle positions on CPU (used for saving data)
-    if is_cpu_accessible
-        xv_cpu_buffer = xv_current
-    else
-        xv_cpu_buffer = zeros(T, 6, n_particles)
-    end
+    (; nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T) = _prepare_boris_solve(
+        prob, backend, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep
+    )
 
     sols = Vector{
         typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(u0)])),
