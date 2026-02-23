@@ -234,17 +234,25 @@ end
 
 function _prepare_boris_solve(
         prob::TraceProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
-        savestepinterval::Int, save_start::Bool, save_end::Bool, save_everystep::Bool
+        savestepinterval::Int, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
     T = eltype(u0)
+
+    if abs(dt) < 10 * eps(typeof(dt))
+        throw(ArgumentError("time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"))
+    end
 
     Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
     Bfunc_gpu = adapt_field_to_gpu(Bfunc, backend)
 
     ttotal = tspan[2] - tspan[1]
     nt = round(Int, abs(ttotal / dt))
+
+    if nt > maxiters
+        throw(ArgumentError("number of iterations nt ($nt) exceeds maxiters ($maxiters)"))
+    end
 
     nout = 0
     if save_start
@@ -302,14 +310,14 @@ end
         prob::TraceProblem, backend::Backend, ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, maxiters
     )
 
     return _solve_serial(
@@ -324,14 +332,14 @@ end
         prob::TraceProblem, backend::Backend, ::EnsembleThreads;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep
+        save_start, save_end, save_everystep, maxiters
     )
 
     sols = Vector{
@@ -359,11 +367,11 @@ end
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     return solve(
         prob, backend, ensemblealg;
         dt, trajectories, savestepinterval, save_start, save_end, save_everystep,
-        workgroup_size
+        workgroup_size, maxiters
     )
 end

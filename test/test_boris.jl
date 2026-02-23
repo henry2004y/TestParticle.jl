@@ -385,4 +385,21 @@ using LinearAlgebra
         end
     end
 
+    @testset "Solver Limits" begin
+        x0 = [0.0, 0.0, 0.0]
+        v0 = [1.0e5, 0.0, 0.0]
+        stateinit = [x0..., v0...]
+        tspan = (0.0, 1.0e-9)
+        dt = 1.0e-11
+        param = prepare(constant_E, gradient_B, species = Electron)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        # maxiters limit (nt = 100)
+        @test_throws ArgumentError TP.solve(prob; dt, maxiters = 50)
+
+        # min_dt limit
+        dt_too_small = eps(Float64)
+        @test_throws ArgumentError TP.solve(prob; dt = dt_too_small)
+    end
+
 end
