@@ -133,6 +133,17 @@ const KA = KernelAbstractions
         @test length(sol_end_only[1].t) == 1
         @test sol_end_only[1].t[1] == tspan[2]
     end
+
+    @testset "Solver Limits" begin
+        backend = CPU()
+
+        # maxiters limit (nt = 1000)
+        @test_throws ArgumentError TP.solve(prob, backend; dt, maxiters = 500)
+
+        # min_dt limit
+        dt_too_small = eps(Float64)
+        @test_throws ArgumentError TP.solve(prob, backend; dt = dt_too_small)
+    end
 end
 
 end # module test_boris_kernel
