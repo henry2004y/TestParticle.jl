@@ -4,7 +4,6 @@ This example shows how to trace charged particles in the structured SWMF outputs
 For more details about the field file format, please checkout [Batsrus.jl](https://github.com/henry2004y/Batsrus.jl).
 
 ```julia
-using Statistics: mean
 using Batsrus
 using TestParticle
 using OrdinaryDiffEq
