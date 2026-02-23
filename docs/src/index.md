@@ -12,7 +12,7 @@ The package handles field definitions in two ways:
 
 - *Numerical Fields*: Discretized fields constructed directly with coordinates or using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and interpolated via [Interpolations.jl](https://github.com/JuliaMath/Interpolations.jl).
 
-The core trajectory integration is powered by the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) ecosystem, solving the Ordinary Differential Equations (ODEs) of motion.
+The core trajectory integration is powered by and tight to the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) ecosystem, solving the Ordinary Differential Equations (ODEs) of motion.
 
 To accommodate different performance needs, the API provides:
 

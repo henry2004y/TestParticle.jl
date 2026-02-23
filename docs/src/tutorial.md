@@ -11,7 +11,7 @@ However, not all solvers are guaranteed to work. For example, the demo case of e
 
 Currently we recommend `Vern9` as a starting point for adaptive timestepping, with additional fine tuning by changing `reltol` if needed. You can also try out the native implementation of the Boris method in TestParticle.jl, with a constraint of using a fixed time step.
 
-Take you some time to figure out which algorithm works for your problem!
+Take your time to figure out which algorithm works for your problem!
 
 ## Boundary check
 
