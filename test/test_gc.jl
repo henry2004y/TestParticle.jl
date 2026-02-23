@@ -197,6 +197,13 @@ import TestParticle as TP
             # Test save_everystep=false
             sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
             @test length(sol_no_save[1].t) == 2 # start and end
+
+            # Test early exit (isoutofdomain) to cover resize!
+            sol_early = TestParticle.solve(
+                prob; dt, alg = :rk4,
+                isoutofdomain = (xv, p, t) -> t > 0.5
+            )
+            @test length(sol_early[1].t) == 5002
         end
 
         @testset "Adaptive RK45" begin
