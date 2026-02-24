@@ -32,10 +32,10 @@ for t in threads_to_test
     tspan = (0.0, 1.0e-5); dt = 1.0e-9
     prob_func(prob, i, repeat) = SciMLBase.remake(prob; u0 = [prob.u0[1:3]..., (i / 1000.0) * 1.0e5, 0.0, 0.0])
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
-    
+
     # Warmup
     TestParticle.solve(prob_multi, EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
-    
+
     bench_threads = @benchmark TestParticle.solve(\$prob_multi, EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
     time_ms = median(bench_threads).time / 1.0e6
     println("RESULT_TIME_MS: \$time_ms")
