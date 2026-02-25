@@ -24,7 +24,7 @@ for t in threads_to_test
     # We write a small runner script to extract the median time of the threads benchmark
     runner_code = """
     using BenchmarkTools, TestParticle, StaticArrays, Printf, SciMLBase
-    n_particles = 10_000
+    n_particles = 16384
     uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
     uniform_E(x) = SA[0.0, 0.0, 0.0]
     param = prepare(uniform_E, uniform_B; species = Proton)
@@ -63,14 +63,23 @@ speedups = times[1] ./ times
 
 # --- Plotting ---
 println("\nGenerating plot...")
-fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Number of Threads", ylabel = "Speedup", title = "Strong Scaling (10,000 Particles)")
+fig = Figure(fontsize = 20)
+ax = Axis(
+    fig[1, 1],
+    xlabel = "Number of Threads", ylabel = "Speedup",
+    title = "Strong Scaling (16,384 Particles)",
+    xminorticksvisible = true, xminorticks = IntervalsBetween(5),
+    yminorticksvisible = true, yminorticks = IntervalsBetween(5),
+)
 
 # Measured speedup
-scatterlines!(ax, threads_to_test, speedups, color = :blue, label = "Measured Speedup")
+scatterlines!(ax, threads_to_test, speedups, label = "Measured Speedup")
 
 # Ideal linear scaling
-lines!(ax, threads_to_test, threads_to_test, color = :black, linestyle = :dash, label = "Ideal Linear Scaling")
+lines!(
+    ax, threads_to_test, threads_to_test, color = :black, linestyle = :dash,
+    label = "Ideal Linear Scaling"
+)
 
 axislegend(ax, position = :lt)
 
