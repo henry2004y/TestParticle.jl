@@ -4,6 +4,7 @@ import TestParticle as TP
 using StaticArrays
 using OrdinaryDiffEq
 using LinearAlgebra
+using Distributed
 
 @testset "Boris Solvers" begin
     # Definitions
@@ -400,6 +401,71 @@ using LinearAlgebra
         # min_dt limit
         dt_too_small = eps(Float64)
         @test_throws ArgumentError TP.solve(prob; dt = dt_too_small)
+    end
+
+    @testset "EnsembleDistributed" begin
+        pids = addprocs(2)
+        try
+            @everywhere pids using TestParticle
+            @everywhere pids using StaticArrays
+
+            x0 = [0.0, 0.0, 0.0]
+            v0 = [0.0, 1.0e5, 0.0]
+            stateinit = [x0..., v0...]
+            tspan = (0.0, 3.0e-8)
+            dt = 3.0e-11
+            zero_E_dist = TP.ZeroField()
+            uniform_B2_dist(x) = SA[0.0, 0.0, 0.01]
+            param_dist = prepare(zero_E_dist, uniform_B2_dist; species = Electron)
+
+            function dist_prob_func(prob, i, repeat)
+                return remake(
+                    prob; u0 = SA[
+                        prob.u0[1], prob.u0[2], prob.u0[3],
+                        prob.u0[4], i * 1.0e5, prob.u0[6],
+                    ]
+                )
+            end
+
+            prob_dist = TraceProblem(
+                stateinit, tspan, param_dist; prob_func = dist_prob_func
+            )
+            trajectories = 4
+            savestepinterval = 1000
+
+            @testset "Boris" begin
+                sols_dist = TP.solve(
+                    prob_dist, EnsembleDistributed(); dt, savestepinterval, trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, EnsembleSerial(); dt, savestepinterval, trajectories
+                )
+
+                @test length(sols_dist) == trajectories
+                for i in 1:trajectories
+                    @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                end
+            end
+
+            @testset "AdaptiveBoris" begin
+                tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
+                alg_adaptive = AdaptiveBoris(; dtmax = tperiod, safety = 0.1)
+
+                sols_dist = TP.solve(
+                    prob_dist, alg_adaptive, EnsembleDistributed(); trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, alg_adaptive, EnsembleSerial(); trajectories
+                )
+
+                @test length(sols_dist) == trajectories
+                for i in 1:trajectories
+                    @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                end
+            end
+        finally
+            rmprocs(pids)
+        end
     end
 
 end

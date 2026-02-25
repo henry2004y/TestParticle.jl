@@ -88,6 +88,36 @@ function _solve(
     return sols
 end
 
+"See `_solve_single_boris` for the rationale behind the `single_prob` construction."
+function _solve_single_adaptive_boris(
+        prob, i, alg::AdaptiveBoris, savestepinterval, isoutofdomain,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    new_prob = prob.prob_func(prob, i, false)
+    single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
+    sol_type = _get_sol_type(
+        single_prob, zero(eltype(single_prob.tspan)), Val(SaveFields), Val(SaveWork)
+    )
+    local_sols = Vector{sol_type}(undef, 1)
+    _adaptive_boris!(
+        local_sols, single_prob, 1:1, alg, savestepinterval, isoutofdomain,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+    )
+    return local_sols[1]
+end
+
+function _solve(
+        ::EnsembleDistributed, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    return pmap(1:trajectories) do i
+        _solve_single_adaptive_boris(
+            prob, i, alg, savestepinterval, isoutofdomain,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        )
+    end
+end
+
 function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
