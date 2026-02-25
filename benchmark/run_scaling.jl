@@ -30,23 +30,24 @@ for t in threads_to_test
     param = prepare(uniform_E, uniform_B; species = Proton)
     x0 = [0.0, 0.0, 0.0]; v0 = [1.0e5, 0.0, 0.0]; stateinit = [x0..., v0...]
     tspan = (0.0, 1.0e-5); dt = 1.0e-9
-    prob_func(prob, i, repeat) = SciMLBase.remake(prob; u0 = [prob.u0[1:3]..., (i / 1000.0) * 1.0e5, 0.0, 0.0])
+    prob_func(prob, i, repeat) = SciMLBase.remake(prob; u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0])
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
-
+    
     # Warmup
     TestParticle.solve(prob_multi, EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
-
+    
     bench_threads = @benchmark TestParticle.solve(\$prob_multi, EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
     time_ms = median(bench_threads).time / 1.0e6
     println("RESULT_TIME_MS: \$time_ms")
     """
 
     # Write to temp file and execute
-    tmp_file = tempname() * ".jl"
-    write(tmp_file, runner_code)
-
-    cmd = `julia --project=$(joinpath(@__DIR__, "..")) -t $t $tmp_file`
-    output = read(cmd, String)
+    output = mktemp() do path, io
+        write(io, runner_code)
+        flush(io)
+        cmd = `julia --project=$(joinpath(@__DIR__, "..")) -t $t $path`
+        read(cmd, String)
+    end
     println(output)
 
     # Parse output

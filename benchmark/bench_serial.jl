@@ -19,13 +19,13 @@ v0 = [1.0e5, 0.0, 0.0]
 stateinit = [x0..., v0...]
 
 # Simulate for 0.1 second with a 1 nanosecond time step
-# This represents 100,000 steps.
+# This represents 100,000,000 steps.
 tspan = (0.0, 0.1)
 dt = 1.0e-9
 
 println("="^70)
 println("Serial Performance Benchmark: Boris vs. OrdinaryDiffEq")
-println("Simulating 1 particle for 0.1 second with dt = 1 ns (10^5 steps).")
+println("Simulating 1 particle for 0.1 second with dt = 1 ns (10^8 steps).")
 println("="^70)
 
 # 1. TestParticle's Custom Boris Solver
