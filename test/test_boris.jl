@@ -433,16 +433,35 @@ using Distributed
             trajectories = 4
             savestepinterval = 1000
 
-            sols_dist = TP.solve(
-                prob_dist, EnsembleDistributed(); dt, savestepinterval, trajectories
-            )
-            sols_serial = TP.solve(
-                prob_dist, EnsembleSerial(); dt, savestepinterval, trajectories
-            )
+            @testset "Boris" begin
+                sols_dist = TP.solve(
+                    prob_dist, EnsembleDistributed(); dt, savestepinterval, trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, EnsembleSerial(); dt, savestepinterval, trajectories
+                )
 
-            @test length(sols_dist) == trajectories
-            for i in 1:trajectories
-                @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                @test length(sols_dist) == trajectories
+                for i in 1:trajectories
+                    @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                end
+            end
+
+            @testset "AdaptiveBoris" begin
+                tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
+                alg_adaptive = AdaptiveBoris(; dtmax = tperiod, safety = 0.1)
+
+                sols_dist = TP.solve(
+                    prob_dist, alg_adaptive, EnsembleDistributed(); trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, alg_adaptive, EnsembleSerial(); trajectories
+                )
+
+                @test length(sols_dist) == trajectories
+                for i in 1:trajectories
+                    @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                end
             end
         finally
             rmprocs(pids)
