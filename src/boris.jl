@@ -263,6 +263,57 @@ end
     return sols
 end
 
+"""
+    _solve_single_boris(prob, i, ...)
+
+Solve a single trajectory `i` of `prob` for use with `EnsembleDistributed`.
+
+`_generic_boris!` uses the loop index `i` for two purposes simultaneously:
+applying `prob_func(prob, i, false)` to select per-particle initial conditions,
+and storing the result at `sols[i]`. For a distributed worker handling only one
+trajectory at a time, a 1-element `local_sols` would be out of bounds if `i > 1`
+were passed directly. Decoupling the two uses would require threading a storage
+offset through the entire `_dispatch_boris!` → `_generic_boris!` call chain.
+
+Instead, we pre-apply `prob_func` to get the correct IC for trajectory `i` and
+wrap the result in a fresh `TraceProblem` with the default (identity) `prob_func`,
+so `_generic_boris!` can safely iterate `1:1` without applying `prob_func` again.
+The `TraceProblem` construction is a negligible struct copy relative to the
+simulation cost and the serialization overhead inherent in `pmap`.
+"""
+function _solve_single_boris(
+        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutofdomain::F, n,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork, F}
+    new_prob = prob.prob_func(prob, i, false)
+    single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
+    sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
+    local_sols = Vector{sol_type}(undef, 1)
+    _dispatch_boris!(
+        local_sols, single_prob, 1:1, savestepinterval, dt, nt, nout,
+        isoutofdomain, n, save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
+    )
+    return local_sols[1]
+end
+
+@inline function _solve(
+        ::EnsembleDistributed, prob::TraceProblem, trajectories, dt, savestepinterval,
+        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+    ) where {SaveFields, SaveWork, F}
+    _, nt, nout = _prepare(
+        prob, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+    )
+    return pmap(1:trajectories) do i
+        _solve_single_boris(
+            prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        )
+    end
+end
+
 function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     u0 = prob.u0
     tspan = prob.tspan

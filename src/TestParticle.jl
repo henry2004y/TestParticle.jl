@@ -5,9 +5,10 @@ using Interpolations: interpolate, interpolate!, extrapolate, scale, BSpline, Li
     Quadratic, Cubic,
     Line, OnCell, Periodic, Flat, Gridded
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
-    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial,
-    DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem,
+    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial, EnsembleDistributed,
+    DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution
+using Distributed: pmap
 using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray, SMatrix
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 import ForwardDiff
@@ -40,6 +41,7 @@ export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
+export EnsembleSerial, EnsembleThreads, EnsembleDistributed, remake
 
 include("types.jl")
 include("utility/utility.jl")
