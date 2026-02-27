@@ -193,17 +193,20 @@ Trace particles using the Boris method with specified `prob`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
   - `save_fields::Bool`: save the electric and magnetic fields. Default is `false`.
   - `save_work::Bool`: save the work done by the electric field. Default is `false`.
+  - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed`. Default is `max(1, trajectories ÷ Threads.nthreads())`.
 """
 @inline function solve(
         prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
         isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000
+        save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000,
+        batch_size::Int = max(1, trajectories ÷ Threads.nthreads())
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
-        save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters
+        save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters,
+        batch_size
     )
 end
 
@@ -226,7 +229,8 @@ end
 
 @inline function _solve(
         ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters,
+        batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -244,7 +248,8 @@ end
 
 @inline function _solve(
         ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters,
+        batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -300,13 +305,13 @@ end
 @inline function _solve(
         ::EnsembleDistributed, prob::TraceProblem, trajectories, dt, savestepinterval,
         isoutofdomain::F, n, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
     )
-    return pmap(1:trajectories) do i
+    return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_boris(
             prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
