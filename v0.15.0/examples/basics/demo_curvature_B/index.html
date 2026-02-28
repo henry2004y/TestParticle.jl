@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Curl-B drift · TestParticle.jl</title><meta name="title" content="Curl-B drift · TestParticle.jl"/><meta property="og:title" content="Curl-B drift · TestParticle.jl"/><meta property="twitter:title" content="Curl-B drift · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_curvature_B/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_curvature_B/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_curvature_B/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Curl-B drift</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Curl-B drift</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/basics/demo_curvature_B.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_curlB"><a class="docs-heading-anchor" href="#demo_curlB">Curl-B drift</a><a id="demo_curlB-1"></a><a class="docs-heading-anchor-permalink" href="#demo_curlB" title="Permalink"></a></h1><p><a href="../demo_curvature_B.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.9.0-blue.svg" alt="compat"/> <a href="https://github.com/TCLiuu"><img src="https://img.shields.io/badge/Author-Tiancheng%20Liu-blue" alt="Author"/></a> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1681862400" alt="Update time"/></p><p>This example demonstrates a single proton motion under a vacuum non-uniform B field with gradient and curvature. The analytic calculation includes the grad-B drift, the curvature drift, the ExB drift and parallel velocity. More theoretical details can be found in <a href="https://henry2004y.github.io/KeyNotes/contents/single.html#curved-b-curvature-drift">Curvature Drift</a> and Computational Plasma Physics by Toshi Tajima.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using LinearAlgebra: normalize, norm, ×, ⋅
+using ForwardDiff: gradient, jacobian
+using CairoMakie
+
+function curved_B(x)
+   # satisify ∇⋅B=0
+   # B_θ = 1/r =&gt; ∂B_θ/∂θ = 0
+   θ = atan(x[3] / (x[1] + 3))
+   r = sqrt((x[1] + 3)^2 + x[3]^2)
+   return SA[-1e-7 * sin(θ) / r, 0, 1e-7 * cos(θ) / r]
+end
+
+zero_E(x) = SA[0, 0, 0]
+
+abs_B(x) = norm(curved_B(x))  # |B|
+
+# Initial conditions
+stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
+   [x0..., v0...]
+end
+# Time span
+tspan = (0, 40)
+# Trace particle
+param = prepare(zero_E, curved_B, species = Proton)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+# Functions for obtaining the guiding center from actual trajectory
+gc = param |&gt; get_gc_func
+gc_x0 = gc(stateinit) |&gt; Vector
+prob_gc = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+sol_gc = solve(prob_gc, Vern7(); save_idxs = [1, 2, 3])
+
+# Numeric and analytic results
+f = Figure(fontsize = 18)
+ax = Axis3(f[1, 1],
+   title = &quot;Curvature Drift&quot;,
+   xlabel = &quot;x [m]&quot;,
+   ylabel = &quot;y [m]&quot;,
+   zlabel = &quot;z [m]&quot;,
+   aspect = :data,
+   azimuth = 0.3π
+)
+
+gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
+
+lines!(ax, sol, idxs = (1, 2, 3), color = Makie.wong_colors()[1])
+lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = Makie.wong_colors()[2])
+lines!(ax, sol_gc, idxs = (1, 2, 3), color = Makie.wong_colors()[3])
+</code></pre><p><img src="../demo_curvature_B-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 26 November 2025 14:47">Wednesday 26 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

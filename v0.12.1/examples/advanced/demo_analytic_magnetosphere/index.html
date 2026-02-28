@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Analytical magnetosphere · TestParticle.jl</title><meta name="title" content="Analytical magnetosphere · TestParticle.jl"/><meta property="og:title" content="Analytical magnetosphere · TestParticle.jl"/><meta property="twitter:title" content="Analytical magnetosphere · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_analytic_magnetosphere/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_analytic_magnetosphere/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_analytic_magnetosphere/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Analytical magnetosphere</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Analytical magnetosphere</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_analytic_magnetosphere.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_analytic_magnetosphere"><a class="docs-heading-anchor" href="#demo_analytic_magnetosphere">Analytical magnetosphere</a><a id="demo_analytic_magnetosphere-1"></a><a class="docs-heading-anchor-permalink" href="#demo_analytic_magnetosphere" title="Permalink"></a></h1><p><a href="../demo_analytic_magnetosphere.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.10.0-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1706832000" alt="Update time"/></p><p>This demo shows how to trace particles in a vacuum superposition of a dipolar magnetic field <span>$\mathbf{B}_D$</span> with a uniform background magnetic field <span>$\mathbf{B}_\mathrm{IMF}$</span>. In this slightly modified dipole field, magnetic null points appear near 14 Earth&#39;s radii, and the particle orbits are also distorted from the idealized motions in <a href="../demo_proton_dipole/#demo_dipole">Demo: magnetic dipole</a>.</p><pre><code class="language-julia hljs">using TestParticle
+using TestParticle: getB_dipole, getE_dipole, sph2cart, mᵢ, qᵢ, c, Rₑ
+using OrdinaryDiffEq
+using StaticArrays
+using FieldTracer
+using CairoMakie
+
+function getB_superposition(xu)
+   getB_dipole(xu) + SA[0.0, 0.0, -10e-9]
+end
+
+&quot;Boundary condition check.&quot;
+function isoutofdomain(u, p, t)
+   rout = 18Rₑ
+   if (u[1]^2 + u[2]^2 + u[3]^2) &lt; (1.1Rₑ)^2 ||
+      abs(u[1]) &gt; rout || abs(u[2]) &gt; rout || abs(u[3]) &gt; rout
+      return true
+   else
+      return false
+   end
+end
+
+&quot;Set initial conditions.&quot;
+function prob_func(prob, i, repeat)
+   # initial particle energy
+   Ek = 5e3 # [eV]
+   # initial velocity, [m/s]
+   v₀ = sph2cart(c*sqrt(1-1/(1+Ek*qᵢ/(mᵢ*c^2))^2), 0.0, π/4)
+   # initial position, [m]
+   r₀ = sph2cart(13*Rₑ, π*i, π/2)
+
+   prob = remake(prob; u0 = [r₀..., v₀...])
+end
+
+# obtain field
+param = prepare(getE_dipole, getB_superposition)
+stateinit = zeros(6) # particle position and velocity to be modified
+tspan = (0.0, 2000.0)
+trajectories = 2
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+
+# See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
+# for the solver options
+sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); reltol=1e-5,
+   trajectories, isoutofdomain, dense=true, save_on=true)
+
+### Visualization
+
+f = Figure(fontsize=18)
+##ax = Axis3(f[1, 1],
+#   title = &quot;5 keV Protons in a vacuum superposition magnetosphere&quot;,
+#   xlabel = &quot;x [Re]&quot;,
+#   ylabel = &quot;y [Re]&quot;,
+#   zlabel = &quot;z [Re]&quot;,
+#   aspect = :data,
+#   limits = (-14, 14, -14, 14, -5, 5)
+##)
+ax = LScene(f[1, 1], show_axis=true)
+
+for (i, sol) in enumerate(sols)
+   l = lines!(ax, sol, idxs=(1, 2, 3), color=Makie.wong_colors()[i])
+end
+invRE = 1 / Rₑ
+# In Makie 0.21.11, scene scaling has issues on Axis3.
+##scale!(ax.scene, invRE, invRE, invRE)
+
+# Field lines
+function get_numerical_field(x, y, z)
+   bx = zeros(length(x), length(y), length(z))
+   by = similar(bx)
+   bz = similar(bx)
+
+   for i in CartesianIndices(bx)
+      pos = [x[i[1]], y[i[2]], z[i[3]]]
+      bx[i], by[i], bz[i] = getB_superposition(pos)
+   end
+
+   bx, by, bz
+end
+
+function trace_field!(ax, x, y, z, unitscale)
+   bx, by, bz = get_numerical_field(x, y, z)
+
+   zs = 0.0
+   nr, nϕ = 8, 4
+   dϕ = 2π / nϕ
+   for r in range(8Rₑ, 16Rₑ, length=nr), ϕ in range(0, 2π-dϕ, length=nϕ)
+      xs = r * cos(ϕ)
+      ys = r * sin(ϕ)
+
+      x1, y1, z1 = FieldTracer.trace(bx, by, bz, xs, ys, zs, x, y, z; ds=0.1, maxstep=10000)
+
+      lines!(ax, x1, y1, z1, color=:gray)
+      ##lines!(ax, x1.*unitscale, y1.*unitscale, z1.*unitscale, color=:gray)
+   end
+end
+
+x = range(-18Rₑ, 18Rₑ, length=50)
+y = range(-18Rₑ, 18Rₑ, length=50)
+z = range(-18Rₑ, 18Rₑ, length=50)
+
+trace_field!(ax, x, y, z, invRE)
+</code></pre><p><img src="../demo_analytic_magnetosphere-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.9.0 on <span class="colophon-date" title="Thursday 20 March 2025 20:04">Thursday 20 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

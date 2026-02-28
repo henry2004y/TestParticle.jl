@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Electron Fermi Acceleration Inside Foreshock Transient Cores · TestParticle.jl</title><meta name="title" content="Electron Fermi Acceleration Inside Foreshock Transient Cores · TestParticle.jl"/><meta property="og:title" content="Electron Fermi Acceleration Inside Foreshock Transient Cores · TestParticle.jl"/><meta property="twitter:title" content="Electron Fermi Acceleration Inside Foreshock Transient Cores · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_fermi_foreshock/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_fermi_foreshock/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_fermi_foreshock/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Electron Fermi Acceleration Inside Foreshock Transient Cores</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Electron Fermi Acceleration Inside Foreshock Transient Cores</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_fermi_foreshock.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_electron_acceleration_foreshock_transient"><a class="docs-heading-anchor" href="#demo_electron_acceleration_foreshock_transient">Electron Fermi Acceleration Inside Foreshock Transient Cores</a><a id="demo_electron_acceleration_foreshock_transient-1"></a><a class="docs-heading-anchor-permalink" href="#demo_electron_acceleration_foreshock_transient" title="Permalink"></a></h1><p><a href="../demo_fermi_foreshock.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.11.1-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1730073600" alt="Update time"/></p><p>This example demonstrates electron acceleration via Fermi acceleration using a simple 1D model. It follows the setup described in <a href="https://doi.org/10.1002/2017JA024480">Fermi acceleration of electrons inside foreshock transient cores</a>. The simulation domain is <span>$2\,R_E$</span> in x, where the initial magnetosheath locates at <span>$x \in [0, 0.5] R_E$</span> with a magnetic field <span>$B_z = 20\,\mathrm{nT}$</span> and the bow shock at <span>$x = 0.5\,R_E$</span>. The foreshock transient boundary is at <span>$x = 1.5\,R_E$</span> initially and moves toward the bow shock at a speed <span>$U=100\,\mathrm{km/s}$</span>. The region beyond <span>$x=1.5\,R_E$</span> is the foreshock transient sheath in which the magnetic field is <span>$B_z=10\,\mathrm{nT}$</span>. A convection electric field <span>$E_y = -1\,\mathrm{mV/m}$</span>, consistent with the velocity U, is introduced in the foreshock transient sheath. Between the two boundaries, <span>$0.5\,R_E &lt; x &lt; 1.5\,R_E$</span>, is the foreshock transient&#39;s core region.</p><p>In the first case, the magnetic field in the core region is set to zero. In the second case, a magnetic fluctuation is imposed:</p><p class="math-container">\[\begin{aligned}
+\delta B_{x,y,z} = \sum_{N = N_0}^{N_1} \delta B_N \cos\left( \frac{2\pi N x}{L_0} + \phi_{x,y,z}^N \right) \\
+\delta B_N = \tilde{B} (N/N_0)^{-1.2},\quad N = N_0, N_0 + 1, ..., N_1
+\end{aligned}\]</p><p>Here <span>$L_0 = 1\,R_E$</span> is the initial length of the core in the x direction. We choose <span>$N_0 = 100, N_1 = 1000, \tilde{B}=0.2\,\mathrm{nT}$</span>, and <span>$\phi_{x,y,z}^N$</span> as the random phases of various modes between 0 and 2π (independently different in the x, y, and z directions). As the low-frequency wave speed (<span>$\sim \mathcal{O}(10)\mathrm{km/s}$</span>) is much smaller than the electron speed (<span>$\sim \mathcal{O}(10^3)\mathrm{km/s}$</span>), we do not include wave propagation in this 1D model.</p><p>One important note about Fermi acceleration for space plasmas is that space plasmas are collisionless. Electric field is the only way to accelerate charged particles, instead of elastic collisions.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+import TestParticle as TP
+using TestParticle: mₑ, Rₑ, qₑ
+using TestParticle: get_EField, get_BField
+using Random
+using FHist
+using CairoMakie, Printf
+
+# For reproducible results
+Random.seed!(1234)
+
+# Analytic EM fields
+
+function Bcase1(xu, t)
+   Bz = if xu[1] &lt; 0.5Rₑ
+      20e-9
+   elseif xu[1] &gt; 1.5Rₑ + U*t
+      10e-9
+   else
+      0.0
+   end
+
+   SA[0.0, 0.0, Bz]
+end
+
+function E(xu, t)
+   Ey = if xu[1] &gt; 1.5Rₑ + U*t
+      -1e-3
+   else
+      0.0
+   end
+
+   SA[0.0, Ey, 0.0]
+end
+
+Bcase2(xu, t) =
+   if xu[1] &lt; 0.5Rₑ
+      SA[0.0, 0.0, 20e-9]
+   elseif xu[1] &gt; 1.5Rₑ + U*t
+      SA[0.0, 0.0, 10e-9]
+   else
+      δBfunc(xu)
+   end
+
+function get_B_perturb(x)
+   L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
+   B = fill(0.0, 3, length(x)) # [T]
+   # Eqs (4-5) from the paper
+   for N in N₀:N₁
+      δBn = B̃ * (N / N₀)^-1.2
+      ϕx, ϕy, ϕz = rand(SVector{3, Float64}) .* 2
+      for i in axes(B, 2)
+         δBx = δBn * cospi(2 * N * x[i] / L₀ + ϕx)
+         δBy = δBn * cospi(2 * N * x[i] / L₀ + ϕy)
+         δBz = δBn * cospi(2 * N * x[i] / L₀ + ϕz)
+         B[1, i] += δBx
+         B[2, i] += δBy
+         B[3, i] += δBz
+      end
+   end
+
+   B
+end
+
+isoutofdomain(xv, p, t) =
+   if xv[1] &lt; 0 || xv[1] &gt; 2Rₑ
+      return true
+   else
+      return false
+   end
+
+function prob_func(prob, i, repeat)
+   x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
+   u0 = SA[0.0, 0.0, 0.0]
+   T₀ = 10 # [eV]
+   vth = √(2T₀*abs(qₑ)/mₑ) # [m/s]
+   vdf = Maxwellian(u0, vth)
+   v0 = TP.sample(vdf)
+
+   prob = remake(prob, u0 = [x0..., v0...])
+end
+
+&quot;&quot;&quot;
+Kinetic energy.
+&quot;&quot;&quot;
+get_kinetic_energy(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
+
+function plot_multiple(sol)
+   energy = map(x -&gt; get_kinetic_energy(x[4:6]...), sol.u) .* mₑ ./ abs(qₑ)
+   # Obtain the EM fields along the particle trajectory
+   # [mV/m]
+   Efield = get_EField(sol)
+   Bfield = get_BField(sol)
+   E = [Efield(sol[:, istep], sol.t[istep]) .* 1e3 for istep in eachindex(sol)]
+   # [nT]
+   B = [Bfield(sol[:, istep], sol.t[istep]) .* 1e9 for istep in eachindex(sol)]
+
+   Ex = [e[1] for e in E]
+   Ey = [e[2] for e in E]
+   Ez = [e[3] for e in E]
+   Bx = [b[1] for b in B]
+   By = [b[2] for b in B]
+   Bz = [b[3] for b in B]
+
+   t = sol.t
+   x = @views sol[1, :] ./ Rₑ
+   y = @views sol[2, :] ./ Rₑ
+   z = @views sol[3, :] ./ Rₑ
+   vx = @views sol[4, :] ./ 1e3
+   vy = @views sol[5, :] ./ 1e3
+   vz = @views sol[6, :] ./ 1e3
+
+   fig = Figure(size = (900, 600), fontsize = 20)
+
+   xlabels = (&quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;t [s]&quot;)
+   ylabels = (&quot;KE [eV]&quot;, &quot;Locations [RE]&quot;, &quot;V [km/s]&quot;, &quot;E [mV/m]&quot;, &quot;B [nT]&quot;)
+   limits = (
+      (nothing, (nothing, nothing)),
+      (nothing, (nothing, nothing)),
+      (nothing, (nothing, nothing)),
+      (nothing, (nothing, nothing)),
+      (nothing, (nothing, nothing)))
+
+   axs = [Axis(fig[row, col], xlabel = xlabels[row],
+             ylabel = ylabels[row], limits = limits[row])
+          for row in eachindex(xlabels), col in 1:1]
+
+   linkxaxes!(axs...)
+
+   lines!(axs[1], t, energy)
+   lines!(axs[2], t, x, label = &quot;x&quot;)
+   lines!(axs[2], t, y, label = &quot;y&quot;)
+   lines!(axs[2], t, z, label = &quot;z&quot;)
+   lines!(axs[3], t, vx, label = &quot;x&quot;)
+   lines!(axs[3], t, vy, label = &quot;y&quot;)
+   lines!(axs[3], t, vz, label = &quot;z&quot;)
+   lines!(axs[4], t, Ex, label = &quot;x&quot;)
+   lines!(axs[4], t, Ey, label = &quot;y&quot;)
+   lines!(axs[4], t, Ez, label = &quot;z&quot;)
+   lines!(axs[5], t, Bx, label = &quot;x&quot;)
+   lines!(axs[5], t, By, label = &quot;y&quot;)
+   lines!(axs[5], t, Bz, label = &quot;z&quot;)
+
+   for ax in @view axs[2:5]
+      axislegend(ax, framevisible = false, orientation = :horizontal)
+   end
+
+   fig
+end
+
+function plot_dist(sols; t = 0, case = 1, slice = :xy)
+   ##TODO: Optimization
+   vx = Vector{eltype(sols[1].u[1])}(undef, 0)
+   vy = similar(vx)
+   vz = similar(vx)
+   for sol in sols
+      if (sol.t[end] ≥ t) &amp;&amp; (1.5Rₑ - U*sol.t[end] &gt; sol[1, end] &gt; 0.5Rₑ)
+         v = sol(t)[4:6] ./ 1e3
+         append!(vx, v[1])
+         append!(vy, v[2])
+         append!(vz, v[3])
+      end
+   end
+
+   f = Figure(size = (700, 600), fontsize = 18)
+
+   if slice == :xy
+      vars = (vx, vy)
+      xlabel = L&quot;V_x [km/s]&quot;
+      ylabel = L&quot;V_y [km/s]&quot;
+   elseif slice == :xz
+      vars = (vx, vz)
+      xlabel = L&quot;V_x [km/s]&quot;
+      ylabel = L&quot;V_z [km/s]&quot;
+   elseif slice == :yz
+      vars = (vy, vz)
+      xlabel = L&quot;V_y [km/s]&quot;
+      ylabel = L&quot;V_z [km/s]&quot;
+   end
+   h2d = Hist2D(vars; nbins = (50, 50))
+   _,
+   _heatmap = plot(f[1, 1], h2d;
+      axis = (title = &quot;t = $t s, Case = $case, Particle Count = $(length(vx))&quot;,
+         xlabel = xlabel, ylabel = ylabel, aspect = 1, limits = (-1e4, 1e4, -1e4, 1e4)))
+
+   Colorbar(f[1, 2], _heatmap)
+
+   f
+end
+
+function find_max_acceleration_index(sols; countall = true, tend = 40)
+   if countall
+      ratio = [get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
+               for sol in sols]
+   else
+      # only count the particles that are still trapped at t=tend
+      ratio = [get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
+               for sol in sols if sol.t[end] &gt; tend-0.1]
+   end
+   imax = argmax(ratio)
+
+   energy_init = get_kinetic_energy(sols[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
+   energy_final = get_kinetic_energy(sols[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
+   @printf &quot;Initial energy [eV]: %.2f &quot; energy_init
+   @printf &quot;Final energy [eV]: %.2f &quot; energy_final
+   @printf &quot;Kinetic energy change ratio: %.2f\n&quot; ratio[imax]
+
+   imax
+end
+
+const U = -100e3 # [m/s]
+
+# Initial condition to be overwritten in prob_func
+stateinit = zeros(6)
+# Time span [s]
+tspan = (0, 40)
+# Number of particles
+trajectories = 1000;</code></pre><p><strong>Case 1</strong>: 0 core field</p><pre><code class="language-julia hljs">param = prepare(E, Bcase1; species = Electron);
+prob = ODEProblem(trace!, stateinit, tspan, param)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
+
+sols = solve(ensemble_prob, Vern9(), EnsembleThreads();
+   isoutofdomain, trajectories, verbose = true);
+
+# maximum acceleration ratio particle index
+imax = find_max_acceleration_index(sols)
+
+f = plot_multiple(sols[imax])</code></pre><p><img src="../demo_fermi_foreshock-9.png" alt/></p><p>Trajectory of the most accelerated electron.</p><pre><code class="language-julia hljs">f = plot_dist(sols, t = tspan[1], case = 1, slice = :xy)</code></pre><p><img src="../demo_fermi_foreshock-11.png" alt/></p><p>Initial velocity distribution.</p><pre><code class="language-julia hljs">f = plot_dist(sols, t = tspan[2], case = 1, slice = :xy)</code></pre><p><img src="../demo_fermi_foreshock-13.png" alt/></p><p>Final velocity distribution</p><p><strong>Case 2</strong>: B fluctuation core field In this case we use the native Boris pusher for demonstration. The smallest electron gyroperiod in the magnetosheath (B ∼ 20 nT) is about <span>$2\times 10^{-3}\,\mathrm{s}$</span>, and we use a time step <span>$\Delta t = 2\times 10^{-4}\mathrm{s}$</span>.</p><pre><code class="language-julia hljs">const δBfunc = let
+   x = range(0.5Rₑ, 1.5Rₑ, length = 10000)
+   δB = get_B_perturb(x)
+   TP.Field(TP.getinterp(δB, x, 1, 3))
+end
+
+dt = 2e-4 # [s]
+param = prepare(E, Bcase2; species = Electron);
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+sols = TP.solve(prob; dt, trajectories, isoutofdomain, savestepinterval = 100);
+
+# maximum acceleration ratio particle index
+imax = find_max_acceleration_index(sols)
+
+f = plot_multiple(sols[imax])</code></pre><p><img src="../demo_fermi_foreshock-16.png" alt/></p><p>Trajectory of the most accelerated electron. Note that there are locations where we see a jump in kinetic energy with no electric field peaks; these are artifacts because we only save every 100 steps.</p><pre><code class="language-julia hljs">f = plot_dist(sols, t = tspan[1], case = 2, slice = :xy)</code></pre><p><img src="../demo_fermi_foreshock-18.png" alt/></p><p>Initial velocity distribution.</p><pre><code class="language-julia hljs">f = plot_dist(sols, t = tspan[2], case = 2, slice = :xy)</code></pre><p><img src="../demo_fermi_foreshock-20.png" alt/></p><p>Final velocity distribution</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Monday 26 May 2025 02:20">Monday 26 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

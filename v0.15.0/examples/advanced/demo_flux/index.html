@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Flux · TestParticle.jl</title><meta name="title" content="Flux · TestParticle.jl"/><meta property="og:title" content="Flux · TestParticle.jl"/><meta property="twitter:title" content="Flux · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_flux/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_flux/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_flux/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Flux</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Flux</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_flux.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_flux"><a class="docs-heading-anchor" href="#demo_flux">Flux</a><a id="demo_flux-1"></a><a class="docs-heading-anchor-permalink" href="#demo_flux" title="Permalink"></a></h1><p><a href="../demo_flux.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.11.4-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1744502400" alt="Update time"/></p><p>This demo shows how to estimate particle flux using TestParticle.jl. For the flux estimation to be accurate, we need to guarantee that</p><ol><li>The number of test particles are enough to avoid statistical errors.</li><li>The source is properly selected. For instance, we usually sample from plasma moments of a known density, velocity and pressure. <span>$n*U$</span> gives us the source flux in units of [particles / s / m²]. If our source plane does not include all the possible sources, we will underestimate the target flux. Therefore, we need to make sure that our source plane covers all the launching possibilities, e.g. a closed sphere. Under the steady state assumption, we use the source launching time <span>$T$</span> in the denominator of calculating the flux. This time cancels out since there is also a <span>$T$</span> in the numerator.</li></ol><p>The target flux is then estimated as</p><p class="math-container">\[J = \mathrm{h} / \mathrm{N} \oint_\mathrm{source} n\mathbf{U}\mathrm{d}S / \oint_\mathrm{target} \mathrm{d}S\]</p><p>where <span>$\mathrm{h}$</span> is the number of particles that pass through the target and <span>$\mathrm{N}$</span> is the total number of test particles.</p><p>In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not. The total number flux [particles / s] is then obtained by counting all impacting particles, while the flux density [particles / s / m²] is determined by counting the impacting particles within a specific area.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
+
+zeroB(x) = SA[0.0, 0.0, 0.0]
+zeroE(x) = SA[0.0, 0.0, 0.0]
+
+&quot;&quot;&quot;
+Set initial conditions.
+&quot;&quot;&quot;
+function prob_func(prob, i, repeat)
+   it = (i - 1) ÷ source_flux_tp
+   ir = (i - 1) % source_flux_tp
+   # initial velocity, [m/s]
+   if ir &lt; source_flux_tp ÷ 2
+      v₀ = [1.0, 0.0, 0.0]
+   else
+      v₀ = [2.0, 0.0, 0.0]
+   end
+   # initial position, [m]
+   r₀ = prob.u0[1:3]
+   t = (prob.tspan[1] + it, prob.tspan[2])
+
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
+end
+
+# Source flux at the origin
+source_flux = 100 # [real particle / s]
+
+param = prepare(zeroE, zeroB)
+stateinit = zeros(6) # particle position and velocity to be modified
+# Give particles enough time to reach steady state
+tspan = (-50.0, 100.0)
+const tp_per_rp = 10 # test particle per real particle
+const launch_time = 20 # [s], test particle launching lasting time
+const source_flux_tp = source_flux ÷ tp_per_rp # [test particles / s]
+trajectories = source_flux ÷ tp_per_rp * launch_time # total number of test particles</code></pre><pre><code class="nohighlight hljs">200</code></pre><p>The number of test particles is usually smaller than the real particles. In this case, one test particle represents <code>tp_per_rp</code> real particles. Assuming steady state, the time for recording the particles is the same as the launch time. We also assume that no particles have reached the plane before we count.</p><pre><code class="language-julia hljs">prob = ODEProblem(trace!, stateinit, tspan, param)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
+
+sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
+
+&quot;&quot;&quot;
+Estimate the particle flux through a plane x = x0 in a given time range.
+&quot;&quot;&quot;
+function estimate_flux_plane(sols, x0, trange = sols[1].prob.tspan)
+   count = 0
+   for sol in sols
+      xs = [sol(t)[1] for t in trange]
+      if xs[1] ≤ x0 ≤ xs[2] || xs[1] ≥ x0 ≥ xs[2]
+         count += 1
+      end
+   end
+   count *= tp_per_rp
+   count /= launch_time
+end
+
+plane_loc = 100.0 # [m]
+count_time = (0.0, tspan[2]) # [s]
+flux = estimate_flux_plane(sols, plane_loc, count_time)
+println(&quot;Example 1:&quot;)
+println(&quot;Particle flux through plane x = $plane_loc [m]: &quot;, flux, &quot; /s&quot;)</code></pre><pre><code class="nohighlight hljs">Example 1:
+Particle flux through plane x = 100.0 [m]: 100.0 /s
+</code></pre><p>In this example, we assume zero EM fields with constant particle velocities along the x-direction. The estimated particle flux shall match the source flux in this example. However, in general cases the particle flux through a given surface should be equal or smaller than the source flux. We should also take the area into account.</p><p>The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source. We try to estimate the particle flux through a sphere at radius r.</p><pre><code class="language-julia hljs">function sample_unit_velocity_spherical()
+   ϕ = 2 * π * rand()    # Azimuthal angle in [0, 2π)
+   cosθ = 2 * rand() - 1 # Uniformly sample cos(θ) in [-1, 1]
+   sinθ = sqrt(1 - cosθ^2)
+   x = sinθ * cos(ϕ)
+   y = sinθ * sin(ϕ)
+   z = cosθ
+   return SA[x, y, z]
+end
+
+function prob_func_iso(prob, i, repeat)
+   it = (i - 1) ÷ source_flux_tp
+   # initial velocity, [m/s]
+   v₀ = sample_unit_velocity_spherical()
+   # initial position, [m]
+   r₀ = prob.u0[1:3]
+   t = (prob.tspan[1] + it, prob.tspan[2])
+
+   prob = remake(prob; u0 = [r₀..., v₀...], tspan = t)
+end
+
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
+
+sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories)
+
+&quot;&quot;&quot;
+Estimate the particle flux through a sphere with radius r = r0 in a given time range.
+&quot;&quot;&quot;
+function estimate_flux_sphere(sols, r0, trange = sols[1].prob.tspan)
+   count = 0
+   for sol in sols
+      rs = [hypot(sol(t)[1:3]...) for t in trange]
+      if rs[1] ≤ r0 ≤ rs[2] || rs[1] ≥ r0 ≥ rs[2]
+         count += 1
+      end
+   end
+   count *= tp_per_rp
+   count /= launch_time
+end
+
+r = 100.0 # [m]
+area = 4π*r^2 # [m²]
+count_time = (0.0, tspan[2]) # [s]
+flux = estimate_flux_sphere(sols, r, count_time)
+println(&quot;Example 2:&quot;)
+println(&quot;Particle flux through sphere r = $r [m]: &quot;, flux, &quot; /s&quot;)
+println(&quot;Particle flux density through sphere r = $r [m]: &quot;, flux / area, &quot; /(s * m²)&quot;)</code></pre><pre><code class="nohighlight hljs">Example 2:
+Particle flux through sphere r = 100.0 [m]: 100.0 /s
+Particle flux density through sphere r = 100.0 [m]: 0.0007957747154594767 /(s * m²)
+</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 26 November 2025 14:47">Wednesday 26 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
