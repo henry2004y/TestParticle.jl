@@ -94,19 +94,28 @@ end
 
         param = prepare(x, y, z, E, B)
         prob = ODEProblem(trace!, stateinit, tspan, param)
-        sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
+        sol = solve(
+            prob, Tsit5();
+            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback, verbose = false
+        )
         # There are numerical differences on x86 and ARM platforms!
-        @test sol[1, end] ≈ 0.8539409515568538 rtol = 1.0e-2
+        @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
         # Because the field is uniform, the order of interpolation does not matter.
         param = prepare(x, y, z, E, B; order = 2)
         prob = remake(prob; p = param)
-        sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
-        @test sol[1, end] ≈ 0.8539409515568538 rtol = 1.0e-2
+        sol = solve(
+            prob, Tsit5();
+            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback, verbose = false
+        )
+        @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
 
         param = prepare(x, y, z, E, B; order = 3)
         prob = remake(prob; p = param)
-        sol = solve(prob, Tsit5(); save_idxs = [1], callback, verbose = false)
-        @test sol[1, end] ≈ 0.8539409515568538 rtol = 1.0e-2
+        sol = solve(
+            prob, Tsit5();
+            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback, verbose = false
+        )
+        @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
 
         # GC prepare
         stateinit_gc,
