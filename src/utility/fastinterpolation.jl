@@ -108,7 +108,6 @@ function _get_extrap_mode(bc)
     end
 end
 
-
 function _fastinterp(grids, A, order, bc)
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
