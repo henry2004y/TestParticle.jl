@@ -27,8 +27,8 @@ end
 println("Starting distributed scaling benchmark on worker counts: ", proc_counts)
 println("Particles: $N_PARTICLES, samples per point: $N_SAMPLES")
 
-uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-uniform_E(x) = SA[0.0, 0.0, 0.0]
+uniform_B = x -> SA[0.0, 0.0, 1.0e-8]
+uniform_E = x -> SA[0.0, 0.0, 0.0]
 param = prepare(uniform_E, uniform_B; species = Proton)
 
 x0 = [0.0, 0.0, 0.0]
@@ -63,14 +63,14 @@ for nw in proc_counts
 
         # Warmup
         TestParticle.solve(
-            prob, EnsembleDistributed(); trajectories = 10, dt, savestepinterval
+            prob, EnsembleDistributed(); trajectories = 10, dt, savestepinterval, batch_size = 1
         )
 
         # Timed samples
         sample_times = Float64[]
         for _ in 1:N_SAMPLES
             t = @elapsed TestParticle.solve(
-                prob, EnsembleDistributed(); trajectories = N_PARTICLES, dt, savestepinterval
+                prob, EnsembleDistributed(); trajectories = N_PARTICLES, dt, savestepinterval, batch_size = max(1, N_PARTICLES ÷ nw)
             )
             push!(sample_times, t)
         end

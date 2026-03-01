@@ -16,37 +16,60 @@ function AdaptiveBoris(; dtmax, dtmin = 1.0e-2 * dtmax, safety = 0.1)
     T = promote_type(typeof(dtmin), typeof(dtmax), typeof(safety))
     return AdaptiveBoris{T}(T(dtmin), T(dtmax), T(safety))
 end
+"""
+    solve(prob::TraceProblem, alg::AdaptiveBoris,
+        ensemblealg::BasicEnsembleAlgorithm=EnsembleSerial();
+        trajectories::Int=1, savestepinterval::Int=1,
+        isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+        save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
+        save_fields::Bool=false, save_work::Bool=false,
+        batch_size::Int = max(1, trajectories ÷ Threads.nthreads()))
 
+Trace particles using the Adaptive Boris method with specified `prob` and `alg`.
+
+# keywords
+
+  - `trajectories::Int`: number of trajectories to trace.
+  - `savestepinterval::Int`: saving output interval.
+  - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
+  - `save_start::Bool`: save the initial condition. Default is `true`.
+  - `save_end::Bool`: save the final condition. Default is `true`.
+  - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
+  - `save_fields::Bool`: save the electric and magnetic fields. Default is `false`.
+  - `save_work::Bool`: save the work done by the electric field. Default is `false`.
+  - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed`. Default is `max(1, trajectories ÷ Threads.nthreads())`.
+"""
 function solve(
         prob::TraceProblem, alg::AdaptiveBoris,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false, save_work::Bool = false
+        save_fields::Bool = false, save_work::Bool = false,
+        batch_size::Int = max(1, trajectories ÷ Threads.nthreads())
     )
     return if save_fields
         if save_work
             return _solve(
                 ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-                save_start, save_end, save_everystep, Val(true), Val(true)
+                save_start, save_end, save_everystep, Val(true), Val(true), batch_size
             )
         else
             return _solve(
                 ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-                save_start, save_end, save_everystep, Val(true), Val(false)
+                save_start, save_end, save_everystep, Val(true), Val(false), batch_size
             )
         end
     else
         if save_work
             return _solve(
                 ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-                save_start, save_end, save_everystep, Val(false), Val(true)
+                save_start, save_end, save_everystep, Val(false), Val(true), batch_size
             )
         else
             return _solve(
                 ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
-                save_start, save_end, save_everystep, Val(false), Val(false)
+                save_start, save_end, save_everystep, Val(false), Val(false), batch_size
             )
         end
     end
@@ -55,7 +78,7 @@ end
 function _solve(
         ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
         isoutofdomain, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
     # We cannot precalculate nt for adaptive steps
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
@@ -72,7 +95,8 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
     ) where {SaveFields, SaveWork}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
@@ -108,9 +132,10 @@ end
 
 function _solve(
         ::EnsembleDistributed, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
     ) where {SaveFields, SaveWork}
-    return pmap(1:trajectories) do i
+    return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_adaptive_boris(
             prob, i, alg, savestepinterval, isoutofdomain,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
