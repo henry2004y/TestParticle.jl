@@ -1,6 +1,6 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
-version = "0.19.1"
+version = "0.19.2"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>, Tiancheng Liu <liutc@mail.nankai.edu.cn>, and Zijin Zhang <zijin@ucla.edu>"]
 
 [workspace]
