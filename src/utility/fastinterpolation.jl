@@ -109,15 +109,20 @@ function _get_extrap_mode(bc)
 end
 
 function _fastinterp(grids, A, order, bc)
+    T_A = eltype(A)
+    T_F = T_A <: SVector ? eltype(T_A) : T_A
+    T_F = T_F <: AbstractFloat ? T_F : Float64
+    matched_grids = map(g -> _match_grid_type(g, T_F), grids)
+
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
-        return linear_interp(grids, A; extrap = extrap_mode)
+        return linear_interp(matched_grids, A; extrap = extrap_mode)
     elseif order == 2
-        return quadratic_interp(grids, A; extrap = extrap_mode)
+        return quadratic_interp(matched_grids, A; extrap = extrap_mode)
     elseif order == 3
         return cubic_interp(grids, A; extrap = extrap_mode)
     else
-        return constant_interp(grids, A; extrap = extrap_mode)
+        return constant_interp(matched_grids, A; extrap = extrap_mode)
     end
 end
 
