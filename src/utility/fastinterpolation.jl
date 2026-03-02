@@ -178,25 +178,40 @@ function (ci::ComponentInterpolator)(x)
     return SA[ci.itp1(x), ci.itp2(x), ci.itp3(x)]
 end
 
+function _match_grid_type(g::AbstractRange, ::Type{T}) where {T <: AbstractFloat}
+    return range(T(first(g)), T(last(g)), length = length(g))
+end
+function _match_grid_type(g::AbstractVector, ::Type{T}) where {T <: AbstractFloat}
+    return T.(g)
+end
+function _match_grid_type(g::Tuple, ::Type{T}) where {T <: AbstractFloat}
+    return T.(g)
+end
+
 function _fastinterp(grids, A, order, bc)
+    T_A = eltype(A)
+    T_F = T_A <: SVector ? eltype(T_A) : T_A
+    T_F = T_F <: AbstractFloat ? T_F : Float64
+    matched_grids = map(g -> _match_grid_type(g, T_F), grids)
+
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
-        return linear_interp(grids, A; extrap = extrap_mode)
+        return linear_interp(matched_grids, A; extrap = extrap_mode)
     elseif order == 2
-        return quadratic_interp(grids, A; extrap = extrap_mode)
+        return quadratic_interp(matched_grids, A; extrap = extrap_mode)
     elseif order == 3
         if eltype(A) <: SVector{3}
             A1 = [v[1] for v in A]
             A2 = [v[2] for v in A]
             A3 = [v[3] for v in A]
-            itp1 = cubic_interp(grids, A1; extrap = extrap_mode)
-            itp2 = cubic_interp(grids, A2; extrap = extrap_mode)
-            itp3 = cubic_interp(grids, A3; extrap = extrap_mode)
+            itp1 = cubic_interp(matched_grids, A1; extrap = extrap_mode)
+            itp2 = cubic_interp(matched_grids, A2; extrap = extrap_mode)
+            itp3 = cubic_interp(matched_grids, A3; extrap = extrap_mode)
             return ComponentInterpolator(itp1, itp2, itp3)
         end
-        return cubic_interp(grids, A; extrap = extrap_mode)
+        return cubic_interp(matched_grids, A; extrap = extrap_mode)
     else
-        return constant_interp(grids, A; extrap = extrap_mode)
+        return constant_interp(matched_grids, A; extrap = extrap_mode)
     end
 end
 
