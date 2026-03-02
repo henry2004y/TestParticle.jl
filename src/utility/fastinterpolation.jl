@@ -8,6 +8,9 @@ import FastInterpolations: _value_type
 # Promote rule to construct the interpolant object natively for SVector.
 _value_type(::Type{SVector{N, T}}, ::Type{Tg}) where {N, T, Tg <: AbstractFloat} = SVector{N, promote_type(T, Tg)}
 
+Base.eltype(::FastInterpolations.AbstractInterpolant{Tx, Ty}) where {Tx, Ty} = Ty
+Base.eltype(::FastInterpolations.AbstractInterpolantND{Tx, Ty, N}) where {Tx, Ty, N} = Ty
+
 @inline getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
 
 """
@@ -33,9 +36,9 @@ _in_bounds(x, gridx) = first(gridx) <= x <= last(gridx)
 function (fi::FieldInterpolator)(xu)
     if fi.bc == 1
         if !(_in_bounds(xu[1], fi.grid[1]) && _in_bounds(xu[2], fi.grid[2]) && _in_bounds(xu[3], fi.grid[3]))
-            T_val = typeof(fi.itp((xu[1], xu[2], xu[3])))
+            T_val = eltype(fi.itp)
             if T_val <: SVector
-                return fill(eltype(T_val)(NaN), length(T_val))
+                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
             else
                 return T_val(NaN)
             end
@@ -64,9 +67,9 @@ end
 function (fi::FieldInterpolator2D)(xu)
     if fi.bc == 1
         if !(_in_bounds(xu[1], fi.grid[1]) && _in_bounds(xu[2], fi.grid[2]))
-            T_val = typeof(fi.itp((xu[1], xu[2])))
+            T_val = eltype(fi.itp)
             if T_val <: SVector
-                return fill(eltype(T_val)(NaN), length(T_val))
+                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
             else
                 return T_val(NaN)
             end
@@ -96,9 +99,9 @@ end
 function (fi::FieldInterpolator1D)(xu)
     if fi.bc == 1
         if !_in_bounds(xu[fi.dir], fi.grid)
-            T_val = typeof(fi.itp((xu[fi.dir],)))
+            T_val = eltype(fi.itp)
             if T_val <: SVector
-                return fill(eltype(T_val)(NaN), length(T_val))
+                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
             else
                 return T_val(NaN)
             end
@@ -129,11 +132,11 @@ function (fi::SphericalFieldInterpolator)(xu)
 
     if fi.bc == 1
         if !(_in_bounds(r_val, fi.grid[1]) && _in_bounds(θ_val, fi.grid[2]) && _in_bounds(ϕ_val, fi.grid[3]))
-            res_val = fi.itp((r_val, θ_val, ϕ_val))
-            if typeof(res_val) <: SVector || length(res_val) > 1
-                return fill(eltype(res_val)(NaN), length(res_val))
+            T_val = eltype(fi.itp)
+            if T_val <: SVector
+                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
             else
-                return typeof(res_val)(NaN)
+                return T_val(NaN)
             end
         end
     end
@@ -177,6 +180,7 @@ end
 function (ci::ComponentInterpolator)(x)
     return SA[ci.itp1(x), ci.itp2(x), ci.itp3(x)]
 end
+Base.eltype(::ComponentInterpolator{T1, T2, T3}) where {T1, T2, T3} = SVector{3, eltype(T1)}
 
 function _match_grid_type(g::AbstractRange, ::Type{T}) where {T <: AbstractFloat}
     return range(T(first(g)), T(last(g)), length = length(g))
