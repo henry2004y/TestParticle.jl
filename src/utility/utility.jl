@@ -102,33 +102,6 @@ function get_cell_centers(grid::RectilinearGrid)
 end
 
 """
-    get_rotation_matrix(axis::AbstractVector, angle) :: SMatrix{3,3}
-
-Create a rotation matrix for rotating a 3D vector around a unit `axis` by an `angle` in
-radians.
-Reference: [Rotation matrix from axis and angle](https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle)
-
-# Example
-
-```julia
-using LinearAlgebra
-v = [-0.5, 1.0, 1.0]
-v̂ = normalize(v)
-θ = deg2rad(-74)
-R = get_rotation_matrix(v̂, θ)
-```
-"""
-function get_rotation_matrix(v, θ)
-    sinθ, cosθ = sincos(θ)
-    tmp = 1 - cosθ
-    return m = @SMatrix [
-        cosθ + v[1]^2 * tmp v[1] * v[2] * tmp - v[3] * sinθ v[1] * v[3] * tmp + v[2] * sinθ;
-        v[1] * v[2] * tmp + v[3] * sinθ cosθ + v[2]^2 * tmp v[2] * v[3] * tmp - v[1] * sinθ;
-        v[1] * v[3] * tmp - v[2] * sinθ v[3] * v[2] * tmp + v[1] * sinθ cosθ + v[3]^2 * tmp
-    ]
-end
-
-"""
     get_perp_vector(b::AbstractVector)
 
 Obtain two unit vectors `e1` and `e2` such that `(e1, e2, b)` form a right-handed orthonormal

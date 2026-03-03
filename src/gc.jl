@@ -176,8 +176,8 @@ function get_gc(
         bz::U,
         q2m
     ) where {T <: AbstractVector, U <: AbstractVector}
-    X = [zeros(SVector{3, eltype(x)}) for _ in x]
-    for i in eachindex(X)
+    X = Vector{SVector{3, eltype(x)}}(undef, length(x))
+    @inbounds for i in eachindex(x, y, z, vx, vy, vz, bx, by, bz)
         X[i] = get_gc(x[i], y[i], z[i], vx[i], vy[i], vz[i], bx[i], by[i], bz[i], q2m)
     end
 
