@@ -170,14 +170,18 @@ get_gyrofrequency(B = 5.0e-9; q = qᵢ, m = mᵢ) = ω = q * B / m
 @inline _get_v_perp(v, b̂) = v - (v ⋅ b̂) * b̂
 
 function _get_v_gamma(u, func_name)
-    is_relativistic = func_name === :trace_relativistic! ||
-                      func_name === :trace_relativistic ||
-                      func_name === :trace_relativistic_normalized! ||
-                      func_name === :trace_relativistic_normalized
+    is_relativistic = func_name in (
+        :trace_relativistic!,
+        :trace_relativistic,
+        :trace_relativistic_normalized!,
+        :trace_relativistic_normalized,
+    )
 
     if is_relativistic
-        is_normalized = func_name === :trace_relativistic_normalized! ||
-                        func_name === :trace_relativistic_normalized
+        is_normalized = func_name in (
+            :trace_relativistic_normalized!,
+            :trace_relativistic_normalized,
+        )
         v_real = is_normalized ? get_relativistic_v(u; c = 1) : get_relativistic_v(u)
         v_mag = norm(v_real)
         γ = is_normalized ? 1 / sqrt(1 - v_mag^2) : 1 / sqrt(1 - (v_mag / c)^2)
