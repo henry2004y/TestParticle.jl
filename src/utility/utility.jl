@@ -165,6 +165,29 @@ Return the gyrofrequency [rad/s].
 """
 get_gyrofrequency(B = 5.0e-9; q = qᵢ, m = mᵢ) = ω = q * B / m
 
+@inline _get_exb_drift(E, B, Bmag) = (E × B) / Bmag^2
+
+@inline _get_v_perp(v, b̂) = v - (v ⋅ b̂) * b̂
+
+function _get_v_gamma(u, func_name)
+    is_relativistic = func_name === :trace_relativistic! ||
+                      func_name === :trace_relativistic ||
+                      func_name === :trace_relativistic_normalized! ||
+                      func_name === :trace_relativistic_normalized
+
+    if is_relativistic
+        is_normalized = func_name === :trace_relativistic_normalized! ||
+                        func_name === :trace_relativistic_normalized
+        v_real = is_normalized ? get_relativistic_v(u; c = 1) : get_relativistic_v(u)
+        v_mag = norm(v_real)
+        γ = is_normalized ? 1 / sqrt(1 - v_mag^2) : 1 / sqrt(1 - (v_mag / c)^2)
+    else
+        v_real = u
+        γ = 1.0
+    end
+    return v_real, γ
+end
+
 """
     get_gyroradius(V, B; q=qᵢ, m=mᵢ)
 
@@ -188,13 +211,12 @@ function get_gyroradius(v, B, E = SA[0.0, 0.0, 0.0]; q = qᵢ, m = mᵢ)
         return Inf
     end
 
-    v_E = SVector{3}((E × B) / Bmag^2) # ExB drift
-    v_gyro = SVector{3}(v - v_E)
+    v_E = _get_exb_drift(E, B, Bmag) # ExB drift
+    v_gyro = v - v_E
 
     # Calculate perpendicular component
-    b̂ = SVector{3}(B / Bmag)
-    v_gyro_par = (v_gyro ⋅ b̂) * b̂
-    v_gyro_perp = v_gyro - v_gyro_par
+    b̂ = B / Bmag
+    v_gyro_perp = _get_v_perp(v_gyro, b̂)
     V_gyro_perp = norm(v_gyro_perp)
 
     q2m = q / m
@@ -216,7 +238,6 @@ function get_gyroradius(sol::AbstractODESolution, t)
     # Extract parameters
     p = sol.prob.p
     q2m = p[1]
-    m = p[2]
     Efunc = p[3]
     Bfunc = p[4]
 
@@ -229,31 +250,16 @@ function get_gyroradius(sol::AbstractODESolution, t)
     end
 
     # Calculate ExB drift
-    v_E = (E × B) / Bmag^2
+    v_E = _get_exb_drift(E, B, Bmag)
 
-    # Determine if relativistic
     func_name = Symbol(sol.prob.f.f)
-    is_relativistic = func_name === :trace_relativistic! ||
-        func_name === :trace_relativistic ||
-        func_name === :trace_relativistic_normalized! ||
-        func_name === :trace_relativistic_normalized
-
-    # Calculate physical velocity
-    if is_relativistic
-        v_real = get_relativistic_v(u)
-        v_mag = norm(v_real)
-        γ = 1 / sqrt(1 - (v_mag / c)^2)
-    else
-        v_real = u
-        γ = 1.0
-    end
+    v_real, γ = _get_v_gamma(u, func_name)
 
     v_gyro = v_real - v_E # Subtract drift velocity
 
     # Calculate perpendicular component of v_gyro
     b̂ = B / Bmag
-    v_gyro_par = (v_gyro ⋅ b̂) * b̂
-    v_gyro_perp = v_gyro - v_gyro_par
+    v_gyro_perp = _get_v_perp(v_gyro, b̂)
     V_gyro_perp = norm(v_gyro_perp)
 
     # Calculate gyroradius

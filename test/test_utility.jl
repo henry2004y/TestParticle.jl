@@ -368,6 +368,39 @@ import TestParticle as TP
             @test r_calc ≈ r_expected rtol = 1.0e-3
         end
 
+        @testset "Normalized Relativistic" begin
+            # Uniform B field
+            B0 = 1.0
+            B_func(x, t) = SA[0.0, 0.0, B0]
+            E_func(x, t) = SA[0.0, 0.0, 0.0]
+
+            # In normalized relativistic case, c = 1
+            # Initial state: relativistic velocity
+            # Let v = 0.5
+            # γ = 1/sqrt(1-0.5^2) = 1/sqrt(0.75) ≈ 1.1547
+            # u = γv
+            v_mag = 0.5
+            gamma = 1.0 / sqrt(1 - v_mag^2)
+            u_perp = gamma * v_mag
+
+            x0 = SA[0.0, 0.0, 0.0]
+            u0 = SA[u_perp, 0.0, 0.0] # γv
+            stateinit = [x0..., u0...]
+            tspan = (0.0, 1.0)
+
+            # q2m = 1.0, m = 1.0, etc.
+            param = prepare(E_func, B_func; species = Ion(1, 1), q = 1.0, m = 1.0)
+            prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+            sol = solve(prob, Vern6())
+
+            # Theoretical relativistic gyroradius
+            # r = γ * m * v_perp / (q * B) = (γv)_perp / B (since m=q=1)
+            r_expected = u_perp / B0
+
+            r_calc = get_gyroradius(sol, 0.5)
+            @test r_calc ≈ r_expected rtol = 1.0e-3
+        end
+
         @testset "Zero Field" begin
             # B = 0 -> r = Inf
             B_func(x, t) = SA[0.0, 0.0, 0.0]
