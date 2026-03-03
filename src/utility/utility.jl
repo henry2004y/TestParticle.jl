@@ -520,7 +520,7 @@ function _get_cell_volume(grid::RectilinearGrid)
         dy = diff(y)
         dz = diff(z)
 
-        vol = zeros(length(dx), length(dy), length(dz))
+        vol = Array{eltype(dx), 3}(undef, length(dx), length(dy), length(dz))
         @inbounds for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
             vol[i, j, k] = dx[i] * dy[j] * dz[k]
         end
@@ -530,7 +530,7 @@ function _get_cell_volume(grid::RectilinearGrid)
         dx = diff(x)
         dy = diff(y)
 
-        vol = zeros(length(dx), length(dy))
+        vol = Array{eltype(dx), 2}(undef, length(dx), length(dy))
         @inbounds for j in eachindex(dy), i in eachindex(dx)
             vol[i, j] = dx[i] * dy[j]
         end
