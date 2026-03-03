@@ -24,8 +24,8 @@
 Please make sure to test new code that you write.
 
 If explicit test file or code is provided, prioritize running that.
-Otherwise, you can run the entire test suite for the TestParticle project by executing
-`using Pkg; Pkg.test()` from the root directory of this repository.
+Otherwise, you can run the entire test suite for the TestParticle project by activating
+the `test` workspace and running `test` in the Pkg REPL.
 
 # Test code structure
 Test code should be written in files that define independent module spaces with
@@ -61,7 +61,8 @@ unintentionally reused between multiple test cases.
 
 # Environment-related issues
 For AI agents: **NEVER MODIFY [Manifest.toml](./Manifest.toml) BY YOURSELF**.
-Agents can modify [Project.toml](./Project.toml) if needed.
+For adding and deleting packages, use `Pkg.add("PackageName")` and `Pkg.rm("PackageName")`
+first. Agents can modify [Project.toml](./Project.toml) only for the compat if needed.
 
 # About modifications to code you've written
 If you, as an AI agent, add or modify code, and the user appears to have made
