@@ -1,13 +1,4 @@
-# Field interpolations using FastInterpolations.jl.
-
-using FastInterpolations
-using StaticArrays
-using Adapt
-
-Base.eltype(::FastInterpolations.AbstractInterpolant{Tx, Ty}) where {Tx, Ty} = Ty
-Base.eltype(::FastInterpolations.AbstractInterpolantND{Tx, Ty, N}) where {Tx, Ty, N} = Ty
-
-@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+# Field interpolations.
 
 """
     AbstractFieldInterpolator
@@ -17,29 +8,17 @@ Abstract type for all field interpolators.
 abstract type AbstractFieldInterpolator <: Function end
 
 """
-    FieldInterpolator{T, G}
+    FieldInterpolator{T}
 
-A callable struct that wraps a 3D interpolation object and its grid.
+A callable struct that wraps a 3D interpolation object.
 """
-struct FieldInterpolator{T, G} <: AbstractFieldInterpolator
+struct FieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
-    grid::G
-    bc::Int
 end
 
-_in_bounds(x, gridx) = first(gridx) <= x <= last(gridx)
+const FieldInterpolator3D = FieldInterpolator
 
-function (fi::FieldInterpolator)(xu)
-    if fi.bc == 1
-        if !(_in_bounds(xu[1], fi.grid[1]) && _in_bounds(xu[2], fi.grid[2]) && _in_bounds(xu[3], fi.grid[3]))
-            T_val = eltype(fi.itp)
-            if T_val <: SVector
-                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
-            else
-                return T_val(NaN)
-            end
-        end
-    end
+@inbounds function (fi::FieldInterpolator)(xu)
     return fi.itp((xu[1], xu[2], xu[3]))
 end
 
@@ -47,30 +26,19 @@ function (fi::FieldInterpolator)(xu, t)
     return fi(xu)
 end
 
-Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp), Adapt.adapt(to, fi.grid), fi.bc)
+Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp))
 
 """
-    FieldInterpolator2D{T, G}
+    FieldInterpolator2D{T}
 
 A callable struct that wraps a 2D interpolation object.
 """
-struct FieldInterpolator2D{T, G} <: AbstractFieldInterpolator
+struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
     itp::T
-    grid::G
-    bc::Int
 end
 
-function (fi::FieldInterpolator2D)(xu)
-    if fi.bc == 1
-        if !(_in_bounds(xu[1], fi.grid[1]) && _in_bounds(xu[2], fi.grid[2]))
-            T_val = eltype(fi.itp)
-            if T_val <: SVector
-                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
-            else
-                return T_val(NaN)
-            end
-        end
-    end
+@inbounds function (fi::FieldInterpolator2D)(xu)
+    # 2D interpolation usually involves x and y
     return fi.itp((xu[1], xu[2]))
 end
 
@@ -78,31 +46,19 @@ function (fi::FieldInterpolator2D)(xu, t)
     return fi(xu)
 end
 
-Adapt.adapt_structure(to, fi::FieldInterpolator2D) = FieldInterpolator2D(Adapt.adapt(to, fi.itp), Adapt.adapt(to, fi.grid), fi.bc)
+Adapt.adapt_structure(to, fi::FieldInterpolator2D) = FieldInterpolator2D(Adapt.adapt(to, fi.itp))
 
 """
-    FieldInterpolator1D{T, G}
+    FieldInterpolator1D{T}
 
 A callable struct that wraps a 1D interpolation object.
 """
-struct FieldInterpolator1D{T, G} <: AbstractFieldInterpolator
+struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
     itp::T
-    grid::G
-    bc::Int
     dir::Int
 end
 
-function (fi::FieldInterpolator1D)(xu)
-    if fi.bc == 1
-        if !_in_bounds(xu[fi.dir], fi.grid)
-            T_val = eltype(fi.itp)
-            if T_val <: SVector
-                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
-            else
-                return T_val(NaN)
-            end
-        end
-    end
+@inbounds function (fi::FieldInterpolator1D)(xu)
     return fi.itp((xu[fi.dir],))
 end
 
@@ -110,37 +66,24 @@ function (fi::FieldInterpolator1D)(xu, t)
     return fi(xu)
 end
 
-Adapt.adapt_structure(to, fi::FieldInterpolator1D) = FieldInterpolator1D(Adapt.adapt(to, fi.itp), Adapt.adapt(to, fi.grid), fi.bc, fi.dir)
+Adapt.adapt_structure(to, fi::FieldInterpolator1D) = FieldInterpolator1D(Adapt.adapt(to, fi.itp), fi.dir)
 
 """
-    SphericalFieldInterpolator{T, G}
+    SphericalFieldInterpolator{T}
 
-A callable struct for spherical grid interpolation.
+A callable struct for spherical grid interpolation (scalar or combined vector).
 """
-struct SphericalFieldInterpolator{T, G} <: AbstractFieldInterpolator
+struct SphericalFieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
-    grid::G
-    bc::Int
 end
 
 function (fi::SphericalFieldInterpolator)(xu)
-    r_val, θ_val, ϕ_val = cart2sph(xu)
-
-    if fi.bc == 1
-        if !(_in_bounds(r_val, fi.grid[1]) && _in_bounds(θ_val, fi.grid[2]) && _in_bounds(ϕ_val, fi.grid[3]))
-            T_val = eltype(fi.itp)
-            if T_val <: SVector
-                return T_val(ntuple(_ -> NaN, Val(length(T_val))))
-            else
-                return T_val(NaN)
-            end
-        end
-    end
-
-    res = fi.itp((r_val, θ_val, ϕ_val))
-    if typeof(res) <: SVector || length(res) > 1
+    rθϕ = cart2sph(xu)
+    res = fi.itp(rθϕ)
+    if length(res) > 1
+        # Convert vector result from spherical to cartesian basis
         Br, Bθ, Bϕ = res
-        return sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
+        return sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
     else
         return res
     end
@@ -150,7 +93,7 @@ function (fi::SphericalFieldInterpolator)(xu, t)
     return fi(xu)
 end
 
-Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp), Adapt.adapt(to, fi.grid), fi.bc)
+Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
 function _get_extrap_mode(bc)
     if bc == 2
@@ -158,42 +101,32 @@ function _get_extrap_mode(bc)
     elseif bc == 3
         return Extrap(:constant)
     else
-        # For bc == 1, we handle NaN in wrapper and use NoExtrap() for inner to avoid errors
+        # TODO: bc == 1 (NaN outside domain) requires native FastInterpolations.jl support.
+        # Once available, replace this with the appropriate Extrap mode and remove the
+        # manual bounds-checking code that was previously in the FieldInterpolator call methods.
         return NoExtrap()
     end
 end
 
-function _match_grid_type(g::AbstractRange, ::Type{T}) where {T <: AbstractFloat}
-    return range(T(first(g)), T(last(g)), length = length(g))
-end
-function _match_grid_type(g::AbstractVector, ::Type{T}) where {T <: AbstractFloat}
-    return T.(g)
-end
-function _match_grid_type(g::Tuple, ::Type{T}) where {T <: AbstractFloat}
-    return T.(g)
-end
 
 function _fastinterp(grids, A, order, bc)
-    T_A = eltype(A)
-    T_F = T_A <: SVector ? eltype(T_A) : T_A
-    T_F = T_F <: AbstractFloat ? T_F : Float64
-    matched_grids = map(g -> _match_grid_type(g, T_F), grids)
-
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
-        return linear_interp(matched_grids, A; extrap = extrap_mode)
+        return linear_interp(grids, A; extrap = extrap_mode)
     elseif order == 2
-        return quadratic_interp(matched_grids, A; extrap = extrap_mode)
+        return quadratic_interp(grids, A; extrap = extrap_mode)
     elseif order == 3
-        return cubic_interp(matched_grids, A; extrap = extrap_mode)
+        return cubic_interp(grids, A; extrap = extrap_mode)
     else
-        return constant_interp(matched_grids, A; extrap = extrap_mode)
+        return constant_interp(grids, A; extrap = extrap_mode)
     end
 end
 
+@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+
 """
-    build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
-    build_interpolator(A, grids..., order::Int=1, bc::Int=1)
+    build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=3)
+    build_interpolator(A, grids..., order::Int=1, bc::Int=3)
 
 Return a function for interpolating field array `A` on the given grids.
 
@@ -202,14 +135,15 @@ Return a function for interpolating field array `A` on the given grids.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
   - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
   - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+  - `bc::Int=3`: type of boundary conditions, 1 -> NaN (not yet native; requires FastInterpolations support), 2 -> periodic, 3 -> Flat.
 
 # Notes
 The input array `A` may be modified in-place for memory optimization.
 """
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 3
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -218,18 +152,21 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 3
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
-    return FieldInterpolator(itp, (gridx, gridy, gridz), bc)
+    # Return field value at a given location.
+    return FieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 3
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -238,7 +175,8 @@ end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 3
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -248,7 +186,7 @@ function build_interpolator(
     end
 
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
-    return FieldInterpolator(itp, (gridx, gridy, gridz), bc)
+    return FieldInterpolator(itp)
 end
 
 function build_interpolator(
@@ -267,20 +205,24 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-
+    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
+    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
     is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
 
     if is_uniform_r
         itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
-    else
+    else # Non-uniform R (SphericalNonUniformR behavior)
         gridϕ, A = _ensure_full_phi(gridϕ, A)
         itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
     end
 
-    return SphericalFieldInterpolator(itp, (gridr, gridθ, gridϕ), bc)
+    return SphericalFieldInterpolator(itp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A,
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 3
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
         As = A
@@ -290,10 +232,13 @@ function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, g
     end
 
     itp = _fastinterp((gridx, gridy), As, order, bc)
-    return FieldInterpolator2D(itp, (gridx, gridy), bc)
+    return FieldInterpolator2D(itp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, order::Int = 1, bc::Int = 3; dir = 1)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
+        order::Int = 1, bc::Int = 3; dir = 1
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
         As = A
@@ -304,7 +249,7 @@ function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, o
 
     itp = _fastinterp((gridx,), As, order, bc)
 
-    return FieldInterpolator1D(itp, gridx, bc, dir)
+    return FieldInterpolator1D(itp, dir)
 end
 
 function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
@@ -340,7 +285,7 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
     if needs_2pi
         if needs_0
             selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
-        else
+        else # needs 2π only
             selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
         end
     end
