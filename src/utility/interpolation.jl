@@ -20,7 +20,7 @@ end
 
 const FieldInterpolator3D = FieldInterpolator
 
-function (fi::FieldInterpolator)(xu)
+@inbounds function (fi::FieldInterpolator)(xu)
     return fi.itp(xu[1], xu[2], xu[3])
 end
 
@@ -39,7 +39,7 @@ struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-function (fi::FieldInterpolator2D)(xu)
+@inbounds function (fi::FieldInterpolator2D)(xu)
     # 2D interpolation usually involves x and y
     return fi.itp(xu[1], xu[2])
 end
