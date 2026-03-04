@@ -26,10 +26,10 @@ function setup_spherical_field()
       A[:, iθ, :] .= B₀ * sinθ
    end
 
-   B_field_nu = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
-   A_field_nu = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
-   B_field = TP.getinterp(TP.StructuredGrid, B, r_uniform, θ, ϕ)
-   A_field = TP.getinterp_scalar(TP.StructuredGrid, A, r_uniform, θ, ϕ)
+   B_field_nu = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
+   A_field_nu = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
+   B_field = TP.build_interpolator(TP.StructuredGrid, B, r_uniform, θ, ϕ)
+   A_field = TP.build_interpolator(TP.StructuredGrid, A, r_uniform, θ, ϕ)
 
    return B_field_nu, A_field_nu, B_field, A_field
 end
@@ -43,8 +43,8 @@ function setup_cartesian_field()
    A = zeros(length(x), length(y), length(z)) # scalar
    A[:, :, :] .= 10e-9
 
-   B_field = TP.getinterp(B, x, y, z)
-   A_field = TP.getinterp_scalar(A, x, y, z)
+   B_field = TP.build_interpolator(B, x, y, z)
+   A_field = TP.build_interpolator(A, x, y, z)
 
    return B_field, A_field
 end
@@ -58,8 +58,8 @@ function setup_cartesian_nonuniform_field()
    A = zeros(length(x), length(y), length(z)) # scalar
    A[:, :, :] .= 10e-9
 
-   B_field = TP.getinterp(TP.RectilinearGrid, B, x, y, z)
-   A_field = TP.getinterp_scalar(TP.RectilinearGrid, A, x, y, z)
+   B_field = TP.build_interpolator(TP.RectilinearGrid, B, x, y, z)
+   A_field = TP.build_interpolator(TP.RectilinearGrid, A, x, y, z)
 
    return B_field, A_field
 end
@@ -81,9 +81,9 @@ function setup_time_dependent_field()
    function loader(i)
        if i == 1
            # For demonstration, we assume we load from disk here
-           return TP.getinterp(TP.CartesianGrid, B0, x, y, z)
+           return TP.build_interpolator(TP.CartesianGrid, B0, x, y, z)
        elseif i == 2
-           return TP.getinterp(TP.CartesianGrid, B1, x, y, z)
+           return TP.build_interpolator(TP.CartesianGrid, B1, x, y, z)
        else
            error("Index out of bounds")
        end
@@ -143,7 +143,6 @@ For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a
 ## Related API
 
 ```@docs; canonical=false
-TestParticle.getinterp
-TestParticle.getinterp_scalar
+TestParticle.build_interpolator
 TestParticle.prepare
 ```

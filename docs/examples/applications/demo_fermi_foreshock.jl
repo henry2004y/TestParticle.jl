@@ -296,7 +296,7 @@ f = DisplayAs.PNG(f) #hide
 const δBfunc = let
     x = range(0.5Rₑ, 1.5Rₑ, length = 10000)
     δB = get_B_perturb(x)
-    TP.Field(TP.getinterp(δB, x, 1, 3))
+    TP.Field(TP.build_interpolator(δB, x, 1, 3))
 end
 
 dt = 2.0e-4 # [s]

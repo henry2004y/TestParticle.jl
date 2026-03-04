@@ -65,7 +65,7 @@ prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
 
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
-    return Field(getinterp(gridtype, f, x..., order, bc; kw...))
+    return Field(build_interpolator(gridtype, f, x..., order, bc; kw...))
 end
 
 function _prepare(

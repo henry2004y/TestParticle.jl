@@ -21,9 +21,9 @@ function trace_fieldline(u0, p, tspan::Tuple; mode::Symbol = :both, kw...)
         order = get(kw, :order, 1)
         bc = get(kw, :bc, 1)
         if haskey(kw, :x) && haskey(kw, :y) && haskey(kw, :z)
-            itp = getinterp(p, kw[:x], kw[:y], kw[:z], order, bc)
+            itp = build_interpolator(p, kw[:x], kw[:y], kw[:z], order, bc)
         elseif haskey(kw, :grid)
-            itp = getinterp(p, makegrid(kw[:grid])..., order, bc)
+            itp = build_interpolator(p, makegrid(kw[:grid])..., order, bc)
         else
             throw(ArgumentError("Missing grid information (x, y, z) or grid object."))
         end

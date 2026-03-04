@@ -49,23 +49,23 @@ import TestParticle as TP
                 Float32(i + j + k)
                     for i in eachindex(x), j in eachindex(y), k in eachindex(z)
             ]
-            nfunc11 = TP.getinterp_scalar(n, x, y, z)
+            nfunc11 = TP.build_interpolator(n, x, y, z)
             @test nfunc11(SA[9, 0, 0]) == 11.85
-            nfunc12 = TP.getinterp_scalar(n, x, y, z, 1, 2)
+            nfunc12 = TP.build_interpolator(n, x, y, z, 1, 2)
             @test nfunc12(SA[20, 0, 0]) == 9.5
-            nfunc13 = TP.getinterp_scalar(n, x, y, z, 1, 3)
+            nfunc13 = TP.build_interpolator(n, x, y, z, 1, 3)
             @test nfunc13(SA[20, 0, 0]) == 12.0
-            nfunc21 = TP.getinterp_scalar(n, x, y, z, 2)
+            nfunc21 = TP.build_interpolator(n, x, y, z, 2)
             @test nfunc21(SA[9, 0, 0]) == 11.898528302013874
-            nfunc22 = TP.getinterp_scalar(n, x, y, z, 2, 2)
+            nfunc22 = TP.build_interpolator(n, x, y, z, 2, 2)
             @test nfunc22(SA[20, 0, 0]) == 9.166666686534882
-            nfunc23 = TP.getinterp_scalar(n, x, y, z, 2, 3)
+            nfunc23 = TP.build_interpolator(n, x, y, z, 2, 3)
             @test nfunc23(SA[20, 0, 0]) == 12.14705765247345
-            nfunc31 = TP.getinterp_scalar(n, x, y, z, 3)
+            nfunc31 = TP.build_interpolator(n, x, y, z, 3)
             @test nfunc31(SA[9, 0, 0]) == 11.882999392215163
-            nfunc32 = TP.getinterp_scalar(n, x, y, z, 3, 2)
+            nfunc32 = TP.build_interpolator(n, x, y, z, 3, 2)
             @test nfunc32(SA[20, 0, 0]) == 9.124999547351358
-            nfunc33 = TP.getinterp_scalar(n, x, y, z, 3, 3)
+            nfunc33 = TP.build_interpolator(n, x, y, z, 3, 3)
             @test nfunc33(SA[20, 0, 0]) == 12.191176189381315
         end
 
@@ -76,11 +76,11 @@ import TestParticle as TP
             # Vector field
             B = fill(0.0, 3, length(r), length(θ), length(ϕ))
             B[1, :, :, :] .= 1.0
-            Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
+            Bfunc = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
             @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
             # Scalar field
             A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
+            Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test Afunc(SA[0, 0, 0]) == 1.0
         end
@@ -92,11 +92,11 @@ import TestParticle as TP
             # Vector field
             B = fill(0.0, 3, length(r), length(θ), length(ϕ))
             B[1, :, :, :] .= 1.0
-            Bfunc = TP.getinterp(TP.StructuredGrid, B, r, θ, ϕ)
+            Bfunc = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
             @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
             # Scalar field
             A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.getinterp_scalar(TP.StructuredGrid, A, r, θ, ϕ)
+            Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test Afunc(SA[0, 0, 0]) == 1.0
         end
@@ -116,10 +116,10 @@ import TestParticle as TP
         B_svector = reinterpret(reshape, SVector{3, Float64}, B_array)
 
         # Interpolator using Array{Float64, 4} (Implicitly converted internally)
-        itp_implicit = TP.get_interpolator(TP.CartesianGrid, B_array, gridx, gridy, gridz)
+        itp_implicit = TP.build_interpolator(TP.CartesianGrid, B_array, gridx, gridy, gridz)
 
         # Interpolator using Array{SVector, 3} (Explicitly passed)
-        itp_explicit = TP.getinterp(TP.CartesianGrid, B_svector, gridx, gridy, gridz)
+        itp_explicit = TP.build_interpolator(TP.CartesianGrid, B_svector, gridx, gridy, gridz)
 
         # Compare
         pt = SA[5.5, 5.5, 5.5]
@@ -134,8 +134,8 @@ import TestParticle as TP
         B_array_sph = rand(3, 10, 10, 10)
         B_svector_sph = reinterpret(reshape, SVector{3, Float64}, B_array_sph)
 
-        itp_sph_implicit = TP.get_interpolator(TP.StructuredGrid, B_array_sph, r, theta, phi)
-        itp_sph_explicit = TP.getinterp(TP.StructuredGrid, B_svector_sph, r, theta, phi)
+        itp_sph_implicit = TP.build_interpolator(TP.StructuredGrid, B_array_sph, r, theta, phi)
+        itp_sph_explicit = TP.build_interpolator(TP.StructuredGrid, B_svector_sph, r, theta, phi)
 
         pt_cart = SA[5.0, 0.0, 0.0] # On x-axis
 
@@ -146,8 +146,8 @@ import TestParticle as TP
         B_array_2d = rand(3, nx, ny)
         B_svector_2d = reinterpret(reshape, SVector{3, Float64}, B_array_2d)
 
-        itp_2d_implicit = TP.getinterp(TP.CartesianGrid, B_array_2d, gridx, gridy)
-        itp_2d_explicit = TP.getinterp(TP.CartesianGrid, B_svector_2d, gridx, gridy)
+        itp_2d_implicit = TP.build_interpolator(TP.CartesianGrid, B_array_2d, gridx, gridy)
+        itp_2d_explicit = TP.build_interpolator(TP.CartesianGrid, B_svector_2d, gridx, gridy)
 
         pt_2d = SA[5.5, 5.5]
         @test itp_2d_implicit(pt_2d) ≈ itp_2d_explicit(pt_2d)
@@ -163,18 +163,18 @@ import TestParticle as TP
         B = fill(0.0, 3, length(x), length(y), length(z))
         B[1, :, :, :] .= 1.0 # Bx = 1.0
 
-        Bfunc = TP.getinterp(TP.RectilinearGrid, B, x, y, z)
+        Bfunc = TP.build_interpolator(TP.RectilinearGrid, B, x, y, z)
         @test Bfunc(SA[5.0, 5.0, 5.0]) ≈ [1.0, 0.0, 0.0]
 
         # Scalar field
         A = fill(2.0, length(x), length(y), length(z))
-        Afunc = TP.getinterp_scalar(TP.RectilinearGrid, A, x, y, z)
+        Afunc = TP.build_interpolator(TP.RectilinearGrid, A, x, y, z)
         @test Afunc(SA[5.0, 5.0, 5.0]) ≈ 2.0
 
         # Check interpolation values
         # Linear gradient
         A_grad = [i + j + k for i in x, j in y, k in z]
-        Afunc_grad = TP.getinterp_scalar(TP.RectilinearGrid, A_grad, x, y, z)
+        Afunc_grad = TP.build_interpolator(TP.RectilinearGrid, A_grad, x, y, z)
 
         # Center point: 5.0, 5.0, 5.0 -> should match exactly for linear interpolation
         # value = 5.0 + 5.0 + 5.0 = 15.0
@@ -186,7 +186,7 @@ import TestParticle as TP
 
         # SVector array support
         B_sv = [SA[1.0, 0.0, 0.0] for i in x, j in y, k in z]
-        Bfunc_sv = TP.getinterp(TP.RectilinearGrid, B_sv, x, y, z)
+        Bfunc_sv = TP.build_interpolator(TP.RectilinearGrid, B_sv, x, y, z)
         @test Bfunc_sv(SA[5.0, 5.0, 5.0]) ≈ SA[1.0, 0.0, 0.0]
 
         # Non-uniform grid check
@@ -196,7 +196,7 @@ import TestParticle as TP
         A_nu = [sqrt(i) + sqrt(j) + sqrt(k) for i in x_nu, j in y_nu, k in z_nu]
 
         # Check if we can interpolate on this
-        Afunc_nu = TP.getinterp_scalar(TP.RectilinearGrid, A_nu, x_nu, y_nu, z_nu)
+        Afunc_nu = TP.build_interpolator(TP.RectilinearGrid, A_nu, x_nu, y_nu, z_nu)
 
         # Point (4.0, 4.0, 4.0) -> sqrt(4)+sqrt(4)+sqrt(4) = 2+2+2=6
         @test Afunc_nu(SA[4.0, 4.0, 4.0]) ≈ 6.0
@@ -276,9 +276,9 @@ import TestParticle as TP
             # Loader for numerical field
             function loader_num(i)
                 if i == 1
-                    return TP.getinterp(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
+                    return TP.build_interpolator(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
                 elseif i == 2
-                    return TP.getinterp(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
+                    return TP.build_interpolator(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
                 end
             end
 

@@ -41,10 +41,10 @@ function prepare_gc(
     m = @something m species.m
 
     E = TE <: AbstractArray ?
-        getinterp(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
+        build_interpolator(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
         E
     B = TB <: AbstractArray ?
-        getinterp(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
+        build_interpolator(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
         B
 
     X, vpar, q, m, μ = _get_gc_parameters(xv, E, B, q, m)
