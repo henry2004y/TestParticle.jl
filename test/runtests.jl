@@ -171,6 +171,17 @@ end
         param = prepare(r, θ, ϕ, zero_E, B_sph; gridtype = StructuredGrid)
         # Check field interpolation Bz
         @test param[4](SA[1.0, 1.0, 1.0])[3] == 9.888387888463716e-9
+
+        # Test Vector inputs for spherical grid
+        r_vec = collect(r)
+        θ_vec = collect(θ)
+        ϕ_vec = collect(ϕ)
+
+        param_vec = prepare(
+            r_vec, θ_vec, ϕ_vec, zero_E, B_sph;
+            species = Ion(m = 16, q = 1), gridtype = TP.StructuredGrid
+        )
+        @test param_vec[4](SA[1.0, 1.0, 1.0])[3] == 9.888387888463716e-9
     end
 
     @testset "analytical field" begin

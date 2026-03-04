@@ -120,27 +120,27 @@ function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = 1
 end
 
 function prepare(
-        x::T, y::T, E, B, F = ZeroField(); order = 1,
+        x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
         bc = 1, kw...
-    ) where {T <: AbstractRange}
+    )
     return _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
 end
 
 function prepare(
-        x::T, y::T, z::T, E, B, F = ZeroField(); order = 1,
+        x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField(); order = 1,
         bc = 1, gridtype = CartesianGrid, kw...
-    ) where {T <: AbstractRange}
+    )
     return _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
 end
 
 function prepare(
-        x::Base.LogRange, y::T, z::T, E, B, F = ZeroField();
+        x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField();
         order = 1, bc = 2, kw...
-    ) where {T <: AbstractRange}
+    )
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
-function prepare(x::AbstractRange, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
+function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
