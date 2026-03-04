@@ -21,8 +21,6 @@ function TraceFieldlineProblem(u0, p, tspan::Tuple; mode::Symbol = :both)
         Field(p)
     elseif p isa Tuple
         get_BField(p)
-    else
-        p
     end
 
     if mode == :forward
