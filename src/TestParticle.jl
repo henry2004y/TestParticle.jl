@@ -9,7 +9,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution
 using Distributed: pmap
-using StaticArrays: SVector, @SMatrix, MVector, SA, StaticArray, SMatrix
+using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 import ForwardDiff
 import DiffResults
