@@ -330,9 +330,7 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
         if needs_0
             selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
         else # needs 2π only
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(
-                A, phi_dim, 1
-            )
+            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
         end
     end
 
