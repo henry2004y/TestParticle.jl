@@ -97,7 +97,7 @@ Prescribed `species` are `Electron` and `Proton`;
 other species can be manually specified with `m` and `q` keywords or `species = Ion(m̄, q̄)`,
 where `m̄` and `q̄` are the mass and charge numbers respectively.
 
-Direct range input for uniform grid in 1/2/3D is supported.
+Direct range input for uniform grid in 1/2/3D is supported. The grid vectors must be sorted.
 For 1D grid, an additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
 For 3D grid, the default grid type is `CartesianGrid`. To use `StructuredGrid` (spherical) grid, an additional keyword `gridtype` is needed.
 For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
@@ -123,6 +123,8 @@ function prepare(
         x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
         bc = 1, kw...
     )
+    @assert issorted(x) "Grid vector `x` must be sorted."
+    @assert issorted(y) "Grid vector `y` must be sorted."
     return _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
 end
 
@@ -130,6 +132,9 @@ function prepare(
         x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField(); order = 1,
         bc = 1, gridtype = CartesianGrid, kw...
     )
+    @assert issorted(x) "Grid vector `x` must be sorted."
+    @assert issorted(y) "Grid vector `y` must be sorted."
+    @assert issorted(z) "Grid vector `z` must be sorted."
     return _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
 end
 
@@ -137,10 +142,14 @@ function prepare(
         x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField();
         order = 1, bc = 2, kw...
     )
+    @assert issorted(x) "Grid vector `x` must be sorted."
+    @assert issorted(y) "Grid vector `y` must be sorted."
+    @assert issorted(z) "Grid vector `z` must be sorted."
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
 function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
+    @assert issorted(x) "Grid vector `x` must be sorted."
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
