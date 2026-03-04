@@ -20,7 +20,7 @@ end
 
 const FieldInterpolator3D = FieldInterpolator
 
-function (fi::FieldInterpolator)(xu)
+@inbounds function (fi::FieldInterpolator)(xu)
     return fi.itp(xu[1], xu[2], xu[3])
 end
 
@@ -39,7 +39,7 @@ struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-function (fi::FieldInterpolator2D)(xu)
+@inbounds function (fi::FieldInterpolator2D)(xu)
     # 2D interpolation usually involves x and y
     return fi.itp(xu[1], xu[2])
 end
@@ -330,9 +330,7 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
         if needs_0
             selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
         else # needs 2π only
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(
-                A, phi_dim, 1
-            )
+            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
         end
     end
 
