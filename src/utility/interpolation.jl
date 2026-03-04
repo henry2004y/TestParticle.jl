@@ -1,7 +1,5 @@
 # Field interpolations.
 
-@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
-
 """
     AbstractFieldInterpolator
 
@@ -60,7 +58,7 @@ struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
     dir::Int
 end
 
-function (fi::FieldInterpolator1D)(xu)
+@inbounds function (fi::FieldInterpolator1D)(xu)
     return fi.itp(xu[fi.dir])
 end
 
@@ -97,6 +95,8 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
+@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+
 """
     build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
     build_interpolator(A, grids..., order::Int=1, bc::Int=1)
@@ -115,7 +115,8 @@ The input array `A` may be modified in-place for memory optimization.
 """
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -124,7 +125,8 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -138,7 +140,8 @@ end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -147,7 +150,8 @@ end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -205,7 +209,10 @@ function build_interpolator(
     return SphericalFieldInterpolator(itp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A,
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
         As = A
@@ -220,7 +227,10 @@ function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, g
     return FieldInterpolator2D(interp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, order::Int = 1, bc::Int = 3; dir = 1)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
+        order::Int = 1, bc::Int = 3; dir = 1
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
         As = A
