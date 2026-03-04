@@ -33,7 +33,7 @@ getB = r -> dipole(r)
 L_shells = 3.0:1.0:6.0
 seeds = [MVector(L * TP.Rₑ, 0.0, 0.0) for L in L_shells];
 
-# We trace each field line using `trace_fieldline`.
+# We trace each field line using `TraceFieldlineProblem`.
 # The `mode=:both` argument traces in both forward (along B) and backward (against B) directions.
 # `tspan` here represents the arc length to trace.
 
@@ -49,7 +49,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for (i, u0) in enumerate(seeds)
     ## Returns a vector of two ODEProblems (forward and backward)
-    probs = TP.trace_fieldline(u0, getB, s_span; mode = :both)
+    probs = TP.TraceFieldlineProblem(u0, getB, s_span; mode = :both)
 
     ## Solve each problem
     for (j, prob) in enumerate(probs)

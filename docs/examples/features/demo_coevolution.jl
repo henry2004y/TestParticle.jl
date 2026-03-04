@@ -42,7 +42,7 @@ function loader(i)
 
     B_data = fill(SVector{3}(0.0, 0.0, val), length(gx), length(gy), length(gz))
 
-    return TP.getinterp(TP.CartesianGrid, B_data, gx, gy, gz)
+    return TP.build_interpolator(TP.CartesianGrid, B_data, gx, gy, gz)
 end
 
 # Create the time-dependent interpolator

@@ -93,7 +93,7 @@ sol_gc_saving = solve(prob_gc_saving, Vern9(), callback = cb)
 b_lines = ODESolution[]
 for dz in -0.2:0.1:0.2
     u0 = stateinit[1:3] + [0, 0, dz]
-    prob_fl = trace_fieldline(u0, curved_B, (0.0, 3.0), mode = :both)
+    prob_fl = TraceFieldlineProblem(u0, curved_B, (0.0, 3.0), mode = :both)
     push!(b_lines, solve(prob_fl[1], Tsit5()))
     push!(b_lines, solve(prob_fl[2], Tsit5()))
 end

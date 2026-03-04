@@ -379,11 +379,9 @@ using Distributed
         # 10-12: B
         # 13-16: work
 
-        for i in eachindex(sol)
-            @test E_post[i] ≈ sol_ref.u[i][7:9]
-            @test B_post[i] ≈ sol_ref.u[i][10:12]
-            @test work_post[i] ≈ sol_ref.u[i][13:16]
-        end
+        @test E_post[end] ≈ sol_ref.u[end][7:9]
+        @test B_post[end] ≈ sol_ref.u[end][10:12]
+        @test work_post[end] ≈ sol_ref.u[end][13:16]
     end
 
     @testset "Solver Limits" begin

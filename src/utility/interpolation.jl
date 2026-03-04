@@ -1,6 +1,6 @@
 # Field interpolations.
 
-@inline getinterp(A, grid1, args...) = getinterp(CartesianGrid, A, grid1, args...)
+@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
 
 """
     AbstractFieldInterpolator
@@ -17,6 +17,8 @@ A callable struct that wraps a 3D interpolation object.
 struct FieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
+
+const FieldInterpolator3D = FieldInterpolator
 
 function (fi::FieldInterpolator)(xu)
     return fi.itp(xu[1], xu[2], xu[3])
@@ -95,85 +97,61 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
-function getinterp_scalar(A, grid1, grid2, grid3, args...)
-    return getinterp_scalar(CartesianGrid, A, grid1, grid2, grid3, args...)
-end
-
 """
-    getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+    build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
+    build_interpolator(A, grids..., order::Int=1, bc::Int=1)
 
-Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`, and `gridz`.
+Return a function for interpolating field array `A` on the given grids.
 
 # Arguments
 
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
+  - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
   - `order::Int=1`: order of interpolation in [1,2,3].
   - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-  - `dir::Int`: 1/2/3, representing x/y/z direction.
 
 # Notes
 The input array `A` may be modified in-place for memory optimization.
 """
-function getinterp(
-        ::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    )
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    else
-        @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
-    end
-    return get_interpolator(CartesianGrid, A, gridx, gridy, gridz, order, bc)
-end
-
-function getinterp(
-        ::Type{<:RectilinearGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    )
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    else
-        @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
-    end
-    return get_interpolator(RectilinearGrid, A, gridx, gridy, gridz, order, bc)
-end
-
-function getinterp(
-        ::Type{<:StructuredGrid}, A, gridr, gridθ, gridϕ,
-        order::Int = 1, bc::Int = 3
-    )
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    else
-        @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
-    end
-    return get_interpolator(StructuredGrid, A, gridr, gridθ, gridϕ, order, bc)
-end
-
-function getinterp(::Type{<:CartesianGrid}, A, gridx, gridy, order::Int = 1, bc::Int = 2)
-    if eltype(A) <: SVector
-        @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
-        As = A
-    else
-        @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
-        As = reinterpret(reshape, SVector{3, eltype(A)}, A)
-    end
-
-    itp = _get_interp_object(As, order, bc)
-    interp = scale(itp, gridx, gridy)
-
-    return FieldInterpolator2D(interp)
-end
-
-function get_interpolator(
-        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
-        gridx, gridy, gridz, order::Int = 1, bc::Int = 1
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
     ) where {T}
+    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return get_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc)
 end
 
-function get_interpolator(
-        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
-        gridx, gridy, gridz, order::Int = 1, bc::Int = 1
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
     ) where {T}
+    if eltype(A) <: SVector
+        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+    end
+    itp = _get_interp_object(A, order, bc)
+    interp = scale(itp, gridx, gridy, gridz)
+
+    # Return field value at a given location.
+    return FieldInterpolator(interp)
+end
+
+function build_interpolator(
+        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+    ) where {T}
+    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+    As = reinterpret(reshape, SVector{3, T}, A)
+    return build_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
+end
+
+function build_interpolator(
+        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+    ) where {T}
+    if eltype(A) <: SVector
+        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+    end
     if order != 1
         throw(ArgumentError("RectilinearGrid (CartesianNonUniform) only supports order=1 (Linear) interpolation."))
     end
@@ -195,7 +173,54 @@ function get_interpolator(
     return FieldInterpolator(itp)
 end
 
-function getinterp(::Type{<:CartesianGrid}, A, gridx, order::Int = 1, bc::Int = 3; dir = 1)
+function build_interpolator(
+        ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
+        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
+    ) where {T}
+    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+    As = reinterpret(reshape, SVector{3, T}, A)
+    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
+end
+
+function build_interpolator(
+        ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
+        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
+    ) where {T}
+    if eltype(A) <: SVector
+        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
+    end
+    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
+    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
+    is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
+
+    if is_uniform_r
+        itp_unscaled = _get_interp_object(StructuredGrid, A, order, bc)
+        itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
+    else # Non-uniform R (SphericalNonUniformR behavior)
+        bctype = (Flat(), Flat(), Periodic())
+        gridϕ, A = _ensure_full_phi(gridϕ, A)
+        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+    end
+
+    return SphericalFieldInterpolator(itp)
+end
+
+function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2)
+    if eltype(A) <: SVector
+        @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
+        As = A
+    else
+        @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
+        As = reinterpret(reshape, SVector{3, eltype(A)}, A)
+    end
+
+    itp = _get_interp_object(As, order, bc)
+    interp = scale(itp, gridx, gridy)
+
+    return FieldInterpolator2D(interp)
+end
+
+function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, order::Int = 1, bc::Int = 3; dir = 1)
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
         As = A
@@ -209,6 +234,8 @@ function getinterp(::Type{<:CartesianGrid}, A, gridx, order::Int = 1, bc::Int = 
 
     return FieldInterpolator1D(interp, dir)
 end
+
+# Internal Helpers
 
 function _get_bspline(order::Int, periodic::Bool)
     gt = OnCell()
@@ -235,85 +262,38 @@ function _get_bspline(order::Int, periodic::Bool)
     end
 end
 
-function _getinterp(Ax, Ay, Az, order::Int, bc::Int)
-    itpx = _get_interp_object(Ax, order, bc)
-    itpy = _get_interp_object(Ay, order, bc)
-    itpz = _get_interp_object(Az, order, bc)
+function _get_interp_object(A, order::Int, bc::Int)
+    bspline = _get_bspline(order, bc == 2)
 
-    return itpx, itpy, itpz
+    bctype = if bc == 1
+        if eltype(A) <: SVector
+            SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
+        else
+            eltype(eltype(A))(NaN)
+        end
+    elseif bc == 2
+        Periodic()
+    else
+        Flat()
+    end
+
+    return extrapolate(interpolate(A, bspline), bctype)
 end
 
-function _getinterp(gridtype::Type{<:StructuredGrid}, Ax, Ay, Az, order::Int, bc::Int)
-    itpr = _get_interp_object(gridtype, Ax, order, bc)
-    itpθ = _get_interp_object(gridtype, Ay, order, bc)
-    itpϕ = _get_interp_object(gridtype, Az, order, bc)
+function _get_interp_object(::Type{<:StructuredGrid}, A, order::Int, bc::Int)
+    bspline_r = _get_bspline(order, false)
+    bspline_θ = _get_bspline(order, false)
+    bspline_ϕ = _get_bspline(order, true)
 
-    return itpr, itpθ, itpϕ
-end
+    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
 
-"""
-    getinterp_scalar(::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
+    bctype = if eltype(A) <: SVector
+        SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
+    else
+        eltype(A)(NaN)
+    end
 
-Return a function for interpolating scalar array `A` on the grid given by `gridx`, `gridy`, and `gridz`. Currently only 3D arrays are supported.
-
-# Arguments
-
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-  - `dir::Int`: 1/2/3, representing x/y/z direction.
-"""
-function getinterp_scalar(
-        ::Type{<:CartesianGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    )
-    return get_interpolator(CartesianGrid, A, gridx, gridy, gridz, order, bc)
-end
-
-function getinterp_scalar(
-        ::Type{<:RectilinearGrid}, A, gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    )
-    return get_interpolator(RectilinearGrid, A, gridx, gridy, gridz, order, bc)
-end
-
-function getinterp_scalar(
-        ::Type{<:StructuredGrid}, A,
-        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
-    )
-    return get_interpolator(StructuredGrid, A, gridr, gridθ, gridϕ, order, bc)
-end
-
-"""
-    get_interpolator(A, gridx, gridy, gridz, order::Int=1, bc::Int=1)
-    get_interpolator(gridtype, A, grid1, grid2, grid3, order::Int=1, bc::Int=1)
-
-Return a function for interpolating field array `A` on the grid given by `gridx`, `gridy`, and `gridz`.
-
-# Arguments
-
-  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
-  - `A`: field array. For vector field, the first dimension should be 3.
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
-
-# Notes
-The input array `A` may be modified in-place for memory optimization.
-"""
-function get_interpolator(
-        ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
-        gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    ) where {T}
-    As = reinterpret(reshape, SVector{3, T}, A)
-    return get_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc)
-end
-
-function get_interpolator(
-        ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
-        gridx, gridy, gridz, order::Int = 1, bc::Int = 1
-    ) where {T}
-    itp = _get_interp_object(A, order, bc)
-    interp = scale(itp, gridx, gridy, gridz)
-
-    # Return field value at a given location.
-    return FieldInterpolator(interp)
+    return extrapolate(interpolate(A, itp_type), bctype)
 end
 
 function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
@@ -358,70 +338,6 @@ function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
 
     return new_grid_vec, new_A
 end
-
-function get_interpolator(
-        ::Type{<:StructuredGrid},
-        A::AbstractArray{T, 4}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
-    ) where {T}
-    As = reinterpret(reshape, SVector{3, T}, A)
-    return get_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
-end
-
-function get_interpolator(
-        ::Type{<:StructuredGrid},
-        A::AbstractArray{T, 3}, gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
-    ) where {T}
-    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
-    # We check if gridr is an AbstractRange
-    # Base.LogRange is an AbstractRange but not uniform!
-    is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
-
-    if is_uniform_r
-        itp_unscaled = _get_interp_object(StructuredGrid, A, order, bc)
-        itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
-    else # Non-uniform R (SphericalNonUniformR behavior)
-        bctype = (Flat(), Flat(), Periodic())
-        gridϕ, A = _ensure_full_phi(gridϕ, A)
-        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
-    end
-
-    return SphericalFieldInterpolator(itp)
-end
-
-function _get_interp_object(A, order::Int, bc::Int)
-    bspline = _get_bspline(order, bc == 2)
-
-    bctype = if bc == 1
-        if eltype(A) <: SVector
-            SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
-        else
-            eltype(eltype(A))(NaN)
-        end
-    elseif bc == 2
-        Periodic()
-    else
-        Flat()
-    end
-
-    return extrapolate(interpolate(A, bspline), bctype)
-end
-
-function _get_interp_object(::Type{<:StructuredGrid}, A, order::Int, bc::Int)
-    bspline_r = _get_bspline(order, false)
-    bspline_θ = _get_bspline(order, false)
-    bspline_ϕ = _get_bspline(order, true)
-
-    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
-
-    bctype = if eltype(A) <: SVector
-        SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
-    else
-        eltype(A)(NaN)
-    end
-
-    return extrapolate(interpolate(A, itp_type), bctype)
-end
-
 
 # Time-dependent field interpolation.
 

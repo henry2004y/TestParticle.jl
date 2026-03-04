@@ -74,7 +74,7 @@ callback = DiscreteCallback(isoutofdomain, terminate!)
 
 for u0 in seeds
     ## Trace in both directions
-    probs = TP.trace_fieldline(u0, param, s_span; mode = :both)
+    probs = TP.TraceFieldlineProblem(u0, param, s_span; mode = :both)
 
     for prob in probs
         sol = solve(
