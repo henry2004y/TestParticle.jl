@@ -42,18 +42,18 @@ import Magnetostatics as MS
 
         # Test helper function
         # Forward
-        prob = trace_fieldline(stateinit, param, tspan; mode = :forward)
+        prob = TraceFieldlineProblem(stateinit, param, tspan; mode = :forward)
         sol = solve(prob, Tsit5(); callback)
         @test check_L_shell(sol) < tol
 
         # Backward
-        prob_back = trace_fieldline(stateinit, param, tspan; mode = :backward)
+        prob_back = TraceFieldlineProblem(stateinit, param, tspan; mode = :backward)
         sol_back = solve(prob_back, Tsit5(); callback)
         @test check_L_shell(sol_back) < tol
         @test prob_back.tspan[2] < 0
 
         # Both
-        probs = trace_fieldline(stateinit, param, tspan; mode = :both)
+        probs = TraceFieldlineProblem(stateinit, param, tspan; mode = :both)
         @test length(probs) == 2
         sol1 = solve(probs[1], Tsit5(); callback)
         sol2 = solve(probs[2], Tsit5(); callback)
@@ -77,7 +77,7 @@ import Magnetostatics as MS
         stateinit = [0.0, 0.0, 0.0]
         tspan = (0.0, 5.0)
 
-        prob = trace_fieldline(stateinit, param, tspan; mode = :forward)
+        prob = TraceFieldlineProblem(stateinit, param, tspan; mode = :forward)
         sol = solve(prob, Tsit5())
 
         # Relax tolerance slightly for interpolation artifacts

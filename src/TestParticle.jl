@@ -28,7 +28,8 @@ export prepare, prepare_gc, get_gc, get_gc_func
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_normalized, trace_relativistic_normalized,
     trace_gc!,
-    trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!, trace_fieldline!, trace_fieldline,
+    trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!,
+    trace_fieldline!, trace_fieldline, TraceFieldlineProblem,
     get_gc_velocity, full_to_gc, gc_to_full
 export Proton, Electron, Ion
 export Maxwellian, BiMaxwellian, Kappa, BiKappa
