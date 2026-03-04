@@ -49,21 +49,31 @@ import Magnetostatics as MS
         # Backward
         prob_back = TraceFieldlineProblem(stateinit, param, tspan; mode = :backward)
         sol_back = solve(prob_back, Tsit5(); callback)
-        @test check_L_shell(sol_back) < tol
-        @test prob_back.tspan[2] < 0
+        @test check_L_shell(sol_back) < tol && prob_back.tspan[2] < 0
 
         # Both
         probs = TraceFieldlineProblem(stateinit, param, tspan; mode = :both)
-        @test length(probs) == 2
         sol1 = solve(probs[1], Tsit5(); callback)
         sol2 = solve(probs[2], Tsit5(); callback)
-        @test check_L_shell(sol1) < tol
-        @test check_L_shell(sol2) < tol
+        @test check_L_shell(sol1) < tol && check_L_shell(sol2) < tol
 
         # Test equation overloading (out-of-place equation)
         prob_op = ODEProblem(trace_fieldline, SA[stateinit...], tspan, TP.get_BField(param))
         sol_op = solve(prob_op, Tsit5(); callback)
         @test check_L_shell(sol_op) < tol
+
+        # Function parameter
+        prob_func = TraceFieldlineProblem(stateinit, r -> dipole(r), tspan; mode = :forward)
+        sol_func = solve(prob_func, Tsit5(); callback)
+        @test check_L_shell(sol_func) < tol
+
+        # AbstractField parameter
+        prob_field = TraceFieldlineProblem(
+            stateinit, TP.get_BField(param), tspan;
+            mode = :forward
+        )
+        sol_field = solve(prob_field, Tsit5(); callback)
+        @test check_L_shell(sol_field) < tol
     end
 
     @testset "Interpolated field" begin
