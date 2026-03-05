@@ -179,7 +179,7 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
+        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -188,7 +188,7 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
+        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -197,21 +197,39 @@ function build_interpolator(
     θ_min, θ_max = extrema(gridθ)
     ϕ_min, ϕ_max = extrema(gridϕ)
 
-    @assert r_min > 0 "r must be strictly positive."
+    @assert r_min >= 0 "r must be non-negative."
     @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
     @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
 
     has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
     has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
 
-    if has_0 && has_2pi
-        phi_bc = Periodic(OnGrid())
+    ϕ_bc = if has_0 && has_2pi
+        Periodic(OnGrid())
     else
-        phi_bc = Periodic(OnCell())
+        Periodic(OnCell())
     end
 
-    bctype = (Flat(), Flat(), phi_bc)
-    itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+    bctype = (Flat(), Flat(), ϕ_bc)
+
+    if order == 1
+        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+    else
+        interp_type = if order == 2
+            Quadratic
+        elseif order == 3
+            Cubic
+        else
+            throw(ArgumentError("Unsupported interpolation order!"))
+        end
+        itp_type = (
+            BSpline(interp_type(Flat(OnCell()))),
+            BSpline(interp_type(Flat(OnCell()))),
+            BSpline(interp_type(ϕ_bc)),
+        )
+        itp_obj = extrapolate(interpolate(A, itp_type), bctype)
+        itp = scale(itp_obj, gridr, gridθ, gridϕ)
+    end
 
     return SphericalFieldInterpolator(itp)
 end
@@ -295,22 +313,6 @@ function _get_interp_object(A, order::Int, bc::Int)
     end
 
     return extrapolate(interpolate(A, bspline), bctype)
-end
-
-function _get_interp_object(::Type{<:StructuredGrid}, A, order::Int, bc::Int)
-    bspline_r = _get_bspline(order, false)
-    bspline_θ = _get_bspline(order, false)
-    bspline_ϕ = _get_bspline(order, true)
-
-    itp_type = (bspline_r, bspline_θ, bspline_ϕ)
-
-    bctype = if eltype(A) <: SVector
-        SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
-    else
-        eltype(A)(NaN)
-    end
-
-    return extrapolate(interpolate(A, itp_type), bctype)
 end
 
 
