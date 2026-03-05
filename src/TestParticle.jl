@@ -2,7 +2,7 @@ module TestParticle
 
 using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using FastInterpolations: linear_interp, quadratic_interp, cubic_interp, constant_interp,
-    Extrap, NoExtrap
+    Extrap, NoExtrap, PeriodicBC, ZeroCurvBC
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial, EnsembleDistributed,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
