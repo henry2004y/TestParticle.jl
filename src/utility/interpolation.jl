@@ -231,6 +231,9 @@ function build_interpolator(
         itp = scale(itp_obj, gridr, gridθ, gridϕ)
     end
 
+    bctype = (Flat(), Flat(), phi_bc)
+    itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+
     return SphericalFieldInterpolator(itp)
 end
 
