@@ -38,7 +38,6 @@ struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
 end
 
 @inbounds function (fi::FieldInterpolator2D)(xu)
-    # 2D interpolation usually involves x and y
     return fi.itp((xu[1], xu[2]))
 end
 
@@ -81,7 +80,6 @@ function (fi::SphericalFieldInterpolator)(xu)
     rθϕ = cart2sph(xu)
     res = fi.itp(rθϕ)
     if length(res) > 1
-        # Convert vector result from spherical to cartesian basis
         Br, Bθ, Bϕ = res
         return sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
     else
@@ -109,26 +107,25 @@ function _get_extrap_mode(bc)
 end
 
 function _fastinterp(grids, A, order, bc)
-    T_A = eltype(A)
-    T_F = T_A <: SVector ? eltype(T_A) : T_A
-    T_F = T_F <: AbstractFloat ? T_F : Float64
-    matched_grids = map(g -> _match_grid_type(g, T_F), grids)
-
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
-        return linear_interp(matched_grids, A; extrap = extrap_mode)
+        return linear_interp(grids, A; extrap = extrap_mode)
     elseif order == 2
-        return quadratic_interp(matched_grids, A; extrap = extrap_mode)
+        return quadratic_interp(grids, A; extrap = extrap_mode)
     elseif order == 3
         return cubic_interp(grids, A; extrap = extrap_mode)
     else
-        return constant_interp(matched_grids, A; extrap = extrap_mode)
+        return constant_interp(grids, A; extrap = extrap_mode)
     end
 end
 
-@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+@inline build_interpolator(A, grid1, args...) =
+    build_interpolator(FastInterpolationsBackend(), CartesianGrid, A, grid1, args...)
+@inline build_interpolator(gridtype::Type, A, args...) =
+    build_interpolator(FastInterpolationsBackend(), gridtype, A, args...)
 
 """
+    build_interpolator(backend, gridtype, A, grids..., order::Int=1, bc::Int=3)
     build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=3)
     build_interpolator(A, grids..., order::Int=1, bc::Int=3)
 
@@ -136,6 +133,7 @@ Return a function for interpolating field array `A` on the given grids.
 
 # Arguments
 
+  - `backend`: `FastInterpolationsBackend()` (default) or `InterpolationsBackend()`.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
   - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
   - `order::Int=1`: order of interpolation in [1,2,3].
@@ -145,17 +143,17 @@ Return a function for interpolating field array `A` on the given grids.
 The input array `A` may be modified in-place for memory optimization.
 """
 function build_interpolator(
-        ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
+        b::FastInterpolationsBackend, ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 3
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(b, CartesianGrid, As, gridx, gridy, gridz, order, bc)
 end
 
 function build_interpolator(
-        ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
+        ::FastInterpolationsBackend, ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 3
     ) where {T}
@@ -163,22 +161,21 @@ function build_interpolator(
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
-    # Return field value at a given location.
     return FieldInterpolator(itp)
 end
 
 function build_interpolator(
-        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
+        b::FastInterpolationsBackend, ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 3
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(b, RectilinearGrid, As, gridx, gridy, gridz, order, bc)
 end
 
 function build_interpolator(
-        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
+        ::FastInterpolationsBackend, ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 3
     ) where {T}
@@ -194,28 +191,26 @@ function build_interpolator(
 end
 
 function build_interpolator(
-        ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
+        b::FastInterpolationsBackend, ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
         gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
+    return build_interpolator(b, StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
 end
 
 function build_interpolator(
-        ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
+        ::FastInterpolationsBackend, ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
         gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 3
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
-    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
     is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
 
     if is_uniform_r
         itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
-    else # Non-uniform R (SphericalNonUniformR behavior)
+    else
         gridϕ, A = _ensure_full_phi(gridϕ, A)
         itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
     end
@@ -224,7 +219,7 @@ function build_interpolator(
 end
 
 function build_interpolator(
-        ::Type{<:CartesianGrid}, A,
+        ::FastInterpolationsBackend, ::Type{<:CartesianGrid}, A,
         gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 3
     )
     if eltype(A) <: SVector
@@ -240,7 +235,7 @@ function build_interpolator(
 end
 
 function build_interpolator(
-        ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
+        ::FastInterpolationsBackend, ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
         order::Int = 1, bc::Int = 3; dir = 1
     )
     if eltype(A) <: SVector
@@ -252,7 +247,6 @@ function build_interpolator(
     end
 
     itp = _fastinterp((gridx,), As, order, bc)
-
     return FieldInterpolator1D(itp, dir)
 end
 

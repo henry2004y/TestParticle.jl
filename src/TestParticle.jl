@@ -3,6 +3,7 @@ module TestParticle
 using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using FastInterpolations: linear_interp, quadratic_interp, cubic_interp, constant_interp,
     Extrap, NoExtrap, PeriodicBC, ZeroCurvBC
+import Interpolations
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial, EnsembleDistributed,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
@@ -40,12 +41,15 @@ export get_gyrofrequency,
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
+export AbstractInterpolationBackend, FastInterpolationsBackend, InterpolationsBackend
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, remake
 
 include("types.jl")
 include("utility/utility.jl")
+include("utility/interp_backends.jl")
 include("utility/fastinterpolation.jl")
+include("utility/interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
 include("gc.jl")
