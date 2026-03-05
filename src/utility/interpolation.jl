@@ -1,7 +1,5 @@
 # Field interpolations.
 
-@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
-
 """
     AbstractFieldInterpolator
 
@@ -60,7 +58,7 @@ struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
     dir::Int
 end
 
-function (fi::FieldInterpolator1D)(xu)
+@inbounds function (fi::FieldInterpolator1D)(xu)
     return fi.itp(xu[fi.dir])
 end
 
@@ -97,6 +95,8 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
+@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+
 """
     build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
     build_interpolator(A, grids..., order::Int=1, bc::Int=1)
@@ -115,7 +115,8 @@ The input array `A` may be modified in-place for memory optimization.
 """
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -124,7 +125,8 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -138,7 +140,8 @@ end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -147,7 +150,8 @@ end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
-        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
+        order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -189,23 +193,33 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
-    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
-    is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
+    r_min, r_max = extrema(gridr)
+    θ_min, θ_max = extrema(gridθ)
+    ϕ_min, ϕ_max = extrema(gridϕ)
 
-    if is_uniform_r
-        itp_unscaled = _get_interp_object(StructuredGrid, A, order, bc)
-        itp = scale(itp_unscaled, gridr, gridθ, gridϕ)
-    else # Non-uniform R (SphericalNonUniformR behavior)
-        bctype = (Flat(), Flat(), Periodic())
-        gridϕ, A = _ensure_full_phi(gridϕ, A)
-        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+    @assert r_min > 0 "r must be strictly positive."
+    @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
+    @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
+
+    has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
+    has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
+
+    if has_0 && has_2pi
+        phi_bc = Periodic(OnGrid())
+    else
+        phi_bc = Periodic(OnCell())
     end
+
+    bctype = (Flat(), Flat(), phi_bc)
+    itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
 
     return SphericalFieldInterpolator(itp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A,
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
         As = A
@@ -220,7 +234,10 @@ function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, g
     return FieldInterpolator2D(interp)
 end
 
-function build_interpolator(::Type{<:CartesianGrid}, A, gridx::AbstractVector, order::Int = 1, bc::Int = 3; dir = 1)
+function build_interpolator(
+        ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
+        order::Int = 1, bc::Int = 3; dir = 1
+    )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
         As = A
@@ -296,46 +313,6 @@ function _get_interp_object(::Type{<:StructuredGrid}, A, order::Int, bc::Int)
     return extrapolate(interpolate(A, itp_type), bctype)
 end
 
-function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
-    min_phi, max_phi = extrema(gridϕ)
-    needs_0 = !isapprox(min_phi, 0, atol = 1.0e-5)
-    needs_2pi = !isapprox(max_phi, 2π, atol = 1.0e-5)
-
-    if !needs_0 && !needs_2pi
-        return gridϕ, A
-    end
-
-    new_grid_vec = collect(gridϕ)
-    if needs_0
-        pushfirst!(new_grid_vec, 0.0)
-    end
-    if needs_2pi
-        push!(new_grid_vec, 2π)
-    end
-
-    phi_dim = N
-    new_A = Array{T, N}(undef, (size(A)[1:(end - 1)]..., length(new_grid_vec)))
-
-    start_idx = needs_0 ? 2 : 1
-    end_idx = start_idx + length(gridϕ) - 1
-
-    selectdim(new_A, phi_dim, start_idx:end_idx) .= A
-
-    if needs_0
-        src_idx_for_0 = size(A, phi_dim)
-        selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
-    end
-
-    if needs_2pi
-        if needs_0
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
-        else # needs 2π only
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
-        end
-    end
-
-    return new_grid_vec, new_A
-end
 
 # Time-dependent field interpolation.
 
