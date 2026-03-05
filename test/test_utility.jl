@@ -70,7 +70,7 @@ import TestParticle as TP
         end
 
         begin # spherical interpolation
-            r = range(0, 10, length = 11)
+            r = range(0.1, 10, length = 11)
             θ = range(0, π, length = 11)
             ϕ = range(0, 2π, length = 11)
             # Vector field
@@ -83,6 +83,17 @@ import TestParticle as TP
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test Afunc(SA[0, 0, 0]) == 1.0
+
+            # High order spherical interpolation
+            Bfunc2 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 2)
+            @test Bfunc2(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
+            Afunc2 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 2)
+            @test Afunc2(SA[1, 1, 1]) ≈ 1.0
+
+            Bfunc3 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 3)
+            @test Bfunc3(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
+            Afunc3 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 3)
+            @test Afunc3(SA[1, 1, 1]) ≈ 1.0
         end
 
         begin # non-uniform spherical interpolation
