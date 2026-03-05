@@ -109,16 +109,20 @@ function _get_extrap_mode(bc)
 end
 
 
-function _fastinterp(grids, A, order, bc)
+function _fastinterp(grids, A, order, bc; spline_bc = nothing)
     extrap_mode = _get_extrap_mode(bc)
     if order == 1
         return linear_interp(grids, A; extrap = extrap_mode)
     elseif order == 2
-        return quadratic_interp(grids, A; extrap = extrap_mode)
+        kwargs = spline_bc !== nothing ? (; extrap = extrap_mode, bc = spline_bc) : (; extrap = extrap_mode)
+        return quadratic_interp(grids, A; kwargs...)
     elseif order == 3
-        return cubic_interp(grids, A; extrap = extrap_mode)
-    else
+        kwargs = spline_bc !== nothing ? (; extrap = extrap_mode, bc = spline_bc) : (; extrap = extrap_mode)
+        return cubic_interp(grids, A; kwargs...)
+    elseif order == 0
         return constant_interp(grids, A; extrap = extrap_mode)
+    else
+        throw(ArgumentError("Unsupported interpolation order! Expected order in [1, 2, 3]."))
     end
 end
 
@@ -205,16 +209,24 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
-    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
-    is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
+    r_min, r_max = extrema(gridr)
+    θ_min, θ_max = extrema(gridθ)
+    ϕ_min, ϕ_max = extrema(gridϕ)
 
-    if is_uniform_r
-        itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
-    else # Non-uniform R (SphericalNonUniformR behavior)
-        gridϕ, A = _ensure_full_phi(gridϕ, A)
-        itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
+    @assert r_min > 0 "r must be strictly positive."
+    @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
+    @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
+
+    has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
+    has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
+    if has_0 && has_2pi
+        phi_bc = PeriodicBC(endpoint = :inclusive)
+    else
+        phi_bc = PeriodicBC(endpoint = :exclusive, period = 2π)
     end
+    #TODO switch to constant extrapolation later
+    spline_bc = (ZeroCurvBC(), ZeroCurvBC(), phi_bc)
+    itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc; spline_bc)
 
     return SphericalFieldInterpolator(itp)
 end
@@ -252,46 +264,6 @@ function build_interpolator(
     return FieldInterpolator1D(itp, dir)
 end
 
-function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
-    min_phi, max_phi = extrema(gridϕ)
-    needs_0 = !isapprox(min_phi, 0, atol = 1.0e-5)
-    needs_2pi = !isapprox(max_phi, 2π, atol = 1.0e-5)
-
-    if !needs_0 && !needs_2pi
-        return gridϕ, A
-    end
-
-    new_grid_vec = collect(gridϕ)
-    if needs_0
-        pushfirst!(new_grid_vec, 0.0)
-    end
-    if needs_2pi
-        push!(new_grid_vec, 2π)
-    end
-
-    phi_dim = N
-    new_A = Array{T, N}(undef, (size(A)[1:(end - 1)]..., length(new_grid_vec)))
-
-    start_idx = needs_0 ? 2 : 1
-    end_idx = start_idx + length(gridϕ) - 1
-
-    selectdim(new_A, phi_dim, start_idx:end_idx) .= A
-
-    if needs_0
-        src_idx_for_0 = size(A, phi_dim)
-        selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
-    end
-
-    if needs_2pi
-        if needs_0
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
-        else # needs 2π only
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
-        end
-    end
-
-    return new_grid_vec, new_A
-end
 
 # Time-dependent field interpolation.
 

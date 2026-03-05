@@ -73,7 +73,7 @@ import TestParticle as TP
         end
 
         begin # spherical interpolation
-            r = range(0, 10, length = 11)
+            r = range(1.0, 10.0, length = 11)
             θ = range(0, π, length = 11)
             ϕ = range(0, 2π, length = 11)
             # Vector field
