@@ -239,7 +239,7 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A,
-        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 1
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
@@ -257,7 +257,7 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
-        order::Int = 1, bc::Int = 3; dir = 1
+        order::Int = 1, bc::Int = 1; dir = 1
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
