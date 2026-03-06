@@ -492,5 +492,3 @@ include("test_gc.jl")
 include("test_hybrid.jl")
 
 include("test_boris_kernel.jl")
-
-include("test_interpolations_backend.jl")

@@ -64,12 +64,8 @@ get_EField(param) = param[3]
 prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
 
-function prepare_field(
-        f::AbstractArray, x...;
-        gridtype, order, bc,
-        backend::AbstractInterpolationBackend = FastInterpolationsBackend(), kw...
-    )
-    return Field(build_interpolator(backend, gridtype, f, x..., order, bc; kw...))
+function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
+    return Field(build_interpolator(gridtype, f, x..., order, bc; kw...))
 end
 
 function _prepare(

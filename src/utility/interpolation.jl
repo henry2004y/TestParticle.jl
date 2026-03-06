@@ -1,75 +1,130 @@
-# Field interpolations using the Interpolations.jl backend.
+# Field interpolations.
 
 """
-    TupleCallAdaptor{T}
+    AbstractFieldInterpolator
 
-Wraps an Interpolations.jl interpolant so it can be called with a single
-tuple argument, matching the call convention used by `FieldInterpolator`.
+Abstract type for all field interpolators.
 """
-struct TupleCallAdaptor{T}
+abstract type AbstractFieldInterpolator <: Function end
+
+"""
+    FieldInterpolator{T}
+
+A callable struct that wraps a 3D interpolation object.
+"""
+struct FieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-Adapt.adapt_structure(to, a::TupleCallAdaptor) = TupleCallAdaptor(Adapt.adapt(to, a.itp))
+const FieldInterpolator3D = FieldInterpolator
 
-@inline (a::TupleCallAdaptor{T})(t::NTuple{1}) where {T} = a.itp(t[1])
-@inline (a::TupleCallAdaptor{T})(t::NTuple{2}) where {T} = a.itp(t[1], t[2])
-@inline (a::TupleCallAdaptor{T})(t::NTuple{3}) where {T} = a.itp(t[1], t[2], t[3])
-@inline (a::TupleCallAdaptor{T})(t::AbstractVector) where {T} = a.itp(t[1], t[2], t[3])
+@inbounds function (fi::FieldInterpolator)(xu)
+    return fi.itp(xu[1], xu[2], xu[3])
+end
 
-function _get_bspline(order::Int, periodic::Bool)
-    gt = Interpolations.OnCell()
-    interp_type = if order == 1
-        Interpolations.Linear
-    elseif order == 2
-        Interpolations.Quadratic
-    elseif order == 3
-        Interpolations.Cubic
+function (fi::FieldInterpolator)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp))
+
+"""
+    FieldInterpolator2D{T}
+
+A callable struct that wraps a 2D interpolation object.
+"""
+struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
+    itp::T
+end
+
+@inbounds function (fi::FieldInterpolator2D)(xu)
+    # 2D interpolation usually involves x and y
+    return fi.itp(xu[1], xu[2])
+end
+
+function (fi::FieldInterpolator2D)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator2D) = FieldInterpolator2D(Adapt.adapt(to, fi.itp))
+
+"""
+    FieldInterpolator1D{T}
+
+A callable struct that wraps a 1D interpolation object.
+"""
+struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
+    itp::T
+    dir::Int
+end
+
+@inbounds function (fi::FieldInterpolator1D)(xu)
+    return fi.itp(xu[fi.dir])
+end
+
+function (fi::FieldInterpolator1D)(xu, t)
+    return fi(xu)
+end
+
+Adapt.adapt_structure(to, fi::FieldInterpolator1D) = FieldInterpolator1D(Adapt.adapt(to, fi.itp), fi.dir)
+
+"""
+    SphericalFieldInterpolator{T}
+
+A callable struct for spherical grid interpolation (scalar or combined vector).
+"""
+struct SphericalFieldInterpolator{T} <: AbstractFieldInterpolator
+    itp::T
+end
+
+function (fi::SphericalFieldInterpolator)(xu)
+    r_val, θ_val, ϕ_val = cart2sph(xu)
+    res = fi.itp(r_val, θ_val, ϕ_val)
+    if length(res) > 1
+        # Convert vector result from spherical to cartesian basis
+        Br, Bθ, Bϕ = res
+        return sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
     else
-        throw(ArgumentError("Unsupported interpolation order!"))
-    end
-
-    if periodic
-        return Interpolations.BSpline(interp_type(Interpolations.Periodic(gt)))
-    else
-        if interp_type == Interpolations.Linear
-            return Interpolations.BSpline(Interpolations.Linear())
-        else
-            return Interpolations.BSpline(interp_type(Interpolations.Flat(gt)))
-        end
+        return res
     end
 end
 
-function _get_interp_object(A, order::Int, bc::Int)
-    bspline = _get_bspline(order, bc == 2)
-
-    bctype = if bc == 1
-        if eltype(A) <: SVector
-            SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
-        else
-            eltype(A)(NaN)
-        end
-    elseif bc == 2
-        Interpolations.Periodic()
-    else
-        Interpolations.Flat()
-    end
-
-    return Interpolations.extrapolate(Interpolations.interpolate(A, bspline), bctype)
+function (fi::SphericalFieldInterpolator)(xu, t)
+    return fi(xu)
 end
 
+Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
+
+@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+
+"""
+    build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
+    build_interpolator(A, grids..., order::Int=1, bc::Int=1)
+
+Return a function for interpolating field array `A` on the given grids.
+
+# Arguments
+
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
+  - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
+  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+
+# Notes
+The input array `A` may be modified in-place for memory optimization.
+"""
 function build_interpolator(
-        b::InterpolationsBackend, ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
+        ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(b, CartesianGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc)
 end
 
 function build_interpolator(
-        ::InterpolationsBackend, ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
+        ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 1
     ) where {T}
@@ -77,22 +132,24 @@ function build_interpolator(
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
     itp = _get_interp_object(A, order, bc)
-    interp = Interpolations.scale(itp, gridx, gridy, gridz)
-    return FieldInterpolator(TupleCallAdaptor(interp))
+    interp = scale(itp, gridx, gridy, gridz)
+
+    # Return field value at a given location.
+    return FieldInterpolator(interp)
 end
 
 function build_interpolator(
-        b::InterpolationsBackend, ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
+        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(b, RectilinearGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
 end
 
 function build_interpolator(
-        ::InterpolationsBackend, ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
+        ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::Int = 1
     ) where {T}
@@ -110,29 +167,27 @@ function build_interpolator(
             T(NaN)
         end
     elseif bc == 2
-        Interpolations.Periodic()
+        Periodic()
     else
-        Interpolations.Flat()
+        Flat()
     end
 
-    itp = Interpolations.extrapolate(
-        Interpolations.interpolate!((gridx, gridy, gridz), A, Interpolations.Gridded(Interpolations.Linear())),
-        bctype
-    )
-    return FieldInterpolator(TupleCallAdaptor(itp))
+    itp = extrapolate(interpolate!((gridx, gridy, gridz), A, Gridded(Linear())), bctype)
+
+    return FieldInterpolator(itp)
 end
 
 function build_interpolator(
-        b::InterpolationsBackend, ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
+        ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
         gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(b, StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
+    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
 end
 
 function build_interpolator(
-        ::InterpolationsBackend, ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
+        ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
         gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
     ) where {T}
     if eltype(A) <: SVector
@@ -150,43 +205,40 @@ function build_interpolator(
     has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
 
     ϕ_bc = if has_0 && has_2pi
-        Interpolations.Periodic(Interpolations.OnGrid())
+        Periodic(OnGrid())
     else
-        Interpolations.Periodic(Interpolations.OnCell())
+        Periodic(OnCell())
     end
 
-    bctype = (Interpolations.Flat(), Interpolations.Flat(), ϕ_bc)
+    bctype = (Flat(), Flat(), ϕ_bc)
 
     if order == 1
-        itp = Interpolations.extrapolate(
-            Interpolations.interpolate!(
-                (gridr, gridθ, gridϕ), A,
-                Interpolations.Gridded(Interpolations.Linear())
-            ),
-            bctype
-        )
+        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
     else
         interp_type = if order == 2
-            Interpolations.Quadratic
+            Quadratic
         elseif order == 3
-            Interpolations.Cubic
+            Cubic
         else
             throw(ArgumentError("Unsupported interpolation order!"))
         end
         itp_type = (
-            Interpolations.BSpline(interp_type(Interpolations.Flat(Interpolations.OnCell()))),
-            Interpolations.BSpline(interp_type(Interpolations.Flat(Interpolations.OnCell()))),
-            Interpolations.BSpline(interp_type(ϕ_bc)),
+            BSpline(interp_type(Flat(OnCell()))),
+            BSpline(interp_type(Flat(OnCell()))),
+            BSpline(interp_type(ϕ_bc)),
         )
-        itp_obj = Interpolations.extrapolate(Interpolations.interpolate(A, itp_type), bctype)
-        itp = Interpolations.scale(itp_obj, gridr, gridθ, gridϕ)
+        itp_obj = extrapolate(interpolate(A, itp_type), bctype)
+        itp = scale(itp_obj, gridr, gridθ, gridϕ)
     end
 
-    return SphericalFieldInterpolator(TupleCallAdaptor(itp))
+    bctype = (Flat(), Flat(), phi_bc)
+    itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
+
+    return SphericalFieldInterpolator(itp)
 end
 
 function build_interpolator(
-        ::InterpolationsBackend, ::Type{<:CartesianGrid}, A,
+        ::Type{<:CartesianGrid}, A,
         gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2
     )
     if eltype(A) <: SVector
@@ -198,12 +250,13 @@ function build_interpolator(
     end
 
     itp = _get_interp_object(As, order, bc)
-    interp = Interpolations.scale(itp, gridx, gridy)
-    return FieldInterpolator2D(TupleCallAdaptor(interp))
+    interp = scale(itp, gridx, gridy)
+
+    return FieldInterpolator2D(interp)
 end
 
 function build_interpolator(
-        ::InterpolationsBackend, ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
+        ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
         order::Int = 1, bc::Int = 3; dir = 1
     )
     if eltype(A) <: SVector
@@ -215,6 +268,124 @@ function build_interpolator(
     end
 
     itp = _get_interp_object(As, order, bc)
-    interp = Interpolations.scale(itp, gridx)
-    return FieldInterpolator1D(TupleCallAdaptor(interp), dir)
+    interp = scale(itp, gridx)
+
+    return FieldInterpolator1D(interp, dir)
+end
+
+# Internal Helpers
+
+function _get_bspline(order::Int, periodic::Bool)
+    gt = OnCell()
+
+    interp_type = if order == 1
+        Linear
+    elseif order == 2
+        Quadratic
+    elseif order == 3
+        Cubic
+    else
+        throw(ArgumentError("Unsupported interpolation order!"))
+    end
+
+    if periodic
+        return BSpline(interp_type(Periodic(gt)))
+    else
+        # Linear() is special as it doesn't take an argument.
+        if interp_type == Linear
+            return BSpline(Linear())
+        else
+            return BSpline(interp_type(Flat(gt)))
+        end
+    end
+end
+
+function _get_interp_object(A, order::Int, bc::Int)
+    bspline = _get_bspline(order, bc == 2)
+
+    bctype = if bc == 1
+        if eltype(A) <: SVector
+            SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
+        else
+            eltype(eltype(A))(NaN)
+        end
+    elseif bc == 2
+        Periodic()
+    else
+        Flat()
+    end
+
+    return extrapolate(interpolate(A, bspline), bctype)
+end
+
+
+# Time-dependent field interpolation.
+
+"""
+    LazyTimeInterpolator{T, F, L}
+
+A callable struct for handling time-dependent fields with lazy loading and linear time interpolation.
+
+# Fields
+
+- `times::Vector{T}`: Sorted vector of time points.
+- `loader::L`: Function `i -> field` that loads the field at index `i`.
+- `buffer::Dict{Int, F}`: Cache for loaded fields.
+- `lock::ReentrantLock`: Lock for thread safety.
+"""
+struct LazyTimeInterpolator{T, F, L} <: Function
+    times::Vector{T}
+    loader::L
+    buffer::Dict{Int, F}
+    lock::ReentrantLock
+end
+
+function LazyTimeInterpolator(times::AbstractVector, loader::Function)
+    # Determine the field type by loading the first field
+    f1 = loader(1)
+    return _LazyTimeInterpolator(times, loader, f1)
+end
+
+function _LazyTimeInterpolator(times::AbstractVector, loader::Function, f1::F) where {F}
+    buffer = Dict{Int, F}(1 => f1)
+    lock = ReentrantLock()
+    return LazyTimeInterpolator{eltype(times), F, typeof(loader)}(
+        times, loader, buffer, lock
+    )
+end
+
+function (itp::LazyTimeInterpolator)(x, t)
+    # Find the time interval [t1, t2] such that t1 <= t <= t2 (assume times is sorted)
+    idx = searchsortedlast(itp.times, t)
+
+    # Handle out-of-bounds
+    if idx == 0
+        return _get_field!(itp, 1)(x) # clamp to start
+    elseif idx >= length(itp.times)
+        return _get_field!(itp, length(itp.times))(x) # clamp to end
+    end
+
+    t1 = itp.times[idx]
+    t2 = itp.times[idx + 1]
+
+    w = (t - t1) / (t2 - t1) # linear weights
+
+    # Load fields (lazily)
+    f1 = _get_field!(itp, idx)
+    f2 = _get_field!(itp, idx + 1)
+
+    return (1 - w) * f1(x) + w * f2(x)
+end
+
+function _get_field!(itp::LazyTimeInterpolator, idx::Int)
+    return lock(itp.lock) do
+        if !haskey(itp.buffer, idx)
+            # Remove far-away indices
+            filter!(p -> abs(p.first - idx) <= 1, itp.buffer)
+
+            field = itp.loader(idx)
+            itp.buffer[idx] = field
+        end
+        return itp.buffer[idx]
+    end
 end
