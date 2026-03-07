@@ -152,5 +152,6 @@ function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = 1, di
     @assert issorted(x) "Grid vector `x` must be sorted."
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
+
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)

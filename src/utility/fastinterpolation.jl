@@ -122,6 +122,30 @@ function _fastinterp(grids, A, order, bc)
     end
 end
 
+# Spherical interpolation: r and θ always extrapolate with NaN, ϕ is always periodic.
+# This matches interpolation.jl's pattern of Flat()+Flat()+Periodic() per axis.
+# When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is used
+# for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
+function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
+    T = eltype(A)
+    nan_val = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
+    extrap_nd = (FillExtrap(nan_val), FillExtrap(nan_val), Extrap(:wrap))
+    ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
+    if order == 1
+        return linear_interp(grids, A; extrap = extrap_nd)
+    elseif order == 2
+        # FastInterpolations quadratic does not support PeriodicBC.
+        # We use ZeroCurvBC for all axes; Extrap(:wrap) in extrap_nd handles periodicity.
+        bc_quad = (ZeroCurvBC(), ZeroCurvBC(), ZeroCurvBC())
+        return quadratic_interp(grids, A; bc = bc_quad, extrap = extrap_nd)
+    elseif order == 3
+        bc_cubic = (ZeroCurvBC(), ZeroCurvBC(), ϕ_bc)
+        return cubic_interp(grids, A; bc = bc_cubic, extrap = extrap_nd)
+    else
+        return constant_interp(grids, A; extrap = extrap_nd)
+    end
+end
+
 @inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
 
 """
@@ -205,17 +229,19 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-    # Detect if uniform grid (old Spherical) or non-uniform r (old SphericalNonUniformR)
-    # We check if gridr is an AbstractRange, e.g. Base.LogRange is an AbstractRange but not uniform!
-    is_uniform_r = gridr isa AbstractRange && !(gridr isa Base.LogRange)
+    r_min, r_max = extrema(gridr)
+    θ_min, θ_max = extrema(gridθ)
+    ϕ_min, ϕ_max = extrema(gridϕ)
 
-    if is_uniform_r
-        itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
-    else # Non-uniform R (SphericalNonUniformR behavior)
-        gridϕ, A = _ensure_full_phi(gridϕ, A)
-        itp = _fastinterp((gridr, gridθ, gridϕ), A, order, bc)
-    end
+    @assert r_min >= 0 "r must be non-negative."
+    @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
+    @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
 
+    has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
+    has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
+    ϕ_inclusive = has_0 && has_2pi  # grid covers full period with both endpoints
+
+    itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, ϕ_inclusive)
     return SphericalFieldInterpolator(itp)
 end
 
@@ -252,46 +278,6 @@ function build_interpolator(
     return FieldInterpolator1D(itp, dir)
 end
 
-function _ensure_full_phi(gridϕ, A::AbstractArray{T, N}) where {T, N}
-    min_phi, max_phi = extrema(gridϕ)
-    needs_0 = !isapprox(min_phi, 0, atol = 1.0e-5)
-    needs_2pi = !isapprox(max_phi, 2π, atol = 1.0e-5)
-
-    if !needs_0 && !needs_2pi
-        return gridϕ, A
-    end
-
-    new_grid_vec = collect(gridϕ)
-    if needs_0
-        pushfirst!(new_grid_vec, 0.0)
-    end
-    if needs_2pi
-        push!(new_grid_vec, 2π)
-    end
-
-    phi_dim = N
-    new_A = Array{T, N}(undef, (size(A)[1:(end - 1)]..., length(new_grid_vec)))
-
-    start_idx = needs_0 ? 2 : 1
-    end_idx = start_idx + length(gridϕ) - 1
-
-    selectdim(new_A, phi_dim, start_idx:end_idx) .= A
-
-    if needs_0
-        src_idx_for_0 = size(A, phi_dim)
-        selectdim(new_A, phi_dim, 1) .= selectdim(A, phi_dim, src_idx_for_0)
-    end
-
-    if needs_2pi
-        if needs_0
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(new_A, phi_dim, 1)
-        else # needs 2π only
-            selectdim(new_A, phi_dim, size(new_A, phi_dim)) .= selectdim(A, phi_dim, 1)
-        end
-    end
-
-    return new_grid_vec, new_A
-end
 
 # Time-dependent field interpolation.
 
