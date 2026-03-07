@@ -183,7 +183,6 @@ function build_interpolator(
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
-    # Return field value at a given location.
     return FieldInterpolator(itp)
 end
 
