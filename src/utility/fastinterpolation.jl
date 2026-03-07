@@ -18,11 +18,11 @@ end
 
 const FieldInterpolator3D = FieldInterpolator
 
-@inbounds function (fi::FieldInterpolator)(xu)
+@inline @inbounds function (fi::FieldInterpolator)(xu)
     return fi.itp((xu[1], xu[2], xu[3]))
 end
 
-function (fi::FieldInterpolator)(xu, t)
+@inline function (fi::FieldInterpolator)(xu, t)
     return fi(xu)
 end
 
@@ -37,12 +37,12 @@ struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-@inbounds function (fi::FieldInterpolator2D)(xu)
+@inline @inbounds function (fi::FieldInterpolator2D)(xu)
     # 2D interpolation usually involves x and y
     return fi.itp((xu[1], xu[2]))
 end
 
-function (fi::FieldInterpolator2D)(xu, t)
+@inline function (fi::FieldInterpolator2D)(xu, t)
     return fi(xu)
 end
 
@@ -58,11 +58,11 @@ struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
     dir::Int
 end
 
-@inbounds function (fi::FieldInterpolator1D)(xu)
+@inline @inbounds function (fi::FieldInterpolator1D)(xu)
     return fi.itp((xu[fi.dir],))
 end
 
-function (fi::FieldInterpolator1D)(xu, t)
+@inline function (fi::FieldInterpolator1D)(xu, t)
     return fi(xu)
 end
 
@@ -77,7 +77,7 @@ struct SphericalFieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-function (fi::SphericalFieldInterpolator)(xu)
+@inline function (fi::SphericalFieldInterpolator)(xu)
     rθϕ = cart2sph(xu)
     res = fi.itp(rθϕ)
     if length(res) > 1
@@ -89,7 +89,7 @@ function (fi::SphericalFieldInterpolator)(xu)
     end
 end
 
-function (fi::SphericalFieldInterpolator)(xu, t)
+@inline function (fi::SphericalFieldInterpolator)(xu, t)
     return fi(xu)
 end
 
