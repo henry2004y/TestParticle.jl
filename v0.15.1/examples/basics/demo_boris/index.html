@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Boris method · TestParticle.jl</title><meta name="title" content="Boris method · TestParticle.jl"/><meta property="og:title" content="Boris method · TestParticle.jl"/><meta property="twitter:title" content="Boris method · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_boris/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_boris/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_boris/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Boris method</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Boris method</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/basics/demo_boris.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_boris"><a class="docs-heading-anchor" href="#demo_boris">Boris method</a><a id="demo_boris-1"></a><a class="docs-heading-anchor-permalink" href="#demo_boris" title="Permalink"></a></h1><p><a href="../demo_boris.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.10.0-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1705968000" alt="Update time"/></p><p>This example demonstrates a single electron motion under a uniform B field. The E field is assumed to be zero such that there is no particle acceleration. We use the <a href="https://apps.dtic.mil/sti/citations/ADA023511">Boris method</a> for phase space conservation under a fixed time step. This is compared against other ODE general algorithms for performance and accuracy.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: ZeroField, get_BField
+import TestParticle as TP
+using CairoMakie
+
+function plot_trajectory(sol_boris, sol1, sol2)
+   f = Figure(size = (700, 600), fontsize = 18)
+   ax = Axis(f[1, 1], aspect = 1, limits = (-3, 1, -2, 2),
+      xlabel = &quot;X&quot;,
+      ylabel = &quot;Y&quot;)
+   idxs = (1, 2)
+   l0 = lines!(ax, sol_boris[1]; idxs, linewidth = 2, label = &quot;Boris&quot;)
+   l1 = lines!(ax, sol1; idxs,
+      color = Makie.wong_colors()[2], linewidth = 2, linestyle = :dashdot, label = &quot;Tsit5 fixed&quot;)
+   l2 = linesegments!(ax, sol2; idxs,
+      color = Makie.wong_colors()[3], linewidth = 2, linestyle = :dot, label = &quot;Tsit5 adaptive&quot;)
+
+   scale!(ax.scene, invrL, invrL)
+
+   axislegend(position = :rt, framevisible = false)
+
+   f
+end
+
+const Bmag = 0.01
+uniform_B(x) = SA[0.0, 0.0, Bmag]
+zero_E = ZeroField()
+
+x0 = [0.0, 0.0, 0.0]
+v0 = [0.0, 1e5, 0.0]
+stateinit = [x0..., v0...]
+
+param = prepare(zero_E, uniform_B, species = Electron)
+
+# Reference parameters
+const tperiod = 2π / (abs(param[1]) *
+                 sqrt(sum(x -&gt; x^2, get_BField(param)([0.0, 0.0, 0.0], 0.0))))
+const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(param[1]) * Bmag)
+const invrL = 1 / rL;</code></pre><p>We first trace the particle for one period with a discrete time step of a quarter period.</p><pre><code class="language-julia hljs">tspan = (0.0, tperiod)
+dt = tperiod / 4
+
+prob = TraceProblem(stateinit, tspan, param)
+
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);</code></pre><p>Let&#39;s compare against the default ODE solver <code>Tsit5</code> from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:</p><pre><code class="language-julia hljs">prob = ODEProblem(trace!, stateinit, tspan, param)
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+sol2 = solve(prob, Tsit5());
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-8.png" alt/></p><p>It is clear that the Boris method comes with larger phase errors (<span>$\mathcal{O}(\Delta t)$</span>) compared with Tsit5. The phase error gets smaller using a smaller dt:</p><pre><code class="language-julia hljs">dt = tperiod / 8
+
+prob = TraceProblem(stateinit, tspan, param)
+
+sol_boris = TP.solve(prob; dt, savestepinterval = 1);
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-10.png" alt/></p><p>The Boris pusher shines when we do long time tracing, which is fast and conserves energy:</p><pre><code class="language-julia hljs">tspan = (0.0, 200 * tperiod)
+dt = tperiod / 12
+
+prob_boris = TraceProblem(stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
+
+sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10);
+sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+sol2 = solve(prob, Tsit5());
+sol3 = solve(prob, Vern7());
+sol4 = solve(prob, Vern9());
+
+# Visualization
+f = plot_trajectory(sol_boris, sol1, sol2)</code></pre><p><img src="../demo_boris-12.png" alt/></p><p>Fixed time step <code>Tsit5()</code> is ok, but adaptive <code>Tsit5()</code> is pretty bad for long time evolutions. The change in radius indicates change in energy, which is sometimes known as numerical heating.</p><pre><code class="language-julia hljs">E(vx, vy, vz) = 1 // 2 * (vx^2 + vy^2 + vz^2)
+f = Figure(size = (800, 400), fontsize = 18)
+ax = Axis(f[1, 1],
+   xlabel = &quot;time [period]&quot;,
+   ylabel = &quot;Normalized Kinetic Energy&quot;)
+
+sols_to_plot = [
+   (sol_boris[1], &quot;Boris&quot;),
+   (sol1, &quot;Tsit5 fixed&quot;),
+   (sol2, &quot;Tsit5 adaptive&quot;),
+   (sol3, &quot;Vern7 adaptive&quot;),
+   (sol4, &quot;Vern9 adaptive&quot;)
+]
+
+for (sol, label) in sols_to_plot
+   energy = map(x -&gt; E(x[4:6]...), sol.u)
+   lines!(ax, sol.t ./ tperiod, energy ./ energy[1], label = label)
+end
+
+axislegend(ax, position = :lt)
+</code></pre><p><img src="../demo_boris-14.png" alt/></p><p>Another aspect to compare is performance:</p><pre><code class="language-julia hljs">@time sol_boris = TP.solve(prob_boris; dt, savestepinterval = 10)[1];
+@time sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
+@time sol2 = solve(prob, Tsit5());
+@time sol3 = solve(prob, Vern7());
+@time sol4 = solve(prob, Vern9());</code></pre><pre><code class="nohighlight hljs">  0.000105 seconds (272 allocations: 22.250 KiB)
+  0.000745 seconds (4.89 k allocations: 364.203 KiB)
+  0.000686 seconds (23.69 k allocations: 1.314 MiB)
+  0.000649 seconds (23.08 k allocations: 1.311 MiB)
+  0.000744 seconds (18.58 k allocations: 1.065 MiB)
+</code></pre><p>We can extract the solution <code>(x, y, z, vx, vy, vz)</code> at any given time by performing a linear interpolation:</p><pre><code class="language-julia hljs">t = tspan[2] / 2
+sol_boris(t)</code></pre><pre><code class="nohighlight hljs">6-element StaticArraysCore.MVector{6, Float64} with indices SOneTo(6):
+    -3.911568318655031e-5
+    -5.5137270837814596e-5
+     0.0
+ 99639.26547015733
+  8486.269885387323
+     0.0</code></pre><p>The Boris method is faster and consumes less memory. However, in practice, it is pretty hard to find an optimal algorithm. When calling OrdinaryDiffEq.jl, we recommend using <code>Vern9()</code> as a starting point instead of <code>Tsit5()</code>, especially combined with adaptive timestepping. Further fine-grained control includes setting <code>dtmax</code>, <code>reltol</code>, and <code>abstol</code> in the <code>solve</code> method.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 27 November 2025 04:40">Thursday 27 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

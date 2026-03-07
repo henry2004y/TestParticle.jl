@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Radiation · TestParticle.jl</title><meta name="title" content="Radiation · TestParticle.jl"/><meta property="og:title" content="Radiation · TestParticle.jl"/><meta property="twitter:title" content="Radiation · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_radiation/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_radiation/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_radiation/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Radiation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Radiation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_radiation.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_radiation"><a class="docs-heading-anchor" href="#demo_radiation">Radiation</a><a id="demo_radiation-1"></a><a class="docs-heading-anchor-permalink" href="#demo_radiation" title="Permalink"></a></h1><p><a href="../demo_radiation.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.12.2-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1764115200" alt="Update time"/></p><p>For an electron undergoing gyromotion in a constant magnetic field, the energy loss is caused by the emission of electromagnetic radiation. The rate of this energy loss (radiated power <span>$P$</span>) depends on whether the electron&#39;s speed is relativistic or non-relativistic. This phenomenon is generally divided into two regimes: Cyclotron Radiation (non-relativistic) and Synchrotron Radiation (relativistic).</p><ol><li>General Formula (Relativistic)</li></ol><p>For an electron with charge <span>$e$</span>, mass <span>$m$</span>, and velocity <span>$v$</span> moving in a magnetic field <span>$B$</span>, the total radiated power <span>$P$</span> is given by the relativistic generalization of the Larmor formula:</p><p class="math-container">\[P = \frac{e^4 B^2 \gamma^2 v_{\perp}^2}{6 \pi \epsilon_0 m^2 c^3}\]</p><p>Alternatively, using <span>$\beta = v/c$</span> and the pitch angle <span>$\alpha$</span> (where <span>$v_{\perp} = v \sin \alpha$</span>), this is often expressed as:</p><p class="math-container">\[P = \frac{e^4 B^2 \gamma^2 \beta^2 \sin^2 \alpha}{6 \pi \epsilon_0 m^2 c}\]</p><p>where:</p><ul><li><p class="math-container">\[\gamma = \frac{1}{\sqrt{1 - \beta^2}}\]</p>is the Lorentz factor.</li><li><p class="math-container">\[\epsilon_0\]</p>is the vacuum permittivity.</li><li><p class="math-container">\[c\]</p>is the speed of light.</li><li><p class="math-container">\[\alpha\]</p>is the pitch angle between the velocity vector and the magnetic field vector.</li></ul><blockquote><p>Note on Emission Pattern: In the relativistic regime (<span>$\gamma \gg 1$</span>), the radiation is beamed forward in a narrow cone along the direction of the electron&#39;s instantaneous velocity (the &quot;searchlight effect&quot;), which is characteristic of Synchrotron radiation.</p></blockquote><ol><li>Non-Relativistic Limit (Cyclotron Radiation)</li></ol><p>When the electron speed is much less than the speed of light (<span>$\beta \ll 1$</span> and <span>$\gamma \approx 1$</span>), the formula simplifies to the classical Cyclotron radiation formula:</p><p class="math-container">\[P \approx \frac{e^4 B^2 v_{\perp}^2}{6 \pi \epsilon_0 m^2 c^3}\]</p><p>Using the Thomson cross-section <span>$\sigma_T = \frac{e^4}{6 \pi \epsilon_0^2 m^2 c^4}$</span> and magnetic energy density <span>$U_B = \frac{B^2}{2\mu_0}$</span>, this can be written elegantly as:</p><p class="math-container">\[P = 2 \sigma_T c U_B \beta_{\perp}^2\]</p><ol><li>Energy Loss Per Turn</li></ol><p>In accelerator physics, it is often useful to know the energy lost per complete revolution. For a highly relativistic electron (<span>$\beta \approx 1$</span>) moving in a circle of radius <span>$\rho$</span> (where <span>$\rho \approx \frac{E}{e c B}$</span>), the energy loss per turn <span>$\delta E$</span> is:</p><p class="math-container">\[\delta E = \oint P \, dt = \frac{e^2}{3 \epsilon_0 \rho} \gamma^4\]</p><p>This <span>$\gamma^4$</span> dependence explains why circular electron accelerators (synchrotrons) become inefficient at very high energies—doubling the energy increases the radiative loss by a factor of 16.</p><ol><li>Cooling Time</li></ol><p>The electron will lose energy over time, causing its orbit to decay. The characteristic cooling time <span>$\tau$</span> (the time scale over which the electron loses a significant fraction of its energy) is:</p><p class="math-container">\[\tau \approx \frac{E}{P} \approx \frac{3 m^3 c^5}{2 e^4 B^2 \gamma}\]</p><p>In the non-relativistic limit, this simplifies to <span>$\tau \approx \frac{3 m^3 c^5}{4 e^4 B^2}$</span> (note the independence from energy in the classical limit).</p><p>All the above equations are shown in CGS units.</p><pre><code class="language-julia hljs">using TestParticle: qᵢ as e, mₑ, c, ϵ₀
+using CairoMakie</code></pre><p>Physics Functions</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    calc_gamma(β)
+
+Calculate the Lorentz factor γ given β (v/c).
+&quot;&quot;&quot;
+function calc_gamma(β)
+   if β &gt;= 1.0
+      return Inf
+   end
+   return 1.0 / sqrt(1.0 - β^2)
+end
+
+&quot;&quot;&quot;
+    radiated_power(B, β, α)
+
+Calculate the instantaneous power radiated by an electron in a magnetic field.
+Based on the relativistic generalization of the Larmor formula.
+
+Parameters:
+B: Magnetic field strength [Tesla]
+β: Normalized velocity (v/c)
+α: Pitch angle [radians] (angle between v and B)
+
+Returns:
+P     : Radiated Power [Watts]
+&quot;&quot;&quot;
+function radiated_power(B, β, α)
+   gamma = calc_gamma(β)
+
+   # Formula: P = (e^4 * B^2 * γ^2 * v_perp^2) / (6 * π * ϵ₀ * m^2 * c^3)
+   # Substitute v_perp = v * sin(α) = β * c * sin(α)
+   # Result: P = (e^4 * B^2 * γ^2 * β^2 * sin(α)^2) / (6 * π * ϵ₀ * m^2 * c)
+
+   numerator = e^4 * B^2 * gamma^2 * β^2 * sin(α)^2
+   denominator = 6 * π * ϵ₀ * (mₑ^2) * c
+
+   return numerator / denominator
+end</code></pre><pre><code class="nohighlight hljs">Main.var&quot;##349&quot;.radiated_power</code></pre><p>Visualization</p><pre><code class="language-julia hljs">function main()
+   fig = Figure(size = (1200, 900), fontsize = 18)
+
+   # --- Plot: Power vs Magnetic Field B ---
+   # Fixed parameters
+   beta_fixed_1 = 0.9
+   alpha_fixed_1 = π / 2 # Perpendicular
+
+   B_range = range(0.1, 10.0, length = 200) # 0.1 T to 10 T
+   P_B = radiated_power.(B_range, beta_fixed_1, alpha_fixed_1)
+
+   ax1 = Axis(fig[1, 1],
+      title = L&quot;Power vs. Magnetic Field ($B$)&quot;,
+      xlabel = &quot;Magnetic Field B [T]&quot;,
+      ylabel = &quot;Power [W]&quot;,
+      xscale = log10,
+      yscale = log10
+   )
+   lines!(ax1, B_range, P_B, color = :blue, linewidth = 3,
+      label = L&quot;\beta = 0.9, \alpha = 90^\circ&quot;)
+   axislegend(ax1, position = :lt)
+   text!(ax1, B_range[10], P_B[10], text = L&quot;P \propto B^2&quot;, align = (:left, :bottom))
+
+   # --- Plot: Power vs Velocity (β) ---
+   # Fixed parameters
+   B_fixed_2 = 1.0 # 1 Tesla
+   alpha_fixed_2 = π / 2
+
+   # Range close to 1 to show relativistic effects
+   beta_range = range(0.1, 0.999, length = 500)
+   P_beta = radiated_power.(B_fixed_2, beta_range, alpha_fixed_2)
+
+   ax2 = Axis(fig[1, 2],
+      title = L&quot;Power vs. Velocity ($\beta$)&quot;,
+      xlabel = L&quot;Velocity $\beta = v/c$&quot;,
+      ylabel = &quot;Power [W]&quot;,
+      yscale = log10
+   )
+   lines!(ax2, beta_range, P_beta, color = :red, linewidth = 3,
+      label = L&quot;B = 1\text{ T}, \alpha = 90^\circ&quot;)
+   axislegend(ax2, position = :lt)
+
+   # --- Plot: Power vs Pitch Angle (α) ---
+   # Fixed parameters
+   B_fixed_3 = 1.0
+   beta_fixed_3 = 0.9
+
+   alpha_range = range(0, π, length = 360)
+   alpha_deg = rad2deg.(alpha_range)
+   P_alpha = radiated_power.(B_fixed_3, beta_fixed_3, alpha_range)
+
+   ax3 = Axis(fig[2, 1],
+      title = L&quot;Power vs. Pitch Angle ($\alpha$)&quot;,
+      xlabel = &quot;Pitch Angle [Degrees]&quot;,
+      ylabel = &quot;Power [W]&quot;,
+      xticks = 0:30:180
+   )
+   lines!(ax3, alpha_deg, P_alpha, color = :green,
+      linewidth = 3, label = L&quot;B=1\text{ T}, \beta=0.9&quot;)
+   # Add a visual marker for max power
+   vlines!(ax3, [90], color = :black, linestyle = :dash)
+   axislegend(ax3)
+
+   # --- Plot: Heatmap (Log Power) vs B and β ---
+   # Here we vary both B and β
+   B_hm = range(0.1, 5.0, length = 100)
+   beta_hm = range(0.5, 0.999, length = 100)
+
+   # Calculate matrix
+   P_matrix = log10.(radiated_power.(B_hm, beta_hm&#39;, π / 2))
+
+   ax4 = Axis(fig[2, 2],
+      title = &quot;Log10(Power) Heatmap&quot;,
+      xlabel = &quot;Magnetic Field B [T]&quot;,
+      ylabel = L&quot;Velocity $\beta$&quot;
+   )
+   hm = heatmap!(ax4, B_hm, beta_hm, P_matrix, colormap = :inferno)
+   Colorbar(fig[2, 3], hm, label = &quot;Log10(Power [W])&quot;)
+
+   Label(fig[0, :], &quot;Electron Cyclotron/Synchrotron Radiation Loss&quot;,
+      fontsize = 24, font = :bold)
+
+   fig
+end</code></pre><pre><code class="nohighlight hljs">main (generic function with 1 method)</code></pre><p>Run the visualization</p><pre><code class="language-julia hljs">f = main()
+</code></pre><p><img src="../demo_radiation-11.png" alt/></p><p>We need to consider radiation effects when the timescale of energy loss (the &quot;cooling time&quot;) becomes comparable to or shorter than the characteristic timescale of our system (e.g., confinement time, acceleration time, or simulation duration).</p><p class="math-container">\[\tau \approx \frac{E}{P} = \frac{6 \pi \epsilon_0 m^3 c^3}{e^4 B^2 \gamma} = \frac{5.2}{B^2 \gamma} \text{ seconds (where B is in Tesla)}\]</p><ul><li>Weak Fields / Low Energy: If <span>$B=1\text{ T}$</span> and the electron is non-relativistic</li></ul><p>(<span>$\gamma \approx 1$</span>), <span>$\tau \approx 5$</span> seconds. You can safely ignore radiation.</p><ul><li>Strong Fields / High Energy: If <span>$B=5\text{ T}$</span> and you have a 1 GeV electron</li></ul><p>(<span>$\gamma \approx 2000$</span>), then <span>$\tau \approx 2.5$</span> milliseconds.</p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 27 November 2025 04:40">Thursday 27 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
