@@ -127,9 +127,7 @@ end
 # When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is used
 # for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
 function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
-    T = eltype(A)
-    nan_val = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
-    extrap_nd = (FillExtrap(nan_val), FillExtrap(nan_val), Extrap(:wrap))
+    extrap_nd = (Extrap(:clamp), Extrap(:clamp), Extrap(:wrap))
     ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
     if order == 1
         return linear_interp(grids, A; extrap = extrap_nd)

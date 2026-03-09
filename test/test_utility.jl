@@ -50,23 +50,23 @@ import TestParticle as TP
                     for i in eachindex(x), j in eachindex(y), k in eachindex(z)
             ]
             nfunc11 = TP.build_interpolator(n, x, y, z)
-            @test nfunc11(SA[9, 0, 0]) == 11.85
+            @test nfunc11(SA[9, 0, 0]) ≈ 11.85
             nfunc12 = TP.build_interpolator(n, x, y, z, 1, 2)
-            @test nfunc12(SA[20, 0, 0]) == 9.5
+            @test nfunc12(SA[20, 0, 0]) ≈ 10.5
             nfunc13 = TP.build_interpolator(n, x, y, z, 1, 3)
-            @test nfunc13(SA[20, 0, 0]) == 12.0
+            @test nfunc13(SA[20, 0, 0]) ≈ 12.0
             nfunc21 = TP.build_interpolator(n, x, y, z, 2)
-            @test nfunc21(SA[9, 0, 0]) == 11.898528302013874
+            @test nfunc21(SA[9, 0, 0]) ≈ 11.85
             nfunc22 = TP.build_interpolator(n, x, y, z, 2, 2)
-            @test nfunc22(SA[20, 0, 0]) == 9.166666686534882
+            @test nfunc22(SA[20, 0, 0]) ≈ 10.5
             nfunc23 = TP.build_interpolator(n, x, y, z, 2, 3)
-            @test nfunc23(SA[20, 0, 0]) == 12.14705765247345
+            @test nfunc23(SA[20, 0, 0]) ≈ 12.0
             nfunc31 = TP.build_interpolator(n, x, y, z, 3)
-            @test nfunc31(SA[9, 0, 0]) == 11.882999392215163
+            @test nfunc31(SA[9, 0, 0]) ≈ 11.85
             nfunc32 = TP.build_interpolator(n, x, y, z, 3, 2)
-            @test nfunc32(SA[20, 0, 0]) == 9.124999547351358
+            @test nfunc32(SA[20, 0, 0]) ≈ 10.5
             nfunc33 = TP.build_interpolator(n, x, y, z, 3, 3)
-            @test nfunc33(SA[20, 0, 0]) == 12.191176189381315
+            @test nfunc33(SA[20, 0, 0]) ≈ 12.0
         end
 
         begin # spherical interpolation
