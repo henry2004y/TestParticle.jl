@@ -136,7 +136,7 @@ end
 
 Normalized ODE equations for charged particle moving in EM field with in-place form.
 If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
-the extrapolation function provided by Interpolations.jl.
+the extrapolation function.
 """
 function trace_normalized!(dy, y, p, t)
     v = get_v(y)

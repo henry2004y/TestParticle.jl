@@ -10,7 +10,7 @@ The package handles field definitions in two ways:
 
 - *Analytical Fields*: User-defined functions that calculate field values at specific spatial coordinates.
 
-- *Numerical Fields*: Discretized fields constructed directly with coordinates or using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and interpolated via [Interpolations.jl](https://github.com/JuliaMath/Interpolations.jl).
+- *Numerical Fields*: Discretized fields constructed directly with coordinates or using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and interpolated via [FastInterpolations.jl](https://github.com/pjabardo/FastInterpolations.jl).
 
 The core trajectory integration is powered by and tight to the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) ecosystem, solving the Ordinary Differential Equations (ODEs) of motion.
 
