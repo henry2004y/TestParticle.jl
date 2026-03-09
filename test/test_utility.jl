@@ -111,6 +111,34 @@ import TestParticle as TP
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test Afunc(SA[0, 0, 0]) == 1.0
         end
+
+        @testset "Time-independent call with time argument" begin
+            # 3D
+            x = y = z = range(0, 10, length = 5)
+            B = rand(3, 5, 5, 5)
+            itp3d = TP.build_interpolator(TP.CartesianGrid, B, x, y, z)
+            pt = SA[1.0, 2.0, 3.0]
+            @test itp3d(pt, 0.0) == itp3d(pt)
+
+            # 2D
+            itp2d = TP.build_interpolator(TP.CartesianGrid, B[:, :, :, 1], x, y)
+            pt2d = SA[1.0, 2.0]
+            @test itp2d(pt2d, 0.0) == itp2d(pt2d)
+
+            # 1D
+            itp1d = TP.build_interpolator(TP.CartesianGrid, B[:, :, 1, 1], x)
+            pt1d = SA[1.0]
+            @test itp1d(pt1d, 0.0) == itp1d(pt1d)
+
+            # Spherical
+            r = range(1, 10, length = 5)
+            theta = range(0, pi, length = 5)
+            phi = range(0, 2pi, length = 5)
+            Bsph = rand(3, 5, 5, 5)
+            itpsph = TP.build_interpolator(TP.StructuredGrid, Bsph, r, theta, phi)
+            ptsph = SA[1.0, 1.0, 1.0]
+            @test itpsph(ptsph, 0.0) == itpsph(ptsph)
+        end
     end
 
     @testset "SVector Interpolation" begin
