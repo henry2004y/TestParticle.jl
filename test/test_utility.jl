@@ -82,7 +82,7 @@ import TestParticle as TP
             A = ones(length(r), length(θ), length(ϕ))
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
+            @test isnan(Afunc(SA[0, 0, 0]))
 
             # High order spherical interpolation
             Bfunc2 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 2)
@@ -109,7 +109,7 @@ import TestParticle as TP
             A = ones(length(r), length(θ), length(ϕ))
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
+            @test isnan(Afunc(SA[0, 0, 0]))
         end
 
         @testset "Time-independent call with time argument" begin

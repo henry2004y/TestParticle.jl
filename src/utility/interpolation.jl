@@ -59,7 +59,7 @@ struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
 end
 
 @inline @inbounds function (fi::FieldInterpolator1D)(xu)
-    return fi.itp((xu[fi.dir],))
+    return fi.itp(xu[fi.dir])
 end
 
 @inline function (fi::FieldInterpolator1D)(xu, t)
@@ -83,7 +83,7 @@ end
     if length(res) > 1
         # Convert vector result from spherical to cartesian basis
         Br, Bθ, Bϕ = res
-        return sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
+        return @inbounds sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
     else
         return res
     end
@@ -102,9 +102,9 @@ function _get_extrap_mode(bc, T::Type)
         return Extrap(:clamp)
     else
         if T <: SVector
-            return FillExtrap(SVector{3, eltype(T)}(NaN, NaN, NaN))
+            return Extrap(:fill; fill_value = SVector{3, eltype(T)}(NaN, NaN, NaN))
         else
-            return FillExtrap(T(NaN))
+            return Extrap(:fill; fill_value = T(NaN))
         end
     end
 end
@@ -122,25 +122,27 @@ function _fastinterp(grids, A, order, bc)
     end
 end
 
-# Spherical interpolation: r and θ always extrapolate with NaN, ϕ is always periodic.
-# This matches interpolation.jl's pattern of Flat()+Flat()+Periodic() per axis.
-# When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is used
-# for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
+
 function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
-    extrap_nd = (Extrap(:clamp), Extrap(:clamp), Extrap(:wrap))
-    ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
+    # r and θ always extrapolate with NaN, ϕ is always periodic.
+    T = eltype(A)
+    fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
+    extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), Extrap(:wrap))
     if order == 1
-        return linear_interp(grids, A; extrap = extrap_nd)
+        return linear_interp(grids, A; extrap)
     elseif order == 2
         # FastInterpolations quadratic does not support PeriodicBC.
-        # We use ZeroCurvBC for all axes; Extrap(:wrap) in extrap_nd handles periodicity.
+        # We use ZeroCurvBC for all axes; Extrap(:wrap) handles periodicity.
         bc_quad = (ZeroCurvBC(), ZeroCurvBC(), ZeroCurvBC())
-        return quadratic_interp(grids, A; bc = bc_quad, extrap = extrap_nd)
+        return quadratic_interp(grids, A; bc = bc_quad, extrap)
     elseif order == 3
+        # When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is
+        # used for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
+        ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
         bc_cubic = (ZeroCurvBC(), ZeroCurvBC(), ϕ_bc)
-        return cubic_interp(grids, A; bc = bc_cubic, extrap = extrap_nd)
+        return cubic_interp(grids, A; bc = bc_cubic, extrap)
     else
-        return constant_interp(grids, A; extrap = extrap_nd)
+        return constant_interp(grids, A; extrap)
     end
 end
 
@@ -270,7 +272,7 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
-    itp = _fastinterp((gridx,), As, order, bc)
+    itp = _fastinterp(gridx, As, order, bc)
 
     return FieldInterpolator1D(itp, dir)
 end
