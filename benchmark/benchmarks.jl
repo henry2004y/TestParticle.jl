@@ -3,7 +3,7 @@
 using BenchmarkTools
 using TestParticle
 import TestParticle as TP
-using OrdinaryDiffEq, Meshes, StaticArrays
+using OrdinaryDiffEq, StaticArrays
 using TestParticle: CPU
 
 const SUITE = BenchmarkGroup()
@@ -34,7 +34,7 @@ function setup_numeric_field()
     E_numeric[1, :, :, :] .= 5.0e-10
     E_numeric[2, :, :, :] .= 5.0e-10
 
-    mesh = CartesianGrid(
+    mesh = TP.CartesianGrid(
         (first(x), first(y), first(z)), (last(x), last(y), last(z));
         dims = (length(x) - 1, length(y) - 1, length(z) - 1)
     )
