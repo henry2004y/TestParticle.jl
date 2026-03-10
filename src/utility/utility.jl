@@ -349,7 +349,13 @@ function get_number_density_flux(grid::CartesianGrid, sols, dt)
 
     get_val(x) = hasproperty(x, :val) ? x.val : x
 
-    origin = Tuple(get_val(getproperty(g_min, name)) for name in (:x, :y, :z)[1:dim])
+    origin = if dim == 3
+        (get_val(g_min.x), get_val(g_min.y), get_val(g_min.z))
+    elseif dim == 2
+        (get_val(g_min.x), get_val(g_min.y))
+    else
+        (get_val(g_min.x),)
+    end
 
     spacings = Tuple(get_val(d) for d in Δx)
 

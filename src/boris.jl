@@ -640,10 +640,9 @@ Return the electric and magnetic fields from the solution `sol`.
 """
 function get_fields(sol::AbstractODESolution)
     Efunc, Bfunc = _get_field_funcs(sol.prob)
-    T = eltype(sol.u[1])
 
-    E = [SVector{3, T}(Efunc(get_x(u), t)) for (u, t) in zip(sol.u, sol.t)]
-    B = [SVector{3, T}(Bfunc(get_x(u), t)) for (u, t) in zip(sol.u, sol.t)]
+    E = [Efunc(get_x(u), t) for (u, t) in zip(sol.u, sol.t)]
+    B = [Bfunc(get_x(u), t) for (u, t) in zip(sol.u, sol.t)]
 
     return E, B
 end

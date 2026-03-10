@@ -247,7 +247,7 @@ function trace_gc_drifts!(dx, x, p, t)
     w = v_perp - v_E
 
     # w^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + v_E + v∥
-    @inbounds dx[1:3] = norm(w)^2 * (b × ∇B) / (2 * Ω * Bmag) +
+    @inbounds dx[1:3] = (w[1]^2 + w[2]^2 + w[3]^2) * (b × ∇B) / (2 * Ω * Bmag) +
         norm(v_par)^2 * (b × κ) / Ω +
         v_E + v_par
 
