@@ -184,8 +184,8 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 B_field_car = TP.get_BField(param_numeric)
 B_field_sph = setup_spherical_field()
 loc = SA[1.0, 1.0, 1.0]
-SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car(loc)
-SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph(loc)
+SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car($loc)
+SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph($loc)
 
 # Lazy Time-Dependent Interpolation
 itp_num, t1, t2 = let
