@@ -104,6 +104,9 @@ loc = SA[1.0, 1.0, 1.0];
 
 ## Gridded spherical interpolation
 
+!!! note "Input Location"
+    For spherical data, the input location is still in Cartesian coordinates!
+
 ```@repl interp
 @be B_sph_nu($loc)
 @be A_sph_nu($loc)

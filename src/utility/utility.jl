@@ -265,13 +265,14 @@ Return velocity from relativistic γv in `sol`.
 """
 function get_velocity(sol)
     v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol))
-    for is in axes(v, 2)
+    inv_c2 = 1 / c^2
+    @inbounds for is in axes(v, 2)
         γv = @view sol[4:6, is]
         γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-        v² = γ²v² / (1 + γ²v² / c^2)
-        γ = 1 / √(1 - v² / c^2)
+        γ = √(1 + γ²v² * inv_c2)
+        inv_γ = inv(γ)
         for i in axes(v, 1)
-            v[i, is] = γv[i] / γ
+            v[i, is] = γv[i] * inv_γ
         end
     end
 
@@ -283,12 +284,13 @@ Return the energy [eV] from relativistic `sol`.
 """
 function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
     e = Vector{eltype(sol.u[1])}(undef, length(sol))
-    for i in eachindex(e)
+    inv_c2 = 1 / c^2
+    mc2_q = m * c^2 / abs(q)
+    @inbounds for i in eachindex(e)
         γv = @view sol[4:6, i]
         γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-        v² = γ²v² / (1 + γ²v² / c^2)
-        γ = 1 / √(1 - v² / c^2)
-        e[i] = (γ - 1) * m * c^2 / abs(q)
+        γ = √(1 + γ²v² * inv_c2)
+        e[i] = (γ - 1) * mc2_q
     end
 
     return e
@@ -299,8 +301,7 @@ Calculate the energy [eV] of a relativistic particle from γv in [m/s].
 """
 function get_energy(γv; m = mᵢ, q = qᵢ)
     γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-    v² = γ²v² / (1 + γ²v² / c^2)
-    γ = 1 / √(1 - v² / c^2)
+    γ = √(1 + γ²v² / c^2)
 
     return (γ - 1) * m * c^2 / abs(q)
 end
@@ -348,7 +349,13 @@ function get_number_density_flux(grid::CartesianGrid, sols, dt)
 
     get_val(x) = hasproperty(x, :val) ? x.val : x
 
-    origin = Tuple(get_val(getproperty(g_min, name)) for name in (:x, :y, :z)[1:dim])
+    origin = if dim == 3
+        (get_val(g_min.x), get_val(g_min.y), get_val(g_min.z))
+    elseif dim == 2
+        (get_val(g_min.x), get_val(g_min.y))
+    else
+        (get_val(g_min.x),)
+    end
 
     spacings = Tuple(get_val(d) for d in Δx)
 

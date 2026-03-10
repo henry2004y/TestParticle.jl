@@ -18,11 +18,11 @@ end
 
 const FieldInterpolator3D = FieldInterpolator
 
-@inbounds function (fi::FieldInterpolator)(xu)
-    return fi.itp(xu[1], xu[2], xu[3])
+@inline @inbounds function (fi::FieldInterpolator)(xu)
+    return fi.itp((xu[1], xu[2], xu[3]))
 end
 
-function (fi::FieldInterpolator)(xu, t)
+@inline function (fi::FieldInterpolator)(xu, t)
     return fi(xu)
 end
 
@@ -37,12 +37,12 @@ struct FieldInterpolator2D{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-@inbounds function (fi::FieldInterpolator2D)(xu)
+@inline @inbounds function (fi::FieldInterpolator2D)(xu)
     # 2D interpolation usually involves x and y
-    return fi.itp(xu[1], xu[2])
+    return fi.itp((xu[1], xu[2]))
 end
 
-function (fi::FieldInterpolator2D)(xu, t)
+@inline function (fi::FieldInterpolator2D)(xu, t)
     return fi(xu)
 end
 
@@ -58,11 +58,11 @@ struct FieldInterpolator1D{T} <: AbstractFieldInterpolator
     dir::Int
 end
 
-@inbounds function (fi::FieldInterpolator1D)(xu)
+@inline @inbounds function (fi::FieldInterpolator1D)(xu)
     return fi.itp(xu[fi.dir])
 end
 
-function (fi::FieldInterpolator1D)(xu, t)
+@inline function (fi::FieldInterpolator1D)(xu, t)
     return fi(xu)
 end
 
@@ -77,23 +77,74 @@ struct SphericalFieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-function (fi::SphericalFieldInterpolator)(xu)
-    r_val, θ_val, ϕ_val = cart2sph(xu)
-    res = fi.itp(r_val, θ_val, ϕ_val)
+@inline function (fi::SphericalFieldInterpolator)(xu)
+    rθϕ = cart2sph(xu)
+    res = fi.itp(rθϕ)
     if length(res) > 1
         # Convert vector result from spherical to cartesian basis
         Br, Bθ, Bϕ = res
-        return sph_to_cart_vector(Br, Bθ, Bϕ, θ_val, ϕ_val)
+        return @inbounds sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
     else
         return res
     end
 end
 
-function (fi::SphericalFieldInterpolator)(xu, t)
+@inline function (fi::SphericalFieldInterpolator)(xu, t)
     return fi(xu)
 end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
+
+function _get_extrap_mode(bc, T::Type)
+    if bc == 2
+        return Extrap(:wrap)
+    elseif bc == 3
+        return Extrap(:clamp)
+    else
+        if T <: SVector
+            return Extrap(:fill; fill_value = SVector{3, eltype(T)}(NaN, NaN, NaN))
+        else
+            return Extrap(:fill; fill_value = T(NaN))
+        end
+    end
+end
+
+function _fastinterp(grids, A, order, bc)
+    extrap_mode = _get_extrap_mode(bc, eltype(A))
+    if order == 1
+        return linear_interp(grids, A; extrap = extrap_mode)
+    elseif order == 2
+        return quadratic_interp(grids, A; extrap = extrap_mode)
+    elseif order == 3
+        return cubic_interp(grids, A; extrap = extrap_mode)
+    else
+        return constant_interp(grids, A; extrap = extrap_mode)
+    end
+end
+
+
+function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
+    # r and θ always extrapolate with NaN, ϕ is always periodic.
+    T = eltype(A)
+    fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
+    extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), Extrap(:wrap))
+    if order == 1
+        return linear_interp(grids, A; extrap)
+    elseif order == 2
+        # FastInterpolations quadratic does not support PeriodicBC.
+        # We use ZeroCurvBC for all axes; Extrap(:wrap) handles periodicity.
+        bc_quad = (ZeroCurvBC(), ZeroCurvBC(), ZeroCurvBC())
+        return quadratic_interp(grids, A; bc = bc_quad, extrap)
+    elseif order == 3
+        # When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is
+        # used for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
+        ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
+        bc_cubic = (ZeroCurvBC(), ZeroCurvBC(), ϕ_bc)
+        return cubic_interp(grids, A; bc = bc_cubic, extrap)
+    else
+        return constant_interp(grids, A; extrap)
+    end
+end
 
 @inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
 
@@ -108,7 +159,7 @@ Return a function for interpolating field array `A` on the given grids.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
   - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
   - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Flat.
+  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Clamp (flat extrapolation).
 
 # Notes
 The input array `A` may be modified in-place for memory optimization.
@@ -131,11 +182,8 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
-    itp = _get_interp_object(A, order, bc)
-    interp = scale(itp, gridx, gridy, gridz)
-
-    # Return field value at a given location.
-    return FieldInterpolator(interp)
+    itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
+    return FieldInterpolator(itp)
 end
 
 function build_interpolator(
@@ -160,20 +208,7 @@ function build_interpolator(
         throw(ArgumentError("RectilinearGrid (CartesianNonUniform) only supports order=1 (Linear) interpolation."))
     end
 
-    bctype = if bc == 1
-        if T <: SVector
-            fill(eltype(T)(NaN), 3)
-        else
-            T(NaN)
-        end
-    elseif bc == 2
-        Periodic()
-    else
-        Flat()
-    end
-
-    itp = extrapolate(interpolate!((gridx, gridy, gridz), A, Gridded(Linear())), bctype)
-
+    itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
     return FieldInterpolator(itp)
 end
 
@@ -203,40 +238,15 @@ function build_interpolator(
 
     has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
     has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
+    ϕ_inclusive = has_0 && has_2pi  # grid covers full period with both endpoints
 
-    ϕ_bc = if has_0 && has_2pi
-        Periodic(OnGrid())
-    else
-        Periodic(OnCell())
-    end
-
-    bctype = (Flat(), Flat(), ϕ_bc)
-
-    if order == 1
-        itp = extrapolate(interpolate!((gridr, gridθ, gridϕ), A, Gridded(Linear())), bctype)
-    else
-        interp_type = if order == 2
-            Quadratic
-        elseif order == 3
-            Cubic
-        else
-            throw(ArgumentError("Unsupported interpolation order!"))
-        end
-        itp_type = (
-            BSpline(interp_type(Flat(OnCell()))),
-            BSpline(interp_type(Flat(OnCell()))),
-            BSpline(interp_type(ϕ_bc)),
-        )
-        itp_obj = extrapolate(interpolate(A, itp_type), bctype)
-        itp = scale(itp_obj, gridr, gridθ, gridϕ)
-    end
-
+    itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, ϕ_inclusive)
     return SphericalFieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A,
-        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 2
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 1
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
@@ -246,15 +256,13 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
-    itp = _get_interp_object(As, order, bc)
-    interp = scale(itp, gridx, gridy)
-
-    return FieldInterpolator2D(interp)
+    itp = _fastinterp((gridx, gridy), As, order, bc)
+    return FieldInterpolator2D(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
-        order::Int = 1, bc::Int = 3; dir = 1
+        order::Int = 1, bc::Int = 1; dir = 1
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
@@ -264,55 +272,9 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
-    itp = _get_interp_object(As, order, bc)
-    interp = scale(itp, gridx)
+    itp = _fastinterp(gridx, As, order, bc)
 
-    return FieldInterpolator1D(interp, dir)
-end
-
-# Internal Helpers
-
-function _get_bspline(order::Int, periodic::Bool)
-    gt = OnCell()
-
-    interp_type = if order == 1
-        Linear
-    elseif order == 2
-        Quadratic
-    elseif order == 3
-        Cubic
-    else
-        throw(ArgumentError("Unsupported interpolation order!"))
-    end
-
-    if periodic
-        return BSpline(interp_type(Periodic(gt)))
-    else
-        # Linear() is special as it doesn't take an argument.
-        if interp_type == Linear
-            return BSpline(Linear())
-        else
-            return BSpline(interp_type(Flat(gt)))
-        end
-    end
-end
-
-function _get_interp_object(A, order::Int, bc::Int)
-    bspline = _get_bspline(order, bc == 2)
-
-    bctype = if bc == 1
-        if eltype(A) <: SVector
-            SVector{3, eltype(eltype(A))}(NaN, NaN, NaN)
-        else
-            eltype(eltype(A))(NaN)
-        end
-    elseif bc == 2
-        Periodic()
-    else
-        Flat()
-    end
-
-    return extrapolate(interpolate(A, bspline), bctype)
+    return FieldInterpolator1D(itp, dir)
 end
 
 

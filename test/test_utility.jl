@@ -50,23 +50,23 @@ import TestParticle as TP
                     for i in eachindex(x), j in eachindex(y), k in eachindex(z)
             ]
             nfunc11 = TP.build_interpolator(n, x, y, z)
-            @test nfunc11(SA[9, 0, 0]) == 11.85
+            @test nfunc11(SA[9, 0, 0]) ≈ 11.85
             nfunc12 = TP.build_interpolator(n, x, y, z, 1, 2)
-            @test nfunc12(SA[20, 0, 0]) == 9.5
+            @test nfunc12(SA[20, 0, 0]) ≈ 10.5
             nfunc13 = TP.build_interpolator(n, x, y, z, 1, 3)
-            @test nfunc13(SA[20, 0, 0]) == 12.0
+            @test nfunc13(SA[20, 0, 0]) ≈ 12.0
             nfunc21 = TP.build_interpolator(n, x, y, z, 2)
-            @test nfunc21(SA[9, 0, 0]) == 11.898528302013874
+            @test nfunc21(SA[9, 0, 0]) ≈ 11.85
             nfunc22 = TP.build_interpolator(n, x, y, z, 2, 2)
-            @test nfunc22(SA[20, 0, 0]) == 9.166666686534882
+            @test nfunc22(SA[20, 0, 0]) ≈ 10.5
             nfunc23 = TP.build_interpolator(n, x, y, z, 2, 3)
-            @test nfunc23(SA[20, 0, 0]) == 12.14705765247345
+            @test nfunc23(SA[20, 0, 0]) ≈ 12.0
             nfunc31 = TP.build_interpolator(n, x, y, z, 3)
-            @test nfunc31(SA[9, 0, 0]) == 11.882999392215163
+            @test nfunc31(SA[9, 0, 0]) ≈ 11.85
             nfunc32 = TP.build_interpolator(n, x, y, z, 3, 2)
-            @test nfunc32(SA[20, 0, 0]) == 9.124999547351358
+            @test nfunc32(SA[20, 0, 0]) ≈ 10.5
             nfunc33 = TP.build_interpolator(n, x, y, z, 3, 3)
-            @test nfunc33(SA[20, 0, 0]) == 12.191176189381315
+            @test nfunc33(SA[20, 0, 0]) ≈ 12.0
         end
 
         begin # spherical interpolation
@@ -82,7 +82,7 @@ import TestParticle as TP
             A = ones(length(r), length(θ), length(ϕ))
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
+            @test isnan(Afunc(SA[0, 0, 0]))
 
             # High order spherical interpolation
             Bfunc2 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 2)
@@ -109,7 +109,35 @@ import TestParticle as TP
             A = ones(length(r), length(θ), length(ϕ))
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
-            @test Afunc(SA[0, 0, 0]) == 1.0
+            @test isnan(Afunc(SA[0, 0, 0]))
+        end
+
+        @testset "Time-independent call with time argument" begin
+            # 3D
+            x = y = z = range(0, 10, length = 5)
+            B = rand(3, 5, 5, 5)
+            itp3d = TP.build_interpolator(TP.CartesianGrid, B, x, y, z)
+            pt = SA[1.0, 2.0, 3.0]
+            @test itp3d(pt, 0.0) == itp3d(pt)
+
+            # 2D
+            itp2d = TP.build_interpolator(TP.CartesianGrid, B[:, :, :, 1], x, y)
+            pt2d = SA[1.0, 2.0]
+            @test itp2d(pt2d, 0.0) == itp2d(pt2d)
+
+            # 1D
+            itp1d = TP.build_interpolator(TP.CartesianGrid, B[:, :, 1, 1], x)
+            pt1d = SA[1.0]
+            @test itp1d(pt1d, 0.0) == itp1d(pt1d)
+
+            # Spherical
+            r = range(1, 10, length = 5)
+            theta = range(0, pi, length = 5)
+            phi = range(0, 2pi, length = 5)
+            Bsph = rand(3, 5, 5, 5)
+            itpsph = TP.build_interpolator(TP.StructuredGrid, Bsph, r, theta, phi)
+            ptsph = SA[1.0, 1.0, 1.0]
+            @test itpsph(ptsph, 0.0) == itpsph(ptsph)
         end
     end
 
