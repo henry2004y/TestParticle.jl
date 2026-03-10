@@ -22,6 +22,9 @@ stateinit = [x0..., v0...]
 # This represents 100,000,000 steps.
 tspan = (0.0, 0.1)
 dt = 1.0e-9
+maxiters = 200_000_000
+adaptive = false
+save_everystep = false
 
 println("="^70)
 println("Serial Performance Benchmark: Boris vs. OrdinaryDiffEq")
@@ -33,10 +36,13 @@ println("\nSetting up TestParticle TraceProblem (Boris)...")
 prob_boris = TraceProblem(stateinit, tspan, param)
 
 # Precompile
-TestParticle.solve(prob_boris; dt = dt, savestepinterval = 10000, maxiters = 200_000_000)
+TestParticle.solve(prob_boris; dt = dt, savestepinterval = 10000, maxiters)
 
 println("Running Boris Benchmark...")
-bench_boris = @benchmark TestParticle.solve($prob_boris; dt = $dt, savestepinterval = 100000, maxiters = 200_000_000)
+bench_boris = @benchmark TestParticle.solve(
+    $prob_boris;
+    dt = $dt, savestepinterval = 100000, maxiters = $maxiters
+)
 display(bench_boris)
 
 # 2. OrdinaryDiffEq's Tsit5 (Runge-Kutta 5/4)
@@ -44,10 +50,16 @@ println("\nSetting up ODEProblem (OrdinaryDiffEq Tsit5)...")
 prob_tsit5 = ODEProblem(trace!, stateinit, tspan, param)
 
 # Precompile (limit maxiters for tests to prevent hanging just in case, though it should be fine)
-OrdinaryDiffEq.solve(prob_tsit5, Tsit5(); dt = dt, adaptive = false, save_everystep = false)
+OrdinaryDiffEq.solve(
+    prob_tsit5, Tsit5();
+    dt, adaptive, save_everystep, maxiters
+)
 
 println("Running Tsit5 Benchmark (fixed dt)...")
-bench_tsit5 = @benchmark OrdinaryDiffEq.solve($prob_tsit5, Tsit5(); dt = $dt, adaptive = false, save_everystep = false)
+bench_tsit5 = @benchmark OrdinaryDiffEq.solve(
+    $prob_tsit5, Tsit5();
+    dt = $dt, adaptive = $adaptive, save_everystep = $save_everystep, maxiters = $maxiters
+)
 display(bench_tsit5)
 
 # 3. OrdinaryDiffEq's Vern9 (Runge-Kutta 9/8)
@@ -55,10 +67,13 @@ println("\nSetting up ODEProblem (OrdinaryDiffEq Vern9)...")
 prob_vern9 = ODEProblem(trace!, stateinit, tspan, param)
 
 # Precompile
-OrdinaryDiffEq.solve(prob_vern9, Vern9(); dt = dt, adaptive = false, save_everystep = false)
+OrdinaryDiffEq.solve(prob_vern9, Vern9(); dt, adaptive, save_everystep, maxiters)
 
 println("Running Vern9 Benchmark (fixed dt)...")
-bench_vern9 = @benchmark OrdinaryDiffEq.solve($prob_vern9, Vern9(); dt = $dt, adaptive = false, save_everystep = false)
+bench_vern9 = @benchmark OrdinaryDiffEq.solve(
+    $prob_vern9, Vern9();
+    dt = $dt, adaptive = $adaptive, save_everystep = $save_everystep, maxiters = $maxiters
+)
 display(bench_vern9)
 
 
