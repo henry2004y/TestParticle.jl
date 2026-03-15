@@ -31,10 +31,10 @@ for t in threads_to_test
     tspan = (0.0, 1.0e-3); dt = 1.0e-9
     prob_func(prob, i, repeat) = remake(prob; u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0])
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
-    
+
     # Warmup
     TestParticle.solve(prob_multi, EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
-    
+
     bench_threads = @benchmark TestParticle.solve(\$prob_multi, EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
     time_ms = median(bench_threads).time / 1.0e6
     println("RESULT_TIME_MS: \$time_ms")
@@ -85,3 +85,8 @@ axislegend(ax, position = :lt)
 plot_path = joinpath(@__DIR__, "parallel_scaling.png")
 save(plot_path, fig)
 println("\nSaved scaling plot to: ", plot_path)
+
+# Save results to CSV
+using DelimitedFiles
+writedlm(joinpath(@__DIR__, "threads_scaling.csv"), [threads_to_test times], ',')
+println("Saved scaling results to: ", joinpath(@__DIR__, "threads_scaling.csv"))

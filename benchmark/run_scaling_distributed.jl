@@ -107,3 +107,8 @@ axislegend(ax; position = :lt)
 plot_path = joinpath(@__DIR__, "distributed_scaling.png")
 save(plot_path, fig)
 println("Saved scaling plot to: ", plot_path)
+
+# Save results to CSV
+using DelimitedFiles
+writedlm(joinpath(@__DIR__, "distributed_scaling.csv"), [proc_counts times], ',')
+println("Saved scaling results to: ", joinpath(@__DIR__, "distributed_scaling.csv"))

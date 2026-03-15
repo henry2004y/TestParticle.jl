@@ -1,19 +1,18 @@
 # Combined Strong Scaling Plot
 using CairoMakie
+using DelimitedFiles
 
-# Thread/Worker counts
-counts = [2^i for i in 0:8] # 1, 2, 4, 8, 16, 32, 64, 128, 256
+# Load data from CSV files
+threads_data = readdlm(joinpath(@__DIR__, "threads_scaling.csv"), ',')
+dist_data = readdlm(joinpath(@__DIR__, "distributed_scaling.csv"), ',')
+
+counts = Int.(threads_data[:, 1])
 
 # Multithreading median times (converted from ms to s for consistency)
-threads_times = [
-    151531.9724, 75669.774758, 37841.402016, 19013.7110955,
-    9746.676036, 5334.494392, 2685.373244, 1437.751099, 1084.204129,
-] ./ 1000.0
+threads_times = threads_data[:, 2] ./ 1000.0
 
 # Distributed median times in seconds
-dist_times = [
-    152.689, 76.496, 38.926, 20.007, 10.517, 5.979, 3.401, 2.647, 2.234,
-]
+dist_times = dist_data[:, 2]
 
 # Calculate speedups
 threads_speedup = threads_times[1] ./ threads_times
@@ -48,6 +47,6 @@ lines!(
 
 axislegend(ax, position = :lt)
 
-plot_path = joinpath(@__DIR__, "scaling_combined.png")
+plot_path = joinpath(@__DIR__, "..", "docs", "src", "figures", "scaling_combined.png")
 save(plot_path, fig)
 println("Combined scaling plot saved to: ", plot_path)
