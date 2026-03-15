@@ -34,7 +34,7 @@ param = prepare(uniform_E, uniform_B; species = Proton)
 x0 = [0.0, 0.0, 0.0]
 v0 = [1.0e5, 0.0, 0.0]
 stateinit = [x0..., v0...]
-tspan = (0.0, 1.0e-5)
+tspan = (0.0, 1.0e-3)
 dt = 1.0e-9
 savestepinterval = 10000
 
