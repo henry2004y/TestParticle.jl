@@ -398,7 +398,7 @@ function derivative_t(itp::LazyTimeInterpolator, x, t)
     idx = searchsortedlast(itp.times, t)
 
     if idx <= 0 || idx >= length(itp.times)
-        return zero(itp.buffer[1](x))
+        return zero(_get_field!(itp, 1)(x))
     end
 
     t1 = itp.times[idx]

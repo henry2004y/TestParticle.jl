@@ -74,5 +74,13 @@ using StaticArrays
         dT_analytical = TP.derivative_t(f, pos, t)
         dT_forwarddiff = TP.ForwardDiff.derivative(τ -> f(pos, τ), t)
         @test dT_analytical ≈ dT_forwarddiff
+
+        # Out-of-bounds Jacobian (clamp)
+        @test TP.jacobian(f, pos, -1.0) == TP.jacobian(f, pos, 0.0)
+        @test TP.jacobian(f, pos, 3.0) == TP.jacobian(f, pos, 2.0)
+
+        # Out-of-bounds Time Derivative (zero)
+        @test TP.derivative_t(f, pos, -1.0) == zero(f(pos, -1.0))
+        @test TP.derivative_t(f, pos, 3.0) == zero(f(pos, 3.0))
     end
 end
