@@ -8,8 +8,8 @@ dist_data = readdlm(joinpath(@__DIR__, "distributed_scaling.csv"), ',')
 
 counts = Int.(threads_data[:, 1])
 
-# Multithreading median times (converted from ms to s for consistency)
-threads_times = threads_data[:, 2] ./ 1000.0
+# Multithreading median times in seconds
+threads_times = threads_data[:, 2]
 
 # Distributed median times in seconds
 dist_times = dist_data[:, 2]

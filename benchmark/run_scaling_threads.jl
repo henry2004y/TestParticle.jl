@@ -36,8 +36,8 @@ for t in threads_to_test
     TestParticle.solve(prob_multi, EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
 
     bench_threads = @benchmark TestParticle.solve(\$prob_multi, EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
-    time_ms = median(bench_threads).time / 1.0e6
-    println("RESULT_TIME_MS: \$time_ms")
+    time_s = median(bench_threads).time / 1.0e9
+    println("RESULT_TIME_S: \$time_s")
     """
 
     # Write to temp file and execute
@@ -50,7 +50,7 @@ for t in threads_to_test
     println(output)
 
     # Parse output
-    m = match(r"RESULT_TIME_MS:\s*([0-9.]+)", output)
+    m = match(r"RESULT_TIME_S:\s*([0-9.]+)", output)
     if m !== nothing
         push!(times, parse(Float64, m.captures[1]))
     else
