@@ -476,6 +476,7 @@ end
         E, JE = TP.get_E_parameters(x_test, t_test, E_const)
         @test E == E_expected && JE == zeros(3, 3)
     end
+    @testset "derivatives" include("test_derivatives.jl")
 end
 
 include("test_boris.jl")

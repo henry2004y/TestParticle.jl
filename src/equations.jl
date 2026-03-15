@@ -197,11 +197,8 @@ function trace_relativistic_normalized(y, p, t)
 end
 
 @inline function get_B_parameters(x, t, Bfunc)
-    # Compute B and its Jacobian in a single pass using DiffResults
-    result = DiffResults.JacobianResult(x)
-    result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
-    JB = DiffResults.jacobian(result)
-    B = DiffResults.value(result)
+    B = Bfunc(x, t)
+    JB = jacobian(Bfunc, x, t)
 
     Bmag = norm(B)
     b̂ = B / Bmag
@@ -213,10 +210,8 @@ end
 end
 
 @inline function get_E_parameters(x, t, Efunc)
-    result = DiffResults.JacobianResult(x)
-    result = ForwardDiff.jacobian!(result, r -> Efunc(r, t), x)
-    JE = DiffResults.jacobian(result)
-    E = DiffResults.value(result)
+    E = Efunc(x, t)
+    JE = jacobian(Efunc, x, t)
 
     return E, JE
 end
@@ -394,7 +389,7 @@ Returns a tuple `(P_par, P_fermi, P_grad, P_betatron)`.
     P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
 
     # 4. Betatron Work: μ ∂B/∂t
-    dBdt_val = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t)
+    dBdt_val = derivative_t(Bfunc, r, t) ⋅ b̂
 
     P_betatron = μ * dBdt_val
 
@@ -431,7 +426,7 @@ function get_work_rates_gc(xv, p, t)
     P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
 
     # 4. Betatron Work: μ ∂B/∂t
-    dBdt_val = ForwardDiff.derivative(t -> norm(Bfunc(r, t)), t)
+    dBdt_val = derivative_t(Bfunc, r, t) ⋅ b̂
 
     P_betatron = μ * dBdt_val
 

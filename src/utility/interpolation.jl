@@ -26,6 +26,13 @@ end
     return fi(xu)
 end
 
+@inline @inbounds function jacobian(fi::FieldInterpolator, xu)
+    # gradient returns a tuple of partial derivatives: (df/dx, df/dy, df/dz)
+    grads = gradient(fi.itp, (xu[1], xu[2], xu[3]))
+    # For a vector field f = [f1, f2, f3], each grad is an SVector{3}
+    return hcat(grads...) # J_ij = ∂fi/∂xj
+end
+
 Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp))
 
 """
@@ -44,6 +51,11 @@ end
 
 @inline function (fi::FieldInterpolator2D)(xu, t)
     return fi(xu)
+end
+
+@inline @inbounds function jacobian(fi::FieldInterpolator2D, xu)
+    grads = gradient(fi.itp, (xu[1], xu[2]))
+    return hcat(grads...)
 end
 
 Adapt.adapt_structure(to, fi::FieldInterpolator2D) = FieldInterpolator2D(Adapt.adapt(to, fi.itp))
@@ -66,7 +78,16 @@ end
     return fi(xu)
 end
 
+@inline @inbounds function jacobian(fi::FieldInterpolator1D, xu)
+    # deriv1 returns a viewer that evaluates to the derivative
+    return hcat(deriv1(fi.itp)(xu[fi.dir]))
+end
+
 Adapt.adapt_structure(to, fi::FieldInterpolator1D) = FieldInterpolator1D(Adapt.adapt(to, fi.itp), fi.dir)
+
+function jacobian(f::Function, x)
+    return ForwardDiff.jacobian(f, x)
+end
 
 """
     SphericalFieldInterpolator{T}
@@ -347,4 +368,42 @@ function _get_field!(itp::LazyTimeInterpolator, idx::Int)
         end
         return itp.buffer[idx]
     end
+end
+
+function jacobian(itp::LazyTimeInterpolator, x, t)
+    idx = searchsortedlast(itp.times, t)
+
+    # Handle out-of-bounds (clamp)
+    if idx <= 0
+        return jacobian(_get_field!(itp, 1), x)
+    elseif idx >= length(itp.times)
+        return jacobian(_get_field!(itp, length(itp.times)), x)
+    end
+
+    t1 = itp.times[idx]
+    t2 = itp.times[idx + 1]
+    w = (t - t1) / (t2 - t1)
+
+    # Loading the fields here so we can get their jacobians
+    f1 = _get_field!(itp, idx)
+    f2 = _get_field!(itp, idx + 1)
+
+    # Jacobian is linear combination of step jacobians
+    return (1 - w) * jacobian(f1, x) + w * jacobian(f2, x)
+end
+
+function derivative_t(itp::LazyTimeInterpolator, x, t)
+    idx = searchsortedlast(itp.times, t)
+
+    if idx <= 0 || idx >= length(itp.times)
+        return zero(_get_field!(itp, 1)(x))
+    end
+
+    t1 = itp.times[idx]
+    t2 = itp.times[idx + 1]
+
+    f1 = _get_field!(itp, idx)
+    f2 = _get_field!(itp, idx + 1)
+
+    return (f2(x) - f1(x)) / (t2 - t1)
 end

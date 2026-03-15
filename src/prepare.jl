@@ -1,9 +1,14 @@
 # Construction of tracing parameters.
 
 """
+    is_time_dependent(f::Function)
+
 Judge whether the field function is time dependent.
 """
-is_time_dependent(f::Function) = applicable(f, zeros(6), 0.0) ? true : false
+is_time_dependent(f::Function) = applicable(f, zeros(3), 0.0) || applicable(f, zeros(6), 0.0)
+
+is_time_dependent(::AbstractField{itd}) where {itd} = itd
+is_time_dependent(::AbstractFieldInterpolator) = false
 
 """
     Field{itd, F} <: AbstractField{itd}
@@ -37,19 +42,36 @@ end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
-is_time_dependent(::AbstractField{itd}) where {itd} = itd
-# Note: Without it, AbstractFieldInterpolators are treated as time-dependent (due to their (x,t) method).
-# This causes TestParticle to wrap them in Field{true}, which forbids calling f(x) (without time).
-# Several components/tests rely on f(x) for static fields, leading to ArgumentError.
-#TODO: Have a proper treatment for the time dependency with LazyTimeInterpolator.
-is_time_dependent(::AbstractFieldInterpolator) = false # Always treat as static by default
-
 @inline (f::Field{true})(xu, t) = f.field_function(xu, t)
 @inline function (f::Field{true})(xu)
     throw(ArgumentError("Time-dependent field function must have a time argument."))
 end
 @inline (f::Field{false})(xu, t) = f.field_function(xu)
 @inline (f::Field{false})(xu) = f.field_function(xu)
+
+function jacobian(f::Field{true}, xu, t)
+    return jacobian(f.field_function, xu, t)
+end
+
+function jacobian(f::Field{false}, xu, t)
+    return jacobian(f.field_function, xu)
+end
+
+function jacobian(f::Function, xu, t)
+    return ForwardDiff.jacobian(r -> f(r, t), xu)
+end
+
+function derivative_t(f::Field{true}, xu, t)
+    return derivative_t(f.field_function, xu, t)
+end
+
+function derivative_t(f::Field{false}, xu, t)
+    return zero(xu)
+end
+
+function derivative_t(f::Function, xu, t)
+    return ForwardDiff.derivative(τ -> f(xu, τ), t)
+end
 
 function Base.show(io::IO, f::Field)
     println(io, "Field with interpolation support")
