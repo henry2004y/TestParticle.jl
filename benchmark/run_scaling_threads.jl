@@ -5,7 +5,6 @@ using CairoMakie
 using Statistics
 using Printf
 
-
 # Thread counts to test (powers of 2 up to the system's logical cores)
 max_threads = Sys.CPU_THREADS
 threads_to_test = [2^i for i in 0:floor(Int, log2(max_threads))]
@@ -29,7 +28,7 @@ for t in threads_to_test
     uniform_E(x) = SA[0.0, 0.0, 0.0]
     param = prepare(uniform_E, uniform_B; species = Proton)
     x0 = [0.0, 0.0, 0.0]; v0 = [1.0e5, 0.0, 0.0]; stateinit = [x0..., v0...]
-    tspan = (0.0, 1.0e-5); dt = 1.0e-9
+    tspan = (0.0, 1.0e-3); dt = 1.0e-9
     prob_func(prob, i, repeat) = remake(prob; u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0])
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
 
@@ -86,3 +85,8 @@ axislegend(ax, position = :lt)
 plot_path = joinpath(@__DIR__, "parallel_scaling.png")
 save(plot_path, fig)
 println("\nSaved scaling plot to: ", plot_path)
+
+# Save results to CSV
+using DelimitedFiles
+writedlm(joinpath(@__DIR__, "threads_scaling.csv"), [threads_to_test times], ',')
+println("Saved scaling results to: ", joinpath(@__DIR__, "threads_scaling.csv"))

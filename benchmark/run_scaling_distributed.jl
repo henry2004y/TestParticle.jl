@@ -34,7 +34,7 @@ param = prepare(uniform_E, uniform_B; species = Proton)
 x0 = [0.0, 0.0, 0.0]
 v0 = [1.0e5, 0.0, 0.0]
 stateinit = [x0..., v0...]
-tspan = (0.0, 1.0e-5)
+tspan = (0.0, 1.0e-3)
 dt = 1.0e-9
 savestepinterval = 10000
 
@@ -107,3 +107,8 @@ axislegend(ax; position = :lt)
 plot_path = joinpath(@__DIR__, "distributed_scaling.png")
 save(plot_path, fig)
 println("Saved scaling plot to: ", plot_path)
+
+# Save results to CSV
+using DelimitedFiles
+writedlm(joinpath(@__DIR__, "distributed_scaling.csv"), [proc_counts times], ',')
+println("Saved scaling results to: ", joinpath(@__DIR__, "distributed_scaling.csv"))

@@ -37,6 +37,31 @@ The primary role of this package is to automate the construction of the ODE syst
 
 In addition to standard integrators, TestParticle.jl includes a native implementation of the Boris solver. It exposes an interface similar to DifferentialEquations.jl for ease of adoption. Further details are provided in the subsequent sections. Check more in [examples](@ref).
 
+## Performance and Scaling
+
+Tracing many particles can be computationally intensive. TestParticle.jl is designed to scale across multiple cores and machines using Julia's built-in parallel computing capabilities.
+
+### Serial Performance
+
+The following table compares the performance of TestParticle's Boris solver against standard ODE solvers from DifferentialEquations.jl for a single particle simulation.
+
+**Benchmark Configuration:**
+- Hardware: Intel Ultra 7 265K
+- Task: Simulating 1 particle for 0.1 second with $dt = 1$ ns ($10^8$ steps).
+
+| Solver | Median Time | Speedup | Allocations | Memory |
+| :--- | :--- | :--- | :--- | :--- |
+| TestParticle Boris | 923 ms | 1.0x | 8 | 55.12 KiB |
+| ODE Tsit5 (fixed) | 15773 ms | 17x slower | 64 | 3.74 KiB |
+| ODE Vern9 (fixed) | 39555 ms | 43x slower | 72 | 4.35 KiB |
+
+### Parallel Scaling
+
+TestParticle.jl supports both multithreading and distributed computing for ensemble simulations. The following results were obtained on a Perlmutter 1 CPU node (2x AMD EPYC 7763). The multithreading performance is measured using `EnsembleThreads()`, while the distributed performance is measured using `EnsembleDistributed()`.
+
+![Strong Scaling](./figures/scaling_combined.png)
+
+
 ## Acknowledgement
 
 Nothing can be done such easily without the support of the Julia community. We appreciate all the contributions from developers around the world.
