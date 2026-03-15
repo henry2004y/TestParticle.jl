@@ -27,12 +27,10 @@ end
 end
 
 @inline @inbounds function jacobian(fi::FieldInterpolator, xu)
-    # gradient returns a tuple of partial derivatives:
-    # (df/dx, df/dy, df/dz)
+    # gradient returns a tuple of partial derivatives: (df/dx, df/dy, df/dz)
     grads = gradient(fi.itp, (xu[1], xu[2], xu[3]))
     # For a vector field f = [f1, f2, f3], each grad is an SVector{3}
-    # We want J_ij = ∂fi/∂xj, which means the columns are the partial derivatives.
-    return hcat(grads...)
+    return hcat(grads...) # J_ij = ∂fi/∂xj
 end
 
 Adapt.adapt_structure(to, fi::FieldInterpolator) = FieldInterpolator(Adapt.adapt(to, fi.itp))
