@@ -7,7 +7,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using LinearAlgebra: normalize, norm, ×, ⋅
-using ForwardDiff: gradient, jacobian
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

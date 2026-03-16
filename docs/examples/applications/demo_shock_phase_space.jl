@@ -39,7 +39,7 @@ const n1_p = 8.0e6 # m^-3
 
 ## Magnetic Field Parameters
 const theta = 45.0
-const Bmagnitude = 30.0 # nT
+const Bmagnitude = 30.0e-9 # T
 
 function get_B0_B1(theta, B_mag)
     theta_rad = deg2rad(theta)
@@ -57,8 +57,8 @@ function get_B0_B1(theta, B_mag)
 end
 
 B0_calc, B1_calc = get_B0_B1(theta, Bmagnitude)
-const B0_val = B0_calc * 1.0e-9 # T
-const B1_val = B1_calc * 1.0e-9 # T
+const B0_val = B0_calc # T
+const B1_val = B1_calc # T
 const Bx_val = 5.0e-9; # T
 
 # ## Field Definitions
@@ -79,9 +79,9 @@ end
 Electric Field based on generalized Ohm's law, including the Hall term and Electron Pressure Gradient.
 """
 function get_E_shock(r)
-    x = r[1]
-    tanh_v = tanh(x / l_shock)
-    sech_v = sech(x / l_shock)
+    xnorm = r[1] / l_shock
+    tanh_v = tanh(xnorm)
+    sech_v = sech(xnorm)
     ## Ion density for Harris current sheet
     ni = -n0_p * tanh_v + n1_p
 
@@ -92,8 +92,9 @@ function get_E_shock(r)
     bx = Bx_val
 
     ## Ohm's Law and momentum equation terms
-    ex = -jz * by / (e * ni) + P0_val * sech_v^2 / (e * ni * l_shock)
-    ey = jz * bx / (e * ni)
+    eni = e * ni
+    ex = -jz * by / eni + P0_val * sech_v^2 / (eni * l_shock)
+    ey = jz * bx / eni
     ez = -Vsw * (B1_val - B0_val)
 
     return SVector{3}(ex, ey, ez)
