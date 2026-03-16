@@ -98,11 +98,10 @@ function trace_gc_flr!(dx, x, p, t)
     Bx = Bfunc(xp, t)
     Bmag_particle = norm(Bx)
     b_particle = Bx / Bmag_particle
-
     v_par = (v ⋅ b_particle) .* b_particle
     v_perp = v - v_par
 
-    r4 = (norm(v_perp) / q2m / Bmag_particle)^2 / 4
+    r4 = (v_perp ⋅ v_perp) / (4 * (q2m * Bmag_particle)^2)
 
     # Helper for FLR term: (E × B) / B²
     EB(x_in) = begin
@@ -230,7 +229,8 @@ function trace_gc_drifts!(dx, x, p, t)
 
     B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
 
-    v_par = (v ⋅ b) .* b
+    v_par_val = v ⋅ b
+    v_par = v_par_val .* b
     v_perp = v - v_par
     Ω = q2m * Bmag
 
@@ -243,7 +243,7 @@ function trace_gc_drifts!(dx, x, p, t)
 
     # w^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + v_E + v∥
     @inbounds dx[1:3] = (w[1]^2 + w[2]^2 + w[3]^2) * (b × ∇B) / (2 * Ω * Bmag) +
-        norm(v_par)^2 * (b × κ) / Ω +
+        v_par_val^2 * (b × κ) / Ω +
         v_E + v_par
 
     return
