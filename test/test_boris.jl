@@ -64,6 +64,10 @@ using Distributed
         @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.4382490724
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
+        sols = TP.solve(prob, EnsembleSplitThreads(); dt, savestepinterval, trajectories)
+        @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.4382490724
+
+        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 2
         savestepinterval = 1000
         sols = TP.solve(prob; dt, savestepinterval, trajectories)

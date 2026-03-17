@@ -319,6 +319,33 @@ end
     end
 end
 
+@inline function _solve(
+        ::EnsembleSplitThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
+        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
+    ) where {SaveFields, SaveWork, F}
+    _, nt, nout = _prepare(
+        prob, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+    )
+    # _solve_single_boris wraps each trajectory in a fresh TraceProblem(u0, tspan, p)
+    # with DEFAULT_PROB_FUNC, so use that type for the vector.
+    dummy_prob = TraceProblem(prob.u0, prob.tspan, prob.p)
+    sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
+    ichunks = index_chunks(1:trajectories; size = batch_size)
+    results = pmap(ichunks) do irange
+        local_sols = Vector{sol_type}(undef, length(irange))
+        Threads.@threads for (k, i) in collect(enumerate(irange))
+            local_sols[k] = _solve_single_boris(
+                prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n,
+                save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            )
+        end
+        local_sols
+    end
+    return reduce(vcat, results)
+end
+
 function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     u0 = prob.u0
     tspan = prob.tspan
