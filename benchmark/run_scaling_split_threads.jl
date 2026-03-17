@@ -63,14 +63,17 @@ for nw in proc_counts
 
         # Warmup
         TestParticle.solve(
-            prob, EnsembleSplitThreads(); trajectories = 10, dt, savestepinterval, batch_size = 1
+            prob, EnsembleSplitThreads();
+            trajectories = 10, dt, savestepinterval, batch_size = 1
         )
 
         # Timed samples
         sample_times = Float64[]
         for _ in 1:N_SAMPLES
             t = @elapsed TestParticle.solve(
-                prob, EnsembleSplitThreads(); trajectories = N_PARTICLES, dt, savestepinterval, batch_size = max(1, N_PARTICLES ÷ nw)
+                prob, EnsembleSplitThreads();
+                trajectories = N_PARTICLES, dt, savestepinterval,
+                batch_size = max(1, N_PARTICLES ÷ nw)
             )
             push!(sample_times, t)
         end
