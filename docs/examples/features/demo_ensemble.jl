@@ -222,3 +222,36 @@ for i in eachindex(trajs_boris)
 end
 
 f = DisplayAs.PNG(f) #hide
+
+# ## 5. Parallel Modes
+#
+# TestParticle.jl supports multiple parallel execution modes for ensemble simulations, leveraging the infrastructure from SciMLBase.
+# You can choose the mode by passing it as the second argument to `solve`.
+#
+# - `EnsembleSerial()`: No parallelism. Useful for debugging.
+# - `EnsembleThreads()`: Multi-threading. Highly efficient on a single machine with multiple cores.
+# - `EnsembleDistributed()`: Distributed-memory parallelism using multiple processes.
+# - `EnsembleSplitThreads()`: A hybrid approach that combines distributed processes with multi-threading. Particles are split across processes, and each process uses threads to solve its subset.
+#
+# Here is how you can use them:
+
+## 1. Multi-threading (usually the most convenient for local runs)
+sols_threads = TP.solve(prob_boris, EnsembleThreads(); dt, trajectories, savestepinterval)
+
+## 2. Distributed (Multi-processing)
+## Note: requires `addprocs()` and worker configuration
+if false #hide
+using Distributed
+addprocs()
+@everywhere using TestParticle
+sols_dist = TP.solve(prob_boris, EnsembleDistributed(); dt, trajectories, savestepinterval)
+end #hide
+
+## 3. Split-Threads (Hybrid Distributed + Multi-threading)
+## Each worker process will utilize its own threads.
+if false #hide
+using Distributed
+addprocs()
+@everywhere using TestParticle
+sols_split = TP.solve(prob_boris, EnsembleSplitThreads(); dt, trajectories, savestepinterval)
+end #hide
