@@ -235,23 +235,30 @@ f = DisplayAs.PNG(f) #hide
 #
 # Here is how you can use them:
 
-## 1. Multi-threading (usually the most convenient for local runs)
-sols_threads = TP.solve(prob_boris, EnsembleThreads(); dt, trajectories, savestepinterval)
-
-## 2. Distributed (Multi-processing)
-## Note: requires `addprocs()` and worker configuration
-if false #hide
-    using Distributed
-    addprocs()
-    @everywhere using TestParticle
-    sols_dist = TP.solve(prob_boris, EnsembleDistributed(); dt, trajectories, savestepinterval)
-end #hide
-
-## 3. Split-Threads (Hybrid Distributed + Multi-threading)
-## Each worker process will utilize its own threads.
-if false #hide
-    using Distributed
-    addprocs()
-    @everywhere using TestParticle
-    sols_split = TP.solve(prob_boris, EnsembleSplitThreads(); dt, trajectories, savestepinterval)
-end #hide
+# ### 1. Multi-threading (usually the most convenient for local runs)
+#
+# ```julia
+# sols_threads = solve(prob_boris, EnsembleThreads(); dt, trajectories, savestepinterval)
+# ```
+#
+# ### 2. Distributed (Multi-processing)
+#
+# Note: requires `addprocs()` and worker configuration.
+#
+# ```julia
+# using Distributed
+# addprocs()
+# @everywhere using TestParticle
+# sols_dist = solve(prob_boris, EnsembleDistributed(); dt, trajectories, savestepinterval)
+# ```
+#
+# ### 3. Split-Threads (Hybrid Distributed + Multi-threading)
+#
+# Each worker process will utilize its own threads.
+#
+# ```julia
+# using Distributed
+# addprocs()
+# @everywhere using TestParticle
+# sols_split = solve(prob_boris, EnsembleSplitThreads(); dt, trajectories, savestepinterval)
+# ```
