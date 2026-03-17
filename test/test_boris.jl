@@ -64,10 +64,6 @@ using Distributed
         @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.4382490724
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
-        sols = TP.solve(prob, EnsembleSplitThreads(); dt, savestepinterval, trajectories)
-        @test sum(s -> sum(s.u[end][4]), sols) ≈ -608930.4382490724
-
-        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 2
         savestepinterval = 1000
         sols = TP.solve(prob; dt, savestepinterval, trajectories)
@@ -446,6 +442,18 @@ using Distributed
                 @test length(sols_dist) == trajectories
                 for i in 1:trajectories
                     @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
+                end
+            end
+            @testset "SplitThreads" begin
+                sols_split = TP.solve(
+                    prob_dist, EnsembleSplitThreads(); dt, savestepinterval, trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, EnsembleSerial(); dt, savestepinterval, trajectories
+                )
+                @test length(sols_split) == trajectories
+                for i in 1:trajectories
+                    @test sols_split[i].u[end] ≈ sols_serial[i].u[end]
                 end
             end
 
