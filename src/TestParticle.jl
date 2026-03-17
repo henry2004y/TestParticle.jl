@@ -4,7 +4,8 @@ using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using FastInterpolations: linear_interp, quadratic_interp, cubic_interp, constant_interp,
     Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
-    BasicEnsembleAlgorithm, EnsembleThreads, EnsembleSerial, EnsembleDistributed,
+    BasicEnsembleAlgorithm,
+    EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution
 using Distributed: pmap
@@ -41,7 +42,7 @@ export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
-export EnsembleSerial, EnsembleThreads, EnsembleDistributed, remake
+export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake
 
 include("types.jl")
 include("utility/utility.jl")

@@ -444,6 +444,18 @@ using Distributed
                     @test sols_dist[i].u[end] ≈ sols_serial[i].u[end]
                 end
             end
+            @testset "SplitThreads" begin
+                sols_split = TP.solve(
+                    prob_dist, EnsembleSplitThreads(); dt, savestepinterval, trajectories
+                )
+                sols_serial = TP.solve(
+                    prob_dist, EnsembleSerial(); dt, savestepinterval, trajectories
+                )
+                @test length(sols_split) == trajectories
+                for i in 1:trajectories
+                    @test sols_split[i].u[end] ≈ sols_serial[i].u[end]
+                end
+            end
 
             @testset "AdaptiveBoris" begin
                 tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
