@@ -211,8 +211,8 @@ Trace particles using the Boris method with specified `prob`.
 end
 
 function _dispatch_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
+        n, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
     return if n == 1
         _boris!(
@@ -228,9 +228,9 @@ function _dispatch_boris!(
 end
 
 @inline function _solve(
-        ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters,
-        batch_size
+        ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval,
+        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -247,9 +247,9 @@ end
 end
 
 @inline function _solve(
-        ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval, isoutofdomain::F, n,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters,
-        batch_size
+        ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
+        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -647,8 +647,8 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 end
 
 @inline @muladd function _multistep_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F, n_steps::Int,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
+        n_steps::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, p, dt, t) ->
