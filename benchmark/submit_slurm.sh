@@ -13,7 +13,8 @@
 export JULIA_NUM_THREADS=1
 
 echo "Starting SLURM job with $SLURM_JOB_NUM_NODES nodes and $SLURM_NTASKS tasks total."
-echo "Threads per task: $JULIA_NUM_THREADS"
+echo "Threads for master process: $JULIA_NUM_THREADS"
+echo "Threads per worker task: $SLURM_CPUS_PER_TASK"
 
 module load julia
 
