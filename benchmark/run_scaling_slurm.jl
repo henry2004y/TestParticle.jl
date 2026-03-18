@@ -10,8 +10,13 @@ using Distributed
 using SlurmClusterManager
 
 # Add workers via SLURM
-# We use exeflags to ensure workers get the full CPU allocation,
-# allowing the master process to remain lightweight.
+# Reserve one task for the master Julia process to avoid oversubscription.
+# SlurmManager() reads SLURM_NTASKS from the environment.
+ntasks = parse(Int, get(ENV, "SLURM_NTASKS", "1"))
+if ntasks > 1
+    ENV["SLURM_NTASKS"] = string(ntasks - 1)
+end
+
 cpus_per_task = get(ENV, "SLURM_CPUS_PER_TASK", "1")
 addprocs(SlurmManager(); exeflags=["--threads=$cpus_per_task"])
 
