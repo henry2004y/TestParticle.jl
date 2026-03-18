@@ -10,15 +10,12 @@ using Distributed
 using SlurmClusterManager
 
 # Add workers via SLURM
-# Reserve one task for the master Julia process to avoid oversubscription.
+# master process uses 1 thread
+# worker processes use all threads
 # SlurmManager() reads SLURM_NTASKS from the environment.
-ntasks = parse(Int, get(ENV, "SLURM_NTASKS", "1"))
-if ntasks > 1
-    ENV["SLURM_NTASKS"] = string(ntasks - 1)
-end
 
 cpus_per_task = get(ENV, "SLURM_CPUS_PER_TASK", "1")
-addprocs(SlurmManager(); exeflags=["--threads=$cpus_per_task"])
+addprocs(SlurmManager(); exeflags = ["--threads=$cpus_per_task"])
 
 @everywhere begin
     using TestParticle
