@@ -143,6 +143,34 @@ function _solve(
     end
 end
 
+function _solve(
+        ::EnsembleSplitThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
+        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
+    ) where {SaveFields, SaveWork}
+    # _solve_single_adaptive_boris wraps each trajectory in a fresh TraceProblem(u0, tspan, p)
+    # with DEFAULT_PROB_FUNC. We get a sample problem from prob_func to ensure the
+    # u0 type (uType) matches.
+    sample_prob = prob.prob_func(prob, 1, false)
+    dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
+    sol_type = _get_sol_type(
+        dummy_prob, zero(eltype(dummy_prob.tspan)), Val(SaveFields), Val(SaveWork)
+    )
+    ichunks = index_chunks(1:trajectories; size = batch_size)
+    results = pmap(ichunks) do irange
+        local_sols = Vector{sol_type}(undef, length(irange))
+        Threads.@threads for k in eachindex(irange)
+            i = irange[k]
+            local_sols[k] = _solve_single_adaptive_boris(
+                prob, i, alg, savestepinterval, isoutofdomain,
+                save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            )
+        end
+        local_sols
+    end
+    return reduce(vcat, results)
+end
+
 function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
