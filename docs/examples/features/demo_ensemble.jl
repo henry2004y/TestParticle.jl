@@ -198,7 +198,7 @@ f = DisplayAs.PNG(f) #hide
 
 # ## 4. Native Boris Pusher
 #
-# We can also solve the ensemble problem with the native [Boris pusher](@ref Boris-Method).
+# We can also solve the ensemble problem with the native [Boris Method](@ref).
 # Note that the Boris pusher requires additional parameters: a fixed timestep, and an output save interval.
 
 dt = 0.1

@@ -61,7 +61,19 @@ TestParticle.jl supports both multithreading and distributed computing for ensem
 
 ![Strong Scaling](./figures/scaling_combined.png)
 
+## Presentations
+
+For interactive presentations and educational materials, please check out these Pluto notebooks:
+
+- [TestParticle.jl: A New Tool for An Old Problem](https://henry2004y.github.io/pluto_playground/testparticle_202401.html)
+- [基于开源工具链的测试粒子模型 (Test Particle Model Based on Open Source Toolchain)](https://henry2004y.github.io/pluto_playground/testparticle_202212.html)
+
+## Publications
+
+- Zhang, Chi, Hongyang Zhou, Chuanfei Dong, Yuki Harada, Masatoshi Yamauchi, Shaosui Xu, Hans Nilsson, et al. 2024. “Source of Drift-Dispersed Electrons in Martian Crustal Magnetic Fields.” The Astrophysical Journal 972 (2): 153. https://doi.org/10.3847/1538-4357/ad64d5.
 
 ## Acknowledgement
+
+`TestParticle.jl` is acknowledged by citing the Zenodo DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10149789.svg)](https://doi.org/10.5281/zenodo.10149789).
 
 Nothing can be done such easily without the support of the Julia community. We appreciate all the contributions from developers around the world.
