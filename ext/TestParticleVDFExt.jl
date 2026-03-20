@@ -8,17 +8,6 @@ using LinearAlgebra: norm
 using StaticArrays: SA
 using PrecompileTools: @setup_workload, @compile_workload
 
-const species_name_to_type = Dict(
-    "H+" => TP.Proton,
-    "Proton" => TP.Proton,
-    "e-" => TP.Electron,
-    "Electron" => TP.Electron,
-    "O+" => TP.Ion(16, 1),
-    "He+" => TP.Ion(4, 1),
-    "O2+" => TP.Ion(32, 1),
-    "CO2+" => TP.Ion(44, 1),
-)
-
 function TP.sample_maxwellian(Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
     vth = √(2 * TP.kB * Tn / m)
     vdf = VDF.Maxwellian(vth; u0)
@@ -33,8 +22,8 @@ function TP.sample_maxwellian(Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
 end
 
 function TP.sample_maxwellian(Tn, species::String; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
-    haskey(species_name_to_type, species) || error("Unsupported species: $species")
-    s = species_name_to_type[species]
+    haskey(TP.SpeciesDict, species) || error("Unsupported species: $species")
+    s = TP.SpeciesDict[species]
     return TP.sample_maxwellian(Tn, s.m; offset, u0)
 end
 

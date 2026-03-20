@@ -18,3 +18,14 @@ const Electron = Species(mₑ, qₑ)
 
 Ion(m, q = 1) = Species(m * mᵢ, q * qᵢ)
 Ion(; m = 1, q = 1) = Species(m * mᵢ, q * qᵢ)
+ 
+const SpeciesDict = Dict(
+    "H+" => Proton,
+    "Proton" => Proton,
+    "e-" => Electron,
+    "Electron" => Electron,
+    "O+" => Ion(16, 1),
+    "He+" => Ion(4, 1),
+    "O2+" => Ion(32, 1),
+    "CO2+" => Ion(44, 1),
+)
