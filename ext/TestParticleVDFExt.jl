@@ -4,7 +4,39 @@ using TestParticle
 import TestParticle as TP
 import VelocityDistributionFunctions as VDF
 import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
+using LinearAlgebra: norm
+using StaticArrays: SA
 using PrecompileTools: @setup_workload, @compile_workload
+
+const species_name_to_type = Dict(
+    "H+" => TP.Proton,
+    "Proton" => TP.Proton,
+    "e-" => TP.Electron,
+    "Electron" => TP.Electron,
+    "O+" => TP.Ion(16, 1),
+    "He+" => TP.Ion(4, 1),
+    "O2+" => TP.Ion(32, 1),
+    "CO2+" => TP.Ion(44, 1),
+)
+
+function TP.sample_maxwellian(Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    vth = √(2 * TP.kB * Tn / m)
+    vdf = VDF.Maxwellian(vth; u0)
+    v = rand(vdf)
+    if offset > 0
+        v_mag = norm(v)
+        E = 0.5 * m * v_mag^2 + offset
+        v_mag_new = sqrt(2 * E / m)
+        v *= (v_mag_new / v_mag)
+    end
+    return v
+end
+
+function TP.sample_maxwellian(Tn, species::String; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    haskey(species_name_to_type, species) || error("Unsupported species: $species")
+    s = species_name_to_type[species]
+    return TP.sample_maxwellian(Tn, s.m; offset, u0)
+end
 
 function Maxwellian(args...; kwargs...)
     return VDF.Maxwellian(args...; kwargs...)
@@ -59,6 +91,7 @@ end
         v = rand(vdf)
         vdf = BiKappa(B, u0, p, p, n, kappa)
         v = rand(vdf)
+        sample_maxwellian(3000.0, "O+")
     end
 end
 

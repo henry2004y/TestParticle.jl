@@ -37,11 +37,12 @@ export AdaptiveBoris, AdaptiveHybrid
 export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy, get_mean_magnitude,
     energy2velocity, get_curvature_radius, get_adiabaticity,
-    sample_unit_sphere, get_number_density_flux
+    sample_unit_sphere, get_number_density_flux, generate_sphere, sample_maxwellian
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
-export TraceProblem, TraceGCProblem, TraceHybridProblem, CartesianGrid, RectilinearGrid, StructuredGrid
+export TraceProblem, TraceGCProblem, TraceHybridProblem,
+    CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake
 
 include("types.jl")
