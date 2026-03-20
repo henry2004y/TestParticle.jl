@@ -37,7 +37,9 @@ Trace particles using the Adaptive Boris method with specified `prob` and `alg`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
   - `save_fields::Bool`: save the electric and magnetic fields. Default is `false`.
   - `save_work::Bool`: save the work done by the electric field. Default is `false`.
-  - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed`. Default is `max(1, trajectories ÷ Threads.nthreads())`.
+  - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`. Default is `max(1, trajectories ÷ nworkers())` for distributed and 1 for others.
+
+
 """
 function solve(
         prob::TraceProblem, alg::AdaptiveBoris,
@@ -46,8 +48,10 @@ function solve(
         isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false,
-        batch_size::Int = max(1, trajectories ÷ Threads.nthreads())
+        batch_size::Int = (ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads) ?
+            max(1, trajectories ÷ nworkers()) : 1
     )
+
     return if save_fields
         if save_work
             return _solve(
