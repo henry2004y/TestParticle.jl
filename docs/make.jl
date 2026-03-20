@@ -124,7 +124,12 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
-        "Tutorial" => "tutorial.md",
+        "Tutorial" => [
+            "Introduction" => "tutorial/introduction.md",
+            "Numerical Methods" => "tutorial/numerical_methods.md",
+            "Guiding Center" => "tutorial/guiding_center.md",
+            "Features Walkthrough" => "tutorial/features.md",
+        ],
         "Examples" => example_pages,
         "API" => "api.md",
         "Plot Functions" => "plotfunctions.md",
