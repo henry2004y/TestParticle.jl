@@ -17,12 +17,9 @@ using SlurmClusterManager
 cpus_per_task = get(ENV, "SLURM_CPUS_PER_TASK", "1")
 addprocs(SlurmManager(); exeflags = ["--threads=$cpus_per_task"])
 
-@everywhere begin
-    using TestParticle
-    using StaticArrays
-    using Statistics
-end
-
+using TestParticle
+using StaticArrays
+using Statistics
 using Printf
 
 # Benchmark settings
@@ -32,17 +29,15 @@ const N_SAMPLES = 5
 println("Number of workers: ", nworkers())
 @everywhere println("Hello from worker $(myid()) on $(gethostname()) with $(Threads.nthreads()) threads")
 
-@everywhere begin
-    # Trace Problem Setup (consistent with run_scaling_threads.jl)
-    uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-    uniform_E(x) = SA[0.0, 0.0, 0.0]
+# Trace Problem Setup (consistent with run_scaling_threads.jl)
+uniform_B = x -> SA[0.0, 0.0, 1.0e-8]
+uniform_E = x -> SA[0.0, 0.0, 0.0]
 
-    prob_func(prob, i, repeat) =
-        remake(
-        prob;
-        u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0]
-    )
-end
+prob_func = (prob, i, repeat) ->
+remake(
+    prob;
+    u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0]
+)
 
 param = prepare(uniform_E, uniform_B; species = Proton)
 
@@ -52,7 +47,7 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 1.0e-3)
 dt = 1.0e-9
 
-prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
+prob_multi = TraceProblem(stateinit, tspan, param; prob_func)
 
 println("\nStarting EnsembleSplitThreads benchmark...")
 println("Particles: $N_PARTICLES, samples per point: $N_SAMPLES")

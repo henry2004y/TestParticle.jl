@@ -8,7 +8,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution
-using Distributed: pmap
+using Distributed: pmap, nworkers
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid
 import ForwardDiff

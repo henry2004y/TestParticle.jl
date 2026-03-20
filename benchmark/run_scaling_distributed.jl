@@ -11,7 +11,7 @@ using CairoMakie
 using Statistics
 using Printf
 using Distributed
-using TestParticle
+@everywhere using TestParticle
 using StaticArrays
 
 const N_PARTICLES = 16384
@@ -45,7 +45,7 @@ function make_prob(param, stateinit, tspan)
             u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0],
         )
     end
-    return TraceProblem(stateinit, tspan, param; prob_func = prob_func)
+    return TraceProblem(stateinit, tspan, param; prob_func)
 end
 
 times = Float64[]
@@ -63,14 +63,17 @@ for nw in proc_counts
 
         # Warmup
         TestParticle.solve(
-            prob, EnsembleDistributed(); trajectories = 10, dt, savestepinterval, batch_size = 1
+            prob, EnsembleDistributed();
+            trajectories = 10, dt, savestepinterval, batch_size = 1
         )
 
         # Timed samples
         sample_times = Float64[]
         for _ in 1:N_SAMPLES
             t = @elapsed TestParticle.solve(
-                prob, EnsembleDistributed(); trajectories = N_PARTICLES, dt, savestepinterval, batch_size = max(1, N_PARTICLES ÷ nw)
+                prob, EnsembleDistributed();
+                trajectories = N_PARTICLES, dt, savestepinterval,
+                batch_size = max(1, N_PARTICLES ÷ nw)
             )
             push!(sample_times, t)
         end
