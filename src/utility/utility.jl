@@ -328,6 +328,40 @@ function sample_unit_sphere()
 end
 
 """
+    generate_sphere(nθ=64, nϕ=64, radius=1.0)
+
+Generate a sphere with `radius` and matching grid points `nθ` and `nϕ`.
+Returns a tuple of `(x, y, z)` matrices.
+"""
+function generate_sphere(nθ = 64, nϕ = 64, radius = 1.0)
+    ϕ = LinRange(0, 2π, nϕ)
+    θ = LinRange(0, π, nθ)
+    x = Matrix{Float64}(undef, nϕ, nθ)
+    y = Matrix{Float64}(undef, nϕ, nθ)
+    z = Matrix{Float64}(undef, nϕ, nθ)
+    @inbounds for j in axes(x, 2)
+        sinθ, cosθ = sincos(θ[j])
+        for i in axes(x, 1)
+            sinϕ, cosϕ = sincos(ϕ[i])
+            x[i, j] = radius * cosϕ * sinθ
+            y[i, j] = radius * sinϕ * sinθ
+            z[i, j] = radius * cosθ
+        end
+    end
+    return x, y, z
+end
+
+"""
+    sample_maxwellian(Tn, m; offset=0.0, u0=SA[0.0, 0.0, 0.0])
+    sample_maxwellian(Tn, species::String; offset=0.0, u0=SA[0.0, 0.0, 0.0])
+
+Sample a velocity [m/s] from a Maxwellian distribution with temperature `Tn` [K], mass `m`
+[kg], energy offset `offset` [J], and bulk velocity `u0` [m/s].
+This function requires `VelocityDistributionFunctions.jl` to be loaded.
+"""
+function sample_maxwellian end
+
+"""
     get_number_density_flux(grid::CartesianGrid, sols, dt)
 
 Calculate the steady state particle number density flux on a uniform Cartesian grid.

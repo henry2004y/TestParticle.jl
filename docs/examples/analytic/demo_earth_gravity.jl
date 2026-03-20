@@ -56,11 +56,7 @@ ax = Axis3(
 
 ## Draw Earth
 ## A simple sphere at the origin
-u = LinRange(0, 2π, 50)
-v = LinRange(0, π, 50)
-x_sphere = Rₑ .* (cos.(u) * sin.(v)')
-y_sphere = Rₑ .* (sin.(u) * sin.(v)')
-z_sphere = Rₑ .* (ones(length(u)) * cos.(v)')
+x_sphere, y_sphere, z_sphere = generate_sphere(50, 50, Rₑ)
 
 surface!(
     ax, x_sphere ./ Rₑ, y_sphere ./ Rₑ, z_sphere ./ Rₑ,

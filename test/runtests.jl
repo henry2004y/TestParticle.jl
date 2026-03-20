@@ -2,6 +2,7 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
 using Random, StableRNGs
+using LinearAlgebra: norm
 using VelocityDistributionFunctions
 using Test
 
@@ -64,6 +65,15 @@ end
         v = rand(vdf)
         @test sum(v) ≈ -794362.2464141053 # Updated for new RNG behavior or package differences
         @test occursin("BiMaxwellian", repr(vdf))
+
+        # Maxwellian velocity sampling
+        Tn = 3000.0
+        m = 16 * mᵢ
+        v_sample = sample_maxwellian(Tn, m)
+        @test length(v_sample) == 3
+
+        v_off = sample_maxwellian(Tn, "O+"; offset = 2 * TP.eV)
+        @test norm(v_off) > sqrt(2 * 2 * qᵢ / (16 * mᵢ))
     end
 
 

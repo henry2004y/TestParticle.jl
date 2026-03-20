@@ -11,6 +11,7 @@ const ϵ₀ = ustrip(VacuumElectricPermittivity) # Vacuum permittivity, [F/m]
 const kB = ustrip(BoltzmannConstant) # Boltzmann constant, [J/K]
 const Rₑ = 6371.0e3 # Earth radius, [m]
 const BMoment_Earth = SVector(0.0, 0.0, -7.94e22) # [V*s/(A*m)]
+const eV = qᵢ # electron volt, [J]
 
 const Proton = Species(mᵢ, qᵢ)
 const Electron = Species(mₑ, qₑ)

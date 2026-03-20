@@ -39,6 +39,13 @@ import TestParticle as TP
         @test get_mean_magnitude(B2) ≈ sqrt(13)
     end
 
+    @testset "Sphere Generation" begin
+        r = 2.0
+        nθ, nϕ = 4, 8
+        x, y, z = generate_sphere(nθ, nϕ, r)
+        @test size(x) == size(y) == size(z) == (nϕ, nθ) && all(hypot.(x, y, z) .≈ r)
+    end
+
     @testset "Interpolation" begin
         # From runtests.jl
         begin # scalar interpolation
