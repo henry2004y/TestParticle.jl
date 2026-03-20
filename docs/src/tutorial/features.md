@@ -16,11 +16,29 @@ Tracing a particle backwards is as simple as setting a time span where the end t
 
 ## Multiple Particles (Ensemble Simulations)
 
-There are two primary ways to trace multiple particles simultaneously:
+Tracing multiple particles simultaneously is efficiently handled through ensemble simulations. `TestParticle.jl` supports several parallelization strategies to leverage available hardware (following [Ensemble Algorithms](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/#EnsembleAlgorithms)):
 
-1. Extracting the solution in a loop with varying initial conditions. See the example [Ensemble Tracing](@ref).
-2. Constructing the [Ensemble Simulations](https://diffeq.sciml.ai/stable/features/ensemble/). One example can be found [here](https://github.com/henry2004y/TestParticle.jl/tree/master/examples/demo_ensemble.jl). However, note that by default the ensemble type replicates the parameters for each solution, which is very memory inefficient for tracing in a numeric field. 
-We need to set `safetycopy=false` to make the field as a reference in the parameter of each trajectory.
+- **EnsembleSerial**: Sequential execution on a single core.
+- **EnsembleThreads**: Shared-memory parallelization using multiple threads. This is the most efficient choice for local multi-core machines.
+- **EnsembleDistributed**: Distributed-memory parallelization across multiple processes or nodes. Useful for large-scale simulations on a cluster.
+- **EnsembleSplitThreads**: A hybrid strategy that combines distributed processes with multi-threading on each process. This is ideal for HPC clusters where you want to use multiple nodes and all cores within each node.
+
+### Work Distribution (`batch_size`)
+
+When using distributed parallelization (`EnsembleDistributed` or `EnsembleSplitThreads`), you can control the granularity of task distribution using the `batch_size` keyword argument in `solve`. This parameter determines how many trajectories are sent to a worker in a single chunk.
+
+By default, `batch_size` is automatically optimized for the current environment:
+- For distributed solvers, it defaults to `max(1, trajectories ÷ nworkers())`.
+- For serial and threaded solvers, it defaults to 1.
+
+```julia
+# Explicitly setting batch_size for distributed simulation
+sols = solve(prob, EnsembleSplitThreads(); trajectories=10000, batch_size=1000)
+```
+
+### Efficiency Considerations
+
+When tracing in numeric fields, memory efficiency is critical. By default, ensure that large field data is shared as a reference rather than being copied for each trajectory. 
 
 - **Example**: [Ensemble Tracing](@ref Ensemble-Tracing)
 
