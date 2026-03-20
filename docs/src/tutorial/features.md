@@ -27,17 +27,17 @@ We need to set `safetycopy=false` to make the field as a reference in the parame
 !!! warning
     When defining a `prob_func` for an `EnsembleProblem`, avoid in-place mutation of the `ODEProblem` (e.g., `prob.u0 = ...`), especially when using `StaticArrays`. SciMLBase v2.0+ may issue a warning about "Mutation of ODEProblem detected". Instead, use `remake(prob; u0=...)` to create a new problem instance with updated parameters.
 
-## Boris Method
+## Boris Pusher
 
 The native Boris particle pusher is optimized for performance and energy conservation in magnetic fields.
 
-- **Example**: [Boris Method](@ref Boris-Method)
+- **Example**: [Boris Method](@ref)
 
-## Field Interpolation
+## Numerical Field Interpolations
 
 `TestParticle.jl` supports tracing in numerical fields defined on various grids (Cartesian, Rectilinear, Structured).
 
-- **Example**: [Field Interpolation](@ref Field-Interpolation)
+- **Example**: [Field Interpolation](@ref)
 
 ## Real-world Applications
 
