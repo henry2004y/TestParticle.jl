@@ -11,7 +11,7 @@ using CairoMakie
 using Statistics
 using Printf
 using Distributed
-using TestParticle
+@everywhere using TestParticle
 using StaticArrays
 
 const N_PARTICLES = 16384
@@ -45,7 +45,7 @@ function make_prob(param, stateinit, tspan)
             u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0],
         )
     end
-    return TraceProblem(stateinit, tspan, param; prob_func = prob_func)
+    return TraceProblem(stateinit, tspan, param; prob_func)
 end
 
 times = Float64[]

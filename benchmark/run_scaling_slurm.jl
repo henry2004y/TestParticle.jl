@@ -47,7 +47,7 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 1.0e-3)
 dt = 1.0e-9
 
-prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
+prob_multi = TraceProblem(stateinit, tspan, param; prob_func)
 
 println("\nStarting EnsembleSplitThreads benchmark...")
 println("Particles: $N_PARTICLES, samples per point: $N_SAMPLES")
