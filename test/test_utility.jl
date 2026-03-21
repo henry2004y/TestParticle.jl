@@ -7,6 +7,21 @@ using Random
 using Unitful
 import TestParticle as TP
 
+struct MockSol{T, U}
+    t::T
+    u::U
+end
+(s::MockSol)(t) = begin
+    i = searchsortedlast(s.t, t)
+    if i == 0
+        return s.u[1]
+    elseif i == length(s.t)
+        return s.u[end]
+    end
+    f = (t - s.t[i]) / (s.t[i + 1] - s.t[i])
+    return s.u[i] .+ f .* (s.u[i + 1] .- s.u[i])
+end
+
 @testset "Utility" begin
     @testset "Basic Utility" begin
         V, B = 440.0e3, 5.0e-9
@@ -712,5 +727,39 @@ import TestParticle as TP
         A_mock2 = MockArray(zeros(2, 2))
         A_mock2[2, 2] = zv
         @test A_mock2[2, 2] == 0.0
+    end
+    @testset "Virtual Detector" begin
+        # T1: Straight-line crossing
+        t_array = collect(0.0:1.0:20.0)
+        u_array = [SA[-10.0 + t, 0.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
+        sol1 = MockSol(t_array, u_array)
+
+        center = Point(0.0, 0.0, 0.0)
+        radius = 5.0
+        orientation = Vec(1.0, 0.0, 0.0)
+        detector = Disk(Plane(center, orientation), radius)
+
+        flux1 = get_velocity_flux(sol1, detector)
+        @test length(flux1) == 1
+        area = pi * radius^2
+        @test ustrip.(flux1[1]) ≈ ustrip.(SA[1.0, 0.0, 0.0] / area)
+
+        # T2: Missed crossing (distance outside radius)
+        u_array_miss = [SA[-10.0 + t, 10.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
+        sol2 = MockSol(t_array, u_array_miss)
+        flux2 = get_velocity_flux(sol2, detector)
+        @test isempty(flux2)
+
+        # T3: Missed crossing (orientation parallel)
+        u_array_para = [SA[5.0, -10.0 + t, 0.0, 0.0, 1.0, 0.0] for t in t_array]
+        sol3 = MockSol(t_array, u_array_para)
+        flux3 = get_velocity_flux(sol3, detector)
+        @test isempty(flux3)
+
+        # Test Ensemble
+        sols = [sol1, sol2, sol3]
+        flux_all = get_velocity_fluxes(sols, detector)
+        @test length(flux_all) == 1
+        @test ustrip.(flux_all[1]) ≈ ustrip.(SA[1.0, 0.0, 0.0] / area)
     end
 end

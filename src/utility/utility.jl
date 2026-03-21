@@ -696,7 +696,7 @@ function get_adiabaticity(sol::AbstractODESolution)
     ε = Vector{Float64}(undef, n)
     p = sol.prob.p
 
-    for i in 1:n
+    @inbounds for i in 1:n
         ε[i] = get_adiabaticity(sol.u[i], p, sol.t[i])
     end
 
@@ -712,3 +712,74 @@ Calculate the adiabaticity parameter `ϵ` from a solution `sol` at time `t`.
 function get_adiabaticity(sol::AbstractODESolution, t)
     return get_adiabaticity(sol(t), sol.prob.p, t)
 end
+
+
+"""
+    get_velocity_flux(sol, center, radius, orientation)
+    get_velocity_flux(sol, disk::Disk)
+
+Calculate the velocity flux for a virtual disk defined by a `center`, `radius`, and
+`orientation` (normal vector). The generic `sol` must allow time interpolation, e.g., `sol(t)`, and store the discrete
+time steps in `sol.t`.
+"""
+function get_velocity_flux(sol, disk::Disk)
+    t = sol.t
+    n = normal(disk.plane)
+    radius² = disk.radius^2
+    center = disk.plane.p
+    area = π * disk.radius^2
+
+    T = eltype(sol.u[1])
+    velocities = SVector{3, T}[]
+
+    @views for i in eachindex(t)[1:(end - 1)]
+        u1 = sol(t[i])
+        u2 = sol(t[i + 1])
+        p1 = Point(u1[1], u1[2], u1[3])
+        p2 = Point(u2[1], u2[2], u2[3])
+
+        v1 = p1 - center
+        v2 = p2 - center
+
+        s1 = v1 ⋅ n
+        s2 = v2 ⋅ n
+        # Check if the line segment intersects the disk
+        # The second condition handles the case where one of the points is on the disk.
+        if signbit(s1) != signbit(s2) || (!iszero(s1) && iszero(s2))
+            f = s1 / (s1 - s2)
+            tc = t[i] + f * (t[i + 1] - t[i])
+            ut = sol(tc)
+            xc = Point(ut[1], ut[2], ut[3])
+
+            v_diff = xc - center
+            if v_diff ⋅ v_diff <= radius²
+                push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
+            end
+        end
+    end
+    return velocities ./ area
+end
+
+get_velocity_flux(sol, center, radius, orientation) =
+    get_velocity_flux(sol, Disk(Plane(Point(center), Vec(orientation)), radius))
+
+"""
+    get_velocity_fluxes(sols, disk)
+    get_velocity_fluxes(sols, center, radius, orientation)
+
+Calculate the velocity fluxes for an ensemble of trajectories.
+"""
+function get_velocity_fluxes(sols, disk)
+    velocities = get_velocity_flux(first(sols), disk)
+    for i in eachindex(sols)[2:end]
+        res = get_velocity_flux(sols[i], disk)
+        if !isnothing(res)
+            append!(velocities, res)
+        end
+    end
+
+    return velocities
+end
+
+get_velocity_fluxes(sols, center, radius, orientation) =
+    get_velocity_fluxes(sols, Disk(Plane(Point(center), Vec(orientation)), radius))
