@@ -696,7 +696,7 @@ function get_adiabaticity(sol::AbstractODESolution)
     ε = Vector{Float64}(undef, n)
     p = sol.prob.p
 
-    for i in 1:n
+    @inbounds for i in 1:n
         ε[i] = get_adiabaticity(sol.u[i], p, sol.t[i])
     end
 
@@ -711,4 +711,111 @@ Calculate the adiabaticity parameter `ϵ` from a solution `sol` at time `t`.
 """
 function get_adiabaticity(sol::AbstractODESolution, t)
     return get_adiabaticity(sol(t), sol.prob.p, t)
+end
+
+
+"""
+    get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight=1.0)
+
+Calculate both the velocity flux and the number of particles crossing a virtual detector.
+The generic `sol` must store the discrete time steps in `sol.t` and values in `sol.u`.
+If `weight` is provided, the result is multiplied by the weight.
+Returns a tuple `(velocity_flux, number_flux)`.
+For `Disk` and `Sphere`, the returned `velocity_flux` is normalized by the area.
+"""
+@inline function _signed_distance(p::Point, surface::Disk)
+    n = normal(surface.plane)
+    v = p - surface.plane.p
+    return (v ⋅ n).val
+end
+
+@inline function _signed_distance(p::Point, surface::Plane)
+    n = normal(surface)
+    v = p - surface.p
+    return (v ⋅ n).val
+end
+
+@inline function _signed_distance(p::Point, surface::Sphere)
+    v = p - surface.center
+    return (v ⋅ v - surface.radius^2).val
+end
+
+@inline function _is_valid_intersection(p::Point, surface::Disk)
+    center = surface.plane.p
+    return (p - center) ⋅ (p - center) <= surface.radius^2
+end
+
+@inline function _is_valid_intersection(p::Point, surface::Union{Plane, Sphere})
+    return true
+end
+
+function _calculate_flux(velocities, surface::Disk, weight)
+    area = π * surface.radius^2
+    n_flux = length(velocities) * weight
+    v_flux = (velocities .* weight) ./ area.val
+    return v_flux, n_flux
+end
+
+function _calculate_flux(velocities, surface::Plane, weight)
+    n_flux = length(velocities) * weight
+    v_flux = velocities .* weight
+    return v_flux, n_flux
+end
+
+function _calculate_flux(velocities, surface::Sphere, weight)
+    area = 4π * surface.radius^2
+    n_flux = length(velocities) * weight
+    v_flux = (velocities .* weight) ./ area.val
+    return v_flux, n_flux
+end
+
+function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
+    t = sol.t
+    T = eltype(sol.u[1])
+    velocities = SVector{3, T}[]
+
+    u1 = sol.u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    s1 = _signed_distance(p1, surface)
+
+    @inbounds for i in eachindex(t)[1:(end - 1)]
+        u2 = sol.u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        s2 = _signed_distance(p2, surface)
+
+        # Check if the line segment intersects the surface
+        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
+            f = s1 / (s1 - s2)
+            tc = t[i] + f * (t[i + 1] - t[i])
+            ut = sol(tc)
+            xc = Point(ut[1], ut[2], ut[3])
+
+            if _is_valid_intersection(xc, surface)
+                push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
+            end
+        end
+        u1, p1, s1 = u2, p2, s2
+    end
+
+    return _calculate_flux(velocities, surface, weight)
+end
+
+"""
+    get_particle_fluxes(sols, surface; weight=1.0)
+
+Calculate both the velocity fluxes and total weighted particle flux for an ensemble of trajectories `sols`.
+Returns a tuple `(velocity_fluxes, total_number_flux)`.
+"""
+function get_particle_fluxes(sols, surface; weight = 1.0)
+    T = eltype(first(sols).u[1])
+    velocities = SVector{3, T}[]
+    total_n_flux = 0.0
+
+    for sol in sols
+        v_f, n_f = get_particle_flux(sol, surface; weight)
+        append!(velocities, v_f)
+        total_n_flux += n_f
+    end
+
+    return velocities, total_n_flux
 end
