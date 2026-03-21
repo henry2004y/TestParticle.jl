@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tracing particle from PIC · TestParticle.jl</title><meta name="title" content="Tracing particle from PIC · TestParticle.jl"/><meta property="og:title" content="Tracing particle from PIC · TestParticle.jl"/><meta property="twitter:title" content="Tracing particle from PIC · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_batsrus_3dstructured/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_batsrus_3dstructured/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_batsrus_3dstructured/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tracing particle from PIC</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tracing particle from PIC</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_batsrus_3dstructured.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_pic"><a class="docs-heading-anchor" href="#demo_pic">Tracing particle from PIC</a><a id="demo_pic-1"></a><a class="docs-heading-anchor-permalink" href="#demo_pic" title="Permalink"></a></h1><p><a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1682035200" alt="Update time"/></p><p>This example shows how to trace charged particles in the structured SWMF outputs from an MHD-EPIC simulation of Ganymede. For more details about the field file format, please checkout <a href="https://github.com/henry2004y/Batsrus.jl">Batsrus.jl</a>.</p><pre><code class="language-julia hljs">using Statistics: mean
+using Batsrus
+using TestParticle
+using OrdinaryDiffEq
+using FieldTracer
+using PyPlot
+
+## Utility functions
+
+function initial_conditions(i)
+   j = i - 1
+   [x[xc_], y[yc_+j], z[zc_], Uix[xc_,yc_+j,zc_], Uiy[xc_,yc_+j,zc_], Uiz[xc_,yc_+j,zc_]]
+end
+
+&quot;Set initial conditions.&quot;
+function prob_func(prob, i, repeat)
+   remake(prob, u0=initial_conditions(i))
+end
+
+## Data processing
+
+filename = &quot;3d_var_region0_0_t00002500_n00106468.out&quot;
+data = readdata(filename)
+
+var = getvars(data, [&quot;Bx&quot;, &quot;By&quot;, &quot;Bz&quot;, &quot;Ex&quot;, &quot;Ey&quot;, &quot;Ez&quot;, &quot;uxs0&quot;, &quot;uys0&quot;, &quot;uzs0&quot;, &quot;uxs1&quot;, &quot;uys1&quot;, &quot;uzs1&quot;])
+
+const RG = 2634e3 # [m]
+
+x = range(extrema(data.x[:,:,:,1])..., length=size(data.x, 1)) .* RG
+y = range(extrema(data.x[:,:,:,2])..., length=size(data.x, 2)) .* RG
+z = range(extrema(data.x[:,:,:,3])..., length=size(data.x, 3)) .* RG
+B = zeros(Float32, 3, length(x), length(y), length(z)) # [T]
+E = zeros(Float32, 3, length(x), length(y), length(z)) # [V/m]
+
+# Convert into SI units
+B[1,:,:,:] .= var[&quot;Bx&quot;] .* 1e-9
+B[2,:,:,:] .= var[&quot;By&quot;] .* 1e-9
+B[3,:,:,:] .= var[&quot;Bz&quot;] .* 1e-9
+E[1,:,:,:] .= var[&quot;Ex&quot;] .* 1e-6
+E[2,:,:,:] .= var[&quot;Ey&quot;] .* 1e-6
+E[3,:,:,:] .= var[&quot;Ez&quot;] .* 1e-6
+
+## Initial conditions
+
+Uex, Uey, Uez = var[&quot;uxs0&quot;] .* 1e3, var[&quot;uys0&quot;] .* 1e3, var[&quot;uzs0&quot;] .* 1e3
+Uix, Uiy, Uiz = var[&quot;uxs1&quot;] .* 1e3, var[&quot;uys1&quot;] .* 1e3, var[&quot;uzs1&quot;] .* 1e3
+
+xc_ = floor(Int, length(x)/2) + 1
+yc_ = floor(Int, length(y)/2) + 1
+zc_ = floor(Int, length(z)/2) + 1
+
+stateinit_e = [x[xc_], y[yc_], z[zc_], Uex[xc_,yc_,zc_], Uey[xc_,yc_,zc_], Uez[xc_,yc_,zc_]]
+stateinit_p = [x[xc_], y[yc_], z[zc_], Uix[xc_,yc_,zc_], Uiy[xc_,yc_,zc_], Uiz[xc_,yc_,zc_]]
+
+param_electron = prepare(x, y, z, E, B, species=Electron)
+tspan_electron = (0.0, 0.1)
+
+param_proton = prepare(x, y, z, E, B, species=Proton)
+tspan_proton = (0.0, 10.0)
+trajectories = 5
+
+prob_p = ODEProblem(trace!, stateinit_p, tspan_proton, param_proton)
+ensemble_prob = EnsembleProblem(prob_p, prob_func=prob_func)
+sol_p = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories)
+
+## Visualization
+
+using3D()
+fig = plt.figure(figsize=(10,6))
+ax = fig.gca(projection=&quot;3d&quot;)
+
+## Field tracing
+
+for i in 1:10:length(x)
+   xs, ys, zs = x[i], 0.0, 0.0
+   x1, y1, z1 = trace(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:], xs, ys, zs, x, y, z, ds=0.2, maxstep=1000)
+   line = ax.plot(x1 ./ RG, y1 ./RG, z1 ./ RG, &quot;k-&quot;, alpha=0.3)
+end
+
+for i in 1:10:length(y)
+   xs, ys, zs = x[xc_], y[i], z[zc_]
+   x1, y1, z1 = trace(B[1,:,:,:], B[2,:,:,:], B[3,:,:,:], xs, ys, zs, x, y, z, ds=0.2, maxstep=1000)
+   line = ax.plot(x1 ./ RG, y1 ./RG, z1 ./ RG, &quot;k-&quot;, alpha=0.3)
+end
+
+n = 200 # number of timepoints
+
+ts = range(0, stop=tspan_proton[2], length=n)
+for i = 1:trajectories
+   if sol_p[i].t[end] &lt; tspan_proton[2]
+      ts⁺ = range(0, stop=sol_p[i].t[end], length=n)
+      ax.plot(sol_p[i](ts⁺,idxs=1) ./ RG, sol_p[i](ts⁺,idxs=2) ./ RG, sol_p[i](ts⁺,idxs=3) ./ RG, label=&quot;proton $i&quot;, lw=1.5)
+   else
+      ax.plot(sol_p[i](ts,idxs=1) ./ RG, sol_p[i](ts,idxs=2) ./ RG, sol_p[i](ts,idxs=3) ./ RG, label=&quot;proton $i&quot;, lw=1.5)
+   end
+end
+
+#ax.plot(sol_p[1,:], sol_p[2,:], sol_p[3,:], label=&quot;proton&quot;)
+
+ax.legend()
+title(&quot;Particle trajectory near Ganymede&#39;s magnetopause from PIC&quot;)
+xlabel(&quot;x [Rg]&quot;)
+ylabel(&quot;y [Rg]&quot;)
+zlabel(&quot;z [Rg]&quot;)
+
+ax.set_box_aspect([1.17,4,4])
+TestParticle.set_axes_equal(ax)</code></pre><p><img src="../../../figures/proton_ganymede_mhdepic.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.0 on <span class="colophon-date" title="Friday 9 May 2025 00:06">Friday 9 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

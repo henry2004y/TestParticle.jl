@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Dimensionless Units · TestParticle.jl</title><meta name="title" content="Dimensionless Units · TestParticle.jl"/><meta property="og:title" content="Dimensionless Units · TestParticle.jl"/><meta property="twitter:title" content="Dimensionless Units · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_dimensionless/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_dimensionless/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/basics/demo_dimensionless/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Dimensionless Units</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Dimensionless Units</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/basics/demo_dimensionless.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_dimensionless"><a class="docs-heading-anchor" href="#demo_dimensionless">Dimensionless Units</a><a id="demo_dimensionless-1"></a><a class="docs-heading-anchor-permalink" href="#demo_dimensionless" title="Permalink"></a></h1><p><a href="../demo_dimensionless.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.11.4-blue.svg" alt="compat"/> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1742342400" alt="Update time"/></p><p>This example shows how to trace charged particles in dimensionless units. After normalization, <span>$q=1, B=1, m=1$</span> so that the gyroradius <span>$r_L = mv_\perp/qB = v_\perp$</span>. All the quantities are given in dimensionless units: if the magnetic field is homogeneous and the initial perpendicular velocity <span>$v_{\perp 0}^\prime$</span> is 4, then the gyroradius is 4. To convert them to the original units, <span>$v_\perp = v_{\perp}^\prime * U_0$</span> and <span>$r_L = r_L^\prime * l_0 = 4*l_0$</span>. Check <a href="../../advanced/demo_savingcallback/#demo_savingcallback">Demo: single tracing with additional diagnostics</a> and <a href="../demo_dimensionless_dimensional/#demo_dimensionless_dimensional">Demo: Dimensionless and Dimensional Tracing</a> for explaining the unit conversion.</p><p>Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.</p><p>Now let&#39;s demonstrate this with <code>trace_normalized!</code> and <code>trace_relativistic_normalized!</code>.</p><pre><code class="language-julia hljs">using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle: qᵢ, mᵢ
+using CairoMakie
+
+# Number of cells for the field along each dimension
+nx, ny, nz = 4, 6, 8
+# Unit conversion factors between SI and dimensionless units
+B₀ = 10e-9            # [T]
+Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+t₀ = 1 / Ω            # [s]
+U₀ = 1.0              # [m/s]
+l₀ = U₀ * t₀          # [m]
+E₀ = U₀*B₀            # [V/m]
+# All quantities are in dimensionless units
+x = range(-10, 10, length=nx) # [l₀]
+y = range(-10, 10, length=ny) # [l₀]
+z = range(-10, 10, length=nz) # [l₀]
+
+B = fill(0.0, 3, nx, ny, nz) # [B₀]
+B[3,:,:,:] .= 1.0
+E = fill(0.0, 3, nx, ny, nz) # [E₀]
+
+param = prepare(x, y, z, E, B; species=User)
+
+# Initial condition
+stateinit = let
+   x0 = [0.0, 0.0, 0.0] # initial position [l₀]
+   u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
+   [x0..., u0...]
+end
+# Time span
+tspan = (0.0, π) # half gyroperiod
+
+prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = &quot;Proton trajectory&quot;,
+   xlabel = &quot;X&quot;,
+   ylabel = &quot;Y&quot;,
+   limits = (-4.1, 4.1, -8.1, 0.1),
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, idxs=(1,2))
+</code></pre><p><img src="../demo_dimensionless-6.png" alt/></p><p>In the relativistic case,</p><ul><li>Velocity is normalized by speed of light c, <span>$V = V^\prime c$</span>;</li><li>Magnetic field is normalized by the characteristic magnetic field, <span>$B = B^\prime B_0$</span>;</li><li>Electric field is normalized by <span>$E_0 = c\,B_0$</span>, <span>$E = E^\prime E_0$</span>;</li><li>Location is normalized by the <span>$L = c / \Omega_0$</span>, where <span>$\Omega_0 = q\,B_0 / m$</span>, and</li><li>Time is normalized by <span>$\Omega_0^{-1}$</span>, <span>$t = t^\prime * \Omega_0^{-1}$</span>.</li></ul><p>In the small velocity scenario, it should behave similar to the non-relativistic case:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species=User)
+tspan = (0.0, π) # half period
+stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
+prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = &quot;Relativistic particle trajectory&quot;,
+   xlabel = &quot;X&quot;,
+   ylabel = &quot;Y&quot;,
+   #limits = (-0.6, 0.6, -1.1, 0.1),
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, idxs=(1,2))
+</code></pre><p><img src="../demo_dimensionless-9.png" alt/></p><p>In the large velocity scenario, relativistic effect takes place:</p><pre><code class="language-julia hljs">param = prepare(xu -&gt; SA[0.0, 0.0, 0.0], xu -&gt; SA[0.0, 0.0, 1.0]; species=User)
+tspan = (0.0, π) # half period
+stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
+prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+sol = solve(prob, Vern9())
+
+### Visualization
+f = Figure(fontsize = 18)
+ax = Axis(f[1, 1],
+   title = &quot;Relativistic particle trajectory&quot;,
+   xlabel = &quot;X&quot;,
+   ylabel = &quot;Y&quot;,
+   aspect = DataAspect()
+)
+
+lines!(ax, sol, idxs=(1,2))
+</code></pre><p><img src="../demo_dimensionless-11.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.2 on <span class="colophon-date" title="Thursday 8 May 2025 01:57">Thursday 8 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
