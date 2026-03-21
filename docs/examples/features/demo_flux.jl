@@ -17,7 +17,7 @@
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
-using TestParticle, OrdinaryDiffEqTsit5, StaticArrays
+using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes
 
 ## Source flux at the origin
 const source_flux = 100.0 # [real particle / s]
@@ -72,7 +72,7 @@ function prob_func_iso(prob, i, repeat)
     ## initial velocity, [m/s]
     v₀ = sample_unit_sphere()
     ## initial position, [m]
-    r₀ = prob.u0[1:3]
+    r₀ = @view prob.u0[1:3]
 
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end

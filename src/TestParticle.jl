@@ -11,7 +11,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using Distributed: pmap, nworkers
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Segment, Point, Vec, normal, Sphere
+    Plane, Disk, Point, normal, Sphere
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
@@ -45,7 +45,7 @@ export get_fields, get_work
 export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Point, Vec, Segment, Sphere
+    Plane, Disk, Point, Sphere
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake
 
 include("types.jl")

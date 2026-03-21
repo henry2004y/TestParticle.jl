@@ -6,6 +6,7 @@ using OrdinaryDiffEq
 using Random
 using Unitful
 import TestParticle as TP
+using Meshes: Vec
 
 struct MockSol{T, U}
     t::T
