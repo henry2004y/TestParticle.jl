@@ -762,5 +762,37 @@ end
         flux_all = get_velocity_fluxes(sols, detector)
         @test length(flux_all) == 1
         @test flux_all[1] ≈ SA[1.0, 0.0, 0.0] / area
+
+        # T4: Weighted Disk flux
+        flux_w = get_velocity_flux(sol1, detector; weight=2.0)
+        @test flux_w[1] ≈ SA[2.0, 0.0, 0.0] / area
+
+        # T5: Plane crossing (weighted)
+        detector_plane = Plane(center, orientation)
+        flux_p = get_velocity_flux(sol1, detector_plane; weight=3.0)
+        @test length(flux_p) == 1
+        @test flux_p[1] ≈ SA[3.0, 0.0, 0.0]
+
+        # T6: Sphere crossing (two crossings)
+        detector_sphere = Sphere(center, 5.0)
+        flux_s = get_velocity_flux(sol1, detector_sphere)
+        @test length(flux_s) == 2
+        sphere_area = 4π * 5.0^2
+        @test flux_s[1] ≈ SA[1.0, 0.0, 0.0] / sphere_area
+        @test flux_s[2] ≈ SA[1.0, 0.0, 0.0] / sphere_area
+
+        # T7: Particle flux (weighted)
+        p_flux_disk = get_particle_flux(sol1, detector; weight=10.0)
+        @test p_flux_disk == 10.0
+
+        p_flux_plane = get_particle_flux(sol1, detector_plane; weight=5.0)
+        @test p_flux_plane == 5.0
+
+        p_flux_sphere = get_particle_flux(sol1, detector_sphere; weight=2.0)
+        @test p_flux_sphere == 4.0 # 2 crossings * weight 2.0
+
+        # T8: Ensemble Particle flux
+        p_fluxes = get_particle_fluxes([sol1, sol2], detector; weight=1.0)
+        @test p_fluxes == 1.0 # sol1 crosses, sol2 misses
     end
 end

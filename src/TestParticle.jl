@@ -11,7 +11,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using Distributed: pmap, nworkers
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Segment, Point, Vec, normal
+    Plane, Disk, Segment, Point, Vec, normal, Sphere
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
@@ -39,13 +39,13 @@ export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy, get_mean_magnitude,
     energy2velocity, get_curvature_radius, get_adiabaticity,
     sample_unit_sphere, get_number_density_flux, generate_sphere, sample_maxwellian,
-    get_velocity_flux, get_velocity_fluxes
+    get_velocity_flux, get_velocity_fluxes, get_particle_flux, get_particle_fluxes
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Point, Vec, Segment
+    Plane, Disk, Point, Vec, Segment, Sphere
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake
 
 include("types.jl")

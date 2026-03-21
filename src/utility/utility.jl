@@ -715,18 +715,26 @@ end
 
 
 """
-    get_velocity_flux(sol, disk::Disk)
+    get_velocity_flux(sol, surface::Union{Disk, Plane, Sphere}; weight=1.0)
 
-Calculate the velocity flux for a virtual disk defined by a `center`, `radius`, and
-`orientation` (normal vector). The generic `sol` must allow time interpolation, e.g., `sol(t)`, and store the discrete
-time steps in `sol.t`.
+Calculate the velocity flux for a virtual detector defined by a `Disk`, `Plane`, or `Sphere`.
+The generic `sol` must store the discrete time steps in `sol.t` and values in `sol.u`.
+If `weight` is provided, the result is multiplied by the weight.
+For `Disk` and `Sphere`, the returned flux is normalized by the area.
 """
-function get_velocity_flux(sol, disk::Disk)
+function get_velocity_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
     t = sol.t
-    n = normal(disk.plane)
-    radius² = disk.radius^2
-    center = disk.plane.p
-    area = π * disk.radius^2
+    if surface isa Sphere
+        center = surface.center
+        radius² = surface.radius^2
+        area = 4π * surface.radius^2
+    else
+        n = (surface isa Disk) ? normal(surface.plane) : normal(surface)
+        center = (surface isa Disk) ? surface.plane.p : surface.p
+        has_subsurface = surface isa Disk
+        radius² = has_subsurface ? surface.radius^2 : zero(t[1])^2 # dummies
+        area = has_subsurface ? π * surface.radius^2 : 1.0
+    end
 
     T = eltype(sol.u[1])
     velocities = SVector{3, T}[]
@@ -734,44 +742,128 @@ function get_velocity_flux(sol, disk::Disk)
     u1 = sol.u[1]
     p1 = Point(u1[1], u1[2], u1[3])
     v1 = p1 - center
-    s1 = v1 ⋅ n
+    if surface isa Sphere
+        s1 = v1 ⋅ v1 - radius²
+    else
+        s1 = v1 ⋅ n
+    end
 
     @inbounds for i in eachindex(t)[1:(end - 1)]
         u2 = sol.u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
         v2 = p2 - center
-        s2 = v2 ⋅ n
+        if surface isa Sphere
+            s2 = v2 ⋅ v2 - radius²
+        else
+            s2 = v2 ⋅ n
+        end
 
-        # Check if the line segment intersects the disk
-        # The second condition handles the case where one of the points is on the disk.
-        if signbit(s1) != signbit(s2) || (!iszero(s1) && iszero(s2))
+        # Check if the line segment intersects the surface
+        if s1 * s2 < zero(s1) || (s1 != zero(s1) && s2 == zero(s2))
             f = s1 / (s1 - s2)
             tc = t[i] + f * (t[i + 1] - t[i])
             ut = sol(tc)
-            xc = Point(ut[1], ut[2], ut[3])
 
-            v_diff = xc - center
-            if v_diff ⋅ v_diff <= radius²
+            if surface isa Sphere
                 push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
+            else
+                xc = Point(ut[1], ut[2], ut[3])
+                if !has_subsurface || (xc - center) ⋅ (xc - center) <= radius²
+                    push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
+                end
             end
         end
         u1, p1, v1, s1 = u2, p2, v2, s2
     end
-    return velocities ./ area.val #TODO we are not carrying the unit now.
+
+    if surface isa Plane
+        return velocities .* weight
+    else
+        return (velocities .* weight) ./ area.val
+    end
 end
 
 """
-    get_velocity_fluxes(sols, disk)
+    get_velocity_fluxes(sols, surface::Union{Disk, Plane, Sphere}; weight=1.0)
 
-Calculate the velocity fluxes for an ensemble of trajectories.
+Calculate the velocity fluxes for an ensemble of trajectories `sols` at a virtual detector.
 """
-function get_velocity_fluxes(sols, disk)
+function get_velocity_fluxes(sols, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
     T = eltype(first(sols).u[1])
     velocities = SVector{3, T}[]
 
     for sol in sols
-        append!(velocities, get_velocity_flux(sol, disk))
+        append!(velocities, get_velocity_flux(sol, surface; weight))
     end
 
     return velocities
+end
+
+"""
+    get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight=1.0)
+
+Calculate the number of particles crossing a virtual detector.
+"""
+function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
+    t = sol.t
+    if surface isa Sphere
+        center = surface.center
+        radius² = surface.radius^2
+    else
+        n = (surface isa Disk) ? normal(surface.plane) : normal(surface)
+        center = (surface isa Disk) ? surface.plane.p : surface.p
+        has_subsurface = surface isa Disk
+        radius² = has_subsurface ? surface.radius^2 : zero(t[1])^2
+    end
+
+    count = 0
+    u1 = sol.u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    v1 = p1 - center
+    if surface isa Sphere
+        s1 = v1 ⋅ v1 - radius²
+    else
+        s1 = v1 ⋅ n
+    end
+
+    @inbounds for i in eachindex(t)[1:(end - 1)]
+        u2 = sol.u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        v2 = p2 - center
+        if surface isa Sphere
+            s2 = v2 ⋅ v2 - radius²
+        else
+            s2 = v2 ⋅ n
+        end
+
+        if s1 * s2 < zero(s1) || (s1 != zero(s1) && s2 == zero(s2))
+            if surface isa Disk
+                f = s1 / (s1 - s2)
+                tc = t[i] + f * (t[i + 1] - t[i])
+                ut = sol(tc)
+                xc = Point(ut[1], ut[2], ut[3])
+                if (xc - center) ⋅ (xc - center) <= radius²
+                    count += 1
+                end
+            else
+                count += 1
+            end
+        end
+        u1, p1, v1, s1 = u2, p2, v2, s2
+    end
+
+    return count * weight
+end
+
+"""
+    get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}; weight=1.0)
+
+Calculate the total weighted particle flux for an ensemble of trajectories `sols`.
+"""
+function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
+    flux = 0.0
+    for sol in sols
+        flux += get_particle_flux(sol, surface; weight)
+    end
+    return flux
 end
