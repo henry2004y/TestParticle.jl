@@ -731,17 +731,17 @@ function get_velocity_flux(sol, disk::Disk)
     T = eltype(sol.u[1])
     velocities = SVector{3, T}[]
 
-    @views for i in eachindex(t)[1:(end - 1)]
-        u1 = sol(t[i])
-        u2 = sol(t[i + 1])
-        p1 = Point(u1[1], u1[2], u1[3])
+    u1 = sol.u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    v1 = p1 - center
+    s1 = v1 ⋅ n
+
+    @inbounds for i in eachindex(t)[1:(end - 1)]
+        u2 = sol.u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
-
-        v1 = p1 - center
         v2 = p2 - center
-
-        s1 = v1 ⋅ n
         s2 = v2 ⋅ n
+
         # Check if the line segment intersects the disk
         # The second condition handles the case where one of the points is on the disk.
         if signbit(s1) != signbit(s2) || (!iszero(s1) && iszero(s2))
@@ -755,6 +755,7 @@ function get_velocity_flux(sol, disk::Disk)
                 push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
             end
         end
+        u1, p1, v1, s1 = u2, p2, v2, s2
     end
     return velocities ./ area.val #TODO we are not carrying the unit now.
 end
