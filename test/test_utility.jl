@@ -728,6 +728,7 @@ end
         A_mock2[2, 2] = zv
         @test A_mock2[2, 2] == 0.0
     end
+
     @testset "Virtual Detector" begin
         # T1: Straight-line crossing
         t_array = collect(0.0:1.0:20.0)
@@ -742,7 +743,7 @@ end
         flux1 = get_velocity_flux(sol1, detector)
         @test length(flux1) == 1
         area = pi * radius^2
-        @test ustrip.(flux1[1]) ≈ ustrip.(SA[1.0, 0.0, 0.0] / area)
+        @test flux1[1] ≈ SA[1.0, 0.0, 0.0] / area
 
         # T2: Missed crossing (distance outside radius)
         u_array_miss = [SA[-10.0 + t, 10.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
@@ -760,6 +761,6 @@ end
         sols = [sol1, sol2, sol3]
         flux_all = get_velocity_fluxes(sols, detector)
         @test length(flux_all) == 1
-        @test ustrip.(flux_all[1]) ≈ ustrip.(SA[1.0, 0.0, 0.0] / area)
+        @test flux_all[1] ≈ SA[1.0, 0.0, 0.0] / area
     end
 end

@@ -715,7 +715,6 @@ end
 
 
 """
-    get_velocity_flux(sol, center, radius, orientation)
     get_velocity_flux(sol, disk::Disk)
 
 Calculate the velocity flux for a virtual disk defined by a `center`, `radius`, and
@@ -757,29 +756,21 @@ function get_velocity_flux(sol, disk::Disk)
             end
         end
     end
-    return velocities ./ area
+    return velocities ./ area.val #TODO we are not carrying the unit now.
 end
-
-get_velocity_flux(sol, center, radius, orientation) =
-    get_velocity_flux(sol, Disk(Plane(Point(center), Vec(orientation)), radius))
 
 """
     get_velocity_fluxes(sols, disk)
-    get_velocity_fluxes(sols, center, radius, orientation)
 
 Calculate the velocity fluxes for an ensemble of trajectories.
 """
 function get_velocity_fluxes(sols, disk)
-    velocities = get_velocity_flux(first(sols), disk)
-    for i in eachindex(sols)[2:end]
-        res = get_velocity_flux(sols[i], disk)
-        if !isnothing(res)
-            append!(velocities, res)
-        end
+    T = eltype(first(sols).u[1])
+    velocities = SVector{3, T}[]
+
+    for sol in sols
+        append!(velocities, get_velocity_flux(sol, disk))
     end
 
     return velocities
 end
-
-get_velocity_fluxes(sols, center, radius, orientation) =
-    get_velocity_fluxes(sols, Disk(Plane(Point(center), Vec(orientation)), radius))
