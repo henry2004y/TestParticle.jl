@@ -740,59 +740,45 @@ end
         orientation = Vec(1.0, 0.0, 0.0)
         detector = Disk(Plane(center, orientation), radius)
 
-        flux1 = get_velocity_flux(sol1, detector)
-        @test length(flux1) == 1
+        flux1, n_flux1 = get_particle_flux(sol1, detector)
+        @test length(flux1) == 1 && n_flux1 == 1.0
         area = pi * radius^2
         @test flux1[1] ≈ SA[1.0, 0.0, 0.0] / area
 
         # T2: Missed crossing (distance outside radius)
         u_array_miss = [SA[-10.0 + t, 10.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
         sol2 = MockSol(t_array, u_array_miss)
-        flux2 = get_velocity_flux(sol2, detector)
-        @test isempty(flux2)
+        flux2, n_flux2 = get_particle_flux(sol2, detector)
+        @test isempty(flux2) && n_flux2 == 0.0
 
         # T3: Missed crossing (orientation parallel)
         u_array_para = [SA[5.0, -10.0 + t, 0.0, 0.0, 1.0, 0.0] for t in t_array]
         sol3 = MockSol(t_array, u_array_para)
-        flux3 = get_velocity_flux(sol3, detector)
-        @test isempty(flux3)
+        flux3, n_flux3 = get_particle_flux(sol3, detector)
+        @test isempty(flux3) && n_flux3 == 0.0
 
         # Test Ensemble
         sols = [sol1, sol2, sol3]
-        flux_all = get_velocity_fluxes(sols, detector)
-        @test length(flux_all) == 1
+        flux_all, n_flux_all = get_particle_fluxes(sols, detector)
+        @test length(flux_all) == 1 && n_flux_all == 1.0
         @test flux_all[1] ≈ SA[1.0, 0.0, 0.0] / area
 
         # T4: Weighted Disk flux
-        flux_w = get_velocity_flux(sol1, detector; weight=2.0)
-        @test flux_w[1] ≈ SA[2.0, 0.0, 0.0] / area
+        flux_w, n_flux_w = get_particle_flux(sol1, detector; weight = 2.0)
+        @test flux_w[1] ≈ SA[2.0, 0.0, 0.0] / area && n_flux_w == 2.0
 
         # T5: Plane crossing (weighted)
         detector_plane = Plane(center, orientation)
-        flux_p = get_velocity_flux(sol1, detector_plane; weight=3.0)
-        @test length(flux_p) == 1
+        flux_p, n_flux_p = get_particle_flux(sol1, detector_plane; weight = 3.0)
+        @test length(flux_p) == 1 && n_flux_p == 3.0
         @test flux_p[1] ≈ SA[3.0, 0.0, 0.0]
 
         # T6: Sphere crossing (two crossings)
         detector_sphere = Sphere(center, 5.0)
-        flux_s = get_velocity_flux(sol1, detector_sphere)
-        @test length(flux_s) == 2
+        flux_s, n_flux_s = get_particle_flux(sol1, detector_sphere)
+        @test length(flux_s) == 2 && n_flux_s == 2.0
         sphere_area = 4π * 5.0^2
         @test flux_s[1] ≈ SA[1.0, 0.0, 0.0] / sphere_area
         @test flux_s[2] ≈ SA[1.0, 0.0, 0.0] / sphere_area
-
-        # T7: Particle flux (weighted)
-        p_flux_disk = get_particle_flux(sol1, detector; weight=10.0)
-        @test p_flux_disk == 10.0
-
-        p_flux_plane = get_particle_flux(sol1, detector_plane; weight=5.0)
-        @test p_flux_plane == 5.0
-
-        p_flux_sphere = get_particle_flux(sol1, detector_sphere; weight=2.0)
-        @test p_flux_sphere == 4.0 # 2 crossings * weight 2.0
-
-        # T8: Ensemble Particle flux
-        p_fluxes = get_particle_fluxes([sol1, sol2], detector; weight=1.0)
-        @test p_fluxes == 1.0 # sol1 crosses, sol2 misses
     end
 end

@@ -59,7 +59,7 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 
 plane_loc = 100.0 # [m]
 detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-flux = get_particle_fluxes(sols, detector; weight)
+_, flux = get_particle_fluxes(sols, detector; weight)
 
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
@@ -82,7 +82,7 @@ sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_
 
 r0 = 100.0 # [m]
 detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
-flux = get_particle_fluxes(sols_iso, detector_iso; weight)
+_, flux = get_particle_fluxes(sols_iso, detector_iso; weight)
 
 r = 100.0 # [m]
 area = 4π * r^2 # [m²]
