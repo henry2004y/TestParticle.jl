@@ -723,26 +723,65 @@ If `weight` is provided, the result is multiplied by the weight.
 Returns a tuple `(velocity_flux, number_flux)`.
 For `Disk` and `Sphere`, the returned `velocity_flux` is normalized by the area.
 """
-function get_particle_flux(sol, surface::Disk; weight = 1.0)
-    t = sol.t
+@inline function _signed_distance(p::Point, surface::Disk)
     n = normal(surface.plane)
-    radius² = surface.radius^2
-    center = surface.plane.p
-    area = π * surface.radius^2
+    v = p - surface.plane.p
+    return (v ⋅ n).val
+end
 
+@inline function _signed_distance(p::Point, surface::Plane)
+    n = normal(surface)
+    v = p - surface.p
+    return (v ⋅ n).val
+end
+
+@inline function _signed_distance(p::Point, surface::Sphere)
+    v = p - surface.center
+    return (v ⋅ v - surface.radius^2).val
+end
+
+@inline function _is_valid_intersection(p::Point, surface::Disk)
+    center = surface.plane.p
+    return (p - center) ⋅ (p - center) <= surface.radius^2
+end
+
+@inline function _is_valid_intersection(p::Point, surface::Union{Plane, Sphere})
+    return true
+end
+
+function _calculate_flux(velocities, surface::Disk, weight)
+    area = π * surface.radius^2
+    n_flux = length(velocities) * weight
+    v_flux = (velocities .* weight) ./ area.val
+    return v_flux, n_flux
+end
+
+function _calculate_flux(velocities, surface::Plane, weight)
+    n_flux = length(velocities) * weight
+    v_flux = velocities .* weight
+    return v_flux, n_flux
+end
+
+function _calculate_flux(velocities, surface::Sphere, weight)
+    area = 4π * surface.radius^2
+    n_flux = length(velocities) * weight
+    v_flux = (velocities .* weight) ./ area.val
+    return v_flux, n_flux
+end
+
+function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
+    t = sol.t
     T = eltype(sol.u[1])
     velocities = SVector{3, T}[]
 
     u1 = sol.u[1]
     p1 = Point(u1[1], u1[2], u1[3])
-    v1 = p1 - center
-    s1 = (v1 ⋅ n).val
+    s1 = _signed_distance(p1, surface)
 
     @inbounds for i in eachindex(t)[1:(end - 1)]
         u2 = sol.u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
-        v2 = p2 - center
-        s2 = (v2 ⋅ n).val
+        s2 = _signed_distance(p2, surface)
 
         # Check if the line segment intersects the surface
         if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
@@ -751,87 +790,14 @@ function get_particle_flux(sol, surface::Disk; weight = 1.0)
             ut = sol(tc)
             xc = Point(ut[1], ut[2], ut[3])
 
-            if (xc - center) ⋅ (xc - center) <= radius²
+            if _is_valid_intersection(xc, surface)
                 push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
             end
         end
-        u1, p1, v1, s1 = u2, p2, v2, s2
+        u1, p1, s1 = u2, p2, s2
     end
 
-    n_flux = length(velocities) * weight
-    v_flux = (velocities .* weight) ./ area.val
-    return v_flux, n_flux
-end
-
-function get_particle_flux(sol, surface::Plane; weight = 1.0)
-    t = sol.t
-    n = normal(surface)
-    center = surface.p
-
-    T = eltype(sol.u[1])
-    velocities = SVector{3, T}[]
-
-    u1 = sol.u[1]
-    p1 = Point(u1[1], u1[2], u1[3])
-    v1 = p1 - center
-    s1 = (v1 ⋅ n).val
-
-    @inbounds for i in eachindex(t)[1:(end - 1)]
-        u2 = sol.u[i + 1]
-        p2 = Point(u2[1], u2[2], u2[3])
-        v2 = p2 - center
-        s2 = (v2 ⋅ n).val
-
-        # Check if the line segment intersects the surface
-        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
-            f = s1 / (s1 - s2)
-            tc = t[i] + f * (t[i + 1] - t[i])
-            ut = sol(tc)
-
-            push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
-        end
-        u1, p1, v1, s1 = u2, p2, v2, s2
-    end
-
-    n_flux = length(velocities) * weight
-    v_flux = velocities .* weight
-    return v_flux, n_flux
-end
-
-function get_particle_flux(sol, surface::Sphere; weight = 1.0)
-    t = sol.t
-    center = surface.center
-    radius² = surface.radius^2
-    area = 4π * surface.radius^2
-
-    T = eltype(sol.u[1])
-    velocities = SVector{3, T}[]
-
-    u1 = sol.u[1]
-    p1 = Point(u1[1], u1[2], u1[3])
-    v1 = p1 - center
-    s1 = (v1 ⋅ v1 - radius²).val
-
-    @inbounds for i in eachindex(t)[1:(end - 1)]
-        u2 = sol.u[i + 1]
-        p2 = Point(u2[1], u2[2], u2[3])
-        v2 = p2 - center
-        s2 = (v2 ⋅ v2 - radius²).val
-
-        # Check if the line segment intersects the surface
-        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
-            f = s1 / (s1 - s2)
-            tc = t[i] + f * (t[i + 1] - t[i])
-            ut = sol(tc)
-
-            push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
-        end
-        u1, p1, v1, s1 = u2, p2, v2, s2
-    end
-
-    n_flux = length(velocities) * weight
-    v_flux = (velocities .* weight) ./ area.val
-    return v_flux, n_flux
+    return _calculate_flux(velocities, surface, weight)
 end
 
 """
