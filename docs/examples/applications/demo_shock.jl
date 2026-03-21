@@ -174,11 +174,11 @@ function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
     means_str = [@sprintf "Vx: %d [km/s]" v̄x[i] for i in eachindex(v̄x)]
     std_str = [@sprintf "Vth: %d [km/s]" vth[i] for i in eachindex(vth)]
     text!(
-        Point.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),
+        Point3f.(xmid .+ 400, 300.0), text = means_str, align = (:right, :center),
         offset = (-60, 0), color = :black, fontsize = 24
     )
     text!(
-        Point.(xmid .+ 400, -700.0), text = std_str, align = (:right, :center),
+        Point3f.(xmid .+ 400, -700.0), text = std_str, align = (:right, :center),
         offset = (-60, 0), color = :black, fontsize = 24
     )
 
