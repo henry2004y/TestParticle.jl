@@ -57,23 +57,10 @@ end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
-"""
-Estimate the particle flux through a plane x = x0.
-"""
-function estimate_flux_plane(sols, x0)
-    count = sum(sols.u) do sol
-        ## Check if particle crossed x0
-        ## Assuming monotonic motion along x, check start and end
-        x_start = sol(sol.prob.tspan[1])[1]
-        x_end = sol(sol.prob.tspan[2])[1]
-
-        (x_start < x0 <= x_end) || (x_start > x0 >= x_end)
-    end
-    return count * weight
-end
-
 plane_loc = 100.0 # [m]
-flux = estimate_flux_plane(sols, plane_loc)
+detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
+_, flux = get_particle_fluxes(sols, detector; weight)
+
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 
@@ -93,24 +80,12 @@ end
 ensemble_prob_iso = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
 sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
-"""
-Estimate the particle flux through a sphere with radius r = r0.
-"""
-function estimate_flux_sphere(sols, r0)
-    count = sum(sols.u) do sol
-        u_start = sol(sol.prob.tspan[1])
-        r_start = hypot(u_start[1], u_start[2], u_start[3])
-        u_end = sol(sol.prob.tspan[2])
-        r_end = hypot(u_end[1], u_end[2], u_end[3])
-
-        (r_start < r0 <= r_end) || (r_start > r0 >= r_end)
-    end
-    return count * weight
-end
+r0 = 100.0 # [m]
+detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
+_, flux = get_particle_fluxes(sols_iso, detector_iso; weight)
 
 r = 100.0 # [m]
 area = 4π * r^2 # [m²]
-flux = estimate_flux_sphere(sols_iso, r)
 println("Example 2:")
 println("Particle flux through sphere r = $r [m]: ", flux, " /s")
 println("Particle flux density through sphere r = $r [m]: ", flux / area, " /(s * m²)")
