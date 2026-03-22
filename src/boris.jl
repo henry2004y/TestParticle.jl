@@ -675,8 +675,8 @@ Return the electric and magnetic fields from the solution `sol`.
 function get_fields(sol::AbstractODESolution)
     Efunc, Bfunc = _get_field_funcs(sol.prob)
 
-    E = [Efunc(get_x(u), t) for (u, t) in zip(sol.u, sol.t)]
-    B = [Bfunc(get_x(u), t) for (u, t) in zip(sol.u, sol.t)]
+    E = map((u, t) -> Efunc(get_x(u), t), sol.u, sol.t)
+    B = map((u, t) -> Bfunc(get_x(u), t), sol.u, sol.t)
 
     return E, B
 end
@@ -703,10 +703,10 @@ end
 
 function _get_work(sol, prob::TraceGCProblem)
     p = prob.p
-    return [get_work_rates_gc(u, p, t) for (u, t) in zip(sol.u, sol.t)]
+    return map((u, t) -> get_work_rates_gc(u, p, t), sol.u, sol.t)
 end
 
 function _get_work(sol, prob)
     p = prob.p
-    return [get_work_rates(u, p, t) for (u, t) in zip(sol.u, sol.t)]
+    return map((u, t) -> get_work_rates(u, p, t), sol.u, sol.t)
 end
