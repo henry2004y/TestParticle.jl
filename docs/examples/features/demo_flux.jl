@@ -22,7 +22,7 @@ using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes
 ## Source flux at the origin
 const source_flux = 100.0 # [real particle / s]
 const n_particles = 1000 # number of test particles
-const weight = source_flux / n_particles # [particles / s per test particle]
+const weights = source_flux / n_particles # [particles / s per test particle]
 
 zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
@@ -59,7 +59,7 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 
 plane_loc = 100.0 # [m]
 detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-_, flux = get_particle_fluxes(sols, detector; weight)
+_, flux = get_particle_fluxes(sols, detector, weights)
 
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
@@ -82,7 +82,7 @@ sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_
 
 r0 = 100.0 # [m]
 detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
-_, flux = get_particle_fluxes(sols_iso, detector_iso; weight)
+_, flux = get_particle_fluxes(sols_iso, detector_iso, weights)
 
 r = 100.0 # [m]
 area = 4π * r^2 # [m²]
