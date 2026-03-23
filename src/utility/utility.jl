@@ -589,8 +589,8 @@ function get_particle_fluxes(
     total_n_fluxes = zeros(nsurfaces)
 
     # Pre-allocate signed distance arrays
-    s1 = Vector{T}(undef, nsurfaces)
-    s2 = Vector{T}(undef, nsurfaces)
+    s1 = Vector{Float64}(undef, nsurfaces)
+    s2 = Vector{Float64}(undef, nsurfaces)
 
     @inbounds for (sol, w) in zip(sols, weights)
         t = sol.t

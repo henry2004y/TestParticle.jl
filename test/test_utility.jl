@@ -808,7 +808,7 @@ end
 
         # Test multiple detectors
         v_fluxes, n_fluxes = get_particle_fluxes(sols, detectors, weights)
-        @test length(n_fluxes) == 2 && n_fluxes[1] == 1.0 && n_fluxes[2] == 1.0
-        @test v_fluxes[1] ≈ v_fluxes[2] ≈ [SA[1.0, 0.0, 0.0]]
+        @test length(n_fluxes) == 2 && n_fluxes[1] == 1.0 && n_fluxes[2] == 1.0 &&
+            v_fluxes[1] ≈ v_fluxes[2] ≈ [SA[1.0, 0.0, 0.0]]
     end
 end
