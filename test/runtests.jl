@@ -498,7 +498,6 @@ if "makie" in ARGS
 end
 
 include("test_distributions.jl")
-include("test_density.jl")
 include("test_gc.jl")
 include("test_hybrid.jl")
 
