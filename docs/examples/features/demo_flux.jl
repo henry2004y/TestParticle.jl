@@ -18,6 +18,7 @@
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
 using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes, Random
+import TestParticle as TP
 using VelocityDistributionFunctions, SpecialFunctions, CairoMakie
 import DisplayAs
 
@@ -113,7 +114,7 @@ x0_cloud = [SVector(0.0, 0.0, 0.0) for _ in 1:N_cloud];
 
 ## Maxwellian velocity distribution
 ## u_bulk = 0, n=1 effectively for distribution shape
-vdf_cloud = Maxwellian([0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
+vdf_cloud = TP.Maxwellian([0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
 v0_cloud = rand(vdf_cloud, N_cloud);
 
 ## Create TraceProblem template
