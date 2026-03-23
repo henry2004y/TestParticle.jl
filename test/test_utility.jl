@@ -6,7 +6,7 @@ using OrdinaryDiffEq
 using Random
 using Unitful
 import TestParticle as TP
-using Meshes: Vec
+using Meshes: Vec, Plane, Disk, Point, Sphere
 
 struct MockSol{T, U}
     t::T
@@ -793,5 +793,23 @@ end
         sphere_area = 4π * 5.0^2
         @test flux_s[1] ≈ SA[1.0, 0.0, 0.0] / sphere_area
         @test flux_s[2] ≈ SA[1.0, 0.0, 0.0] / sphere_area
+    end
+
+    @testset "Multiple Detector Flux" begin
+        # Solution: x starts at 0, moves to 2 in 2 seconds (v=1)
+        sol = MockSol([0.0, 2.0], [SA[0, 0, 0, 1, 0, 0], SA[2, 0, 0, 1, 0, 0]])
+        sols = [sol]
+        weights = [1.0]
+
+        # Detectors at x=0.5 and x=1.5
+        d1 = Plane(Point(0.5, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
+        d2 = Plane(Point(1.5, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
+        detectors = [d1, d2]
+
+        # Test multiple detectors
+        v_fluxes, n_fluxes = get_particle_fluxes(sols, detectors, 1.0)
+        @test length(n_fluxes) == 2 && n_fluxes[1] == 1.0 && n_fluxes[2] == 1.0
+        v_fluxes, n_fluxes = get_particle_fluxes(sols, detectors, weights)
+        @test v_fluxes[1] ≈ v_fluxes[2] ≈ [SA[1.0, 0.0, 0.0]]
     end
 end

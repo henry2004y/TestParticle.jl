@@ -361,207 +361,6 @@ This function requires `VelocityDistributionFunctions.jl` to be loaded.
 """
 function sample_maxwellian end
 
-"""
-    get_number_density_flux(grid::CartesianGrid, sols, dt)
-
-Calculate the steady state particle number density flux on a uniform Cartesian grid.
-The flux is estimated by accumulating the number of particles in each cell at time steps `dt`,
-divided by the surface area of each cell.
-
-# Arguments
-
-  - `grid`: A `CartesianGrid` from `Meshes.jl`.
-  - `sols`: Particle trajectory solutions (e.g. `EnsembleSolution`).
-  - `dt`: Time step for sampling particle positions.
-"""
-function get_number_density_flux(grid::CartesianGrid, sols, dt)
-    counts = zeros(Int, size(grid))
-    dim = paramdim(grid)
-
-    g_min = coords(minimum(grid))
-    Δx = spacing(grid)
-
-    get_val(x) = hasproperty(x, :val) ? x.val : x
-
-    origin = if dim == 3
-        (get_val(g_min.x), get_val(g_min.y), get_val(g_min.z))
-    elseif dim == 2
-        (get_val(g_min.x), get_val(g_min.y))
-    else
-        (get_val(g_min.x),)
-    end
-
-    spacings = Tuple(get_val(d) for d in Δx)
-
-    if dim == 3
-        dx, dy, dz = spacings
-        cell_area = 2 * (dx * dy + dy * dz + dz * dx)
-    elseif dim == 2
-        dx, dy = spacings
-        cell_area = dx * dy
-    elseif dim == 1
-        cell_area = 1.0
-    end
-
-    sz = size(grid)
-
-    for sol in sols
-        t0 = sol.prob.tspan[1]
-        t1 = sol.prob.tspan[2]
-        t_start, t_end = t0 < t1 ? (t0, t1) : (t1, t0)
-
-        for t in t_start:dt:t_end
-            state = sol(t)
-            pos = state[1:dim]
-
-            idx = MVector{dim, Int}(undef)
-            in_bounds = true
-
-            for d in 1:dim
-                val = floor(Int, (pos[d] - origin[d]) / spacings[d])
-                id = val + 1
-                if 1 <= id <= sz[d]
-                    idx[d] = id
-                else
-                    in_bounds = false
-                    break
-                end
-            end
-
-            if in_bounds
-                counts[CartesianIndex(Tuple(idx))] += 1
-            end
-        end
-    end
-
-    return counts ./ cell_area
-end
-
-"""
-    get_number_density(sols, grid, t)
-
-Calculate particle number density at time `t` in a given `grid`.
-"""
-function get_number_density(sols, grid, t)
-    dims = size(grid)
-    counts = zeros(Int, dims)
-    ranges = _get_ranges_val(makegrid(grid))
-    dim = paramdim(grid)
-
-    for sol in sols
-        # Check if the solution is defined at time t
-        if sol.t[1] <= t <= sol.t[end]
-            pos = _strip_units(sol(t))
-
-            indices = ntuple(i -> searchsortedlast(ranges[i], pos[i]), dim)
-            inbounds = all(ntuple(i -> 1 <= indices[i] <= dims[i], dim))
-            if inbounds
-                counts[indices...] += 1
-            end
-        end
-    end
-
-    # Divide by cell volume to get density
-    vol = _get_cell_volume(grid)
-
-    return counts ./ vol
-end
-
-"""
-    get_number_density(sols, grid, t_start, t_end, dt)
-
-Calculate time-averaged particle number density from `t_start` to `t_end` with step `dt`.
-"""
-function get_number_density(sols, grid, t_start, t_end, dt)
-    dims = size(grid)
-    counts = zeros(Int, dims)
-    ranges = _get_ranges_val(makegrid(grid))
-    dim = paramdim(grid)
-
-    # For averaging, we accumulate counts at each time step
-    t_steps = t_start:dt:t_end
-    n_steps = length(t_steps)
-
-    for t in t_steps
-        for sol in sols
-            if sol.t[1] <= t <= sol.t[end]
-                pos = _strip_units(sol(t))
-
-                indices = ntuple(i -> searchsortedlast(ranges[i], pos[i]), dim)
-                inbounds = all(ntuple(i -> 1 <= indices[i] <= dims[i], dim))
-                if inbounds
-                    counts[indices...] += 1
-                end
-            end
-        end
-    end
-
-    vol = _get_cell_volume(grid)
-
-    return (counts ./ n_steps) ./ vol
-end
-
-"Helper function to strip units from values."
-_strip_units(x::AbstractArray) = map(v -> _strip_units(v), x)
-
-_strip_units(x) =
-if hasproperty(x, :val)
-    return x.val
-else
-    return x
-end
-
-_get_ranges_val(ranges::Tuple) = map(_strip_units, ranges)
-
-function _get_cell_volume(grid::CartesianGrid)
-    sp = spacing(grid)
-    # Strip units from spacing if necessary, though spacing typically returns Quantities if grid is unitful.
-    # If we want pure float volume, we need to strip.
-    dx = _strip_units(sp[1])
-    dy = _strip_units(sp[2])
-
-    if paramdim(grid) == 3
-        dz = _strip_units(sp[3])
-        return dx * dy * dz
-    elseif paramdim(grid) == 2
-        return dx * dy
-    end
-end
-
-function _get_cell_volume(grid::RectilinearGrid)
-    # Variable cell volume
-    # This is tricky because we return a single array of densities, but cells have different volumes.
-    # We should return density per cell, so we divide counts[i,j,k] by volume[i,j,k].
-
-    xyz = makegrid(grid) # Returns ranges or vectors
-
-    # Strip units for volume calculation if needed, or keep them if consistent.
-    xyz = _get_ranges_val(xyz)
-
-    if paramdim(grid) == 3
-        x, y, z = xyz
-        dx = diff(x)
-        dy = diff(y)
-        dz = diff(z)
-
-        vol = Array{eltype(dx), 3}(undef, length(dx), length(dy), length(dz))
-        @inbounds for k in eachindex(dz), j in eachindex(dy), i in eachindex(dx)
-            vol[i, j, k] = dx[i] * dy[j] * dz[k]
-        end
-        return vol
-    elseif paramdim(grid) == 2
-        x, y = xyz
-        dx = diff(x)
-        dy = diff(y)
-
-        vol = Array{eltype(dx), 2}(undef, length(dx), length(dy))
-        @inbounds for j in eachindex(dy), i in eachindex(dx)
-            vol[i, j] = dx[i] * dy[j]
-        end
-        return vol
-    end
-end
-
 @inline function _get_curvature(B, Bmag, b̂, JB)
     # ∇|B| = (J_B' * b̂)
     ∇B = JB' * b̂
@@ -760,11 +559,11 @@ end
 
 Calculate both the velocity fluxes and total weighted particle flux for an ensemble of trajectories `sols`.
 """
-function get_particle_fluxes(sols, surface, weights::Number)
+function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights::Number)
     return get_particle_fluxes(sols, surface, Base.Iterators.repeated(weights))
 end
 
-function get_particle_fluxes(sols, surface, weights)
+function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
     T = eltype(first(sols).u[1])
     velocities = SVector{3, T}[]
     total_n_flux = 0.0
@@ -776,7 +575,81 @@ function get_particle_fluxes(sols, surface, weights)
     return velocities, total_n_flux
 end
 
+"""
+    get_particle_fluxes(sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights)
+
+Calculate particle fluxes across multiple detectors for an ensemble of trajectories.
+"""
+function get_particle_fluxes(
+        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights
+    )
+    T = eltype(first(sols).u[1])
+    nsurfaces = length(surfaces)
+    results = [SVector{3, T}[] for _ in 1:nsurfaces]
+    total_n_fluxes = zeros(nsurfaces)
+
+    # Pre-allocate signed distance arrays
+    s1 = Vector{Float64}(undef, nsurfaces)
+    s2 = Vector{Float64}(undef, nsurfaces)
+
+    @inbounds for (sol, w) in zip(sols, weights)
+        t = sol.t
+        u1 = sol.u[1]
+        p1 = Point(u1[1], u1[2], u1[3])
+        # Update signed distances for all surfaces at the first point
+        for j in eachindex(s1, surfaces)
+            s1[j] = _signed_distance(p1, surfaces[j])
+        end
+
+        for i in eachindex(t)[1:(end - 1)]
+            u2 = sol.u[i + 1]
+            p2 = Point(u2[1], u2[2], u2[3])
+            # Update signed distances for all surfaces at the second point
+            for j in eachindex(s1, surfaces)
+                s2[j] = _signed_distance(p2, surfaces[j])
+            end
+
+            for j in eachindex(s1, s2, surfaces, results)
+                # Check for intersection with surface j
+                if s1[j] * s2[j] < 0 || (s1[j] != 0 && s2[j] == 0)
+                    f = s1[j] / (s1[j] - s2[j])
+                    tc = t[i] + f * (t[i + 1] - t[i])
+                    ut = sol(tc)
+                    xc = Point(ut[1], ut[2], ut[3])
+
+                    if _is_valid_intersection(xc, surfaces[j])
+                        push!(results[j], SVector{3, T}(ut[4], ut[5], ut[6]))
+                    end
+                end
+            end
+            p1 = p2
+            copyto!(s1, s2)
+        end
+
+        # After processing all time steps for one solution, update the N fluxes
+        for j in eachindex(total_n_fluxes, results)
+            total_n_fluxes[j] += length(results[j]) * w
+        end
+    end
+
+    # Finally, calculate normalized velocity fluxes for each surface
+    velocity_fluxes = [
+        _calculate_flux(results[j], surfaces[j], 1.0)[1]
+            for j in eachindex(results, surfaces)
+    ]
+
+    return velocity_fluxes, total_n_fluxes
+end
+
 get_particle_fluxes(sols, surface; weights = 1.0) = get_particle_fluxes(sols, surface, weights)
+
+function get_particle_fluxes(
+        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights::Number
+    )
+    return get_particle_fluxes(
+        sols, surfaces, Base.Iterators.repeated(weights, length(sols))
+    )
+end
 
 @inline function _signed_distance(p::Point, surface::Disk)
     n = normal(surface.plane)
