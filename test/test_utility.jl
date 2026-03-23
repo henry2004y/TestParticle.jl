@@ -760,9 +760,21 @@ end
 
         # Test Ensemble
         sols = [sol1, sol2, sol3]
-        flux_all, n_flux_all = get_particle_fluxes(sols, detector)
+        flux_all, n_flux_all = get_particle_fluxes(sols, detector; weights = 1.0)
         @test length(flux_all) == 1 && n_flux_all == 1.0
         @test flux_all[1] ≈ SA[1.0, 0.0, 0.0] / area
+
+        # Test Ensemble with vector weights
+        weights = [1.0, 2.0, 3.0]
+        flux_vw, n_flux_vw = get_particle_fluxes(sols, detector; weights)
+        @test n_flux_vw == 1.0 # sol1 crosses (1.0), others miss
+
+        # Test Ensemble where multiple cross
+        sols2 = [sol1, sol1, sol2]
+        weights2 = [1.0, 2.0, 3.0]
+        flux_vw2, n_flux_vw2 = get_particle_fluxes(sols2, detector, weights2)
+        @test n_flux_vw2 == 3.0 && flux_vw2[1] ≈ SA[1.0, 0.0, 0.0] / area &&
+            flux_vw2[2] ≈ SA[2.0, 0.0, 0.0] / area
 
         # T4: Weighted Disk flux
         flux_w, n_flux_w = get_particle_flux(sol1, detector; weight = 2.0)

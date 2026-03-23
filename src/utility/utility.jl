@@ -722,7 +722,62 @@ The generic `sol` must store the discrete time steps in `sol.t` and values in `s
 If `weight` is provided, the result is multiplied by the weight.
 Returns a tuple `(velocity_flux, number_flux)`.
 For `Disk` and `Sphere`, the returned `velocity_flux` is normalized by the area.
+See also [`get_particle_fluxes`](@ref).
 """
+function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
+    t = sol.t
+    T = eltype(sol.u[1])
+    velocities = SVector{3, T}[]
+
+    u1 = sol.u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    s1 = _signed_distance(p1, surface)
+
+    @inbounds for i in eachindex(t)[1:(end - 1)]
+        u2 = sol.u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        s2 = _signed_distance(p2, surface)
+
+        # Check if the line segment intersects the surface
+        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
+            f = s1 / (s1 - s2)
+            tc = t[i] + f * (t[i + 1] - t[i])
+            ut = sol(tc)
+            xc = Point(ut[1], ut[2], ut[3])
+
+            if _is_valid_intersection(xc, surface)
+                push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
+            end
+        end
+        u1, p1, s1 = u2, p2, s2
+    end
+
+    return _calculate_flux(velocities, surface, weight)
+end
+
+"""
+    get_particle_fluxes(sols, surface; weights=1.0)::(velocity_fluxes, total_number_flux)
+
+Calculate both the velocity fluxes and total weighted particle flux for an ensemble of trajectories `sols`.
+"""
+function get_particle_fluxes(sols, surface, weights::Number)
+    return get_particle_fluxes(sols, surface, Base.Iterators.repeated(weights))
+end
+
+function get_particle_fluxes(sols, surface, weights)
+    T = eltype(first(sols).u[1])
+    velocities = SVector{3, T}[]
+    total_n_flux = 0.0
+    for (sol, w) in zip(sols, weights)
+        v_f, n_f = get_particle_flux(sol, surface; weight = w)
+        append!(velocities, v_f)
+        total_n_flux += n_f
+    end
+    return velocities, total_n_flux
+end
+
+get_particle_fluxes(sols, surface; weights = 1.0) = get_particle_fluxes(sols, surface, weights)
+
 @inline function _signed_distance(p::Point, surface::Disk)
     n = normal(surface.plane)
     v = p - surface.plane.p
@@ -767,55 +822,4 @@ function _calculate_flux(velocities, surface::Sphere, weight)
     n_flux = length(velocities) * weight
     v_flux = (velocities .* weight) ./ area.val
     return v_flux, n_flux
-end
-
-function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
-    t = sol.t
-    T = eltype(sol.u[1])
-    velocities = SVector{3, T}[]
-
-    u1 = sol.u[1]
-    p1 = Point(u1[1], u1[2], u1[3])
-    s1 = _signed_distance(p1, surface)
-
-    @inbounds for i in eachindex(t)[1:(end - 1)]
-        u2 = sol.u[i + 1]
-        p2 = Point(u2[1], u2[2], u2[3])
-        s2 = _signed_distance(p2, surface)
-
-        # Check if the line segment intersects the surface
-        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
-            f = s1 / (s1 - s2)
-            tc = t[i] + f * (t[i + 1] - t[i])
-            ut = sol(tc)
-            xc = Point(ut[1], ut[2], ut[3])
-
-            if _is_valid_intersection(xc, surface)
-                push!(velocities, SVector{3, T}(ut[4], ut[5], ut[6]))
-            end
-        end
-        u1, p1, s1 = u2, p2, s2
-    end
-
-    return _calculate_flux(velocities, surface, weight)
-end
-
-"""
-    get_particle_fluxes(sols, surface; weight=1.0)
-
-Calculate both the velocity fluxes and total weighted particle flux for an ensemble of trajectories `sols`.
-Returns a tuple `(velocity_fluxes, total_number_flux)`.
-"""
-function get_particle_fluxes(sols, surface; weight = 1.0)
-    T = eltype(first(sols).u[1])
-    velocities = SVector{3, T}[]
-    total_n_flux = 0.0
-
-    for sol in sols
-        v_f, n_f = get_particle_flux(sol, surface; weight)
-        append!(velocities, v_f)
-        total_n_flux += n_f
-    end
-
-    return velocities, total_n_flux
 end
