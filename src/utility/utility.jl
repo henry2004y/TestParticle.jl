@@ -761,18 +761,10 @@ end
 Calculate both the velocity fluxes and total weighted particle flux for an ensemble of trajectories `sols`.
 """
 function get_particle_fluxes(sols, surface, weights::Number)
-    T = eltype(first(sols).u[1])
-    velocities = SVector{3, T}[]
-    total_n_flux = 0.0
-    for sol in sols
-        v_f, n_f = get_particle_flux(sol, surface; weight = weights)
-        append!(velocities, v_f)
-        total_n_flux += n_f
-    end
-    return velocities, total_n_flux
+    return get_particle_fluxes(sols, surface, Base.Iterators.repeated(weights))
 end
 
-function get_particle_fluxes(sols, surface, weights::AbstractVector)
+function get_particle_fluxes(sols, surface, weights)
     T = eltype(first(sols).u[1])
     velocities = SVector{3, T}[]
     total_n_flux = 0.0

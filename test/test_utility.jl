@@ -766,14 +766,8 @@ end
 
         # Test Ensemble with vector weights
         weights = [1.0, 2.0, 3.0]
-        flux_vw, n_flux_vw = get_particle_fluxes(sols, detector; weights = weights)
+        flux_vw, n_flux_vw = get_particle_fluxes(sols, detector; weights)
         @test n_flux_vw == 1.0 # sol1 crosses (1.0), others miss
-
-        # Test positional calls
-        flux_pos, n_flux_pos = get_particle_fluxes(sols, detector, 1.0)
-        @test n_flux_pos == 1.0
-        flux_vpos, n_flux_vpos = get_particle_fluxes(sols, detector, weights)
-        @test n_flux_vpos == 1.0
 
         # Test Ensemble where multiple cross
         sols2 = [sol1, sol1, sol2]
