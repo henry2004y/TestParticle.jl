@@ -19,6 +19,7 @@
 
 using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes, Random
 import TestParticle as TP
+using Meshes: Point, Plane, Sphere, Vec
 using VelocityDistributionFunctions, SpecialFunctions, CairoMakie
 import DisplayAs
 
@@ -61,7 +62,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particles)
 
 plane_loc = 100.0 # [m]
-detector = Plane(Meshes.Point(plane_loc, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
+detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
 _, flux = get_particle_fluxes(sols, detector, weights)
 
 println("Example 1:")
