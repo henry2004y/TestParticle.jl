@@ -44,8 +44,7 @@ export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
-    CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Point, Sphere
+    CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake
 
 include("types.jl")
