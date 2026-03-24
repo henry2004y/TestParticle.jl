@@ -540,7 +540,7 @@ function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.
         # Check if the line segment intersects the surface
         if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
             f = s1 / (s1 - s2)
-            tc = t[i] + f * (t[i + 1] - t[i])
+            tc = muladd(f, t[i + 1] - t[i], t[i])
             ut = sol(tc)
             xc = Point(ut[1], ut[2], ut[3])
 
@@ -588,47 +588,40 @@ function get_particle_fluxes(
     results = [SVector{3, T}[] for _ in 1:nsurfaces]
     total_n_fluxes = zeros(nsurfaces)
 
-    # Pre-allocate signed distance arrays
+    # Pre-allocate signed distance array for the previous point
     s1 = Vector{Float64}(undef, nsurfaces)
-    s2 = Vector{Float64}(undef, nsurfaces)
 
     @inbounds for (sol, w) in zip(sols, weights)
         t = sol.t
-        u1 = sol.u[1]
+        u = sol.u
+        u1 = u[1]
         p1 = Point(u1[1], u1[2], u1[3])
         # Update signed distances for all surfaces at the first point
-        for j in eachindex(s1, surfaces)
+        for j in eachindex(surfaces)
             s1[j] = _signed_distance(p1, surfaces[j])
         end
 
-        for i in eachindex(t)[1:(end - 1)]
-            u2 = sol.u[i + 1]
+        for i in 1:(length(t) - 1)
+            u2 = u[i + 1]
             p2 = Point(u2[1], u2[2], u2[3])
-            # Update signed distances for all surfaces at the second point
-            for j in eachindex(s1, surfaces)
-                s2[j] = _signed_distance(p2, surfaces[j])
-            end
 
-            for j in eachindex(s1, s2, surfaces, results)
+            for j in eachindex(surfaces)
+                surface = surfaces[j]
+                s2j = _signed_distance(p2, surface)
                 # Check for intersection with surface j
-                if s1[j] * s2[j] < 0 || (s1[j] != 0 && s2[j] == 0)
-                    f = s1[j] / (s1[j] - s2[j])
-                    tc = t[i] + f * (t[i + 1] - t[i])
+                if s1[j] * s2j < 0 || (s1[j] != 0 && s2j == 0)
+                    f = s1[j] / (s1[j] - s2j)
+                    tc = muladd(f, t[i + 1] - t[i], t[i])
                     ut = sol(tc)
                     xc = Point(ut[1], ut[2], ut[3])
 
-                    if _is_valid_intersection(xc, surfaces[j])
-                        push!(results[j], SVector{3, T}(ut[4], ut[5], ut[6]))
+                    if _is_valid_intersection(xc, surface)
+                        push!(results[j], SVector{3, T}(ut[4], ut[5], ut[6]) * w)
+                        total_n_fluxes[j] += w
                     end
                 end
+                s1[j] = s2j
             end
-            p1 = p2
-            copyto!(s1, s2)
-        end
-
-        # After processing all time steps for one solution, update the N fluxes
-        for j in eachindex(total_n_fluxes, results)
-            total_n_fluxes[j] += length(results[j]) * w
         end
     end
 
