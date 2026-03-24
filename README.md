@@ -54,6 +54,10 @@ prob = TraceProblem(stateinit, tspan, param)
 sol = TestParticle.solve(prob; dt, savestepinterval)[1]
 ```
 
+Besides the standard Boris method, we also support various versions of Boris solvers including:
+- **Multistep Boris**: fixed time step with `n > 1` substeps.
+- **Adaptive Boris**: uses `AdaptiveBoris()` for automatic time step selection.
+
 For plotting with Makie,
 
 ```julia
@@ -62,4 +66,4 @@ using GLMakie
 plot(sol, idxs=(1, 2, 3))
 ```
 
-More tutorials and examples can be found in the [doc](https://henry2004y.github.io/TestParticle.jl/dev/).
+More tutorials and examples can be found in the [documentation](https://henry2004y.github.io/TestParticle.jl/dev/).
