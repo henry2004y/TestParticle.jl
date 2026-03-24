@@ -540,7 +540,7 @@ function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.
         # Check if the line segment intersects the surface
         if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
             f = s1 / (s1 - s2)
-            tc = t[i] + f * (t[i + 1] - t[i])
+            tc = muladd(f, t[i + 1] - t[i], t[i])
             ut = sol(tc)
             xc = Point(ut[1], ut[2], ut[3])
 
@@ -611,7 +611,7 @@ function get_particle_fluxes(
                 # Check for intersection with surface j
                 if s1[j] * s2j < 0 || (s1[j] != 0 && s2j == 0)
                     f = s1[j] / (s1[j] - s2j)
-                    tc = t[i] + f * (t[i + 1] - t[i])
+                    tc = muladd(f, t[i + 1] - t[i], t[i])
                     ut = sol(tc)
                     xc = Point(ut[1], ut[2], ut[3])
 
