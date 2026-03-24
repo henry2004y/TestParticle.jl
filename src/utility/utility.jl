@@ -597,7 +597,7 @@ function get_particle_fluxes(
         u1 = u[1]
         p1 = Point(u1[1], u1[2], u1[3])
         # Update signed distances for all surfaces at the first point
-        for j in 1:nsurfaces
+        for j in eachindex(surfaces)
             s1[j] = _signed_distance(p1, surfaces[j])
         end
 
@@ -605,7 +605,7 @@ function get_particle_fluxes(
             u2 = u[i + 1]
             p2 = Point(u2[1], u2[2], u2[3])
 
-            for j in 1:nsurfaces
+            for j in eachindex(surfaces)
                 surface = surfaces[j]
                 s2j = _signed_distance(p2, surface)
                 # Check for intersection with surface j
@@ -628,7 +628,7 @@ function get_particle_fluxes(
     # Finally, calculate normalized velocity fluxes for each surface
     velocity_fluxes = [
         _calculate_flux(results[j], surfaces[j], 1.0)[1]
-            for j in 1:nsurfaces
+            for j in eachindex(results, surfaces)
     ]
 
     return velocity_fluxes, total_n_fluxes
