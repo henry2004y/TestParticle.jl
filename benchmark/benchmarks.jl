@@ -5,6 +5,7 @@ using TestParticle
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
 using TestParticle: CPU
+using Meshes: Vec, Plane, Disk, Point, Sphere
 
 const SUITE = BenchmarkGroup()
 
@@ -231,17 +232,35 @@ SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
     dt = 1.0e-4, savestepinterval = 100, alg = :rk45
 )
 
-# Hybrid
-alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0e-4)
-param_sheared = TP.prepare(E_analytic, sheared_B_func) # Reuse E_analytic
+# --- Flux Benchmarks ---
 
-x0_h = SA[0.0, 0.0, 0.0]
-v0_h = SA[1.0e4, 0.0, 1.0e3]
-u0_h = vcat(x0_h, v0_h)
-tspan_h = (0.0, 1.0e-5)
+struct MockSol{T, U}
+    t::T
+    u::U
+end
+# Simple linear-like mock for benchmarking intersection logic
+(sol::MockSol)(tc) = SA[tc, 0.0, 0.0, 1.0, 0.0, 0.0]
 
-prob_hybrid_sheared = TraceHybridProblem(u0_h, tspan_h, param_sheared)
+function setup_flux_benchmarks()
+    # 10 sols crossing surfaces
+    t = collect(0.0:1.0:10.0)
+    u = [SA[x, 0.0, 0.0, 1.0, 0.0, 0.0] for x in t]
+    sols = [MockSol(t, u) for _ in 1:10]
+    weights = collect(1.1:1.0:10.1)
 
-SUITE["trace"]["Hybrid"]["Sheared"] = @benchmarkable TP.solve(
-    $prob_hybrid_sheared, $alg_hybrid
-)
+    # Surfaces
+    # Disk at x = 5.0
+    disk = Disk(Plane(Point(5.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 2.0)
+    # Sphere at x = 8.0
+    sphere = Sphere(Point(8.0, 0.0, 0.0), 1.0)
+
+    return sols, weights, disk, sphere
+end
+
+SUITE["flux"] = BenchmarkGroup()
+let (sols, weights, disk, sphere) = setup_flux_benchmarks()
+    # Explicitly type the surface vector to match the function signature
+    surfaces = Union{Disk, Plane, Sphere}[disk, sphere]
+    SUITE["flux"]["single detector"] = @benchmarkable get_particle_fluxes($sols, $disk, $weights)
+    SUITE["flux"]["multi detector"] = @benchmarkable get_particle_fluxes($sols, $surfaces, $weights)
+end

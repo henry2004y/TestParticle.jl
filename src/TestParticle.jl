@@ -11,7 +11,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using Distributed: pmap, nworkers
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Point, normal, Sphere
+    Plane, Disk, Point, normal, Sphere, area
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
