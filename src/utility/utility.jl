@@ -545,7 +545,7 @@ function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.
             velocities, s1, s2, surface, sol, t[i], t[i + 1], weight
         )
         number_flux += flux
-        u1, p1, s1 = u2, p2, s2
+        s1 = s2
     end
 
     _calculate_flux!(velocities, surface)

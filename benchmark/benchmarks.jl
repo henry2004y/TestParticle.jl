@@ -247,13 +247,13 @@ function setup_flux_benchmarks()
     u = [SA[x, 0.0, 0.0, 1.0, 0.0, 0.0] for x in t]
     sols = [MockSol(t, u) for _ in 1:10]
     weights = collect(1.1:1.0:10.1)
-    
+
     # Surfaces
     # Disk at x = 5.0
     disk = Disk(Plane(Point(5.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 2.0)
     # Sphere at x = 8.0
     sphere = Sphere(Point(8.0, 0.0, 0.0), 1.0)
-    
+
     return sols, weights, disk, sphere
 end
 
