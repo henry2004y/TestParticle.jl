@@ -592,27 +592,28 @@ function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
 end
 
 """
-    get_particle_fluxes(sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights)
+    get_particle_fluxes(sols, surfaces::AbstractVector{T}, weights) where {T}
 
 Calculate particle fluxes across multiple detectors for an ensemble of trajectories.
+For optimal performance, all detectors should be of the same concrete type.
 """
 function get_particle_fluxes(
-        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights::Number
-    )
+        sols, surfaces::AbstractVector{T}, weights::Number
+    ) where {T <: Union{Disk, Plane, Sphere}}
     return get_particle_fluxes(sols, surfaces, Base.Iterators.repeated(weights))
 end
 
 function get_particle_fluxes(
-        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights
-    )
+        sols, surfaces::AbstractVector{T}, weights
+    ) where {T <: Union{Disk, Plane, Sphere}}
     nsurfaces = length(surfaces)
-    T = eltype(first(sols).u[1])
-    results = Vector{Vector{SVector{3, T}}}(undef, nsurfaces)
+    VFT = eltype(first(sols).u[1])
+    results = Vector{Vector{SVector{3, VFT}}}(undef, nsurfaces)
     @inbounds for j in 1:nsurfaces
-        results[j] = sizehint!(SVector{3, T}[], length(sols))
+        results[j] = sizehint!(SVector{3, VFT}[], length(sols))
     end
     total_n_fluxes = zeros(eltype(weights), nsurfaces)
-    s1_buf = Vector{eltype(weights)}(undef, nsurfaces)
+    s1_buf = Vector{float(VFT)}(undef, nsurfaces)
 
     @inbounds for (sol, w) in zip(sols, weights)
         t, u = sol.t, sol.u
