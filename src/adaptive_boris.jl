@@ -175,6 +175,14 @@ function _solve(
     return reduce(vcat, results)
 end
 
+@inline function _calculate_dt(r, t, p, alg, ttotal)
+    q2m = p[1]
+    Bfunc = p[4]
+    B = Bfunc(r, t)
+    omega = abs(q2m) * norm(B)
+    return sign(ttotal) * clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
+end
+
 @muladd function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
@@ -213,10 +221,7 @@ end
         end
 
         # Initial dt calculation
-        B = Bfunc(r, t)
-        B_mag = norm(B)
-        omega = abs(q2m) * B_mag
-        dt = sign(ttotal) * clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
+        dt = _calculate_dt(r, t, p, alg, ttotal)
 
         # Backstep velocity: v(0) -> v(-1/2) using dt
         v = update_velocity(v, r, p, -0.5 * dt, t)
@@ -262,10 +267,7 @@ end
             end
 
             # New dt
-            B = Bfunc(r, t)
-            B_mag = norm(B)
-            omega = abs(q2m) * B_mag
-            dt_new = sign(ttotal) * clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
+            dt_new = _calculate_dt(r, t, p, alg, ttotal)
 
             # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
