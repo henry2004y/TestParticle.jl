@@ -608,10 +608,36 @@ function get_particle_fluxes(
     nsurfaces = length(surfaces)
     T = eltype(first(sols).u[1])
     results = Vector{Vector{SVector{3, T}}}(undef, nsurfaces)
-    total_n_fluxes = Vector{eltype(weights)}(undef, nsurfaces)
+    @inbounds for j in 1:nsurfaces
+        results[j] = sizehint!(SVector{3, T}[], length(sols))
+    end
+    total_n_fluxes = zeros(eltype(weights), nsurfaces)
+    s1_buf = Vector{eltype(weights)}(undef, nsurfaces)
 
-    for j in 1:nsurfaces
-        results[j], total_n_fluxes[j] = get_particle_fluxes(sols, surfaces[j], weights)
+    @inbounds for (sol, w) in zip(sols, weights)
+        t, u = sol.t, sol.u
+        u1 = u[1]
+        p1 = Point(u1[1], u1[2], u1[3])
+        for j in eachindex(surfaces)
+            s1_buf[j] = _signed_distance(p1, surfaces[j])
+        end
+
+        for i in eachindex(t)[1:(end - 1)]
+            u2 = u[i + 1]
+            p2 = Point(u2[1], u2[2], u2[3])
+            for j in eachindex(surfaces)
+                s2 = _signed_distance(p2, surfaces[j])
+                flux = _check_intersection!(
+                    results[j], s1_buf[j], s2, surfaces[j], sol, t[i], t[i + 1], w
+                )
+                total_n_fluxes[j] += flux
+                s1_buf[j] = s2
+            end
+        end
+    end
+
+    @inbounds for j in eachindex(surfaces)
+        _calculate_flux!(results[j], surfaces[j])
     end
 
     return results, total_n_fluxes
