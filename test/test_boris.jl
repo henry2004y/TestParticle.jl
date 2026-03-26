@@ -508,6 +508,23 @@ using Distributed
                         @test sols_split[i].u[end] ≈ sols_serial[i].u[end]
                     end
                 end
+
+                @testset "isoutofdomain" begin
+                    # Simple domain boundary at x = 0.5
+                    isoutofdomain_local(u, p, t) = u[1] > 0.5
+                    B_field(r, t) = SA[0.0, 0.0, 0.0]
+                    E_field(r, t) = SA[0.0, 0.0, 0.0]
+
+                    param = prepare(E_field, B_field)
+                    u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0] # v = 1e5
+                    tspan = (0.0, 1.0e-5) # Should reach x=0.5 at t=5e-6
+                    prob = TraceProblem(u0, tspan, param)
+
+                    alg = AdaptiveBoris(dtmax = 1.0e-6)
+                    sol = TP.solve(prob, alg; isoutofdomain = isoutofdomain_local)[1]
+
+                    @test sol.u[end][1] > 0.5 && sol.t[end] < tspan[2]
+                end
             end
         finally
             rmprocs(pids)
