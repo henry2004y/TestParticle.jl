@@ -458,21 +458,22 @@ end
 """
 Apply Boris method for particles with index in `irange`.
 """
-@inline function _boris_loop!(
+@inline @muladd function _boris_loop!(
         traj, tsave, iout, r, v, p, dt, nt, tspan,
         savestepinterval, save_everystep, isoutofdomain::F1, velocity_updater::F2,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {F1, F2, SaveFields, SaveWork}
     it = 1
+    t = tspan[1] - 0.5 * dt
     while it <= nt
         v_prev = v
-        t = (it - 0.5) * dt
+        t += dt
         v = velocity_updater(v, r, p, dt, t)
 
         if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
             if iout <= length(traj)
-                t_current = tspan[1] + (it - 1) * dt
+                t_current = t - 0.5 * dt
                 v_save = velocity_updater(v_prev, r, p, 0.5 * dt, t_current)
                 data = vcat(r, v_save)
                 traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
@@ -481,7 +482,8 @@ Apply Boris method for particles with index in `irange`.
         end
 
         r += v * dt
-        isoutofdomain(vcat(r, v), p, it * dt) && break
+        t_next = t + 0.5 * dt
+        isoutofdomain(vcat(r, v), p, t_next) && break
         it += 1
     end
     return it, iout, r, v

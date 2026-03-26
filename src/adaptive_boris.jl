@@ -175,7 +175,15 @@ function _solve(
     return reduce(vcat, results)
 end
 
-function _adaptive_boris!(
+@inline function _calculate_dt(r, t, p, alg, ttotal)
+    q2m = p[1]
+    Bfunc = p[4]
+    B = Bfunc(r, t)
+    omega = abs(q2m) * norm(B)
+    return sign(ttotal) * clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
+end
+
+@muladd function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
@@ -204,6 +212,7 @@ function _adaptive_boris!(
         r = u0_i[SVector(1, 2, 3)]
         v = u0_i[SVector(4, 5, 6)]
         t = tspan[1]
+        ttotal = tspan[2] - tspan[1]
 
         if save_start
             data = _prepare_saved_data(u0_i, p, t, Val(SaveFields), Val(SaveWork))
@@ -212,19 +221,15 @@ function _adaptive_boris!(
         end
 
         # Initial dt calculation
-        B = Bfunc(r, t)
-        B_mag = norm(B)
-        omega = abs(q2m) * B_mag
-        dt = alg.safety / omega
-        dt = clamp(dt, alg.dtmin, alg.dtmax)
+        dt = _calculate_dt(r, t, p, alg, ttotal)
 
         # Backstep velocity: v(0) -> v(-1/2) using dt
         v = update_velocity(v, r, p, -0.5 * dt, t)
-
         it = 1
-        while t < tspan[2]
+        should_save_final = save_end
+        while abs(t - tspan[1]) < abs(ttotal)
             # Check if next step exceeds tspan[2]
-            if t + dt > tspan[2]
+            if abs(t + dt - tspan[1]) > abs(ttotal)
                 dt_step = tspan[2] - t
                 # Resync v from `t - 0.5*dt` to `t - 0.5*dt_step`
                 v = update_velocity(v, r, p, 0.5 * dt, t)
@@ -232,12 +237,10 @@ function _adaptive_boris!(
                 dt = dt_step
             end
 
-            v_prev = v # v_{n-1/2} relative to current dt
-
             # Saving logic (start of step)
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                 # Advance to t to get v_n
-                v_save = update_velocity(v_prev, r, p, 0.5 * dt, t)
+                v_save = update_velocity(v, r, p, 0.5 * dt, t)
 
                 xv_s = vcat(r, v_save)
                 data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
@@ -253,44 +256,37 @@ function _adaptive_boris!(
             r += v * dt
             t += dt
 
-            isoutofdomain(vcat(r, v), p, t) && break
-            it += 1
-
-            # Calculate new dt for next step
-            B = Bfunc(r, t)
-            B_mag = norm(B)
-            omega = abs(q2m) * B_mag
-            dt_new = if omega > 0
-                clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
-            else
-                alg.dtmax
+            xv_new = vcat(r, v)
+            if isoutofdomain(xv_new, p, t)
+                # v is at t + 0.5*dt. To get v_n at t, move back by 0.5*dt
+                v = update_velocity(v, r, p, -0.5 * dt, t)
+                # Set dt to 0 so that final save logic uses 0.5*0 = 0 shift
+                dt = zero(dt)
+                should_save_final = true
+                break
             end
 
-            # Resync for next step
+            # New dt
+            dt_new = _calculate_dt(r, t, p, alg, ttotal)
+
+            # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
             # i.e. it is v_{n+1/2} from step we just took.
             v = update_velocity(v, r, p, 0.5 * dt, t)
             v = update_velocity(v, r, p, -0.5 * dt_new, t)
-
             dt = dt_new
+            it += 1
+            if save_everystep && (it - 1) % savestepinterval == 0
+                should_save_final = true
+            end
         end
 
-        # Final save
-        should_save_final = false
-        if save_end
-            should_save_final = true
-        elseif save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-            should_save_final = true
-        end
-
-        if should_save_final
-            # xv currently has x at t (which is >= tspan[2] or boundary)
-            # xv[4:6] has v at t - 0.5*dt (start of next step)
-            # We want v at t, so we just need to advance by 0.5 * dt
+        if should_save_final && (isempty(tsave) || tsave[end] != t)
+            # v is at t - 0.5*dt. To get v at t, advance by 0.5*dt
             v_final = update_velocity(v, r, p, 0.5 * dt, t)
 
-            xv_s = vcat(r, v_final)
-            data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
+            xv_f = vcat(r, v_final)
+            data = _prepare_saved_data(xv_f, p, t, Val(SaveFields), Val(SaveWork))
             push!(traj, data)
             push!(tsave, t)
         end
