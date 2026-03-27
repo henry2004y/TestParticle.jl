@@ -606,20 +606,20 @@ function get_particle_fluxes(sols, surface::Union{Disk, Sphere}, weights)
     T = float(eltype(first(sols).u[1]))
     velocities = SVector{3, T}[]
     sizehint!(velocities, length(sols))
-    number_fluxes = eltype(weights)[]
-    sizehint!(number_fluxes, length(sols))
+    crossing_weights = eltype(weights)[]
+    sizehint!(crossing_weights, length(sols))
 
     @inbounds for (sol, w) in zip(sols, weights)
-        get_particle_crossings_single!(velocities, number_fluxes, sol, surface, w)
+        get_particle_crossings_single!(velocities, crossing_weights, sol, surface, w)
     end
 
     inv_area = inv(area(surface).val)
-    if isempty(number_fluxes)
+    if isempty(crossing_weights)
         return zero(eltype(weights)) * inv_area, zero(SVector{3, T}) * inv_area
     end
 
-    n_flux_density = sum(number_fluxes) * inv_area
-    v_flux_density = sum(velocities .* number_fluxes) * inv_area
+    n_flux_density = sum(crossing_weights) * inv_area
+    v_flux_density = sum(velocities .* crossing_weights) * inv_area
 
     return n_flux_density, v_flux_density
 end
@@ -720,14 +720,14 @@ function get_particle_crossings(sols, surface::Union{Disk, Plane, Sphere}, weigh
     T = float(eltype(first(sols).u[1]))
     velocities = SVector{3, T}[]
     sizehint!(velocities, length(sols))
-    number_fluxes = eltype(weights)[]
-    sizehint!(number_fluxes, length(sols))
+    counts = eltype(weights)[]
+    sizehint!(counts, length(sols))
 
     @inbounds for (sol, w) in zip(sols, weights)
-        get_particle_crossings_single!(velocities, number_fluxes, sol, surface, w)
+        get_particle_crossings_single!(velocities, counts, sol, surface, w)
     end
 
-    return velocities, number_fluxes
+    return velocities, counts
 end
 
 function get_particle_crossings_single!(velocities, weights, sol, surface, w)
