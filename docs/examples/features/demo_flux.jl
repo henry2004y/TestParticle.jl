@@ -63,7 +63,7 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 
 plane_loc = 100.0 # [m]
 detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-_, flux = get_particle_fluxes(sols, detector, weights)
+flux, _ = get_particle_fluxes(sols, detector, weights)
 
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
@@ -86,13 +86,12 @@ sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_
 
 r0 = 100.0 # [m]
 detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
-_, flux = get_particle_fluxes(sols_iso, detector_iso, weights)
+flux, _ = get_particle_fluxes(sols_iso, detector_iso, weights)
 
 r = 100.0 # [m]
-area = 4π * r^2 # [m²]
 println("Example 2:")
-println("Particle flux through sphere r = $r [m]: ", flux, " /s")
-println("Particle flux density through sphere r = $r [m]: ", flux / area, " /(s * m²)")
+println("Particle flux through sphere r = $r [m]: ", flux * area(detector_iso).val, " /s")
+println("Particle flux density through sphere r = $r [m]: ", flux, " /(s * m²)")
 
 # ## Multiple Detector Flux
 #
@@ -135,8 +134,10 @@ num_planes = 40
 xs = range(0.1, L, length = num_planes)
 detectors = [Plane(Point(x, 0.0, 0.0), Vec(1.0, 0.0, 0.0)) for x in xs]
 
-## Calculate flux across all planes
-velocity_fluxes, n_fluxes = get_particle_fluxes(sols_cloud, detectors, 1.0);
+## To match the analytical solution which is a count (not density),
+## we use the raw crossing weights sum.
+_, weights_cloud = get_particle_crossings(sols_cloud, detectors, 1.0);
+n_crossings = [sum(w) for w in weights_cloud]
 
 ## Analytical Solution
 ## Fraction of particles with v_x > v_xc in a Maxwellian distribution is:
@@ -154,7 +155,7 @@ ax = Axis(
     ylabel = "Cumulative Counts"
 )
 
-scatter!(ax, xs, n_fluxes, label = "Simulation", color = :blue, markersize = 10)
+scatter!(ax, xs, n_crossings, label = "Simulation", color = :blue, markersize = 10)
 lines!(ax, xs, n_analytic, label = "Analytical", color = :red, linewidth = 2)
 axislegend(ax)
 
