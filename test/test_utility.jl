@@ -785,8 +785,8 @@ end
         # T3: Missed crossing (orientation parallel)
         u_array_para = [SA[5.0, -10.0 + t, 0.0, 0.0, 1.0, 0.0] for t in t_array]
         sol3 = MockSol(t_array, u_array_para)
-        flux3, n_flux3 = get_particle_flux(sol3, detector)
-        @test isempty(flux3) && n_flux3 == 0.0
+        n_flux3, v_flux3 = get_particle_flux(sol3, detector)
+        @test n_flux3 == 0.0 && v_flux3 == zero(SVector{3, Float64})
 
         # Test Ensemble
         sols = [sol1, sol2, sol3]

@@ -604,24 +604,46 @@ end
 
 function get_particle_fluxes(sols, surface::Union{Disk, Sphere}, weights)
     T = float(eltype(first(sols).u[1]))
-    velocities = SVector{3, T}[]
-    sizehint!(velocities, length(sols))
-    crossing_weights = eltype(weights)[]
-    sizehint!(crossing_weights, length(sols))
+    W = eltype(weights)
+    total_n_flux = zero(W)
+    total_v_flux = zero(SVector{3, T})
 
     @inbounds for (sol, w) in zip(sols, weights)
-        get_particle_crossings_single!(velocities, crossing_weights, sol, surface, w)
+        total_n_flux, total_v_flux = _get_particle_flux_single_sum!(
+            total_n_flux, total_v_flux, sol, surface, w
+        )
     end
 
     inv_area = inv(area(surface).val)
-    if isempty(crossing_weights)
-        return zero(eltype(weights)) * inv_area, zero(SVector{3, T}) * inv_area
+    return total_n_flux * inv_area, total_v_flux * inv_area
+end
+
+function _get_particle_flux_single_sum!(total_n_flux, total_v_flux, sol, surface, w)
+    t, u = sol.t, sol.u
+    p1 = Point(u[1][1], u[1][2], u[1][3])
+    s1 = _signed_distance(p1, surface)
+
+    for i in 1:(length(t) - 1)
+        u2 = u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        s2 = _signed_distance(p2, surface)
+
+        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
+            f = s1 / (s1 - s2)
+            pcross = p1 + f * (p2 - p1)
+            if _is_valid_intersection(pcross, surface)
+                tcross = muladd(f, t[i + 1] - t[i], t[i])
+                ucross = sol(tcross)
+                vcross = SVector(ucross[4], ucross[5], ucross[6])
+                total_n_flux += w
+                total_v_flux += vcross * w
+            end
+        end
+        s1 = s2
+        p1 = p2
     end
 
-    n_flux_density = sum(crossing_weights) * inv_area
-    v_flux_density = sum(velocities .* crossing_weights) * inv_area
-
-    return n_flux_density, v_flux_density
+    return total_n_flux, total_v_flux
 end
 
 """
