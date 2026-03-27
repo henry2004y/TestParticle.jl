@@ -627,7 +627,14 @@ function get_particle_fluxes(
     return results, total_n_fluxes
 end
 
-function _get_particle_fluxes_single!(results, total_n_fluxes, s1s, sol, surfaces, w)
+function _get_particle_fluxes_single!(
+        results::Vector{Vector{SVector{3, T}}},
+        total_n_fluxes::AbstractVector{W},
+        s1s::AbstractVector{T},
+        sol::S,
+        surfaces::AbstractVector{D},
+        w::W
+    ) where {T, W, S, D}
     t, u = sol.t, sol.u
     u1 = u[1]
     p1 = Point(u1[1], u1[2], u1[3])
@@ -640,7 +647,7 @@ function _get_particle_fluxes_single!(results, total_n_fluxes, s1s, sol, surface
         p2 = Point(u2[1], u2[2], u2[3])
         tl, tr = t[i], t[i + 1]
 
-        @inbounds for j in eachindex(surfaces)
+        for j in eachindex(surfaces)
             surface = surfaces[j]
             s2 = _signed_distance(p2, surface)
             total_n_fluxes[j] += _check_intersection!(
@@ -658,8 +665,9 @@ get_particle_fluxes(sols, surface; weights = 1.0) = get_particle_fluxes(sols, su
 get_particle_fluxes(sols, surfaces::AbstractVector; weights = 1.0) = get_particle_fluxes(sols, surfaces, weights)
 
 @inline function _check_intersection!(
-        velocities::AbstractVector, s1, s2, surface, sol, tl, tr, weight, p1, p2
-    )
+        velocities::AbstractVector{SVector{3, T}},
+        s1, s2, surface::D, sol::S, tl, tr, weight::W, p1::Point, p2::Point
+    ) where {T, D, S, W}
     flux = zero(weight)
     if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
         f = s1 / (s1 - s2)

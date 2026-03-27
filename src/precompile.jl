@@ -82,5 +82,9 @@
         # field line
         trace_fieldline(stateinit[1:3], param[4], t)
         trace_fieldline!(out3, stateinit[1:3], param[4], t)
+        # particle flux
+        det = Disk(Plane(Point(0.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 1.0)
+        get_particle_fluxes([sol_adaptive], det)
+        get_particle_fluxes([sol_adaptive], [det])
     end
 end
