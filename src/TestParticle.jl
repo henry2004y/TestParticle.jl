@@ -7,7 +7,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     BasicEnsembleAlgorithm,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
-    LinearInterpolation, build_solution, ODESolution
+    LinearInterpolation, build_solution, ODESolution, EnsembleSolution
 using Distributed: pmap, nworkers
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
