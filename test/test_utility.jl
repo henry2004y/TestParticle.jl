@@ -858,12 +858,26 @@ end
         n_fluxes, v_fluxes = get_particle_fluxes(sols, detectors, 1.0)
         @test length(n_fluxes) == 2 && n_fluxes[1] ≈ 1.0 / area && n_fluxes[2] ≈ 1.0 / area
         @test v_fluxes[1] ≈ v_fluxes[2] ≈ SA[1.0, 0.0, 0.0] / area
+    end
 
-        # Test get_particle_crossings for multiple detectors (supports Plane)
-        dp1 = Plane(Point(0.5, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-        dp2 = Plane(Point(1.5, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-        results_v, results_w = get_particle_crossings(sols, [dp1, dp2], 1.0)
-        @test length(results_v) == 2 && length(results_w) == 2
-        @test results_v[1][1] ≈ SA[1.0, 0.0, 0.0] && results_w[1][1] == 1.0
+    @testset "get_particle_crossings Ensemble & Keywords" begin
+        sol = MockSol([0.0, 2.0], [SA[0, 0, 0, 1, 0, 0], SA[2, 0, 0, 1, 0, 0]])
+        sols = [sol, sol]
+
+        d = Disk(Plane(Point(1.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 5.0)
+
+        # Test ensemble with scalar weights (via repeated)
+        vs, ws = get_particle_crossings(sols, d, 2.5)
+        @test length(vs) == 2 && all(w == 2.5 for w in ws)
+
+        # Test keyword argument wrapper (singular surface)
+        vs_kw, ws_kw = get_particle_crossings(sols, d; weights = 3.0)
+        @test length(vs_kw) == 2 && all(w == 3.0 for w in ws_kw)
+
+        # Test keyword argument wrapper (multiple surfaces)
+        ds = [d, d]
+        vs_mkw, ws_mkw = get_particle_crossings(sols, ds; weights = 4.0)
+        @test length(vs_mkw) == 2 && length(vs_mkw[1]) == 2 &&
+            all(w == 4.0 for w in ws_mkw[1])
     end
 end
