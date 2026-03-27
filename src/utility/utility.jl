@@ -608,27 +608,19 @@ function get_particle_fluxes(
     ) where {D <: Union{Disk, Plane, Sphere}}
     nsurfaces = length(surfaces)
     T = float(eltype(first(sols).u[1]))
-    results = [SVector{3, T}[] for _ in 1:nsurfaces]
-    for j in 1:nsurfaces
-        sizehint!(results[j], length(sols))
+    results = Vector{Vector{SVector{3, T}}}(undef, nsurfaces)
+    @inbounds for j in 1:nsurfaces
+        results[j] = sizehint!(SVector{3, T}[], length(sols))
     end
     total_n_fluxes = zeros(eltype(weights), nsurfaces)
     # Pre-allocate buffer for signed distances
     s1_buf = Vector{T}(undef, nsurfaces)
 
-    # Use a Tuple for small number of surfaces to eliminate dynamic dispatch
-    if nsurfaces <= 12
-        surfaces_tuple = Tuple(surfaces)
-        for (sol, w) in zip(sols, weights)
-            _get_particle_fluxes_single!(results, total_n_fluxes, s1_buf, sol, surfaces_tuple, w)
-        end
-    else
-        for (sol, w) in zip(sols, weights)
-            _get_particle_fluxes_single!(results, total_n_fluxes, s1_buf, sol, surfaces, w)
-        end
+    for (sol, w) in zip(sols, weights)
+        _get_particle_fluxes_single!(results, total_n_fluxes, s1_buf, sol, surfaces, w)
     end
 
-    for j in 1:nsurfaces
+    @inbounds for j in 1:nsurfaces
         _calculate_flux!(results[j], surfaces[j])
     end
 
@@ -639,7 +631,7 @@ function _get_particle_fluxes_single!(results, total_n_fluxes, s1s, sol, surface
     t, u = sol.t, sol.u
     u1 = u[1]
     p1 = Point(u1[1], u1[2], u1[3])
-    for j in eachindex(surfaces)
+    @inbounds for j in eachindex(surfaces)
         s1s[j] = _signed_distance(p1, surfaces[j])
     end
 
@@ -648,7 +640,7 @@ function _get_particle_fluxes_single!(results, total_n_fluxes, s1s, sol, surface
         p2 = Point(u2[1], u2[2], u2[3])
         tl, tr = t[i], t[i + 1]
 
-        for j in eachindex(surfaces)
+        @inbounds for j in eachindex(surfaces)
             surface = surfaces[j]
             s2 = _signed_distance(p2, surface)
             total_n_fluxes[j] += _check_intersection!(
