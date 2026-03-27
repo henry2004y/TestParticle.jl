@@ -172,8 +172,8 @@ import TestParticle as TP
         Rₑ = TestParticle.Rₑ
 
         # Initial condition
-        v₀ = TestParticle.sph2cart(energy2velocity(Ek; q, m), π / 4, 0.0)
-        r₀ = TestParticle.sph2cart(2.5 * Rₑ, π / 2, 0.0)
+        v₀ = sph2cart(energy2velocity(Ek; q, m), π / 4, 0.0)
+        r₀ = sph2cart(2.5 * Rₑ, π / 2, 0.0)
         stateinit = [r₀..., v₀...]
         tspan = (0.0, 1.0)
 

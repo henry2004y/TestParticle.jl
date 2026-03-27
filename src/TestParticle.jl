@@ -39,7 +39,8 @@ export get_gyrofrequency,
     get_gyroperiod, get_gyroradius, get_velocity, get_energy, get_mean_magnitude,
     energy2velocity, get_curvature_radius, get_adiabaticity,
     sample_unit_sphere, generate_sphere, sample_maxwellian,
-    get_particle_flux, get_particle_fluxes
+    get_particle_flux, get_particle_fluxes,
+    sph2cart, cart2sph, sph2cartvec, cart2sphvec
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator

@@ -62,6 +62,33 @@ end
         @test size(x) == size(y) == size(z) == (nϕ, nθ) && all(hypot.(x, y, z) .≈ r)
     end
 
+    @testset "Coordinate Vector Transformation" begin
+        # Test sph2cartvec
+        # On x-axis: (1, 0, 0) -> theta=pi/2, phi=0
+        # er = (1, 0, 0), etheta = (0, 0, -1), ephi = (0, 1, 0)
+        @test sph2cartvec(1, 0, 0, π / 2, 0) ≈ [1, 0, 0]
+        @test sph2cartvec(0, 1, 0, π / 2, 0) ≈ [0, 0, -1]
+        @test sph2cartvec(0, 0, 1, π / 2, 0) ≈ [0, 1, 0]
+
+        # Test cart2sphvec
+        @test cart2sphvec(1, 0, 0, 1, 0, 0) ≈ [1, 0, 0]
+        @test cart2sphvec(0, 0, -1, 1, 0, 0) ≈ [0, 1, 0]
+        @test cart2sphvec(0, 1, 0, 1, 0, 0) ≈ [0, 0, 1]
+
+        # Test z-axis (rho=0)
+        @test cart2sphvec(1, 0, 0, 0, 0, 1) ≈ [0, 1, 0] # theta=0, phi=0
+        @test cart2sphvec(0, 1, 0, 0, 0, 1) ≈ [0, 0, 1]
+        @test cart2sphvec(0, 0, 1, 0, 0, 1) ≈ [1, 0, 0]
+
+        # Inverses
+        x, y, z = 1.2, 3.4, 5.6
+        vx, vy, vz = 0.1, 0.2, 0.3
+        vr, vθ, vϕ = cart2sphvec(vx, vy, vz, x, y, z)
+        r, θ, ϕ = cart2sph(x, y, z)
+        vx2, vy2, vz2 = sph2cartvec(vr, vθ, vϕ, θ, ϕ)
+        @test [vx, vy, vz] ≈ [vx2, vy2, vz2]
+    end
+
     @testset "Interpolation" begin
         # From runtests.jl
         begin # scalar interpolation

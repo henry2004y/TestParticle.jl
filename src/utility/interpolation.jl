@@ -102,9 +102,9 @@ end
     rθϕ = cart2sph(xu)
     res = fi.itp(rθϕ)
     if length(res) > 1
-        # Convert vector result from spherical to cartesian basis
+        # Convert vector result from spherical to Cartesian basis
         Br, Bθ, Bϕ = res
-        return @inbounds sph_to_cart_vector(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
+        return @inbounds sph2cartvec(Br, Bθ, Bϕ, rθϕ[2], rθϕ[3])
     else
         return res
     end
