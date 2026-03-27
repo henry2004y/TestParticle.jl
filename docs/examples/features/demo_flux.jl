@@ -63,7 +63,8 @@ sols = solve(ensemble_prob, Tsit5(), EnsembleSerial(); trajectories = n_particle
 
 plane_loc = 100.0 # [m]
 detector = Plane(Point(plane_loc, 0.0, 0.0), Vec(1.0, 0.0, 0.0))
-flux, _ = get_particle_fluxes(sols, detector, weights)
+_, weights1 = get_particle_crossings(sols, detector, weights)
+flux = sum(weights1)
 
 println("Example 1:")
 println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")

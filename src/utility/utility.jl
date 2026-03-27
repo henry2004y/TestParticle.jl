@@ -543,7 +543,7 @@ end
 Calculate both the velocities and weights of particles crossing a virtual detector.
 The generic `sol` must store the discrete time steps in `sol.t` and values in `sol.u`.
 Returns a tuple `(velocities, weights)`.
-See also [`get_particle_flux`](@ref) and [`get_particle_crossings_multiple`](@ref).
+See also [`get_particle_flux`](@ref).
 """
 function get_particle_crossings(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
     t, u = sol.t, sol.u
@@ -771,6 +771,12 @@ function get_particle_crossings_single!(velocities, weights, sol, surface, w)
 end
 
 function get_particle_crossings(
+        sols, surfaces::AbstractVector{D}, weights::Number
+    ) where {D <: Union{Disk, Plane, Sphere}}
+    return get_particle_crossings(sols, surfaces, Base.Iterators.repeated(weights))
+end
+
+function get_particle_crossings(
         sols, surfaces::AbstractVector{D}, weights
     ) where {D <: Union{Disk, Plane, Sphere}}
     nsurfaces = length(surfaces)
@@ -821,11 +827,15 @@ function _get_particle_crossings_single!(
     return
 end
 
-get_particle_crossings(sols, surface; weights = 1.0) = get_particle_crossings(sols, surface, weights)
-get_particle_crossings(sols, surfaces::AbstractVector; weights = 1.0) = get_particle_crossings(sols, surfaces, weights)
+get_particle_crossings(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere}; weights = 1.0) =
+    get_particle_crossings(sols, surface, weights)
+get_particle_crossings(sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector; weights = 1.0) =
+    get_particle_crossings(sols, surfaces, weights)
 
-get_particle_fluxes(sols, surface; weights = 1.0) = get_particle_fluxes(sols, surface, weights)
-get_particle_fluxes(sols, surfaces::AbstractVector; weights = 1.0) = get_particle_fluxes(sols, surfaces, weights)
+get_particle_fluxes(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Sphere}; weights = 1.0) =
+    get_particle_fluxes(sols, surface, weights)
+get_particle_fluxes(sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector; weights = 1.0) =
+    get_particle_fluxes(sols, surfaces, weights)
 
 @inline function _check_intersection!(
         velocities::AbstractVector{SVector{3, T}},
