@@ -592,7 +592,7 @@ function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
 end
 
 """
-    get_particle_fluxes(sols, surfaces::AbstractVector{T}, weights) where {T}
+    get_particle_fluxes(sols, surfaces::AbstractVector{<: Union{Disk, Plane, Sphere}}, weights)
 
 Calculate particle fluxes across multiple detectors for an ensemble of trajectories.
 For optimal performance, all detectors should be of the same concrete type.
@@ -671,13 +671,13 @@ get_particle_fluxes(sols, surfaces::AbstractVector; weights = 1.0) = get_particl
     flux = zero(weight)
     if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
         f = s1 / (s1 - s2)
-        # Linear position check to avoid expensive sol(tc) for Disks
-        xc_linear = p1 + f * (p2 - p1)
-        if _is_valid_intersection(xc_linear, surface)
-            tc = muladd(f, tr - tl, tl)
-            ut = sol(tc)
-            vt = SVector(ut[4], ut[5], ut[6])
-            push!(velocities, vt * weight)
+        # Linear position check to avoid expensive sol(tc)
+        pcross = p1 + f * (p2 - p1)
+        if _is_valid_intersection(pcross, surface)
+            tcross = muladd(f, tr - tl, tl)
+            ucross = sol(tcross)
+            vcross = SVector(ucross[4], ucross[5], ucross[6])
+            push!(velocities, vcross * weight)
             flux = weight
         end
     end
