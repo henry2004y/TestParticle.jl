@@ -261,6 +261,7 @@ SUITE["flux"] = BenchmarkGroup()
 let (sols, weights, disk, sphere) = setup_flux_benchmarks()
     # Explicitly type the surface vector to match the function signature
     surfaces = Disk[disk, disk]
+
     SUITE["flux"]["single detector"] = @benchmarkable get_particle_fluxes($sols, $disk, $weights)
     SUITE["flux"]["multi detector"] = @benchmarkable get_particle_fluxes($sols, $surfaces, $weights)
 end

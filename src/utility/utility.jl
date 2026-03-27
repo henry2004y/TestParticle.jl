@@ -548,11 +548,9 @@ For `Disk` and `Sphere`, the returned `velocity_flux` is normalized by the area.
 See also [`get_particle_fluxes`](@ref).
 """
 function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.0)
-    t = sol.t
-    u = sol.u
-    T = eltype(u[1])
+    t, u = sol.t, sol.u
+    T = float(eltype(u[1]))
     velocities = SVector{3, T}[]
-    # Most particles cross a surface once
     sizehint!(velocities, 1)
 
     u1 = u[1]
@@ -566,10 +564,11 @@ function get_particle_flux(sol, surface::Union{Disk, Plane, Sphere}; weight = 1.
         s2 = _signed_distance(p2, surface)
 
         flux = _check_intersection!(
-            velocities, s1, s2, surface, sol, t[i], t[i + 1], weight
+            velocities, s1, s2, surface, sol, t[i], t[i + 1], weight, p1, p2
         )
         number_flux += flux
         s1 = s2
+        p1 = p2
     end
 
     _calculate_flux!(velocities, surface)
@@ -586,7 +585,7 @@ function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights:
 end
 
 function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
-    T = eltype(first(sols).u[1])
+    T = float(eltype(first(sols).u[1]))
     velocities = SVector{3, T}[]
     sizehint!(velocities, length(sols))
     total_n_flux = zero(eltype(weights))
@@ -603,10 +602,11 @@ function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
             s2 = _signed_distance(p2, surface)
 
             flux = _check_intersection!(
-                velocities, s1, s2, surface, sol, t[i], t[i + 1], w
+                velocities, s1, s2, surface, sol, t[i], t[i + 1], w, p1, p2
             )
             total_n_flux += flux
             s1 = s2
+            p1 = p2
         end
     end
 
@@ -616,45 +616,92 @@ function get_particle_fluxes(sols, surface::Union{Disk, Plane, Sphere}, weights)
 end
 
 """
-    get_particle_fluxes(sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights)
+    get_particle_fluxes(sols, surfaces::AbstractVector{<: Union{Disk, Plane, Sphere}}, weights)
 
 Calculate particle fluxes across multiple detectors for an ensemble of trajectories.
+For optimal performance, all detectors should be of the same concrete type.
 """
 function get_particle_fluxes(
-        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights::Number
-    )
+        sols, surfaces::AbstractVector{T}, weights::Number
+    ) where {T <: Union{Disk, Plane, Sphere}}
     return get_particle_fluxes(sols, surfaces, Base.Iterators.repeated(weights))
 end
 
 function get_particle_fluxes(
-        sols, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights
-    )
+        sols, surfaces::AbstractVector{D}, weights
+    ) where {D <: Union{Disk, Plane, Sphere}}
     nsurfaces = length(surfaces)
-    T = eltype(first(sols).u[1])
+    T = float(eltype(first(sols).u[1]))
     results = Vector{Vector{SVector{3, T}}}(undef, nsurfaces)
-    total_n_fluxes = Vector{eltype(weights)}(undef, nsurfaces)
+    @inbounds for j in 1:nsurfaces
+        results[j] = sizehint!(SVector{3, T}[], length(sols))
+    end
+    total_n_fluxes = zeros(eltype(weights), nsurfaces)
+    # Pre-allocate buffer for signed distances
+    s1_buf = Vector{T}(undef, nsurfaces)
 
-    for j in 1:nsurfaces
-        results[j], total_n_fluxes[j] = get_particle_fluxes(sols, surfaces[j], weights)
+    for (sol, w) in zip(sols, weights)
+        _get_particle_fluxes_single!(results, total_n_fluxes, s1_buf, sol, surfaces, w)
+    end
+
+    @inbounds for j in 1:nsurfaces
+        _calculate_flux!(results[j], surfaces[j])
     end
 
     return results, total_n_fluxes
 end
 
+function _get_particle_fluxes_single!(
+        results::Vector{Vector{SVector{3, T}}},
+        total_n_fluxes::AbstractVector{W},
+        s1s::AbstractVector{T},
+        sol::S,
+        surfaces::AbstractVector{D},
+        w::W
+    ) where {T, W, S, D}
+    t, u = sol.t, sol.u
+    u1 = u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    @inbounds for j in eachindex(surfaces)
+        s1s[j] = _signed_distance(p1, surfaces[j])
+    end
+
+    @inbounds for i in 1:(length(t) - 1)
+        u2 = u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        tl, tr = t[i], t[i + 1]
+
+        for j in eachindex(surfaces)
+            surface = surfaces[j]
+            s2 = _signed_distance(p2, surface)
+            total_n_fluxes[j] += _check_intersection!(
+                results[j], s1s[j], s2, surface, sol, tl, tr, w, p1, p2
+            )
+            s1s[j] = s2
+        end
+        p1 = p2
+    end
+
+    return
+end
+
 get_particle_fluxes(sols, surface; weights = 1.0) = get_particle_fluxes(sols, surface, weights)
 get_particle_fluxes(sols, surfaces::AbstractVector; weights = 1.0) = get_particle_fluxes(sols, surfaces, weights)
 
-@inline function _check_intersection!(velocities, s1, s2, surface, sol, tl, tr, weight)
+@inline function _check_intersection!(
+        velocities::AbstractVector{SVector{3, T}},
+        s1, s2, surface::D, sol::S, tl, tr, weight::W, p1::Point, p2::Point
+    ) where {T, D, S, W}
     flux = zero(weight)
     if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
         f = s1 / (s1 - s2)
-        tc = muladd(f, tr - tl, tl)
-        ut = sol(tc)
-        xc = Point(ut[1], ut[2], ut[3])
-
-        if _is_valid_intersection(xc, surface)
-            vt = SVector(ut[4], ut[5], ut[6])
-            push!(velocities, vt * weight)
+        # Linear position check to avoid expensive sol(tc)
+        pcross = p1 + f * (p2 - p1)
+        if _is_valid_intersection(pcross, surface)
+            tcross = muladd(f, tr - tl, tl)
+            ucross = sol(tcross)
+            vcross = SVector(ucross[4], ucross[5], ucross[6])
+            push!(velocities, vcross * weight)
             flux = weight
         end
     end
