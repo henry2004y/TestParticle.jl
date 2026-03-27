@@ -55,8 +55,7 @@ end
 Convert a vector from Cartesian to spherical coordinates at the Cartesian position `(x, y, z)`.
 """
 function cart2sphvec(vx, vy, vz, x, y, z)
-    ρ2 = x * x + y * y
-    ρ = sqrt(ρ2)
+    ρ = hypot(x, y)
     r = hypot(ρ, z)
     if r == 0
         return SVector{3, eltype(r)}(0, 0, 0)
