@@ -790,12 +790,12 @@ end
 
         # Test Ensemble
         sols = [sol1, sol2, sol3]
-        n_flux_all, v_flux_all = get_particle_fluxes(sols, detector; weights = 1.0)
+        n_flux_all, v_flux_all = get_particle_fluxes(sols, detector, 1.0)
         @test n_flux_all ≈ 1.0 / area && v_flux_all ≈ SA[1.0, 0.0, 0.0] / area
 
         # Test Ensemble with vector weights
         weights = [1.0, 2.0, 3.0]
-        n_flux_vw, v_flux_vw = get_particle_fluxes(sols, detector; weights)
+        n_flux_vw, v_flux_vw = get_particle_fluxes(sols, detector, weights)
         @test n_flux_vw ≈ 1.0 / area # sol1 crosses (1.0), others miss
 
         # Test Ensemble where multiple cross
@@ -806,12 +806,12 @@ end
             v_flux_vw2 ≈ SA[1 * 1.0 + 1 * 2.0 + 0 * 3.0, 0.0, 0.0] / area
 
         # T4: Weighted Disk flux
-        n_flux_w, v_flux_w = get_particle_flux(sol1, detector; weight = 2.0)
+        n_flux_w, v_flux_w = get_particle_flux(sol1, detector, 2.0)
         @test n_flux_w ≈ 2.0 / area && v_flux_w ≈ SA[2.0, 0.0, 0.0] / area
 
         # T5: Plane crossing (weighted raw data)
         detector_plane = Plane(center, orientation)
-        vs_p, ws_p = get_particle_crossings(sol1, detector_plane; weight = 3.0)
+        vs_p, ws_p = get_particle_crossings(sol1, detector_plane, 3.0)
         @test length(vs_p) == 1 && sum(ws_p) == 3.0
         @test vs_p[1] ≈ SA[1.0, 0.0, 0.0]
 
@@ -822,7 +822,7 @@ end
         @test n_flux_s ≈ 2.0 / sphere_area &&
             v_flux_s ≈ SA[2.0, 0.0, 0.0] / sphere_area
 
-        # Test "Equivalence" (User reported issue)
+        # Test "Equivalence"
         # Particle A: weight 2, velocity 1
         uA = [SA[-10.0 + t, 0.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
         solA = MockSol(t_array, uA)
@@ -830,14 +830,14 @@ end
         uB = [SA[-10.0 + 2t, 0.0, 0.0, 2.0, 0.0, 0.0] for t in t_array]
         solB = MockSol(t_array, uB)
 
-        vsA, wsA = get_particle_crossings(solA, detector; weight = 2.0)
-        vsB, wsB = get_particle_crossings(solB, detector; weight = 1.0)
+        vsA, wsA = get_particle_crossings(solA, detector, 2.0)
+        vsB, wsB = get_particle_crossings(solB, detector, 1.0)
 
         @test vsA[1][1] == 1.0 && wsA[1] == 2.0
         @test vsB[1][1] == 2.0 && wsB[1] == 1.0
 
-        nfA, vfA = get_particle_flux(solA, detector; weight = 2.0)
-        nfB, vfB = get_particle_flux(solB, detector; weight = 1.0)
+        nfA, vfA = get_particle_flux(solA, detector, 2.0)
+        nfB, vfB = get_particle_flux(solB, detector, 1.0)
         @test nfA == 2.0 / area && vfA[1] == 2.0 / area
         @test nfB == 1.0 / area && vfB[1] == 2.0 / area
     end
@@ -871,12 +871,12 @@ end
         @test length(vs) == 2 && all(w == 2.5 for w in ws)
 
         # Test keyword argument wrapper (singular surface)
-        vs_kw, ws_kw = get_particle_crossings(sols, d; weights = 3.0)
+        vs_kw, ws_kw = get_particle_crossings(sols, d, 3.0)
         @test length(vs_kw) == 2 && all(w == 3.0 for w in ws_kw)
 
         # Test keyword argument wrapper (multiple surfaces)
         ds = [d, d]
-        vs_mkw, ws_mkw = get_particle_crossings(sols, ds; weights = 4.0)
+        vs_mkw, ws_mkw = get_particle_crossings(sols, ds, 4.0)
         @test length(vs_mkw) == 2 && length(vs_mkw[1]) == 2 &&
             all(w == 4.0 for w in ws_mkw[1])
     end
