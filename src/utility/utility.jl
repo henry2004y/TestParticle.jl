@@ -34,17 +34,41 @@ end
 @inline @inbounds cart2sph(x) = cart2sph(x[1], x[2], x[3])
 
 """
-    sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
+    sph2cartvec(vr, vθ, vϕ, θ, ϕ)
 
-Convert a vector from spherical to Cartesian coordinates. θ and ϕ are defined in radians.
+Convert a vector from spherical to Cartesian coordinates. `θ` and `ϕ` define the position
+(polar and azimuthal angles in radians) where the spherical components `(vr, vθ, vϕ)` are
+defined.
 """
-function sph_to_cart_vector(vr, vθ, vϕ, θ, ϕ)
+function sph2cartvec(vr, vθ, vϕ, θ, ϕ)
     sinθ, cosθ = sincos(θ)
     sinϕ, cosϕ = sincos(ϕ)
     vx = sinθ * cosϕ * vr + cosθ * cosϕ * vθ - sinϕ * vϕ
     vy = sinθ * sinϕ * vr + cosθ * sinϕ * vθ + cosϕ * vϕ
     vz = cosθ * vr - sinθ * vθ
     return SVector{3}(vx, vy, vz)
+end
+
+"""
+    cart2sphvec(vx, vy, vz, x, y, z)
+
+Convert a vector from Cartesian to spherical coordinates at the Cartesian position `(x, y, z)`.
+"""
+function cart2sphvec(vx, vy, vz, x, y, z)
+    ρ = hypot(x, y)
+    r = hypot(ρ, z)
+    if r == 0
+        return SVector{3, eltype(r)}(0, 0, 0)
+    end
+    vr = (x * vx + y * vy + z * vz) / r
+    if ρ == 0
+        vθ = z > 0 ? vx : -vx
+        vϕ = vy
+    else
+        vθ = (z * (x * vx + y * vy) / ρ - ρ * vz) / r
+        vϕ = (x * vy - y * vx) / ρ
+    end
+    return SVector{3}(vr, vθ, vϕ)
 end
 
 """
