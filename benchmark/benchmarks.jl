@@ -161,6 +161,12 @@ SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
 SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
     $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2
 )
+SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
+    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2, N = 4
+)
+SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
+    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2, N = 6
+)
 alg_adaptive = AdaptiveBoris(dtmax = 1.0e-3)
 SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
     $prob_boris, $alg_adaptive
