@@ -59,7 +59,7 @@ applications_order = [
 features_order = [
     "demo_boris.jl",
     "demo_energy_conservation.jl",
-    "demo_phase_error.jl",
+    "demo_accuracy.jl",
     "demo_performance.jl",
     "demo_interpolation.md",
     "demo_coevolution.jl",

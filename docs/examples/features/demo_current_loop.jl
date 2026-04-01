@@ -50,7 +50,7 @@ function get_B_total(loop1, loop2)
 end
 
 B_total = get_B_total(loop1, loop2)
-param = TP.prepare(TP.ZeroField(), B_total);
+param = TP.prepare(ZeroField(), B_total);
 
 # ## Trace Field Lines
 #

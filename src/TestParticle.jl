@@ -25,7 +25,7 @@ import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
 
-export prepare, prepare_gc, get_gc, get_gc_func
+export prepare, prepare_gc, get_gc, get_gc_func, ZeroField
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_normalized, trace_relativistic_normalized,
     trace_gc!,

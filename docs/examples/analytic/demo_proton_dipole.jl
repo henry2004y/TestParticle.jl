@@ -23,7 +23,7 @@ end
 ## Obtain field
 Bfield = MS.Dipole(TP.BMoment_Earth)
 B_func(r) = Bfield(r)
-param = prepare(TP.ZeroField(), B_func)
+param = prepare(ZeroField(), B_func)
 tspan = (0.0, 10.0);
 
 # ## Full Trajectory Tracing
@@ -35,7 +35,7 @@ sol = solve(prob, Vern9());
 # Next, we can trace the guiding center (GC) of the particle via [`trace_gc!`](@ref).
 # For more information about GC tracing, check out [Demo: Guiding Center Approximation](@ref Guiding-Center-Approximation).
 param = prepare(B_func)
-stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), B_func)
+stateinit_gc, param_gc = prepare_gc(stateinit, ZeroField(), B_func)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern7());
 

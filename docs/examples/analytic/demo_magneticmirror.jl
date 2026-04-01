@@ -63,7 +63,7 @@ r₀ = [0.8, 0.8, 0.0]  # confined
 ##r₀ = [1.5, 1.5, 2.4]  # escaped
 stateinit = [r₀..., v₀...]
 
-param = prepare(TP.ZeroField(), getB; species = Electron)
+param = prepare(ZeroField(), getB; species = Electron)
 tspan = (0.0, 5.0e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -73,7 +73,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_non = solve(prob, AB4(); dt = 3.0e-9)
 
 ## GC Tracing
-stateinit_gc, param_gc = prepare_gc(stateinit, TP.ZeroField(), getB; species = Electron)
+stateinit_gc, param_gc = prepare_gc(stateinit, ZeroField(), getB; species = Electron)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern7(); dt = 1.0e-9) # Adaptivity should work well for GC
 

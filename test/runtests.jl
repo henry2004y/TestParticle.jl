@@ -37,7 +37,7 @@ function time_varying_B(x, t)
 
     return SA[0.0, 0.0, Bz]
 end
-zero_E = TP.ZeroField()
+zero_E = ZeroField()
 uniform_E(x) = SA[1.0e-9, 0, 0]
 
 function curved_B(x)

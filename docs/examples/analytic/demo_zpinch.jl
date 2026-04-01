@@ -18,7 +18,7 @@ const I_current = 1.0e6 # Current [A]
 const a_wire = 0.1 # Radius of the wire [m]
 
 getB(xu) = MS.getB_zpinch(xu[1], xu[2], xu[3], I_current, a_wire)
-getE = TP.ZeroField()
+getE = ZeroField()
 
 ### Initialize Particles
 

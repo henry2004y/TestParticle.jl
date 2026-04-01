@@ -22,7 +22,7 @@ CairoMakie.activate!(type = "png") #hide
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = TP.ZeroField()
+zero_E = ZeroField()
 
 x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[0.0, 1.0e5, 0.0]
@@ -50,6 +50,7 @@ prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 solvers = [
     ("Boris (n=1)", "Native Boris with n=1", :Boris, () -> TP.solve(prob_boris; dt)),
     ("Boris (n=2)", "Native Multistep Boris with n=2", :Boris, () -> TP.solve(prob_boris; dt, n = 2)),
+    ("Hyper Boris (n=2, N=4)", "Hyper Boris with n=2, N=4", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 4)),
     ("Tsit5 (fixed)", "`OrdinaryDiffEq` Tsit5 with fixed step", :Fixed, () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
     ("Tsit5 (adaptive)", "`OrdinaryDiffEq` Tsit5 with adaptive step", :Adaptive, () -> solve(prob_ode, Tsit5(); saveat = dt)),
     ("Vern7 (fixed)", "`OrdinaryDiffEq` Vern7 with fixed step", :Fixed, () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
