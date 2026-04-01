@@ -158,12 +158,15 @@ using Distributed
         # 2-step Hyper Boris (N=4, N=6)
         sol_hyper_4 = TP.solve(prob; dt, n = 2, N = 4)
         sol_hyper_6 = TP.solve(prob; dt, n = 2, N = 6)
+        sol_hyper_single = TP.solve(prob; dt, n = 1, N = 4)
 
         @test sol_hyper_4[1].u[end][1] ≈ 10.0 atol = 1.0e-6
         @test sol_hyper_6[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_single[1].u[end][1] ≈ 10.0 atol = 1.0e-6
 
         @test sol_hyper_4[1].u[end][4] ≈ 1.0 atol = 1.0e-6
         @test sol_hyper_6[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_single[1].u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Gyrating particle test
         param_gyro = (1.0, 1.0, TP.ZeroField(), constant_Bz, TP.ZeroField())
@@ -460,6 +463,10 @@ using Distributed
         # min_dt limit
         dt_too_small = eps(Float64)
         @test_throws ArgumentError TP.solve(prob; dt = dt_too_small)
+
+        # Hyper Boris N parameter limit
+        @test_throws ArgumentError TP.solve(prob; dt, N = 1)
+        @test_throws ArgumentError TP.solve(prob; dt, n = 2, N = 3)
     end
 
     @testset "EnsembleDistributed" begin

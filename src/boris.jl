@@ -207,6 +207,10 @@ Trace particles using the Boris method with specified `prob`.
             max(1, trajectories ÷ nworkers()) : 1
     ) where {EA <: BasicEnsembleAlgorithm, F}
 
+    if N ∉ (2, 4, 6)
+        throw(ArgumentError("N must be 2, 4, or 6"))
+    end
+
     return _solve(
         ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n, N,
         save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters,
@@ -218,7 +222,7 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
         n, N, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
-    return if n == 1
+    return if n == 1 && N == 2
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
