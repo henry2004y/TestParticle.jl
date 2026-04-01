@@ -188,6 +188,7 @@ Trace particles using the Boris method with specified `prob`.
   - `savestepinterval::Int`: saving output interval.
   - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
   - `n::Int`: number of substeps for the Multistep Boris method. Default is 1 (standard Boris).
+  - `N::Int`: order of the Hyper Boris gyrophase correction (2, 4, or 6). Default is 2 (uncorrected).
   - `save_start::Bool`: save the initial condition. Default is `true`.
   - `save_end::Bool`: save the final condition. Default is `true`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
@@ -195,20 +196,23 @@ Trace particles using the Boris method with specified `prob`.
   - `save_work::Bool`: save the work done by the electric field. Default is `false`.
   - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`. Default is `max(1, trajectories ÷ nworkers())` for distributed and 1 for others.
 
-
 """
 @inline function solve(
         prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-        isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1,
+        isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1, N::Int = 2,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000,
         batch_size::Int = (ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads) ?
             max(1, trajectories ÷ nworkers()) : 1
     ) where {EA <: BasicEnsembleAlgorithm, F}
 
+    if N ∉ (2, 4, 6)
+        throw(ArgumentError("N must be 2, 4, or 6"))
+    end
+
     return _solve(
-        ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n,
+        ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain, n, N,
         save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters,
         batch_size
     )
@@ -216,16 +220,16 @@ end
 
 function _dispatch_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
-        n, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        n, N, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
-    return if n == 1
+    return if n == 1 && N == 2
         _boris!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     else
         _multistep_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n, N,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
@@ -233,7 +237,7 @@ end
 
 @inline function _solve(
         ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        isoutofdomain::F, n, N, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
@@ -243,7 +247,7 @@ end
     )
     irange = 1:trajectories
     _dispatch_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n, N,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
@@ -252,7 +256,7 @@ end
 
 @inline function _solve(
         ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        isoutofdomain::F, n, N, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
@@ -264,7 +268,7 @@ end
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain, n, N,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
@@ -291,7 +295,7 @@ The `TraceProblem` construction is a negligible struct copy relative to the
 simulation cost and the serialization overhead inherent in `pmap`.
 """
 function _solve_single_boris(
-        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutofdomain::F, n,
+        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutofdomain::F, n, N,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
     new_prob = prob.prob_func(prob, i, false)
@@ -300,7 +304,7 @@ function _solve_single_boris(
     local_sols = Vector{sol_type}(undef, 1)
     _dispatch_boris!(
         local_sols, single_prob, 1:1, savestepinterval, dt, nt, nout,
-        isoutofdomain, n, save_start, save_end, save_everystep,
+        isoutofdomain, n, N, save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork)
     )
     return local_sols[1]
@@ -308,7 +312,7 @@ end
 
 @inline function _solve(
         ::EnsembleDistributed, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        isoutofdomain::F, n, N, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
@@ -317,7 +321,7 @@ end
     )
     return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_boris(
-            prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n,
+            prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n, N,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
@@ -325,7 +329,7 @@ end
 
 @inline function _solve(
         ::EnsembleSplitThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutofdomain::F, n, save_start, save_end, save_everystep,
+        isoutofdomain::F, n, N, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
@@ -344,7 +348,7 @@ end
         Threads.@threads for k in eachindex(irange)
             i = irange[k]
             local_sols[k] = _solve_single_boris(
-                prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n,
+                prob, i, savestepinterval, dt, nt, nout, isoutofdomain, n, N,
                 save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
             )
         end
@@ -590,12 +594,14 @@ Apply Boris method for particles with index in `irange`.
 end
 
 """
-    update_velocity_multistep(v, r, param, dt, t, n)
+    update_velocity_multistep(v, r, param, dt, t, n, N)
 
-Update velocity using the Multistep Boris method, returning the new velocity as an SVector.
+Update velocity using the Multistep/Hyper Boris method, returning the new velocity as an SVector.
+`n` specifies the number of subcycles.
+`N` specifies the gyrophase correction order. When N=2, it corresponds to the Multicycle solver. When N=4 or N=6, it is the Hyper Boris solver.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-@muladd function update_velocity_multistep(v, r, param, dt, t, n::Int)
+@muladd function update_velocity_multistep(v, r, param, dt, t, n::Int, N::Int)
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -606,6 +612,22 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     t_n = factor * B # (q/m * dt/(2n)) * B
     e_n = factor * E # (q/m * dt/(2n)) * E
 
+    # Hyper Boris N-th order gyrophase correction
+    if N != 2
+        t_mag2 = sum(abs2, t_n)
+        if N == 4
+            f_N = 1 + t_mag2 / 3
+            e_corr_factor = -1 / 3
+        else # N == 6
+            f_N = 1 + t_mag2 / 3 + 2 * t_mag2 * t_mag2 / 15
+            e_corr_factor = -1 / 3 - 2 * t_mag2 / 15
+        end
+
+        e_dot_t = e_n ⋅ t_n
+        e_n = f_N * e_n + (e_corr_factor * e_dot_t) * t_n
+        t_n = f_N * t_n
+    end
+
     t_n_mag2 = sum(abs2, t_n)
     t_n_mag = sqrt(t_n_mag2)
 
@@ -614,9 +636,13 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     if t_n_mag < TN_MAG_THRESHOLD
         # Taylor expansion limits as t_n -> 0
         c_n1 = 1 - 2 * n * n * t_n_mag2
-        c_n2 = 2 * n - (4 / 3) * n * n * n * t_n_mag2
-        c_n3 = 2 * n * n
-        c_n6 = (4 / 3) * n * n * n
+
+        n_term1 = 2 * n
+        n_term3 = 4 * n * n * n
+
+        c_n2 = n_term1 - (n_term1 + n_term3) / 3 * t_n_mag2
+        c_n3 = 2 * n * n - (4 * n * n + 2 * n * n * n * n) / 3 * t_n_mag2
+        c_n6 = (n_term1 + n_term3) / 3
     else
         alpha_n = atan(t_n_mag)
         n_alpha_n = n * alpha_n
@@ -654,11 +680,11 @@ end
 
 @inline @muladd function _multistep_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutofdomain::F,
-        n_steps::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        n_steps::Int, N_order::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, p, dt, t) ->
-    update_velocity_multistep(v, r, p, dt, t, n_steps)
+    update_velocity_multistep(v, r, p, dt, t, n_steps, N_order)
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,

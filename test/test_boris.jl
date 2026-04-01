@@ -29,6 +29,9 @@ using Distributed
 
     zero_E = TP.ZeroField()
 
+    constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
+    constant_Bz(x, t) = SA[0.0, 0.0, 1.0]
+
     function prob_func_boris_immutable(prob, i, repeat)
         # Note: prob.u0[5] = i*1e5 is not thread-safe!
         return prob = @views remake(prob; u0 = [prob.u0[1:4]..., i * 1.0e5, prob.u0[6]])
@@ -89,12 +92,9 @@ using Distributed
         # E = (0, 1, 0), B = (0, 0, 1)
         # Analytic solution: particle moves at constant velocity v_drift = (1, 0, 0)
         # Position at t=10 should be (10, 0, 0)
-        E(x, t) = SA[0.0, 1.0, 0.0]
-        B(x, t) = SA[0.0, 0.0, 1.0]
-
         # q = 1, m = 1
         # The solver expects param to be (q2m, m, E, B, F)
-        param = (1.0, 1.0, E, B, TP.ZeroField())
+        param = (1.0, 1.0, constant_Ey, constant_Bz, TP.ZeroField())
 
         # Initial condition
         # Start at origin with drift velocity
@@ -123,7 +123,7 @@ using Distributed
         # Gyroradius r = mv/qB = 1*1/1*1 = 1
         # Gyroperiod T = 2*pi*m/qB = 2*pi
 
-        param_gyro = (1.0, 1.0, TP.ZeroField(), B, TP.ZeroField())
+        param_gyro = (1.0, 1.0, TP.ZeroField(), constant_Bz, TP.ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
@@ -141,6 +141,46 @@ using Distributed
         v0_norm = hypot(@views u0_gyro[4:6]...)
 
         for sol in (sol_1step_gyro, sol_2step_gyro, sol_4step_gyro)
+            v_end = @view sol[1].u[end][4:6]
+            @test hypot(v_end...) ≈ v0_norm atol = 2.0e-3
+        end
+    end
+
+    @testset "Hyper Boris" begin
+        # E cross B drift tests
+        param = (1.0, 1.0, constant_Ey, constant_Bz, TP.ZeroField())
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        tspan = (0.0, 10.0)
+        dt = 0.1
+
+        prob = TP.TraceProblem(u0, tspan, param)
+
+        # 2-step Hyper Boris (N=4, N=6)
+        sol_hyper_4 = TP.solve(prob; dt, n = 2, N = 4)
+        sol_hyper_6 = TP.solve(prob; dt, n = 2, N = 6)
+        sol_hyper_single = TP.solve(prob; dt, n = 1, N = 4)
+
+        @test sol_hyper_4[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_6[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_single[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+
+        @test sol_hyper_4[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_6[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_single[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+
+        # Gyrating particle test
+        param_gyro = (1.0, 1.0, TP.ZeroField(), constant_Bz, TP.ZeroField())
+        u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
+
+        sol_hyper_4_gyro = TP.solve(prob_gyro; dt = 0.1, n = 4, N = 4)
+        sol_hyper_6_gyro = TP.solve(prob_gyro; dt = 0.1, n = 4, N = 6)
+
+        @test hypot(@views sol_hyper_4_gyro[1].u[end][1:3]...) < 0.02
+        @test hypot(@views sol_hyper_6_gyro[1].u[end][1:3]...) < 0.02
+
+        v0_norm = hypot(@views u0_gyro[4:6]...)
+        for sol in (sol_hyper_4_gyro, sol_hyper_6_gyro)
             v_end = @view sol[1].u[end][4:6]
             @test hypot(v_end...) ≈ v0_norm atol = 2.0e-3
         end
@@ -423,6 +463,10 @@ using Distributed
         # min_dt limit
         dt_too_small = eps(Float64)
         @test_throws ArgumentError TP.solve(prob; dt = dt_too_small)
+
+        # Hyper Boris N parameter limit
+        @test_throws ArgumentError TP.solve(prob; dt, N = 1)
+        @test_throws ArgumentError TP.solve(prob; dt, n = 2, N = 3)
     end
 
     @testset "EnsembleDistributed" begin
