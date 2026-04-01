@@ -127,6 +127,7 @@ makedocs(;
             "Introduction" => "tutorial/introduction.md",
             "Numerical Methods" => "tutorial/numerical_methods.md",
             "Guiding Center" => "tutorial/guiding_center.md",
+            "Advanced Boris" => "tutorial/advanced_boris.md",
             "Features Walkthrough" => "tutorial/features.md",
         ],
         "Examples" => example_pages,
