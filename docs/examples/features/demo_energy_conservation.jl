@@ -115,6 +115,7 @@ const gi_solvers = [
 const native_solvers = [
     ("Boris", :star5, Dict{Symbol, Any}()),
     ("Boris Multistep (n=2)", :star8, Dict{Symbol, Any}(:n => 2)),
+    ("Hyper Boris (n=2, N=4)", :cross, Dict{Symbol, Any}(:n => 2, :N => 4)),
 ];
 
 # ## Case 1: Constant B, Zero E

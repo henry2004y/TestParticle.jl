@@ -12,7 +12,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 function plot_trajectory(
-        sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing, sol_boris_adaptive = nothing;
+        sol_boris, sol1, sol2, sol_boris_2 = nothing, sol_boris_4 = nothing, sol_boris_adaptive = nothing, sol_boris_hyper = nothing;
         alpha = 0.5
     )
     f = Figure(size = (700, 600), fontsize = 18)
@@ -50,6 +50,12 @@ function plot_trajectory(
         lines!(
             ax, sol_boris_adaptive; idxs, color = (Makie.wong_colors()[6], alpha),
             linewidth = 2, label = "Boris adaptive"
+        )
+    end
+    if !isnothing(sol_boris_hyper)
+        lines!(
+            ax, sol_boris_hyper; idxs, color = (Makie.wong_colors()[7], alpha),
+            linewidth = 2, label = "Hyper Boris n=2, N=4"
         )
     end
 
@@ -91,6 +97,7 @@ prob = TraceProblem(stateinit, tspan, param)
 sol_boris = TP.solve(prob; dt)[1];
 sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
 sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
+sol_boris_hyper = TP.solve(prob; dt, n = 2, N = 4)[1];
 
 alg_adaptive = AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.5)
 sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
@@ -102,7 +109,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, sol_boris_adaptive; alpha = 1)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, sol_boris_adaptive, sol_boris_hyper; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t^2)``) compared with Tsit5.
@@ -116,12 +123,13 @@ prob = TraceProblem(stateinit, tspan, param)
 sol_boris = TP.solve(prob; dt)[1];
 sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
 sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
+sol_boris_hyper = TP.solve(prob; dt, n = 2, N = 4)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 
 # ### Visualization
-f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4; alpha = 1)
+f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, nothing, sol_boris_hyper; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
 # ## Energy Conservation
@@ -137,6 +145,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_boris = TP.solve(prob_boris; dt, savestepinterval = 36)[1];
 sol_boris_2 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2)[1];
 sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 4)[1];
+sol_boris_hyper = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2, N = 4)[1];
 sol_boris_adaptive = TP.solve(
     prob_boris,
     AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.2)
@@ -164,6 +173,7 @@ sols_to_plot = [
     (sol_boris, "Boris n=1"),
     (sol_boris_2, "Boris n=2"),
     (sol_boris_4, "Boris n=4"),
+    (sol_boris_hyper, "Hyper Boris (n=2, N=4)"),
     (sol_boris_adaptive, "Boris adaptive"),
     (sol1, "Tsit5 fixed"),
     (sol2, "Tsit5 adaptive"),

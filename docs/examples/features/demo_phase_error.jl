@@ -42,9 +42,10 @@ prob = TraceProblem(u0, tspan, param)
 ## Solvers
 ## We compare the standard Boris method (n=1) and Multistep Boris method with different substeps.
 solvers = [
-    ("Boris", 1),
-    ("Multistep Boris (n=2)", 2),
-    ("Multistep Boris (n=4)", 4),
+    ("Boris", Dict(:n => 1)),
+    ("Multistep Boris (n=2)", Dict(:n => 2)),
+    ("Multistep Boris (n=4)", Dict(:n => 4)),
+    ("Hyper Boris (n=2, N=4)", Dict(:n => 2, :N => 4)),
 ]
 
 ## Time steps to test: decreasing dt
@@ -57,9 +58,9 @@ results = Dict(name => Float64[] for (name, _) in solvers)
 
 ## Loop over time steps and solvers
 for dt in dts
-    for (name, n) in solvers
+    for (name, kwargs) in solvers
         ## Solve the problem
-        sol = TestParticle.solve(prob; dt = dt, n = n)[1]
+        sol = TestParticle.solve(prob; dt = dt, kwargs...)[1]
 
         ## Get the final state
         vx = sol.u[end][4]
