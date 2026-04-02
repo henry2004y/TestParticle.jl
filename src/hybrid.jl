@@ -271,8 +271,8 @@ end
                         v = xv_fo[SVector(4, 5, 6)]
 
                         B_mag = norm(Bfunc(r, t))
-                        omega = abs(q2m * B_mag)
-                        dt = 2π * alg.safety_fo / omega
+                        ω = abs(q2m * B_mag)
+                        dt = 2π * alg.safety_fo / ω
                         dt = clamp(dt, alg.dtmin, alg.dtmax)
                         v = update_velocity(v, r, p, -0.5 * dt, t)
                         continue
