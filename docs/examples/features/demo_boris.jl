@@ -99,7 +99,7 @@ sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
 sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
 sol_boris_hyper = TP.solve(prob; dt, n = 2, N = 4)[1];
 
-alg_adaptive = AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.5)
+alg_adaptive = AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.1)
 sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
@@ -132,7 +132,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, nothing, sol_boris_hyper; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
-# ## Energy Conservation
+# ## Energy Conservation Check
 
 # The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
 
@@ -148,7 +148,7 @@ sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 4)[1];
 sol_boris_hyper = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2, N = 4)[1];
 sol_boris_adaptive = TP.solve(
     prob_boris,
-    AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.2)
+    AdaptiveBoris(dtmin = tperiod * 1.0e-2, dtmax = dt, safety = 0.1)
 )[1]
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());

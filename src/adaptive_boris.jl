@@ -9,8 +9,9 @@ end
 """
     AdaptiveBoris(; dtmin, dtmax, safety=0.1)
 
-Adaptive Boris method with adaptive time stepping based on local gyrofrequency.
-The time step is determined by `dt = safety / |qB/m|`, clamped by `dtmin` and `dtmax`.
+Adaptive Boris method with adaptive time stepping based on local gyroperiod.
+The time step is determined by `dt = safety * T_gyro = safety * 2π / |qB/m|`,
+clamped by `dtmin` and `dtmax`.
 """
 function AdaptiveBoris(; dtmax, dtmin = 1.0e-2 * dtmax, safety = 0.1)
     T = promote_type(typeof(dtmin), typeof(dtmax), typeof(safety))
@@ -176,11 +177,10 @@ function _solve(
 end
 
 @inline function _calculate_dt(r, t, p, alg, ttotal)
-    q2m = p[1]
-    Bfunc = p[4]
+    q2m, Bfunc = p[1], p[4]
     B = Bfunc(r, t)
-    omega = abs(q2m) * norm(B)
-    return sign(ttotal) * clamp(alg.safety / omega, alg.dtmin, alg.dtmax)
+    ω = abs(q2m) * norm(B)
+    return sign(ttotal) * clamp(2π * alg.safety / ω, alg.dtmin, alg.dtmax)
 end
 
 @muladd function _adaptive_boris!(

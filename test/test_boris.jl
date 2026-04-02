@@ -221,7 +221,7 @@ using Distributed
         E_start = total_energy(sol.u[1])
         E_end = total_energy(sol.u[end])
 
-        @test isapprox(E_end, E_start, rtol = 1.0e-4)
+        @test isapprox(E_end, E_start, rtol = 1.0e-3)
     end
 
     @testset "Nonzero tspan[1]" begin
