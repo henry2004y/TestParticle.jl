@@ -34,7 +34,7 @@ q2m = TP.get_q2m(param)
 ## Reference parameters
 const tperiod = 2π / (abs(q2m) * Bmag)
 
-tspan = (0.0, 200 * tperiod)
+tspan = (0.0, 400 * tperiod)
 dt = tperiod / 12
 
 prob_boris = TraceProblem(stateinit, tspan, param)
@@ -48,9 +48,12 @@ prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 # We benchmark the following solvers:
 
 solvers = [
-    ("Boris (n=1)", "Native Boris with n=1", :Boris, () -> TP.solve(prob_boris; dt)),
-    ("Boris (n=2)", "Native Multistep Boris with n=2", :Boris, () -> TP.solve(prob_boris; dt, n = 2)),
-    ("Hyper Boris (n=2, N=4)", "Hyper Boris with n=2, N=4", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 4)),
+    ("Boris (n=1, N=2)", "standard Boris (n=1, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 1, N = 2)),
+    ("Boris (n=2, N=2)", "2-cycled (n=2, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 2)),
+    ("Boris (n=4, N=2)", "4-cycled (n=4, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 4, N = 2)),
+    ("Boris (n=1, N=6)", "6-th order Boris (n=1, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 1, N = 6)),
+    ("Boris (n=2, N=6)", "Hyper Boris (n=2, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 6)),
+    ("Boris (n=4, N=6)", "Hyper Boris (n=4, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 4, N = 6)),
     ("Tsit5 (fixed)", "`OrdinaryDiffEq` Tsit5 with fixed step", :Fixed, () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
     ("Tsit5 (adaptive)", "`OrdinaryDiffEq` Tsit5 with adaptive step", :Adaptive, () -> solve(prob_ode, Tsit5(); saveat = dt)),
     ("Vern7 (fixed)", "`OrdinaryDiffEq` Vern7 with fixed step", :Fixed, () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),
@@ -107,12 +110,78 @@ min_mem = minimum(results_mem)
 results_time_norm = results_time ./ min_time
 results_mem_norm = results_mem ./ min_mem;
 
-# ## Visualization
+# ## Detailed Performance Comparison
+#
+# First, we present a detailed comparison of elapsed time and memory allocations for the solvers as a bar plot.
+
+colors = Makie.wong_colors()
 
 f = Figure(size = (1200, 800), fontsize = 24)
 
-ax = Axis(
+y_positions = 1:n_solvers
+
+ax_time = Axis(
     f[1, 1],
+    xlabel = "Elapsed Time (s)",
+    ylabel = "Solvers",
+    yticks = (y_positions, names),
+    xscale = log10,
+    xgridstyle = :dash,
+    ygridstyle = :dash,
+    xminorticksvisible = true,
+    xminorticks = IntervalsBetween(9)
+)
+
+ax_mem = Axis(
+    f[1, 1],
+    xaxisposition = :top,
+    xlabel = "Memory Allocations (kB)",
+    xscale = log10,
+    xgridvisible = false,
+    ygridvisible = false,
+    yticksvisible = false,
+    yticklabelsvisible = false,
+    xminorticksvisible = true,
+    xminorticks = IntervalsBetween(9)
+)
+
+linkyaxes!(ax_time, ax_mem)
+
+bar_width = 0.35
+color_time = colors[1]
+color_mem = colors[2]
+
+barplot!(
+    ax_time, y_positions .- bar_width / 2, results_time;
+    direction = :x, width = bar_width, color = color_time
+)
+
+## Avoid 0 for log plot
+results_mem_kb = results_mem ./ 1024
+safe_results_mem = max.(results_mem_kb, 1.0e-3)
+barplot!(
+    ax_mem, y_positions .+ bar_width / 2, safe_results_mem;
+    direction = :x, width = bar_width, color = color_mem
+)
+
+elements = [PolyElement(polycolor = color_time), PolyElement(polycolor = color_mem)]
+labels = ["Elapsed Time", "Memory Allocations"]
+Legend(
+    f[1, 1], elements, labels, "Metrics";
+    framevisible = false, halign = :right, valign = :bottom,
+    tellwidth = false, tellheight = false
+)
+
+f = DisplayAs.PNG(f) #hide
+
+# ## Solver Efficiency
+#
+# Next, we evaluate the solver efficiency by plotting relative time versus relative memory.
+
+f2 = Figure(size = (1200, 800), fontsize = 24)
+
+ax = Axis(
+    f2[1, 1],
     title = "Solver Efficiency (Time vs. Memory)",
     xlabel = "Relative Time (1.0 = Fastest)",
     ylabel = "Relative Memory (1.0 = Lowest)",
@@ -122,38 +191,53 @@ ax = Axis(
     yscale = log10,
     xminorticksvisible = true,
     yminorticksvisible = true,
-    xminorticks = IntervalsBetween(5),
-    yminorticks = IntervalsBetween(5)
+    xminorticks = IntervalsBetween(9),
+    yminorticks = IntervalsBetween(9)
 )
 
 # Defined groups and colors
 unique_groups = unique(groups)
-colors = Makie.wong_colors()
 group_colors = Dict(g => colors[i] for (i, g) in enumerate(unique_groups))
-group_markers = Dict(:Boris => :circle, :Fixed => :rect, :Adaptive => :utriangle, :GI => :diamond)
+
+# Marker palette for the individual solvers in each group
+marker_palette = [:circle, :rect, :utriangle, :dtriangle, :diamond, :pentagon, :hexagon, :star5, :xcross, :cross]
+
+legend_elements = Vector{Vector{MarkerElement}}()
+legend_labels = Vector{Vector{String}}()
+legend_titles = String[]
 
 for g in unique_groups
     idxs = findall(==(g), groups)
-    scatter!(
-        ax, results_time_norm[idxs], results_mem_norm[idxs],
-        color = group_colors[g],
-        marker = get(group_markers, g, :circle),
-        markersize = 25,
-        strokewidth = 1,
-        strokecolor = :black,
-        label = string(g)
-    )
+    group_elements = MarkerElement[]
+    group_labels = String[]
+    for (i, idx) in enumerate(idxs)
+        marker_shape = marker_palette[mod1(i, length(marker_palette))]
+        push!(group_elements, MarkerElement(color = (group_colors[g], 0.7), marker = marker_shape, markersize = 15, strokecolor = :black, strokewidth = 1))
+        push!(group_labels, names[idx])
+
+        scatter!(
+            ax, [results_time_norm[idx]], [results_mem_norm[idx]],
+            color = (group_colors[g], 0.7),
+            marker = marker_shape,
+            markersize = 25,
+            strokewidth = 1,
+            strokecolor = :black
+        )
+    end
+    push!(legend_elements, group_elements)
+    push!(legend_labels, group_labels)
+    push!(legend_titles, string(g))
 end
 
 # Add Legend outside the plot
-Legend(f[1, 2], ax, "Solver Groups", framevisible = false)
+Legend(f2[1, 2], legend_elements, legend_labels, legend_titles, framevisible = false)
 
 ## Highlight the "Utopia Point" (Theoretical Best)
 scatter!(
     ax, [1.0], [1.0],
     marker = :star5,
     markersize = 20,
-    color = :red,
+    color = (:red, 0.7),
     label = "Ideal Limit"
 )
 text!(
@@ -175,7 +259,7 @@ text!(
 xlims!(ax, minimum(results_time_norm) * 0.5, maximum(results_time_norm) * 1.5)
 ylims!(ax, minimum(results_mem_norm) * 0.5, maximum(results_mem_norm) * 1.5)
 
-f = DisplayAs.PNG(f) #hide
+f2 = DisplayAs.PNG(f2) #hide
 
 # In practice, it is pretty hard to find an optimal algorithm. The native Boris method is good if you want a fixed time step.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
