@@ -120,9 +120,10 @@ function plot_table(results)
     println(io, "| Solver | Max Rel. Error |")
     println(io, "| :--- | :--- |")
     for (name, err) in results
-        println(io, "| $name | $err |")
+        println(io, "| $name | $(round(err, sigdigits = 3)) |")
     end
     Markdown.parse(String(take!(io)))
+    return
 end
 
 ## Solvers to test

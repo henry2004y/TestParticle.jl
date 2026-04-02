@@ -354,18 +354,18 @@ println(io, "| Solver | Time | Memory | Ratio |") #hide
 println(io, "| :--- | :--- | :--- | :--- |") #hide
 println( #hide
     io, #hide
-    "| Full Orbit | $(round(median(b_full).time, digits = 4)) | $(round(median(b_full).bytes, digits = 4)) | 1.0 |" #hide
+    "| Full Orbit | $(round(median(b_full).time, sigdigits = 3)) | $(round(median(b_full).bytes, sigdigits = 3)) | 1.0 |" #hide
 ) #hide
 println( #hide
     io, #hide
-    "| Guiding Center | $(round(median(b_gc).time, digits = 4)) | $(round(median(b_gc).bytes, digits = 4)) | $(round(median(b_gc).time / median(b_full).time, digits = 4)) |" #hide
+    "| Guiding Center | $(round(median(b_gc).time, sigdigits = 3)) | $(round(median(b_gc).bytes, sigdigits = 3)) | $(round(median(b_gc).time / median(b_full).time, sigdigits = 3)) |" #hide
 ) #hide
 println( #hide
     io, #hide
-    "| Native GC (RK4) | $(round(median(b_native_rk4).time, digits = 4)) | $(round(median(b_native_rk4).bytes, digits = 4)) | $(round(median(b_native_rk4).time / median(b_full).time, digits = 4)) |" #hide
+    "| Native GC (RK4) | $(round(median(b_native_rk4).time, sigdigits = 3)) | $(round(median(b_native_rk4).bytes, sigdigits = 3)) | $(round(median(b_native_rk4).time / median(b_full).time, sigdigits = 3)) |" #hide
 ) #hide
 println( #hide
     io, #hide
-    "| Native GC (RK45) | $(round(median(b_native_rk45).time, digits = 4)) | $(round(median(b_native_rk45).bytes, digits = 4)) | $(round(median(b_native_rk45).time / median(b_full).time, digits = 4)) |" #hide
+    "| Native GC (RK45) | $(round(median(b_native_rk45).time, sigdigits = 3)) | $(round(median(b_native_rk45).bytes, sigdigits = 3)) | $(round(median(b_native_rk45).time / median(b_full).time, sigdigits = 3)) |" #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
