@@ -175,8 +175,8 @@ println(io, "| Metric | Value |") #hide
 println(io, "| :--- | :--- |") #hide
 println(io, "| Field Points | $(length(E_post)) |") #hide
 println(io, "| Work Points | $(length(work_post)) |") #hide
-println(io, "| Diff P_par | $(abs(work_post[10][1] - P_par[10])) |") #hide
-println(io, "| Diff P_fermi | $(abs(work_post[10][2] - P_fermi[10])) |") #hide
-println(io, "| Diff P_grad | $(abs(work_post[10][3] - P_grad[10])) |") #hide
-println(io, "| Diff P_betatron | $(abs(work_post[10][4] - P_betatron[10])) |") #hide
+println(io, "| Diff P_par | $(round(abs(work_post[10][1] - P_par[10]), sigdigits = 3)) |") #hide
+println(io, "| Diff P_fermi | $(round(abs(work_post[10][2] - P_fermi[10]), sigdigits = 3)) |") #hide
+println(io, "| Diff P_grad | $(round(abs(work_post[10][3] - P_grad[10]), sigdigits = 3)) |") #hide
+println(io, "| Diff P_betatron | $(round(abs(work_post[10][4] - P_betatron[10]), sigdigits = 3)) |") #hide
 Markdown.parse(String(take!(io))) #hide

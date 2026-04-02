@@ -13,6 +13,7 @@
 # - Native Boris solvers.
 
 import DisplayAs #hide
+using Markdown #hide
 using TestParticle
 using OrdinaryDiffEq
 using GeometricIntegratorsDiffEq
@@ -34,6 +35,7 @@ function run_test(
         uselog = true, dt = 0.1, ymin = nothing, ymax = nothing,
         odes = nothing, gis = nothing, natives = nothing
     )
+    results = Tuple{String, Float64}[]
     u0 = [x0..., v0...]
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
     prob_gi = ODEProblem(trace_normalized, u0, tspan, param)
@@ -49,15 +51,18 @@ function run_test(
     ax = Axis(
         f[1, 1],
         title = "$case_name: Energy Error",
-        xlabel = "Time",
-        ylabel = "Rel. Energy Error |(E - E_ref)/E_ref|",
+        xlabel = "Time [Gyroperiod]",
+        ylabel = L"Rel. Energy Error $|(E - E_\mathrm{ref})/E_\mathrm{ref}|$",
         yscale = yscale
     )
 
     if !isnothing(ymin) && !isnothing(ymax)
         ylims!(ax, ymin, ymax)
     end
-    function plot_energy_error!(sol, label, marker)
+
+    color_idx = 1
+
+    function plot_energy_error!(sol, label, i)
         ## Calculate energy
         v_mag = [norm(u[4:6]) for u in sol.u]
         E = 0.5 .* m .* v_mag .^ 2
@@ -73,53 +78,71 @@ function run_test(
 
         ## Error (Avoid division by zero if E_ref is 0)
         error = abs.(E .- E_ref) ./ (abs.(E_ref) .+ 1.0e-16)
+        push!(results, (label, maximum(error)))
 
-        return scatter!(ax, t[1:length(error)], error, label = label, marker = marker)
+        return lines!(
+            ax, t[1:length(error)] ./ T, error;
+            label, color = i, colormap = :tab20, colorrange = (1, 20)
+        )
     end
 
     ## Run ODE solvers
     _odes = odes === nothing ? ode_solvers : odes
-    for (name, alg, marker) in _odes
+    for (name, alg) in _odes
         sol = solve(prob_ode, alg; adaptive = false, dt, dense = false)
-        plot_energy_error!(sol, name, marker)
+        plot_energy_error!(sol, name, color_idx)
+        color_idx += 1
     end
 
     ## Run Geometric Integrators
     _gis = gis === nothing ? gi_solvers : gis
-    for (name, alg, marker) in _gis
+    for (name, alg) in _gis
         sol = solve(prob_gi, alg; dt)
-        plot_energy_error!(sol, name, marker)
+        plot_energy_error!(sol, name, color_idx)
+        color_idx += 1
     end
 
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
-    for (name, marker, kwargs) in _natives
+    for (name, kwargs) in _natives
         sol = TestParticle.solve(prob_tp; dt, kwargs...)[1]
-        plot_energy_error!(sol, name, marker)
+        plot_energy_error!(sol, name, color_idx)
+        color_idx += 1
     end
 
     f[1, 2] = Legend(f, ax, "Solvers", framevisible = false, labelsize = 24)
 
-    return f
+    return f, results
+end
+
+function plot_table(results)
+    io = IOBuffer()
+    println(io, "| Solver | Max Rel. Error |")
+    println(io, "| :--- | :--- |")
+    for (name, err) in results
+        println(io, "| $name | $(round(err, sigdigits = 3)) |")
+    end
+    Markdown.parse(String(take!(io)))
+    return
 end
 
 ## Solvers to test
 const ode_solvers = [
-    ("Tsit5", Tsit5(), :circle),
-    ("Vern7", Vern7(), :rect),
-    ("Vern9", Vern9(), :diamond),
-    ("BS3", BS3(), :utriangle),
-    ("ImplicitMidpoint", ImplicitMidpoint(), :pentagon),
+    ("Tsit5", Tsit5()),
+    ("Vern7", Vern7()),
+    ("Vern9", Vern9()),
+    ("BS3", BS3()),
+    ("ImplicitMidpoint", ImplicitMidpoint()),
 ]
 
 const gi_solvers = [
-    ("GIRK4", GIRK4(), :hex),
+    ("GIRK4", GIRK4()),
 ]
 
 const native_solvers = [
-    ("Boris", :star5, Dict{Symbol, Any}()),
-    ("Boris Multistep (n=2)", :star8, Dict{Symbol, Any}(:n => 2)),
-    ("Hyper Boris (n=2, N=4)", :cross, Dict{Symbol, Any}(:n => 2, :N => 4)),
+    ("Boris", Dict{Symbol, Any}()),
+    ("Boris Multistep (n=2)", Dict{Symbol, Any}(:n => 2)),
+    ("Hyper Boris (n=2, N=4)", Dict{Symbol, Any}(:n => 2, :N => 4)),
 ];
 
 # ## Case 1: Constant B, Zero E
@@ -133,41 +156,45 @@ v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
 E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
-f = run_test(
-    "Constant B", param1, x0_1, v0_1, tspan1, E_func1; dt = T / 20, ymin = 1.0e-16, ymax = 1.0
+f, results = run_test(
+    "Constant B", param1, x0_1, v0_1, tspan1, E_func1;
+    dt = T / 4, ymin = 1.0e-16, ymax = 2.0
 )
 f = DisplayAs.PNG(f) #hide
+plot_table(results) #hide
 
-# ## Case 2: Constant E, Zero B
-# Energy increases due to work done by the electric field.
-# For a particle starting from rest in constant E field:
+# ## Case 2: Linear E(t), Zero B
+# Energy increases due to work done by the electric field which grows linearly in time.
+# For a particle starting from rest in an electric field $\mathbf{E}(t) = E_0 t$:
 # ```math
 # \begin{aligned}
-# \mathbf{a} &= \frac{q}{m} \mathbf{E} \\
-# \mathbf{v}(t) &= \mathbf{a} t\, (\,\mathrm{if}\,v_0=0)
+# \mathbf{E}(t) &= E_0 t \\
+# \mathbf{a}(t) &= \frac{q E_0}{m} t \\
+# \mathbf{v}(t) &= \frac{q E_0}{2m} t^2\, (\,\mathrm{if}\,v_0=0)
 # \end{aligned}
 # ```
 # ```math
-# E_{kin} = \frac{1}{2} m v^2 = \frac{1}{2} m (\frac{q E_0}{m} t)^2
+# E_{kin} = \frac{1}{2} m v^2 = \frac{q^2 E_0^2}{8m} t^4
 # ```
 
-constant_E(x, t) = SA[E₀, 0.0, 0.0]
+linear_E(x, t) = SA[E₀ * t, 0.0, 0.0]
 
-param2 = prepare(constant_E, ZeroField(); q = q, m = m)
+param2 = prepare(linear_E, ZeroField(); q = q, m = m)
 x0_2 = [0.0, 0.0, 0.0]
 v0_2 = [0.0, 0.0, 0.0] # Start from rest
 tspan2 = (0.0, 40.0)
 
 function E_func2(t, x, v)
-    v_theo = (q * E₀ / m) * t # analytical energy
+    v_theo = (q * E₀ / m) * (t^2 / 2) # analytical energy
     return 0.5 * m * v_theo^2
 end
 
-f = run_test(
-    "Constant E", param2, x0_2, v0_2, tspan2,
-    E_func2; dt = T / 20, ymin = 1.0e-16, ymax = 1.0e-13
+f, results = run_test(
+    "Linear E(t)", param2, x0_2, v0_2, tspan2,
+    E_func2; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-13
 )
 f = DisplayAs.PNG(f) #hide
+plot_table(results) #hide
 
 # ## Case 3: Magnetic Mirror
 # Energy should be conserved (E=0).
@@ -196,12 +223,16 @@ tspan3 = (0.0, 200.0)
 E_init_3 = 0.5 * m * norm(v0_3)^2
 E_func3(t, x, v) = E_init_3
 
-f = run_test(
+f, results = run_test(
     "Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
     dt = T / 20, ymin = 1.0e-16, ymax = 2.0
 )
 f = DisplayAs.PNG(f) #hide
+plot_table(results) #hide
 
+# In this magnetic mirror case, a fixed time step larger than 0.05*T leads to
+# numerical instability for many general ODE solvers.
+#
 # ## Case 4: E cross B Drift
 # We test a more complex case from Section 6 of Zenitani & Kato (2025), where both
 # magnetic and electric fields are non-zero.
@@ -235,13 +266,14 @@ function E_ref4(t, x, v)
     return 0.5 * m * (vx_theo^2 + vy_theo^2 + vz_theo^2)
 end
 
-f = run_test(
+f, results = run_test(
     "ExB Drift", param4, x0_4, v0_4, tspan4, E_ref4;
     dt = T / 20, ymin = 1.0e-16, ymax = 1.0e-1,
     odes = [
-        ("Tsit5", Tsit5(), :circle),
-        ("Vern7", Vern7(), :rect),
+        ("Tsit5", Tsit5()),
+        ("Vern7", Vern7()),
     ],
     gis = []
 )
 f = DisplayAs.PNG(f) #hide
+plot_table(results) #hide

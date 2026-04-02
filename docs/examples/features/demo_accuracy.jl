@@ -203,20 +203,26 @@ f = Figure(size = (1200, 500), fontsize = 18)
 # ### Phase Error Plot
 ax1 = Axis(
     f[1, 1],
-    xscale = log10,
-    yscale = log10,
+    xscale = log10, yscale = log10,
     xlabel = L"Time step ($dt / T_\mathrm{gyro}$)",
     ylabel = "Phase Error (rad)",
     title = "Phase Error Convergence",
     xminorticksvisible = true, yminorticksvisible = true,
+    xminorticks = IntervalsBetween(9), yminorticks = IntervalsBetween(9),
     xgridvisible = true, ygridvisible = true
 )
 
 for (name, _) in boris_solvers
-    scatterlines!(ax1, dts1 ./ T_period, results1[name], label = name, linewidth = 2, marker = :circle)
+    scatterlines!(
+        ax1, dts1 ./ T_period, results1[name];
+        label = name, linewidth = 2, marker = :circle
+    )
 end
 for (name, _) in ode_solvers
-    scatterlines!(ax1, dts1 ./ T_period, results1[name], label = name, linewidth = 2, marker = :cross)
+    scatterlines!(
+        ax1, dts1 ./ T_period, results1[name];
+        label = name, linewidth = 2, marker = :cross
+    )
 end
 
 plot_ref_line!(ax1, dts1 ./ T_period, results1["Standard Boris"], 2, color = :black, idxt = 6)
@@ -227,22 +233,28 @@ plot_ref_line!(ax1, dts1 ./ T_period, results1["Hyper Boris (n=4, N=6)"], 6, col
 # ### Velocity Error Plot
 ax2 = Axis(
     f[1, 2],
-    xscale = log10,
-    yscale = log10,
+    xscale = log10, yscale = log10,
     xlabel = L"Time step ($dt / T_\mathrm{gyro}$)",
     ylabel = "Max Velocity Error",
     title = "Velocity Error Convergence",
     xminorticksvisible = true, yminorticksvisible = true,
+    xminorticks = IntervalsBetween(9), yminorticks = IntervalsBetween(9),
     xgridvisible = true, ygridvisible = true
 )
 
 T_period2 = 2π / ωc
 
 for (name, _) in boris_solvers
-    scatterlines!(ax2, dts2 ./ T_period2, results2[name], label = name, linewidth = 2, marker = :circle)
+    scatterlines!(
+        ax2, dts2 ./ T_period2, results2[name];
+        label = name, linewidth = 2, marker = :circle
+    )
 end
 for (name, _) in ode_solvers
-    scatterlines!(ax2, dts2 ./ T_period2, results2[name], label = name, linewidth = 2, marker = :cross)
+    scatterlines!(
+        ax2, dts2 ./ T_period2, results2[name];
+        label = name, linewidth = 2, marker = :cross
+    )
 end
 
 plot_ref_line!(ax2, dts2 ./ T_period2, results2["Standard Boris"], 2, color = :black, idxt = 1)
