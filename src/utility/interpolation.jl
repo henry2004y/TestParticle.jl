@@ -180,9 +180,9 @@ function _check_interpolation_consistency(A, grids, order)
     # Get the promoted type of coordinates from all grids
     Td = promote_type(map(eltype, grids)...)
 
-    # In FastInterpolations, high-order kernels require the data type to match the
-    # promoted type of grid coordinates for the accumulator.
-    if Tv != Td
+    # FastInterpolations ND kernels for non-scalar values (like SVector)
+    # strictly require value types to match the promoted grid type.
+    if ndims(A) > 1 && T <: SVector && Tv != Td
         throw(
             ArgumentError(
                 "High-order interpolation (order >= 2) in FastInterpolations requires field data type " *

@@ -189,6 +189,20 @@ end
             ptsph = SA[1.0, 1.0, 1.0]
             @test itpsph(ptsph, 0.0) == itpsph(ptsph)
         end
+
+        @testset "Mixed Precision Error" begin
+            x32 = range(0.0f0, 1.0f0, length = 11)
+            # Field in Float32 SVectors
+            B32 = [SA[Float32(sin(2π * xi)), 0.0f0, 0.0f0] for xi in x32, yi in x32, zi in x32]
+            # Grid in Float64
+            x64 = range(0.0, 1.0, length = 11)
+
+            # Should work for order=1
+            @test_nowarn TP.build_interpolator(B32, x64, x64, x64, 1, 1)
+
+            # Should throw ArgumentError for order=2
+            @test_throws ArgumentError TP.build_interpolator(B32, x64, x64, x64, 2, 1)
+        end
     end
 
     @testset "SVector Interpolation" begin
