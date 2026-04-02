@@ -1,9 +1,10 @@
 # # Energy Conservation
 #
-# This example demonstrates the energy conservation of a single particle motion in three cases.
+# This example demonstrates the energy conservation of a single particle motion in four cases.
 # 1. Constant B field, Zero E field.
 # 2. Constant E field, Zero B field.
 # 3. Magnetic Mirror.
+# 4. ExB drift in constant electric and magnetic fields.
 #
 # The tests are performed in dimensionless units with q=1, m=1.
 # We compare three groups of solvers:
@@ -13,7 +14,6 @@
 
 import DisplayAs #hide
 using TestParticle
-using TestParticle: ZeroField
 using OrdinaryDiffEq
 using GeometricIntegratorsDiffEq
 using StaticArrays
@@ -31,7 +31,8 @@ const T = 2π / Ω
 ## Helper function to run tests
 function run_test(
         case_name, param, x0, v0, tspan, expected_energy_func;
-        uselog = true, dt = 0.1, ymin = nothing, ymax = nothing
+        uselog = true, dt = 0.1, ymin = nothing, ymax = nothing,
+        odes = nothing, gis = nothing, natives = nothing
     )
     u0 = [x0..., v0...]
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
@@ -77,19 +78,22 @@ function run_test(
     end
 
     ## Run ODE solvers
-    for (name, alg, marker) in ode_solvers
+    _odes = odes === nothing ? ode_solvers : odes
+    for (name, alg, marker) in _odes
         sol = solve(prob_ode, alg; adaptive = false, dt, dense = false)
         plot_energy_error!(sol, name, marker)
     end
 
     ## Run Geometric Integrators
-    for (name, alg, marker) in gi_solvers
+    _gis = gis === nothing ? gi_solvers : gis
+    for (name, alg, marker) in _gis
         sol = solve(prob_gi, alg; dt)
         plot_energy_error!(sol, name, marker)
     end
 
     ## Run native solvers
-    for (name, marker, kwargs) in native_solvers
+    _natives = natives === nothing ? native_solvers : natives
+    for (name, marker, kwargs) in _natives
         sol = TestParticle.solve(prob_tp; dt, kwargs...)[1]
         plot_energy_error!(sol, name, marker)
     end
@@ -195,5 +199,49 @@ E_func3(t, x, v) = E_init_3
 f = run_test(
     "Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
     dt = T / 20, ymin = 1.0e-16, ymax = 2.0
+)
+f = DisplayAs.PNG(f) #hide
+
+# ## Case 4: E cross B Drift
+# We test a more complex case from Section 6 of Zenitani & Kato (2025), where both
+# magnetic and electric fields are non-zero.
+# Here we have a constant magnetic field $B_z = B_0$ and a constant electric field
+# with components $E_y = 0.5$ and $E_z = 0.1$. The particle starts at the origin
+# with zero initial velocity.
+# The analytical kinetic energy gain can be exactly determined from the velocity:
+# ```math
+# \begin{aligned}
+# v_x(t) &= \frac{E_y}{B_0} \left[ 1 - \cos(\Omega t) \right] \\
+# v_y(t) &= \frac{E_y}{B_0} \sin(\Omega t) \\
+# v_z(t) &= \left( \frac{q E_z}{m} \right) t
+# \end{aligned}
+# ```
+
+const E_y = 0.5
+const E_z = 0.1
+
+B_func4(x) = SA[0.0, 0.0, B₀]
+E_func4(x, t) = SA[0.0, E_y, E_z]
+
+param4 = prepare(E_func4, B_func4; q, m)
+x0_4 = [0.0, 0.0, 0.0]
+v0_4 = [0.0, 0.0, 0.0]
+tspan4 = (0.0, 50 * T)
+
+function E_ref4(t, x, v)
+    vx_theo = (E_y / B₀) * (1 - cos(Ω * t))
+    vy_theo = (E_y / B₀) * sin(Ω * t)
+    vz_theo = (q * E_z / m) * t
+    return 0.5 * m * (vx_theo^2 + vy_theo^2 + vz_theo^2)
+end
+
+f = run_test(
+    "ExB Drift", param4, x0_4, v0_4, tspan4, E_ref4;
+    dt = T / 20, ymin = 1.0e-16, ymax = 1.0e-1,
+    odes = [
+        ("Tsit5", Tsit5(), :circle),
+        ("Vern7", Vern7(), :rect),
+    ],
+    gis = []
 )
 f = DisplayAs.PNG(f) #hide

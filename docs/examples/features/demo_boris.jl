@@ -68,7 +68,7 @@ end
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = TP.ZeroField()
+zero_E = ZeroField()
 
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1.0e5, 0.0]
@@ -113,7 +113,7 @@ f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, sol_boris_a
 f = DisplayAs.PNG(f) #hide
 
 # It is clear that the Boris method comes with larger phase errors (``\mathcal{O}(\Delta t^2)``) compared with Tsit5.
-# See [Phase Error Analysis](@ref) for more details.
+# See [Solver Accuracy Analysis](@ref) for more details.
 # The phase error gets smaller using a smaller dt:
 
 dt = tperiod / 8
@@ -221,7 +221,7 @@ y = range(-21, 0, length = ny) # [l₀]
 B = fill(0.0, 3, nx, ny) # [B₀]
 B[3, :, :] .= 1.0
 
-E_field = TP.ZeroField() # [E₀]
+E_field = ZeroField() # [E₀]
 
 ## If bc == 1, we set a NaN value outside the domain (default);
 ## If bc == 2, we set periodic boundary conditions.

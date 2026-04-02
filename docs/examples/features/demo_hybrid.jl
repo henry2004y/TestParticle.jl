@@ -90,7 +90,7 @@ sol_gc = solve(prob_gc, Vern6());
 ## The classical adiabaticity criterion: ε = ρ_L / R_c < 0.1
 threshold = 0.1
 
-p = (q2m, m, E_field, B_field, TP.ZeroField())
+p = (q2m, m, E_field, B_field, ZeroField())
 
 alg = AdaptiveHybrid(;
     threshold,

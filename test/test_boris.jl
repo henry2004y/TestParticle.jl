@@ -27,7 +27,7 @@ using Distributed
     # E = [0, 1e5, 0]
     constant_E(x, t) = SA[0.0, 1.0e5, 0.0]
 
-    zero_E = TP.ZeroField()
+    zero_E = ZeroField()
 
     constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
     constant_Bz(x, t) = SA[0.0, 0.0, 1.0]
@@ -94,7 +94,7 @@ using Distributed
         # Position at t=10 should be (10, 0, 0)
         # q = 1, m = 1
         # The solver expects param to be (q2m, m, E, B, F)
-        param = (1.0, 1.0, constant_Ey, constant_Bz, TP.ZeroField())
+        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
 
         # Initial condition
         # Start at origin with drift velocity
@@ -123,7 +123,7 @@ using Distributed
         # Gyroradius r = mv/qB = 1*1/1*1 = 1
         # Gyroperiod T = 2*pi*m/qB = 2*pi
 
-        param_gyro = (1.0, 1.0, TP.ZeroField(), constant_Bz, TP.ZeroField())
+        param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
@@ -148,7 +148,7 @@ using Distributed
 
     @testset "Hyper Boris" begin
         # E cross B drift tests
-        param = (1.0, 1.0, constant_Ey, constant_Bz, TP.ZeroField())
+        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         dt = 0.1
@@ -169,7 +169,7 @@ using Distributed
         @test sol_hyper_single[1].u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Gyrating particle test
-        param_gyro = (1.0, 1.0, TP.ZeroField(), constant_Bz, TP.ZeroField())
+        param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
 
@@ -255,7 +255,7 @@ using Distributed
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        zero_E = TP.ZeroField()
+        zero_E = ZeroField()
         # uniform_B2(x) = SA[0.0, 0.0, 0.01] # Use global definition
         param = prepare(zero_E, uniform_B2, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
@@ -480,7 +480,7 @@ using Distributed
             stateinit = [x0..., v0...]
             tspan = (0.0, 3.0e-8)
             dt = 3.0e-11
-            zero_E_dist = TP.ZeroField()
+            zero_E_dist = ZeroField()
             uniform_B2_dist(x) = SA[0.0, 0.0, 0.01]
             param_dist = prepare(zero_E_dist, uniform_B2_dist; species = Electron)
 

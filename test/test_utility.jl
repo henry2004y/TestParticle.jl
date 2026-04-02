@@ -689,7 +689,7 @@ end
 
     @testset "ZeroField Unitful" begin
         # Check that ZeroField returns ZeroVector for Unitful types
-        zf = TP.ZeroField()
+        zf = ZeroField()
         # Unitful input
         x = [1.0, 0.0, 0.0]u"m"
         t = 0.0u"s"

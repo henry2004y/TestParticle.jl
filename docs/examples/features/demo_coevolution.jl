@@ -49,7 +49,7 @@ end
 itp_B = TP.LazyTimeInterpolator(times, loader)
 
 ## Define a zero Electric field
-E_zero = TP.ZeroField();
+E_zero = ZeroField();
 
 # ## Prepare Particle Tracing Parameters
 # We trace a dimensionless particle. We set `q=1.0` and `m=1.0`.
