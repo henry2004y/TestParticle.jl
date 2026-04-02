@@ -122,8 +122,7 @@ function plot_table(results)
     for (name, err) in results
         println(io, "| $name | $(round(err, sigdigits = 3)) |")
     end
-    Markdown.parse(String(take!(io)))
-    return
+    return Markdown.parse(String(take!(io)))
 end
 
 ## Solvers to test
@@ -161,6 +160,9 @@ f, results = run_test(
     dt = T / 4, ymin = 1.0e-16, ymax = 2.0
 )
 f = DisplayAs.PNG(f) #hide
+
+# Solver comparisons:
+
 plot_table(results) #hide
 
 # ## Case 2: Linear E(t), Zero B
@@ -194,6 +196,8 @@ f, results = run_test(
     E_func2; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-13
 )
 f = DisplayAs.PNG(f) #hide
+
+# Solver comparisons:
 plot_table(results) #hide
 
 # ## Case 3: Magnetic Mirror
@@ -276,4 +280,7 @@ f, results = run_test(
     gis = []
 )
 f = DisplayAs.PNG(f) #hide
+
+# Solver comparisons:
+
 plot_table(results) #hide

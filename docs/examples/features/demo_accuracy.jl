@@ -230,6 +230,8 @@ plot_ref_line!(ax1, dts1 ./ T_period, results1["Hyper Boris (n=4, N=4)"], 4, col
 plot_ref_line!(ax1, dts1 ./ T_period, results1["Tsit5"], 5, color = :orange, idxt = 6)
 plot_ref_line!(ax1, dts1 ./ T_period, results1["Hyper Boris (n=4, N=6)"], 6, color = :gray, idxt = 6)
 
+f = DisplayAs.PNG(f) #hide
+
 # ### Velocity Error Plot
 ax2 = Axis(
     f[1, 2],
