@@ -60,6 +60,7 @@ features_order = [
     "demo_boris.jl",
     "demo_energy_conservation.jl",
     "demo_accuracy.jl",
+    "demo_adaptive_accuracy.jl",
     "demo_performance.jl",
     "demo_interpolation.md",
     "demo_coevolution.jl",

@@ -71,3 +71,52 @@ sol = TestParticle.solve(prob; dt, n=2, N=4)
 ```
 
 Combining both $n > 1$ and $N > 2$ ensures ultra-high stability tracking over drastically varying gradient fields, such as inside magnetic traps or collisionless shocks!
+
+## 3. Adaptive Boris Method
+
+The `AdaptiveBoris` solver adjusts the time step $\Delta t$ dynamically based on the local cyclotron frequency $\Omega_c = |q B / m|$. This is particularly useful in systems with strong magnetic field gradients, such as magnetic mirrors or planetary magnetospheres, where the required resolution varies significantly along the particle's trajectory.
+
+The time step is determined by:
+```math
+\Delta t = \eta T_c = \eta \frac{2\pi}{\Omega_c}
+```
+where $\eta$ is a safety factor (typically between 0.01 and 0.1). This represents the ratio of the time step to the local gyroperiod. The resulting $\Delta t$ is clamped between `dtmin` and `dtmax` to ensure stability and efficiency.
+
+### Maintaining Time Reversibility and Energy Conservation
+
+The standard Boris method is a second-order, volume-preserving integrator that exactly conserves energy in a static, uniform magnetic field. These properties are closely linked to its **time-reversibility**. However, naive adaptive time-stepping usually breaks this reversibility because it disrupts the staggered "leapfrog" synchronization between position and velocity.
+
+To preserve the leapfrog structure and maintain energy conservation, `TestParticle.jl` employs a **velocity resync** procedure whenever the time step is updated. This technique involves moving the velocity back to the node (position location) and then repositioning it based on the new time step. Given a step from $\mathbf{x}_n$ to $\mathbf{x}_{n+1}$ with $\Delta t_{old}$:
+
+1.  **Advance position**: The position is updated to $\mathbf{x}_{n+1}$ using the velocity $\mathbf{v}_{n+1/2}$ and $\Delta t_{old}$.
+2.  **Update time step**: A new $\Delta t_{new}$ is calculated based on the magnetic field at the new position $\mathbf{x}_{n+1}$.
+3.  **Resynchronize velocity**: The velocity $\mathbf{v}_{n+1/2}^{old}$ (centered at $t_{n+1} - \frac{1}{2}\Delta t_{old}$) is moved to the node $t_{n+1}$ by a half-step Boris push, and then moved to a new half-step location $t_{n+1} - \frac{1}{2}\Delta t_{new}$ by a half-step backward push.
+
+This ensures that the velocity is always correctly centered relative to the current $\Delta t$ before each step. This "re-centering" at the nodes allows the integrator to remain practically time-reversible and maintains excellent energy conservation even as the time step changes by orders of magnitude.
+
+## 4. Using the Advanced Solvers
+
+### Fixed-step Advanced Boris
+
+You can access multistep and hyper features in the default solver by explicitly defining the parameters `n` and `N` in the `solve` parameters.
+
+- `n`: Sub-cycling division count (default `1`).
+- `N`: Evaluator correction order ($2, 4,$ or $6$). `2` denotes standard uncorrected Boris.
+
+```julia
+# Multistep Boris (n=2, N=2)
+sol = TestParticle.solve(prob; dt, n=2)
+
+# Hyper Boris (n=2, N=4)
+sol = TestParticle.solve(prob; dt, n=2, N=4)
+```
+
+### Adaptive Boris
+
+You can use the adaptive solver by passing an `AdaptiveBoris` object as the second argument to `solve`.
+
+```julia
+# Adaptive Boris with safety factor 0.05 (20 steps per period)
+alg = AdaptiveBoris(safety=0.05, dtmax=0.5)
+sol = TestParticle.solve(prob, alg)[1]
+```

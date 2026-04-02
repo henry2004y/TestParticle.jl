@@ -232,16 +232,16 @@ end
 
             B_vec = Bfunc(X_gc, t)
             Bmag = norm(B_vec)
-            omega = abs(q2m * Bmag)
-            dt = 0.5 * 2π / omega
+            ω = abs(q2m * Bmag)
+            dt = 0.5 * 2π / ω
             verbose && @info "Initial mode: GC" ϵ t
         else
             mode = :FO
             # Initial dt for FO
             B_vec = Bfunc(r, t)
             Bmag = norm(B_vec)
-            omega = abs(q2m) * Bmag
-            dt = alg.safety_fo / omega
+            ω = abs(q2m) * Bmag
+            dt = 2π * alg.safety_fo / ω
             dt = clamp(dt, alg.dtmin, alg.dtmax)
             v = update_velocity(v, r, p, -0.5 * dt, t)
             verbose && @info "Initial mode: FO" ϵ t
@@ -272,7 +272,7 @@ end
 
                         B_mag = norm(Bfunc(r, t))
                         omega = abs(q2m * B_mag)
-                        dt = alg.safety_fo / omega
+                        dt = 2π * alg.safety_fo / omega
                         dt = clamp(dt, alg.dtmin, alg.dtmax)
                         v = update_velocity(v, r, p, -0.5 * dt, t)
                         continue
@@ -374,7 +374,7 @@ end
                 # New dt for FO
                 Bmag = norm(Bfunc(r, t))
                 if Bmag > 0
-                    dt_new = alg.safety_fo / (abs(q2m) * Bmag)
+                    dt_new = 2π * alg.safety_fo / (abs(q2m) * Bmag)
                     dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
                 else
                     dt_new = alg.dtmax
