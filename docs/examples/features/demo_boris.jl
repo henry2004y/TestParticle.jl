@@ -132,7 +132,7 @@ sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, nothing, sol_boris_hyper; alpha = 1)
 f = DisplayAs.PNG(f) #hide
 
-# ## Energy Conservation
+# ## Energy Conservation Check
 
 # The Boris pusher shines when we do long time tracing, which is fast and conserves energy:
 
