@@ -95,11 +95,26 @@ function setup_time_dependent_field()
    return B_field_t
 end
 
+function setup_mixed_precision_field()
+   x = range(0.0f0, 10.0f0, length = 11)
+   y = range(0.0f0, 10.0f0, length = 11)
+   z = range(0.0f0, 10.0f0, length = 11)
+   B = fill(0.0f0, 3, 11, 11, 11)
+   B[3, :, :, :] .= 1.0f-8
+
+   itp = TP.build_interpolator(B, x, y, z)
+   return itp
+end
+
 B_sph_nu, A_sph_nu, B_sph, A_sph = setup_spherical_field();
 B_car, A_car = setup_cartesian_field();
 B_car_nu, A_car_nu = setup_cartesian_nonuniform_field();
 B_td = setup_time_dependent_field();
+itp_f32 = setup_mixed_precision_field();
+
 loc = SA[1.0, 1.0, 1.0];
+loc_f32 = SA[1.0f0, 1.0f0, 1.0f0];
+loc_f64 = SA[1.0, 1.0, 1.0];
 ```
 
 ## Gridded spherical interpolation
@@ -134,6 +149,15 @@ loc = SA[1.0, 1.0, 1.0];
 ```
 
 Based on the benchmarks, for the same grid size, gridded interpolation (`StructuredGrid` with non-uniform ranges, `RectilinearGrid`) is 2x slower than uniform mesh interpolation (`StructuredGrid` with uniform ranges, `CartesianGrid`).
+
+## Mixed precision interpolation
+
+Numerical field data from files is often stored in `Float32`. TestParticle supports constructing interpolators from `Float32` data and ranges, which can then be queried with both `Float32` and `Float64` location vectors.
+
+```@repl interp
+@be itp_f32($loc_f32)
+@be itp_f32($loc_f64)
+```
 
 ## Time-dependent field interpolation
 
