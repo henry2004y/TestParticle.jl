@@ -14,6 +14,7 @@
 
 import DisplayAs #hide
 using Markdown #hide
+using Printf
 using TestParticle
 using OrdinaryDiffEq
 using GeometricIntegratorsDiffEq
@@ -120,7 +121,7 @@ function plot_table(results)
     println(io, "| Solver | Max Rel. Error |")
     println(io, "| :--- | :--- |")
     for (name, err) in results
-        println(io, "| $name | $(round(err, sigdigits = 3)) |")
+        println(io, "| $name | $(@sprintf("%.1e", err)) |")
     end
     return Markdown.parse(String(take!(io)))
 end
@@ -165,7 +166,7 @@ f = DisplayAs.PNG(f) #hide
 
 plot_table(results) #hide
 
-# ## Case 2: Linear E(t), Zero B
+# ## Case 2a: Linear E(t), Zero B
 # Energy increases due to work done by the electric field which grows linearly in time.
 # For a particle starting from rest in an electric field $\mathbf{E}(t) = E_0 t$:
 # ```math
@@ -178,28 +179,65 @@ plot_table(results) #hide
 # ```math
 # E_{kin} = \frac{1}{2} m v^2 = \frac{q^2 E_0^2}{8m} t^4
 # ```
-
 linear_E(x, t) = SA[E₀ * t, 0.0, 0.0]
 
-param2 = prepare(linear_E, ZeroField(); q = q, m = m)
-x0_2 = [0.0, 0.0, 0.0]
-v0_2 = [0.0, 0.0, 0.0] # Start from rest
-tspan2 = (0.0, 40.0)
+param2a = prepare(linear_E, ZeroField(); q = q, m = m)
+x0_2a = [0.0, 0.0, 0.0]
+v0_2a = [0.0, 0.0, 0.0] # Start from rest
+tspan2a = (0.0, 40.0)
 
-function E_func2(t, x, v)
+function E_func2a(t, x, v)
     v_theo = (q * E₀ / m) * (t^2 / 2) # analytical energy
     return 0.5 * m * v_theo^2
 end
 
 f, results = run_test(
-    "Linear E(t)", param2, x0_2, v0_2, tspan2,
-    E_func2; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-13
+    "Linear E(t)", param2a, x0_2a, v0_2a, tspan2a,
+    E_func2a; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e4
 )
 f = DisplayAs.PNG(f) #hide
 
 # Solver comparisons:
 plot_table(results) #hide
 
+# The Boris solvers systematically show a large error in this case.
+# This is because Boris evaluates the electric field at the integer time step $t_n$ to update the
+# velocity from $v_{n-1/2}$ to $v_{n+1/2}$ (in its standard leapfrog staggered form), while
+# the current implementation evaluates at $t_{n+1/2}$, leading to an offset for time-varying fields.
+# Additionally, GIRK4 is numerically unstable for this specific case with large time steps.
+#
+# ## Case 2b: Spatially Linear E(x), Zero B
+# Here we test energy conservation in a spatially varying electric field $\mathbf{E}(x) = E_0 x \hat{x}$.
+# The total energy $H = \frac{1}{2} m v^2 + q \Phi(x)$ is conserved, where $\Phi(x) = -\frac{1}{2} E_0 x^2$.
+
+spatial_linear_E(x, t) = SA[E₀ * x[1], 0.0, 0.0]
+
+param2b = prepare(spatial_linear_E, ZeroField(); q = q, m = m)
+## Set an initial position away from origin to have non-zero force
+const x0_2b = [1.0, 0.0, 0.0]
+const v0_2b = [0.0, 0.0, 0.0]
+tspan2b = (0.0, 20.0)
+
+function E_func2b(t, x, v)
+    ## Initial total energy: H0 = K0 + V0 = 0 - 0.5*q*E0*x0[1]^2
+    H0 = -0.5 * q * E₀ * x0_2b[1]^2
+    ## Current potential energy: V = -0.5*q*E0*x[1]^2
+    V = -0.5 * q * E₀ * x[1]^2
+    ## Expected kinetic energy: K = H0 - V
+    return H0 - V
+end
+
+f, results = run_test(
+    "Spatially Linear E(x)", param2b, x0_2b, v0_2b, tspan2b,
+    E_func2b; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-1
+)
+f = DisplayAs.PNG(f) #hide
+
+# Solver comparisons:
+plot_table(results) #hide
+
+# Similar to Case 2a, the Boris solvers systematically show a large error in this case, because of the initial half-step offset.
+#
 # ## Case 3: Magnetic Mirror
 # Energy should be conserved (E=0).
 # The particle bounces back and forth between regions of high magnetic field.
@@ -232,17 +270,17 @@ f, results = run_test(
     dt = T / 20, ymin = 1.0e-16, ymax = 2.0
 )
 f = DisplayAs.PNG(f) #hide
+
+# Solver comparisons:
 plot_table(results) #hide
 
-# In this magnetic mirror case, a fixed time step larger than 0.05*T leads to
-# numerical instability for many general ODE solvers.
+# In this magnetic mirror case, a fixed time step larger than 0.05*T leads to numerical instability for many general ODE solvers.
 #
 # ## Case 4: E cross B Drift
-# We test a more complex case from Section 6 of Zenitani & Kato (2025), where both
-# magnetic and electric fields are non-zero.
-# Here we have a constant magnetic field $B_z = B_0$ and a constant electric field
-# with components $E_y = 0.5$ and $E_z = 0.1$. The particle starts at the origin
-# with zero initial velocity.
+# We test a more complex case from Section 6 of [Zenitani & Kato (2025)](https://arxiv.org/abs/2505.02270),
+# where both magnetic and electric fields are non-zero.
+# Here we have a constant magnetic field $B_z = B_0$ and a constant electric field with
+# components $E_y = 0.5$ and $E_z = 0.1$. The particle starts at the origin with zero initial velocity.
 # The analytical kinetic energy gain can be exactly determined from the velocity:
 # ```math
 # \begin{aligned}
@@ -261,18 +299,19 @@ E_func4(x, t) = SA[0.0, E_y, E_z]
 param4 = prepare(E_func4, B_func4; q, m)
 x0_4 = [0.0, 0.0, 0.0]
 v0_4 = [0.0, 0.0, 0.0]
-tspan4 = (0.0, 50 * T)
+tspan4 = (0.0, 200 * T)
 
 function E_ref4(t, x, v)
-    vx_theo = (E_y / B₀) * (1 - cos(Ω * t))
-    vy_theo = (E_y / B₀) * sin(Ω * t)
+    Ey2B₀ = E_y / B₀
+    vx_theo = Ey2B₀ * (1 - cos(Ω * t))
+    vy_theo = Ey2B₀ * sin(Ω * t)
     vz_theo = (q * E_z / m) * t
     return 0.5 * m * (vx_theo^2 + vy_theo^2 + vz_theo^2)
 end
 
 f, results = run_test(
     "ExB Drift", param4, x0_4, v0_4, tspan4, E_ref4;
-    dt = T / 20, ymin = 1.0e-16, ymax = 1.0e-1,
+    dt = T / 4, ymin = 1.0e-8, ymax = 1.0e-1,
     odes = [
         ("Tsit5", Tsit5()),
         ("Vern7", Vern7()),
@@ -282,5 +321,6 @@ f, results = run_test(
 f = DisplayAs.PNG(f) #hide
 
 # Solver comparisons:
-
 plot_table(results) #hide
+# The relative energy error depends on the order of the solver, while the trend shows the quasi-symplectic property.
+# For Tsit5, the error accumulates over long time and large time steps.
