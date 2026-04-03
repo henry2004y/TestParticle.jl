@@ -118,6 +118,7 @@ Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterp
 
 function _get_extrap_mode(bc, T::Type)
     if bc == 2
+        #TODO Check https://projecttorreypines.github.io/FastInterpolations.jl/stable/boundary-conditions/periodicbc/#PeriodicBC-vs-WrapExtrap()
         return Extrap(:wrap)
     elseif bc == 3
         return Extrap(:clamp)
@@ -167,6 +168,32 @@ function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
     end
 end
 
+function _check_interpolation_consistency(A, grids, order)
+    if order < 2
+        return
+    end
+
+    T = eltype(A)
+    # Get the underlying element type if it's an SVector
+    Tv = T <: SVector ? eltype(T) : T
+
+    # Get the promoted type of coordinates from all grids
+    Td = promote_type(map(eltype, grids)...)
+
+    # FastInterpolations ND kernels for non-scalar values (like SVector)
+    # strictly require value types to match the promoted grid type.
+    if ndims(A) > 1 && T <: SVector && Tv != Td
+        throw(
+            ArgumentError(
+                "High-order interpolation (order >= 2) in FastInterpolations requires field data type " *
+                    "to match the promoted type of grid coordinates. Found data type $Tv and grid type $Td. " *
+                    "Please convert your field data to $Td or your grids to $Tv."
+            )
+        )
+    end
+    return
+end
+
 @inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
 
 """
@@ -203,6 +230,7 @@ function build_interpolator(
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
     end
+    _check_interpolation_consistency(A, (gridx, gridy, gridz), order)
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
     return FieldInterpolator(itp)
 end
@@ -261,6 +289,7 @@ function build_interpolator(
     has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
     ϕ_inclusive = has_0 && has_2pi  # grid covers full period with both endpoints
 
+    _check_interpolation_consistency(A, (gridr, gridθ, gridϕ), order)
     itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, ϕ_inclusive)
     return SphericalFieldInterpolator(itp)
 end
@@ -277,6 +306,7 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
+    _check_interpolation_consistency(As, (gridx, gridy), order)
     itp = _fastinterp((gridx, gridy), As, order, bc)
     return FieldInterpolator2D(itp)
 end
@@ -293,6 +323,7 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
+    _check_interpolation_consistency(As, (gridx,), order)
     itp = _fastinterp(gridx, As, order, bc)
 
     return FieldInterpolator1D(itp, dir)
