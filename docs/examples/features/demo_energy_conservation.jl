@@ -214,13 +214,13 @@ spatial_linear_E(x, t) = SA[E₀ * x[1], 0.0, 0.0]
 
 param2b = prepare(spatial_linear_E, ZeroField(); q = q, m = m)
 ## Set an initial position away from origin to have non-zero force
-x0_2b = [1.0, 0.0, 0.0]
-v0_2b = [0.0, 0.0, 0.0]
+const x0_2b = [1.0, 0.0, 0.0]
+const v0_2b = [0.0, 0.0, 0.0]
 tspan2b = (0.0, 20.0)
 
 function E_func2b(t, x, v)
     ## Initial total energy: H0 = K0 + V0 = 0 - 0.5*q*E0*x0[1]^2
-    H0 = -0.5 * q * E₀ * 1.0^2
+    H0 = -0.5 * q * E₀ * x0_2b[1]^2
     ## Current potential energy: V = -0.5*q*E0*x[1]^2
     V = -0.5 * q * E₀ * x[1]^2
     ## Expected kinetic energy: K = H0 - V
