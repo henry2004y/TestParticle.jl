@@ -16,6 +16,7 @@
 
 import DisplayAs #hide
 using Markdown #hide
+using Printf
 using TestParticle
 import TestParticle as TP
 using OrdinaryDiffEq
@@ -42,6 +43,16 @@ function energy_error(sol, E_ref_func)
         )
     end
     return errs
+end
+
+function plot_table(results)
+    io = IOBuffer()
+    println(io, "| Solver | Max Rel. Error |")
+    println(io, "| :--- | :--- |")
+    for (name, err) in results
+        println(io, "| $name | $(@sprintf("%.1e", err)) |")
+    end
+    return Markdown.parse(String(take!(io)))
 end
 
 # ## Case 1: Magnetic Mirror — Energy Conservation
@@ -168,6 +179,7 @@ f1[1, 3] = Legend(f1, ax1a; framevisible = false)
 
 f1 = DisplayAs.PNG(f1) #hide
 
+
 # ### Summary
 
 results1 = Tuple{String, Float64}[]
@@ -183,14 +195,7 @@ for (name, alg, kwargs) in ode_solvers_1
     push!(results1, (name, maximum(errs)))
 end
 
-let io = IOBuffer() #hide
-    println(io, "| Solver | Max Rel. Error |") #hide
-    println(io, "| :--- | :--- |") #hide
-    for (name, err) in results1 #hide
-        println(io, "| $name | $(round(err, sigdigits = 3)) |") #hide
-    end #hide
-    Markdown.parse(String(take!(io))) #hide
-end #hide
+plot_table(results1) #hide
 
 # ## Case 2: Constant E + B — Accuracy Convergence
 #
@@ -398,11 +403,4 @@ f3 = DisplayAs.PNG(f3) #hide
 
 # ### Summary
 
-let io = IOBuffer() #hide
-    println(io, "| Solver | Max Rel. Error |") #hide
-    println(io, "| :--- | :--- |") #hide
-    for (name, err) in results3 #hide
-        println(io, "| $name | $(round(err, sigdigits = 3)) |") #hide
-    end #hide
-    Markdown.parse(String(take!(io))) #hide
-end #hide
+plot_table(results3) #hide

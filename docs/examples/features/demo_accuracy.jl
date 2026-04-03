@@ -198,9 +198,9 @@ for dt in dts2
 end
 
 # ## Visualization
-f = Figure(size = (1200, 500), fontsize = 18)
+f = Figure(size = (1200, 500), fontsize = 18);
 
-# Phase Error Plot
+## Phase Error Plot
 ax1 = Axis(
     f[1, 1],
     xscale = log10, yscale = log10,
@@ -230,7 +230,7 @@ plot_ref_line!(ax1, dts1 ./ T_period, results1["Hyper Boris (n=4, N=4)"], 4, col
 plot_ref_line!(ax1, dts1 ./ T_period, results1["Tsit5"], 5, color = :orange, idxt = 6)
 plot_ref_line!(ax1, dts1 ./ T_period, results1["Hyper Boris (n=4, N=6)"], 6, color = :gray, idxt = 6)
 
-# Velocity Error Plot
+## Velocity Error Plot
 ax2 = Axis(
     f[1, 2],
     xscale = log10, yscale = log10,

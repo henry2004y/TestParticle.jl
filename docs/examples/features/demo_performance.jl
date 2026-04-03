@@ -212,7 +212,13 @@ for g in unique_groups
     group_labels = String[]
     for (i, idx) in enumerate(idxs)
         marker_shape = marker_palette[mod1(i, length(marker_palette))]
-        push!(group_elements, MarkerElement(color = (group_colors[g], 0.7), marker = marker_shape, markersize = 15, strokecolor = :black, strokewidth = 1))
+        push!(
+            group_elements,
+            MarkerElement(
+                color = (group_colors[g], 0.7), marker = marker_shape,
+                markersize = 15, strokecolor = :black, strokewidth = 1
+            )
+        )
         push!(group_labels, names[idx])
 
         scatter!(
