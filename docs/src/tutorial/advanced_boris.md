@@ -80,7 +80,7 @@ The time step is determined by:
 ```math
 \Delta t = \eta T_c = \eta \frac{2\pi}{\Omega_c}
 ```
-where $\eta$ is a safety factor (typically between 0.01 and 0.1). This represents the ratio of the time step to the local gyroperiod. The resulting $\Delta t$ is clamped between `dtmin` and `dtmax` to ensure stability and efficiency.
+where $\eta$ is a safety factor (typically between 0.01 and 0.1). This represents the ratio of the time step to the local gyroperiod.
 
 ### Maintaining Time Reversibility and Energy Conservation
 
@@ -117,6 +117,6 @@ You can use the adaptive solver by passing an `AdaptiveBoris` object as the seco
 
 ```julia
 # Adaptive Boris with safety factor 0.05 (20 steps per period)
-alg = AdaptiveBoris(safety=0.05, dtmax=0.5)
+alg = AdaptiveBoris(safety=0.05)
 sol = TestParticle.solve(prob, alg)[1]
 ```

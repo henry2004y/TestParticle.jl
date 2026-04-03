@@ -92,15 +92,15 @@ prob_ode1 = ODEProblem(trace_normalized!, u0_1, tspan1, param1)
 adaptive_solvers_1 = [
     (
         "AdaptiveBoris (η=1/16)",
-        AdaptiveBoris(; dtmax = T_gyro / 4, safety = 1 / 16),
+        AdaptiveBoris(; safety = 1 / 16),
     ),
     (
         "AdaptiveBoris (η=1/8)",
-        AdaptiveBoris(; dtmax = T_gyro / 4, safety = 1 / 8),
+        AdaptiveBoris(; safety = 1 / 8),
     ),
     (
         "AdaptiveBoris (η=1/4)",
-        AdaptiveBoris(; dtmax = T_gyro / 4, safety = 1 / 4),
+        AdaptiveBoris(; safety = 1 / 4),
     ),
 ]
 
@@ -245,7 +245,7 @@ boris_steps = Int[]
 boris_errors = Float64[]
 
 for s in safety_values
-    alg = AdaptiveBoris(; dtmax = T_gyro, safety = s)
+    alg = AdaptiveBoris(; safety = s)
     sol = TP.solve(prob_tp2, alg)[1]
     push!(boris_steps, length(sol.t))
     push!(boris_errors, max_velocity_error(sol))
@@ -336,11 +336,11 @@ prob_ode3 = ODEProblem(trace_normalized!, u0_2, tspan3, param3)
 adaptive_solvers_3 = [
     (
         "AdaptiveBoris (η=0.1)",
-        AdaptiveBoris(; dtmax = T_gyro / 4, safety = 0.1),
+        AdaptiveBoris(; safety = 0.1),
     ),
     (
         "AdaptiveBoris (η=0.2)",
-        AdaptiveBoris(; dtmax = T_gyro / 4, safety = 0.2),
+        AdaptiveBoris(; safety = 0.2),
     ),
 ]
 
