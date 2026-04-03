@@ -9,11 +9,11 @@ import TestParticle as TP
 using StaticArrays
 using Chairmarks
 
-function setup_spherical_field()
-   r = logrange(0.1, 10.0, length = 16)
-   r_uniform = range(0.1, 10.0, length = 16)
-   θ = range(0, π, length = 16)
-   ϕ = range(0, 2π, length = 16)
+function setup_spherical_field(ns = 16)
+   r = logrange(0.1, 10.0, length = ns)
+   r_uniform = range(0.1, 10.0, length = ns)
+   θ = range(0, π, length = ns)
+   ϕ = range(0, 2π, length = ns)
 
    B₀ = 1e-8 # [nT]
    B = zeros(3, length(r), length(θ), length(ϕ)) # vector
@@ -34,10 +34,10 @@ function setup_spherical_field()
    return B_field_nu, A_field_nu, B_field, A_field
 end
 
-function setup_cartesian_field()
-   x = range(-10, 10, length = 16)
-   y = range(-10, 10, length = 16)
-   z = range(-10, 10, length = 16)
+function setup_cartesian_field(ns = 16)
+   x = range(-10, 10, length = ns)
+   y = range(-10, 10, length = ns)
+   z = range(-10, 10, length = ns)
    B = zeros(3, length(x), length(y), length(z)) # vector
    B[3, :, :, :] .= 10e-9
    A = zeros(length(x), length(y), length(z)) # scalar
@@ -64,10 +64,10 @@ function setup_cartesian_nonuniform_field()
    return B_field, A_field
 end
 
-function setup_time_dependent_field()
-   x = range(-10, 10, length = 16)
-   y = range(-10, 10, length = 16)
-   z = range(-10, 10, length = 16)
+function setup_time_dependent_field(ns = 16)
+   x = range(-10, 10, length = ns)
+   y = range(-10, 10, length = ns)
+   z = range(-10, 10, length = ns)
 
    # Create two time snapshots
    B0 = zeros(3, length(x), length(y), length(z))
@@ -95,14 +95,14 @@ function setup_time_dependent_field()
    return B_field_t
 end
 
-function setup_mixed_precision_field()
-   x = range(0.0f0, 10.0f0, length = 11)
-   y = range(0.0f0, 10.0f0, length = 11)
-   z = range(0.0f0, 10.0f0, length = 11)
-   B = fill(0.0f0, 3, 11, 11, 11)
+function setup_mixed_precision_field(ns = 11, order = 1, bc = 1)
+   x = range(0.0f0, 10.0f0, length = ns)
+   y = range(0.0f0, 10.0f0, length = ns)
+   z = range(0.0f0, 10.0f0, length = ns)
+   B = fill(0.0f0, 3, ns, ns, ns)
    B[3, :, :, :] .= 1.0f-8
 
-   itp = TP.build_interpolator(B, x, y, z)
+   itp = TP.build_interpolator(B, x, y, z, order, bc)
    return itp
 end
 
@@ -158,6 +158,45 @@ Numerical field data from files is often stored in `Float32`. TestParticle suppo
 @be itp_f32($loc_f32)
 @be itp_f32($loc_f64)
 ```
+
+## Memory usage analysis
+
+Large numerical field arrays can consume significant amounts of memory. It's important that interpolators are memory-efficient during both construction and storage.
+
+For **linear interpolation (`order=1`)**, construction is near zero-allocation because it creates a wrapper around a reinterpreted view of your existing array.
+
+For **higher-order interpolation (`order ≥ 2`)**, `FastInterpolations.jl` must precompute interpolation coefficients to ensure $O(1)$ lookup performance. This process **allocates an additional array of the same size** as your input data.
+
+We can measure this difference using `@be`.
+
+```@repl interp
+# Order 1: Minimal allocations (Uses a view)
+@be setup_mixed_precision_field(11, 1)
+
+# Order 2: Significant allocations (Computes coefficients)
+@be setup_mixed_precision_field(11, 2)
+```
+
+Comparing the ratios relative to the original array size illustrates the overhead:
+
+```@repl interp
+# Original 4D field array size
+B = fill(0.0f0, 3, 11, 11, 11);
+size_B = Base.summarysize(B)
+
+# Total size for order=1 (Essentially the input array size)
+size_itp1 = Base.summarysize(itp_f32)
+
+# Total size for order=2 (Input array + Coefficient array)
+itp_f32_q = setup_mixed_precision_field(11, 2);
+size_itp2 = Base.summarysize(itp_f32_q)
+
+# Ratios relative to raw data
+size_itp1 / size_B
+size_itp2 / size_B
+```
+
+As a rule of thumb, linear interpolation has nearly zero memory overhead (ratio ≈ 1.0), while quadratic or cubic interpolation doubles the memory footprint (ratio ≈ 8.0) to store the coefficients.
 
 ## Time-dependent field interpolation
 
