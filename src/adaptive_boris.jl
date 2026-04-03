@@ -1,21 +1,18 @@
 # Adaptive Boris method
 
 struct AdaptiveBoris{T}
-    dtmin::T
-    dtmax::T
     safety::T
 end
 
 """
-    AdaptiveBoris(; dtmin, dtmax, safety=0.1)
+    AdaptiveBoris(; safety=0.1)
 
 Adaptive Boris method with adaptive time stepping based on local gyroperiod.
-The time step is determined by `dt = safety * T_gyro = safety * 2π / |qB/m|`,
-clamped by `dtmin` and `dtmax`.
+The time step is determined by `dt = safety * T_gyro = safety * 2π / |qB/m|`.
 """
-function AdaptiveBoris(; dtmax, dtmin = 1.0e-2 * dtmax, safety = 0.1)
-    T = promote_type(typeof(dtmin), typeof(dtmax), typeof(safety))
-    return AdaptiveBoris{T}(T(dtmin), T(dtmax), T(safety))
+function AdaptiveBoris(; safety = 0.1)
+    T = typeof(safety)
+    return AdaptiveBoris{T}(T(safety))
 end
 """
     solve(prob::TraceProblem, alg::AdaptiveBoris,
@@ -176,12 +173,6 @@ function _solve(
     return reduce(vcat, results)
 end
 
-@inline function _calculate_dt(r, t, p, alg, ttotal)
-    q2m, Bfunc = p[1], p[4]
-    B = Bfunc(r, t)
-    ω = abs(q2m) * norm(B)
-    return sign(ttotal) * clamp(2π * alg.safety / ω, alg.dtmin, alg.dtmax)
-end
 
 @muladd function _adaptive_boris!(
         sols, prob, irange, alg, savestepinterval, isoutofdomain,
@@ -197,6 +188,10 @@ end
     if SaveWork
         vars_dim += 4
     end
+
+    # Pre-calculate common factors for time step calculation
+    # dt = safety * 2π / (abs(q2m) * Bmag)
+    C = (2π * alg.safety * sign(tspan[2] - tspan[1])) / abs(q2m)
 
     @fastmath @inbounds for i in irange
         # Initialize solution containers
@@ -221,7 +216,8 @@ end
         end
 
         # Initial dt calculation
-        dt = _calculate_dt(r, t, p, alg, ttotal)
+        Bmag = norm(Bfunc(r, t))
+        dt = C / Bmag
 
         # Backstep velocity: v(0) -> v(-1/2) using dt
         v = update_velocity(v, r, p, -0.5 * dt, t)
@@ -267,7 +263,8 @@ end
             end
 
             # New dt
-            dt_new = _calculate_dt(r, t, p, alg, ttotal)
+            Bmag = norm(Bfunc(r, t))
+            dt_new = C / Bmag
 
             # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
