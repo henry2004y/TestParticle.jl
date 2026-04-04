@@ -236,7 +236,7 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
     end
 
     prob_bw = TraceProblem(
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
+        SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
         prob_func = prob_func_bw
     )
 
