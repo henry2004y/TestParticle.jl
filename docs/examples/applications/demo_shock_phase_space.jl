@@ -97,7 +97,7 @@ end;
 
 # ## Simulation Setup
 
-trajectories = 1000 # number of particles
+trajectories = 5000 # number of particles
 tspan = (0.0, 50.0) # s
 dt_interp = 1.0e-3 # s
 
@@ -132,19 +132,24 @@ println("Simulation complete.")
 # ## Analysis and Plotting
 # We bin the particle trajectories into phase space histograms.
 
-function bin_results(sols)
+function bin_results(sols, n0, trajectories, dt_interp; dx_km=5.0, dv_km=10.0)
     println("Binning results...")
     xrange = [-300, 300] # km
-    dxx = 5.0 # km
     vrange = [-1000, 1000] # km/s
-    dv = 10.0 # km/s
 
-    x_edges = xrange[1]:dxx:xrange[2]
-    v_edges = vrange[1]:dv:vrange[2]
+    x_edges = xrange[1]:dx_km:xrange[2]
+    v_edges = vrange[1]:dv_km:vrange[2]
 
     h_x_vx = Hist2D(; binedges = (x_edges, v_edges))
     h_x_vy = Hist2D(; binedges = (x_edges, v_edges))
     h_x_vz = Hist2D(; binedges = (x_edges, v_edges))
+
+    ## Normalization factor for phase space density f(x, v_i)
+    # n0 = integral f d3v. We integrate over 2 dimensions in each 2D plot.
+    # f(x, v_x) = \int f(x, vx, vy, vz) dvy dvz.
+    # Weight per time step should be |vx| to recover f from time-integrated counts.
+    # Normalization: S = n0 * dt / (trajectories * dx * dv)
+    S = n0 * dt_interp / (trajectories * dx_km * 1e3 * dv_km * 1e3)
 
     ## Binning loop
     for i in eachindex(sols)
@@ -152,21 +157,28 @@ function bin_results(sols)
 
         for state in s.u
             x = state[1] / 1.0e3
-            vx = state[4] / 1.0e3
-            vy = state[5] / 1.0e3
-            vz = state[6] / 1.0e3
+            vx = state[4]
+            vy = state[5]
+            vz = state[6]
+            
+            vx_km = vx / 1e3
+            vy_km = vy / 1e3
+            vz_km = vz / 1e3
 
-            push!(h_x_vx, x, vx)
-            push!(h_x_vy, x, vy)
-            push!(h_x_vz, x, vz)
+            ## Weight by local |vx| to get density from time-integrated counts
+            w = abs(vx)
+            push!(h_x_vx, x, vx_km, weight=w)
+            push!(h_x_vy, x, vy_km, weight=w)
+            push!(h_x_vz, x, vz_km, weight=w)
         end
     end
     println("Binning complete.")
 
-    return h_x_vx, h_x_vy, h_x_vz
+    return h_x_vx * S, h_x_vy * S, h_x_vz * S
 end
 
-h_x_vx, h_x_vy, h_x_vz = bin_results(sols);
+# Upstream density (consistent with VDF)
+h_x_vx, h_x_vy, h_x_vz = bin_results(sols, n0_p, trajectories, dt_interp);
 
 # ### Phase Space Plots
 # The reconstructed phase space distributions.
@@ -175,17 +187,17 @@ fig = Figure(size = (800, 900), fontsize = 20)
 
 ax1 = Axis(fig[1, 1], title = "Phase Space X-Vx", ylabel = "Vx [km/s]")
 hm1 = heatmap!(ax1, h_x_vx, colormap = :turbo)
-Colorbar(fig[1, 2], hm1, label = "Counts")
+Colorbar(fig[1, 2], hm1, label = "f(x, vx) [s/m^4]")
 
 ax2 = Axis(fig[2, 1], title = "Phase Space X-Vy", ylabel = "Vy [km/s]")
 hm2 = heatmap!(ax2, h_x_vy, colormap = :turbo)
-Colorbar(fig[2, 2], hm2, label = "Counts")
+Colorbar(fig[2, 2], hm2, label = "f(x, vy) [s/m^4]")
 
 ax3 = Axis(
     fig[3, 1], title = "Phase Space X-Vz", xlabel = "Position x [km]", ylabel = "Vz [km/s]"
 )
 hm3 = heatmap!(ax3, h_x_vz, colormap = :turbo)
-Colorbar(fig[3, 2], hm3, label = "Counts")
+Colorbar(fig[3, 2], hm3, label = "f(x, vz) [s/m^4]")
 fig = DisplayAs.PNG(fig) #hide
 
 # ### Backward Tracing and Reconstruction
@@ -263,28 +275,38 @@ fig_comp = Figure(size = (1000, 800), fontsize = 20)
 vx_grid_km = vx_grid ./ 1.0e3
 vy_grid_km = vy_grid ./ 1.0e3
 
-## Forward plots
+## Forward plots (Integrated f(vx, vy) at detector)
+# To get density f from crossings, we weight by 1/|vx|
+function bin_crossings(vs, n_upstream, trajectories; dv_km=20.0)
+    v_edges = -1000:dv_km:1000
+    h = Hist2D(; binedges = (v_edges, v_edges))
+    # For a pulse/slab injection, the total counts of crossings N_cross(v) 
+    # are directly proportional to the phase space density f(v).
+    # Normalization: S = n_upstream / (trajectories * dv^2)
+    # We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
+    S = (n_upstream / trajectories) / (dv_km * 1e3)^2
+    for v in vs
+        push!(h, v[1]/1e3, v[2]/1e3)
+    end
+    return h * S * 1.0e6 # [s^2/km^2]
+end
+
+h_up_fw = bin_crossings(vs_up, n0_p, trajectories)
+h_down_fw = bin_crossings(vs_down, n0_p, trajectories)
+
 ax_up_fw = Axis(
     fig_comp[1, 1];
     title = "Forward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
 )
-h_up_fw = Hist2D(; binedges = (vx_grid_km, vy_grid_km))
-for v in vs_up
-    push!(h_up_fw, v[1] / 1.0e3, v[2] / 1.0e3)
-end
 hm_up_fw = heatmap!(ax_up_fw, h_up_fw, colormap = :turbo)
-Colorbar(fig_comp[1, 2], hm_up_fw, label = "Counts")
+Colorbar(fig_comp[1, 2], hm_up_fw, label = "f(vx, vy) [s^2/km^2]")
 
 ax_down_fw = Axis(
     fig_comp[1, 3];
     title = "Forward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
 )
-h_down_fw = Hist2D(; binedges = (vx_grid_km, vy_grid_km))
-for v in vs_down
-    push!(h_down_fw, v[1] / 1.0e3, v[2] / 1.0e3)
-end
 hm_down_fw = heatmap!(ax_down_fw, h_down_fw, colormap = :turbo)
-Colorbar(fig_comp[1, 4], hm_down_fw, label = "Counts")
+Colorbar(fig_comp[1, 4], hm_down_fw, label = "f(vx, vy) [s^2/km^2]")
 
 ## Backward plots
 ax_up_bw = Axis(
