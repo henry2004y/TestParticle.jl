@@ -13,6 +13,7 @@ using FHist
 using VelocityDistributionFunctions
 using CairoMakie
 using Meshes
+using Statistics
 CairoMakie.activate!(type = "png") #hide
 
 Random.seed!(42);
@@ -20,26 +21,23 @@ Random.seed!(42);
 # ## Physics Constants & Parameters
 # We use analytical profiles to represent the shock transition.
 
-const Tio = 3.0  # eV
-const vitho = sqrt(2 * TP.qᵢ * Tio / TP.mᵢ) # ~24.0 km/s
+const Tio = 3.0  # [eV]
+const vitho = sqrt(2 * TP.qᵢ * Tio / TP.mᵢ) # ~24.0 [km/s]
 
-const Vsw = -400.0e3 # m/s
-const nsw = 5.0e6  # m^-3
-const P0_val = 0.08e-9 # Pa
-const l_shock = 5.0e3 # m
+const Vsw = -400.0e3 # [m/s]
+const Psw = 0.08e-9 # [Pa]
+const shock_width = 5.0e3 # [m]
 
 ## Shock Parameters
-const n0_p = 3.0e6 # m^-3
-const n1_p = 8.0e6 # m^-3
+const n0_p = 3.0e6 # [m^-3]
+const n1_p = 8.0e6 # [m^-3]
 
 ## Magnetic Field Parameters
-const theta = 45.0
-const Bmagnitude = 30.0e-9 # T
+const θ = 45.0 # [degree]
+const Bmag = 30.0e-9 # [T]
 
-function get_B0_B1(theta, B_mag)
-    theta_rad = deg2rad(theta)
-    Bup_x = B_mag * cos(theta_rad)
-    Bup_y = B_mag * sin(theta_rad)
+function get_B0_B1(θ, B_mag)
+    Bup_y, Bup_x = B_mag .* sincosd(θ)
     Bup_mag = B_mag
 
     Bdown_x = Bup_x
@@ -51,10 +49,8 @@ function get_B0_B1(theta, B_mag)
     return B0, B1
 end
 
-B0_calc, B1_calc = get_B0_B1(theta, Bmagnitude)
-const B0_val = B0_calc # T
-const B1_val = B1_calc # T
-const Bx_val = 5.0e-9; # T
+const B0, B1 = get_B0_B1(θ, Bmag) # [T]
+const Bx = 5.0e-9; # [T]
 
 # ## Field Definitions
 # We define custom analytical functions for the electric and magnetic fields across the shock.
@@ -64,8 +60,8 @@ Magnetic Field
 """
 function get_B_shock(r)
     x = r[1]
-    by = -B0_val * tanh(x / l_shock) + B1_val
-    bx = Bx_val
+    by = -B0 * tanh(x / shock_width) + B1
+    bx = Bx
     bz = 0.0
     return SVector{3}(bx, by, bz)
 end
@@ -74,23 +70,23 @@ end
 Electric Field based on generalized Ohm's law, including the Hall term and Electron Pressure Gradient.
 """
 function get_E_shock(r)
-    xnorm = r[1] / l_shock
+    xnorm = r[1] / shock_width
     tanh_v = tanh(xnorm)
     sech_v = sech(xnorm)
     ## Ion density for Harris current sheet
     ni = -n0_p * tanh_v + n1_p
 
     ## Jz from Ampere's Law
-    jz = -B0_val * sech_v^2 / (TP.μ₀ * l_shock)
+    jz = -B0 * sech_v^2 / (TP.μ₀ * shock_width)
 
-    by = -B0_val * tanh_v + B1_val
-    bx = Bx_val
+    by = -B0 * tanh_v + B1
+    bx = Bx
 
     ## Ohm's Law and momentum equation terms
     eni = TP.qᵢ * ni
-    ex = -jz * by / eni + P0_val * sech_v^2 / (eni * l_shock)
+    ex = -jz * by / eni + Psw * sech_v^2 / (eni * shock_width)
     ey = jz * bx / eni
-    ez = -Vsw * (B1_val - B0_val)
+    ez = -Vsw * (B1 - B0)
 
     return SVector{3}(ex, ey, ez)
 end;
@@ -166,9 +162,9 @@ function bin_results(sols, n0, trajectories, dt_interp; dx_km = 5.0, dv_km = 10.
 
             ## Weight by local |vx| to get density from time-integrated counts
             w = abs(vx)
-            push!(h_x_vx, x, vx_km, weight = w)
-            push!(h_x_vy, x, vy_km, weight = w)
-            push!(h_x_vz, x, vz_km, weight = w)
+            push!(h_x_vx, x, vx_km, w)
+            push!(h_x_vy, x, vy_km, w)
+            push!(h_x_vz, x, vz_km, w)
         end
     end
     println("Binning complete.")
@@ -186,17 +182,17 @@ fig = Figure(size = (800, 900), fontsize = 20)
 
 ax1 = Axis(fig[1, 1], title = "Phase Space X-Vx", ylabel = "Vx [km/s]")
 hm1 = heatmap!(ax1, h_x_vx, colormap = :turbo)
-Colorbar(fig[1, 2], hm1, label = "f(x, vx) [s/m^4]")
+Colorbar(fig[1, 2], hm1, label = L"[\mathrm{s}/\mathrm{m}^4]")
 
 ax2 = Axis(fig[2, 1], title = "Phase Space X-Vy", ylabel = "Vy [km/s]")
 hm2 = heatmap!(ax2, h_x_vy, colormap = :turbo)
-Colorbar(fig[2, 2], hm2, label = "f(x, vy) [s/m^4]")
+Colorbar(fig[2, 2], hm2, label = L"[\mathrm{s}/\mathrm{m}^4]")
 
 ax3 = Axis(
     fig[3, 1], title = "Phase Space X-Vz", xlabel = "Position x [km]", ylabel = "Vz [km/s]"
 )
 hm3 = heatmap!(ax3, h_x_vz, colormap = :turbo)
-Colorbar(fig[3, 2], hm3, label = "f(x, vz) [s/m^4]")
+Colorbar(fig[3, 2], hm3, label = L"[\mathrm{s}/\mathrm{m}^4]")
 fig = DisplayAs.PNG(fig) #hide
 
 # ### Backward Tracing and Reconstruction
@@ -204,19 +200,25 @@ fig = DisplayAs.PNG(fig) #hide
 # We compare the forward reconstruction (from crossings) with the backward reconstruction at these locations.
 
 ## Define detectors
-x_up, x_down = 1.0e5, -1.0e5
+x_up, x_down = 1.0e5, -1.0e5 # [m]
 detector_up = Meshes.Plane(Meshes.Point(x_up, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 detector_down = Meshes.Plane(Meshes.Point(x_down, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 
 ## Forward Reconstruction
 println("Calculating forward crossings...")
-vs_up, _ = get_particle_crossings(sols, detector_up)
-vs_down, _ = get_particle_crossings(sols, detector_down)
+ws0 = [pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols]
+vs_up, ws_up = get_particle_crossings(sols, detector_up, ws0)
+vs_down, ws_down = get_particle_crossings(sols, detector_down, ws0)
+
+## Calculate source flux Gamma for Framework 2
+## Gamma = n * <|vx|> from the analytical distribution
+vx_mean = mean(abs(v[1]) for v in (rand(vdf) for _ in 1:100000))
+gamma_up = n0_p * vx_mean
 
 ## Backward Tracing Reconstruction
 # Define a 2D velocity grid at the detector
-vx_grid = range(-1000, 1000, length = 100) .* 1.0e3
-vy_grid = range(-1000, 1000, length = 100) .* 1.0e3
+vx_grid = range(-1000.0e3, 1000.0e3, length = 100)
+vy_grid = range(-1000.0e3, 1000.0e3, length = 100)
 vz_fixed = 0.0
 
 function backward_trace(x_det, vx_grid, vy_grid, vz)
@@ -269,63 +271,109 @@ println("Starting backward tracing at downstream detector...")
 f_down_bw = backward_trace(x_down, vx_grid, vy_grid, vz_fixed)
 
 ## Visualization of Comparison
-fig_comp = Figure(size = (1000, 800), fontsize = 20)
+# Forward tracing plots (Integrated f(vx, vy) at detector)
+
+## Framework 1: Phase Space Tracking (The Liouville Method)
+## We take the arithmetic mean of conserved analytical weights from the source.
+## To match the 2D integrated density, we multiply by sqrt(2*pi)*sigma.
+function bin_crossings_liouville(vs, ws, vitho; dv_km = 20.0)
+    v_edges = -1000:dv_km:1000
+    h_sum = Hist2D(; binedges = (v_edges, v_edges))
+    h_cnt = Hist2D(; binedges = (v_edges, v_edges))
+
+    for (v, w) in zip(vs, ws)
+        push!(h_sum, v[1] / 1.0e3, v[2] / 1.0e3, w)
+        push!(h_cnt, v[1] / 1.0e3, v[2] / 1.0e3, 1.0)
+    end
+    ## Mean weight in each bin
+    f_mean = h_sum.bincounts ./ h_cnt.bincounts
+    ## Replace NaNs (no particles) with 0
+    f_mean[isnan.(f_mean)] .= 0.0
+
+    ## Convert 3D PDF to 2D integrated PDF: factor of sqrt(pi)*vitho
+    return h_sum, f_mean .* (sqrt(pi) * vitho) * 1.0e6
+end
+
+## Framework 2: Flux Injection (The Macro-Particle Method)
+## We treat particles as macro-particles and account for physical flux.
+## f = counts / (dt * dA * dv^3 * |vx|)
+function bin_crossings_flux(vs, trajectories, gamma; dv_km = 20.0)
+    v_edges = -1000:dv_km:1000
+    h = Hist2D(; binedges = (v_edges, v_edges))
+
+    ## Weight each crossing by 1/|vx| to recover density from flux
+    for v in vs
+        vx = abs(v[1])
+        push!(h, v[1] / 1.0e3, v[2] / 1.0e3, 1.0 / vx)
+    end
+
+    ## Normalization: S = Gamma / (trajectories * dv^2)
+    ## We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
+    S = (gamma / trajectories) / (dv_km * 1.0e3)^2
+    return h * S * 1.0e6 # [s^2/km^2]
+end
+
+h_up_fw_m1_cnt, f_up_fw_m1 = bin_crossings_liouville(vs_up, ws_up, vitho)
+h_down_fw_m1_cnt, f_down_fw_m1 = bin_crossings_liouville(vs_down, ws_down, vitho)
+
+h_up_fw_m2 = bin_crossings_flux(vs_up, trajectories, gamma_up)
+h_down_fw_m2 = bin_crossings_flux(vs_down, trajectories, gamma_up)
+
+
+fig_comp = Figure(size = (1000, 1000), fontsize = 20)
 
 vx_grid_km = vx_grid ./ 1.0e3
 vy_grid_km = vy_grid ./ 1.0e3
 
-## Forward plots (Integrated f(vx, vy) at detector)
-# To get density f from crossings, we weight by 1/|vx|
-function bin_crossings(vs, n_upstream, trajectories; dv_km = 20.0)
-    v_edges = -1000:dv_km:1000
-    h = Hist2D(; binedges = (v_edges, v_edges))
-    ## For a pulse/slab injection, the total counts of crossings N_cross(v)
-    ## are directly proportional to the phase space density f(v).
-    ## Normalization: S = n_upstream / (trajectories * dv^2)
-    ## We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
-    S = (n_upstream / trajectories) / (dv_km * 1.0e3)^2
-    for v in vs
-        push!(h, v[1] / 1.0e3, v[2] / 1.0e3)
-    end
-    return h * S * 1.0e6 # [s^2/km^2]
-end
-
-h_up_fw = bin_crossings(vs_up, n0_p, trajectories)
-h_down_fw = bin_crossings(vs_down, n0_p, trajectories)
-
-ax_up_fw = Axis(
+## Row 1: Forward Method 1 (Liouville)
+ax_up_m1 = Axis(
     fig_comp[1, 1];
-    title = "Forward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
+    title = "Liouville Upstream (x = 100 km)", ylabel = "vy [km/s]"
 )
-hm_up_fw = heatmap!(ax_up_fw, h_up_fw, colormap = :turbo)
-Colorbar(fig_comp[1, 2], hm_up_fw, label = "f(vx, vy) [s^2/km^2]")
+hm_up_m1 = heatmap!(ax_up_m1, h_up_fw_m1_cnt.binedges[1], h_up_fw_m1_cnt.binedges[2], f_up_fw_m1, colormap = :turbo)
+Colorbar(fig_comp[1, 2], hm_up_m1, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
 
-ax_down_fw = Axis(
+ax_down_m1 = Axis(
     fig_comp[1, 3];
-    title = "Forward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
+    title = "Liouville Downstream (x = -100 km)"
 )
-hm_down_fw = heatmap!(ax_down_fw, h_down_fw, colormap = :turbo)
-Colorbar(fig_comp[1, 4], hm_down_fw, label = "f(vx, vy) [s^2/km^2]")
+hm_down_m1 = heatmap!(ax_down_m1, h_down_fw_m1_cnt.binedges[1], h_down_fw_m1_cnt.binedges[2], f_down_fw_m1, colormap = :turbo)
+Colorbar(fig_comp[1, 4], hm_down_m1, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
 
-## Backward plots
-ax_up_bw = Axis(
+## Row 2: Forward Method 2 (Flux)
+ax_up_m2 = Axis(
     fig_comp[2, 1];
-    title = "Backward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
+    title = "Flux Upstream (x = 100 km)", ylabel = "vy [km/s]"
+)
+hm_up_m2 = heatmap!(ax_up_m2, h_up_fw_m2, colormap = :turbo)
+Colorbar(fig_comp[2, 2], hm_up_m2, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
+
+ax_down_m2 = Axis(
+    fig_comp[2, 3];
+    title = "Flux Downstream (x = -100 km)"
+)
+hm_down_m2 = heatmap!(ax_down_m2, h_down_fw_m2, colormap = :turbo)
+Colorbar(fig_comp[2, 4], hm_down_m2, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
+
+## Row 3: Backward plots
+ax_up_bw = Axis(
+    fig_comp[3, 1];
+    title = "Backward Upstream (x = 100 km)", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
 )
 hm_up_bw = heatmap!(
     ax_up_bw, vx_grid_km, vy_grid_km, f_up_bw .* 1.0e6;
     colormap = :turbo
 )
-Colorbar(fig_comp[2, 2], hm_up_bw, label = "f(vx, vy) [s^2/km^2]")
+Colorbar(fig_comp[3, 2], hm_up_bw, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
 
 ax_down_bw = Axis(
-    fig_comp[2, 3];
-    title = "Backward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
+    fig_comp[3, 3];
+    title = "Backward Downstream (x = -100 km)", xlabel = "vx [km/s]"
 )
 hm_down_bw = heatmap!(
     ax_down_bw, vx_grid_km, vy_grid_km, f_down_bw .* 1.0e6;
     colormap = :turbo
 )
-Colorbar(fig_comp[2, 4], hm_down_bw, label = "f(vx, vy) [s^2/km^2]")
+Colorbar(fig_comp[3, 4], hm_down_bw, label = L"[\mathrm{s}^2/\mathrm{km}^2]")
 
 fig_comp = DisplayAs.PNG(fig_comp) #hide
