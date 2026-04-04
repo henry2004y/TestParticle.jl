@@ -212,7 +212,7 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
     f_det = fill(NaN, (length(vx_grid), length(vy_grid)))
 
     ## Backward tracing parameters
-    tspan_bw = (0.0, -20.0)
+    tspan_bw = (0.0, -50.0)
 
     ## Use TraceProblem and Parallel Boris for backward tracing
     trajectories_bw = length(vx_grid) * length(vy_grid)
@@ -291,14 +291,20 @@ ax_up_bw = Axis(
     fig_comp[2, 1];
     title = "Backward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
 )
-hm_up_bw = heatmap!(ax_up_bw, vx_grid_km, vy_grid_km, f_up_bw .* 1.0e6, colormap = :turbo)
+hm_up_bw = heatmap!(
+    ax_up_bw, vx_grid_km, vy_grid_km, f_up_bw .* 1.0e6;
+    colormap = :turbo
+)
 Colorbar(fig_comp[2, 2], hm_up_bw, label = "f(vx, vy) [s^2/km^2]")
 
 ax_down_bw = Axis(
     fig_comp[2, 3];
     title = "Backward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
 )
-hm_down_bw = heatmap!(ax_down_bw, vx_grid_km, vy_grid_km, f_down_bw .* 1.0e6, colormap = :turbo)
+hm_down_bw = heatmap!(
+    ax_down_bw, vx_grid_km, vy_grid_km, f_down_bw .* 1.0e6;
+    colormap = :turbo
+)
 Colorbar(fig_comp[2, 4], hm_down_bw, label = "f(vx, vy) [s^2/km^2]")
 
 fig_comp = DisplayAs.PNG(fig_comp) #hide
