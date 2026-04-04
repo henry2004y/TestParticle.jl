@@ -8,10 +8,11 @@ import DisplayAs #hide
 using TestParticle
 import TestParticle as TP
 using StaticArrays
-using OrdinaryDiffEqVerner
 using Random
 using FHist
+using VelocityDistributionFunctions
 using CairoMakie
+using Meshes
 CairoMakie.activate!(type = "png") #hide
 
 Random.seed!(42);
@@ -19,14 +20,8 @@ Random.seed!(42);
 # ## Physics Constants & Parameters
 # We use analytical profiles to represent the shock transition.
 
-const m_p = TP.mᵢ
-const e = TP.qᵢ
-const μ₀ = TP.μ₀
-
-const Tiw = 12.0 # eV
 const Tio = 3.0  # eV
-const vithw = sqrt(2 * e * Tiw / m_p) # ~47.9 km/s
-const vitho = sqrt(2 * e * Tio / m_p) # ~24.0 km/s
+const vitho = sqrt(2 * TP.qᵢ * Tio / TP.mᵢ) # ~24.0 km/s
 
 const Vsw = -400.0e3 # m/s
 const nsw = 5.0e6  # m^-3
@@ -86,13 +81,13 @@ function get_E_shock(r)
     ni = -n0_p * tanh_v + n1_p
 
     ## Jz from Ampere's Law
-    jz = -B0_val * sech_v^2 / (μ₀ * l_shock)
+    jz = -B0_val * sech_v^2 / (TP.μ₀ * l_shock)
 
     by = -B0_val * tanh_v + B1_val
     bx = Bx_val
 
     ## Ohm's Law and momentum equation terms
-    eni = e * ni
+    eni = TP.qᵢ * ni
     ex = -jz * by / eni + P0_val * sech_v^2 / (eni * l_shock)
     ey = jz * bx / eni
     ez = -Vsw * (B1_val - B0_val)
@@ -110,32 +105,24 @@ dt_interp = 1.0e-3 # s
 param = prepare(get_E_shock, get_B_shock; species = Proton)
 
 ## Generate random initial velocities (Maxwellian)
-const vxi_rand = randn(trajectories) .* (vithw / sqrt(2))
-const vyi_rand = randn(trajectories) .* (vithw / sqrt(2))
-const vzi_rand = randn(trajectories) .* (vithw / sqrt(2))
-viabs = @. sqrt(vxi_rand^2 + vyi_rand^2 + vzi_rand^2)
-const vxi_init = vxi_rand .+ Vsw # Shift by solar wind speed
-
-## Calculate weights (if needed for non-Maxwellian initialization logic)
-const weight_factor = (vithw / vitho)^3
-const exp_factor = (vitho^2 - vithw^2) / (vitho^2 * vithw^2)
-weights = weight_factor .* exp.(viabs .^ 2 .* exp_factor)
+# Calculate pressures from temperatures in eV
+p_orig = n0_p * TP.qᵢ * Tio
+const vdf = TP.Maxwellian(SA[Vsw, 0.0, 0.0], p_orig, n0_p; m = TP.mᵢ)
+const vtho = sqrt(2 * TP.qᵢ * Tio / TP.mᵢ)
 
 ## Initial Conditions (Upstream)
 function prob_func(prob, i, repeat)
+    v = rand(vdf)
+
     x0_start = 300.0e3
     y0_start = 0.0
     z0_start = 0.0
-
-    vx = vxi_init[i]
-    vy = vyi_rand[i]
-    vz = vzi_rand[i]
-    u0 = [x0_start, y0_start, z0_start, vx, vy, vz]
+    u0 = SA[x0_start, y0_start, z0_start, v[1], v[2], v[3]]
 
     return remake(prob, u0 = u0)
 end
 
-u0_dummy = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func)
 
 println("Starting simulation with $trajectories particles...")
@@ -145,12 +132,12 @@ println("Simulation complete.")
 # ## Analysis and Plotting
 # We bin the particle trajectories into phase space histograms.
 
-function bin_results(sols, weights)
+function bin_results(sols)
     println("Binning results...")
-    xrange = [-300, 300] .* 1.0e3
-    dxx = 5.0e3
-    vrange = [-1000, 1000] .* 1.0e3
-    dv = 10.0e3
+    xrange = [-300, 300] # km
+    dxx = 5.0 # km
+    vrange = [-1000, 1000] # km/s
+    dv = 10.0 # km/s
 
     x_edges = xrange[1]:dxx:xrange[2]
     v_edges = vrange[1]:dv:vrange[2]
@@ -162,17 +149,16 @@ function bin_results(sols, weights)
     ## Binning loop
     for i in eachindex(sols)
         s = sols[i]
-        w = weights[i]
 
         for state in s.u
-            x = state[1]
-            vx = state[4]
-            vy = state[5]
-            vz = state[6]
+            x = state[1] / 1.0e3
+            vx = state[4] / 1.0e3
+            vy = state[5] / 1.0e3
+            vz = state[6] / 1.0e3
 
-            push!(h_x_vx, x, vx, w)
-            push!(h_x_vy, x, vy, w)
-            push!(h_x_vz, x, vz, w)
+            push!(h_x_vx, x, vx)
+            push!(h_x_vy, x, vy)
+            push!(h_x_vz, x, vz)
         end
     end
     println("Binning complete.")
@@ -180,24 +166,139 @@ function bin_results(sols, weights)
     return h_x_vx, h_x_vy, h_x_vz
 end
 
-h_x_vx, h_x_vy, h_x_vz = bin_results(sols, weights);
+h_x_vx, h_x_vy, h_x_vz = bin_results(sols);
 
 # ### Phase Space Plots
+# The reconstructed phase space distributions.
 
-fig = Figure(size = (800, 1000))
+fig = Figure(size = (800, 900), fontsize = 20)
 
-ax1 = Axis(fig[1, 1], title = "Phase Space X-Vx", ylabel = "Vx [m/s]")
+ax1 = Axis(fig[1, 1], title = "Phase Space X-Vx", ylabel = "Vx [km/s]")
 hm1 = heatmap!(ax1, h_x_vx, colormap = :turbo)
-Colorbar(fig[1, 2], hm1, label = "Weighted Counts")
+Colorbar(fig[1, 2], hm1, label = "Counts")
 
-ax2 = Axis(fig[2, 1], title = "Phase Space X-Vy", ylabel = "Vy [m/s]")
+ax2 = Axis(fig[2, 1], title = "Phase Space X-Vy", ylabel = "Vy [km/s]")
 hm2 = heatmap!(ax2, h_x_vy, colormap = :turbo)
-Colorbar(fig[2, 2], hm2, label = "Weighted Counts")
+Colorbar(fig[2, 2], hm2, label = "Counts")
 
 ax3 = Axis(
-    fig[3, 1], title = "Phase Space X-Vz", xlabel = "Position x [m]", ylabel = "Vz [m/s]"
+    fig[3, 1], title = "Phase Space X-Vz", xlabel = "Position x [km]", ylabel = "Vz [km/s]"
 )
 hm3 = heatmap!(ax3, h_x_vz, colormap = :turbo)
-Colorbar(fig[3, 2], hm3, label = "Weighted Counts")
-
+Colorbar(fig[3, 2], hm3, label = "Counts")
 fig = DisplayAs.PNG(fig) #hide
+
+# ### Backward Tracing and Reconstruction
+# We now setup plane detectors at $x = 10^5$ and $x = -10^5$.
+# We compare the forward reconstruction (from crossings) with the backward reconstruction at these locations.
+
+## Define detectors
+x_up, x_down = 1.0e5, -1.0e5
+detector_up = Meshes.Plane(Meshes.Point(x_up, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
+detector_down = Meshes.Plane(Meshes.Point(x_down, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
+
+## Forward Reconstruction
+println("Calculating forward crossings...")
+vs_up, _ = get_particle_crossings(sols, detector_up)
+vs_down, _ = get_particle_crossings(sols, detector_down)
+
+## Backward Tracing Reconstruction
+# Define a 2D velocity grid at the detector
+vx_grid = range(-1000, 1000, length = 100) .* 1.0e3
+vy_grid = range(-1000, 1000, length = 100) .* 1.0e3
+vz_fixed = 0.0
+
+function backward_trace(x_det, vx_grid, vy_grid, vz)
+    f_det = fill(NaN, (length(vx_grid), length(vy_grid)))
+
+    ## Backward tracing parameters
+    tspan_bw = (0.0, -20.0)
+
+    ## Use TraceProblem and Parallel Boris for backward tracing
+    trajectories_bw = length(vx_grid) * length(vy_grid)
+    u0_grid = [(vx, vy) for vx in vx_grid, vy in vy_grid]
+
+    function prob_func_bw(prob, i, repeat)
+        vx, vy = u0_grid[i]
+        u0_bw = [x_det, 0.0, 0.0, vx, vy, vz]
+        return remake(prob, u0 = u0_bw)
+    end
+
+    prob_bw = TraceProblem(
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
+        prob_func = prob_func_bw
+    )
+
+    println("Tracing $trajectories_bw points backward...")
+    sols_bw = TP.solve(
+        prob_bw, EnsembleThreads();
+        dt = -dt_interp, trajectories = trajectories_bw, save_everystep = false
+    )
+
+    for i in 1:trajectories_bw
+        sol = sols_bw[i]
+        last_state = sol.u[end]
+        if last_state[1] >= 300.0e3
+            ## VDF at upstream: f(v_final)
+            v_final = last_state[SA[4, 5, 6]]
+            ## VDF(v) built-in probability assessment
+            ## Standard 2D Maxwellian distribution f(vx, vy) integrated over vz
+            ## Factor of sqrt(pi)*vth converts 3D PDF to 2D integrated PDF
+            idx_x = (i - 1) % length(vx_grid) + 1
+            idx_y = (i - 1) ÷ length(vx_grid) + 1
+            f_det[idx_x, idx_y] = pdf(vdf, v_final) * (sqrt(pi) * vdf.vth)
+        end
+    end
+    return f_det
+end
+
+println("Starting backward tracing at upstream detector...")
+f_up_bw = backward_trace(x_up, vx_grid, vy_grid, vz_fixed)
+println("Starting backward tracing at downstream detector...")
+f_down_bw = backward_trace(x_down, vx_grid, vy_grid, vz_fixed)
+
+## Visualization of Comparison
+fig_comp = Figure(size = (1000, 800), fontsize = 20)
+
+vx_grid_km = vx_grid ./ 1.0e3
+vy_grid_km = vy_grid ./ 1.0e3
+
+## Forward plots
+ax_up_fw = Axis(
+    fig_comp[1, 1];
+    title = "Forward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
+)
+h_up_fw = Hist2D(; binedges = (vx_grid_km, vy_grid_km))
+for v in vs_up
+    push!(h_up_fw, v[1] / 1.0e3, v[2] / 1.0e3)
+end
+hm_up_fw = heatmap!(ax_up_fw, h_up_fw, colormap = :turbo)
+Colorbar(fig_comp[1, 2], hm_up_fw, label = "Counts")
+
+ax_down_fw = Axis(
+    fig_comp[1, 3];
+    title = "Forward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
+)
+h_down_fw = Hist2D(; binedges = (vx_grid_km, vy_grid_km))
+for v in vs_down
+    push!(h_down_fw, v[1] / 1.0e3, v[2] / 1.0e3)
+end
+hm_down_fw = heatmap!(ax_down_fw, h_down_fw, colormap = :turbo)
+Colorbar(fig_comp[1, 4], hm_down_fw, label = "Counts")
+
+## Backward plots
+ax_up_bw = Axis(
+    fig_comp[2, 1];
+    title = "Backward f(vx, vy) at x = 100 km", xlabel = "vx [km/s]", ylabel = "vy [km/s]"
+)
+hm_up_bw = heatmap!(ax_up_bw, vx_grid_km, vy_grid_km, f_up_bw .* 1.0e6, colormap = :turbo)
+Colorbar(fig_comp[2, 2], hm_up_bw, label = "f(vx, vy) [s^2/km^2]")
+
+ax_down_bw = Axis(
+    fig_comp[2, 3];
+    title = "Backward f(vx, vy) at x = -100 km", xlabel = "vx [km/s]"
+)
+hm_down_bw = heatmap!(ax_down_bw, vx_grid_km, vy_grid_km, f_down_bw .* 1.0e6, colormap = :turbo)
+Colorbar(fig_comp[2, 4], hm_down_bw, label = "f(vx, vy) [s^2/km^2]")
+
+fig_comp = DisplayAs.PNG(fig_comp) #hide
