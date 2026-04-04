@@ -108,7 +108,6 @@ param = prepare(get_E_shock, get_B_shock; species = Proton)
 # Calculate pressures from temperatures in eV
 p_orig = n0_p * TP.qᵢ * Tio
 const vdf = TP.Maxwellian(SA[Vsw, 0.0, 0.0], p_orig, n0_p; m = TP.mᵢ)
-const vtho = sqrt(2 * TP.qᵢ * Tio / TP.mᵢ)
 
 ## Initial Conditions (Upstream)
 function prob_func(prob, i, repeat)
@@ -132,7 +131,7 @@ println("Simulation complete.")
 # ## Analysis and Plotting
 # We bin the particle trajectories into phase space histograms.
 
-function bin_results(sols, n0, trajectories, dt_interp; dx_km=5.0, dv_km=10.0)
+function bin_results(sols, n0, trajectories, dt_interp; dx_km = 5.0, dv_km = 10.0)
     println("Binning results...")
     xrange = [-300, 300] # km
     vrange = [-1000, 1000] # km/s
@@ -149,7 +148,7 @@ function bin_results(sols, n0, trajectories, dt_interp; dx_km=5.0, dv_km=10.0)
     # f(x, v_x) = \int f(x, vx, vy, vz) dvy dvz.
     # Weight per time step should be |vx| to recover f from time-integrated counts.
     # Normalization: S = n0 * dt / (trajectories * dx * dv)
-    S = n0 * dt_interp / (trajectories * dx_km * 1e3 * dv_km * 1e3)
+    S = n0 * dt_interp / (trajectories * dx_km * 1.0e3 * dv_km * 1.0e3)
 
     ## Binning loop
     for i in eachindex(sols)
@@ -160,16 +159,16 @@ function bin_results(sols, n0, trajectories, dt_interp; dx_km=5.0, dv_km=10.0)
             vx = state[4]
             vy = state[5]
             vz = state[6]
-            
-            vx_km = vx / 1e3
-            vy_km = vy / 1e3
-            vz_km = vz / 1e3
+
+            vx_km = vx / 1.0e3
+            vy_km = vy / 1.0e3
+            vz_km = vz / 1.0e3
 
             ## Weight by local |vx| to get density from time-integrated counts
             w = abs(vx)
-            push!(h_x_vx, x, vx_km, weight=w)
-            push!(h_x_vy, x, vy_km, weight=w)
-            push!(h_x_vz, x, vz_km, weight=w)
+            push!(h_x_vx, x, vx_km, weight = w)
+            push!(h_x_vy, x, vy_km, weight = w)
+            push!(h_x_vz, x, vz_km, weight = w)
         end
     end
     println("Binning complete.")
@@ -258,7 +257,8 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
             ## Factor of sqrt(pi)*vth converts 3D PDF to 2D integrated PDF
             idx_x = (i - 1) % length(vx_grid) + 1
             idx_y = (i - 1) ÷ length(vx_grid) + 1
-            f_det[idx_x, idx_y] = pdf(vdf, v_final) * (sqrt(pi) * vdf.vth)
+            f_det[idx_x, idx_y] =
+                pdf(vdf, SA[v_final[1], v_final[2], 0.0]) * (sqrt(pi) * vitho)
         end
     end
     return f_det
@@ -277,16 +277,16 @@ vy_grid_km = vy_grid ./ 1.0e3
 
 ## Forward plots (Integrated f(vx, vy) at detector)
 # To get density f from crossings, we weight by 1/|vx|
-function bin_crossings(vs, n_upstream, trajectories; dv_km=20.0)
+function bin_crossings(vs, n_upstream, trajectories; dv_km = 20.0)
     v_edges = -1000:dv_km:1000
     h = Hist2D(; binedges = (v_edges, v_edges))
-    # For a pulse/slab injection, the total counts of crossings N_cross(v) 
+    # For a pulse/slab injection, the total counts of crossings N_cross(v)
     # are directly proportional to the phase space density f(v).
     # Normalization: S = n_upstream / (trajectories * dv^2)
     # We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
-    S = (n_upstream / trajectories) / (dv_km * 1e3)^2
+    S = (n_upstream / trajectories) / (dv_km * 1.0e3)^2
     for v in vs
-        push!(h, v[1]/1e3, v[2]/1e3)
+        push!(h, v[1] / 1.0e3, v[2] / 1.0e3)
     end
     return h * S * 1.0e6 # [s^2/km^2]
 end
