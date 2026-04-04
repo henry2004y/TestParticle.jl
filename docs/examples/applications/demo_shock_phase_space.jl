@@ -144,10 +144,10 @@ function bin_results(sols, n0, trajectories, dt_interp; dx_km = 5.0, dv_km = 10.
     h_x_vz = Hist2D(; binedges = (x_edges, v_edges))
 
     ## Normalization factor for phase space density f(x, v_i)
-    # n0 = integral f d3v. We integrate over 2 dimensions in each 2D plot.
-    # f(x, v_x) = \int f(x, vx, vy, vz) dvy dvz.
-    # Weight per time step should be |vx| to recover f from time-integrated counts.
-    # Normalization: S = n0 * dt / (trajectories * dx * dv)
+    ## n0 = integral f d3v. We integrate over 2 dimensions in each 2D plot.
+    ## f(x, v_x) = \int f(x, vx, vy, vz) dvy dvz.
+    ## Weight per time step should be |vx| to recover f from time-integrated counts.
+    ## Normalization: S = n0 * dt / (trajectories * dx * dv)
     S = n0 * dt_interp / (trajectories * dx_km * 1.0e3 * dv_km * 1.0e3)
 
     ## Binning loop
@@ -280,10 +280,10 @@ vy_grid_km = vy_grid ./ 1.0e3
 function bin_crossings(vs, n_upstream, trajectories; dv_km = 20.0)
     v_edges = -1000:dv_km:1000
     h = Hist2D(; binedges = (v_edges, v_edges))
-    # For a pulse/slab injection, the total counts of crossings N_cross(v)
-    # are directly proportional to the phase space density f(v).
-    # Normalization: S = n_upstream / (trajectories * dv^2)
-    # We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
+    ## For a pulse/slab injection, the total counts of crossings N_cross(v)
+    ## are directly proportional to the phase space density f(v).
+    ## Normalization: S = n_upstream / (trajectories * dv^2)
+    ## We multiply by 1e6 to convert s^2/m^2 to s^2/km^2.
     S = (n_upstream / trajectories) / (dv_km * 1.0e3)^2
     for v in vs
         push!(h, v[1] / 1.0e3, v[2] / 1.0e3)
