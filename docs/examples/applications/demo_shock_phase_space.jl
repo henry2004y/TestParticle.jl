@@ -257,8 +257,7 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
             ## Factor of sqrt(pi)*vth converts 3D PDF to 2D integrated PDF
             idx_x = (i - 1) % length(vx_grid) + 1
             idx_y = (i - 1) ÷ length(vx_grid) + 1
-            f_det[idx_x, idx_y] =
-                pdf(vdf, SA[v_final[1], v_final[2], 0.0]) * (sqrt(pi) * vitho)
+            f_det[idx_x, idx_y] = pdf(vdf, v_final) * (sqrt(pi) * vitho)
         end
     end
     return f_det
