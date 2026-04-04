@@ -231,7 +231,7 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
 
     function prob_func_bw(prob, i, repeat)
         vx, vy = u0_grid[i]
-        u0_bw = [x_det, 0.0, 0.0, vx, vy, vz]
+        u0_bw = SA[x_det, 0.0, 0.0, vx, vy, vz]
         return remake(prob, u0 = u0_bw)
     end
 
