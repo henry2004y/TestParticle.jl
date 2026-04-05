@@ -1,8 +1,7 @@
 # # Shock Phase Space
 #
-# This example demonstrates how to trace ions across a collisionless shock and analyze their phase space distribution, following the demo from IRF-matlab.
+# This example demonstrates how to trace ions across a collisionless shock and analyze their phase space distribution, inspired by the demo from IRF-matlab.
 # We utilize Liouville's theorem (phase space density conservation), backward/forward tracing, and flux injection to reconstruct the distribution function.
-# In this specific example, we trace particles forward from a Maxwellian distribution upstream to seeing their evolution downstream.
 
 import DisplayAs #hide
 using TestParticle
@@ -130,112 +129,69 @@ detector_down = Meshes.Plane(Meshes.Point(x_down, 0.0, 0.0), Meshes.Vec(1.0, 0.0
 
 
 # ## Method 1: Flux Injection (The Macro-Particle Method)
-# In this method, simulated particles are treated as macro-particles. Instead of calculating the density directly by counting, we treat the source as a steady flux injection.
-# To convert crossing counts $C_{bin}$ into absolute phase space density, we account for the physical source flux $\Gamma$, the number of numerical particles, and the spatial crossing velocity $|v_x|$ of the bin. Faster particles spend less time in a given spatial volume, which geometrically reduces their volumetric density relative to their flux.
+# In this method, simulated particles are treated as macro-particles.
+# Instead of calculating the density by counting snapshots in time, we treat the source as a steady-state flux injection.
+# To convert crossing events into physical phase-space density, we apply kinematic weighting that maps the instantaneous launch of macro-particles to a continuous stream in a steady state.
 
-# ### Volume Analysis
-# We bin the particle trajectories into phase space histograms.
+# ### Projections
+# We bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 
-function bin_results(sols, n0, trajectories, dt_interp; dx_km = 5.0, dv_km = 10.0)
-    x_edges = -300:dx_km:300
+function bin_crossings_flux_projected(vs, ws, n0, trajectories; dv_km = 20.0)
     v_edges = -1000:dv_km:1000
+    h_xy = Hist2D(; binedges = (v_edges, v_edges))
+    h_xz = Hist2D(; binedges = (v_edges, v_edges))
+    h_yz = Hist2D(; binedges = (v_edges, v_edges))
 
-    h_x_vx = Hist2D(; binedges = (x_edges, v_edges))
-    h_x_vy = Hist2D(; binedges = (x_edges, v_edges))
-    h_x_vz = Hist2D(; binedges = (x_edges, v_edges))
+    ## Normalization S = n / (N * dv^2)
+    dv2 = (dv_km * 1.0e3)^2
+    S = n0 / (trajectories * dv2)
 
-    ## Normalization factor for phase space density f(x, v_i)
-    ## n0 = integral f d3v. We integrate over 2 dimensions in each 2D plot.
-    ## f(x, v_x) = \int f(x, vx, vy, vz) dvy dvz.
-    ## Weight per time step should be |vx| to recover f from time-integrated counts.
-    ## Normalization: S = n0 * dt / (trajectories * dx * dv)
-    S = n0 * dt_interp / (trajectories * dx_km * 1.0e3 * dv_km * 1.0e3)
+    for (v, vxi) in zip(vs, ws)
+        ## Kinematic weight W = |vxi| / |vxd|
+        ## This converts instantaneous launch counts to steady-state density.
+        w = abs(vxi) / abs(v[1])
 
-    ## Binning loop
-    for i in eachindex(sols)
-        s = sols[i]
-
-        for state in s.u
-            x = state[1] * 1.0e-3
-            vx = state[4]
-            vy = state[5]
-            vz = state[6]
-
-            vx_km = vx * 1.0e-3
-            vy_km = vy * 1.0e-3
-            vz_km = vz * 1.0e-3
-
-            ## Weight by local |vx| to get density from time-integrated counts
-            w = abs(vx)
-            push!(h_x_vx, x, vx_km, w)
-            push!(h_x_vy, x, vy_km, w)
-            push!(h_x_vz, x, vz_km, w)
-        end
+        vx_km, vy_km, vz_km = v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3
+        push!(h_xy, vx_km, vy_km, w)
+        push!(h_xz, vx_km, vz_km, w)
+        push!(h_yz, vy_km, vz_km, w)
     end
 
-    return h_x_vx * S, h_x_vy * S, h_x_vz * S
+    ## Units: [s^2/m^5] or similar. We scale by 1e9 for display.
+    return h_xy * S, h_xz * S, h_yz * S
 end
 
-h_x_vx, h_x_vy, h_x_vz = bin_results(sols, n0_p, trajectories, dt_interp);
+println("Calculating forward crossings (Flux Projections)...")
+ws0 = [abs(s.u[1][4]) for s in sols] # initial |vx|
+vs_up_flux, ws_up_flux = get_particle_crossings(sols, detector_up, ws0)
+vs_down_flux, ws_down_flux = get_particle_crossings(sols, detector_down, ws0)
 
-# ### Phase Space Plots
-# The reconstructed phase space distributions.
-
-fig = Figure(size = (800, 900), fontsize = 20)
-ax1 = Axis(fig[1, 1], title = "Phase Space X-Vx", ylabel = "Vx [km/s]")
-hm1 = heatmap!(ax1, h_x_vx, colormap = :turbo)
-Colorbar(fig[1, 2], hm1, label = L"[\mathrm{s}/\mathrm{m}^4]")
-ax2 = Axis(fig[2, 1], title = "Phase Space X-Vy", ylabel = "Vy [km/s]")
-hm2 = heatmap!(ax2, h_x_vy, colormap = :turbo)
-Colorbar(fig[2, 2], hm2, label = L"[\mathrm{s}/\mathrm{m}^4]")
-ax3 = Axis(
-    fig[3, 1], title = "Phase Space X-Vz", xlabel = "Position x [km]", ylabel = "Vz [km/s]"
+h_up_xy, h_up_xz, h_up_yz = bin_crossings_flux_projected(
+    vs_up_flux, ws_up_flux, n0_p, trajectories
 )
-hm3 = heatmap!(ax3, h_x_vz, colormap = :turbo)
-Colorbar(fig[3, 2], hm3, label = L"[\mathrm{s}/\mathrm{m}^4]")
-fig = DisplayAs.PNG(fig) #hide
+h_down_xy, h_down_xz, h_down_yz = bin_crossings_flux_projected(
+    vs_down_flux, ws_down_flux, n0_p, trajectories
+)
 
-# ### Flux-Based Detector Reconstruction
+fig_flux = Figure(size = (1000, 600), fontsize = 18)
+labels = [L"v_x-v_y", L"v_x-v_z", L"v_y-v_z"]
+hists_up = [h_up_xy, h_up_xz, h_up_yz]
+hists_down = [h_down_xy, h_down_xz, h_down_yz]
 
-function bin_crossings_flux(
-        vs, n0, trajectories;
-        dv_km = 20.0, vz_threshold = 10.0
-    )
-    v_edges = -1000:dv_km:1000
-    h = Hist2D(; binedges = (v_edges, v_edges))
-
-    vz_limit = vz_threshold * 1.0e3
-    for v in vs
-        if abs(v[3]) < vz_limit
-            push!(h, v[1] / 1.0e3, v[2] / 1.0e3)
-        end
+for i in 1:3
+    ax_up = Axis(fig_flux[1, i], title = "Upstream $(labels[i])")
+    hm_up = heatmap!(ax_up, hists_up[i], colormap = :turbo)
+    if i == 3
+        Colorbar(fig_flux[1, 4], hm_up, label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]")
     end
 
-    ## f3D = n0 / (N * dvx * dvy * dvz) * count
-    dv3 = (dv_km * 1.0e3)^2 * (2 * vz_limit)
-    S = n0 / (trajectories * dv3)
-    return h * S * 1.0e9
+    ax_down = Axis(fig_flux[2, i], title = "Downstream $(labels[i])")
+    hm_down = heatmap!(ax_down, hists_down[i], colormap = :turbo)
+    if i == 3
+        Colorbar(fig_flux[2, 4], hm_down, label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]")
+    end
 end
-
-println("Calculating forward crossings (Flux Method)...")
-vs_up_flux, _ = get_particle_crossings(sols, detector_up)
-vs_down_flux, _ = get_particle_crossings(sols, detector_down)
-
-h_up_fw_m1 = bin_crossings_flux(vs_up_flux, n0_p, trajectories)
-h_down_fw_m1 = bin_crossings_flux(
-    vs_down_flux, n0_p, trajectories
-)
-
-fig_flux = Figure(size = (1000, 400), fontsize = 18)
-ax_up = Axis(fig_flux[1, 1], title = L"Flux Upstream ($v_z=0$)", ylabel = "vy [km/s]")
-hm_up = heatmap!(ax_up, h_up_fw_m1, colormap = :turbo)
-Colorbar(fig_flux[1, 2], hm_up, label = L"[\mathrm{s}^3/\mathrm{km}^3 \cdot 10^{-9}]")
-
-ax_down = Axis(fig_flux[1, 3], title = L"Flux Downstream ($v_z=0$)", ylabel = "vy [km/s]")
-hm_down = heatmap!(ax_down, h_down_fw_m1, colormap = :turbo)
-Colorbar(fig_flux[1, 4], hm_down, label = L"[\mathrm{s}^3/\mathrm{km}^3 \cdot 10^{-9}]")
 fig_flux = DisplayAs.PNG(fig_flux) #hide
-
 
 # ## Method 2: Phase Space Tracking (The Liouville Method)
 # This method uses Liouville's theorem (phase space density conservation). Simulated particles are used as pathfinders to map the analytical density from the source to the detector. For every individual particle $i$ launched with initial velocity $\mathbf{v}_{0,i}$, its exact analytical phase space density $w_i = f(\mathbf{v}_{0,i})$ is recorded as a conserved weight.
