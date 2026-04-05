@@ -289,7 +289,7 @@ vy_grid = range(-1000.0e3, 1000.0e3, length = 100)
 vz_fixed = 0.0
 
 function backward_trace(x_det, vx_grid, vy_grid, vz)
-    f_det = fill(NaN, (length(vx_grid), length(vy_grid)))
+    f_det = zeros((length(vx_grid), length(vy_grid)))
 
     ## Backward tracing parameters
     tspan_bw = (0.0, -50.0)
