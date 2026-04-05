@@ -12,7 +12,7 @@ By default, SI units are used. However, you can define your own unit systems by 
 
 ## Tracing Backwards in Time
 
-Tracing a particle backwards is as simple as setting a time span where the end time is less than the start time, e.g., `tspan = (0.0, -1.0)`. This is particularly useful for source identification in plasma simulations.
+Tracing a particle backwards is as simple as setting a time span where the end time is less than the start time, e.g., `tspan = (0.0, -1.0)`. For fixed time step methods, you also need to set `dt` to be negative (e.g. standard Boris pusher). This is particularly useful for source identification in plasma simulations.
 
 ## Multiple Particles (Ensemble Simulations)
 
