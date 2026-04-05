@@ -266,10 +266,10 @@ for i in 1:3
 end
 fig_forward = DisplayAs.PNG(fig_forward) #hide
 
-# ## Method 3: Backward Tracing (The Ground Truth)
+# ## Method 3: Backward Tracing
 # In backward tracing, we start from a grid in velocity space at the detector and trace backward.
 # The phase space density at the detector is simply the source density evaluated at the traced initial state.
-# We then integrate the resulting 3D grid of values to provide a "ground truth" comparison for the other methods.
+# We then integrate the resulting 3D grid of values to provide a comparison for the other methods.
 
 function reconstruct_backward_projections(
         detector_x, vdf, n0, dt, param;
@@ -366,9 +366,13 @@ for i in 1:3
 end
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
-
 # ## Summary
-# This example illustrates three complementary ways to reconstruct phase space density from particle simulations.
-# **Flux Injection** is simple and robust for macro-particle counting.
-# **Liouville Tracking** preserves analytical density information and is less noisy in sparse regions.
-# **Backward Tracing** provides the direct mapping from the detector to the source, serves as the ground truth validation.
+# This example illustrates three complementary ways to reconstruct the phase space density from particle simulations.
+#
+# | Method | Flux Injection | Forward Liouville Tracking | Backward Liouville Tracing |
+# |:---|:---|:---|:---|
+# | **Noise** | Statistical ($\propto 1/\sqrt{N}$) | Low (analytical weights) | None (grid-based) |
+# | **Coverage** | Source-sampled | Source-sampled | Target-sampled |
+# | **Cost** | High | Medium | Low |
+# | **Tail resolution** | Poor without large $N$ | Limited by sphere radius | Uniform across grid |
+# | **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |
