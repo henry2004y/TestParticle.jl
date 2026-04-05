@@ -91,9 +91,9 @@ end;
 
 # ## Simulation Setup
 
-trajectories = 5000 # number of particles
-tspan = (0.0, 50.0) # s
-dt_interp = 1.0e-3 # s
+trajectories = 10000 # number of particles
+tspan = (0.0, 50.0) # [s]
+dt = get_gyroperiod(3 * Bmag) / 20 # [s]
 
 ## Prepare the Hamiltonian system
 param = prepare(get_E_shock, get_B_shock; species = Proton)
@@ -119,11 +119,11 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func)
 
 println("Starting simulation with $trajectories particles...")
-@time sols = TP.solve(prob; dt = dt_interp, savestepinterval = 1, trajectories);
+@time sols = TP.solve(prob; dt, savestepinterval = 1, trajectories);
 println("Simulation complete.")
 
 ## Define detectors
-x_up, x_down = 1.0e5, -1.0e5 # [m]
+x_up, x_down = 1.0e5, -2.0e5 # [m]
 detector_up = Meshes.Plane(Meshes.Point(x_up, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 detector_down = Meshes.Plane(Meshes.Point(x_down, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 
@@ -136,59 +136,64 @@ detector_down = Meshes.Plane(Meshes.Point(x_down, 0.0, 0.0), Meshes.Vec(1.0, 0.0
 # ### Projections
 # We bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 
-function bin_crossings_flux_projected(vs, ws, n0, trajectories; dv_km = 20.0)
-    v_edges = -1000:dv_km:1000
-    h_xy = Hist2D(; binedges = (v_edges, v_edges))
-    h_xz = Hist2D(; binedges = (v_edges, v_edges))
-    h_yz = Hist2D(; binedges = (v_edges, v_edges))
+function reconstruct_flux_projections(sols, detector, n0; dv_km = 20.0)
+    ## 1. Construct weights from initial velocities for each particle
+    ws0 = [abs(s.u[1][4]) for s in sols]
+    ## 2. Get velocities and weights for each crossing event
+    ## Each crossing inherits the initial |vx| of the corresponding particle.
+    vs, ws = get_particle_crossings(sols, detector, ws0)
 
+    v_edges = -1000:dv_km:1000
+    h_3d = Hist3D(; binedges = (v_edges, v_edges, v_edges))
+
+    ## 3. Bin the crossings and project to orthogonal planes
     ## Normalization S = n / (N * dv^2)
     dv2 = (dv_km * 1.0e3)^2
-    S = n0 / (trajectories * dv2)
+    S = n0 / (length(sols) * dv2)
 
     for (v, vxi) in zip(vs, ws)
-        ## Kinematic weight W = |vxi| / |vxd|
-        ## This converts instantaneous launch counts to steady-state density.
-        w = abs(vxi) / abs(v[1])
-
-        vx_km, vy_km, vz_km = v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3
-        push!(h_xy, vx_km, vy_km, w)
-        push!(h_xz, vx_km, vz_km, w)
-        push!(h_yz, vy_km, vz_km, w)
+        ## Kinematic weight W = |vxi| / |vxd| maps instantaneous launches to steady-state flux.
+        w = abs(vxi) / abs(v[1]) * S
+        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w)
     end
 
-    ## Units: [s^2/m^5] or similar. We scale by 1e9 for display.
-    return h_xy * S, h_xz * S, h_yz * S
+    ## Units: [s^2/m^5].
+    return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
 end
 
 println("Calculating forward crossings (Flux Projections)...")
-ws0 = [abs(s.u[1][4]) for s in sols] # initial |vx|
-vs_up_flux, ws_up_flux = get_particle_crossings(sols, detector_up, ws0)
-vs_down_flux, ws_down_flux = get_particle_crossings(sols, detector_down, ws0)
+h_up_xy, h_up_xz, h_up_yz = reconstruct_flux_projections(sols, detector_up, n0_p)
+h_down_xy, h_down_xz, h_down_yz = reconstruct_flux_projections(sols, detector_down, n0_p)
 
-h_up_xy, h_up_xz, h_up_yz = bin_crossings_flux_projected(
-    vs_up_flux, ws_up_flux, n0_p, trajectories
-)
-h_down_xy, h_down_xz, h_down_yz = bin_crossings_flux_projected(
-    vs_down_flux, ws_down_flux, n0_p, trajectories
-)
-
-fig_flux = Figure(size = (1000, 600), fontsize = 18)
-labels = [L"v_x-v_y", L"v_x-v_z", L"v_y-v_z"]
+fig_flux = Figure(size = (1000, 600), fontsize = 20)
+xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
+ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
 hists_up = [h_up_xy, h_up_xz, h_up_yz]
 hists_down = [h_down_xy, h_down_xz, h_down_yz]
 
 for i in 1:3
-    ax_up = Axis(fig_flux[1, i], title = "Upstream $(labels[i])")
+    ax_up = Axis(
+        fig_flux[1, i], title = "Upstream x = $(x_up * 1.0e-3) km",
+        xlabel = xlabels[i], ylabel = ylabels[i]
+    )
     hm_up = heatmap!(ax_up, hists_up[i], colormap = :turbo)
     if i == 3
-        Colorbar(fig_flux[1, 4], hm_up, label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]")
+        Colorbar(
+            fig_flux[1, 4], hm_up;
+            label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]"
+        )
     end
 
-    ax_down = Axis(fig_flux[2, i], title = "Downstream $(labels[i])")
+    ax_down = Axis(
+        fig_flux[2, i], title = "Downstream x = $(x_down * 1.0e-3) km",
+        xlabel = xlabels[i], ylabel = ylabels[i]
+    )
     hm_down = heatmap!(ax_down, hists_down[i], colormap = :turbo)
     if i == 3
-        Colorbar(fig_flux[2, 4], hm_down, label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]")
+        Colorbar(
+            fig_flux[2, 4], hm_down;
+            label = L"[\mathrm{s}^2/\mathrm{km}^5 \cdot 10^{-9}]"
+        )
     end
 end
 fig_flux = DisplayAs.PNG(fig_flux) #hide
@@ -270,7 +275,7 @@ function backward_trace(x_det, vx_grid, vy_grid, vz)
     println("Tracing $trajectories_bw points backward...")
     sols_bw = TP.solve(
         prob_bw, EnsembleThreads();
-        dt = -dt_interp, trajectories = trajectories_bw, save_everystep = false,
+        dt = -dt, trajectories = trajectories_bw, save_everystep = false,
         isoutofdomain = is_at_source
     )
 
@@ -292,7 +297,7 @@ f_up_bw = backward_trace(x_up, vx_grid, vy_grid, vz_fixed)
 println("Starting backward tracing at downstream detector...")
 f_down_bw = backward_trace(x_down, vx_grid, vy_grid, vz_fixed)
 
-fig_backward = Figure(size = (1000, 400), fontsize = 18)
+fig_backward = Figure(size = (1000, 400), fontsize = 20)
 vx_grid_km = vx_grid ./ 1.0e3
 vy_grid_km = vy_grid ./ 1.0e3
 
