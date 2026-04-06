@@ -80,13 +80,13 @@ prob = let
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
-sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
+sols = solve(ensemble_prob, Vern6(), EnsembleSerial(); trajectories);
 
 # Sample particle trajectories
 
 function plot_traj(
         sols; azimuth = 1.275pi, elevation = pi / 8,
-        limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0))
+        limits = ((-4000.0, 4000.0), (-1000.0, 1000.0), (-2000.0, 2000.0)), np = 100
     )
     ## limits are in km
     f = Figure(fontsize = 18)
@@ -100,10 +100,13 @@ function plot_traj(
         limits, azimuth, elevation
     )
 
+    t = range(sols[i].prob.tspan..., length = np)
+
     for i in eachindex(sols)
+        xyz = sols[i](t) .* 1.0e-3
         lines!(
-            ax, sols[i][1, :] ./ 1.0e3, sols[i][2, :] ./ 1.0e3, sols[i][3, :] ./ 1.0e3,
-            label = "$i", color = Makie.wong_colors()[mod(i - 1, 7) + 1]
+            ax, xyz[1, :], xyz[2, :], xyz[3, :],
+            label = "$i"
         )
     end
 
@@ -130,7 +133,7 @@ function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
     trange = range(sols[1].prob.tspan..., length = ntchunks)
 
     xrange = range(x[1], x[end], length = nxchunks + 1)
-    dx = (x[end] - x[1]) / nxchunks
+    dx = step(xrange)
     xmid = range(x[1] + 0.5dx, x[end] - 0.5dx, length = nxchunks) ./ 1.0e3
 
     vx = [Float64[] for _ in 1:nxchunks]
