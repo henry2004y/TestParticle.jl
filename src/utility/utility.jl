@@ -294,7 +294,7 @@ function get_velocity(sol)
         v1 = sol[4, is]
         v2 = sol[5, is]
         v3 = sol[6, is]
-        γ²v² = v1*v1 + v2*v2 + v3*v3
+        γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         inv_γ = inv(γ)
         v[1, is] = v1 * inv_γ
@@ -316,7 +316,7 @@ function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
         v1 = sol[4, i]
         v2 = sol[5, i]
         v3 = sol[6, i]
-        γ²v² = v1*v1 + v2*v2 + v3*v3
+        γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         e[i] = (γ - 1) * mc2_q
     end
