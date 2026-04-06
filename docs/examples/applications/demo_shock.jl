@@ -100,7 +100,7 @@ function plot_traj(
         limits, azimuth, elevation
     )
 
-    t = range(sols[i].prob.tspan..., length = np)
+    t = range(sols[1].prob.tspan..., length = np)
 
     for i in eachindex(sols)
         xyz = sols[i](t) .* 1.0e-3
