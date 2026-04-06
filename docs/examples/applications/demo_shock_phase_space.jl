@@ -21,13 +21,13 @@ Random.seed!(42);
 const T_ion = 20.0  # ion temperature [eV]
 const vth_ion = sqrt(2 * TP.qᵢ * T_ion / TP.mᵢ) # ion thermal speed [m/s]
 const V_sw = -400.0e3 # solar wind bulk speed [m/s]
-const P_sw = 0.08e-9 # solar wind dynamic pressure [Pa]
+const P_sw = 0.08e-9; # solar wind dynamic pressure [Pa]
 
 # ## Shock Structure Parameters
 
 const n_up = 3.0e6 # upstream number density [m⁻³]
 const n_down = 8.0e6 # downstream number density [m⁻³]
-const shock_width = 5.0e3 # shock ramp width [m]
+const shock_width = 5.0e3; # shock ramp width [m]
 
 # ## Magnetic Field Parameters
 
@@ -48,7 +48,7 @@ function compute_tanh_profile_coefficients(θ_Bn, B_mag)
 end
 
 const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag)
-const B_normal = 5.0e-9 # shock normal component of B [T]
+const B_normal = 5.0e-9; # shock normal component of B [T]
 
 # ## Field Definitions
 # We define custom analytical functions for the electric and magnetic fields across the shock transition layer.
@@ -224,7 +224,6 @@ end
 prob_m2 = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2)
 @time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 1, trajectories = nparticles_m2);
 
-println("Calculating forward crossings with conserved weights (Liouville Method)...")
 hists_up_m2 = reconstruct_liouville_projections(
     sols_m2, detector_up, vdf, n_up, Vsphere_m2
 )
@@ -251,7 +250,6 @@ function reconstruct_backward_projections(
 
     nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
     nparticles_bw = nx * ny * nz
-    println("Tracing $nparticles_bw points backward for x = $(detector_x * 1.0e-3) km...")
 
     ## Initial conditions at detector
     function prob_func_bw(prob, i, repeat)
