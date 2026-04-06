@@ -118,13 +118,12 @@ detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
 );
 
+# To get the velocity space distributions, we bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
+#
 # ## Method 1: Flux Injection (The Macro-Particle Method)
 # In this method, simulated particles are treated as macro-particles.
 # Instead of calculating the density by counting snapshots in time, we treat the source as a steady-state flux injection.
 # To convert crossing events into physical phase-space density, we apply kinematic weighting that maps the instantaneous launch of macro-particles to a continuous stream in a steady state.
-
-# ### Projections
-# We bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 
 function reconstruct_flux_projections(sols, detector, n0, dv_km)
     ## 1. Initial velocities at the source plane
@@ -179,6 +178,16 @@ hists_down = reconstruct_flux_projections(sols, detector_down, n_up, 20.0)
 fig_flux = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
 fig_flux = DisplayAs.PNG(fig_flux) #hide
 
+# The kinematic weight ``w = |v_{x,\mathrm{init}}| / |v_{x,\mathrm{det}}|`` on each
+# crossing event converts from the density-sampled launch to a steady-state flux
+# (the ``|v_{x,\mathrm{init}}|`` factor) and then back to phase-space density at
+# the detector (the ``1/|v_{x,\mathrm{det}}|`` factor).
+# If both factors are dropped (i.e. equal-weight binning), the two biases partially
+# cancel: upstream the correction is close to unity because particles are nearly
+# unperturbed, so the error is small; downstream, however, reflected and decelerated
+# ions have very different source and detector speeds, and the unweighted histogram
+# noticeably underestimates the density in the low-``|v_x|`` tails.
+#
 # ## Method 2: Forward Liouville Tracking
 # In forward Liouville tracking, we start from a sphere of initial conditions in velocity space at the source and trace forward to the detector.
 
