@@ -84,7 +84,7 @@ end;
 
 # ## Simulation Setup
 
-const nparticles = 10000
+nparticles = 10000
 const x_source = SA[300.0e3, 0.0, 0.0] # source plane location [m]
 const tspan = (0.0, 20.0) # simulation time span [s]
 const dt = get_gyroperiod(3 * B_mag) / 20 # time step [s]
@@ -116,8 +116,7 @@ detector_up = Meshes.Plane(
 )
 detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
-)
-
+);
 
 # ## Method 1: Flux Injection (The Macro-Particle Method)
 # In this method, simulated particles are treated as macro-particles.
@@ -150,42 +149,38 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
     return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
 end
 
-println("Calculating flux projections labels...")
-h_up_xy, h_up_xz, h_up_yz = reconstruct_flux_projections(sols, detector_up, n_up, 20.0)
-h_down_xy, h_down_xz, h_down_yz = reconstruct_flux_projections(sols, detector_down, n_up, 20.0)
+function plot_shock_vdf(hists_up, hists_down, x_up, x_down)
+    fig = Figure(size = (1200, 600), fontsize = 20)
+    xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
+    ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
 
-fig_flux = Figure(size = (1200, 600), fontsize = 20)
-hists_up = [h_up_xy, h_up_xz, h_up_yz]
-hists_down = [h_down_xy, h_down_xz, h_down_yz]
-xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
-ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
-
-for i in 1:3
-    ax_up = Axis(
-        fig_flux[1, i], title = "Upstream x = $(x_upstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    hm_up = heatmap!(ax_up, hists_up[i], colormap = :turbo)
-    if i == 3
-        Colorbar(
-            fig_flux[1, 4], hm_up;
-            label = L"[\mathrm{s}^2/\mathrm{km}^5]"
-        )
+    for i in 1:3
+        ## Upstream (row 1) and Downstream (row 2)
+        for (row, hists, label, xloc) in
+            [(1, hists_up, "Upstream", x_up), (2, hists_down, "Downstream", x_down)]
+            ax = Axis(
+                fig[row, i], title = "$(label) x = $(xloc * 1.0e-3) km",
+                xlabel = xlabels[i], ylabel = ylabels[i]
+            )
+            h = hists[i]
+            hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
+                heatmap!(ax, h; colormap = :turbo)
+            if i == 3
+                Colorbar(fig[row, 4], hm; label = L"[\mathrm{s}^2/\mathrm{km}^5]")
+            end
+        end
     end
-
-    ax_down = Axis(
-        fig_flux[2, i], title = "Downstream x = $(x_downstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    hm_down = heatmap!(ax_down, hists_down[i], colormap = :turbo)
-    if i == 3
-        Colorbar(
-            fig_flux[2, 4], hm_down;
-            label = L"[\mathrm{s}^2/\mathrm{km}^5]"
-        )
-    end
+    return fig
 end
+
+hists_up = reconstruct_flux_projections(sols, detector_up, n_up, 20.0)
+hists_down = reconstruct_flux_projections(sols, detector_down, n_up, 20.0)
+
+fig_flux = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
 fig_flux = DisplayAs.PNG(fig_flux) #hide
+
+# ## Method 2: Forward Liouville Tracking
+# In forward Liouville tracking, we start from a sphere of initial conditions in velocity space at the source and trace forward to the detector.
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_km = 20.0)
     ## 1. Initial weights from source PDF
@@ -209,8 +204,7 @@ function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_
     return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
 end
 
-println("Starting Liouville pathfinders...")
-trajectories_m2 = 10000
+nparticles_m2 = 10000
 const vradius_m2 = 3 * vth_ion # velocity space radius, [m/s]
 const Vsphere_m2 = (4 / 3) * π * vradius_m2^3 # velocity space volume
 
@@ -228,42 +222,17 @@ function prob_func_m2(prob, i, repeat)
 end
 
 prob_m2 = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2)
-@time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 1, trajectories = trajectories_m2);
+@time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 1, trajectories = nparticles_m2);
 
 println("Calculating forward crossings with conserved weights (Liouville Method)...")
-h_up_xy_m2, h_up_xz_m2, h_up_yz_m2 = reconstruct_liouville_projections(
+hists_up_m2 = reconstruct_liouville_projections(
     sols_m2, detector_up, vdf, n_up, Vsphere_m2
 )
-h_down_xy_m2, h_down_xz_m2, h_down_yz_m2 = reconstruct_liouville_projections(
+hists_down_m2 = reconstruct_liouville_projections(
     sols_m2, detector_down, vdf, n_up, Vsphere_m2
 )
 
-fig_forward = Figure(size = (1200, 600), fontsize = 20)
-hists_up_m2 = [h_up_xy_m2, h_up_xz_m2, h_up_yz_m2]
-hists_down_m2 = [h_down_xy_m2, h_down_xz_m2, h_down_yz_m2]
-xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
-ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
-
-for i in 1:3
-    ax_up = Axis(
-        fig_forward[1, i], title = "Upstream x = $(x_upstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    ## No scaling for consistency with raw s^2/km^5 units
-    hm_up = heatmap!(ax_up, hists_up_m2[i], colormap = :turbo)
-    if i == 3
-        Colorbar(fig_forward[1, 4], hm_up, label = L"[\mathrm{s}^2/\mathrm{km}^5]")
-    end
-
-    ax_down = Axis(
-        fig_forward[2, i], title = "Downstream x = $(x_downstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    hm_down = heatmap!(ax_down, hists_down_m2[i], colormap = :turbo)
-    if i == 3
-        Colorbar(fig_forward[2, 4], hm_down, label = L"[\mathrm{s}^2/\mathrm{km}^5]")
-    end
-end
+fig_forward = plot_shock_vdf(hists_up_m2, hists_down_m2, x_upstream, x_downstream)
 fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 # ## Method 3: Backward Tracing
@@ -273,16 +242,16 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 function reconstruct_backward_projections(
         detector_x, vdf, n0, dt, param;
-        v_range = 1000.0e3, dv_km = 40.0
+        v_range = 1000.0e3, dv_km = 20.0
     )
     vx_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
     vy_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
-    vz_grid = range(-500.0e3, 500.0e3, step = dv_km * 1.0e3)
+    vz_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
     dvz_km = step(vz_grid) * 1.0e-3 # km/s
 
     nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
-    trajectories_bw = nx * ny * nz
-    println("Tracing $trajectories_bw points backward for x = $(detector_x * 1.0e-3) km...")
+    nparticles_bw = nx * ny * nz
+    println("Tracing $nparticles_bw points backward for x = $(detector_x * 1.0e-3) km...")
 
     ## Initial conditions at detector
     function prob_func_bw(prob, i, repeat)
@@ -302,13 +271,13 @@ function reconstruct_backward_projections(
     )
 
     sols_bw = TP.solve(
-        prob_bw, EnsembleThreads(); dt = -dt, trajectories = trajectories_bw,
+        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
         save_everystep = false, isoutofdomain = is_at_source
     )
 
     ## Evaluate PDF at source for each traced state
     f_3d_km = zeros(nx, ny, nz)
-    for i in 1:trajectories_bw
+    for i in 1:nparticles_bw
         sol = sols_bw[i]
         last_state = sol.u[end]
         if last_state[1] >= x_source[1]
@@ -325,45 +294,24 @@ function reconstruct_backward_projections(
     f_xz = dropdims(sum(f_3d_km, dims = 2), dims = 2) .* (step(vy_grid) * 1.0e-3)
     f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
 
+    for f in (f_xy, f_xz, f_yz)
+        f_max = maximum(f)
+        for i in eachindex(f)
+            if f[i] < f_max * 1.0e-6
+                f[i] = NaN
+            end
+        end
+    end
+
     return (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
         (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
         (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz)
 end
 
-println("Calculating backward tracing ground truth...")
 res_up_bw = reconstruct_backward_projections(x_upstream, vdf, n_up, dt, param)
 res_down_bw = reconstruct_backward_projections(x_downstream, vdf, n_up, dt, param)
 
-fig_backward = Figure(size = (1200, 600), fontsize = 20)
-xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
-ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
-
-for i in 1:3
-    ax_up = Axis(
-        fig_backward[1, i], title = "Upstream x = $(x_upstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    ## No scaling for consistency with raw s^2/km^5 units
-    hm_up = heatmap!(
-        ax_up, res_up_bw[i][1], res_up_bw[i][2], res_up_bw[i][3],
-        colormap = :turbo
-    )
-    if i == 3
-        Colorbar(fig_backward[1, 4], hm_up, label = L"[\mathrm{s}^2/\mathrm{km}^5]")
-    end
-
-    ax_down = Axis(
-        fig_backward[2, i], title = "Downstream x = $(x_downstream * 1.0e-3) km",
-        xlabel = xlabels[i], ylabel = ylabels[i]
-    )
-    hm_down = heatmap!(
-        ax_down, res_down_bw[i][1], res_down_bw[i][2], res_down_bw[i][3],
-        colormap = :turbo
-    )
-    if i == 3
-        Colorbar(fig_backward[2, 4], hm_down, label = L"[\mathrm{s}^2/\mathrm{km}^5]")
-    end
-end
+fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
 # ## Summary
