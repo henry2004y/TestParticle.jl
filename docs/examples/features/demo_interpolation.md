@@ -165,7 +165,7 @@ Large numerical field arrays can consume significant amounts of memory. It's imp
 
 For **linear interpolation (`order=1`)**, construction is near zero-allocation because it creates a wrapper around a reinterpreted view of your existing array.
 
-For **higher-order interpolation (`order = 3`)**, `FastInterpolations.jl` must precompute interpolation coefficients to ensure $O(1)$ lookup performance. This process **allocates an additional array of the same size** as your input data.
+For **higher-order interpolation (`order = 3`)**, `FastInterpolations.jl` provides two modes: `OnTheFly()` and `PreCompute()`. By default, `OnTheFly()` is used, which calculates interpolation coefficients during each query. This approach is memory-efficient as it does not require additional storage beyond the input data. Alternatively, `PreCompute()` precalculates and stores coefficients in **an additional array of the same size**, enabling faster $O(1)$ lookup performance at the cost of higher memory usage.
 
 We can measure this difference using `@be`.
 
@@ -173,22 +173,18 @@ We can measure this difference using `@be`.
 # Order 1: Minimal allocations (Uses a view)
 @be setup_mixed_precision_field(11, 1)
 
-# Order 3: Significant allocations (Computes coefficients)
+# Order 3: Minimal allocations (Uses a view)
 @be setup_mixed_precision_field(11, 3)
 ```
 
 Comparing the ratios relative to the original array size illustrates the overhead:
 
 ```@repl interp
-# Original 4D field array size
 B = fill(0.0f0, 3, 11, 11, 11);
-size_B = Base.summarysize(B)
+size_B = Base.summarysize(B) # Original 4D field array size
 
-# Total size for order=1 (Essentially the input array size)
-size_itp1 = Base.summarysize(itp_f32)
-
-# Total size for order=3 (Input array + Coefficient array)
-itp_f32_q = setup_mixed_precision_field(11, 3);
+size_itp1 = Base.summarysize(itp_f32) # Total size for order=1 (Essentially the input array size)
+itp_f32_q = setup_mixed_precision_field(11, 3) # Total size for order=3
 size_itp3 = Base.summarysize(itp_f32_q)
 
 # Ratios relative to raw data
@@ -196,27 +192,27 @@ size_itp1 / size_B
 size_itp3 / size_B
 ```
 
-As a rule of thumb, linear interpolation has nearly zero memory overhead (ratio ≈ 1.0), while cubic interpolation doubles the memory footprint (ratio ≈ 8.0) to store the coefficients.
+As a rule of thumb, linear interpolation and cubic interpolation with `OnTheFly()` coefficients have nearly zero memory overhead (ratio ≈ 1.0), as they both operate directly on the input data. When supported, cubic interpolation with `PreCompute()` coefficients increases the memory footprint by $2^\mathrm{DIM}$ to store the extra coefficients, where $\mathrm{DIM}$ is the dimension of the field.
 
 ## On-the-fly vs Precomputed coefficients
 
 Cubic interpolation (`order = 3`) requires high-order coefficients. By default, TestParticle uses `OnTheFly()` coefficients, which are calculated at query time. This saves memory but increases evaluation time. For maximum performance, you can use `PreCompute()`, which stores the coefficients in an additional array.
 
+!!! note "Status in v0.4.8"
+    Support for `PreCompute()` with local Hermite cubic interpolation is currently under development and not yet available in `FastInterpolations.jl` v0.4.8.
+
 ```@repl interp
-using FastInterpolations: OnTheFly, PreCompute
 # Benchmark evaluation time
 itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
-itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute());
+# itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute()); # Not yet supported in v0.4.8
 
 @be itp_fly($loc_f64)
-@be itp_pre($loc_f64)
 
 # Compare total object size
 Base.summarysize(itp_fly)
-Base.summarysize(itp_pre)
 ```
 
-As shown, `PreCompute()` is roughly 3-4x faster but consumes significantly more memory (comparable to the input data array).
+As shown, `OnTheFly()` preserves memory efficiency while providing higher-order accuracy. Once available, `PreCompute()` will offer a faster alternative for memory-abundant systems.
 
 ## Time-dependent field interpolation
 
