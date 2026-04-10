@@ -95,7 +95,7 @@ function setup_time_dependent_field(ns = 16)
    return B_field_t
 end
 
-function setup_mixed_precision_field(ns = 11, order = 1, bc = FillExtrap(NaN); coeffs = OnTheFly())
+function setup_mixed_precision_field(ns = 11, order = 1, bc = TP.FillExtrap(NaN); coeffs = OnTheFly())
    x = range(0.0f0, 10.0f0, length = ns)
    y = range(0.0f0, 10.0f0, length = ns)
    z = range(0.0f0, 10.0f0, length = ns)
