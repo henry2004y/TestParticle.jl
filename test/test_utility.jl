@@ -139,6 +139,12 @@ end
             @test Bfunc3(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
             Afunc3 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 3)
             @test Afunc3(SA[1, 1, 1]) ≈ 1.0
+
+            # Constant interpolation (order=0)
+            Bfunc0 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 0)
+            @test Bfunc0(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
+            Afunc0 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 0)
+            @test Afunc0(SA[1, 1, 1]) == 1.0
         end
 
         begin # non-uniform spherical interpolation
