@@ -11,7 +11,7 @@ using StaticArrays
         z = range(0, 1, length = 5)
         A = [SA[Float64(i), Float64(j), Float64(k)] for i in 1:5, j in 1:5, k in 1:5]
 
-        itp = TP.build_interpolator(CartesianGrid, A, x, y, z, 1, FillExtrap(NaN))
+        itp = build_interpolator(CartesianGrid, A, x, y, z, 1, FillExtrap(NaN))
         f = TP.Field(itp)
 
         pos = SA[0.5, 0.5, 0.5]
@@ -27,7 +27,7 @@ using StaticArrays
         y = range(0, 1, length = 5)
         A = [SA[Float64(i), Float64(j), 0.0] for i in 1:5, j in 1:5]
 
-        itp = TP.build_interpolator(CartesianGrid, A, x, y, 1, FillExtrap(NaN))
+        itp = build_interpolator(CartesianGrid, A, x, y, 1, FillExtrap(NaN))
         f = TP.Field(itp)
 
         pos = SA[0.5, 0.5]
@@ -44,7 +44,7 @@ using StaticArrays
         x = range(0, 1, length = 5)
         A = [SA[Float64(i), 0.0, 0.0] for i in 1:5]
 
-        itp = TP.build_interpolator(CartesianGrid, A, x, 1, FillExtrap(NaN); dir = 1)
+        itp = build_interpolator(CartesianGrid, A, x, 1, FillExtrap(NaN); dir = 1)
         f = TP.Field(itp)
 
         pos = SA[0.5]

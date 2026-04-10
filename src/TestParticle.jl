@@ -44,7 +44,7 @@ export get_gyrofrequency,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec
 export orbit, monitor
 export get_fields, get_work
-export LazyTimeInterpolator
+export LazyTimeInterpolator, build_interpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake,

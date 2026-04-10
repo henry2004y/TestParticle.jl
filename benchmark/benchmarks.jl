@@ -35,7 +35,7 @@ function setup_numeric_field()
     E_numeric[1, :, :, :] .= 5.0e-10
     E_numeric[2, :, :, :] .= 5.0e-10
 
-    mesh = TP.CartesianGrid(
+    mesh = CartesianGrid(
         (first(x), first(y), first(z)), (last(x), last(y), last(z));
         dims = (length(x) - 1, length(y) - 1, length(z) - 1)
     )
@@ -91,7 +91,7 @@ function setup_spherical_field()
         B[2, :, iθ, :] .= -B₀ * sinθ
     end
 
-    B_field = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
+    B_field = build_interpolator(StructuredGrid, B, r, θ, ϕ)
 
     return B_field
 end
@@ -214,7 +214,7 @@ itp_num, t1, t2 = let
     times_num = [0.0, 1.0, 2.0, 3.0]
 
     # Loader for numerical field
-    loader_num(i) = TP.build_interpolator(TP.CartesianGrid, B_fields[i], x_grid, y_grid, z_grid)
+    loader_num(i) = build_interpolator(CartesianGrid, B_fields[i], x_grid, y_grid, z_grid)
 
     LazyTimeInterpolator(times_num, loader_num), 0.5, 2.5
 end
@@ -225,7 +225,7 @@ SUITE["interpolation"]["time-dependent"] = @benchmarkable begin
 end
 
 # GC
-stateinit_gc, param_gc = TP.prepare_gc(
+stateinit_gc, param_gc = prepare_gc(
     stateinit, E_analytic, B_analytic,
     species = Proton
 )

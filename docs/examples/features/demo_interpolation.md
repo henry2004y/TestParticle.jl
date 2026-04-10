@@ -5,7 +5,7 @@ This example demonstrates the construction of scalar/vector field interpolators 
 If the field is analytic, you can directly pass the generated function to [`prepare`](@ref).
 
 ```@example interp
-import TestParticle as TP
+using TestParticle
 using StaticArrays
 using Chairmarks
 
@@ -26,10 +26,10 @@ function setup_spherical_field(ns = 16)
       A[:, iθ, :] .= B₀ * sinθ
    end
 
-   B_field_nu = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
-   A_field_nu = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
-   B_field = TP.build_interpolator(TP.StructuredGrid, B, r_uniform, θ, ϕ)
-   A_field = TP.build_interpolator(TP.StructuredGrid, A, r_uniform, θ, ϕ)
+   B_field_nu = build_interpolator(StructuredGrid, B, r, θ, ϕ)
+   A_field_nu = build_interpolator(StructuredGrid, A, r, θ, ϕ)
+   B_field = build_interpolator(StructuredGrid, B, r_uniform, θ, ϕ)
+   A_field = build_interpolator(StructuredGrid, A, r_uniform, θ, ϕ)
 
    return B_field_nu, A_field_nu, B_field, A_field
 end
@@ -43,8 +43,8 @@ function setup_cartesian_field(ns = 16)
    A = zeros(length(x), length(y), length(z)) # scalar
    A[:, :, :] .= 10e-9
 
-   B_field = TP.build_interpolator(B, x, y, z)
-   A_field = TP.build_interpolator(A, x, y, z)
+   B_field = build_interpolator(B, x, y, z)
+   A_field = build_interpolator(A, x, y, z)
 
    return B_field, A_field
 end
@@ -58,8 +58,8 @@ function setup_cartesian_nonuniform_field()
    A = zeros(length(x), length(y), length(z)) # scalar
    A[:, :, :] .= 10e-9
 
-   B_field = TP.build_interpolator(TP.RectilinearGrid, B, x, y, z)
-   A_field = TP.build_interpolator(TP.RectilinearGrid, A, x, y, z)
+   B_field = build_interpolator(RectilinearGrid, B, x, y, z)
+   A_field = build_interpolator(RectilinearGrid, A, x, y, z)
 
    return B_field, A_field
 end
@@ -81,28 +81,28 @@ function setup_time_dependent_field(ns = 16)
    function loader(i)
        if i == 1
            # For demonstration, we assume we load from disk here
-           return TP.build_interpolator(TP.CartesianGrid, B0, x, y, z)
+           return build_interpolator(CartesianGrid, B0, x, y, z)
        elseif i == 2
-           return TP.build_interpolator(TP.CartesianGrid, B1, x, y, z)
+           return build_interpolator(CartesianGrid, B1, x, y, z)
        else
            error("Index out of bounds")
        end
    end
 
    # B_field_t(x, t)
-   B_field_t = TP.LazyTimeInterpolator(times, loader)
+   B_field_t = LazyTimeInterpolator(times, loader)
 
    return B_field_t
 end
 
-function setup_mixed_precision_field(ns = 11, order = 1, bc = TP.FillExtrap(NaN); coeffs = TP.OnTheFly())
+function setup_mixed_precision_field(ns = 11, order = 1, bc = FillExtrap(NaN); coeffs = OnTheFly())
    x = range(0.0f0, 10.0f0, length = ns)
    y = range(0.0f0, 10.0f0, length = ns)
    z = range(0.0f0, 10.0f0, length = ns)
    B = fill(0.0f0, 3, ns, ns, ns)
    B[3, :, :, :] .= 1.0f-8
 
-   itp = TP.build_interpolator(B, x, y, z, order, bc; coeffs)
+   itp = build_interpolator(B, x, y, z, order, bc; coeffs)
    return itp
 end
 
@@ -229,6 +229,6 @@ For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a
 ## Related API
 
 ```@docs; canonical=false
-TP.build_interpolator
-TP.prepare
+build_interpolator
+prepare
 ```
