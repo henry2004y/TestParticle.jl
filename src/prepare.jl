@@ -126,7 +126,7 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
 
 # Keywords
 
-  - `order::Int=1`: order of interpolation in [1,2,3].
+  - `order::Int=1`: order of interpolation in [0,1,3].
   - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
   - `species=Proton`: particle species.
   - `q=nothing`: particle charge.
@@ -170,7 +170,7 @@ function prepare(
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
-function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = WrapExtrap(), dir = 1, kw...)
+function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = ClampExtrap(), dir = 1, kw...)
     @assert issorted(x) "Grid vector `x` must be sorted."
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end

@@ -192,7 +192,7 @@ Return a function for interpolating field array `A` on the given grids.
 
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
   - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
-  - `order::Int=1`: order of interpolation in [1,3].
+  - `order::Int=1`: order of interpolation in [0,1,3].
   - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
     - `FillExtrap(NaN)`: Fill with NaN (default).
     - `ClampExtrap()`: Clamp (flat extrapolation).
@@ -207,7 +207,7 @@ function build_interpolator(
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
-    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+    @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
     return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc; coeffs)
 end
@@ -227,7 +227,7 @@ function build_interpolator(
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
     ) where {T}
-    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
+    @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
     return build_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
 end
@@ -237,9 +237,6 @@ function build_interpolator(
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
         order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
     ) where {T}
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    end
     if order != 1
         throw(ArgumentError("RectilinearGrid (CartesianNonUniform) only supports order=1 (Linear) interpolation."))
     end
@@ -252,6 +249,7 @@ function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
         gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
+    @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
     return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc; coeffs)
 end
@@ -260,10 +258,7 @@ function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
         gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    end
-    r_min, r_max = extrema(gridr)
+    r_min = minimum(gridr)
     θ_min, θ_max = extrema(gridθ)
     ϕ_min, ϕ_max = extrema(gridϕ)
 
@@ -282,10 +277,10 @@ function build_interpolator(
         coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
-        @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
+        @assert ndims(A) == 2 "Incompatible 2D force field and grid! Expected 2D array of SVectors."
         As = A
     else
-        @assert size(A, 1) == 3 && ndims(A) == 3 "Inconsistent 2D force field and grid!"
+        @assert size(A, 1) == 3 && ndims(A) == 3 "Incompatible 2D force field and grid!"
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
@@ -299,10 +294,10 @@ function build_interpolator(
         order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); dir = 1, coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
-        @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
+        @assert ndims(A) == 1 "Incompatible 1D force field and grid! Expected 1D array of SVectors."
         As = A
     else
-        @assert size(A, 1) == 3 && ndims(A) == 2 "Inconsistent 1D force field and grid!"
+        @assert size(A, 1) == 3 && ndims(A) == 2 "Incompatible 1D force field and grid!"
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
