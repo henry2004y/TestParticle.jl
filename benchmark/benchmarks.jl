@@ -138,7 +138,8 @@ SUITE["trace"]["normalized"]["out of place"] = @benchmarkable solve(
 # Numerical Field
 mesh, E_numeric, B_numeric = setup_numeric_field()
 tspan_num = (0.0, 10.0)
-param_numeric = prepare(mesh, E_numeric, B_numeric)
+param_numeric = prepare(mesh, E_numeric, B_numeric; order = 1)
+param_numeric_cubic = prepare(mesh, E_numeric, B_numeric; order = 3)
 prob_ip_num = ODEProblem(trace!, stateinit, tspan_num, param_numeric) # in place
 prob_oop_num = ODEProblem(trace, SA[stateinit...], tspan_num, param_numeric) # out of place
 prob_boris = TraceProblem(stateinit, tspan_num, param_numeric)
@@ -188,10 +189,13 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 )
 
 # Interpolation
-B_field_car = TP.get_BField(param_numeric)
+B_field_car_linear = TP.get_BField(param_numeric)
+B_field_car_cubic = TP.get_BField(param_numeric_cubic)
 B_field_sph = setup_spherical_field()
 loc = SA[1.0, 1.0, 1.0]
-SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car($loc)
+SUITE["interpolation"]["cartesian"] = BenchmarkGroup()
+SUITE["interpolation"]["cartesian"]["linear"] = @benchmarkable $B_field_car_linear($loc)
+SUITE["interpolation"]["cartesian"]["cubic"] = @benchmarkable $B_field_car_cubic($loc)
 SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph($loc)
 
 # Lazy Time-Dependent Interpolation

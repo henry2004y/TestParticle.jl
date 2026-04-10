@@ -99,23 +99,24 @@ end
                 Float32(i + j + k)
                     for i in eachindex(x), j in eachindex(y), k in eachindex(z)
             ]
+            nfunc01 = TP.build_interpolator(n, x, y, z, 0)
+            @test nfunc01(SA[-10, -10, -10]) ≈ 3.0
             nfunc11 = TP.build_interpolator(n, x, y, z)
             @test nfunc11(SA[9, 0, 0]) ≈ 11.85
-            nfunc12 = TP.build_interpolator(n, x, y, z, 1, 2)
+            # bc=WrapExtrap() (previously bc=2)
+            nfunc12 = TP.build_interpolator(n, x, y, z, 1, WrapExtrap())
             @test nfunc12(SA[20, 0, 0]) ≈ 10.5
-            nfunc13 = TP.build_interpolator(n, x, y, z, 1, 3)
+            # bc=ClampExtrap() (previously bc=3)
+            nfunc13 = TP.build_interpolator(n, x, y, z, 1, ClampExtrap())
             @test nfunc13(SA[20, 0, 0]) ≈ 12.0
-            nfunc21 = TP.build_interpolator(n, x, y, z, 2)
-            @test nfunc21(SA[9, 0, 0]) ≈ 11.85
-            nfunc22 = TP.build_interpolator(n, x, y, z, 2, 2)
-            @test nfunc22(SA[20, 0, 0]) ≈ 10.5
-            nfunc23 = TP.build_interpolator(n, x, y, z, 2, 3)
-            @test nfunc23(SA[20, 0, 0]) ≈ 12.0
+
             nfunc31 = TP.build_interpolator(n, x, y, z, 3)
             @test nfunc31(SA[9, 0, 0]) ≈ 11.85
-            nfunc32 = TP.build_interpolator(n, x, y, z, 3, 2)
+            # bc=WrapExtrap() (previously bc=2)
+            nfunc32 = TP.build_interpolator(n, x, y, z, 3, WrapExtrap())
             @test nfunc32(SA[20, 0, 0]) ≈ 10.5
-            nfunc33 = TP.build_interpolator(n, x, y, z, 3, 3)
+            # bc=ClampExtrap() (previously bc=3)
+            nfunc33 = TP.build_interpolator(n, x, y, z, 3, ClampExtrap())
             @test nfunc33(SA[20, 0, 0]) ≈ 12.0
         end
 
@@ -133,12 +134,6 @@ end
             Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test isnan(Afunc(SA[0, 0, 0]))
-
-            # High order spherical interpolation
-            Bfunc2 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 2)
-            @test Bfunc2(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
-            Afunc2 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 2)
-            @test Afunc2(SA[1, 1, 1]) ≈ 1.0
 
             Bfunc3 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 3)
             @test Bfunc3(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
@@ -198,10 +193,10 @@ end
             x64 = range(0.0, 1.0, length = 11)
 
             # Should work for order=1
-            @test_nowarn TP.build_interpolator(B32, x64, x64, x64, 1, 1)
+            @test_nowarn TP.build_interpolator(B32, x64, x64, x64, 1, FillExtrap(NaN))
 
-            # Should throw ArgumentError for order=2
-            @test_throws ArgumentError TP.build_interpolator(B32, x64, x64, x64, 2, 1)
+            # Should throw ArgumentError for order=2 (unsupported order)
+            @test_throws ArgumentError TP.build_interpolator(B32, x64, x64, x64, 2, FillExtrap(NaN))
         end
     end
 

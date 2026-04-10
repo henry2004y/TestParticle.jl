@@ -116,62 +116,47 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
-function _get_extrap_mode(bc, T::Type)
-    if bc == 2
-        #TODO Check https://projecttorreypines.github.io/FastInterpolations.jl/stable/boundary-conditions/periodicbc/#PeriodicBC-vs-WrapExtrap()
-        return Extrap(:wrap)
-    elseif bc == 3
-        return Extrap(:clamp)
-    else
+function _fastinterp(grids, A, order, extrap::AbstractExtrap, coeffs = OnTheFly())
+    # Ensure FillExtrap value matches eltype(A) for SVector types
+    if extrap isa FillExtrap && extrap.fill_value isa Number && isnan(extrap.fill_value)
+        T = eltype(A)
         if T <: SVector
-            return Extrap(:fill; fill_value = SVector{3, eltype(T)}(NaN, NaN, NaN))
+            extrap = FillExtrap(SVector{3, eltype(T)}(NaN, NaN, NaN))
         else
-            return Extrap(:fill; fill_value = T(NaN))
+            extrap = FillExtrap(T(NaN))
         end
     end
-end
 
-function _fastinterp(grids, A, order, bc)
-    extrap_mode = _get_extrap_mode(bc, eltype(A))
     if order == 1
-        return linear_interp(grids, A; extrap = extrap_mode)
-    elseif order == 2
-        return quadratic_interp(grids, A; extrap = extrap_mode)
+        return linear_interp(grids, A; extrap)
     elseif order == 3
-        return cubic_interp(grids, A; extrap = extrap_mode)
+        return cardinal_interp(grids, A; coeffs, extrap)
+    elseif order == 0
+        return constant_interp(grids, A; extrap)
     else
-        return constant_interp(grids, A; extrap = extrap_mode)
+        throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
 end
 
 
-function _fastinterp_spherical(grids, A, order, ϕ_inclusive::Bool)
+function _fastinterp_spherical(grids, A, order, coeffs = PreCompute())
     # r and θ always extrapolate with NaN, ϕ is always periodic.
     T = eltype(A)
     fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
     extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), Extrap(:wrap))
     if order == 1
         return linear_interp(grids, A; extrap)
-    elseif order == 2
-        # FastInterpolations quadratic does not support PeriodicBC.
-        # We use ZeroCurvBC for all axes; Extrap(:wrap) handles periodicity.
-        bc_quad = (ZeroCurvBC(), ZeroCurvBC(), ZeroCurvBC())
-        return quadratic_interp(grids, A; bc = bc_quad, extrap)
     elseif order == 3
-        # When the ϕ grid spans [0, 2π] inclusively, PeriodicBC() (inclusive endpoint) is
-        # used for the cubic case; otherwise PeriodicBC(endpoint=:exclusive) is used.
-        ϕ_bc = ϕ_inclusive ? PeriodicBC() : PeriodicBC(; endpoint = :exclusive, period = 2π)
-        bc_cubic = (ZeroCurvBC(), ZeroCurvBC(), ϕ_bc)
-        return cubic_interp(grids, A; bc = bc_cubic, extrap)
-    else
+        return cardinal_interp(grids, A; coeffs, extrap)
+    elseif order == 0
         return constant_interp(grids, A; extrap)
+    else
+        throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
 end
 
 function _check_interpolation_consistency(A, grids, order)
-    if order < 2
-        return
-    end
+    order < 3 && return
 
     T = eltype(A)
     # Get the underlying element type if it's an SVector
@@ -185,8 +170,9 @@ function _check_interpolation_consistency(A, grids, order)
     if ndims(A) > 1 && T <: SVector && Tv != Td
         throw(
             ArgumentError(
-                "High-order interpolation (order >= 2) in FastInterpolations requires field data type " *
-                    "to match the promoted type of grid coordinates. Found data type $Tv and grid type $Td. " *
+                "High-order interpolation (order >= 3) in FastInterpolations requires " *
+                    "field data type to match the promoted type of grid coordinates. " *
+                    "Found data type $Tv and grid type $Td. " *
                     "Please convert your field data to $Td or your grids to $Tv."
             )
         )
@@ -194,11 +180,11 @@ function _check_interpolation_consistency(A, grids, order)
     return
 end
 
-@inline build_interpolator(A, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+@inline build_interpolator(A::AbstractArray, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
 
-"""
-    build_interpolator(gridtype, A, grids..., order::Int=1, bc::Int=1)
-    build_interpolator(A, grids..., order::Int=1, bc::Int=1)
+raw"""
+    build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN))
+    build_interpolator(A, grids..., order::Int=1, bc=FillExtrap(NaN))
 
 Return a function for interpolating field array `A` on the given grids.
 
@@ -206,39 +192,40 @@ Return a function for interpolating field array `A` on the given grids.
 
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
   - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic, 3 -> Clamp (flat extrapolation).
+  - `order::Int=1`: order of interpolation in [1,3].
+  - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
+    - `FillExtrap(NaN)`: Fill with NaN (default).
+    - `ClampExtrap()`: Clamp (flat extrapolation).
+    - `WrapExtrap()`: Exclusive periodic wrapping ($L = N \Delta x$).
+  - `coeffs=OnTheFly()`: coefficient strategy for cubic interpolation (order=3). Default is `OnTheFly()`.
 
 # Notes
-The input array `A` may be modified in-place for memory optimization.
+- The input array `A` may be modified in-place for memory optimization.
 """
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::Int = 1
+        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc; coeffs)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::Int = 1
+        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
-    if eltype(A) <: SVector
-        @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
-    end
     _check_interpolation_consistency(A, (gridx, gridy, gridz), order)
-    itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
+    itp = _fastinterp((gridx, gridy, gridz), A, order, bc, coeffs)
     return FieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::Int = 1
+        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
     ) where {T}
     @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -248,7 +235,7 @@ end
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::Int = 1
+        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -263,16 +250,15 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
+        gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
-    @assert size(A, 1) == 3 && ndims(A) == 4 "Inconsistent 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc)
+    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc; coeffs)
 end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::Int = 1
+        gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     if eltype(A) <: SVector
         @assert ndims(A) == 3 "Inconsistent 3D force field and grid! Expected 3D array of SVectors."
@@ -285,18 +271,15 @@ function build_interpolator(
     @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
     @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
 
-    has_0 = isapprox(ϕ_min, 0, atol = 1.0e-5)
-    has_2pi = isapprox(ϕ_max, 2π, atol = 1.0e-5)
-    ϕ_inclusive = has_0 && has_2pi  # grid covers full period with both endpoints
-
     _check_interpolation_consistency(A, (gridr, gridθ, gridϕ), order)
-    itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, ϕ_inclusive)
+    itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, coeffs)
     return SphericalFieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A,
-        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::Int = 1
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN);
+        coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 2 "Inconsistent 2D force field and grid! Expected 2D array of SVectors."
@@ -307,13 +290,13 @@ function build_interpolator(
     end
 
     _check_interpolation_consistency(As, (gridx, gridy), order)
-    itp = _fastinterp((gridx, gridy), As, order, bc)
+    itp = _fastinterp((gridx, gridy), As, order, bc, coeffs)
     return FieldInterpolator2D(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
-        order::Int = 1, bc::Int = 1; dir = 1
+        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); dir = 1, coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Inconsistent 1D force field and grid! Expected 1D array of SVectors."
@@ -324,7 +307,7 @@ function build_interpolator(
     end
 
     _check_interpolation_consistency(As, (gridx,), order)
-    itp = _fastinterp(gridx, As, order, bc)
+    itp = _fastinterp(gridx, As, order, bc, coeffs)
 
     return FieldInterpolator1D(itp, dir)
 end
