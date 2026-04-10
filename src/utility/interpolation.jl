@@ -180,7 +180,7 @@ function _check_interpolation_consistency(A, grids, order)
     return
 end
 
-@inline build_interpolator(A::AbstractArray, grid1, args...) = build_interpolator(CartesianGrid, A, grid1, args...)
+@inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) = build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
 
 raw"""
     build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN))
