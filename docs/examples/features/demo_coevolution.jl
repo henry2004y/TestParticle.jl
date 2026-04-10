@@ -16,7 +16,6 @@
 
 import DisplayAs #hide
 using TestParticle
-import TestParticle as TP
 using StaticArrays
 using OrdinaryDiffEq
 using LinearAlgebra
@@ -42,11 +41,11 @@ function loader(i)
 
     B_data = fill(SVector{3}(0.0, 0.0, val), length(gx), length(gy), length(gz))
 
-    return TP.build_interpolator(TP.CartesianGrid, B_data, gx, gy, gz)
+    return build_interpolator(CartesianGrid, B_data, gx, gy, gz)
 end
 
 # Create the time-dependent interpolator
-itp_B = TP.LazyTimeInterpolator(times, loader)
+itp_B = LazyTimeInterpolator(times, loader)
 
 ## Define a zero Electric field
 E_zero = ZeroField();

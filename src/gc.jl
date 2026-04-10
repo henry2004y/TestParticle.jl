@@ -27,7 +27,7 @@ end
 
 """
     prepare_gc(xv, xrange, yrange, zrange, E, B;
-        species = Proton, q = nothing, m = nothing, order::Int = 1, bc::Int = 1)
+        species = Proton, q = nothing, m = nothing, order::Int = 1, bc = FillExtrap(NaN))
     prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
 
 Prepare the guiding center parameters for a particle.
@@ -35,7 +35,7 @@ Prepare the guiding center parameters for a particle.
 function prepare_gc(
         xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
         species = Proton, q = nothing, m = nothing,
-        order::Int = 1, bc::Int = 1
+        order::Int = 1, bc = FillExtrap(NaN)
     ) where {T <: AbstractRange, TE, TB}
     q = @something q species.q
     m = @something m species.m

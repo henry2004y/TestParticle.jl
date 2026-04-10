@@ -35,7 +35,7 @@ function setup_numeric_field()
     E_numeric[1, :, :, :] .= 5.0e-10
     E_numeric[2, :, :, :] .= 5.0e-10
 
-    mesh = TP.CartesianGrid(
+    mesh = CartesianGrid(
         (first(x), first(y), first(z)), (last(x), last(y), last(z));
         dims = (length(x) - 1, length(y) - 1, length(z) - 1)
     )
@@ -91,7 +91,7 @@ function setup_spherical_field()
         B[2, :, iθ, :] .= -B₀ * sinθ
     end
 
-    B_field = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
+    B_field = build_interpolator(StructuredGrid, B, r, θ, ϕ)
 
     return B_field
 end
@@ -138,7 +138,8 @@ SUITE["trace"]["normalized"]["out of place"] = @benchmarkable solve(
 # Numerical Field
 mesh, E_numeric, B_numeric = setup_numeric_field()
 tspan_num = (0.0, 10.0)
-param_numeric = prepare(mesh, E_numeric, B_numeric)
+param_numeric = prepare(mesh, E_numeric, B_numeric; order = 1)
+param_numeric_cubic = prepare(mesh, E_numeric, B_numeric; order = 3)
 prob_ip_num = ODEProblem(trace!, stateinit, tspan_num, param_numeric) # in place
 prob_oop_num = ODEProblem(trace, SA[stateinit...], tspan_num, param_numeric) # out of place
 prob_boris = TraceProblem(stateinit, tspan_num, param_numeric)
@@ -188,10 +189,13 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 )
 
 # Interpolation
-B_field_car = TP.get_BField(param_numeric)
+B_field_car_linear = TP.get_BField(param_numeric)
+B_field_car_cubic = TP.get_BField(param_numeric_cubic)
 B_field_sph = setup_spherical_field()
 loc = SA[1.0, 1.0, 1.0]
-SUITE["interpolation"]["cartesian"] = @benchmarkable $B_field_car($loc)
+SUITE["interpolation"]["cartesian"] = BenchmarkGroup()
+SUITE["interpolation"]["cartesian"]["linear"] = @benchmarkable $B_field_car_linear($loc)
+SUITE["interpolation"]["cartesian"]["cubic"] = @benchmarkable $B_field_car_cubic($loc)
 SUITE["interpolation"]["spherical"] = @benchmarkable $B_field_sph($loc)
 
 # Lazy Time-Dependent Interpolation
@@ -210,7 +214,7 @@ itp_num, t1, t2 = let
     times_num = [0.0, 1.0, 2.0, 3.0]
 
     # Loader for numerical field
-    loader_num(i) = TP.build_interpolator(TP.CartesianGrid, B_fields[i], x_grid, y_grid, z_grid)
+    loader_num(i) = build_interpolator(CartesianGrid, B_fields[i], x_grid, y_grid, z_grid)
 
     LazyTimeInterpolator(times_num, loader_num), 0.5, 2.5
 end
@@ -221,7 +225,7 @@ SUITE["interpolation"]["time-dependent"] = @benchmarkable begin
 end
 
 # GC
-stateinit_gc, param_gc = TP.prepare_gc(
+stateinit_gc, param_gc = prepare_gc(
     stateinit, E_analytic, B_analytic,
     species = Proton
 )

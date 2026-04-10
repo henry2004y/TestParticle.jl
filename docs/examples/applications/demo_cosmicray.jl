@@ -77,8 +77,8 @@ z = range(-10, 10, length = nz) # [rL0]
 B = fill(0.0, 3, nx, ny, nz) # [B0]
 B[3, :, :, :] .= 1.0
 E(x) = SA[0.0, 0.0, 0.0] # [E₀]
-## periodic bc = 2
-param = prepare(x, y, z, E, B; m = 1, q = 1, bc = 2)
+## periodic bc = WrapExtrap()
+param = prepare(x, y, z, E, B; m = 1, q = 1, bc = WrapExtrap())
 
 ## Initial condition
 stateinit = let

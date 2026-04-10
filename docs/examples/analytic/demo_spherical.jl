@@ -38,7 +38,7 @@ param = TP.prepare(
     r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.StructuredGrid
 )
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
+sol = solve(prob, Vern7())
 
 ## Visualization
 f = Figure(fontsize = 18)

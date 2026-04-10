@@ -99,23 +99,24 @@ end
                 Float32(i + j + k)
                     for i in eachindex(x), j in eachindex(y), k in eachindex(z)
             ]
-            nfunc11 = TP.build_interpolator(n, x, y, z)
+            nfunc01 = build_interpolator(n, x, y, z, 0)
+            @test nfunc01(SA[-10, -10, -10]) ≈ 3.0
+            nfunc11 = build_interpolator(n, x, y, z)
             @test nfunc11(SA[9, 0, 0]) ≈ 11.85
-            nfunc12 = TP.build_interpolator(n, x, y, z, 1, 2)
+            # bc=WrapExtrap() (previously bc=2)
+            nfunc12 = build_interpolator(n, x, y, z, 1, WrapExtrap())
             @test nfunc12(SA[20, 0, 0]) ≈ 10.5
-            nfunc13 = TP.build_interpolator(n, x, y, z, 1, 3)
+            # bc=ClampExtrap() (previously bc=3)
+            nfunc13 = build_interpolator(n, x, y, z, 1, ClampExtrap())
             @test nfunc13(SA[20, 0, 0]) ≈ 12.0
-            nfunc21 = TP.build_interpolator(n, x, y, z, 2)
-            @test nfunc21(SA[9, 0, 0]) ≈ 11.85
-            nfunc22 = TP.build_interpolator(n, x, y, z, 2, 2)
-            @test nfunc22(SA[20, 0, 0]) ≈ 10.5
-            nfunc23 = TP.build_interpolator(n, x, y, z, 2, 3)
-            @test nfunc23(SA[20, 0, 0]) ≈ 12.0
-            nfunc31 = TP.build_interpolator(n, x, y, z, 3)
+
+            nfunc31 = build_interpolator(n, x, y, z, 3)
             @test nfunc31(SA[9, 0, 0]) ≈ 11.85
-            nfunc32 = TP.build_interpolator(n, x, y, z, 3, 2)
+            # bc=WrapExtrap() (previously bc=2)
+            nfunc32 = build_interpolator(n, x, y, z, 3, WrapExtrap())
             @test nfunc32(SA[20, 0, 0]) ≈ 10.5
-            nfunc33 = TP.build_interpolator(n, x, y, z, 3, 3)
+            # bc=ClampExtrap() (previously bc=3)
+            nfunc33 = build_interpolator(n, x, y, z, 3, ClampExtrap())
             @test nfunc33(SA[20, 0, 0]) ≈ 12.0
         end
 
@@ -126,24 +127,24 @@ end
             # Vector field
             B = fill(0.0, 3, length(r), length(θ), length(ϕ))
             B[1, :, :, :] .= 1.0
-            Bfunc = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
+            Bfunc = build_interpolator(StructuredGrid, B, r, θ, ϕ)
             @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
             # Scalar field
             A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
+            Afunc = build_interpolator(StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test isnan(Afunc(SA[0, 0, 0]))
 
-            # High order spherical interpolation
-            Bfunc2 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 2)
-            @test Bfunc2(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
-            Afunc2 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 2)
-            @test Afunc2(SA[1, 1, 1]) ≈ 1.0
-
-            Bfunc3 = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ, 3)
+            Bfunc3 = build_interpolator(StructuredGrid, B, r, θ, ϕ, 3)
             @test Bfunc3(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
-            Afunc3 = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ, 3)
+            Afunc3 = build_interpolator(StructuredGrid, A, r, θ, ϕ, 3)
             @test Afunc3(SA[1, 1, 1]) ≈ 1.0
+
+            # Constant interpolation (order=0)
+            Bfunc0 = build_interpolator(StructuredGrid, B, r, θ, ϕ, 0)
+            @test Bfunc0(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
+            Afunc0 = build_interpolator(StructuredGrid, A, r, θ, ϕ, 0)
+            @test Afunc0(SA[1, 1, 1]) == 1.0
         end
 
         begin # non-uniform spherical interpolation
@@ -153,11 +154,11 @@ end
             # Vector field
             B = fill(0.0, 3, length(r), length(θ), length(ϕ))
             B[1, :, :, :] .= 1.0
-            Bfunc = TP.build_interpolator(TP.StructuredGrid, B, r, θ, ϕ)
+            Bfunc = build_interpolator(StructuredGrid, B, r, θ, ϕ)
             @test Bfunc(SA[1, 1, 1]) ≈ [0.57735, 0.57735, 0.57735] atol = 1.0e-5
             # Scalar field
             A = ones(length(r), length(θ), length(ϕ))
-            Afunc = TP.build_interpolator(TP.StructuredGrid, A, r, θ, ϕ)
+            Afunc = build_interpolator(StructuredGrid, A, r, θ, ϕ)
             @test Afunc(SA[1, 1, 1]) == 1.0
             @test isnan(Afunc(SA[0, 0, 0]))
         end
@@ -166,17 +167,17 @@ end
             # 3D
             x = y = z = range(0, 10, length = 5)
             B = rand(3, 5, 5, 5)
-            itp3d = TP.build_interpolator(TP.CartesianGrid, B, x, y, z)
+            itp3d = build_interpolator(CartesianGrid, B, x, y, z)
             pt = SA[1.0, 2.0, 3.0]
             @test itp3d(pt, 0.0) == itp3d(pt)
 
             # 2D
-            itp2d = TP.build_interpolator(TP.CartesianGrid, B[:, :, :, 1], x, y)
+            itp2d = build_interpolator(CartesianGrid, B[:, :, :, 1], x, y)
             pt2d = SA[1.0, 2.0]
             @test itp2d(pt2d, 0.0) == itp2d(pt2d)
 
             # 1D
-            itp1d = TP.build_interpolator(TP.CartesianGrid, B[:, :, 1, 1], x)
+            itp1d = build_interpolator(CartesianGrid, B[:, :, 1, 1], x)
             pt1d = SA[1.0]
             @test itp1d(pt1d, 0.0) == itp1d(pt1d)
 
@@ -185,7 +186,7 @@ end
             theta = range(0, pi, length = 5)
             phi = range(0, 2pi, length = 5)
             Bsph = rand(3, 5, 5, 5)
-            itpsph = TP.build_interpolator(TP.StructuredGrid, Bsph, r, theta, phi)
+            itpsph = build_interpolator(StructuredGrid, Bsph, r, theta, phi)
             ptsph = SA[1.0, 1.0, 1.0]
             @test itpsph(ptsph, 0.0) == itpsph(ptsph)
         end
@@ -198,10 +199,10 @@ end
             x64 = range(0.0, 1.0, length = 11)
 
             # Should work for order=1
-            @test_nowarn TP.build_interpolator(B32, x64, x64, x64, 1, 1)
+            @test_nowarn build_interpolator(B32, x64, x64, x64, 1, FillExtrap(NaN))
 
-            # Should throw ArgumentError for order=2
-            @test_throws ArgumentError TP.build_interpolator(B32, x64, x64, x64, 2, 1)
+            # Should throw ArgumentError for order=2 (unsupported order)
+            @test_throws ArgumentError build_interpolator(B32, x64, x64, x64, 2, FillExtrap(NaN))
         end
     end
 
@@ -219,10 +220,10 @@ end
         B_svector = reinterpret(reshape, SVector{3, Float64}, B_array)
 
         # Interpolator using Array{Float64, 4} (Implicitly converted internally)
-        itp_implicit = TP.build_interpolator(TP.CartesianGrid, B_array, gridx, gridy, gridz)
+        itp_implicit = build_interpolator(CartesianGrid, B_array, gridx, gridy, gridz)
 
         # Interpolator using Array{SVector, 3} (Explicitly passed)
-        itp_explicit = TP.build_interpolator(TP.CartesianGrid, B_svector, gridx, gridy, gridz)
+        itp_explicit = build_interpolator(CartesianGrid, B_svector, gridx, gridy, gridz)
 
         # Compare
         pt = SA[5.5, 5.5, 5.5]
@@ -237,8 +238,8 @@ end
         B_array_sph = rand(3, 10, 10, 10)
         B_svector_sph = reinterpret(reshape, SVector{3, Float64}, B_array_sph)
 
-        itp_sph_implicit = TP.build_interpolator(TP.StructuredGrid, B_array_sph, r, theta, phi)
-        itp_sph_explicit = TP.build_interpolator(TP.StructuredGrid, B_svector_sph, r, theta, phi)
+        itp_sph_implicit = build_interpolator(StructuredGrid, B_array_sph, r, theta, phi)
+        itp_sph_explicit = build_interpolator(StructuredGrid, B_svector_sph, r, theta, phi)
 
         pt_cart = SA[5.0, 0.0, 0.0] # On x-axis
 
@@ -249,8 +250,8 @@ end
         B_array_2d = rand(3, nx, ny)
         B_svector_2d = reinterpret(reshape, SVector{3, Float64}, B_array_2d)
 
-        itp_2d_implicit = TP.build_interpolator(TP.CartesianGrid, B_array_2d, gridx, gridy)
-        itp_2d_explicit = TP.build_interpolator(TP.CartesianGrid, B_svector_2d, gridx, gridy)
+        itp_2d_implicit = build_interpolator(CartesianGrid, B_array_2d, gridx, gridy)
+        itp_2d_explicit = build_interpolator(CartesianGrid, B_svector_2d, gridx, gridy)
 
         pt_2d = SA[5.5, 5.5]
         @test itp_2d_implicit(pt_2d) ≈ itp_2d_explicit(pt_2d)
@@ -266,18 +267,18 @@ end
         B = fill(0.0, 3, length(x), length(y), length(z))
         B[1, :, :, :] .= 1.0 # Bx = 1.0
 
-        Bfunc = TP.build_interpolator(TP.RectilinearGrid, B, x, y, z)
+        Bfunc = build_interpolator(RectilinearGrid, B, x, y, z)
         @test Bfunc(SA[5.0, 5.0, 5.0]) ≈ [1.0, 0.0, 0.0]
 
         # Scalar field
         A = fill(2.0, length(x), length(y), length(z))
-        Afunc = TP.build_interpolator(TP.RectilinearGrid, A, x, y, z)
+        Afunc = build_interpolator(RectilinearGrid, A, x, y, z)
         @test Afunc(SA[5.0, 5.0, 5.0]) ≈ 2.0
 
         # Check interpolation values
         # Linear gradient
         A_grad = [i + j + k for i in x, j in y, k in z]
-        Afunc_grad = TP.build_interpolator(TP.RectilinearGrid, A_grad, x, y, z)
+        Afunc_grad = build_interpolator(RectilinearGrid, A_grad, x, y, z)
 
         # Center point: 5.0, 5.0, 5.0 -> should match exactly for linear interpolation
         # value = 5.0 + 5.0 + 5.0 = 15.0
@@ -289,7 +290,7 @@ end
 
         # SVector array support
         B_sv = [SA[1.0, 0.0, 0.0] for i in x, j in y, k in z]
-        Bfunc_sv = TP.build_interpolator(TP.RectilinearGrid, B_sv, x, y, z)
+        Bfunc_sv = build_interpolator(RectilinearGrid, B_sv, x, y, z)
         @test Bfunc_sv(SA[5.0, 5.0, 5.0]) ≈ SA[1.0, 0.0, 0.0]
 
         # Non-uniform grid check
@@ -299,7 +300,7 @@ end
         A_nu = [sqrt(i) + sqrt(j) + sqrt(k) for i in x_nu, j in y_nu, k in z_nu]
 
         # Check if we can interpolate on this
-        Afunc_nu = TP.build_interpolator(TP.RectilinearGrid, A_nu, x_nu, y_nu, z_nu)
+        Afunc_nu = build_interpolator(RectilinearGrid, A_nu, x_nu, y_nu, z_nu)
 
         # Point (4.0, 4.0, 4.0) -> sqrt(4)+sqrt(4)+sqrt(4) = 2+2+2=6
         @test Afunc_nu(SA[4.0, 4.0, 4.0]) ≈ 6.0
@@ -379,9 +380,9 @@ end
             # Loader for numerical field
             function loader_num(i)
                 if i == 1
-                    return TP.build_interpolator(TP.CartesianGrid, B0, x_grid, y_grid, z_grid)
+                    return build_interpolator(CartesianGrid, B0, x_grid, y_grid, z_grid)
                 elseif i == 2
-                    return TP.build_interpolator(TP.CartesianGrid, B1, x_grid, y_grid, z_grid)
+                    return build_interpolator(CartesianGrid, B1, x_grid, y_grid, z_grid)
                 end
             end
 

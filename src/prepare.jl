@@ -126,24 +126,24 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
 
 # Keywords
 
-  - `order::Int=1`: order of interpolation in [1,2,3].
-  - `bc::Int=1`: type of boundary conditions, 1 -> NaN, 2 -> periodic.
+  - `order::Int=1`: order of interpolation in [0,1,3].
+  - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
   - `species=Proton`: particle species.
   - `q=nothing`: particle charge.
   - `m=nothing`: particle mass.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
-function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
+function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = FillExtrap(NaN), kw...)
     return _prepare(E, B, F, makegrid(grid)...; gridtype = CartesianGrid, order, bc, kw...)
 end
 
-function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = 1, kw...)
+function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = FillExtrap(NaN), kw...)
     return _prepare(E, B, F, makegrid(grid)...; gridtype = RectilinearGrid, order, bc, kw...)
 end
 
 function prepare(
         x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
-        bc = 1, kw...
+        bc = FillExtrap(NaN), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
@@ -152,7 +152,7 @@ end
 
 function prepare(
         x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField(); order = 1,
-        bc = 1, gridtype = CartesianGrid, kw...
+        bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
@@ -162,7 +162,7 @@ end
 
 function prepare(
         x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField();
-        order = 1, bc = 2, kw...
+        order = 1, bc = WrapExtrap(), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
@@ -170,7 +170,7 @@ function prepare(
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
-function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = 3, dir = 1, kw...)
+function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = ClampExtrap(), dir = 1, kw...)
     @assert issorted(x) "Grid vector `x` must be sorted."
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
