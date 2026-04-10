@@ -173,22 +173,18 @@ We can measure this difference using `@be`.
 # Order 1: Minimal allocations (Uses a view)
 @be setup_mixed_precision_field(11, 1)
 
-# Order 3: Significant allocations (Computes coefficients)
+# Order 3: Minimal allocations (Uses a view)
 @be setup_mixed_precision_field(11, 3)
 ```
 
 Comparing the ratios relative to the original array size illustrates the overhead:
 
 ```@repl interp
-# Original 4D field array size
 B = fill(0.0f0, 3, 11, 11, 11);
-size_B = Base.summarysize(B)
+size_B = Base.summarysize(B) # Original 4D field array size
 
-# Total size for order=1 (Essentially the input array size)
-size_itp1 = Base.summarysize(itp_f32)
-
-# Total size for order=3 (Input array + Coefficient array)
-itp_f32_q = setup_mixed_precision_field(11, 3);
+size_itp1 = Base.summarysize(itp_f32) # Total size for order=1 (Essentially the input array size)
+itp_f32_q = setup_mixed_precision_field(11, 3) # Total size for order=3
 size_itp3 = Base.summarysize(itp_f32_q)
 
 # Ratios relative to raw data
@@ -203,20 +199,20 @@ As a rule of thumb, linear interpolation has nearly zero memory overhead (ratio 
 Cubic interpolation (`order = 3`) requires high-order coefficients. By default, TestParticle uses `OnTheFly()` coefficients, which are calculated at query time. This saves memory but increases evaluation time. For maximum performance, you can use `PreCompute()`, which stores the coefficients in an additional array.
 
 ```@repl interp
-using FastInterpolations: OnTheFly, PreCompute
 # Benchmark evaluation time
 itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
-itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute());
+# Not supported yet in FastInterpolations v0.4.8
+#itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute());
 
 @be itp_fly($loc_f64)
-@be itp_pre($loc_f64)
+#@be itp_pre($loc_f64)
 
 # Compare total object size
 Base.summarysize(itp_fly)
-Base.summarysize(itp_pre)
+#Base.summarysize(itp_pre)
 ```
 
-As shown, `PreCompute()` is roughly 3-4x faster but consumes significantly more memory (comparable to the input data array).
+As shown, `PreCompute()` is faster but consumes significantly more memory (comparable to the input data array).
 
 ## Time-dependent field interpolation
 
