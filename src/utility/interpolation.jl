@@ -180,9 +180,7 @@ function _check_interpolation_consistency(A, grids, order)
     return
 end
 
-@inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) = build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
-
-raw"""
+@doc raw"""
     build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN))
     build_interpolator(A, grids..., order::Int=1, bc=FillExtrap(NaN))
 
@@ -201,7 +199,12 @@ Return a function for interpolating field array `A` on the given grids.
 
 # Notes
 - The input array `A` may be modified in-place for memory optimization.
-"""
+""" build_interpolator
+
+function build_interpolator end
+
+@inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) = build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
+
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
