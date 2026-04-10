@@ -229,6 +229,6 @@ For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a
 ## Related API
 
 ```@docs; canonical=false
-TestParticle.build_interpolator
-TestParticle.prepare
+TP.build_interpolator
+TP.prepare
 ```
