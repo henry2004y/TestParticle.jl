@@ -72,8 +72,8 @@ trajectories = 400
 weight₁ = n₁ / trajectories # relation between test particle and real particles
 
 prob = let
-    ## BC type 3 is Flat
-    param = prepare(x, E, B; species = Proton, bc = 3)
+    ## bc=ClampExtrap() is Flat
+    param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
     stateinit = zeros(6) # particle position and velocity to be modified
     tspan = (0.0, 30.0)
     ODEProblem(trace!, stateinit, tspan, param)
@@ -367,8 +367,8 @@ function prob_func_para(prob, i, repeat)
 end
 
 prob = let
-    ## BC type 3 is Flat
-    param = prepare(x, E, B; species = Proton, bc = 3)
+    ## bc=ClampExtrap() is Flat
+    param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
     stateinit = zeros(6) # particle position and velocity to be modified
     tspan = (0.0, 14.0)
     ODEProblem(trace!, stateinit, tspan, param)

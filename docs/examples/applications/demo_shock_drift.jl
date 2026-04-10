@@ -69,7 +69,7 @@ const x0 = 1000.0e3; # 1000 km upstream
 # ### Protons
 
 prob_p = let
-    param_p = prepare(x, E, B; species = Proton, bc = 3)
+    param_p = prepare(x, E, B; species = Proton, bc = ClampExtrap())
     u0_p = [x0, 0.0, 0.0, v0_p...]
     ODEProblem(trace!, u0_p, (0.0, 20.0), param_p)
 end;
@@ -94,7 +94,7 @@ sols_p = solve(ensemble_p, Vern9(), EnsembleSerial(); trajectories = 10);
 
 prob_e = let
     ## Create parameter object for Heavy Electron.
-    param_e = prepare(x, E, B; bc = 3, q = q_heavy, m = m_heavy)
+    param_e = prepare(x, E, B; bc = ClampExtrap(), q = q_heavy, m = m_heavy)
 
     u0_e = [x0, 0.0, 0.0, v0_p...]
     ODEProblem(trace!, u0_e, (0.0, 20.0), param_e)

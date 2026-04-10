@@ -48,7 +48,7 @@ export LazyTimeInterpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake,
-    FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap
+    FillExtrap, ClampExtrap, WrapExtrap
 
 include("types.jl")
 include("utility/utility.jl")

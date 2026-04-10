@@ -95,14 +95,14 @@ function setup_time_dependent_field(ns = 16)
    return B_field_t
 end
 
-function setup_mixed_precision_field(ns = 11, order = 1, bc = 1)
+function setup_mixed_precision_field(ns = 11, order = 1, bc = FillExtrap(NaN); coeffs = OnTheFly())
    x = range(0.0f0, 10.0f0, length = ns)
    y = range(0.0f0, 10.0f0, length = ns)
    z = range(0.0f0, 10.0f0, length = ns)
    B = fill(0.0f0, 3, ns, ns, ns)
    B[3, :, :, :] .= 1.0f-8
 
-   itp = TP.build_interpolator(B, x, y, z, order, bc)
+   itp = TP.build_interpolator(B, x, y, z, order, bc; coeffs)
    return itp
 end
 
@@ -165,7 +165,7 @@ Large numerical field arrays can consume significant amounts of memory. It's imp
 
 For **linear interpolation (`order=1`)**, construction is near zero-allocation because it creates a wrapper around a reinterpreted view of your existing array.
 
-For **higher-order interpolation (`order ≥ 2`)**, `FastInterpolations.jl` must precompute interpolation coefficients to ensure $O(1)$ lookup performance. This process **allocates an additional array of the same size** as your input data.
+For **higher-order interpolation (`order = 3`)**, `FastInterpolations.jl` must precompute interpolation coefficients to ensure $O(1)$ lookup performance. This process **allocates an additional array of the same size** as your input data.
 
 We can measure this difference using `@be`.
 
@@ -173,8 +173,8 @@ We can measure this difference using `@be`.
 # Order 1: Minimal allocations (Uses a view)
 @be setup_mixed_precision_field(11, 1)
 
-# Order 2: Significant allocations (Computes coefficients)
-@be setup_mixed_precision_field(11, 2)
+# Order 3: Significant allocations (Computes coefficients)
+@be setup_mixed_precision_field(11, 3)
 ```
 
 Comparing the ratios relative to the original array size illustrates the overhead:
@@ -187,16 +187,36 @@ size_B = Base.summarysize(B)
 # Total size for order=1 (Essentially the input array size)
 size_itp1 = Base.summarysize(itp_f32)
 
-# Total size for order=2 (Input array + Coefficient array)
-itp_f32_q = setup_mixed_precision_field(11, 2);
-size_itp2 = Base.summarysize(itp_f32_q)
+# Total size for order=3 (Input array + Coefficient array)
+itp_f32_q = setup_mixed_precision_field(11, 3);
+size_itp3 = Base.summarysize(itp_f32_q)
 
 # Ratios relative to raw data
 size_itp1 / size_B
-size_itp2 / size_B
+size_itp3 / size_B
 ```
 
-As a rule of thumb, linear interpolation has nearly zero memory overhead (ratio ≈ 1.0), while quadratic or cubic interpolation doubles the memory footprint (ratio ≈ 8.0) to store the coefficients.
+As a rule of thumb, linear interpolation has nearly zero memory overhead (ratio ≈ 1.0), while cubic interpolation doubles the memory footprint (ratio ≈ 8.0) to store the coefficients.
+
+## On-the-fly vs Precomputed coefficients
+
+Cubic interpolation (`order = 3`) requires high-order coefficients. By default, TestParticle uses `OnTheFly()` coefficients, which are calculated at query time. This saves memory but increases evaluation time. For maximum performance, you can use `PreCompute()`, which stores the coefficients in an additional array.
+
+```@repl interp
+using FastInterpolations: OnTheFly, PreCompute
+# Benchmark evaluation time
+itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
+itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute());
+
+@be itp_fly($loc_f64)
+@be itp_pre($loc_f64)
+
+# Compare total object size
+Base.summarysize(itp_fly)
+Base.summarysize(itp_pre)
+```
+
+As shown, `PreCompute()` is roughly 3-4x faster but consumes significantly more memory (comparable to the input data array).
 
 ## Time-dependent field interpolation
 
