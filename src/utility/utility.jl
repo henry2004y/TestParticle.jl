@@ -589,6 +589,10 @@ function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
     p1 = Point(u1[1], u1[2], u1[3])
     s1 = _signed_distance(p1, surface)
 
+    if s1 == 0
+        return SVector{6, T}(u1)
+    end
+
     @inbounds for i in 1:(length(t) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
@@ -600,17 +604,14 @@ function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
             if _is_valid_intersection(pcross, surface)
                 tcross = muladd(f, t[i + 1] - t[i], t[i])
                 ucross = sol(tcross)
-                return SVector{6, T}(
-                    ucross[1], ucross[2], ucross[3],
-                    ucross[4], ucross[5], ucross[6]
-                )
+                return SVector{6, T}(ucross)
             end
         end
         s1 = s2
         p1 = p2
     end
 
-    return SVector{6, T}(fill(NaN, 6))
+    return fill(T(NaN), SVector{6, T})
 end
 
 """
