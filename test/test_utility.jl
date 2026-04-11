@@ -895,4 +895,25 @@ end
         @test length(vs_mkw) == 2 && length(vs_mkw[1]) == 2 &&
             all(w == 4.0 for w in ws_mkw[1])
     end
+
+    @testset "First Crossing" begin
+        # Linear motion through z=0 at t=10
+        t_array = collect(0.0:1.0:20.0)
+        u_array = [SA[0.0, 0.0, -10.0 + t, 0.0, 0.0, 1.0] for t in t_array]
+        sol = MockSol(t_array, u_array)
+
+        # Plane at z=0 (t=10)
+        center = Point(0.0, 0.0, 0.0)
+        orientation = Vec(0.0, 0.0, 1.0)
+        surf = Plane(center, orientation)
+
+        state = get_first_crossing(sol, surf)
+        @test state ≈ SA[0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+        # No intersection
+        surf_miss = Plane(Point(0.0, 0.0, 20.0), orientation)
+        state_miss = get_first_crossing(sol, surf_miss)
+        @test all(isnan, state_miss)
+    end
 end
+

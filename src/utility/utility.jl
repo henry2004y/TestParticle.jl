@@ -575,6 +575,45 @@ function get_particle_crossings(sol, surface::Union{Disk, Plane, Sphere}, weight
 end
 
 """
+    get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})::SVector{6}
+
+Find the first position and velocity where a trajectory crosses a surface. The generic `sol`
+must store the discrete time steps in `sol.t` and values in `sol.u`. If no intersection is
+found, returns a `NaN` vector. See also [`get_particle_crossings`](@ref).
+"""
+function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
+    t, u = sol.t, sol.u
+    T = float(eltype(u[1]))
+
+    u1 = u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
+    s1 = _signed_distance(p1, surface)
+
+    @inbounds for i in 1:(length(t) - 1)
+        u2 = u[i + 1]
+        p2 = Point(u2[1], u2[2], u2[3])
+        s2 = _signed_distance(p2, surface)
+
+        if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
+            f = s1 / (s1 - s2)
+            pcross = p1 + f * (p2 - p1)
+            if _is_valid_intersection(pcross, surface)
+                tcross = muladd(f, t[i + 1] - t[i], t[i])
+                ucross = sol(tcross)
+                return SVector{6, T}(
+                    ucross[1], ucross[2], ucross[3],
+                    ucross[4], ucross[5], ucross[6]
+                )
+            end
+        end
+        s1 = s2
+        p1 = p2
+    end
+
+    return SVector{6, T}(fill(NaN, 6))
+end
+
+"""
     get_particle_flux(sol, surface::Union{Disk, Sphere}, weight=1.0)
 
 Calculate both the number flux density and the velocity flux density crossing a virtual detector.
