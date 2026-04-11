@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Magnetic mirror · TestParticle.jl</title><meta name="title" content="Magnetic mirror · TestParticle.jl"/><meta property="og:title" content="Magnetic mirror · TestParticle.jl"/><meta property="twitter:title" content="Magnetic mirror · TestParticle.jl"/><meta name="description" content="Documentation for TestParticle.jl."/><meta property="og:description" content="Documentation for TestParticle.jl."/><meta property="twitter:description" content="Documentation for TestParticle.jl."/><meta property="og:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_magneticmirror/"/><meta property="twitter:url" content="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_magneticmirror/"/><link rel="canonical" href="https://henry2004y.github.io/TestParticle.jl/examples/advanced/demo_magneticmirror/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">TestParticle.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../tutorial/">Tutorial</a></li><li><a class="tocitem" href="../../">Examples</a></li><li><a class="tocitem" href="../../../api/">API</a></li><li><a class="tocitem" href="../../../plotfunctions/">Plot Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Magnetic mirror</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Magnetic mirror</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/examples/advanced/demo_magneticmirror.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="demo_magnetic_mirror"><a class="docs-heading-anchor" href="#demo_magnetic_mirror">Magnetic mirror</a><a id="demo_magnetic_mirror-1"></a><a class="docs-heading-anchor-permalink" href="#demo_magnetic_mirror" title="Permalink"></a></h1><p><a href="../demo_magneticmirror.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <img src="https://img.shields.io/badge/julia-1.9.0-blue.svg" alt="compat"/> <a href="https://github.com/TCLiuu"><img src="https://img.shields.io/badge/Author-Tiancheng%20Liu-blue" alt="Author"/></a> <a href="https://github.com/henry2004y"><img src="https://img.shields.io/badge/Author-Hongyang%20Zhou-blue" alt="Author"/></a> <img src="https://img.shields.io/date/1681948800" alt="Update time"/></p><p>This example demonstrates the particle motion trajectory in a magnetic mirror and also illustrates the conservation of magnetic moment. From the third figure on the right, it can be seen that the zero-order quantity of magnetic moment is conserved, but its high-order part is not conserved under this definition of magnetic moment and oscillates rapidly. We can observe from this the oscillation characteristics of magnetic moments at different levels.</p><p>This example is based on <code>demo_magneticbottle.jl</code>.</p><pre><code class="language-julia hljs">using TestParticle
+using TestParticle: getB_mirror
+using OrdinaryDiffEq
+using StaticArrays
+using LinearAlgebra: normalize, norm, ⋅
+using CairoMakie
+
+### Obtain field
+
+# Magnetic mirror parameters in SI units
+const I = 20. # current in the solenoid [A]
+const N = 45 # number of windings
+const distance = 10. # distance between solenoids [m]
+const a = 4.0 # radius of each coil [m]
+
+function getB(xu)
+   SVector{3}(getB_mirror(xu[1], xu[2], xu[3], distance, a, I*N))
+end
+
+getE(xu) = SA[0.0, 0.0, 0.0]
+
+# velocity in the direction perpendicular to the magnetic field
+function v_perp(t, x, y, z, vx, vy, vz)
+   xu = SA[x, y, z, vx, vy, vz]
+   vu = @view xu[4:6]
+   B = getB(xu)
+   b = normalize(B)
+   v_pa = (vu ⋅ b) .* b
+
+   (t, norm(vu - v_pa))
+end
+
+# magnetic field
+absB(t, x, y, z) = (t, sqrt(sum(x -&gt; x^2, getB(SA[x,y,z]))))
+
+# μ, magnetic moment
+function mu(t, x, y, z, vx, vy, vz)
+   xu = SA[x, y, z, vx, vy, vz]
+
+   (t, v_perp(t, x, y, z, vx, vy, vz)[2]^2 / sqrt(sum(x -&gt; x^2, getB(xu))))
+end
+
+Et(xu) = sqrt(xu[4]^2 + xu[5]^2 + xu[6]^2)
+
+### Initialize particles
+m = TestParticle.mₑ
+q = TestParticle.qₑ
+c = TestParticle.c
+
+# initial velocity, [m/s]
+v₀ = [2.75, 2.5, 1.3] .* 0.001c  # confined
+##v₀ = [0.25, 0.25, 5.9595] .* 0.01c  # escaped
+# initial position, [m]
+r₀ = [0.8, 0.8, 0.0]  # confined
+##r₀ = [1.5, 1.5, 2.4]  # escaped
+stateinit = [r₀..., v₀...]
+
+param = prepare(getE, getB; species=Electron)
+tspan = (0.0, 1e-4)
+
+prob = ODEProblem(trace!, stateinit, tspan, param)
+
+# Default Tsit5() and many solvers does not work in this case!
+# AB4() has better performance in maintaining magnetic moment conservation compared to AB3().
+sol_non = solve(prob, AB4(); dt=3e-9)
+
+### Visualization
+f = Figure(size=(900, 600), fontsize=18)
+ax1 = Axis3(f[1:3, 1],
+   title = &quot;Magnetic Mirror&quot;,
+   xlabel = &quot;x [m]&quot;,
+   ylabel = &quot;y [m]&quot;,
+   zlabel = &quot;z [m]&quot;,
+   aspect = :data,
+   azimuth = 0.9π,
+   elevation = 0.1π
+)
+ax2 = Axis(f[1,2], xlabel = &quot;time [s]&quot;, ylabel = &quot;B [T]&quot;)
+ax3 = Axis(f[2,2], xlabel = &quot;time [s]&quot;, ylabel = &quot;v_perp [m/s]&quot;)
+ax4 = Axis(f[3,2], xlabel = &quot;time [s]&quot;, ylabel = &quot;mu&quot;)
+
+lines!(ax1, sol_non, idxs=(1, 2, 3))
+lines!(ax2, sol_non, idxs=(absB, 0, 1, 2, 3))
+lines!(ax3, sol_non, idxs=(v_perp, 0, 1, 2, 3, 4, 5, 6))
+lines!(ax4, sol_non, idxs=(mu, 0, 1, 2, 3, 4, 5, 6))
+
+# Plot coils
+θ = range(0, 2π, length=100)
+x = a.*cos.(θ)
+y = a.*sin.(θ)
+z = fill(distance/2, size(x))
+lines!(ax1, x, y, z, color=:red)
+z = fill(-distance/2, size(x))
+lines!(ax1, x, y, z, color=:red)
+
+# # The distribution of magnetic field along the z-axis or x-axis
+# Bz(z) = hypot(getB(SA[0.0, 0.0, z])...)
+# Bx(x) = hypot(getB(SA[x, 0.0, 0.5*distance])...)
+# z = collect(-10:0.01:10)
+# x = collect(-0.99*a:0.01:0.99*a)
+# # Ba = Bz.(z)
+# Ba = Bx.(x)
+# # lines(z, Ba, color=:red)
+# lines(x, Ba, color=:red)
+</code></pre><p><img src="../demo_magneticmirror-4.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.9.0 on <span class="colophon-date" title="Thursday 20 March 2025 20:04">Thursday 20 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
