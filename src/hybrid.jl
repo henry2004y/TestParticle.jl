@@ -294,10 +294,14 @@ end
                 error_ratio = 0.5 * sqrt(sum_sq_error)
 
                 if error_ratio <= 1.0
+                    y_next = xv_gc + dx
+
+                    if isoutofdomain(y_next, p_gc, t + dt)
+                        break
+                    end
+
                     t += dt
                     xv_gc = y_next
-
-                    isoutofdomain(xv_gc, p_gc, t) && break
 
                     if save_everystep && (it % savestepinterval == 0)
                         push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
@@ -351,23 +355,30 @@ end
                 v_prev = v
 
                 if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                    v_save = update_velocity(
-                        v_prev, r, p, 0.5 * dt, t_sync
-                    )
-                    xv_save = SVector{6, T}(
-                        r[1], r[2], r[3], v_save[1], v_save[2], v_save[3]
-                    )
-                    push!(traj, xv_save)
-                    push!(tsave, t)
+                    if isempty(tsave) || tsave[end] < t - eps(t)
+                        v_save = update_velocity(
+                            v_prev, r, p, 0.5 * dt, t_sync
+                        )
+                        xv_save = SVector{6, T}(
+                            r[1], r[2], r[3], v_save[1], v_save[2], v_save[3]
+                        )
+                        push!(traj, xv_save)
+                        push!(tsave, t)
+                    end
                 end
 
                 t_mid = is_td ? t + 0.5 * dt : zero(T)
                 v = update_velocity(v, r, p, dt, t_mid)
-                r += v * dt
-                t += dt
+                r_next = r + v * dt
+                t_next = t + dt
 
-                xv_check_domain = SVector{6, T}(r[1], r[2], r[3], v[1], v[2], v[3])
-                isoutofdomain(xv_check_domain, p, t) && break
+                xv_check_domain = SVector{6, T}(r_next[1], r_next[2], r_next[3], v[1], v[2], v[3])
+                if isoutofdomain(xv_check_domain, p, t_next)
+                    break
+                end
+
+                r = r_next
+                t = t_next
                 it += 1
                 steps += 1
 

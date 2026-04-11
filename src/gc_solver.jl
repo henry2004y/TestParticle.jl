@@ -355,9 +355,12 @@ function _rk4!(
             t = tspan[1] + (it - 1) * dt
 
             dx = update_rk4(xv, p, dt, t)
-            xv += dx
+            xv_next = xv + dx
 
-            isoutofdomain(xv, p, t + dt) && break
+            if isoutofdomain(xv_next, p, t + dt)
+                break
+            end
+            xv = xv_next
 
             if save_everystep && (it % savestepinterval == 0)
                 iout += 1
@@ -373,7 +376,7 @@ function _rk4!(
         end
 
         # Handle save_end logic
-        final_step = min(it, nt)
+        final_step = it - 1
         should_save_final = false
         if save_end
             should_save_final = true
@@ -482,10 +485,14 @@ function _rk45!(
             error_ratio = 0.5 * sqrt(sum_sq_error)
 
             if error_ratio <= 1.0
+                y_next = xv + dx
+
+                if isoutofdomain(y_next, p, t + dt)
+                    break
+                end
+
                 t += dt
                 xv = y_next
-
-                isoutofdomain(xv, p, t) && break
 
                 if save_everystep
                     push!(

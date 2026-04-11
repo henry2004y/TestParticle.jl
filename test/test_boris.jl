@@ -566,7 +566,7 @@ using Distributed
 
                     alg = AdaptiveBoris(safety = 0.1)
                     sol = TP.solve(prob, alg; isoutofdomain = isoutofdomain_local)[1]
-                    @test sol.u[end][1] > 0.5 && sol.t[end] < tspan[2]
+                    @test sol.u[end][1] <= 0.5 && sol.t[end] < tspan[2]
                 end
             end
         finally
