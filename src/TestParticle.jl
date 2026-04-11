@@ -1,8 +1,8 @@
 module TestParticle
 
 using LinearAlgebra: norm, ×, ⋅, diag, normalize
-using FastInterpolations: cardinal_interp, constant_interp, linear_interp, quadratic_interp,
-    cubic_interp, interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
+using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
+    interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
     OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm,
