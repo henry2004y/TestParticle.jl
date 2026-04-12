@@ -120,15 +120,15 @@ detector_down = Meshes.Plane(
 
 # To get the velocity space distributions, we bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 #
-# ## Method 1: Flux Injection (The Macro-Particle Method)
+# ## Method 1: Forward Monte-Carlo Injection
 # In this method, simulated particles are treated as macro-particles.
 # Instead of calculating the density by counting snapshots in time, we treat the source as a steady-state flux injection.
 # To convert crossing events into physical phase-space density, we apply kinematic weighting that maps the instantaneous launch of macro-particles to a continuous stream in a steady state.
 
 function reconstruct_flux_projections(sols, detector, n0, dv_km)
-    ## 1. Initial velocities at the source plane
+    ## Initial velocities at the source plane
     vxi = [s.u[1][4] for s in sols] # initial vx [m/s]
-    ## 2. Detect crossings at the plane
+    ## Detect crossings at the plane
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
@@ -140,9 +140,8 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
 
     for (v, vxi_val) in zip(vs, ws_init)
         ## Weight w = (v_xi / v_det) * S
-        ## Resulting units: [s^2/km^5]
         w = abs(vxi_val) / abs(v[1]) * S
-        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w)
+        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w) # units: [s^2/km^5]
     end
 
     return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
@@ -182,14 +181,15 @@ fig_flux = DisplayAs.PNG(fig_flux) #hide
 # crossing event converts from the density-sampled launch to a steady-state flux
 # (the ``|v_{x,\mathrm{init}}|`` factor) and then back to phase-space density at
 # the detector (the ``1/|v_{x,\mathrm{det}}|`` factor).
-# If both factors are dropped (i.e. equal-weight binning), the two biases partially
-# cancel: upstream the correction is close to unity because particles are nearly
-# unperturbed, so the error is small; downstream, however, reflected and decelerated
-# ions have very different source and detector speeds, and the unweighted histogram
-# noticeably underestimates the density in the low-``|v_x|`` tails.
+# If both factors are dropped (i.e. equal-weight binning), the two biases partially cancel:
+# upstream the correction is close to unity because particles are nearly unperturbed, so the
+# error is small; downstream, however, reflected and decelerated ions have very different
+# source and detector speeds, and the unweighted histogram  noticeably underestimates the
+# density in the low-``|v_x|`` tails.
 #
 # ## Method 2: Forward Liouville Tracking
 # In forward Liouville tracking, we start from a sphere of initial conditions in velocity space at the source and trace forward to the detector.
+# Here we combine a Monte Carlo sampling of the initial velocity sphere with the Liouville theorem.
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_km = 20.0)
     ## 1. Initial weights from source PDF
@@ -271,23 +271,22 @@ function reconstruct_backward_projections(
     end
 
     tspan_bw = (0.0, -20.0)
-    is_at_source(u, p, t) = u[1] >= x_source[1]
+    source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
     prob_bw = TraceProblem(
         SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
         prob_func = prob_func_bw
     )
 
     sols_bw = TP.solve(
-        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
-        save_everystep = false, isoutofdomain = is_at_source
+        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw
     )
 
     ## Evaluate PDF at source for each traced state
     f_3d_km = zeros(nx, ny, nz)
     for i in 1:nparticles_bw
         sol = sols_bw[i]
-        last_state = sol.u[end]
-        if last_state[1] >= x_source[1]
+        last_state = get_first_crossing(sol, source_plane)
+        if !any(isnan, last_state)
             iz = (i - 1) % nz + 1
             iy = ((i - 1) ÷ nz) % ny + 1
             ix = ((i - 1) ÷ (nz * ny)) % nx + 1
