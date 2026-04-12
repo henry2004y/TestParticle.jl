@@ -386,7 +386,7 @@ function _rk4!(
 
         if iout < nout && should_save_final
             t_final = (final_step == nt) ? tspan[2] : (tspan[1] + final_step * dt)
-            if iout == 0 || tsave[iout] < t_final - eps(t_final)
+            if iout == 0 || tsave[iout] < t_final
                 iout += 1
                 traj[iout] = _prepare_saved_data_gc(
                     xv, p, t_final, Val(SaveFields), Val(SaveWork)

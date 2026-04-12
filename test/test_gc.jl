@@ -213,7 +213,10 @@ import TestParticle as TP
             @test sol_def[1].retcode == ReturnCode.Success
 
             # Tight tolerances
-            sol_tight = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8)
+            sol_tight = TestParticle.solve(
+                prob;
+                dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
+            )
             @test length(sol_tight[1].t) > length(sol_def[1].t)
 
             # Accuracy check

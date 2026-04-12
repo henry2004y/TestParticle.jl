@@ -549,7 +549,7 @@ end
 
         if iout < nout && should_save_final
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-            if iout == 0 || tsave[iout] < t_final - eps(t_final)
+            if iout == 0 || tsave[iout] < t_final
                 iout += 1
                 dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
                 v_final = velocity_updater(v, r, p, dt_final, t_final)

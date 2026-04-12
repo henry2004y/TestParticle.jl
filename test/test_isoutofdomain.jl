@@ -104,8 +104,8 @@ import OrdinaryDiffEq as ODE
 
     @testset "Spatial and Time Boundaries (Native Solvers)" begin
         # Derived from test_boris.jl and test_gc.jl
-        B_field_fixed(r, t) = SA[1.0, 0.0, 0.0] # Parallel to v0 to ensure crossing
-        E_field_fixed(r, t) = SA[0.0, 0.0, 0.0]
+        B_field_fixed(r, t = 0.0) = SA[1.0, 0.0, 0.0] # Parallel to v0 to ensure crossing
+        E_field_fixed(r, t = 0.0) = SA[0.0, 0.0, 0.0]
         param = prepare(E_field_fixed, B_field_fixed; species = Proton)
 
         @testset "Spatial rejection (AdaptiveBoris)" begin
@@ -119,13 +119,21 @@ import OrdinaryDiffEq as ODE
             @test sol.u[end][1] <= 0.5 && sol.t[end] < tspan[2]
         end
 
+        @testset "Integer tspan (Boris)" begin
+            u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+            tspan = (0, 10)
+            prob = TraceProblem(u0, tspan, param)
+            sol = solve(prob; dt = 1.0, isoutofdomain = (u, p, t) -> false)[1]
+            @test sol.t[end] == 10
+        end
+
         @testset "Time rejection (GC RK4)" begin
             # prepare_gc expects B(r) for time-independent fields
             B_func_gc(r) = SA[0.0, 0.0, 1.0]
             E_func_gc(r) = SA[0.0, 0.0, 0.0]
 
             u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
-            stateinit_gc, param_gc = TestParticle.prepare_gc(u0, E_func_gc, B_func_gc; species = Proton)
+            stateinit_gc, param_gc = prepare_gc(u0, E_func_gc, B_func_gc; species = Proton)
             tspan = (0.0, 1.0)
             prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
             dt = 1.0e-4
@@ -133,6 +141,15 @@ import OrdinaryDiffEq as ODE
             sol_early = solve(prob, dt = dt, alg = :rk4, isoutofdomain = (xv, p, t) -> t > 0.5)
             @test length(sol_early[1].t) == 5001
             @test sol_early[1].t[end] ≈ 0.5
+        end
+
+        @testset "Integer tspan (GC RK4)" begin
+            u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+            tspan = (0, 10)
+            stateinit_gc, param_gc = prepare_gc(u0, E_field_fixed, B_field_fixed)
+            prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
+            sol = solve(prob; dt = 1.0, alg = :rk4, isoutofdomain = (xv, p, t) -> false)[1]
+            @test sol.t[end] == 10
         end
     end
 
