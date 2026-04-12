@@ -474,6 +474,12 @@ Apply Boris method for particles with index in `irange`.
         t += dt
         v = velocity_updater(v, r, p, dt, t)
 
+        r_next = r + v * dt
+        t_next = t + 0.5 * dt
+        if isoutofdomain(vcat(r_next, v), p, t_next)
+            return it - 1, iout, r, v_prev
+        end
+
         if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
             iout += 1
             if iout <= length(traj)
@@ -485,12 +491,10 @@ Apply Boris method for particles with index in `irange`.
             end
         end
 
-        r += v * dt
-        t_next = t + 0.5 * dt
-        isoutofdomain(vcat(r, v), p, t_next) && break
+        r = r_next
         it += 1
     end
-    return it, iout, r, v
+    return it - 1, iout, r, v
 end
 
 @inline @muladd function _generic_boris!(
@@ -535,7 +539,7 @@ end
             Val(SaveFields), Val(SaveWork)
         )
 
-        final_step = min(it, nt)
+        final_step = it
         should_save_final = false
         if save_end
             should_save_final = true
@@ -544,16 +548,18 @@ end
         end
 
         if iout < nout && should_save_final
-            iout += 1
             t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-            dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-            v_final = velocity_updater(v, r, p, dt_final, t_final)
+            if iout == 0 || tsave[iout] < t_final
+                iout += 1
+                dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
+                v_final = velocity_updater(v, r, p, dt_final, t_final)
 
-            data = vcat(r, v_final)
-            traj[iout] = _prepare_saved_data(
-                data, p, t_final, Val(SaveFields), Val(SaveWork)
-            )
-            tsave[iout] = t_final
+                data = vcat(r, v_final)
+                traj[iout] = _prepare_saved_data(
+                    data, p, t_final, Val(SaveFields), Val(SaveWork)
+                )
+                tsave[iout] = t_final
+            end
         end
 
         if iout < nout

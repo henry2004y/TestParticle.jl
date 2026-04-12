@@ -246,21 +246,21 @@ end
 
             # Update velocity to v_{n+1/2}
             t_mid = t + 0.5 * dt
-            v = update_velocity(v, r, p, dt, t_mid)
+            v_new = update_velocity(v, r, p, dt, t_mid)
 
             # Update location x_{n} -> x_{n+1}
-            r += v * dt
-            t += dt
+            r_next = r + v_new * dt
+            t_next = t + dt
 
-            xv_new = vcat(r, v)
-            if isoutofdomain(xv_new, p, t)
-                # v is at t + 0.5*dt. To get v_n at t, move back by 0.5*dt
-                v = update_velocity(v, r, p, -0.5 * dt, t)
-                # Set dt to 0 so that final save logic uses 0.5*0 = 0 shift
-                dt = zero(dt)
+            xv_new = vcat(r_next, v_new)
+            if isoutofdomain(xv_new, p, t_next)
                 should_save_final = true
                 break
             end
+
+            r = r_next
+            t = t_next
+            v = v_new
 
             # New dt
             Bmag = norm(Bfunc(r, t))

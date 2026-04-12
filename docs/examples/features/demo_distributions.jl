@@ -1,4 +1,4 @@
-# # Sampling from VDFs
+# # Velocity Sampling
 #
 # This example demonstrates how to sample from various velocity distribution functions (VDFs)
 # including Maxwellian, Bi-Maxwellian, Kappa, and Bi-Kappa distributions.
