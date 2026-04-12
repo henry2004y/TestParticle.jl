@@ -4,7 +4,7 @@ using TestParticle
 import TestParticle: solve, TraceProblem, TraceGCProblem, AdaptiveBoris, Proton, prepare
 using StaticArrays
 using LinearAlgebra
-using OrdinaryDiffEq
+import OrdinaryDiffEq as ODE
 
 @testset "isoutofdomain" begin
 
@@ -98,11 +98,11 @@ using OrdinaryDiffEq
         u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 1.0)
 
-        prob = ODEProblem(trace!, u0, tspan, param)
-        callback = DiscreteCallback(isoutofdomain_r08, terminate!)
+        prob = ODE.ODEProblem(trace!, u0, tspan, param)
+        callback = ODE.DiscreteCallback(isoutofdomain_r08, ODE.terminate!)
 
-        sol = OrdinaryDiffEq.solve(
-            prob, Tsit5(); reltol = 1.0e-8, abstol = 1.0e-8,
+        sol = ODE.solve(
+            prob, ODE.Tsit5(); reltol = 1.0e-8, abstol = 1.0e-8,
             save_idxs = [1, 2, 3], callback, verbose = false
         )
         # Verify boundary termination
@@ -140,8 +140,8 @@ using OrdinaryDiffEq
             dt = 1.0e-4
 
             sol_early = solve(prob, dt = dt, alg = :rk4, isoutofdomain = (xv, p, t) -> t > 0.5)
-            @test length(sol_early[1].t) == 5002
-            @test sol_early[1].t[end] > 0.5
+            @test length(sol_early[1].t) == 5001
+            @test sol_early[1].t[end] ≈ 0.5
         end
     end
 

@@ -203,7 +203,7 @@ import TestParticle as TP
                 prob; dt, alg = :rk4,
                 isoutofdomain = (xv, p, t) -> t > 0.5
             )
-            @test length(sol_early[1].t) == 5002
+            @test length(sol_early[1].t) == 5001
         end
 
         @testset "Adaptive RK45" begin
