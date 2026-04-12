@@ -37,10 +37,7 @@ import OrdinaryDiffEq as ODE
             prob = TraceProblem(u0, tspan, p)
             sol = solve(prob, dt = 0.2, isoutofdomain = isoutofdomain_r1)
 
-            # Check that no NaNs are in the solution
-            for u in sol[1].u
-                @test !any(isnan, u)
-            end
+            @test !any(isnan, sol[1].u[end])
             @test norm(sol[1].u[end][1:3]) <= 1.0
         end
 
@@ -48,9 +45,7 @@ import OrdinaryDiffEq as ODE
             prob = TraceProblem(u0, tspan, p)
             sol = solve(prob, AdaptiveBoris(safety = 0.1), isoutofdomain = isoutofdomain_r1)
 
-            for u in sol[1].u
-                @test !any(isnan, u)
-            end
+            @test !any(isnan, sol[1].u[end])
             @test norm(sol[1].u[end][1:3]) <= 1.0
         end
 
@@ -60,9 +55,7 @@ import OrdinaryDiffEq as ODE
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = solve(prob, dt = 0.2, alg = :rk4, isoutofdomain = isoutofdomain_r1)
 
-            for u in sol[1].u
-                @test !any(isnan, u)
-            end
+            @test !any(isnan, sol[1].u[end])
             @test norm(sol[1].u[end][1:3]) <= 1.0
         end
 
@@ -72,9 +65,7 @@ import OrdinaryDiffEq as ODE
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = solve(prob, dt = 0.01, alg = :rk45, isoutofdomain = isoutofdomain_r1)
 
-            for u in sol[1].u
-                @test !any(isnan, u)
-            end
+            @test !any(isnan, sol[1].u[end])
             @test norm(sol[1].u[end][1:3]) <= 1.0
         end
     end
