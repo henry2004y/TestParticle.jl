@@ -401,6 +401,7 @@ function _rk4!(
             resize!(tsave, iout)
             retcode = ReturnCode.Terminated
         else
+            #TODO: ReturnCode.MaxIters check
             retcode = ReturnCode.Success
         end
 
