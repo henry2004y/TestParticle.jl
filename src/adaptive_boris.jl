@@ -223,6 +223,8 @@ end
         v = update_velocity(v, r, -0.5 * dt, t, p)
         it = 1
         should_save_final = save_end
+        retcode = ReturnCode.Success
+
         while abs(t - tspan[1]) < abs(ttotal)
             # Check if next step exceeds tspan[2]
             if abs(t + dt - tspan[1]) > abs(ttotal)
@@ -255,6 +257,7 @@ end
             xv_new = vcat(r_next, v_new)
             if isoutside(xv_new, p, t_next)
                 should_save_final = true
+                retcode = ReturnCode.Terminated
                 break
             end
 
@@ -291,12 +294,9 @@ end
         # Construct solution
         sol_alg = :adaptive_boris
         interp = LinearInterpolation(tsave, traj)
-        retcode = ReturnCode.Default
         stats = nothing
 
-        sols[i] = build_solution(
-            prob, sol_alg, tsave, traj; interp = interp, retcode = retcode, stats = stats
-        )
+        sols[i] = build_solution(prob, sol_alg, tsave, traj; interp, retcode, stats)
     end
 
     return

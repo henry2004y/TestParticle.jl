@@ -351,6 +351,7 @@ function _rk4!(
         end
 
         it = 1
+
         while it <= nt
             t = tspan[1] + (it - 1) * dt
 
@@ -398,12 +399,14 @@ function _rk4!(
         if iout < nout
             resize!(traj, iout)
             resize!(tsave, iout)
+            retcode = ReturnCode.Terminated
+        else
+            retcode = ReturnCode.Success
         end
 
         alg = :rk4
         t = tsave
         interp = LinearInterpolation(t, traj)
-        retcode = ReturnCode.Default
         stats = nothing
 
         sols[i] = build_solution(prob, alg, t, traj; interp, retcode, stats)
@@ -469,6 +472,7 @@ function _rk45!(
         end
 
         steps = 0
+        retcode = ReturnCode.Success
         while t < tspan[2] && steps < maxiters
             if t + dt > tspan[2]
                 dt = tspan[2] - t
@@ -490,6 +494,7 @@ function _rk45!(
                 y_next = xv + dx
 
                 if isoutside(y_next, p, t + dt)
+                    retcode = ReturnCode.Terminated
                     break
                 end
 
@@ -528,7 +533,6 @@ function _rk45!(
         t_final = tsave
         u_final = traj
         interp = LinearInterpolation(t_final, u_final)
-        retcode = steps >= maxiters ? ReturnCode.MaxIters : ReturnCode.Success
         stats = nothing
 
         sols[i] = build_solution(prob, alg, t_final, u_final; interp, retcode, stats)

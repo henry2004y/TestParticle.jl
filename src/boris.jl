@@ -121,14 +121,14 @@ Trace particles using the Boris method with specified `prob`.
   - `dt::AbstractFloat`: time step.
   - `savestepinterval::Int`: saving output interval.
   - `isoutside::Function`: pinpointing impact or checking boundaries.
-  - `n::Int`: number of substeps for the Multistep Boris method. Default is 1 (standard Boris).
-  - `N::Int`: order of the Hyper Boris gyrophase correction (2, 4, or 6). Default is 2 (uncorrected).
+  - `n::Int=1`: number of substeps for the Multistep Boris method. 1 is standard Boris.
+  - `N::Int=2`: order of the Hyper Boris gyrophase correction (2, 4, or 6). 2 is uncorrected.
   - `save_start::Bool=true`: save the initial condition.
   - `save_end::Bool=true`: save the final condition.
   - `save_everystep::Bool=true`: save the state at every `savestepinterval`.
   - `save_fields::Bool=false`: save the electric and magnetic fields.
   - `save_work::Bool=false`: save the work done by the electric field.
-  - `batch_size::Int`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`. Default is `max(1, trajectories ÷ nworkers())` for distributed and 1 for others.
+  - `batch_size::Int=max(1, trajectories ÷ nworkers())`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`.
 
 """
 @inline function solve(
@@ -501,19 +501,16 @@ end
             resize!(tsave, iout)
             retcode = ReturnCode.Terminated
         else
-            retcode = ReturnCode.Default
+            retcode = ReturnCode.Success
         end
         traj_save = traj
         t = tsave
 
         alg = alg_name
         interp = LinearInterpolation(t, traj_save)
-
         stats = nothing
 
-        sols[i] = build_solution(
-            prob, alg, t, traj_save; interp = interp, retcode = retcode, stats = stats
-        )
+        sols[i] = build_solution(prob, alg, t, traj_save; interp, retcode, stats)
     end
 
     return

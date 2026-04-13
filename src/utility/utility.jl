@@ -921,11 +921,11 @@ end
 end
 
 """
-    TerminateOutside(condition)
+    TerminateOutside(isoutofdomain)
 
-Create a `DiscreteCallback` that terminates the simulation if `condition(u, p, t)` is true.
+Create a `DiscreteCallback` that terminates the simulation if `isoutofdomain(u, p, t)` is true.
 This is a helper to replace the legacy `isoutofdomain` keyword.
 """
-function TerminateOutside(condition)
-    return DiscreteCallback((u, t, integrator) -> condition(u, integrator.p, t), terminate!)
+function TerminateOutside(isoutofdomain)
+    return DiscreteCallback(isoutofdomain, terminate!)
 end

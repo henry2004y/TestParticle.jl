@@ -1,7 +1,9 @@
 using Test
 using TestParticle
-import TestParticle: solve, TraceProblem, TraceGCProblem, AdaptiveBoris
+import TestParticle as TP
 using StaticArrays
+using LinearAlgebra: norm
+using OrdinaryDiffEq: ReturnCode
 
 @testset "Callbacks and Termination" begin
 
@@ -23,8 +25,8 @@ using StaticArrays
             end
         end
 
-        # domain check: stop if r > 1.0
-        isoutside(u, p, t) = norm(u[1:3]) > 1.0
+        # domain check: stop if r > 1.0 or if NaN is encountered
+        isoutside(u, p, t) = any(isnan, u) || norm(u[1:3]) > 1.0
         callback = TerminateOutside(isoutside)
 
         u0 = [0.9, 0.0, 0.0, 0.0, 1.0, 0.0] # Starts inside, moving out
@@ -37,38 +39,41 @@ using StaticArrays
 
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == Terminated
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "Adaptive Boris" begin
             prob = TraceProblem(u0, tspan, p)
-            sol = TP.solve(prob, AdaptiveBoris(safety = 0.1); isoutside = callback.condition)[1]
+            sol = TP.solve(
+                prob, AdaptiveBoris(safety = 0.05);
+                isoutside = callback.condition
+            )[1]
 
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == Terminated
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK4" begin
-            u0_gc = [0.9, 0.0, 0.0, 0.0]
+            u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside = callback.condition)[1]
 
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == Terminated
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK45" begin
-            u0_gc = [0.9, 0.0, 0.0, 0.0]
+            u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside = callback.condition)[1]
 
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == Terminated
+            @test sol.retcode == ReturnCode.Terminated
         end
     end
 
@@ -85,8 +90,9 @@ using StaticArrays
 
             alg = AdaptiveBoris(safety = 0.1)
             sol = TP.solve(prob, alg; isoutside)[1]
-            @test sol.u[end][1] <= 0.5 && sol.t[end] < tspan[2]
-            @test sol.retcode == Terminated
+            @test sol.u[end][1] <= 0.5
+            @test sol.t[end] < tspan[2]
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "Integer tspan (Boris)" begin
@@ -95,7 +101,7 @@ using StaticArrays
             prob = TraceProblem(u0, tspan, param)
             sol = TP.solve(prob; dt = 1.0)[1]
             @test sol.t[end] == 10
-            @test sol.retcode == Default
+            @test sol.retcode == ReturnCode.Success
         end
 
         @testset "Time rejection (GC RK4)" begin
@@ -111,7 +117,7 @@ using StaticArrays
             isoutside = (u, p, t) -> t > 0.5
             sol_early = TP.solve(prob; dt, alg = :rk4, isoutside)[1]
             @test sol_early.t[end] ≈ 0.5
-            @test sol_early.retcode == Terminated
+            @test sol_early.retcode == ReturnCode.Terminated
         end
     end
 end

@@ -192,7 +192,7 @@ import TestParticle as TP
             sol = TestParticle.solve(prob; dt, alg = :rk4)
             @test length(sol) == 1
             @test length(sol[1].t) == 10001
-            @test sol[1].retcode == ReturnCode.Default
+            @test sol[1].retcode == ReturnCode.Success
 
             # Test save_everystep=false
             sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
