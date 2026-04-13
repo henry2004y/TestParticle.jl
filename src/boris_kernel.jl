@@ -222,7 +222,7 @@ end
             resize!(saved_times[local_i], actual_len)
             retcode = ReturnCode.Terminated
         else
-            retcode = ReturnCode.Default
+            retcode = ReturnCode.Success
         end
 
         interp = LinearInterpolation(saved_times[local_i], saved_data[local_i])

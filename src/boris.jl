@@ -49,7 +49,7 @@ function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
         prob_func
     )
 end
-@inline ODE_DEFAULT_ISOUTOFDOMAIN(u, t, integrator) = false
+@inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
     boris_velocity_update(v, E, B, qdt_2m)
