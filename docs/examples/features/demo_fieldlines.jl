@@ -44,8 +44,7 @@ s_span = (0.0, s_max);
 solutions = Vector{ODESolution}(undef, 2 * length(seeds))
 
 ## Stop if we hit the "earth" (r < R_E)
-isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
-callback = DiscreteCallback(isoutofdomain, terminate!)
+callback = TP.TerminateOutside((u, p, t) -> norm(u) < TP.Rₑ)
 
 for (i, u0) in enumerate(seeds)
     ## Returns a vector of two ODEProblems (forward and backward)
@@ -54,7 +53,7 @@ for (i, u0) in enumerate(seeds)
     ## Solve each problem
     for (j, prob) in enumerate(probs)
         sol = solve(
-            prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
+            prob, Tsit5(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
         )
         solutions[2 * (i - 1) + j] = sol
     end

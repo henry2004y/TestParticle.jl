@@ -192,16 +192,16 @@ import TestParticle as TP
             sol = TestParticle.solve(prob; dt, alg = :rk4)
             @test length(sol) == 1
             @test length(sol[1].t) == 10001
-            @test sol[1].retcode == ReturnCode.Default
+            @test sol[1].retcode == ReturnCode.Success
 
             # Test save_everystep=false
             sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
             @test length(sol_no_save[1].t) == 2 # start and end
 
-            # Test early exit (isoutofdomain) to cover resize!
+            # Test early exit to cover resize!
             sol_early = TestParticle.solve(
                 prob; dt, alg = :rk4,
-                isoutofdomain = (xv, p, t) -> t > 0.5
+                isoutside = (xv, p, t) -> t > 0.5
             )
             @test length(sol_early[1].t) == 5001
         end

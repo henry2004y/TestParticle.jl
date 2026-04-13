@@ -62,18 +62,21 @@ sol = TestParticle.solve(prob; dt, savestepinterval)[1]
 
 ## Boundary check
 
-Boundary check is performed in each iteration for the particle pusher via a specified `isoutofdomain` function if provided by the user. By default, no boundary check is performed, but the tracing may stop if NaN values are encountered when interpolating the EM fields or numerical instability occurs in the SciML solvers.
+Boundary check is performed via the `callback` keyword argument or `isoutside` keyword argument for the Boris solvers. By default, no boundary check is performed, but the tracing may stop if NaN values are encountered when interpolating the EM fields or numerical instability occurs.
 
 !!! tip "Boundary Check"
-    When using SciML solvers (e.g. `Vern9`), it is recommended to use `DiscreteCallback` for checking boundary conditions instead of the `isoutofdomain` keyword argument for better performance.
+    It is recommended to use the `TerminateOutside` helper for common boundary conditions. For more complex logic, you can use `DiscreteCallback` directly.
 
 ```julia
-isoutofdomain(u, p, t) = norm(u) < Rₑ
-callback = DiscreteCallback(isoutofdomain, terminate!)
-sol = solve(prob, Vern9(); callback)
+isoutside(u, p, t) = norm(u) < Rₑ
+callback = TerminateOutside(isoutside)
+sol = solve(prob; callback)
 ```
 
-However, for the native Boris pusher in `TestParticle.jl`, `isoutofdomain` is still the correct keyword argument to use.
+The `callback` system is supported by both native and SciML-based solvers in `TestParticle.jl`.
+
+!!! warning "Deprecated isoutofdomain"
+    The `isoutofdomain` usage in the Boris solvers is deprecated and not recommended for the SciML-based solvers. Please use `TerminateOutside` instead.
 
 ## Solution Interpolations
 

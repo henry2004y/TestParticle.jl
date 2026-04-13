@@ -220,12 +220,15 @@ end
         if actual_len < nout
             resize!(saved_data[local_i], actual_len)
             resize!(saved_times[local_i], actual_len)
+            retcode = ReturnCode.Terminated
+        else
+            retcode = ReturnCode.Success
         end
 
         interp = LinearInterpolation(saved_times[local_i], saved_data[local_i])
         sols[local_i] = build_solution(
             prob, :boris, saved_times[local_i], saved_data[local_i];
-            interp = interp, retcode = ReturnCode.Default, stats = nothing
+            interp, retcode, stats = nothing
         )
     end
 

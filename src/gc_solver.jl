@@ -120,7 +120,7 @@ end
 
 """
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
-    savestepinterval::Int=1, isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+    savestepinterval::Int=1, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
     alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000,
     save_fields::Bool=false, save_work::Bool=false)
 
@@ -131,11 +131,11 @@ function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
         dt::Union{AbstractFloat, Nothing} = nothing,
-        isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000,
         save_fields::Bool = false, save_work::Bool = false
-    )
+    ) where {F}
     if alg != :rk4 && alg != :rk45
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
     end
@@ -143,13 +143,13 @@ function solve(
     return if save_fields
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(true), Val(true)
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(true), Val(false)
             )
@@ -157,13 +157,13 @@ function solve(
     else
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(false), Val(true)
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(false), Val(false)
             )
@@ -173,7 +173,7 @@ end
 
 function _solve(
         ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
@@ -184,13 +184,13 @@ function _solve(
 
     if alg == :rk45
         _rk45!(
-            sols, prob, irange, dt, isoutofdomain,
+            sols, prob, irange, dt, isoutside,
             save_start, save_end, save_everystep, abstol, reltol, maxiters,
             Val(SaveFields), Val(SaveWork)
         )
     else
         _rk4!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep,
             Val(SaveFields), Val(SaveWork)
         )
@@ -201,7 +201,7 @@ end
 
 function _solve(
         ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     sols, nt,
@@ -214,13 +214,13 @@ function _solve(
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         if alg == :rk45
             _rk45!(
-                sols, prob, irange, dt, isoutofdomain,
+                sols, prob, irange, dt, isoutside,
                 save_start, save_end, save_everystep, abstol, reltol, maxiters,
                 Val(SaveFields), Val(SaveWork)
             )
         else
             _rk4!(
-                sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+                sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
                 save_start, save_end, save_everystep,
                 Val(SaveFields), Val(SaveWork)
             )
@@ -318,7 +318,7 @@ end
 Apply RK4 method for particles with index in `irange`.
 """
 function _rk4!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
+        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
@@ -351,13 +351,14 @@ function _rk4!(
         end
 
         it = 1
+
         while it <= nt
             t = tspan[1] + (it - 1) * dt
 
             dx = update_rk4(xv, p, dt, t)
             xv_next = xv + dx
 
-            if isoutofdomain(xv_next, p, t + dt)
+            if isoutside(xv_next, p, t + dt)
                 break
             end
             xv = xv_next
@@ -398,12 +399,15 @@ function _rk4!(
         if iout < nout
             resize!(traj, iout)
             resize!(tsave, iout)
+            retcode = ReturnCode.Terminated
+        else
+            #TODO: ReturnCode.MaxIters check
+            retcode = ReturnCode.Success
         end
 
         alg = :rk4
         t = tsave
         interp = LinearInterpolation(t, traj)
-        retcode = ReturnCode.Default
         stats = nothing
 
         sols[i] = build_solution(prob, alg, t, traj; interp, retcode, stats)
@@ -416,7 +420,7 @@ end
 Apply RK45 method for particles with index in `irange`.
 """
 function _rk45!(
-        sols, prob, irange, dt_initial, isoutofdomain,
+        sols, prob, irange, dt_initial, isoutside,
         save_start, save_end, save_everystep, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork},
     ) where {SaveFields, SaveWork}
@@ -469,6 +473,7 @@ function _rk45!(
         end
 
         steps = 0
+        retcode = ReturnCode.Success
         while t < tspan[2] && steps < maxiters
             if t + dt > tspan[2]
                 dt = tspan[2] - t
@@ -489,7 +494,8 @@ function _rk45!(
             if error_ratio <= 1.0
                 y_next = xv + dx
 
-                if isoutofdomain(y_next, p, t + dt)
+                if isoutside(y_next, p, t + dt)
+                    retcode = ReturnCode.Terminated
                     break
                 end
 
@@ -528,7 +534,6 @@ function _rk45!(
         t_final = tsave
         u_final = traj
         interp = LinearInterpolation(t_final, u_final)
-        retcode = steps >= maxiters ? ReturnCode.MaxIters : ReturnCode.Success
         stats = nothing
 
         sols[i] = build_solution(prob, alg, t_final, u_final; interp, retcode, stats)

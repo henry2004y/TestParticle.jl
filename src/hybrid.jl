@@ -65,13 +65,13 @@ end
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
-        isoutofdomain::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true,
         save_everystep::Bool = true, verbose::Bool = false
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, trajectories, alg,
-        savestepinterval, isoutofdomain,
+        savestepinterval, isoutside,
         save_start, save_end, save_everystep, verbose
     )
 end
@@ -79,7 +79,7 @@ end
 @inline function _solve(
         ::EnsembleSerial, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
-        savestepinterval, isoutofdomain::F,
+        savestepinterval, isoutside::F,
         save_start, save_end, save_everystep, verbose
     ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
@@ -88,7 +88,7 @@ end
 
     _hybrid_adaptive!(
         sols, prob, irange, alg, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, verbose
+        isoutside, save_start, save_end, save_everystep, verbose
     )
 
     return sols
@@ -97,7 +97,7 @@ end
 @inline function _solve(
         ::EnsembleThreads, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
-        savestepinterval, isoutofdomain::F,
+        savestepinterval, isoutside::F,
         save_start, save_end, save_everystep, verbose
     ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
@@ -107,7 +107,7 @@ end
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _hybrid_adaptive!(
             sols, prob, irange, alg, savestepinterval,
-            isoutofdomain, save_start, save_end,
+            isoutside, save_start, save_end,
             save_everystep, verbose
         )
     end
@@ -187,7 +187,7 @@ end
 
 @inline function _hybrid_adaptive!(
         sols, prob::TraceHybridProblem, irange, alg,
-        savestepinterval, isoutofdomain::F,
+        savestepinterval, isoutside::F,
         save_start, save_end, save_everystep, verbose
     ) where {F}
     (; tspan, p, u0) = prob
@@ -296,7 +296,7 @@ end
                 if error_ratio <= 1.0
                     y_next = xv_gc + dx
 
-                    if isoutofdomain(y_next, p_gc, t + dt)
+                    if isoutside(y_next, p_gc, t + dt)
                         break
                     end
 
@@ -373,7 +373,7 @@ end
                 t_next = t + dt
 
                 xv_check_domain = SVector{6, T}(r_next[1], r_next[2], r_next[3], v[1], v[2], v[3])
-                if isoutofdomain(xv_check_domain, p, t_next)
+                if isoutside(xv_check_domain, p, t_next)
                     break
                 end
 

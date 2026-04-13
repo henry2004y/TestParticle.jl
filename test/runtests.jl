@@ -17,12 +17,7 @@ prob_func(prob, i, repeat) = remake(prob, u0 = rand(StableRNG(i)) * prob.u0)
 """
 Test boundary check method.
 """
-isoutofdomain(u, p, t) =
-if hypot(u[1], u[2], u[3]) > 0.8
-    return true
-else
-    return false
-end
+isoutside(u, p, t) = hypot(u[1], u[2], u[3]) > 0.8
 
 uniform_B2(x) = SA[0.0, 0.0, 0.01]
 uniform_B1(x) = SA[0.0, 0.0, 1.0e-8]
@@ -100,7 +95,7 @@ end
         param = prepare(x, y, z, E, B, species = Ion(; q = 1, m = 16)) # O+
         @test param[2] ≈ 16 * mᵢ
 
-        callback = DiscreteCallback(isoutofdomain, terminate!)
+        callback = TerminateOutside(isoutside)
 
         param = prepare(x, y, z, E, B)
         prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -488,4 +483,4 @@ include("test_gc.jl")
 include("test_hybrid.jl")
 
 include("test_boris_kernel.jl")
-include("test_isoutofdomain.jl")
+include("test_boundary.jl")

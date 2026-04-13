@@ -18,7 +18,7 @@ end
     solve(prob::TraceProblem, alg::AdaptiveBoris,
         ensemblealg::BasicEnsembleAlgorithm=EnsembleSerial();
         trajectories::Int=1, savestepinterval::Int=1,
-        isoutofdomain::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+        isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
         save_fields::Bool=false, save_work::Bool=false,
         batch_size::Int = max(1, trajectories ÷ Threads.nthreads()))
@@ -29,7 +29,7 @@ Trace particles using the Adaptive Boris method with specified `prob` and `alg`.
 
   - `trajectories::Int`: number of trajectories to trace.
   - `savestepinterval::Int`: saving output interval.
-  - `isoutofdomain::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
+  - `isoutside::Function`: a function with input of position and velocity vector `xv` that determines whether to stop tracing.
   - `save_start::Bool`: save the initial condition. Default is `true`.
   - `save_end::Bool`: save the final condition. Default is `true`.
   - `save_everystep::Bool`: save the state at every `savestepinterval`. Default is `true`.
@@ -43,34 +43,34 @@ function solve(
         prob::TraceProblem, alg::AdaptiveBoris,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
-        isoutofdomain::Function = ODE_DEFAULT_ISOUTOFDOMAIN,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false,
         batch_size::Int = (ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads) ?
             max(1, trajectories ÷ nworkers()) : 1
-    )
+    ) where {F}
 
     return if save_fields
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, Val(true), Val(true), batch_size
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, Val(true), Val(false), batch_size
             )
         end
     else
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, Val(false), Val(true), batch_size
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, alg, savestepinterval, isoutofdomain,
+                ensemblealg, prob, trajectories, alg, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, Val(false), Val(false), batch_size
             )
         end
@@ -79,7 +79,7 @@ end
 
 function _solve(
         ::EnsembleSerial, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep,
+        isoutside, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
     # We cannot precalculate nt for adaptive steps
@@ -88,7 +88,7 @@ function _solve(
     irange = 1:trajectories
 
     _adaptive_boris!(
-        sols, prob, irange, alg, savestepinterval, isoutofdomain,
+        sols, prob, irange, alg, savestepinterval, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
@@ -97,7 +97,7 @@ end
 
 function _solve(
         ::EnsembleThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
@@ -106,7 +106,7 @@ function _solve(
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _adaptive_boris!(
-            sols, prob, irange, alg, savestepinterval, isoutofdomain,
+            sols, prob, irange, alg, savestepinterval, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
@@ -116,7 +116,7 @@ end
 
 "See `_solve_single_boris` for the rationale behind the `single_prob` construction."
 function _solve_single_adaptive_boris(
-        prob, i, alg::AdaptiveBoris, savestepinterval, isoutofdomain,
+        prob, i, alg::AdaptiveBoris, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     new_prob = prob.prob_func(prob, i, false)
@@ -126,7 +126,7 @@ function _solve_single_adaptive_boris(
     )
     local_sols = Vector{sol_type}(undef, 1)
     _adaptive_boris!(
-        local_sols, single_prob, 1:1, alg, savestepinterval, isoutofdomain,
+        local_sols, single_prob, 1:1, alg, savestepinterval, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
     return local_sols[1]
@@ -134,12 +134,12 @@ end
 
 function _solve(
         ::EnsembleDistributed, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
     return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_adaptive_boris(
-            prob, i, alg, savestepinterval, isoutofdomain,
+            prob, i, alg, savestepinterval, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
@@ -147,7 +147,7 @@ end
 
 function _solve(
         ::EnsembleSplitThreads, prob, trajectories, alg::AdaptiveBoris, savestepinterval,
-        isoutofdomain, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
     # _solve_single_adaptive_boris wraps each trajectory in a fresh TraceProblem(u0, tspan, p)
@@ -164,7 +164,7 @@ function _solve(
         Threads.@threads for k in eachindex(irange)
             i = irange[k]
             local_sols[k] = _solve_single_adaptive_boris(
-                prob, i, alg, savestepinterval, isoutofdomain,
+                prob, i, alg, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
             )
         end
@@ -175,7 +175,7 @@ end
 
 
 @muladd function _adaptive_boris!(
-        sols, prob, irange, alg, savestepinterval, isoutofdomain,
+        sols, prob, irange, alg, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
@@ -223,6 +223,8 @@ end
         v = update_velocity(v, r, -0.5 * dt, t, p)
         it = 1
         should_save_final = save_end
+        retcode = ReturnCode.Success
+
         while abs(t - tspan[1]) < abs(ttotal)
             # Check if next step exceeds tspan[2]
             if abs(t + dt - tspan[1]) > abs(ttotal)
@@ -253,8 +255,9 @@ end
             t_next = t + dt
 
             xv_new = vcat(r_next, v_new)
-            if isoutofdomain(xv_new, p, t_next)
+            if isoutside(xv_new, p, t_next)
                 should_save_final = true
+                retcode = ReturnCode.Terminated
                 break
             end
 
@@ -291,12 +294,9 @@ end
         # Construct solution
         sol_alg = :adaptive_boris
         interp = LinearInterpolation(tsave, traj)
-        retcode = ReturnCode.Default
         stats = nothing
 
-        sols[i] = build_solution(
-            prob, sol_alg, tsave, traj; interp = interp, retcode = retcode, stats = stats
-        )
+        sols[i] = build_solution(prob, sol_alg, tsave, traj; interp, retcode, stats)
     end
 
     return
