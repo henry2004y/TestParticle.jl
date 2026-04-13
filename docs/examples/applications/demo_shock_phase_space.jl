@@ -279,7 +279,7 @@ function reconstruct_backward_projections(
 
     sols_bw = TP.solve(
         prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
-        savestepinterval = 10, isoutofdomain = (xv, p, t) -> xv[1] > x_source[1] + 50.0e3
+        savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
     )
 
     ## Evaluate PDF at source for each traced state

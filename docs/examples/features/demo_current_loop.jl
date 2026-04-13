@@ -69,8 +69,7 @@ s_span = (0.0, 10.0) # Trace length
 solutions = Vector{ODESolution}()
 
 ## Define a domain check to stop tracing if we go too far
-isoutofdomain(u, p, t) = norm(u) > 10.0
-callback = DiscreteCallback(isoutofdomain, terminate!)
+callback = TP.TerminateOutside((u, p, t) -> norm(u) > 10.0)
 
 for u0 in seeds
     ## Trace in both directions

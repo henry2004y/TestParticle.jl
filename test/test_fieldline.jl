@@ -37,8 +37,8 @@ import Magnetostatics as MS
         tspan = (0.0, 3.0 * TP.Rₑ)
 
         # Terminate at Earth's surface to avoid singularity at origin
-        isoutofdomain(u, p, t) = norm(u) < TP.Rₑ
-        callback = DiscreteCallback(isoutofdomain, terminate!)
+        is_outside(u, p, t) = norm(u) < TP.Rₑ
+        callback = TerminateOutside(is_outside)
 
         # Test helper function
         # Forward

@@ -26,14 +26,10 @@ end
 """
 Boundary condition check.
 """
-function isoutofdomain(u, p, t)
+function is_outside(u, p, t)
     rout = 18Rₑ
-    if (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
-            abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
-        return true
-    else
-        return false
-    end
+    return (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
+        abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
 end
 
 """
@@ -72,7 +68,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_13, safetycopy = fal
 
 ## See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
 ## for the solver options
-callback = DiscreteCallback(isoutofdomain, terminate!)
+callback = TerminateOutside(is_outside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
     trajectories, callback, dense = true, save_on = true
@@ -153,7 +149,7 @@ trajectories = 1
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
 
-callback = DiscreteCallback(isoutofdomain, terminate!)
+callback = TerminateOutside(is_outside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
     trajectories, callback, dense = true, save_on = true

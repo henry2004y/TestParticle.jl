@@ -919,3 +919,13 @@ end
 @inline function _is_valid_intersection(p::Point, surface::Union{Plane, Sphere})
     return true
 end
+
+"""
+    TerminateOutside(condition)
+
+Create a `DiscreteCallback` that terminates the simulation if `condition(u, p, t)` is true.
+This is a helper to replace the legacy `isoutofdomain` keyword.
+"""
+function TerminateOutside(condition)
+    return DiscreteCallback((u, t, integrator) -> condition(u, integrator.p, t), terminate!)
+end

@@ -88,12 +88,7 @@ function get_B_perturb(x)
     return B
 end
 
-isoutofdomain(xv, p, t) =
-if xv[1] < 0 || xv[1] > 2Rₑ
-    return true
-else
-    return false
-end
+is_outside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
 function prob_func(prob, i, repeat)
     x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
@@ -266,7 +261,7 @@ param = prepare(E, Bcase1; species = Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
-callback = DiscreteCallback(isoutofdomain, terminate!)
+callback = TerminateOutside(is_outside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleThreads();
     callback, trajectories, verbose = true
@@ -302,7 +297,7 @@ end
 dt = 2.0e-4 # [s]
 param = prepare(E, Bcase2; species = Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TP.solve(prob; dt, trajectories, isoutofdomain, savestepinterval = 100);
+sols = TP.solve(prob; dt, trajectories, isoutside, savestepinterval = 100);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
