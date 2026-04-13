@@ -220,7 +220,7 @@ end
         dt = C / Bmag
 
         # Backstep velocity: v(0) -> v(-1/2) using dt
-        v = update_velocity(v, r, p, -0.5 * dt, t)
+        v = update_velocity(v, r, -0.5 * dt, t, p)
         it = 1
         should_save_final = save_end
         while abs(t - tspan[1]) < abs(ttotal)
@@ -228,15 +228,15 @@ end
             if abs(t + dt - tspan[1]) > abs(ttotal)
                 dt_step = tspan[2] - t
                 # Resync v from `t - 0.5*dt` to `t - 0.5*dt_step`
-                v = update_velocity(v, r, p, 0.5 * dt, t)
-                v = update_velocity(v, r, p, -0.5 * dt_step, t)
+                v = update_velocity(v, r, 0.5 * dt, t, p)
+                v = update_velocity(v, r, -0.5 * dt_step, t, p)
                 dt = dt_step
             end
 
             # Saving logic (start of step)
             if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                 # Advance to t to get v_n
-                v_save = update_velocity(v, r, p, 0.5 * dt, t)
+                v_save = update_velocity(v, r, 0.5 * dt, t, p)
 
                 xv_s = vcat(r, v_save)
                 data = _prepare_saved_data(xv_s, p, t, Val(SaveFields), Val(SaveWork))
@@ -246,7 +246,7 @@ end
 
             # Update velocity to v_{n+1/2}
             t_mid = t + 0.5 * dt
-            v_new = update_velocity(v, r, p, dt, t_mid)
+            v_new = update_velocity(v, r, dt, t_mid, p)
 
             # Update location x_{n} -> x_{n+1}
             r_next = r + v_new * dt
@@ -269,8 +269,8 @@ end
             # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
             # v is at t_{new} - 0.5 * dt_old (relative to t_{new})
             # i.e. it is v_{n+1/2} from step we just took.
-            v = update_velocity(v, r, p, 0.5 * dt, t)
-            v = update_velocity(v, r, p, -0.5 * dt_new, t)
+            v = update_velocity(v, r, 0.5 * dt, t, p)
+            v = update_velocity(v, r, -0.5 * dt_new, t, p)
             dt = dt_new
             it += 1
             if save_everystep && (it - 1) % savestepinterval == 0
@@ -280,7 +280,7 @@ end
 
         if should_save_final && (isempty(tsave) || tsave[end] != t)
             # v is at t - 0.5*dt. To get v at t, advance by 0.5*dt
-            v_final = update_velocity(v, r, p, 0.5 * dt, t)
+            v_final = update_velocity(v, r, 0.5 * dt, t, p)
 
             xv_f = vcat(r, v_final)
             data = _prepare_saved_data(xv_f, p, t, Val(SaveFields), Val(SaveWork))

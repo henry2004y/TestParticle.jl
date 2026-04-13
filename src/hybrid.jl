@@ -243,7 +243,7 @@ end
             ω = abs(q2m) * Bmag
             dt = 2π * alg.safety_fo / ω
             dt = clamp(dt, alg.dtmin, alg.dtmax)
-            v = update_velocity(v, r, p, -0.5 * dt, t)
+            v = update_velocity(v, r, -0.5 * dt, t, p)
             verbose && @info "Initial mode: FO" ϵ t
         end
 
@@ -274,7 +274,7 @@ end
                         ω = abs(q2m * B_mag)
                         dt = 2π * alg.safety_fo / ω
                         dt = clamp(dt, alg.dtmin, alg.dtmax)
-                        v = update_velocity(v, r, p, -0.5 * dt, t)
+                        v = update_velocity(v, r, -0.5 * dt, t, p)
                         continue
                     end
                 end
@@ -319,7 +319,7 @@ end
 
             else # Mode == :FO
                 t_sync = is_td ? t : zero(T)
-                v_check = update_velocity(v, r, p, 0.5 * dt, t_sync)
+                v_check = update_velocity(v, r, 0.5 * dt, t_sync, p)
 
                 if it % alg.check_interval == 0
                     xv_check = SVector{6, T}(
@@ -345,9 +345,9 @@ end
 
                 if t + dt > tspan[2]
                     dt_step = tspan[2] - t
-                    v = update_velocity(v, r, p, 0.5 * dt, t_sync)
+                    v = update_velocity(v, r, 0.5 * dt, t_sync, p)
                     v = update_velocity(
-                        v, r, p, -0.5 * dt_step, t_sync
+                        v, r, -0.5 * dt_step, t_sync, p
                     )
                     dt = dt_step
                 end
@@ -357,7 +357,7 @@ end
                 if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                     if isempty(tsave) || tsave[end] < t - eps(t)
                         v_save = update_velocity(
-                            v_prev, r, p, 0.5 * dt, t_sync
+                            v_prev, r, 0.5 * dt, t_sync, p
                         )
                         xv_save = SVector{6, T}(
                             r[1], r[2], r[3], v_save[1], v_save[2], v_save[3]
@@ -368,7 +368,7 @@ end
                 end
 
                 t_mid = is_td ? t + 0.5 * dt : zero(T)
-                v = update_velocity(v, r, p, dt, t_mid)
+                v = update_velocity(v, r, dt, t_mid, p)
                 r_next = r + v * dt
                 t_next = t + dt
 
@@ -392,8 +392,8 @@ end
                 end
 
                 t_sync = is_td ? t : zero(T)
-                v = update_velocity(v, r, p, 0.5 * dt, t_sync)
-                v = update_velocity(v, r, p, -0.5 * dt_new, t_sync)
+                v = update_velocity(v, r, 0.5 * dt, t_sync, p)
+                v = update_velocity(v, r, -0.5 * dt_new, t_sync, p)
                 dt = dt_new
             end
         end
@@ -404,7 +404,7 @@ end
                 push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
             else
                 t_final = is_td ? t : zero(T)
-                v_final = update_velocity(v, r, p, 0.5 * dt, t_final)
+                v_final = update_velocity(v, r, 0.5 * dt, t_final, p)
                 xv_final = SVector{6, T}(
                     r[1], r[2], r[3], v_final[1], v_final[2], v_final[3]
                 )

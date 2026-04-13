@@ -49,30 +49,6 @@ function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
         prob_func
     )
 end
-
-struct BorisMethod{TV}
-    # intermediate variables used in the solver
-    v⁻::TV
-    v′::TV
-    v⁺::TV
-    t_rotate::TV
-    s_rotate::TV
-    v⁻_cross_t::TV
-    v′_cross_s::TV
-end
-
-function BorisMethod(T::Type{<:AbstractFloat} = Float64)
-    v⁻ = MVector{3, T}(undef)
-    v′ = MVector{3, T}(undef)
-    v⁺ = MVector{3, T}(undef)
-    t_rotate = MVector{3, T}(undef)
-    s_rotate = MVector{3, T}(undef)
-    v⁻_cross_t = MVector{3, T}(undef)
-    v′_cross_s = MVector{3, T}(undef)
-
-    return BorisMethod{typeof(v⁻)}(v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s)
-end
-
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
@@ -86,69 +62,27 @@ This is the core logic shared between the standard solver and the kernel solver.
     t_mag2 = sum(abs2, t_rotate)
     s_rotate = 2 * t_rotate / (1 + t_mag2)
 
-    v_minus = v + qdt_2m * E
-    v_prime = v_minus + (v_minus × t_rotate)
-    v_plus = v_minus + (v_prime × s_rotate)
+    v⁻ = v + qdt_2m * E
+    v′ = v⁻ + (v⁻ × t_rotate)
+    v⁺ = v⁻ + (v′ × s_rotate)
 
-    v_new = v_plus + qdt_2m * E
+    v_new = v⁺ + qdt_2m * E
 
     return v_new
 end
 
 """
-    update_velocity(v, r, param, dt, t)
+    update_velocity(v, r, dt, t, param)
 
 Update velocity using the Boris method, returning the new velocity as an SVector.
 """
-@inline @muladd function update_velocity(v, r, param::P, dt, t) where {P}
+@inline @muladd function update_velocity(v, r, dt, t, param)
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
     qdt_2m = q2m * 0.5 * dt
 
     return boris_velocity_update(v, E, B, qdt_2m)
-end
-
-"""
-    update_velocity!(xv, paramBoris, param, dt, t)
-
-Update velocity using the Boris method, Birdsall, Plasma Physics via Computer Simulation.
-Reference: [DTIC](https://apps.dtic.mil/sti/citations/ADA023511)
-"""
-@muladd function update_velocity!(xv, paramBoris, param, dt, t)
-    (; v⁻, v′, v⁺, t_rotate, s_rotate, v⁻_cross_t, v′_cross_s) = paramBoris
-    q2m, _, Efunc, Bfunc, _ = param
-    E = Efunc(xv, t)
-    B = Bfunc(xv, t)
-    # t vector
-    for dim in 1:3
-        t_rotate[dim] = q2m * B[dim] * 0.5 * dt
-    end
-    t_mag2 = sum(abs2, t_rotate)
-    # s vector
-    for dim in 1:3
-        s_rotate[dim] = 2 * t_rotate[dim] / (1 + t_mag2)
-    end
-    # v-
-    for dim in 1:3
-        v⁻[dim] = xv[dim + 3] + q2m * E[dim] * 0.5 * dt
-    end
-    # v′
-    cross!(v⁻, t_rotate, v⁻_cross_t)
-    for dim in 1:3
-        v′[dim] = v⁻[dim] + v⁻_cross_t[dim]
-    end
-    # v+
-    cross!(v′, s_rotate, v′_cross_s)
-    for dim in 1:3
-        v⁺[dim] = v⁻[dim] + v′_cross_s[dim]
-    end
-    # v[n+1/2]
-    for dim in 1:3
-        xv[dim + 3] = v⁺[dim] + q2m * E[dim] * 0.5 * dt
-    end
-
-    return
 end
 
 """
@@ -472,7 +406,7 @@ Apply Boris method for particles with index in `irange`.
     while it <= nt
         v_prev = v
         t += dt
-        v = velocity_updater(v, r, p, dt, t)
+        v = velocity_updater(v, r, dt, t, p)
 
         r_next = r + v * dt
         t_next = t + 0.5 * dt
@@ -484,7 +418,7 @@ Apply Boris method for particles with index in `irange`.
             iout += 1
             if iout <= length(traj)
                 t_current = t - 0.5 * dt
-                v_save = velocity_updater(v_prev, r, p, 0.5 * dt, t_current)
+                v_save = velocity_updater(v_prev, r, 0.5 * dt, t_current, p)
                 data = vcat(r, v_save)
                 traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
                 tsave[iout] = t_current
@@ -531,7 +465,7 @@ end
         end
 
         # push velocity back in time by 1/2 dt
-        v = velocity_updater(v, r, p, -0.5 * dt, tspan[1])
+        v = velocity_updater(v, r, -0.5 * dt, tspan[1], p)
 
         it, iout, r, v = _boris_loop!(
             traj, tsave, iout, r, v, p, dt, nt, tspan,
@@ -552,7 +486,7 @@ end
             if iout == 0 || tsave[iout] < t_final
                 iout += 1
                 dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-                v_final = velocity_updater(v, r, p, dt_final, t_final)
+                v_final = velocity_updater(v, r, dt_final, t_final, p)
 
                 data = vcat(r, v_final)
                 traj[iout] = _prepare_saved_data(
@@ -600,14 +534,14 @@ Apply Boris method for particles with index in `irange`.
 end
 
 """
-    update_velocity_multistep(v, r, param, dt, t, n, N)
+    update_velocity_multistep(v, r, dt, t, n, N, param)
 
 Update velocity using the Multistep/Hyper Boris method, returning the new velocity as an SVector.
 `n` specifies the number of subcycles.
 `N` specifies the gyrophase correction order. When N=2, it corresponds to the Multicycle solver. When N=4 or N=6, it is the Hyper Boris solver.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-@muladd function update_velocity_multistep(v, r, param, dt, t, n::Int, N::Int)
+@muladd function update_velocity_multistep(v, r, dt, t, n::Int, N::Int, param)
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -689,8 +623,8 @@ end
         n_steps::Int, N_order::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
 
-    velocity_updater = (v, r, p, dt, t) ->
-    update_velocity_multistep(v, r, p, dt, t, n_steps, N_order)
+    velocity_updater = (v, r, dt, t, p) ->
+        update_velocity_multistep(v, r, dt, t, n_steps, N_order, p)
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
