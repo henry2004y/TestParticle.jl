@@ -88,7 +88,7 @@ function get_B_perturb(x)
     return B
 end
 
-is_outside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
+isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
 function prob_func(prob, i, repeat)
     x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
@@ -261,7 +261,7 @@ param = prepare(E, Bcase1; species = Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
-callback = TerminateOutside(is_outside)
+callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleThreads();
     callback, trajectories, verbose = true
