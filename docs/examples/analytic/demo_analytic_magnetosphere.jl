@@ -26,7 +26,7 @@ end
 """
 Boundary condition check.
 """
-function is_outside(u, p, t)
+function isoutside(u, p, t)
     rout = 18Rₑ
     return (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
         abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
@@ -68,7 +68,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_13, safetycopy = fal
 
 ## See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
 ## for the solver options
-callback = TerminateOutside(is_outside)
+callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
     trajectories, callback, dense = true, save_on = true
@@ -149,7 +149,7 @@ trajectories = 1
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
 
-callback = TerminateOutside(is_outside)
+callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
     trajectories, callback, dense = true, save_on = true

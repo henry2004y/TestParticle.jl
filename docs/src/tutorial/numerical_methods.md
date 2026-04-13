@@ -68,8 +68,8 @@ Boundary check is performed via the `callback` keyword argument or `isoutside` k
     It is recommended to use the `TerminateOutside` helper for common boundary conditions. For more complex logic, you can use `DiscreteCallback` directly.
 
 ```julia
-is_outside(u, p, t) = norm(u) < Rₑ
-callback = TerminateOutside(is_outside)
+isoutside(u, p, t) = norm(u) < Rₑ
+callback = TerminateOutside(isoutside)
 sol = solve(prob; callback)
 ```
 
