@@ -624,7 +624,7 @@ end
     ) where {SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, dt, t, p) ->
-        update_velocity_multistep(v, r, dt, t, n_steps, N_order, p)
+    update_velocity_multistep(v, r, dt, t, n_steps, N_order, p)
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutofdomain,
