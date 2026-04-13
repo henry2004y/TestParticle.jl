@@ -105,7 +105,7 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
-@time sols = TP.solve(prob; dt, savestepinterval = 1, trajectories = nparticles);
+@time sols = TP.solve(prob; dt, savestepinterval = 10, trajectories = nparticles);
 println("Simulation complete.")
 
 ## Detector planes (upstream and downstream of the shock)
@@ -231,7 +231,7 @@ function prob_func_m2(prob, i, repeat)
 end
 
 prob_m2 = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2)
-@time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 1, trajectories = nparticles_m2);
+@time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 10, trajectories = nparticles_m2);
 
 hists_up_m2 = reconstruct_liouville_projections(
     sols_m2, detector_up, vdf, n_up, Vsphere_m2
@@ -250,7 +250,7 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 function reconstruct_backward_projections(
         detector_x, vdf, n0, dt, param;
-        v_range = 1000.0e3, dv_km = 20.0
+        v_range = 1000.0e3, dv_km = 50.0
     )
     vx_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
     vy_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
@@ -278,7 +278,8 @@ function reconstruct_backward_projections(
     )
 
     sols_bw = TP.solve(
-        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw
+        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
+        savestepinterval = 10, isoutofdomain = (xv, p, t) -> xv[1] > x_source[1] + 50.0e3
     )
 
     ## Evaluate PDF at source for each traced state
