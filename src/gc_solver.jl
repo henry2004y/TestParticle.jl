@@ -178,7 +178,7 @@ function _solve(
     ) where {SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg, Val(SaveFields), Val(SaveWork)
+        save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
     )
     irange = 1:trajectories
 
@@ -191,7 +191,7 @@ function _solve(
     else
         _rk4!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-            save_start, save_end, save_everystep,
+            save_start, save_end, save_everystep, maxiters,
             Val(SaveFields), Val(SaveWork)
         )
     end
@@ -207,7 +207,7 @@ function _solve(
     sols, nt,
         nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg, Val(SaveFields), Val(SaveWork)
+        save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
     )
 
     nchunks = Threads.nthreads()
@@ -221,7 +221,7 @@ function _solve(
         else
             _rk4!(
                 sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-                save_start, save_end, save_everystep,
+                save_start, save_end, save_everystep, maxiters,
                 Val(SaveFields), Val(SaveWork)
             )
         end
@@ -256,7 +256,7 @@ end
 
 function _prepare_gc(
         prob::TraceGCProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, alg, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, alg, maxiters, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
     if isnothing(dt)
@@ -269,6 +269,9 @@ function _prepare_gc(
             error("dt must have the same sign as tspan[2] - tspan[1] for fixed step solver :rk4")
         end
         nt = round(Int, ttotal / dt)
+        if alg == :rk4 && nt > maxiters
+            nt = maxiters
+        end
     end
 
     nout = 0
@@ -319,10 +322,11 @@ Apply RK4 method for particles with index in `irange`.
 """
 function _rk4!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-        save_start, save_end, save_everystep,
+        save_start, save_end, save_everystep, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
+    ttotal = tspan[2] - tspan[1]
     T = eltype(u0)
 
     vars_dim = 4
@@ -352,7 +356,7 @@ function _rk4!(
 
         it = 1
 
-        while it <= nt
+        while it <= nt && it <= maxiters
             t = tspan[1] + (it - 1) * dt
 
             dx = update_rk4(xv, p, dt, t)
@@ -400,8 +404,9 @@ function _rk4!(
             resize!(traj, iout)
             resize!(tsave, iout)
             retcode = ReturnCode.Terminated
+        elseif (it - 1) * abs(dt) < ttotal - 1e-12 * abs(ttotal)
+            retcode = ReturnCode.MaxIters
         else
-            #TODO: ReturnCode.MaxIters check
             retcode = ReturnCode.Success
         end
 
