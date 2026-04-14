@@ -17,7 +17,7 @@ end
 
 In-place solver components for `DynamicalODEProblem` (location).
 """
-function get_dx!(dx, x, v, p, t)
+function get_dx!(dx, v, x, p, t)
     dx .= v
     return
 end
@@ -27,7 +27,7 @@ end
 
 In-place solver components for `DynamicalODEProblem` (velocity) with normalized EM fields.
 """
-function get_dv!(dv, x, v, p, t)
+function get_dv!(dv, v, x, p, t)
     E = get_EField(p)(x, t)
     B = get_BField(p)(x, t)
 

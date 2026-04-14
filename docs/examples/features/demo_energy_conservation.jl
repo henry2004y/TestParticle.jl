@@ -41,7 +41,7 @@ function run_test(
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
     prob_gi = ODEProblem(trace_normalized, u0, tspan, param)
     prob_tp = TraceProblem(u0, tspan, param)
-    prob_dyn = DynamicalODEProblem(get_dv!, get_dx!, Vector(v0), Vector(x0), tspan, param)
+    prob_dyn = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
 
     f = Figure(size = (1000, 600), fontsize = 18)
     if uselog
