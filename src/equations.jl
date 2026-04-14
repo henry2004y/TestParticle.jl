@@ -3,7 +3,7 @@
 get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
-function get_dv(x, v, p, t)
+function get_dv(v, x, p, t)
     q2m, m, Efunc, Bfunc, Ffunc = p
     E = Efunc(x, t)
     B = Bfunc(x, t)
@@ -13,7 +13,7 @@ function get_dv(x, v, p, t)
 end
 
 """
-    get_dx!(dx, x, v, p, t)
+    get_dx!(dx, v, x, p, t)
 
 In-place solver components for `DynamicalODEProblem` (location).
 """
@@ -23,15 +23,17 @@ function get_dx!(dx, v, x, p, t)
 end
 
 """
-    get_dv!(dv, x, v, p, t)
+    get_dv!(dv, v, x, p, t)
 
-In-place solver components for `DynamicalODEProblem` (velocity) with normalized EM fields.
+In-place solver components for `DynamicalODEProblem` (velocity).
 """
 function get_dv!(dv, v, x, p, t)
-    E = get_EField(p)(x, t)
-    B = get_BField(p)(x, t)
+    q2m, m, Efunc, Bfunc, Ffunc = p
+    E = Efunc(x, t)
+    B = Bfunc(x, t)
+    F = Ffunc(x, t)
 
-    dv .= v × B + E
+    dv .= q2m * (v × B + E) + F / m
 
     return
 end
@@ -54,7 +56,7 @@ ODE equations for charged particle moving in EM field and external force field w
 function trace!(dy, y, p, t)
     v = get_v(y)
     @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = get_dv(y, v, p, t)
+    @inbounds dy[4:6] = get_dv(v, y, p, t)
 
     return
 end
@@ -66,7 +68,7 @@ ODE equations for charged particle moving in EM field and external force field w
 """
 function trace(y, p, t)
     v = y[SA[4:6...]]
-    dv = get_dv(y, v, p, t)
+    dv = get_dv(v, y, p, t)
     return vcat(v, dv)
 end
 
@@ -79,7 +81,7 @@ function trace_relativistic!(dy, y, p, t)
     γv = get_v(y)
     v = get_relativistic_v(γv)
     @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = get_dv(y, v, p, t)
+    @inbounds dy[4:6] = get_dv(v, y, p, t)
 
     return
 end
@@ -150,7 +152,7 @@ ODE equations for relativistic charged particle (x, γv) moving in static EM fie
 function trace_relativistic(y, p, t)
     γv = get_v(y)
     v = get_relativistic_v(γv)
-    dv = get_dv(y, v, p, t)
+    dv = get_dv(v, y, p, t)
 
     return vcat(v, dv)
 end
