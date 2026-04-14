@@ -484,3 +484,4 @@ include("test_hybrid.jl")
 
 include("test_boris_kernel.jl")
 include("test_boundary.jl")
+include("test_symplectic.jl")
