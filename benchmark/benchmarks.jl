@@ -235,11 +235,11 @@ SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable TP.solve(
     $prob_native_gc;
-    dt = 1.0e-2, savestepinterval = 100, alg = :rk4, maxiters = 10000
+    dt = 2.0e-2, savestepinterval = 100, alg = :rk4, maxiters = 10000
 )
 SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
     $prob_native_gc;
-    dt = 1.0e-2, savestepinterval = 100, alg = :rk45, maxiters = 10000
+    dt = 2.0e-2, savestepinterval = 100, alg = :rk45, maxiters = 10000
 )
 
 # --- Flux Benchmarks ---

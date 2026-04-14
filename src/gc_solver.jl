@@ -400,14 +400,17 @@ function _rk4!(
             end
         end
 
+        retcode = if it <= nt && it <= maxiters
+            ReturnCode.Terminated
+        elseif it > maxiters
+            ReturnCode.MaxIters
+        else
+            ReturnCode.Success
+        end
+
         if iout < nout
             resize!(traj, iout)
             resize!(tsave, iout)
-            retcode = ReturnCode.Terminated
-        elseif (it - 1) * abs(dt) < ttotal - 1e-12 * abs(ttotal)
-            retcode = ReturnCode.MaxIters
-        else
-            retcode = ReturnCode.Success
         end
 
         alg = :rk4
