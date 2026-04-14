@@ -62,6 +62,7 @@ solvers = [
     ("Vern9 (adaptive)", "`OrdinaryDiffEq` Vern9 with adaptive step", :Adaptive, () -> solve(prob_ode, Vern9(); saveat = dt)),
     ("AutoVern7 (adaptive)", "`OrdinaryDiffEq` AutoVern7 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
     ("AutoVern9 (adaptive)", "`OrdinaryDiffEq` AutoVern9 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
+    ("ImplicitMidpoint", "`OrdinaryDiffEq` ImplicitMidpoint with fixed step", :Fixed, () -> solve(prob_ode, ImplicitMidpoint(); adaptive = false, dt, dense = false)),
     ("GIEuler", "GeometricIntegrators Euler", :GI, () -> solve(prob_gi, GIEuler(); dt)),
     ("GIMidpoint", "GeometricIntegrators Midpoint", :GI, () -> solve(prob_gi, GIMidpoint(); dt)),
     ("GIRK4", "GeometricIntegrators RK4", :GI, () -> solve(prob_gi, GIRK4(); dt)),

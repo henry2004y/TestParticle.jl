@@ -30,6 +30,7 @@ import LinearAlgebra: ×
 export prepare, prepare_gc, get_gc, get_gc_func, ZeroField
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_normalized, trace_relativistic_normalized,
+    get_dx!, get_dv!,
     trace_gc!,
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!,
     trace_fieldline!, trace_fieldline, TraceFieldlineProblem,
