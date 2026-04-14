@@ -12,6 +12,30 @@ function get_dv(x, v, p, t)
     return q2m * (v × B + E) + F / m
 end
 
+"""
+    get_dx!(dx, x, v, p, t)
+
+In-place solver components for `DynamicalODEProblem` (location).
+"""
+function get_dx!(dx, x, v, p, t)
+    dx .= v
+    return
+end
+
+"""
+    get_dv!(dv, x, v, p, t)
+
+In-place solver components for `DynamicalODEProblem` (velocity) with normalized EM fields.
+"""
+function get_dv!(dv, x, v, p, t)
+    E = get_EField(p)(x, t)
+    B = get_BField(p)(x, t)
+
+    dv .= v × B + E
+
+    return
+end
+
 function get_relativistic_v(γv; c = c)
     γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
     if γ²v² > eps(eltype(γv))

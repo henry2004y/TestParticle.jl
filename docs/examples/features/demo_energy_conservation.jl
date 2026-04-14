@@ -34,13 +34,14 @@ const T = 2π / Ω
 function run_test(
         case_name, param, x0, v0, tspan, expected_energy_func;
         uselog = true, dt = 0.1, ymin = nothing, ymax = nothing,
-        odes = nothing, gis = nothing, natives = nothing
+        odes = nothing, gis = nothing, symplectics = nothing, natives = nothing
     )
     results = Tuple{String, Float64}[]
     u0 = [x0..., v0...]
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
     prob_gi = ODEProblem(trace_normalized, u0, tspan, param)
     prob_tp = TraceProblem(u0, tspan, param)
+    prob_dyn = DynamicalODEProblem(get_dv!, get_dx!, Vector(v0), Vector(x0), tspan, param)
 
     f = Figure(size = (1000, 600), fontsize = 18)
     if uselog
@@ -103,6 +104,14 @@ function run_test(
         color_idx += 1
     end
 
+    ## Run symplectic solvers
+    _symplectics = symplectics === nothing ? symplectic_solvers : symplectics
+    for (name, alg) in _symplectics
+        sol = solve(prob_dyn, alg; dt, adaptive = false)
+        plot_energy_error!(sol, name, color_idx)
+        color_idx += 1
+    end
+
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
     for (name, kwargs) in _natives
@@ -137,6 +146,10 @@ const ode_solvers = [
 
 const gi_solvers = [
     ("GIRK4", GIRK4()),
+]
+
+const symplectic_solvers = [
+    ("McAte2", McAte2()),
 ]
 
 const native_solvers = [
@@ -316,7 +329,8 @@ f, results = run_test(
         ("Tsit5", Tsit5()),
         ("Vern7", Vern7()),
     ],
-    gis = []
+    gis = [],
+    symplectics = [("McAte2", McAte2())]
 )
 f = DisplayAs.PNG(f) #hide
 
