@@ -22,7 +22,7 @@ using LinearAlgebra: norm
         prob = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
         # McAte2 is an explicit symplectic integrator. For this separable system,
         # it should conserve energy well with O(dt^2) error.
-        sol = solve(prob, McAte2(), dt=0.01, adaptive=false)
+        sol = solve(prob, McAte2(), dt = 0.01, adaptive = false)
 
         # Energy conservation check (Total Energy H = K + V)
         function get_H(u)
@@ -35,7 +35,7 @@ using LinearAlgebra: norm
 
         H0 = get_H(sol.u[1])
         H_final = get_H(sol.u[end])
-        @test H0 ≈ H_final rtol=1e-4
+        @test H0 ≈ H_final rtol = 1.0e-4
     end
 
     @testset "Constant B-field" begin
@@ -50,23 +50,23 @@ using LinearAlgebra: norm
         param = prepare(ZeroField(), constant_B; q, m)
 
         prob = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
-        
+
         # McAte2 is an explicit symplectic integrator designed for separable Hamiltonians (H = T(p) + V(q)).
         # The Lorentz force Hamiltonian H = |p-qA|^2 / 2m is non-separable when B != 0 due to the vector potential A(x).
         # Thus, explicit partitioned Runge-Kutta methods like McAte2 are not exactly symplectic for the Lorentz force
         # and may exhibit energy drift, requiring smaller dt or relaxed tolerance.
-        sol = solve(prob, McAte2(), dt=0.01, adaptive=false)
+        sol = solve(prob, McAte2(), dt = 0.01, adaptive = false)
 
         K0 = 0.5 * m * norm(v0)^2
         v_final = sol.u[end].x[1]
         K_final = 0.5 * m * norm(v_final)^2
-        @test K0 ≈ K_final rtol=0.04
+        @test K0 ≈ K_final rtol = 0.04
 
         # ImplicitMidpoint is symplectic for all Hamiltonian systems, including non-separable ones.
         u0 = [x0..., v0...]
         prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
-        sol_im = solve(prob_ode, ImplicitMidpoint(), dt=0.01, adaptive=false)
+        sol_im = solve(prob_ode, ImplicitMidpoint(), dt = 0.01, adaptive = false)
         K_im = 0.5 * m * norm(sol_im.u[end][4:6])^2
-        @test K0 ≈ K_im rtol=1e-12
+        @test K0 ≈ K_im rtol = 1.0e-12
     end
 end
