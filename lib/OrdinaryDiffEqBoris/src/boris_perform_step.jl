@@ -92,7 +92,8 @@ end
     integrator.u[3] = r_new[3]
     integrator.u[4] = v_new[1]
     integrator.u[5] = v_new[2]
-    return integrator.u[6] = v_new[3]
+    integrator.u[6] = v_new[3]
+    return
 end
 
 _get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
@@ -209,7 +210,8 @@ function initialize!(integrator, cache::MultistepBorisCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
+    integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
+    return
 end
 
 @muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
@@ -243,5 +245,5 @@ end
         dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
         set_proposed_dt!(integrator, dt_new)
     end
-    return integrator.u[6]
+    return
 end
