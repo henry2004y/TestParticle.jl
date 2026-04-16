@@ -1,8 +1,8 @@
-OrdinaryDiffEqCore.alg_order(alg::Boris) = 2
-OrdinaryDiffEqCore.isfsal(alg::Boris) = false
+alg_order(alg::Boris) = 2
+isfsal(alg::Boris) = false
 
-OrdinaryDiffEqCore.alg_order(alg::MultistepBoris) = 2
-OrdinaryDiffEqCore.isfsal(alg::MultistepBoris) = false
+alg_order(alg::MultistepBoris{N}) where {N} = 2
+isfsal(alg::MultistepBoris{N}) where {N} = false
 
-OrdinaryDiffEqCore.alg_order(alg::AdaptiveBoris) = 2
-OrdinaryDiffEqCore.isfsal(alg::AdaptiveBoris) = false
+alg_order(alg::AdaptiveBoris) = 2
+isfsal(alg::AdaptiveBoris) = false

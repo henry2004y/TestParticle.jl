@@ -1,12 +1,10 @@
 module OrdinaryDiffEqBoris
 
-import OrdinaryDiffEqCore
+using Reexport
+@reexport using SciMLBase
 import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgorithm,
     OrdinaryDiffEqMutableCache, OrdinaryDiffEqConstantCache,
     alg_order, alg_cache, isfsal, initialize!, perform_step!
-
-
-using SciMLBase
 using RecursiveArrayTools
 using StaticArrays
 using MuladdMacro
@@ -18,9 +16,7 @@ include("boris_caches.jl")
 include("boris_perform_step.jl")
 
 export Boris
-export MultistepBoris
+export MultistepBoris2, MultistepBoris4, MultistepBoris6
 export AdaptiveBoris
-export boris_velocity_update # Exposing strictly for debugging if needed
-export update_velocity_multistep
 
 end

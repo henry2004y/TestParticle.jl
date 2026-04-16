@@ -1,6 +1,5 @@
 using Test
 using OrdinaryDiffEqBoris
-using SciMLBase
 using StaticArrays
 using LinearAlgebra: norm
 
@@ -34,12 +33,12 @@ using LinearAlgebra: norm
         prob = ODEProblem(dummy_f, u0, tspan, param)
 
         dt = 0.1
-        sol_multi_2 = solve(prob, MultistepBoris(n = 2, N = 2); dt, adaptive = false)
+        sol_multi_2 = solve(prob, MultistepBoris2(n = 2); dt, adaptive = false)
         @test sol_multi_2.u[end][1] ≈ 10.0 atol = 1.0e-6
         @test sol_multi_2.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Test Hyper Boris N=4
-        sol_hyper_4 = solve(prob, MultistepBoris(n = 2, N = 4); dt, adaptive = false)
+        sol_hyper_4 = solve(prob, MultistepBoris4(n = 2); dt, adaptive = false)
         @test sol_hyper_4.u[end][1] ≈ 10.0 atol = 1.0e-6
     end
 
@@ -49,10 +48,10 @@ using LinearAlgebra: norm
         prob_gyro = ODEProblem(dummy_f, u0_gyro, (0.0, 2π), param_gyro)
 
         # After one period, should return to origin
-        sol_1step_gyro = solve(prob_gyro, MultistepBoris(n = 1, N = 2); dt = 0.1, adaptive = false)
+        sol_1step_gyro = solve(prob_gyro, MultistepBoris2(n = 1); dt = 0.1, adaptive = false)
         @test hypot(@views sol_1step_gyro.u[end][1:3]...) < 0.02
 
-        sol_hyper_6_gyro = solve(prob_gyro, MultistepBoris(n = 4, N = 6); dt = 0.1, adaptive = false)
+        sol_hyper_6_gyro = solve(prob_gyro, MultistepBoris6(n = 4); dt = 0.1, adaptive = false)
         @test hypot(@views sol_hyper_6_gyro.u[end][1:3]...) < 0.02
     end
 
@@ -136,7 +135,7 @@ using LinearAlgebra: norm
         @test sol.t[end] ≈ tspan[2]
 
         # Multistep Boris test flags
-        sol_ms = solve(prob, MultistepBoris(n = 2, N = 2); dt, save_everystep = false, save_start = true, save_on = false, adaptive = false)
+        sol_ms = solve(prob, MultistepBoris2(n = 2); dt, save_everystep = false, save_start = true, save_on = false, adaptive = false)
         @test length(sol_ms.t) == 2
         @test sol_ms.t[1] == tspan[1]
         @test sol_ms.t[end] ≈ tspan[2]

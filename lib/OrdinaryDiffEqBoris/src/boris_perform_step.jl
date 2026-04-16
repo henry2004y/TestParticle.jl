@@ -14,14 +14,14 @@ const TN_MAG_THRESHOLD = 1.0e-4
     return v_new
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::BorisConstantCache)
+function initialize!(integrator, cache::BorisConstantCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
+function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -62,14 +62,14 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::BorisConstantCache,
     return integrator.u = u_new
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::BorisCache)
+function initialize!(integrator, cache::BorisCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::BorisCache, repeat_step = false)
+function perform_step!(integrator, cache::BorisCache, repeat_step = false)
     # In-place version.
     # Since TestParticle.jl mostly focuses on SVector for small state vectors,
     # we can do a naive copy for the in-place cache.
@@ -183,14 +183,14 @@ end
     return v_new
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::MultistepBorisConstantCache)
+function initialize!(integrator, cache::MultistepBorisConstantCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
+function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -205,21 +205,22 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::MultistepBorisConst
     t_half = t + dt / 2
 
     # Update velocity using multistep
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, alg.N, p)
+    N = typeof(alg).parameters[1]
+    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, N, p)
 
     r_new = r_half + v_new * (dt / 2)
 
     return integrator.u = vcat(r_new, v_new)
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::MultistepBorisCache)
+function initialize!(integrator, cache::MultistepBorisCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
+function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -232,7 +233,8 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::MultistepBorisCache
     r_half = r + v * (dt / 2)
     t_half = t + dt / 2
 
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, alg.N, p)
+    N = typeof(alg).parameters[1]
+    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, N, p)
 
     r_new = r_half + v_new * (dt / 2)
 
@@ -244,14 +246,14 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::MultistepBorisCache
     return integrator.u[6] = v_new[3]
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::AdaptiveBorisConstantCache)
+function initialize!(integrator, cache::AdaptiveBorisConstantCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::AdaptiveBorisConstantCache, repeat_step = false)
+function perform_step!(integrator, cache::AdaptiveBorisConstantCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -282,14 +284,14 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::AdaptiveBorisConsta
     return set_proposed_dt!(integrator, dt_new)
 end
 
-function OrdinaryDiffEqCore.initialize!(integrator, cache::AdaptiveBorisCache)
+function initialize!(integrator, cache::AdaptiveBorisCache)
     integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
     integrator.stats.nf += 1
     integrator.kshortsize = 0
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function OrdinaryDiffEqCore.perform_step!(integrator, cache::AdaptiveBorisCache, repeat_step = false)
+function perform_step!(integrator, cache::AdaptiveBorisCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev

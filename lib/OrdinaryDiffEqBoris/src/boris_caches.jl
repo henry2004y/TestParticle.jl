@@ -7,7 +7,7 @@ struct BorisCache{uType, rateType} <: OrdinaryDiffEqMutableCache
     k::rateType
 end
 
-function OrdinaryDiffEqCore.alg_cache(
+function alg_cache(
         alg::Boris, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{false}, args...; kwargs...
@@ -15,7 +15,7 @@ function OrdinaryDiffEqCore.alg_cache(
     return BorisConstantCache()
 end
 
-function OrdinaryDiffEqCore.alg_cache(
+function alg_cache(
         alg::Boris, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{true}, args...; kwargs...
@@ -32,19 +32,19 @@ struct MultistepBorisCache{uType, rateType} <: OrdinaryDiffEqMutableCache
     k::rateType
 end
 
-function OrdinaryDiffEqCore.alg_cache(
-        alg::MultistepBoris, u, rate_prototype, ::Type{uEltypeNoUnits},
+function alg_cache(
+        alg::MultistepBoris{N}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{false}, args...; kwargs...
-    ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
+    ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits, N}
     return MultistepBorisConstantCache()
 end
 
-function OrdinaryDiffEqCore.alg_cache(
-        alg::MultistepBoris, u, rate_prototype, ::Type{uEltypeNoUnits},
+function alg_cache(
+        alg::MultistepBoris{N}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{true}, args...; kwargs...
-    ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
+    ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits, N}
     return MultistepBorisCache(u, uprev, similar(u), similar(rate_prototype))
 end
 
@@ -57,7 +57,7 @@ struct AdaptiveBorisCache{uType, rateType} <: OrdinaryDiffEqMutableCache
     k::rateType
 end
 
-function OrdinaryDiffEqCore.alg_cache(
+function alg_cache(
         alg::AdaptiveBoris, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{false}, args...; kwargs...
@@ -65,7 +65,7 @@ function OrdinaryDiffEqCore.alg_cache(
     return AdaptiveBorisConstantCache()
 end
 
-function OrdinaryDiffEqCore.alg_cache(
+function alg_cache(
         alg::AdaptiveBoris, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{true}, args...; kwargs...
