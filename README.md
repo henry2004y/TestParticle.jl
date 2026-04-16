@@ -56,7 +56,7 @@ sol = TestParticle.solve(prob; dt, savestepinterval)[1]
 
 Besides the standard Boris method, we also support various versions of Boris solvers including:
 - **Multistep Boris**: fixed time step with `n > 1` substeps.
-- **Adaptive Boris**: uses `AdaptiveBoris()` for automatic time step selection based on local gyroperiod.
+- **Adaptive Boris**: uses `Boris(safety = 0.1)` to automatically adjust time step based on local gyroperiod.
 
 For plotting with Makie,
 

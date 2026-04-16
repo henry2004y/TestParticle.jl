@@ -407,7 +407,6 @@ using Distributed
         @test abs(work_ms[3]) > 0.0
 
         # Test Adaptive Boris with save_work
-        # Use simple AdaptiveBoris
         alg_adaptive = Boris(safety = 0.1)
         sol_adaptive = TP.solve(prob, alg_adaptive; save_work = true, save_everystep = true)[1]
         @test length(sol_adaptive.u[1]) == 10
@@ -526,7 +525,7 @@ using Distributed
             @testset "BorisAdaptive" begin
                 tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
                 alg_adaptive = Boris(; safety = 0.1)
-                
+
                 sols_serial = TP.solve(
                     prob_dist, alg_adaptive, EnsembleSerial(); trajectories
                 )

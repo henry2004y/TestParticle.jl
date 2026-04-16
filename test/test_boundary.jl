@@ -87,7 +87,7 @@ using OrdinaryDiffEq: ReturnCode
             u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
             tspan = (0.0, 1.0e-5)
             prob = TraceProblem(u0, tspan, param)
-            
+
             alg = Boris(safety = 0.1)
             sol = TP.solve(prob, alg; isoutside)[1]
             @test sol.u[end][1] <= 0.5
