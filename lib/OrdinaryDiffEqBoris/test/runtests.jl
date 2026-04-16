@@ -21,7 +21,7 @@ using LinearAlgebra: norm
 
         dt = 0.1
         # Test standard Boris
-        sol_boris = solve(prob, Boris(); dt, adaptive = false)
+        sol_boris = solve(prob, Boris(); dt)
         @test sol_boris.u[end][1] ≈ 10.0 atol = 1.0e-6
         @test sol_boris.u[end][4] ≈ 1.0 atol = 1.0e-6
     end
@@ -33,12 +33,12 @@ using LinearAlgebra: norm
         prob = ODEProblem(dummy_f, u0, tspan, param)
 
         dt = 0.1
-        sol_multi_2 = solve(prob, MultistepBoris2(n = 2); dt, adaptive = false)
+        sol_multi_2 = solve(prob, MultistepBoris2(n = 2); dt)
         @test sol_multi_2.u[end][1] ≈ 10.0 atol = 1.0e-6
         @test sol_multi_2.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Test Hyper Boris N=4
-        sol_hyper_4 = solve(prob, MultistepBoris4(n = 2); dt, adaptive = false)
+        sol_hyper_4 = solve(prob, MultistepBoris4(n = 2); dt)
         @test sol_hyper_4.u[end][1] ≈ 10.0 atol = 1.0e-6
     end
 
@@ -48,10 +48,10 @@ using LinearAlgebra: norm
         prob_gyro = ODEProblem(dummy_f, u0_gyro, (0.0, 2π), param_gyro)
 
         # After one period, should return to origin
-        sol_1step_gyro = solve(prob_gyro, MultistepBoris2(n = 1); dt = 0.1, adaptive = false)
+        sol_1step_gyro = solve(prob_gyro, MultistepBoris2(n = 1); dt = 0.1)
         @test hypot(@views sol_1step_gyro.u[end][1:3]...) < 0.02
 
-        sol_hyper_6_gyro = solve(prob_gyro, MultistepBoris6(n = 4); dt = 0.1, adaptive = false)
+        sol_hyper_6_gyro = solve(prob_gyro, MultistepBoris6(n = 4); dt = 0.1)
         @test hypot(@views sol_hyper_6_gyro.u[end][1:3]...) < 0.02
     end
 
@@ -68,7 +68,7 @@ using LinearAlgebra: norm
         init_Bmag = norm(gradient_B(u0[1:3], 0.0))
         dt_init = safety * 2π / (abs(param[1]) * init_Bmag)
 
-        sol = solve(prob, AdaptiveBoris(safety = safety); dt = dt_init, adaptive = false)
+        sol = solve(prob, Boris(safety = safety); dt = dt_init)
 
         # Check if step sizes are not uniform (hence adapted)
         dts = diff(sol.t)
@@ -97,12 +97,12 @@ using LinearAlgebra: norm
         prob = ODEProblem(dummy_f, u0, tspan, param)
 
         # Standard Boris
-        sol_boris = solve(prob, Boris(); dt = dt, adaptive = false)
+        sol_boris = solve(prob, Boris(); dt = dt)
         # If B was 0.01, vx should have deviated from initial 1.0e5
         @test abs(sol_boris.u[end][4] - 1.0e5) > 1.0e-4
 
         # Adaptive Boris
-        sol_adaptive = solve(prob, AdaptiveBoris(safety = 0.1); dt = dt, adaptive = false)
+        sol_adaptive = solve(prob, Boris(safety = 0.1); dt = dt)
         @test abs(sol_adaptive.u[end][4] - 1.0e5) > 1.0e-4
     end
 
@@ -120,22 +120,22 @@ using LinearAlgebra: norm
         prob = ODEProblem(dummy_f, stateinit, tspan, param)
 
         # Baseline: save_everystep=true (default)
-        sol = solve(prob, Boris(); dt, adaptive = false)
+        sol = solve(prob, Boris(); dt)
         @test length(sol.t) == 1001 # 3e-8 / 3e-11 = 1000 steps + start
 
         # Scenario 2: Only final state
-        sol = solve(prob, Boris(); dt, save_everystep = false, save_start = false, save_on = false, adaptive = false)
+        sol = solve(prob, Boris(); dt, save_everystep = false, save_start = false, save_on = false)
         @test length(sol.t) == 1
         @test sol.t[1] ≈ tspan[2]
 
         # Scenario 3: Start and End
-        sol = solve(prob, Boris(); dt, save_everystep = false, save_start = true, save_on = false, adaptive = false)
+        sol = solve(prob, Boris(); dt, save_everystep = false, save_start = true, save_on = false)
         @test length(sol.t) == 2
         @test sol.t[1] == tspan[1]
         @test sol.t[end] ≈ tspan[2]
 
         # Multistep Boris test flags
-        sol_ms = solve(prob, MultistepBoris2(n = 2); dt, save_everystep = false, save_start = true, save_on = false, adaptive = false)
+        sol_ms = solve(prob, MultistepBoris2(n = 2); dt, save_everystep = false, save_start = true, save_on = false)
         @test length(sol_ms.t) == 2
         @test sol_ms.t[1] == tspan[1]
         @test sol_ms.t[end] ≈ tspan[2]

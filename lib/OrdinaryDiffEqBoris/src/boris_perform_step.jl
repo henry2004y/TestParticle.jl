@@ -21,34 +21,21 @@ function initialize!(integrator, cache::BorisConstantCache)
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
+@muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
     f = integrator.f
     p = integrator.p
 
-    # Extract particles from uprev
-    # TestParticle.jl standard: u[1:3] is r, u[4:6] is v
     r = uprev[SVector(1, 2, 3)]
     v = uprev[SVector(4, 5, 6)]
 
-    # Expected p structure in TestParticle.jl: (q2m, m, Efunc, Bfunc, Ffunc)
     q2m = p[1]
     Efunc = p[3]
     Bfunc = p[4]
 
-    # Evaluate fields at time t
-    # For a full time step, first we push velocity half step?
-    # Wait, the traditional Boris pushes v by half step, r by full step, v by half step.
-    # In TestParticle.jl, they do:
-    # v_new = velocity_updater(v, r, dt, t + dt, p) # actually it uses t + 0.5*dt somewhere
-
-    # We need to closely match what the Boris algorithm conceptually does.
-    # Actually, a standard SciML step goes from t to t+dt.
-    # If the user expects standard Boris, it is:
     r_half = r + v * (dt / 2)
-    # Evaluate fields at t + dt/2, r_half
     t_half = t + dt / 2
     E = Efunc(r_half, t_half)
     B = Bfunc(r_half, t_half)
@@ -58,8 +45,15 @@ function perform_step!(integrator, cache::BorisConstantCache, repeat_step = fals
 
     r_new = r_half + v_new * (dt / 2)
 
-    u_new = vcat(r_new, v_new)
-    return integrator.u = u_new
+    integrator.u = vcat(r_new, v_new)
+
+    alg = integrator.alg
+    if alg.safety > 0.0
+        Bmag = norm(Bfunc(r_new, t + dt))
+        dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
+        set_proposed_dt!(integrator, dt_new)
+    end
+    return integrator.u
 end
 
 function initialize!(integrator, cache::BorisCache)
@@ -69,10 +63,7 @@ function initialize!(integrator, cache::BorisCache)
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function perform_step!(integrator, cache::BorisCache, repeat_step = false)
-    # In-place version.
-    # Since TestParticle.jl mostly focuses on SVector for small state vectors,
-    # we can do a naive copy for the in-place cache.
+@muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -104,7 +95,9 @@ function perform_step!(integrator, cache::BorisCache, repeat_step = false)
     return integrator.u[6] = v_new[3]
 end
 
-@muladd function update_velocity_multistep(v, r, dt, t, n::Int, N::Int, param)
+_get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
+
+@muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
     q2m = param[1]
     Efunc = param[3]
     Bfunc = param[4]
@@ -112,13 +105,11 @@ end
     E = Efunc(r, t)
     B = Bfunc(r, t)
 
-    # t_n and e_n vectors
     factor = q2m * dt / (2 * n)
 
-    t_n = factor * B # (q/m * dt/(2n)) * B
-    e_n = factor * E # (q/m * dt/(2n)) * E
+    t_n = factor * B
+    e_n = factor * E
 
-    # Hyper Boris N-th order gyrophase correction
     if N != 2
         t_mag2 = sum(abs2, t_n)
         if N == 4
@@ -137,10 +128,7 @@ end
     t_n_mag2 = sum(abs2, t_n)
     t_n_mag = sqrt(t_n_mag2)
 
-    # Calculate coefficients
-    # Check for small t_n to avoid division by zero or precision loss
     if t_n_mag < TN_MAG_THRESHOLD
-        # Taylor expansion limits as t_n -> 0
         c_n1 = 1 - 2 * n * n * t_n_mag2
 
         n_term1 = 2 * n
@@ -171,8 +159,6 @@ end
     v_cross_t = v × t_n
     e_cross_t = e_n × t_n
 
-    # Update velocity
-    # Equation 39:
     v_new = c_n1 * v +
         c_n2 * v_cross_t +
         c_n3 * v_dot_t * t_n +
@@ -190,7 +176,7 @@ function initialize!(integrator, cache::MultistepBorisConstantCache)
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
+@muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -200,17 +186,23 @@ function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_st
     r = uprev[SVector(1, 2, 3)]
     v = uprev[SVector(4, 5, 6)]
 
-    # Half step update
     r_half = r + v * (dt / 2)
     t_half = t + dt / 2
 
-    # Update velocity using multistep
-    N = typeof(alg).parameters[1]
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, N, p)
+    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, _get_val_N(alg), p)
 
     r_new = r_half + v_new * (dt / 2)
 
-    return integrator.u = vcat(r_new, v_new)
+    integrator.u = vcat(r_new, v_new)
+
+    if alg.safety > 0.0
+        q2m = p[1]
+        Bfunc = p[4]
+        Bmag = norm(Bfunc(r_new, t + dt))
+        dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
+        set_proposed_dt!(integrator, dt_new)
+    end
+    return integrator.u
 end
 
 function initialize!(integrator, cache::MultistepBorisCache)
@@ -220,7 +212,7 @@ function initialize!(integrator, cache::MultistepBorisCache)
     return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 end
 
-function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
+@muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
@@ -233,85 +225,7 @@ function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = fal
     r_half = r + v * (dt / 2)
     t_half = t + dt / 2
 
-    N = typeof(alg).parameters[1]
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, N, p)
-
-    r_new = r_half + v_new * (dt / 2)
-
-    integrator.u[1] = r_new[1]
-    integrator.u[2] = r_new[2]
-    integrator.u[3] = r_new[3]
-    integrator.u[4] = v_new[1]
-    integrator.u[5] = v_new[2]
-    return integrator.u[6] = v_new[3]
-end
-
-function initialize!(integrator, cache::AdaptiveBorisConstantCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
-end
-
-function perform_step!(integrator, cache::AdaptiveBorisConstantCache, repeat_step = false)
-    t = integrator.t
-    dt = integrator.dt
-    uprev = integrator.uprev
-    p = integrator.p
-    alg = integrator.alg
-
-    r = uprev[SVector(1, 2, 3)]
-    v = uprev[SVector(4, 5, 6)]
-
-    q2m = p[1]
-    Efunc = p[3]
-    Bfunc = p[4]
-
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
-    E = Efunc(r_half, t_half)
-    B = Bfunc(r_half, t_half)
-
-    qdt_2m = q2m * 0.5 * dt
-    v_new = boris_velocity_update(v, E, B, qdt_2m)
-
-    r_new = r_half + v_new * (dt / 2)
-    integrator.u = vcat(r_new, v_new)
-
-    # Adaptive Step proposition based on local gyroperiod
-    Bmag = norm(Bfunc(r_new, t + dt))
-    dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
-    return set_proposed_dt!(integrator, dt_new)
-end
-
-function initialize!(integrator, cache::AdaptiveBorisCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
-end
-
-function perform_step!(integrator, cache::AdaptiveBorisCache, repeat_step = false)
-    t = integrator.t
-    dt = integrator.dt
-    uprev = integrator.uprev
-    p = integrator.p
-    alg = integrator.alg
-
-    r = SVector(uprev[1], uprev[2], uprev[3])
-    v = SVector(uprev[4], uprev[5], uprev[6])
-
-    q2m = p[1]
-    Efunc = p[3]
-    Bfunc = p[4]
-
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
-    E = Efunc(r_half, t_half)
-    B = Bfunc(r_half, t_half)
-
-    qdt_2m = q2m * 0.5 * dt
-    v_new = boris_velocity_update(v, E, B, qdt_2m)
+    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, _get_val_N(alg), p)
 
     r_new = r_half + v_new * (dt / 2)
 
@@ -322,7 +236,12 @@ function perform_step!(integrator, cache::AdaptiveBorisCache, repeat_step = fals
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
 
-    Bmag = norm(Bfunc(r_new, t + dt))
-    dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
-    return set_proposed_dt!(integrator, dt_new)
+    if alg.safety > 0.0
+        q2m = p[1]
+        Bfunc = p[4]
+        Bmag = norm(Bfunc(r_new, t + dt))
+        dt_new = (2π * alg.safety) / (abs(q2m) * Bmag)
+        set_proposed_dt!(integrator, dt_new)
+    end
+    return integrator.u[6]
 end

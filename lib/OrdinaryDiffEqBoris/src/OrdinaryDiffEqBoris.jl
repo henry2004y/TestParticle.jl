@@ -17,6 +17,5 @@ include("boris_perform_step.jl")
 
 export Boris
 export MultistepBoris2, MultistepBoris4, MultistepBoris6
-export AdaptiveBoris
 
 end

@@ -5,7 +5,10 @@ The standard Boris method for particle pushing in electric and magnetic fields.
 
 This solver expects a problem where `p` is structured as `(q2m, m, E, B, ...)`, which matches the signature used by TestParticle.jl's `TraceProblem`.
 """
-struct Boris <: OrdinaryDiffEqAlgorithm end
+struct Boris{T} <: OrdinaryDiffEqAlgorithm
+    safety::T
+end
+Boris(; safety = 0.0) = Boris(safety)
 
 """
     MultistepBoris{N}(; n=1)
@@ -14,10 +17,11 @@ The Multistep/Hyper Boris method of order `N`.
 `n` specifies the number of subcycles.
 `N` specifies the gyrophase correction order. `N=2` corresponds to the Multicycle solver, while `N=4` or `N=6` are the Hyper Boris solvers.
 """
-struct MultistepBoris{N} <: OrdinaryDiffEqAlgorithm
+struct MultistepBoris{N, T} <: OrdinaryDiffEqAlgorithm
     n::Int
+    safety::T
 end
-MultistepBoris{N}(; n::Int = 1) where {N} = MultistepBoris{N}(n)
+MultistepBoris{N}(; n::Int = 1, safety = 0.0) where {N} = MultistepBoris{N, typeof(safety)}(n, safety)
 
 """
     MultistepBoris2(; n=1)
@@ -39,14 +43,3 @@ const MultistepBoris4 = MultistepBoris{4}
 The 6th order Hyper Boris method (MultistepBoris with N=6).
 """
 const MultistepBoris6 = MultistepBoris{6}
-
-"""
-    AdaptiveBoris(; safety=0.1)
-
-Adaptive Boris method with adaptive time stepping based on the local gyroperiod.
-The time step is evaluated as `dt = safety * 2π / |qB/m|`.
-"""
-struct AdaptiveBoris{T} <: OrdinaryDiffEqAlgorithm
-    safety::T
-end
-AdaptiveBoris(; safety = 0.1) = AdaptiveBoris(safety)
