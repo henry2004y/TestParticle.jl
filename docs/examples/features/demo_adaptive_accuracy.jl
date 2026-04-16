@@ -91,15 +91,15 @@ prob_ode1 = ODEProblem(trace_normalized!, u0_1, tspan1, param1)
 
 adaptive_solvers_1 = [
     (
-        "AdaptiveBoris (η=1/16)",
+        "Boris (η=1/16)",
         Boris(; safety = 1 / 16),
     ),
     (
-        "AdaptiveBoris (η=1/8)",
+        "Boris (η=1/8)",
         Boris(; safety = 1 / 8),
     ),
     (
-        "AdaptiveBoris (η=1/4)",
+        "Boris (η=1/4)",
         Boris(; safety = 1 / 4),
     ),
 ]
@@ -134,7 +134,7 @@ ax1b = Axis(
     f1[1, 2];
     xlabel = "Time [Gyroperiod]",
     ylabel = L"\Delta t / T_\mathrm{gyro}",
-    title = "AdaptiveBoris: Time Step History",
+    title = "Adaptive Boris: Time Step History",
 )
 
 for (i, (name, alg)) in enumerate(adaptive_solvers_1)
@@ -245,7 +245,7 @@ boris_steps = Int[]
 boris_errors = Float64[]
 
 for s in safety_values
-    alg = AdaptiveBoris(; safety = s)
+    alg = Boris(; safety = s)
     sol = TP.solve(prob_tp2, alg)[1]
     push!(boris_steps, length(sol.t))
     push!(boris_errors, max_velocity_error(sol))
@@ -288,7 +288,7 @@ ax2 = Axis(
 
 scatterlines!(
     ax2, boris_steps, boris_errors;
-    label = "AdaptiveBoris",
+    label = "Adaptive Boris",
     marker = :circle, linewidth = 2,
 )
 
@@ -335,11 +335,11 @@ prob_ode3 = ODEProblem(trace_normalized!, u0_2, tspan3, param3)
 
 adaptive_solvers_3 = [
     (
-        "AdaptiveBoris (η=0.1)",
+        "Boris (η=0.1)",
         Boris(; safety = 0.1),
     ),
     (
-        "AdaptiveBoris (η=0.2)",
+        "Boris (η=0.2)",
         Boris(; safety = 0.2),
     ),
 ]
