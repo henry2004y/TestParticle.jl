@@ -1,7 +1,7 @@
 # # Adaptive Solver Accuracy
 #
 # This example compares the accuracy and energy conservation of solvers that
-# use **changing time steps**: the native `AdaptiveBoris` solver and the
+# use **changing time steps**: the native `Boris(safety = η)` solver and the
 # adaptive ODE solvers `Tsit5` and `Vern6`.
 #
 # Unlike the fixed-step tests in [Solver Accuracy Analysis](@ref) and
