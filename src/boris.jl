@@ -371,7 +371,7 @@ function _prepare(
     if !isnothing(dt) && abs(dt) < 10 * eps(typeof(dt))
         throw(ArgumentError("time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"))
     end
-    
+
     sol_type = _get_sol_type(
         prob, isnothing(dt) ? zero(eltype(prob.tspan)) : dt,
         Val(SaveFields), Val(SaveWork)
