@@ -37,7 +37,7 @@
         sol_kernel = solve(prob, CPU(); dt, savestepinterval = 100)
 
         # Adaptive Boris
-        alg_adaptive = AdaptiveBoris(safety = 0.1)
+        alg_adaptive = Boris(safety = 0.1)
         sol_adaptive = solve(prob, alg_adaptive)[1]
 
         sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)

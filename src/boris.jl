@@ -1,5 +1,40 @@
 # Native particle pusher
 
+"""
+    Boris(; safety=0.0)
+
+The standard Boris method for particle pushing in electric and magnetic fields.
+When `safety > 0.0`, it uses adaptive time stepping based on local gyroperiod.
+"""
+struct Boris{T}
+    safety::T
+end
+Boris(; safety = 0.0) = Boris(safety)
+
+"""
+    MultistepBoris{N}(; n=1, safety=0.0)
+
+The Multistep/Hyper Boris method of order `N`.
+`n` specifies the number of subcycles.
+`N` specifies the gyrophase correction order: 2 (standard), 4, or 6 (Hyper-Boris).
+When `safety > 0.0`, it uses adaptive time stepping.
+"""
+struct MultistepBoris{N, T}
+    n::Int
+    safety::T
+end
+@inline function MultistepBoris{N}(; n::Int = 1, safety = 0.0) where {N}
+    if N ∉ (2, 4, 6)
+        throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
+    end
+    return MultistepBoris{N, typeof(safety)}(n, safety)
+end
+
+const MultistepBoris2 = MultistepBoris{2}
+const MultistepBoris4 = MultistepBoris{4}
+const MultistepBoris6 = MultistepBoris{6}
+
+
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     AbstractODEProblem{uType, tType, isinplace}
     f::F
@@ -108,9 +143,10 @@ In-place cross product.
 end
 
 """
-    solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
+    solve(prob::TraceProblem, alg::Union{Boris, MultistepBoris}=Boris();
+        trajectories::Int=1, dt=nothing,
         savestepinterval::Int=1, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-        n::Int=1, save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
+        save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
         save_fields::Bool=false, save_work::Bool=false)
 
 Trace particles using the Boris method with specified `prob`.
@@ -118,92 +154,104 @@ Trace particles using the Boris method with specified `prob`.
 # keywords
 
   - `trajectories::Int`: number of trajectories to trace.
-  - `dt::AbstractFloat`: time step.
+  - `dt::AbstractFloat`: time step for fixed-step Boris. If not provided, `alg.safety` must be > 0.
   - `savestepinterval::Int`: saving output interval.
   - `isoutside::Function`: pinpointing impact or checking boundaries.
-  - `n::Int=1`: number of substeps for the Multistep Boris method. 1 is standard Boris.
-  - `N::Int=2`: order of the Hyper Boris gyrophase correction (2, 4, or 6). 2 is uncorrected.
   - `save_start::Bool=true`: save the initial condition.
   - `save_end::Bool=true`: save the final condition.
   - `save_everystep::Bool=true`: save the state at every `savestepinterval`.
   - `save_fields::Bool=false`: save the electric and magnetic fields.
   - `save_work::Bool=false`: save the work done by the electric field.
   - `batch_size::Int=max(1, trajectories ÷ nworkers())`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`.
-
 """
 @inline function solve(
-        prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1, N::Int = 2,
+        prob::TraceProblem, alg::Union{Boris, MultistepBoris} = Boris(),
+        ensemblealg::EA = EnsembleSerial();
+        trajectories::Int = 1, savestepinterval::Int = 1, dt = nothing,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000,
         batch_size::Int = (ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads) ?
-            max(1, trajectories ÷ nworkers()) : 1
+            max(1, trajectories ÷ nworkers()) : 1,
+        n::Int = 1, N::Int = 2
     ) where {EA <: BasicEnsembleAlgorithm, F}
 
-    if N ∉ (2, 4, 6)
-        throw(ArgumentError("N must be 2, 4, or 6"))
+    # Backward compatibility: promote Boris to MultistepBoris if n > 1 or N != 2
+    if alg isa Boris && (n > 1 || N != 2)
+        if N ∉ (2, 4, 6)
+            throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
+        end
+        alg = MultistepBoris{N}(n = n, safety = alg.safety)
+    end
+
+    if !isnothing(dt)
+        if dt < eps(eltype(dt)) * 100
+            throw(ArgumentError("Time step dt is too small."))
+        end
+        ttotal = prob.tspan[2] - prob.tspan[1]
+        if abs(ttotal / dt) > maxiters
+            throw(ArgumentError("Total steps exceed maxiters. Increase maxiters or dt."))
+        end
     end
 
     return _solve(
-        ensemblealg, prob, trajectories, dt, savestepinterval, isoutside, n, N,
+        ensemblealg, prob, trajectories, alg, dt, savestepinterval, isoutside,
         save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters,
         batch_size
     )
 end
 
+function solve(prob::TraceProblem, ensemblealg::BasicEnsembleAlgorithm; kwargs...)
+    return solve(prob, Boris(), ensemblealg; kwargs...)
+end
+
 function _dispatch_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n, N, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        sols, prob::TraceProblem, irange, alg, dt, savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters
     ) where {SaveFields, SaveWork, F}
-    return if n == 1 && N == 2
-        _boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
-        )
-    else
-        _multistep_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
-        )
-    end
+    return _generic_boris!(
+        sols, prob, irange, alg, dt, savestepinterval, isoutside,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+        maxiters
+    )
 end
 
 @inline function _solve(
-        ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
+        ::EnsembleSerial, prob::TraceProblem, trajectories, alg, dt, savestepinterval,
+        isoutside::F, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
-    sols, nt,
-        nout = _prepare(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+    sols = _prepare(
+        prob, trajectories, alg, dt, save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
     )
     irange = 1:trajectories
     _dispatch_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        sols, prob, irange, alg, dt, savestepinterval, isoutside,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+        maxiters
     )
 
     return sols
 end
 
 @inline function _solve(
-        ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
+        ::EnsembleThreads, prob::TraceProblem, trajectories, alg, dt, savestepinterval,
+        isoutside::F, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
-    sols, nt,
-        nout = _prepare(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+    sols = _prepare(
+        prob, trajectories, alg, dt, save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
     )
 
     nchunks = Threads.nthreads()
     Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            sols, prob, irange, alg, dt, savestepinterval, isoutside,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+            maxiters
         )
     end
 
@@ -229,61 +277,59 @@ The `TraceProblem` construction is a negligible struct copy relative to the
 simulation cost and the serialization overhead inherent in `pmap`.
 """
 function _solve_single_boris(
-        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F, n, N,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        prob::TraceProblem, i, alg, dt, savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters
     ) where {SaveFields, SaveWork, F}
     new_prob = prob.prob_func(prob, i, false)
     single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
-    sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
+    sol_type = _get_sol_type(
+        single_prob, isnothing(dt) ? zero(eltype(single_prob.tspan)) : dt,
+        Val(SaveFields), Val(SaveWork)
+    )
     local_sols = Vector{sol_type}(undef, 1)
     _dispatch_boris!(
-        local_sols, single_prob, 1:1, savestepinterval, dt, nt, nout,
-        isoutside, n, N, save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
+        local_sols, single_prob, 1:1, alg, dt, savestepinterval,
+        isoutside, save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork), maxiters
     )
     return local_sols[1]
 end
 
 @inline function _solve(
-        ::EnsembleDistributed, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
+        ::EnsembleDistributed, prob::TraceProblem, trajectories, alg, dt, savestepinterval,
+        isoutside::F, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
-    _, nt, nout = _prepare(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
-    )
     return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_boris(
-            prob, i, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            prob, i, alg, dt, savestepinterval, isoutside,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+            maxiters
         )
     end
 end
 
 @inline function _solve(
-        ::EnsembleSplitThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
+        ::EnsembleSplitThreads, prob::TraceProblem, trajectories, alg, dt, savestepinterval,
+        isoutside::F, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
-    _, nt, nout = _prepare(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
-    )
     # _solve_single_boris wraps each trajectory in a fresh TraceProblem(u0, tspan, p)
     # with DEFAULT_PROB_FUNC. We get a sample problem from prob_func to ensure the
     # u0 type (uType) matches.
     sample_prob = prob.prob_func(prob, 1, false)
     dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
-    sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
+    sol_type = _get_sol_type(dummy_prob, zero(eltype(dummy_prob.tspan)), Val(SaveFields), Val(SaveWork))
     ichunks = index_chunks(1:trajectories; size = batch_size)
     results = pmap(ichunks) do irange
         local_sols = Vector{sol_type}(undef, length(irange))
         Threads.@threads for k in eachindex(irange)
             i = irange[k]
             local_sols[k] = _solve_single_boris(
-                prob, i, savestepinterval, dt, nt, nout, isoutside, n, N,
-                save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+                prob, i, alg, dt, savestepinterval, isoutside,
+                save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+                maxiters
             )
         end
         local_sols
@@ -319,123 +365,129 @@ end
 Prepare for advancing.
 """
 function _prepare(
-        prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+        prob::TraceProblem, trajectories, alg, dt,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    if abs(dt) < 10 * eps(typeof(dt))
+    if !isnothing(dt) && abs(dt) < 10 * eps(typeof(dt))
         throw(ArgumentError("time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"))
     end
-    ttotal = prob.tspan[2] - prob.tspan[1]
-    nt = round(Int, ttotal / dt) |> abs
-    if nt > maxiters
-        throw(ArgumentError("number of iterations nt ($nt) exceeds maxiters ($maxiters)"))
-    end
-
-    nout = 0
-    if save_start
-        nout += 1
-    end
-
-    if save_everystep
-        steps = nt ÷ savestepinterval
-        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
-        nout += steps
-        if !save_end && last_is_step
-            nout -= 1
-        end
-        if save_end && !last_is_step
-            nout += 1
-        end
-    elseif save_end
-        nout += 1
-    end
-
-    sol_type = _get_sol_type(prob, dt, Val(SaveFields), Val(SaveWork))
+    
+    sol_type = _get_sol_type(
+        prob, isnothing(dt) ? zero(eltype(prob.tspan)) : dt,
+        Val(SaveFields), Val(SaveWork)
+    )
     sols = Vector{sol_type}(undef, trajectories)
 
-    return sols, nt, nout
+    return sols
 end
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
-
-    # Pre-declare variables to share between blocks if both are true
-    local E_field, magnetic_props
-
-    if SaveFields
+    if SaveFields || SaveWork
         r = get_x(xv)
         T = eltype(xv)
+        Bfunc = get_BField(p)
         E_field = SVector{3, T}(get_EField(p)(r, t))
 
-        # We need magnetic properties for work, so if SaveWork is also true, compute them now
         if SaveWork
-            q2m, m, Efunc, Bfunc, _ = p
             # get_magnetic_properties returns (B, ∇B, κ, b̂, Bmag)
             magnetic_props = get_magnetic_properties(r, t, Bfunc)
-            B_vec = SVector{3, T}(magnetic_props[1])
-            data = vcat(data, E_field, B_vec)
-        else
-            B_vec = SVector{3, T}(get_BField(p)(r, t))
-            data = vcat(data, E_field, B_vec)
-        end
-    end
-
-    if SaveWork
-        # If SaveFields was true, we already computed E_field and magnetic_props
-        if SaveFields
+            if SaveFields
+                B_vec = SVector{3, T}(magnetic_props[1])
+                data = vcat(data, E_field, B_vec)
+            end
             work = get_work_rates(xv, p, t, magnetic_props, E_field)
-        else
-            work = get_work_rates(xv, p, t)
+            data = vcat(data, work)
+        elseif SaveFields
+            B_vec = SVector{3, T}(Bfunc(r, t))
+            data = vcat(data, E_field, B_vec)
         end
-        data = vcat(data, work)
     end
 
     return data
 end
 
-"""
-Apply Boris method for particles with index in `irange`.
-"""
 @inline @muladd function _boris_loop!(
-        traj, tsave, iout, r, v, p, dt, nt, tspan,
+        traj, tsave, r, v, p, dt, tspan,
         savestepinterval, save_everystep, isoutside::F1, velocity_updater::F2,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, alg, maxiters
     ) where {F1, F2, SaveFields, SaveWork}
+    t = tspan[1]
+    ttotal = tspan[2] - tspan[1]
     it = 1
-    t = tspan[1] - 0.5 * dt
-    while it <= nt
-        v_prev = v
-        t += dt
-        v = velocity_updater(v, r, dt, t, p)
+    retcode = ReturnCode.Success
 
-        r_next = r + v * dt
-        t_next = t + 0.5 * dt
-        if isoutside(vcat(r_next, v), p, t_next)
-            return it - 1, iout, r, v_prev
-        end
+    C = zero(eltype(v))
+    if alg.safety > 0.0
+        q2m, _, _, Bfunc, _ = p
+        C = (2π * alg.safety * sign(ttotal)) / abs(q2m)
+        Bmag = norm(Bfunc(r, t))
+        dt = C / Bmag
+    end
 
-        if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-            iout += 1
-            if iout <= length(traj)
-                t_current = t - 0.5 * dt
-                v_save = velocity_updater(v_prev, r, 0.5 * dt, t_current, p)
-                data = vcat(r, v_save)
-                traj[iout] = _prepare_saved_data(data, p, t_current, Val(SaveFields), Val(SaveWork))
-                tsave[iout] = t_current
+    # push velocity back in time by 1/2 dt
+    v = velocity_updater(v, r, -0.5 * dt, t, p)
+
+    while abs(t - tspan[1]) < abs(ttotal)
+        if abs(t + dt - tspan[1]) >= abs(ttotal) - 100 * eps(eltype(v)(abs(ttotal)))
+            dt_step = tspan[2] - t
+            if dt_step != dt
+                # Resync v from `t - 0.5*dt` to `t - 0.5*dt_step`
+                v = velocity_updater(v, r, 0.5 * dt, t, p)
+                v = velocity_updater(v, r, -0.5 * dt_step, t, p)
+                dt = dt_step
             end
         end
 
-        r = r_next
+        if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+            # Advance to t to get v_n
+            v_save = velocity_updater(v, r, 0.5 * dt, t, p)
+            data = vcat(r, v_save)
+            push!(traj, _prepare_saved_data(data, p, t, Val(SaveFields), Val(SaveWork)))
+            push!(tsave, t)
+        end
+
+        v_new = velocity_updater(v, r, dt, t + 0.5 * dt, p)
+        r_next = r + v_new * dt
+        t_next = t + dt
+
+        # NaN check
+        if any(isnan, r_next) || any(isnan, v_new)
+            retcode = ReturnCode.Unstable
+            break
+        end
+
+        if isoutside(vcat(r_next, v_new), p, t_next)
+            retcode = ReturnCode.Terminated
+            break
+        end
+
+        r, v, t = r_next, v_new, t_next
+
+        if alg.safety > 0.0 && abs(t - tspan[1]) < abs(ttotal)
+            q2m, _, _, Bfunc, _ = p
+            Bmag = norm(Bfunc(r, t))
+            dt_new = C / Bmag
+            # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
+            v = velocity_updater(v, r, 0.5 * dt, t, p)
+            v = velocity_updater(v, r, -0.5 * dt_new, t, p)
+            dt = dt_new
+        end
+        if it > maxiters
+            retcode = ReturnCode.MaxIters
+            break
+        end
         it += 1
     end
-    return it - 1, iout, r, v
+
+    return r, v, t, dt, retcode
 end
 
 @inline @muladd function _generic_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
+        sols, prob::TraceProblem, irange, alg, dt, savestepinterval, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater::F2, alg_name
-    ) where {SaveFields, SaveWork, F1, F2}
+        maxiters
+    ) where {SaveFields, SaveWork, F1}
     (; tspan, p, u0) = prob
     T = eltype(u0)
 
@@ -447,101 +499,75 @@ end
         vars_dim += 4
     end
 
+    algorithm_name = alg isa Boris ? :boris : :multistep_boris
+
+    velocity_updater = if alg isa Boris
+        update_velocity
+    else
+        (v, r, dt, t, p) -> update_velocity_multistep(v, r, dt, t, alg.n, _get_val_N(alg), p)
+    end
+
     @inbounds for i in irange
-        traj = Vector{SVector{vars_dim, T}}(undef, nout)
-        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+        traj = Vector{SVector{vars_dim, T}}(undef, 0)
+        tsave = Vector{typeof(tspan[1] + (isnothing(dt) ? 0.0 : dt))}(undef, 0)
+        sizehint!(traj, 1000)
+        sizehint!(tsave, 1000)
 
         # set initial conditions for each trajectory i
-        iout = 0
         new_prob = prob.prob_func(prob, i, false)
         u0_i = SVector{6, T}(new_prob.u0)
         r = u0_i[SVector(1, 2, 3)]
         v = u0_i[SVector(4, 5, 6)]
 
+        # If dt is not provided, it must be adaptive (safety > 0)
+        _dt = isnothing(dt) ? zero(T) : T(dt)
+
         if save_start
-            iout += 1
-            traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
-            tsave[iout] = tspan[1]
+            push!(traj, _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork)))
+            push!(tsave, tspan[1])
         end
 
-        # push velocity back in time by 1/2 dt
-        v = velocity_updater(v, r, -0.5 * dt, tspan[1], p)
-
-        it, iout, r, v = _boris_loop!(
-            traj, tsave, iout, r, v, p, dt, nt, tspan,
+        r, v, t, _dt_final, retcode = _boris_loop!(
+            traj, tsave, r, v, p, _dt, tspan,
             savestepinterval, save_everystep, isoutside, velocity_updater,
-            Val(SaveFields), Val(SaveWork)
+            Val(SaveFields), Val(SaveWork), alg, maxiters
         )
 
-        final_step = it
-        should_save_final = false
-        if save_end
-            should_save_final = true
-        elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
-            should_save_final = true
+        should_save_final = save_end
+        if should_save_final && (isempty(tsave) || tsave[end] != t)
+            # v is at t - 0.5*_dt_final. To get v at t, advance by 0.5*_dt_final
+            v_save = velocity_updater(v, r, 0.5 * _dt_final, t, p)
+            data = vcat(r, v_save)
+            push!(traj, _prepare_saved_data(data, p, t, Val(SaveFields), Val(SaveWork)))
+            push!(tsave, t)
         end
 
-        if iout < nout && should_save_final
-            t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-            if iout == 0 || tsave[iout] < t_final
-                iout += 1
-                dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-                v_final = velocity_updater(v, r, dt_final, t_final, p)
-
-                data = vcat(r, v_final)
-                traj[iout] = _prepare_saved_data(
-                    data, p, t_final, Val(SaveFields), Val(SaveWork)
-                )
-                tsave[iout] = t_final
-            end
-        end
-
-        if iout < nout
-            resize!(traj, iout)
-            resize!(tsave, iout)
-            retcode = ReturnCode.Terminated
-        else
-            retcode = ReturnCode.Success
-        end
-        traj_save = traj
-        t = tsave
-
-        alg = alg_name
-        interp = LinearInterpolation(t, traj_save)
+        alg_sol = algorithm_name
+        interp = LinearInterpolation(tsave, traj)
         stats = nothing
 
-        sols[i] = build_solution(prob, alg, t, traj_save; interp, retcode, stats)
+        sols[i] = build_solution(prob, alg_sol, tsave, traj; interp, retcode, stats)
     end
 
     return
 end
 
-"""
-Apply Boris method for particles with index in `irange`.
-"""
-@inline @muladd function _boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork, F}
-
-    _generic_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        update_velocity, :boris
-    )
-
-    return
-end
+_get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
 
 """
     update_velocity_multistep(v, r, dt, t, n, N, param)
+    update_velocity_multistep(v, r, dt, t, n, ::Val{N}, param)
 
 Update velocity using the Multistep/Hyper Boris method, returning the new velocity as an SVector.
 `n` specifies the number of subcycles.
 `N` specifies the gyrophase correction order. When N=2, it corresponds to the Multicycle solver. When N=4 or N=6, it is the Hyper Boris solver.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-@muladd function update_velocity_multistep(v, r, dt, t, n::Int, N::Int, param)
+@inline function update_velocity_multistep(v, r, dt, t, n::Int, N::Int, param)
+    return update_velocity_multistep(v, r, dt, t, n, Val(N), param)
+end
+
+@muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -618,22 +644,6 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     return v_new
 end
 
-@inline @muladd function _multistep_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n_steps::Int, N_order::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork, F}
-
-    velocity_updater = (v, r, dt, t, p) ->
-    update_velocity_multistep(v, r, dt, t, n_steps, N_order, p)
-
-    _generic_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        velocity_updater, :multistep_boris
-    )
-
-    return
-end
 
 """
     get_fields(sol::AbstractODESolution)
