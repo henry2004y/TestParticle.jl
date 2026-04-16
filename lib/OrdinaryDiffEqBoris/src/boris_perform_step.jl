@@ -25,7 +25,6 @@ end
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
-    f = integrator.f
     p = integrator.p
 
     r = uprev[SVector(1, 2, 3)]
@@ -67,7 +66,6 @@ end
     t = integrator.t
     dt = integrator.dt
     uprev = integrator.uprev
-    f = integrator.f
     p = integrator.p
 
     r = SVector(uprev[1], uprev[2], uprev[3])
@@ -99,9 +97,7 @@ end
 _get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
 
 @muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
-    q2m = param[1]
-    Efunc = param[3]
-    Bfunc = param[4]
+    q2m, Efunc, Bfunc = param[1], param[3], param[4]
 
     E = Efunc(r, t)
     B = Bfunc(r, t)
