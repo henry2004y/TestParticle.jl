@@ -45,7 +45,7 @@ using OrdinaryDiffEq: ReturnCode
         @testset "Adaptive Boris" begin
             prob = TraceProblem(u0, tspan, p)
             sol = TP.solve(
-                prob, AdaptiveBoris(safety = 0.05);
+                prob, Boris(safety = 0.05);
                 isoutside = callback.condition
             )[1]
 
@@ -82,13 +82,13 @@ using OrdinaryDiffEq: ReturnCode
         E_field_fixed(r, t = 0.0) = SA[0.0, 0.0, 0.0]
         param = prepare(E_field_fixed, B_field_fixed; species = Proton)
 
-        @testset "Spatial rejection (AdaptiveBoris)" begin
+        @testset "Spatial rejection (Boris)" begin
             isoutside(u, p, t) = u[1] > 0.5
             u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
             tspan = (0.0, 1.0e-5)
             prob = TraceProblem(u0, tspan, param)
 
-            alg = AdaptiveBoris(safety = 0.1)
+            alg = Boris(safety = 0.1)
             sol = TP.solve(prob, alg; isoutside)[1]
             @test sol.u[end][1] <= 0.5
             @test sol.t[end] < tspan[2]

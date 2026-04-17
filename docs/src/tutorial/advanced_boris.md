@@ -74,7 +74,7 @@ Combining both $n > 1$ and $N > 2$ ensures ultra-high stability tracking over dr
 
 ## 3. Adaptive Boris Method
 
-The `AdaptiveBoris` solver adjusts the time step $\Delta t$ dynamically based on the local cyclotron frequency $\Omega_c = |q B / m|$. This is particularly useful in systems with strong magnetic field gradients, such as magnetic mirrors or planetary magnetospheres, where the required resolution varies significantly along the particle's trajectory.
+The `Boris(safety = η)` solver adjusts the time step $\Delta t$ dynamically based on the local cyclotron frequency $\Omega_c = |q B / m|$. This is particularly useful in systems with strong magnetic field gradients, such as magnetic mirrors or planetary magnetospheres, where the required resolution varies significantly along the particle's trajectory.
 
 The time step is determined by:
 ```math
@@ -113,10 +113,10 @@ sol = TestParticle.solve(prob; dt, n=2, N=4)
 
 ### Adaptive Boris
 
-You can use the adaptive solver by passing an `AdaptiveBoris` object as the second argument to `solve`.
+You can use the adaptive solver by passing `Boris(safety = η)` as the second argument to `solve`.
 
 ```julia
 # Adaptive Boris with safety factor 0.05 (20 steps per period)
-alg = AdaptiveBoris(safety=0.05)
+alg = Boris(safety=0.05)
 sol = TestParticle.solve(prob, alg)[1]
 ```

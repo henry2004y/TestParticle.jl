@@ -188,7 +188,7 @@ using Distributed
 
     @testset "Adaptive Boris" begin
         # Check constructor default
-        alg1 = AdaptiveBoris(safety = 0.1)
+        alg1 = Boris(safety = 0.1)
         @test alg1.safety == 0.1
 
         x0 = [0.0, 0.0, 0.0]
@@ -198,7 +198,7 @@ using Distributed
         tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
         tspan = (0.0, 200 * tperiod)
 
-        alg_adaptive = AdaptiveBoris(safety = 0.1)
+        alg_adaptive = Boris(safety = 0.1)
 
         param = prepare(constant_E, gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
@@ -243,9 +243,29 @@ using Distributed
         @test abs(sol_boris.u[end][4]) < 1.0e5 - 100
 
         # Adaptive Boris
-        alg_adaptive = AdaptiveBoris(safety = 0.1)
+        alg_adaptive = Boris(safety = 0.1)
         sol_adaptive = TP.solve(prob, alg_adaptive)[1]
         @test abs(sol_adaptive.u[end][4]) < 1.0e5 - 100
+    end
+
+    @testset "Backward tracing" begin
+        # B = [0, 0, 0.01], E = 0
+        param = prepare(ZeroField(), uniform_B2, species = Proton)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+        # Forward tspan
+        tspan_fw = (0.0, 1.0e-5)
+        dt = 1.0e-7
+        sol_fw = TP.solve(TraceProblem(u0, tspan_fw, param); dt)[1]
+
+        # Backward tspan
+        u_end = sol_fw.u[end]
+        tspan_bw = (1.0e-5, 0.0)
+        prob_bw = TraceProblem(u_end, tspan_bw, param)
+        sol_bw = TP.solve(prob_bw; dt = -dt)[1]
+
+        # Should return close to original IC
+        @test sol_bw.u[end][1:3] ≈ u0[1:3] atol = 1.0e-4
+        @test sol_bw.u[end][4:6] ≈ u0[4:6] atol = 1.0e-4
     end
 
     @testset "Output saving flags" begin
@@ -407,8 +427,7 @@ using Distributed
         @test abs(work_ms[3]) > 0.0
 
         # Test Adaptive Boris with save_work
-        # Use simple AdaptiveBoris
-        alg_adaptive = AdaptiveBoris(safety = 0.1)
+        alg_adaptive = Boris(safety = 0.1)
         sol_adaptive = TP.solve(prob, alg_adaptive; save_work = true, save_everystep = true)[1]
         @test length(sol_adaptive.u[1]) == 10
         work_adaptive = sol_adaptive.u[1][7:10]
@@ -523,9 +542,9 @@ using Distributed
                 end
             end
 
-            @testset "AdaptiveBoris" begin
+            @testset "BorisAdaptive" begin
                 tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
-                alg_adaptive = AdaptiveBoris(; safety = 0.1)
+                alg_adaptive = Boris(; safety = 0.1)
 
                 sols_serial = TP.solve(
                     prob_dist, alg_adaptive, EnsembleSerial(); trajectories

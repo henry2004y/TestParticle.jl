@@ -99,7 +99,7 @@ sol_boris_2 = TP.solve(prob; dt, n = 2)[1];
 sol_boris_4 = TP.solve(prob; dt, n = 4)[1];
 sol_boris_hyper = TP.solve(prob; dt, n = 2, N = 4)[1];
 
-alg_adaptive = AdaptiveBoris(safety = 0.1)
+alg_adaptive = Boris(safety = 0.1)
 sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
@@ -148,7 +148,7 @@ sol_boris_4 = TP.solve(prob_boris; dt, savestepinterval = 36, n = 4)[1];
 sol_boris_hyper = TP.solve(prob_boris; dt, savestepinterval = 36, n = 2, N = 4)[1];
 sol_boris_adaptive = TP.solve(
     prob_boris,
-    AdaptiveBoris(safety = 0.1)
+    Boris(safety = 0.1)
 )[1]
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5());
