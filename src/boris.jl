@@ -12,6 +12,20 @@ end
 Boris(; safety = 0.0) = Boris(safety)
 
 """
+    AdaptiveBoris(; safety=0.1)
+
+The adaptive Boris method with adaptive time stepping based on local gyroperiod.
+Returns a `Boris` instance with the specified `safety` factor.
+"""
+struct AdaptiveBoris{T}
+    safety::T
+end
+function AdaptiveBoris(; safety = 0.1)
+    @warn "AdaptiveBoris is deprecated. Use Boris(safety=$safety) instead." maxlog=1
+    return AdaptiveBoris(safety)
+end
+
+"""
     MultistepBoris{N}(; n=1, safety=0.0)
 
 The Multistep/Hyper Boris method of order `N`.
@@ -165,7 +179,7 @@ Trace particles using the Boris method with specified `prob`.
   - `batch_size::Int=max(1, trajectories ÷ nworkers())`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`.
 """
 @inline function solve(
-        prob::TraceProblem, alg::Union{Boris, MultistepBoris} = Boris(),
+        prob::TraceProblem, alg::Union{Boris, MultistepBoris, AdaptiveBoris} = Boris(),
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1, dt = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -176,12 +190,21 @@ Trace particles using the Boris method with specified `prob`.
         n::Int = 1, N::Int = 2
     ) where {EA <: BasicEnsembleAlgorithm, F}
 
+    # Backward compatibility: promote AdaptiveBoris to Boris
+    if alg isa AdaptiveBoris
+        alg = Boris(alg.safety)
+    end
+
     # Backward compatibility: promote Boris to MultistepBoris if n > 1 or N != 2
     if alg isa Boris && (n > 1 || N != 2)
         if N ∉ (2, 4, 6)
             throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
         end
         alg = MultistepBoris{N}(n = n, safety = alg.safety)
+    end
+
+    if isnothing(dt) && alg.safety <= 0.0
+        throw(ArgumentError("Time step dt must be provided for fixed-step Boris solver."))
     end
 
     if !isnothing(dt)
