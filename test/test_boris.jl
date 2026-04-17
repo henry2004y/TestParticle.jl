@@ -248,6 +248,26 @@ using Distributed
         @test abs(sol_adaptive.u[end][4]) < 1.0e5 - 100
     end
 
+    @testset "Backward tracing" begin
+        # B = [0, 0, 0.01], E = 0
+        param = prepare(ZeroField(), uniform_B2, species = Proton)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+        # Forward tspan
+        tspan_fw = (0.0, 1.0e-5)
+        dt = 1.0e-7
+        sol_fw = TP.solve(TraceProblem(u0, tspan_fw, param); dt)[1]
+        
+        # Backward tspan
+        u_end = sol_fw.u[end]
+        tspan_bw = (1.0e-5, 0.0)
+        prob_bw = TraceProblem(u_end, tspan_bw, param)
+        sol_bw = TP.solve(prob_bw; dt = -dt)[1]
+        
+        # Should return close to original IC
+        @test sol_bw.u[end][1:3] ≈ u0[1:3] atol = 1.0e-4
+        @test sol_bw.u[end][4:6] ≈ u0[4:6] atol = 1.0e-4
+    end
+
     @testset "Output saving flags" begin
         # Setup
         x0 = [0.0, 0.0, 0.0]

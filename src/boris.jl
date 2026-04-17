@@ -208,7 +208,7 @@ Trace particles using the Boris method with specified `prob`.
     end
 
     if !isnothing(dt)
-        if dt < eps(eltype(dt)) * 100
+        if abs(dt) < eps(eltype(dt)) * 100
             throw(ArgumentError("Time step dt is too small."))
         end
         ttotal = prob.tspan[2] - prob.tspan[1]
