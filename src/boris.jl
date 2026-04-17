@@ -512,13 +512,19 @@ end
     nout_fixed = if !isnothing(dt)
         nt = round(Int, abs(ttotal / dt))
         nsteps = 0
-        if save_start; nsteps += 1; end
+        if save_start
+            nsteps += 1
+        end
         if save_everystep
             steps = nt ÷ savestepinterval
             last_is_step = (nt > 0) && (nt % savestepinterval == 0)
             nsteps += steps
-            if !save_end && last_is_step; nsteps -= 1; end
-            if save_end && !last_is_step; nsteps += 1; end
+            if !save_end && last_is_step
+                nsteps -= 1
+            end
+            if save_end && !last_is_step
+                nsteps += 1
+            end
         elseif save_end
             nsteps += 1
         end
