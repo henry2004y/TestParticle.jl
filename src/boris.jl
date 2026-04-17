@@ -21,7 +21,7 @@ struct AdaptiveBoris{T}
     safety::T
 end
 function AdaptiveBoris(; safety = 0.1)
-    @warn "AdaptiveBoris is deprecated. Use Boris(safety=$safety) instead." maxlog=1
+    @warn "AdaptiveBoris is deprecated. Use Boris(safety=$safety) instead." maxlog = 1
     return AdaptiveBoris(safety)
 end
 
