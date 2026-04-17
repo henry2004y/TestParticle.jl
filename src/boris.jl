@@ -507,11 +507,31 @@ end
         (v, r, dt, t, p) -> update_velocity_multistep(v, r, dt, t, alg.n, _get_val_N(alg), p)
     end
 
+    # Calculate exact nout for fixed-step to avoid memory regression
+    ttotal = tspan[2] - tspan[1]
+    nout_fixed = if !isnothing(dt)
+        nt = round(Int, abs(ttotal / dt))
+        nsteps = 0
+        if save_start; nsteps += 1; end
+        if save_everystep
+            steps = nt ÷ savestepinterval
+            last_is_step = (nt > 0) && (nt % savestepinterval == 0)
+            nsteps += steps
+            if !save_end && last_is_step; nsteps -= 1; end
+            if save_end && !last_is_step; nsteps += 1; end
+        elseif save_end
+            nsteps += 1
+        end
+        nsteps
+    else
+        1000 # Default capacity for adaptive Boris
+    end
+
     @inbounds for i in irange
         traj = Vector{SVector{vars_dim, T}}(undef, 0)
         tsave = Vector{typeof(tspan[1] + (isnothing(dt) ? 0.0 : dt))}(undef, 0)
-        sizehint!(traj, 1000)
-        sizehint!(tsave, 1000)
+        sizehint!(traj, nout_fixed)
+        sizehint!(tsave, nout_fixed)
 
         # set initial conditions for each trajectory i
         new_prob = prob.prob_func(prob, i, false)
