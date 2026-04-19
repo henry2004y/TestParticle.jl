@@ -213,7 +213,7 @@ function _dispatch_boris!(
     ) where {N, SaveFields, SaveWork, F}
     return _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt,
-        nout, isoutside, alg.n, N,
+        nout, isoutside, alg.n, Val(N),
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork)
     )
@@ -628,14 +628,16 @@ Apply Boris method for particles with index in `irange`.
 end
 
 """
-    update_velocity_multistep(v, r, dt, t, n, N, param)
+    update_velocity_multistep(v, r, dt, t, n, ::Val{N}, param)
 
 Update velocity using the Multistep/Hyper Boris method, returning the new velocity as an SVector.
 `n` specifies the number of subcycles.
 `N` specifies the gyrophase correction order. When N=2, it corresponds to the Multicycle solver. When N=4 or N=6, it is the Hyper Boris solver.
 Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
 """
-@muladd function update_velocity_multistep(v, r, dt, t, n::Int, N::Int, param)
+@muladd function update_velocity_multistep(
+        v, r, dt, t, n::Int, ::Val{N}, param
+    ) where {N}
     q2m, _, Efunc, Bfunc, _ = param
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -714,11 +716,13 @@ end
 
 @inline @muladd function _multistep_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n_steps::Int, N_order::Int, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork, F}
+        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {N_order, SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, dt, t, p) ->
-    update_velocity_multistep(v, r, dt, t, n_steps, N_order, p)
+    update_velocity_multistep(
+        v, r, dt, t, n_steps, Val(N_order), p
+    )
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
