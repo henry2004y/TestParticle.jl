@@ -10,8 +10,8 @@ The Multistep/Hyper Boris method of order `N`.
 `N` specifies the gyrophase correction order:
 2 (standard), 4, or 6 (Hyper-Boris).
 """
-struct MultistepBoris{N, T} <: AbstractBoris
-    n::T
+struct MultistepBoris{N} <: AbstractBoris
+    n::Int
 end
 
 @inline function MultistepBoris{N}(; n::Int = 1) where {N}
@@ -22,7 +22,7 @@ end
             )
         )
     end
-    return MultistepBoris{N, Int}(n)
+    return MultistepBoris{N}(n)
 end
 
 const MultistepBoris2 = MultistepBoris{2}
@@ -138,10 +138,11 @@ In-place cross product.
 end
 
 """
-    solve(prob::TraceProblem, alg::Boris,
+    solve(prob::TraceProblem,
+        alg::Union{Boris, MultistepBoris},
         ensemblealg=EnsembleSerial(); dt, kwargs...)
 
-Trace particles using the standard Boris method.
+Trace particles using the Boris or Multistep/Hyper Boris method.
 
 # Keywords
   - `trajectories::Int=1`: number of trajectories.
@@ -156,7 +157,8 @@ Trace particles using the standard Boris method.
   - `maxiters::Int=1_000_000`: maximum iterations.
 """
 @inline function solve(
-        prob::TraceProblem, alg::Boris,
+        prob::TraceProblem,
+        alg::Union{Boris, MultistepBoris},
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
@@ -172,38 +174,6 @@ Trace particles using the standard Boris method.
             ensemblealg, trajectories
         ),
     ) where {EA <: BasicEnsembleAlgorithm, F}
-    return _solve(
-        ensemblealg, prob, alg, trajectories, dt,
-        savestepinterval, isoutside,
-        save_start, save_end, save_everystep,
-        Val(save_fields), Val(save_work),
-        maxiters, batch_size
-    )
-end
-
-"""
-    solve(prob::TraceProblem, alg::MultistepBoris{N},
-        ensemblealg=EnsembleSerial(); dt, kwargs...)
-
-Trace particles using the Multistep/Hyper Boris method.
-"""
-@inline function solve(
-        prob::TraceProblem, alg::MultistepBoris{N},
-        ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1,
-        savestepinterval::Int = 1,
-        dt::AbstractFloat,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true,
-        save_end::Bool = true,
-        save_everystep::Bool = true,
-        save_fields::Bool = false,
-        save_work::Bool = false,
-        maxiters::Int = 1_000_000,
-        batch_size::Int = _default_batch_size(
-            ensemblealg, trajectories
-        ),
-    ) where {N, EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, alg, trajectories, dt,
         savestepinterval, isoutside,

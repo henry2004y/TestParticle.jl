@@ -48,12 +48,12 @@ prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 # We benchmark the following solvers:
 
 solvers = [
-    ("Boris (n=1, N=2)", "standard Boris (n=1, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 1, N = 2)),
-    ("Boris (n=2, N=2)", "2-cycled (n=2, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 2)),
-    ("Boris (n=4, N=2)", "4-cycled (n=4, N=2)", :Boris, () -> TP.solve(prob_boris; dt, n = 4, N = 2)),
-    ("Boris (n=1, N=6)", "6-th order Boris (n=1, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 1, N = 6)),
-    ("Boris (n=2, N=6)", "Hyper Boris (n=2, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 2, N = 6)),
-    ("Boris (n=4, N=6)", "Hyper Boris (n=4, N=6)", :Boris, () -> TP.solve(prob_boris; dt, n = 4, N = 6)),
+    ("Boris (n=1, N=2)", "standard Boris (n=1, N=2)", :Boris, () -> TP.solve(prob_boris, Boris(); dt)),
+    ("Boris (n=2, N=2)", "2-cycled (n=2, N=2)", :Boris, () -> TP.solve(prob_boris, MultistepBoris2(; n = 2); dt)),
+    ("Boris (n=4, N=2)", "4-cycled (n=4, N=2)", :Boris, () -> TP.solve(prob_boris, MultistepBoris2(; n = 4); dt)),
+    ("Boris (n=1, N=6)", "6-th order Boris (n=1, N=6)", :Boris, () -> TP.solve(prob_boris, MultistepBoris6(; n = 1); dt)),
+    ("Boris (n=2, N=6)", "Hyper Boris (n=2, N=6)", :Boris, () -> TP.solve(prob_boris, MultistepBoris6(; n = 2); dt)),
+    ("Boris (n=4, N=6)", "Hyper Boris (n=4, N=6)", :Boris, () -> TP.solve(prob_boris, MultistepBoris6(; n = 4); dt)),
     ("Tsit5 (fixed)", "`OrdinaryDiffEq` Tsit5 with fixed step", :Fixed, () -> solve(prob_ode, Tsit5(); adaptive = false, dt, dense = false)),
     ("Tsit5 (adaptive)", "`OrdinaryDiffEq` Tsit5 with adaptive step", :Adaptive, () -> solve(prob_ode, Tsit5(); saveat = dt)),
     ("Vern7 (fixed)", "`OrdinaryDiffEq` Vern7 with fixed step", :Fixed, () -> solve(prob_ode, Vern7(); adaptive = false, dt, dense = false)),

@@ -26,13 +26,13 @@ CairoMakie.activate!(type = "png") #hide
 # ## Solvers to Test
 # We define a set of Boris solvers and ODE solvers to compare.
 boris_solvers = [
-    ("Standard Boris", Dict(:n => 1, :N => 2)),
-    ("Multicycle Boris (n=2)", Dict(:n => 2, :N => 2)),
-    ("Multicycle Boris (n=4)", Dict(:n => 4, :N => 2)),
-    ("Hyper Boris (n=1, N=6)", Dict(:n => 1, :N => 6)),
-    ("Hyper Boris (n=2, N=6)", Dict(:n => 2, :N => 6)),
-    ("Hyper Boris (n=4, N=4)", Dict(:n => 4, :N => 4)),
-    ("Hyper Boris (n=4, N=6)", Dict(:n => 4, :N => 6)),
+    ("Standard Boris", Boris()),
+    ("Multicycle Boris (n=2)", MultistepBoris2(; n = 2)),
+    ("Multicycle Boris (n=4)", MultistepBoris2(; n = 4)),
+    ("Hyper Boris (n=1, N=6)", MultistepBoris6(; n = 1)),
+    ("Hyper Boris (n=2, N=6)", MultistepBoris6(; n = 2)),
+    ("Hyper Boris (n=4, N=4)", MultistepBoris4(; n = 4)),
+    ("Hyper Boris (n=4, N=6)", MultistepBoris6(; n = 4)),
 ]
 
 ode_solvers = [
@@ -101,8 +101,8 @@ results1 = Dict(name => Float64[] for (name, _) in [boris_solvers; ode_solvers])
 prob1_ode = ODEProblem(trace!, u0, tspan, param)
 
 for dt in dts1
-    for (name, kwargs) in boris_solvers
-        sol = TestParticle.solve(prob1; dt, kwargs...)[1]
+    for (name, alg) in boris_solvers
+        sol = TestParticle.solve(prob1, alg; dt)[1]
         vx, vy = sol.u[end][4], sol.u[end][5]
         t_final = sol.t[end]
 
@@ -173,8 +173,8 @@ results2 = Dict(name => Float64[] for (name, _) in [boris_solvers; ode_solvers])
 prob2_ode = ODEProblem(trace!, u0, tspan2, param2)
 
 for dt in dts2
-    for (name, kwargs) in boris_solvers
-        sol = TestParticle.solve(prob2; dt, kwargs...)[1]
+    for (name, alg) in boris_solvers
+        sol = TestParticle.solve(prob2, alg; dt)[1]
 
         max_err = 0.0
         for i in eachindex(sol.u)
@@ -286,9 +286,9 @@ end
 # Each row compares a specific solver against the analytical solution at both timesteps.
 
 drift_solvers_all = [
-    ("Standard Boris", :boris, Dict(:n => 1, :N => 2)),
+    ("Standard Boris", :boris, Boris()),
     ("RK4", :ode, RK4()),
-    ("Hyper Boris (n=4, N=6)", :boris, Dict(:n => 4, :N => 6)),
+    ("Hyper Boris (n=4, N=6)", :boris, MultistepBoris6(; n = 4)),
     ("Tsit5", :ode, Tsit5()),
     ("Vern6", :ode, Vern6()),
 ]
@@ -339,7 +339,7 @@ for (row, (name, type, config)) in enumerate(drift_solvers_all)
 
         ## Plot solver result
         if type == :boris
-            sol = TestParticle.solve(prob3; dt, config...)[1]
+            sol = TestParticle.solve(prob3, config; dt)[1]
             t_eval = range(0.0, t_end3, step = dt)
             x_drifts = [sol(t)[1] - vD_magnitude * t for t in t_eval]
             scatterlines!(

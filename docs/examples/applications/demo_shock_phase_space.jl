@@ -105,7 +105,7 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
-@time sols = TP.solve(prob; dt, savestepinterval = 10, trajectories = nparticles);
+@time sols = TP.solve(prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles);
 println("Simulation complete.")
 
 ## Detector planes (upstream and downstream of the shock)
