@@ -231,7 +231,7 @@ function prob_func_m2(prob, i, repeat)
 end
 
 prob_m2 = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2)
-@time sols_m2 = TP.solve(prob_m2; dt, savestepinterval = 10, trajectories = nparticles_m2);
+@time sols_m2 = TP.solve(prob_m2, Boris(); dt, savestepinterval = 10, trajectories = nparticles_m2);
 
 hists_up_m2 = reconstruct_liouville_projections(
     sols_m2, detector_up, vdf, n_up, Vsphere_m2
@@ -278,7 +278,7 @@ function reconstruct_backward_projections(
     )
 
     sols_bw = TP.solve(
-        prob_bw, EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
+        prob_bw, Boris(), EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
         savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
     )
 
