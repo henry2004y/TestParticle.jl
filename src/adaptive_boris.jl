@@ -1,6 +1,6 @@
 # Adaptive Boris method
 
-struct AdaptiveBoris{T}
+struct AdaptiveBoris{T} <: AbstractBoris
     safety::T
 end
 
@@ -14,6 +14,7 @@ function AdaptiveBoris(; safety = 0.1)
     T = typeof(safety)
     return AdaptiveBoris{T}(T(safety))
 end
+
 """
     solve(prob::TraceProblem, alg::AdaptiveBoris,
         ensemblealg::BasicEnsembleAlgorithm=EnsembleSerial();

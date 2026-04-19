@@ -1,5 +1,35 @@
 # Native particle pusher
 
+struct Boris <: AbstractBoris end
+
+"""
+    MultistepBoris{N}(; n=1)
+
+The Multistep/Hyper Boris method of order `N`.
+`n` specifies the number of subcycles.
+`N` specifies the gyrophase correction order:
+2 (standard), 4, or 6 (Hyper-Boris).
+"""
+struct MultistepBoris{N, T} <: AbstractBoris
+    n::T
+end
+
+@inline function MultistepBoris{N}(; n::Int = 1) where {N}
+    if N ∉ (2, 4, 6)
+        throw(
+            ArgumentError(
+                "Multistep Boris order N must be 2, 4, or 6."
+            )
+        )
+    end
+    return MultistepBoris{N, Int}(n)
+end
+
+const MultistepBoris2 = MultistepBoris{2}
+const MultistepBoris4 = MultistepBoris{4}
+const MultistepBoris6 = MultistepBoris{6}
+
+
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     AbstractODEProblem{uType, tType, isinplace}
     f::F
@@ -108,102 +138,166 @@ In-place cross product.
 end
 
 """
-    solve(prob::TraceProblem; trajectories::Int=1, dt::AbstractFloat,
-        savestepinterval::Int=1, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-        n::Int=1, save_start::Bool=true, save_end::Bool=true, save_everystep::Bool=true,
-        save_fields::Bool=false, save_work::Bool=false)
+    solve(prob::TraceProblem, alg::Boris,
+        ensemblealg=EnsembleSerial(); dt, kwargs...)
 
-Trace particles using the Boris method with specified `prob`.
+Trace particles using the standard Boris method.
 
-# keywords
-
-  - `trajectories::Int`: number of trajectories to trace.
+# Keywords
+  - `trajectories::Int=1`: number of trajectories.
   - `dt::AbstractFloat`: time step.
-  - `savestepinterval::Int`: saving output interval.
-  - `isoutside::Function`: pinpointing impact or checking boundaries.
-  - `n::Int=1`: number of substeps for the Multistep Boris method. 1 is standard Boris.
-  - `N::Int=2`: order of the Hyper Boris gyrophase correction (2, 4, or 6). 2 is uncorrected.
-  - `save_start::Bool=true`: save the initial condition.
-  - `save_end::Bool=true`: save the final condition.
-  - `save_everystep::Bool=true`: save the state at every `savestepinterval`.
-  - `save_fields::Bool=false`: save the electric and magnetic fields.
-  - `save_work::Bool=false`: save the work done by the electric field.
-  - `batch_size::Int=max(1, trajectories ÷ nworkers())`: the number of trajectories to process per worker in `EnsembleDistributed` and `EnsembleSplitThreads`.
-
+  - `savestepinterval::Int=1`: saving output interval.
+  - `isoutside`: boundary check function.
+  - `save_start::Bool=true`: save initial condition.
+  - `save_end::Bool=true`: save final condition.
+  - `save_everystep::Bool=true`: save at intervals.
+  - `save_fields::Bool=false`: save E and B fields.
+  - `save_work::Bool=false`: save work rates.
+  - `maxiters::Int=1_000_000`: maximum iterations.
 """
 @inline function solve(
-        prob::TraceProblem, ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1, dt::AbstractFloat,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN, n::Int = 1, N::Int = 2,
-        save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        save_fields::Bool = false, save_work::Bool = false, maxiters::Int = 1_000_000,
-        batch_size::Int = (ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads) ?
-            max(1, trajectories ÷ nworkers()) : 1
+        prob::TraceProblem, alg::Boris,
+        ensemblealg::EA = EnsembleSerial();
+        trajectories::Int = 1,
+        savestepinterval::Int = 1,
+        dt::AbstractFloat,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        save_start::Bool = true,
+        save_end::Bool = true,
+        save_everystep::Bool = true,
+        save_fields::Bool = false,
+        save_work::Bool = false,
+        maxiters::Int = 1_000_000,
+        batch_size::Int = _default_batch_size(
+            ensemblealg, trajectories
+        ),
     ) where {EA <: BasicEnsembleAlgorithm, F}
-
-    if N ∉ (2, 4, 6)
-        throw(ArgumentError("N must be 2, 4, or 6"))
-    end
-
     return _solve(
-        ensemblealg, prob, trajectories, dt, savestepinterval, isoutside, n, N,
-        save_start, save_end, save_everystep, Val(save_fields), Val(save_work), maxiters,
-        batch_size
+        ensemblealg, prob, alg, trajectories, dt,
+        savestepinterval, isoutside,
+        save_start, save_end, save_everystep,
+        Val(save_fields), Val(save_work),
+        maxiters, batch_size
+    )
+end
+
+"""
+    solve(prob::TraceProblem, alg::MultistepBoris{N},
+        ensemblealg=EnsembleSerial(); dt, kwargs...)
+
+Trace particles using the Multistep/Hyper Boris method.
+"""
+@inline function solve(
+        prob::TraceProblem, alg::MultistepBoris{N},
+        ensemblealg::EA = EnsembleSerial();
+        trajectories::Int = 1,
+        savestepinterval::Int = 1,
+        dt::AbstractFloat,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        save_start::Bool = true,
+        save_end::Bool = true,
+        save_everystep::Bool = true,
+        save_fields::Bool = false,
+        save_work::Bool = false,
+        maxiters::Int = 1_000_000,
+        batch_size::Int = _default_batch_size(
+            ensemblealg, trajectories
+        ),
+    ) where {N, EA <: BasicEnsembleAlgorithm, F}
+    return _solve(
+        ensemblealg, prob, alg, trajectories, dt,
+        savestepinterval, isoutside,
+        save_start, save_end, save_everystep,
+        Val(save_fields), Val(save_work),
+        maxiters, batch_size
+    )
+end
+
+function _default_batch_size(ensemblealg, trajectories)
+    if ensemblealg isa EnsembleDistributed ||
+            ensemblealg isa EnsembleSplitThreads
+        return max(1, trajectories ÷ nworkers())
+    end
+    return 1
+end
+
+function _dispatch_boris!(
+        sols, prob::TraceProblem, irange,
+        savestepinterval, dt, nt, nout, isoutside::F,
+        ::Boris, save_start, save_end,
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork, F}
+    return _boris!(
+        sols, prob, irange, savestepinterval, dt, nt,
+        nout, isoutside,
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
     )
 end
 
 function _dispatch_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n, N, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork, F}
-    return if n == 1 && N == 2
-        _boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
-        )
-    else
-        _multistep_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
-        )
-    end
+        sols, prob::TraceProblem, irange,
+        savestepinterval, dt, nt, nout, isoutside::F,
+        alg::MultistepBoris{N}, save_start, save_end,
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {N, SaveFields, SaveWork, F}
+    return _multistep_boris!(
+        sols, prob, irange, savestepinterval, dt, nt,
+        nout, isoutside, alg.n, N,
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
+    )
 end
 
 @inline function _solve(
-        ::EnsembleSerial, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
+        ::EnsembleSerial, prob::TraceProblem,
+        alg::AbstractBoris, trajectories, dt,
+        savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork), maxiters
     )
     irange = 1:trajectories
     _dispatch_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        sols, prob, irange, savestepinterval, dt, nt,
+        nout, isoutside, alg,
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork)
     )
 
     return sols
 end
 
 @inline function _solve(
-        ::EnsembleThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
+        ::EnsembleThreads, prob::TraceProblem,
+        alg::AbstractBoris, trajectories, dt,
+        savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork), maxiters
     )
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    Threads.@threads for irange in index_chunks(
+            1:trajectories; n = nchunks
+        )
         _dispatch_boris!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            sols, prob, irange, savestepinterval,
+            dt, nt, nout, isoutside, alg,
+            save_start, save_end, save_everystep,
+            Val(SaveFields), Val(SaveWork)
         )
     end
 
@@ -229,61 +323,91 @@ The `TraceProblem` construction is a negligible struct copy relative to the
 simulation cost and the serialization overhead inherent in `pmap`.
 """
 function _solve_single_boris(
-        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F, n, N,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        prob::TraceProblem, i, savestepinterval,
+        dt, nt, nout, isoutside::F,
+        alg::AbstractBoris,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork, F}
     new_prob = prob.prob_func(prob, i, false)
-    single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
-    sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
+    single_prob = TraceProblem(
+        new_prob.u0, new_prob.tspan, new_prob.p
+    )
+    sol_type = _get_sol_type(
+        single_prob, dt, Val(SaveFields), Val(SaveWork)
+    )
     local_sols = Vector{sol_type}(undef, 1)
     _dispatch_boris!(
-        local_sols, single_prob, 1:1, savestepinterval, dt, nt, nout,
-        isoutside, n, N, save_start, save_end, save_everystep,
+        local_sols, single_prob, 1:1,
+        savestepinterval, dt, nt, nout,
+        isoutside, alg,
+        save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork)
     )
     return local_sols[1]
 end
 
 @inline function _solve(
-        ::EnsembleDistributed, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
+        ::EnsembleDistributed, prob::TraceProblem,
+        alg::AbstractBoris, trajectories, dt,
+        savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork), maxiters
     )
-    return pmap(1:trajectories; batch_size = batch_size) do i
+    return pmap(
+        1:trajectories; batch_size = batch_size
+    ) do i
         _solve_single_boris(
-            prob, i, savestepinterval, dt, nt, nout, isoutside, n, N,
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            prob, i, savestepinterval, dt, nt, nout,
+            isoutside, alg,
+            save_start, save_end, save_everystep,
+            Val(SaveFields), Val(SaveWork)
         )
     end
 end
 
 @inline function _solve(
-        ::EnsembleSplitThreads, prob::TraceProblem, trajectories, dt, savestepinterval,
-        isoutside::F, n, N, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, maxiters, batch_size
+        ::EnsembleSplitThreads, prob::TraceProblem,
+        alg::AbstractBoris, trajectories, dt,
+        savestepinterval, isoutside::F,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork},
+        maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork), maxiters
+        save_start, save_end, save_everystep,
+        Val(SaveFields), Val(SaveWork), maxiters
     )
-    # _solve_single_boris wraps each trajectory in a fresh TraceProblem(u0, tspan, p)
-    # with DEFAULT_PROB_FUNC. We get a sample problem from prob_func to ensure the
-    # u0 type (uType) matches.
     sample_prob = prob.prob_func(prob, 1, false)
-    dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
-    sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
-    ichunks = index_chunks(1:trajectories; size = batch_size)
+    dummy_prob = TraceProblem(
+        sample_prob.u0, sample_prob.tspan,
+        sample_prob.p
+    )
+    sol_type = _get_sol_type(
+        dummy_prob, dt, Val(SaveFields), Val(SaveWork)
+    )
+    ichunks = index_chunks(
+        1:trajectories; size = batch_size
+    )
     results = pmap(ichunks) do irange
-        local_sols = Vector{sol_type}(undef, length(irange))
+        local_sols = Vector{sol_type}(
+            undef, length(irange)
+        )
         Threads.@threads for k in eachindex(irange)
             i = irange[k]
             local_sols[k] = _solve_single_boris(
-                prob, i, savestepinterval, dt, nt, nout, isoutside, n, N,
-                save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+                prob, i, savestepinterval,
+                dt, nt, nout, isoutside, alg,
+                save_start, save_end,
+                save_everystep,
+                Val(SaveFields), Val(SaveWork)
             )
         end
         local_sols
