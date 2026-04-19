@@ -151,29 +151,29 @@ SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
     $prob_oop_num, Tsit5(); save_idxs = [1, 2, 3]
 )
 SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10
+    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10
 )
 SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10, save_fields = true
+    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10, save_fields = true
 )
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10, trajectories = 2
+    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10, trajectories = 2
 )
 SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2
+    $prob_boris, MultistepBoris2(; n = 2); dt = 1 / 7, savestepinterval = 10
 )
 SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2, N = 4
+    $prob_boris, MultistepBoris4(; n = 2); dt = 1 / 7, savestepinterval = 10
 )
 SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
-    $prob_boris; dt = 1 / 7, savestepinterval = 10, n = 2, N = 6
+    $prob_boris, MultistepBoris6(; n = 2); dt = 1 / 7, savestepinterval = 10
 )
 alg_adaptive = AdaptiveBoris(safety = 0.1)
 SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
     $prob_boris, $alg_adaptive
 )
 SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable TP.solve(
-    $prob_boris, CPU(); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, Boris(), CPU(); dt = 1 / 7, savestepinterval = 10
 )
 
 # Time-Dependent Field

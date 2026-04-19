@@ -1,7 +1,7 @@
 # Adaptive Boris method
 
-struct AdaptiveBoris{T}
-    safety::T
+struct AdaptiveBoris <: AbstractBoris
+    safety::Float64
 end
 
 """
@@ -11,9 +11,9 @@ Adaptive Boris method with adaptive time stepping based on local gyroperiod.
 The time step is determined by `dt = safety * T_gyro = safety * 2π / |qB/m|`.
 """
 function AdaptiveBoris(; safety = 0.1)
-    T = typeof(safety)
-    return AdaptiveBoris{T}(T(safety))
+    return AdaptiveBoris(Float64(safety))
 end
+
 """
     solve(prob::TraceProblem, alg::AdaptiveBoris,
         ensemblealg::BasicEnsembleAlgorithm=EnsembleSerial();
@@ -175,7 +175,7 @@ end
 
 
 @muladd function _adaptive_boris!(
-        sols, prob, irange, alg, savestepinterval, isoutside,
+        sols, prob, irange, alg::AdaptiveBoris, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob

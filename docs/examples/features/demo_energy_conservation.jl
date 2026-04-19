@@ -114,8 +114,8 @@ function run_test(
 
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
-    for (name, kwargs) in _natives
-        sol = TestParticle.solve(prob_tp; dt, kwargs...)[1]
+    for (name, alg) in _natives
+        sol = TestParticle.solve(prob_tp, alg; dt)[1]
         plot_energy_error!(sol, name, color_idx)
         color_idx += 1
     end
@@ -153,9 +153,9 @@ const symplectic_solvers = [
 ]
 
 const native_solvers = [
-    ("Boris", Dict{Symbol, Any}()),
-    ("Boris Multistep (n=2)", Dict{Symbol, Any}(:n => 2)),
-    ("Hyper Boris (n=2, N=4)", Dict{Symbol, Any}(:n => 2, :N => 4)),
+    ("Boris", Boris()),
+    ("Boris Multistep (n=2)", MultistepBoris2(; n = 2)),
+    ("Hyper Boris (n=2, N=4)", MultistepBoris4(; n = 2)),
 ];
 
 # ## Case 1: Constant B, Zero E

@@ -297,7 +297,7 @@ end
 dt = 2.0e-4 # [s]
 param = prepare(E, Bcase2; species = Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TP.solve(prob; dt, trajectories, isoutside, savestepinterval = 100);
+sols = TP.solve(prob, Boris(); dt, trajectories, isoutside, savestepinterval = 100);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)

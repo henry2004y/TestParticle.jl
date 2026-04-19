@@ -24,7 +24,7 @@ const KA = KernelAbstractions
     @testset "CPU Backend" begin
         backend = CPU()
 
-        sol_gpu = TP.solve(prob, backend; dt, trajectories = 1, savestepinterval = 10)
+        sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, savestepinterval = 10)
 
         @test length(sol_gpu) == 1
         @test length(sol_gpu[1].t) > 0
@@ -46,7 +46,7 @@ const KA = KernelAbstractions
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
-        sols_gpu = TP.solve(prob_multi, backend; dt, trajectories = 5, savestepinterval = 100)
+        sols_gpu = TP.solve(prob_multi, Boris(), backend; dt, trajectories = 5, savestepinterval = 100)
 
         @test length(sols_gpu) == 5
 
@@ -66,11 +66,11 @@ const KA = KernelAbstractions
 
         trajectories = 10
         sols_serial = TP.solve(
-            prob_multi, backend, EnsembleSerial();
+            prob_multi, Boris(), backend, EnsembleSerial();
             dt, trajectories, savestepinterval = 100
         )
         sols_threads = TP.solve(
-            prob_multi, backend, EnsembleThreads();
+            prob_multi, Boris(), backend, EnsembleThreads();
             dt, trajectories, savestepinterval = 100
         )
 
@@ -81,8 +81,8 @@ const KA = KernelAbstractions
     @testset "Kernel vs Native Solver Equivalence" begin
         backend = CPU()
 
-        sol_gpu = TP.solve(prob, backend; dt, trajectories = 1, savestepinterval = 10)
-        sol_cpu = TP.solve(prob; dt, savestepinterval = 10)
+        sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, savestepinterval = 10)
+        sol_cpu = TP.solve(prob, Boris(); dt, savestepinterval = 10)
 
         @test length(sol_gpu[1].t) == length(sol_cpu[1].t)
 
@@ -105,7 +105,7 @@ const KA = KernelAbstractions
         dt_gyro = gyroperiod / 100
 
         prob_gyro = TraceProblem(stateinit, tspan_gyro, param)
-        sol_gyro = TP.solve(prob_gyro, backend; dt = dt_gyro, savestepinterval = 10)
+        sol_gyro = TP.solve(prob_gyro, Boris(), backend; dt = dt_gyro, savestepinterval = 10)
 
         # Check energy conservation at the final step to reduce test count
         vx = sol_gyro[1].u[end][4]
@@ -119,7 +119,7 @@ const KA = KernelAbstractions
         backend = CPU()
 
         sol_start_end = TP.solve(
-            prob, backend; dt, trajectories = 1,
+            prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = true, save_end = true
         )
         @test length(sol_start_end[1].t) == 2
@@ -127,7 +127,7 @@ const KA = KernelAbstractions
         @test sol_start_end[1].t[end] == tspan[2]
 
         sol_end_only = TP.solve(
-            prob, backend; dt, trajectories = 1,
+            prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = false, save_end = true
         )
         @test length(sol_end_only[1].t) == 1
@@ -138,11 +138,11 @@ const KA = KernelAbstractions
         backend = CPU()
 
         # maxiters limit (nt = 1000)
-        @test_throws ArgumentError TP.solve(prob, backend; dt, maxiters = 500)
+        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt, maxiters = 500)
 
         # min_dt limit
         dt_too_small = eps(Float64)
-        @test_throws ArgumentError TP.solve(prob, backend; dt = dt_too_small)
+        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt = dt_too_small)
     end
 end
 

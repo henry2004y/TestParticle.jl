@@ -30,11 +30,14 @@
         tspan = (0.0, 1.0)
         dt = 0.5
         prob = TraceProblem(stateinit, tspan, param)
-        sol = solve(prob; dt, savestepinterval = 100)
-        sol = solve(prob, EnsembleThreads(); dt, savestepinterval = 100)
+        sol = solve(prob, Boris(); dt, savestepinterval = 100)
+        sol = solve(
+            prob, Boris(), EnsembleThreads();
+            dt, savestepinterval = 100
+        )
 
         # Kernel Boris (CPU)
-        sol_kernel = solve(prob, CPU(); dt, savestepinterval = 100)
+        sol_kernel = solve(prob, Boris(), CPU(); dt, savestepinterval = 100)
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
@@ -45,8 +48,13 @@
         work = get_work(sol_adaptive)
 
         # Multistep Boris
-        sol_multistep = solve(prob; dt, n = 2)
-        sol_multistep_sf = solve(prob; dt, n = 2, save_fields = true)
+        sol_multistep = solve(
+            prob, MultistepBoris2(; n = 2); dt
+        )
+        sol_multistep_sf = solve(
+            prob, MultistepBoris2(; n = 2);
+            dt, save_fields = true
+        )
         # guiding center
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), B_analytic)

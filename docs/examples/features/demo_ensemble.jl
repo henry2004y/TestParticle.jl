@@ -206,7 +206,7 @@ savestepinterval = 1
 
 ## Reuse the basic problem parameters
 prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris; dt, trajectories = 3, savestepinterval)
+trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval)
 
 ## Visualization
 f = Figure(fontsize = 18)
@@ -238,7 +238,7 @@ f = DisplayAs.PNG(f) #hide
 # ### 1. Multi-threading (usually the most convenient for local runs)
 #
 # ```julia
-# sols_threads = solve(prob_boris, EnsembleThreads(); dt, trajectories, savestepinterval)
+# sols_threads = solve(prob_boris, Boris(), EnsembleThreads(); dt, trajectories, savestepinterval)
 # ```
 #
 # ### 2. Distributed (Multi-processing)
@@ -249,7 +249,7 @@ f = DisplayAs.PNG(f) #hide
 # using Distributed
 # addprocs()
 # @everywhere using TestParticle
-# sols_dist = solve(prob_boris, EnsembleDistributed(); dt, trajectories, savestepinterval)
+# sols_dist = solve(prob_boris, Boris(), EnsembleDistributed(); dt, trajectories, savestepinterval)
 # ```
 #
 # ### 3. Split-Threads (Hybrid Distributed + Multi-threading)
@@ -260,5 +260,5 @@ f = DisplayAs.PNG(f) #hide
 # using Distributed
 # addprocs()
 # @everywhere using TestParticle
-# sols_split = solve(prob_boris, EnsembleSplitThreads(); dt, trajectories, savestepinterval)
+# sols_split = solve(prob_boris, Boris(), EnsembleSplitThreads(); dt, trajectories, savestepinterval)
 # ```

@@ -35,7 +35,10 @@ using OrdinaryDiffEq: ReturnCode
 
         @testset "Boris" begin
             prob = TraceProblem(u0, tspan, p)
-            sol = TP.solve(prob, dt = 0.2; isoutside = callback.condition)[1]
+            sol = TP.solve(
+                prob, Boris(), dt = 0.2;
+                isoutside = callback.condition
+            )[1]
 
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
@@ -99,7 +102,7 @@ using OrdinaryDiffEq: ReturnCode
             u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
             tspan = (0, 10)
             prob = TraceProblem(u0, tspan, param)
-            sol = TP.solve(prob; dt = 1.0)[1]
+            sol = TP.solve(prob, Boris(); dt = 1.0)[1]
             @test sol.t[end] == 10
             @test sol.retcode == ReturnCode.Success
         end
