@@ -82,7 +82,7 @@ const KA = KernelAbstractions
         backend = CPU()
 
         sol_gpu = TP.solve(prob, backend; dt, trajectories = 1, savestepinterval = 10)
-        sol_cpu = TP.solve(prob; dt, savestepinterval = 10)
+        sol_cpu = TP.solve(prob, Boris(); dt, savestepinterval = 10)
 
         @test length(sol_gpu[1].t) == length(sol_cpu[1].t)
 
