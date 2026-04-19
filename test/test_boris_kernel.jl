@@ -138,11 +138,11 @@ const KA = KernelAbstractions
         backend = CPU()
 
         # maxiters limit (nt = 1000)
-        @test_throws ArgumentError TP.solve(prob, backend; dt, maxiters = 500)
+        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt, maxiters = 500)
 
         # min_dt limit
         dt_too_small = eps(Float64)
-        @test_throws ArgumentError TP.solve(prob, backend; dt = dt_too_small)
+        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt = dt_too_small)
     end
 end
 

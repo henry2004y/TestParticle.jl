@@ -37,7 +37,7 @@
         )
 
         # Kernel Boris (CPU)
-        sol_kernel = solve(prob, CPU(); dt, savestepinterval = 100)
+        sol_kernel = solve(prob, Boris(), CPU(); dt, savestepinterval = 100)
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
@@ -49,10 +49,10 @@
 
         # Multistep Boris
         sol_multistep = solve(
-            prob, MultistepBoris{2}(; n = 2); dt
+            prob, MultistepBoris2(; n = 2); dt
         )
         sol_multistep_sf = solve(
-            prob, MultistepBoris{2}(; n = 2);
+            prob, MultistepBoris2(; n = 2);
             dt, save_fields = true
         )
         # guiding center
