@@ -108,7 +108,7 @@ sol = TestParticle.solve(prob, Boris(); dt)
 # Multistep Boris (n=2)
 sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
 
-# Hyper Boris (n=4, n=2)
+# Hyper Boris (N=4, n=2)
 sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 ```
 
