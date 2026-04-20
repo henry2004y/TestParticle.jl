@@ -3,7 +3,7 @@ using TestParticle
 using StaticArrays
 
 @testset "AdaptiveBoris Compatibility" begin
-    B_field(r, t) = SA[0, 0, 1e-8]
+    B_field(r, t) = SA[0, 0, 1.0e-8]
     E_field(r, t) = SA[0, 0, 0]
     param = TestParticle.prepare(E_field, B_field)
 
