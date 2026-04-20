@@ -310,7 +310,7 @@ function _prepare_boris_solve(
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleSerial;
+        prob::TraceProblem, alg::Boris{false}, backend::Backend, ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
@@ -332,7 +332,7 @@ end
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleThreads;
+        prob::TraceProblem, alg::Boris{false}, backend::Backend, ::EnsembleThreads;
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
@@ -366,7 +366,7 @@ end
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend,
+        prob::TraceProblem, alg::Boris{false}, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
