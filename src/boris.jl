@@ -263,13 +263,14 @@ end
             update_velocity, :boris
         )
     elseif alg isa MultistepBoris
+        N = typeof(alg).parameters[1]
         return _multistep_boris_single(
-            prob, i, savestepinterval, dt, nt, nout, isoutside, alg.n, Val(alg.n),
+            prob, i, savestepinterval, dt, nt, nout, isoutside, alg.n, Val(N),
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
         )
     else
         # fallback or unreachable if we only support these for now
-        error("Unsupported Boris algorithm type for single-trajectory integration")
+        error("Unsupported Boris algorithm type $(typeof(alg)) for single-trajectory integration")
     end
 end
 
@@ -575,7 +576,7 @@ Apply Boris method for particles with index in `irange`.
     return it - 1, iout, r, v
 end
 
-@inline function _boris_single(
+@inline @muladd function _boris_single(
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         velocity_updater::F2, alg_name
@@ -651,6 +652,14 @@ end
     interp = LinearInterpolation(tsave, traj)
 
     return build_solution(prob, alg, tsave, traj; interp, retcode, stats = nothing)
+end
+
+struct MultistepUpdater{N_order}
+    n::Int
+end
+
+@inline function (mu::MultistepUpdater{N_order})(v, r, dt, t, p) where {N_order}
+    return update_velocity_multistep(v, r, dt, t, mu.n, Val(N_order), p)
 end
 
 @inline @muladd function _generic_boris!(
@@ -774,21 +783,16 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     return v_new
 end
 
-@inline @muladd function _multistep_boris_single(
+@inline function _multistep_boris_single(
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F,
         n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}
     ) where {N_order, SaveFields, SaveWork, F}
 
-    velocity_updater = (v, r, dt, t, p) ->
-    update_velocity_multistep(
-        v, r, dt, t, n_steps, Val(N_order), p
-    )
-
     return _boris_single(
         prob, i, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        velocity_updater, :multistep_boris
+        MultistepUpdater{N_order}(n_steps), :multistep_boris
     )
 end
 
