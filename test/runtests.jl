@@ -314,7 +314,7 @@ end
         @test isapprox(sol.u[end][1], 0.38992532495827226, rtol = 1.0e-2)
         stateinit = zeros(6)
         prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, verbose = false)
         @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) == 3
 
         stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
@@ -324,7 +324,7 @@ end
 
         stateinit = @SVector zeros(6)
         prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, verbose = false)
         @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) == 3
     end
 
@@ -484,4 +484,5 @@ include("test_hybrid.jl")
 
 include("test_boris_kernel.jl")
 include("test_boundary.jl")
+include("test_adaptive_boris.jl")
 include("test_symplectic.jl")
