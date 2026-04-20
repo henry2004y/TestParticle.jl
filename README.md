@@ -42,21 +42,33 @@ tspan = (0, 20)
 param = prepare(E, B, species=Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 # Trace trajectory and save positions & velocities
-sol = solve(prob, Vern9())
+sol = solve(prob, Vern7())
 ```
 
 Native Boris particle pusher also follows a similar interface:
 
 ```julia
 dt = 3e-11 # fixed time step
-savestepinterval = 10
 prob = TraceProblem(stateinit, tspan, param)
-sol = TestParticle.solve(prob; dt, savestepinterval)[1]
+# Standard Boris solver
+sol = TestParticle.solve(prob, Boris(); dt, savestepinterval=10)[1]
 ```
 
-Besides the standard Boris method, we also support various versions of Boris solvers including:
-- **Multistep Boris**: fixed time step with `n > 1` substeps.
-- **Adaptive Boris**: uses `AdaptiveBoris()` for automatic time step selection based on local gyroperiod.
+Besides the standard Boris method, we also support various advanced Boris solvers:
+
+- **Adaptive Boris**: Automatic time step selection based on local gyroperiod.
+- **Multistep Boris**: Sub-cycling and higher-order gyrophase correction ([Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)).
+
+```julia
+# Adaptive Boris
+sol_adaptive = TestParticle.solve(prob, AdaptiveBoris(safety=0.1))[1]
+
+# 4th-order Multistep Boris with 2 substeps
+sol_multi = TestParticle.solve(prob, MultistepBoris4(n=2); dt)[1]
+
+# Adaptive 4th-order Multistep Boris
+sol_adaptive_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))[1]
+```
 
 For plotting with Makie,
 
