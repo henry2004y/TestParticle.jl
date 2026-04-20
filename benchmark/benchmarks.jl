@@ -172,6 +172,18 @@ alg_adaptive = AdaptiveBoris(safety = 0.1)
 SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
     $prob_boris, $alg_adaptive
 )
+alg_adaptive_multi2 = AdaptiveMultistepBoris{2}(n = 2, safety = 0.1)
+SUITE["trace"]["numerical field"]["Adaptive Multistep Boris (n=2, N=2)"] = @benchmarkable TP.solve(
+    $prob_boris, $alg_adaptive_multi2
+)
+alg_adaptive_multi4 = AdaptiveMultistepBoris{4}(n = 2, safety = 0.1)
+SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
+    $prob_boris, $alg_adaptive_multi4
+)
+alg_adaptive_multi6 = AdaptiveMultistepBoris{6}(n = 2, safety = 0.1)
+SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
+    $prob_boris, $alg_adaptive_multi6
+)
 SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable TP.solve(
     $prob_boris, Boris(), CPU(); dt = 1 / 7, savestepinterval = 10
 )

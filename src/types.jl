@@ -62,20 +62,25 @@ The Multistep/Hyper Boris method of order `N`.
 `N` specifies the gyrophase correction order:
 2 (standard), 4, or 6 (Hyper-Boris).
 """
-struct MultistepBoris{N} <: AbstractBoris
+struct MultistepBoris{N, Adaptive} <: AbstractBoris
     n::Int
+    safety::Float64
 end
 
-@inline function MultistepBoris{N}(; n::Int = 1) where {N}
+@inline function MultistepBoris{N, Adaptive}(; n::Int = 1, safety = 0.1) where {N, Adaptive}
     if N != 2 && N != 4 && N != 6
         throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
     end
-    return MultistepBoris{N}(n)
+    return MultistepBoris{N, Adaptive}(n, Float64(safety))
 end
 
-const MultistepBoris2 = MultistepBoris{2}
-const MultistepBoris4 = MultistepBoris{4}
-const MultistepBoris6 = MultistepBoris{6}
+@inline function MultistepBoris{N}(; n::Int = 1) where {N}
+    return MultistepBoris{N, false}(; n = n, safety = 0.0)
+end
+
+const MultistepBoris2 = MultistepBoris{2, false}
+const MultistepBoris4 = MultistepBoris{4, false}
+const MultistepBoris6 = MultistepBoris{6, false}
 
 const AdaptiveBoris = Boris{true}
 
@@ -88,3 +93,15 @@ The time step is determined by
 `dt = safety * T_gyro = safety * 2π / |qB/m|`.
 """
 AdaptiveBoris(; safety = 0.1) = Boris{true}(Float64(safety))
+
+const AdaptiveMultistepBoris{N} = MultistepBoris{N, true}
+
+"""
+    AdaptiveMultistepBoris{N}(; n=1, safety=0.1)
+
+Adaptive Multistep/Hyper Boris method of order `N`.
+`n` specifies the number of subcycles.
+`N` specifies the gyrophase correction order: 2, 4, or 6.
+"""
+AdaptiveMultistepBoris{N}(; n::Int = 1, safety = 0.1) where {N} =
+    MultistepBoris{N, true}(n, Float64(safety))

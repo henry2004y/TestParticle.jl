@@ -37,7 +37,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     get_gc_velocity, full_to_gc, gc_to_full
 export Proton, Electron, Ion
 export Maxwellian, BiMaxwellian, Kappa, BiKappa
-export AdaptiveBoris, AdaptiveHybrid,
+export AdaptiveBoris, AdaptiveMultistepBoris, AdaptiveHybrid,
     Boris, MultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6
 export get_gyrofrequency,
