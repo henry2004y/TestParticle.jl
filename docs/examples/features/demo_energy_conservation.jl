@@ -148,9 +148,7 @@ const gi_solvers = [
     ("GIRK4", GIRK4()),
 ]
 
-const symplectic_solvers = [
-    ("McAte2", McAte2()),
-]
+const symplectic_solvers = []
 
 const native_solvers = [
     ("Boris", Boris()),
@@ -330,7 +328,7 @@ f, results = run_test(
         ("Vern7", Vern7()),
     ],
     gis = [],
-    symplectics = [("McAte2", McAte2())]
+    symplectics = []
 )
 f = DisplayAs.PNG(f) #hide
 
