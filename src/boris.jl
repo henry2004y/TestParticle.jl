@@ -231,22 +231,49 @@ end
         ::Val{SaveFields}, ::Val{SaveWork},
         maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
-    sols, nt,
-        nout = _prepare(
+    # Perform preparations (checks and nout calculation)
+    # Note: _prepare also returns sols, we only use the checks and nt/nout from it for serial.
+    _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    irange = 1:trajectories
-    _dispatch_boris!(
-        sols, prob, irange, savestepinterval, dt, nt,
-        nout, isoutside, alg,
-        save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
-    )
 
-    return sols
+    # Use array comprehension for EnsembleSerial
+    return [
+        _solve_single(
+                prob, i, alg, savestepinterval, dt, nt,
+                nout, isoutside,
+                save_start, save_end, save_everystep,
+                Val(SaveFields), Val(SaveWork)
+            ) for i in 1:trajectories
+    ]
 end
+
+@inline function _solve_single(
+        prob::TraceProblem, i, alg::AbstractBoris, savestepinterval, dt, nt,
+        nout, isoutside,
+        save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+
+    if alg isa Boris{false}
+        return _boris_single(
+            prob, i, savestepinterval, dt, nt, nout, isoutside,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+            update_velocity, :boris
+        )
+    elseif alg isa MultistepBoris
+        return _multistep_boris_single(
+            prob, i, savestepinterval, dt, nt, nout, isoutside, alg.n, Val(alg.n),
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+        )
+    else
+        # fallback or unreachable if we only support these for now
+        error("Unsupported Boris algorithm type for single-trajectory integration")
+    end
+end
+
 
 @inline function _solve(
         ::EnsembleThreads, prob::TraceProblem,
@@ -389,28 +416,23 @@ end
     return reduce(vcat, results)
 end
 
-function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
-    u0 = prob.u0
-    tspan = prob.tspan
-    T_t = typeof(tspan[1] + dt)
-    t = Vector{T_t}(undef, 0)
-    # Force u to be Vector{SVector{6, T}} as used in _boris!
-    T = eltype(u0)
+@generated function _get_sol_type(prob::P, dt::D, ::Val{SaveFields}, ::Val{SaveWork}) where {P <: TraceProblem, D, SaveFields, SaveWork}
+    uType = P.parameters[1]
+    tType = P.parameters[2]
+    T = eltype(uType)
+    T_t = typeof(zero(eltype(tType)) + zero(D))
+    n_vars = 6 + (SaveFields ? 6 : 0) + (SaveWork ? 4 : 0)
+    u_inner = SVector{n_vars, T}
 
-    n_vars = 6
-    if SaveFields
-        n_vars += 6
-    end
-    if SaveWork
-        n_vars += 4
-    end
+    # Use compile-time inference to get the solution type.
+    # Note: build_solution for RODESolution with LinearInterpolation is quite stable.
+    # We use a DataType return to ensure zero runtime overhead.
+    sol_type = Core.Compiler.return_type(
+        build_solution,
+        Tuple{P, Symbol, Vector{T_t}, Vector{u_inner}}
+    )
 
-    u = Vector{SVector{n_vars, T}}(undef, 0)
-    interp = LinearInterpolation(t, u)
-    alg = :boris
-
-    sol = build_solution(prob, alg, t, u; interp = interp)
-    return typeof(sol)
+    return :($sol_type)
 end
 
 """
@@ -429,6 +451,17 @@ function _prepare(
         throw(ArgumentError("number of iterations nt ($nt) exceeds maxiters ($maxiters)"))
     end
 
+    nout = _calculate_nout(
+        nt, savestepinterval, save_start, save_end, save_everystep
+    )
+
+    sol_type = _get_sol_type(prob, dt, Val(SaveFields), Val(SaveWork))
+    sols = Vector{sol_type}(undef, trajectories)
+
+    return sols, nt, nout
+end
+
+@inline function _calculate_nout(nt, savestepinterval, save_start, save_end, save_everystep)
     nout = 0
     if save_start
         nout += 1
@@ -447,11 +480,7 @@ function _prepare(
     elseif save_end
         nout += 1
     end
-
-    sol_type = _get_sol_type(prob, dt, Val(SaveFields), Val(SaveWork))
-    sols = Vector{sol_type}(undef, trajectories)
-
-    return sols, nt, nout
+    return nout
 end
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
@@ -529,8 +558,8 @@ Apply Boris method for particles with index in `irange`.
     return it - 1, iout, r, v
 end
 
-@inline @muladd function _generic_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
+@inline function _boris_single(
+        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         velocity_updater::F2, alg_name
     ) where {SaveFields, SaveWork, F1, F2}
@@ -545,70 +574,80 @@ end
         vars_dim += 4
     end
 
-    @inbounds for i in irange
-        traj = Vector{SVector{vars_dim, T}}(undef, nout)
-        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+    traj = Vector{SVector{vars_dim, T}}(undef, nout)
+    tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
-        # set initial conditions for each trajectory i
-        iout = 0
-        new_prob = prob.prob_func(prob, i, false)
-        u0_i = SVector{6, T}(new_prob.u0)
-        r = u0_i[SVector(1, 2, 3)]
-        v = u0_i[SVector(4, 5, 6)]
+    # set initial conditions for each trajectory i
+    iout = 0
+    new_prob = prob.prob_func(prob, i, false)
+    u0_i = SVector{6, T}(new_prob.u0)
+    r = u0_i[SVector(1, 2, 3)]
+    v = u0_i[SVector(4, 5, 6)]
 
-        if save_start
+    if save_start
+        iout += 1
+        traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
+        tsave[iout] = tspan[1]
+    end
+
+    # push velocity back in time by 1/2 dt
+    v = velocity_updater(v, r, -0.5 * dt, tspan[1], p)
+
+    it, iout, r, v = _boris_loop!(
+        traj, tsave, iout, r, v, p, dt, nt, tspan,
+        savestepinterval, save_everystep, isoutside, velocity_updater,
+        Val(SaveFields), Val(SaveWork)
+    )
+
+    final_step = it
+    should_save_final = false
+    if save_end
+        should_save_final = true
+    elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
+        should_save_final = true
+    end
+
+    if iout < nout && should_save_final
+        t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
+        if iout == 0 || tsave[iout] < t_final
             iout += 1
-            traj[iout] = _prepare_saved_data(u0_i, p, tspan[1], Val(SaveFields), Val(SaveWork))
-            tsave[iout] = tspan[1]
+            dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
+            v_final = velocity_updater(v, r, dt_final, t_final, p)
+
+            data = vcat(r, v_final)
+            traj[iout] = _prepare_saved_data(
+                data, p, t_final, Val(SaveFields), Val(SaveWork)
+            )
+            tsave[iout] = t_final
         end
+    end
 
-        # push velocity back in time by 1/2 dt
-        v = velocity_updater(v, r, -0.5 * dt, tspan[1], p)
+    if iout < nout
+        resize!(traj, iout)
+        resize!(tsave, iout)
+        retcode = ReturnCode.Terminated
+    else
+        retcode = ReturnCode.Success
+    end
 
-        it, iout, r, v = _boris_loop!(
-            traj, tsave, iout, r, v, p, dt, nt, tspan,
-            savestepinterval, save_everystep, isoutside, velocity_updater,
-            Val(SaveFields), Val(SaveWork)
+    alg = alg_name
+    interp = LinearInterpolation(tsave, traj)
+
+    return build_solution(prob, alg, tsave, traj; interp, retcode, stats = nothing)
+end
+
+@inline @muladd function _generic_boris!(
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        velocity_updater::F2, alg_name
+    ) where {SaveFields, SaveWork, F1, F2}
+
+    @inbounds for i in irange
+        sols[i] = _boris_single(
+            prob, i, savestepinterval, dt, nt, nout, isoutside,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+            velocity_updater, alg_name
         )
-
-        final_step = it
-        should_save_final = false
-        if save_end
-            should_save_final = true
-        elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
-            should_save_final = true
-        end
-
-        if iout < nout && should_save_final
-            t_final = final_step == nt ? tspan[2] : tspan[1] + final_step * dt
-            if iout == 0 || tsave[iout] < t_final
-                iout += 1
-                dt_final = t_final - (tspan[1] + (final_step - 0.5) * dt)
-                v_final = velocity_updater(v, r, dt_final, t_final, p)
-
-                data = vcat(r, v_final)
-                traj[iout] = _prepare_saved_data(
-                    data, p, t_final, Val(SaveFields), Val(SaveWork)
-                )
-                tsave[iout] = t_final
-            end
-        end
-
-        if iout < nout
-            resize!(traj, iout)
-            resize!(tsave, iout)
-            retcode = ReturnCode.Terminated
-        else
-            retcode = ReturnCode.Success
-        end
-        traj_save = traj
-        t = tsave
-
-        alg = alg_name
-        interp = LinearInterpolation(t, traj_save)
-        stats = nothing
-
-        sols[i] = build_solution(prob, alg, t, traj_save; interp, retcode, stats)
     end
 
     return
@@ -718,9 +757,10 @@ Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
     return v_new
 end
 
-@inline @muladd function _multistep_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+@inline @muladd function _multistep_boris_single(
+        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F,
+        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep,
+        ::Val{SaveFields}, ::Val{SaveWork}
     ) where {N_order, SaveFields, SaveWork, F}
 
     velocity_updater = (v, r, dt, t, p) ->
@@ -728,11 +768,25 @@ end
         v, r, dt, t, n_steps, Val(N_order), p
     )
 
-    _generic_boris!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
+    return _boris_single(
+        prob, i, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
         velocity_updater, :multistep_boris
     )
+end
+
+@inline @muladd function _multistep_boris!(
+        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
+        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {N_order, SaveFields, SaveWork, F}
+
+    @inbounds for i in irange
+        sols[i] = _multistep_boris_single(
+            prob, i, savestepinterval, dt, nt, nout, isoutside,
+            n_steps, Val(N_order), save_start, save_end, save_everystep,
+            Val(SaveFields), Val(SaveWork)
+        )
+    end
 
     return
 end
@@ -757,7 +811,7 @@ The time step is determined by `dt = safety * 2π / |qB/m|`.
   - `save_work::Bool=false`: save work rates.
   - `batch_size::Int`: batch size for distributed.
 """
-function solve(
+@inline function solve(
         prob::TraceProblem, alg::Boris{true},
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
@@ -776,20 +830,17 @@ function solve(
     )
 end
 
-function _solve_adaptive(
+@inline function _solve_adaptive(
         ::EnsembleSerial, prob, trajectories, alg::Boris{true}, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
-    sols = Vector{sol_type}(undef, trajectories)
-    irange = 1:trajectories
-
-    _adaptive_boris!(
-        sols, prob, irange, alg, savestepinterval, isoutside, save_start, save_end,
-        save_everystep, Val(SaveFields), Val(SaveWork)
-    )
-
-    return sols
+    # Use array comprehension for EnsembleSerial to avoid _get_sol_type allocations
+    return [
+        _adaptive_boris_single(
+                prob, i, alg, savestepinterval, isoutside, save_start, save_end,
+                save_everystep, Val(SaveFields), Val(SaveWork)
+            ) for i in 1:trajectories
+    ]
 end
 
 function _solve_adaptive(
@@ -797,10 +848,7 @@ function _solve_adaptive(
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
-    sol_type = _get_sol_type(
-        prob, zero(eltype(prob.tspan)),
-        Val(SaveFields), Val(SaveWork)
-    )
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
@@ -826,16 +874,13 @@ function _solve_single_adaptive_boris(
         new_prob.u0, new_prob.tspan, new_prob.p
     )
     sol_type = _get_sol_type(
-        single_prob,
-        zero(eltype(single_prob.tspan)),
+        single_prob, zero(eltype(single_prob.tspan)),
         Val(SaveFields), Val(SaveWork)
     )
     local_sols = Vector{sol_type}(undef, 1)
     _adaptive_boris!(
-        local_sols, single_prob, 1:1, alg,
-        savestepinterval, isoutside,
-        save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
+        local_sols, single_prob, 1:1, alg, savestepinterval, isoutside,
+        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
     )
     return local_sols[1]
 end
@@ -868,9 +913,7 @@ function _solve_adaptive(
         sample_prob.p
     )
     sol_type = _get_sol_type(
-        dummy_prob,
-        zero(eltype(dummy_prob.tspan)),
-        Val(SaveFields), Val(SaveWork)
+        dummy_prob, zero(eltype(dummy_prob.tspan)), Val(SaveFields), Val(SaveWork)
     )
     ichunks = index_chunks(
         1:trajectories; size = batch_size
