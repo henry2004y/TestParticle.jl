@@ -1,7 +1,7 @@
 # Adaptive Boris solver
 
 """
-    solve(prob::TraceProblem, alg::Boris{true},
+    solve(prob::TraceProblem, alg::Union{Boris{true}, MultistepBoris{N, true} where N},
         ensemblealg=EnsembleSerial(); kwargs...)
 
 Trace particles using the adaptive Boris method.
@@ -19,7 +19,7 @@ The time step is determined by `dt = safety * 2π / |qB/m|`.
   - `batch_size::Int`: batch size for distributed.
 """
 @inline function solve(
-        prob::TraceProblem, alg::Boris{true},
+        prob::TraceProblem, alg::Union{Boris{true}, MultistepBoris{N, true} where {N}},
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
@@ -38,7 +38,7 @@ The time step is determined by `dt = safety * 2π / |qB/m|`.
 end
 
 @inline function _solve_adaptive(
-        ::EnsembleSerial, prob, trajectories, alg::Boris{true}, savestepinterval, isoutside,
+        ::EnsembleSerial, prob, trajectories, alg::AbstractBoris, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
     # Use array comprehension for EnsembleSerial to avoid _get_sol_type allocations
@@ -51,7 +51,7 @@ end
 end
 
 function _solve_adaptive(
-        ::EnsembleThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
+        ::EnsembleThreads, prob, trajectories, alg::AbstractBoris, savestepinterval,
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
@@ -72,7 +72,7 @@ end
 "See `_solve_single_boris` for rationale."
 function _solve_single_adaptive_boris(
         prob, i, savestepinterval, isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, alg::Boris{true}
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork}
     new_prob = prob.prob_func(prob, i, false)
     single_prob = TraceProblem(
@@ -91,7 +91,7 @@ function _solve_single_adaptive_boris(
 end
 
 function _solve_adaptive(
-        ::EnsembleDistributed, prob, trajectories, alg::Boris{true}, savestepinterval,
+        ::EnsembleDistributed, prob, trajectories, alg::AbstractBoris, savestepinterval,
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
@@ -106,7 +106,7 @@ function _solve_adaptive(
 end
 
 function _solve_adaptive(
-        ::EnsembleSplitThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
+        ::EnsembleSplitThreads, prob, trajectories, alg::AbstractBoris, savestepinterval,
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
@@ -131,9 +131,13 @@ function _solve_adaptive(
     return reduce(vcat, results)
 end
 
+@inline get_velocity_updater(::Boris{true}) = update_velocity
+@inline get_velocity_updater(alg::MultistepBoris{N, true}) where {N} =
+    MultistepUpdater{N}(alg.n)
+
 @inline function _adaptive_boris_single(
         prob, i, savestepinterval, isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, alg::Boris{true}
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     q2m, _, _, Bfunc, _ = p
@@ -145,6 +149,9 @@ end
     if SaveWork
         vars_dim += 4
     end
+
+    velocity_updater = get_velocity_updater(alg)
+    alg_name = alg isa Boris ? :adaptive_boris : :adaptive_multistep_boris
 
     # dt = safety * 2π / (abs(q2m) * Bmag)
     C = (2π * alg.safety * sign(tspan[2] - tspan[1])) / abs(q2m)
@@ -175,7 +182,7 @@ end
     dt = C / Bmag
 
     # Backstep velocity: v(0) -> v(-1/2)
-    v = update_velocity(v, r, -0.5 * dt, t, p)
+    v = velocity_updater(v, r, -0.5 * dt, t, p)
     it = 1
     should_save_final = save_end
     retcode = ReturnCode.Success
@@ -183,15 +190,15 @@ end
     @fastmath while abs(t - tspan[1]) < abs(ttotal)
         if abs(t + dt - tspan[1]) > abs(ttotal)
             dt_step = tspan[2] - t
-            v = update_velocity(v, r, 0.5 * dt, t, p)
-            v = update_velocity(v, r, -0.5 * dt_step, t, p)
+            v = velocity_updater(v, r, 0.5 * dt, t, p)
+            v = velocity_updater(v, r, -0.5 * dt_step, t, p)
             dt = dt_step
         end
 
         if save_everystep &&
                 (it - 1) > 0 &&
                 (it - 1) % savestepinterval == 0
-            v_save = update_velocity(
+            v_save = velocity_updater(
                 v, r, 0.5 * dt, t, p
             )
             xv_s = vcat(r, v_save)
@@ -204,7 +211,7 @@ end
         end
 
         t_mid = t + 0.5 * dt
-        v_new = update_velocity(v, r, dt, t_mid, p)
+        v_new = velocity_updater(v, r, dt, t_mid, p)
 
         r_next = r + v_new * dt
         t_next = t + dt
@@ -224,8 +231,8 @@ end
         dt_new = C / Bmag
 
         # Resync v_{n+1/2}(dt) to v_{n+1/2}(dt_new)
-        v = update_velocity(v, r, 0.5 * dt, t, p)
-        v = update_velocity(v, r, -0.5 * dt_new, t, p)
+        v = velocity_updater(v, r, 0.5 * dt, t, p)
+        v = velocity_updater(v, r, -0.5 * dt_new, t, p)
         dt = dt_new
         it += 1
         if save_everystep && (it - 1) % savestepinterval == 0
@@ -234,7 +241,7 @@ end
     end
 
     if should_save_final && (isempty(tsave) || tsave[end] != t)
-        v_final = update_velocity(v, r, 0.5 * dt, t, p)
+        v_final = velocity_updater(v, r, 0.5 * dt, t, p)
         xv_f = vcat(r, v_final)
         data = _prepare_saved_data(
             xv_f, p, t,
@@ -244,7 +251,7 @@ end
         push!(tsave, t)
     end
 
-    sol_alg = :adaptive_boris
+    sol_alg = alg_name
     interp = LinearInterpolation(tsave, traj)
     stats = nothing
 
@@ -254,7 +261,7 @@ end
 @muladd function _adaptive_boris!(
         sols, prob, irange, savestepinterval, isoutside,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::Boris{true}
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork}
 
     @inbounds for i in irange

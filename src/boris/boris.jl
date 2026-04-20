@@ -87,7 +87,7 @@ Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
 """
 @inline function solve(
         prob::TraceProblem,
-        alg::Union{Boris{false}, MultistepBoris},
+        alg::Union{Boris{false}, MultistepBoris{N, false} where N},
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
@@ -172,7 +172,7 @@ end
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
             update_velocity, :boris
         )
-    elseif alg isa MultistepBoris
+    elseif alg isa MultistepBoris{N, false} where N
         return _multistep_boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
