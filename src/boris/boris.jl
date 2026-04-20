@@ -1,51 +1,4 @@
-# Native particle pusher
-
-struct Boris{Adaptive} <: AbstractBoris
-    safety::Float64
-end
-
-Boris() = Boris{false}(0.0)
-
-"""
-    MultistepBoris{N}(; n=1)
-
-The Multistep/Hyper Boris method of order `N`.
-`n` specifies the number of subcycles.
-`N` specifies the gyrophase correction order:
-2 (standard), 4, or 6 (Hyper-Boris).
-"""
-struct MultistepBoris{N} <: AbstractBoris
-    n::Int
-end
-
-@inline function MultistepBoris{N}(; n::Int = 1) where {N}
-    if N ∉ (2, 4, 6)
-        throw(
-            ArgumentError(
-                "Multistep Boris order N must be 2, 4, or 6."
-            )
-        )
-    end
-    return MultistepBoris{N}(n)
-end
-
-const MultistepBoris2 = MultistepBoris{2}
-const MultistepBoris4 = MultistepBoris{4}
-const MultistepBoris6 = MultistepBoris{6}
-
-
-struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
-    AbstractODEProblem{uType, tType, isinplace}
-    f::F
-    "initial condition"
-    u0::uType
-    "time span"
-    tspan::tType
-    "(q2m, m, E, B, F)"
-    p::P
-    "function for setting initial conditions"
-    prob_func::PF
-end
+# Boris particle pusher
 
 const TN_MAG_THRESHOLD = 1.0e-4
 
@@ -55,34 +8,6 @@ get_BField(p::AbstractODEProblem) = get_BField(p.p)
 get_BField(sol::AbstractODESolution) = get_BField(sol.prob)
 get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
 
-DEFAULT_PROB_FUNC(prob, i, repeat) = prob
-
-function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
-    _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
-    return TraceProblem{
-        typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
-        typeof(prob_func),
-    }(
-        _f,
-        u0,
-        tspan,
-        p,
-        prob_func
-    )
-end
-# For remake
-function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
-    return TraceProblem{
-        typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
-        typeof(prob_func),
-    }(
-        f,
-        u0,
-        tspan,
-        p,
-        prob_func
-    )
-end
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 """
@@ -188,8 +113,7 @@ Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
 end
 
 function _default_batch_size(ensemblealg, trajectories)
-    if ensemblealg isa EnsembleDistributed ||
-            ensemblealg isa EnsembleSplitThreads
+    if ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads
         return max(1, trajectories ÷ nworkers())
     end
     return 1
@@ -198,26 +122,12 @@ end
 function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
-        ::Boris{false}, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        ::Boris{false}
     ) where {SaveFields, SaveWork, F}
     return _boris!(
         sols, prob, irange, savestepinterval, dt, nt,
         nout, isoutside,
-        save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
-    )
-end
-
-function _dispatch_boris!(
-        sols, prob::TraceProblem, irange,
-        savestepinterval, dt, nt, nout, isoutside::F,
-        alg::MultistepBoris{N}, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {N, SaveFields, SaveWork, F}
-    return _multistep_boris!(
-        sols, prob, irange, savestepinterval, dt, nt,
-        nout, isoutside, alg.n, Val(N),
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork)
     )
@@ -241,19 +151,19 @@ end
     # Use array comprehension for EnsembleSerial
     return [
         _solve_single(
-                prob, i, alg, savestepinterval, dt, nt,
+                prob, i, savestepinterval, dt, nt,
                 nout, isoutside,
                 save_start, save_end, save_everystep,
-                Val(SaveFields), Val(SaveWork)
+                Val(SaveFields), Val(SaveWork), alg
             ) for i in 1:trajectories
     ]
 end
 
 @inline function _solve_single(
-        prob::TraceProblem, i, alg::AbstractBoris, savestepinterval, dt, nt,
+        prob::TraceProblem, i, savestepinterval, dt, nt,
         nout, isoutside,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork}
 
     if alg isa Boris{false}
@@ -263,10 +173,10 @@ end
             update_velocity, :boris
         )
     elseif alg isa MultistepBoris
-        N = typeof(alg).parameters[1]
         return _multistep_boris_single(
-            prob, i, savestepinterval, dt, nt, nout, isoutside, alg.n, Val(N),
-            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
+            prob, i, savestepinterval, dt, nt, nout, isoutside,
+            save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
+            alg
         )
     else
         # fallback or unreachable if we only support these for now
@@ -291,14 +201,12 @@ end
     )
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(
-            1:trajectories; n = nchunks
-        )
+    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
             sols, prob, irange, savestepinterval,
-            dt, nt, nout, isoutside, alg,
+            dt, nt, nout, isoutside,
             save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork)
+            Val(SaveFields), Val(SaveWork), alg
         )
     end
 
@@ -315,7 +223,7 @@ applying `prob_func(prob, i, false)` to select per-particle initial conditions,
 and storing the result at `sols[i]`. For a distributed worker handling only one
 trajectory at a time, a 1-element `local_sols` would be out of bounds if `i > 1`
 were passed directly. Decoupling the two uses would require threading a storage
-offset through the entire `_dispatch_boris!` → `_generic_boris!` call chain.
+offset through the entire `_dispatch_boris!` \u2192 `_generic_boris!` call chain.
 
 Instead, we pre-apply `prob_func` to get the correct IC for trajectory `i` and
 wrap the result in a fresh `TraceProblem` with the default (identity) `prob_func`,
@@ -326,24 +234,19 @@ simulation cost and the serialization overhead inherent in `pmap`.
 function _solve_single_boris(
         prob::TraceProblem, i, savestepinterval,
         dt, nt, nout, isoutside::F,
-        alg::AbstractBoris,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork, F}
     new_prob = prob.prob_func(prob, i, false)
-    single_prob = TraceProblem(
-        new_prob.u0, new_prob.tspan, new_prob.p
-    )
-    sol_type = _get_sol_type(
-        single_prob, dt, Val(SaveFields), Val(SaveWork)
-    )
+    single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
+    sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
     local_sols = Vector{sol_type}(undef, 1)
     _dispatch_boris!(
         local_sols, single_prob, 1:1,
         savestepinterval, dt, nt, nout,
-        isoutside, alg,
+        isoutside,
         save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
+        Val(SaveFields), Val(SaveWork), alg
     )
     return local_sols[1]
 end
@@ -361,14 +264,12 @@ end
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    return pmap(
-        1:trajectories; batch_size = batch_size
-    ) do i
+    return pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_boris(
             prob, i, savestepinterval, dt, nt, nout,
-            isoutside, alg,
+            isoutside,
             save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork)
+            Val(SaveFields), Val(SaveWork), alg
         )
     end
 end
@@ -387,28 +288,19 @@ end
         Val(SaveFields), Val(SaveWork), maxiters
     )
     sample_prob = prob.prob_func(prob, 1, false)
-    dummy_prob = TraceProblem(
-        sample_prob.u0, sample_prob.tspan,
-        sample_prob.p
-    )
-    sol_type = _get_sol_type(
-        dummy_prob, dt, Val(SaveFields), Val(SaveWork)
-    )
-    ichunks = index_chunks(
-        1:trajectories; size = batch_size
-    )
+    dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
+    sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
+    ichunks = index_chunks(1:trajectories; size = batch_size)
     results = pmap(ichunks) do irange
-        local_sols = Vector{sol_type}(
-            undef, length(irange)
-        )
+        local_sols = Vector{sol_type}(undef, length(irange))
         Threads.@threads for k in eachindex(irange)
             i = irange[k]
             local_sols[k] = _solve_single_boris(
                 prob, i, savestepinterval,
-                dt, nt, nout, isoutside, alg,
+                dt, nt, nout, isoutside,
                 save_start, save_end,
                 save_everystep,
-                Val(SaveFields), Val(SaveWork)
+                Val(SaveFields), Val(SaveWork), alg
             )
         end
         local_sols
@@ -486,7 +378,7 @@ end
     end
 
     if save_everystep
-        steps = nt ÷ savestepinterval
+        steps = div(nt, savestepinterval)
         last_is_step = (nt > 0) && (nt % savestepinterval == 0)
         nout += steps
         if !save_end && last_is_step
@@ -515,7 +407,7 @@ end
         # We need magnetic properties for work, so if SaveWork is also true, compute them now
         if SaveWork
             q2m, m, Efunc, Bfunc, _ = p
-            # get_magnetic_properties returns (B, ∇B, κ, b̂, Bmag)
+            # get_magnetic_properties returns (B, \u2207B, κ, b̂, Bmag)
             magnetic_props = get_magnetic_properties(r, t, Bfunc)
             B_vec = SVector{3, T}(magnetic_props[1])
             data = vcat(data, E_field, B_vec)
@@ -654,14 +546,6 @@ end
     return build_solution(prob, alg, tsave, traj; interp, retcode, stats = nothing)
 end
 
-struct MultistepUpdater{N_order}
-    n::Int
-end
-
-@inline function (mu::MultistepUpdater{N_order})(v, r, dt, t, p) where {N_order}
-    return update_velocity_multistep(v, r, dt, t, mu.n, Val(N_order), p)
-end
-
 @inline @muladd function _generic_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
@@ -694,266 +578,6 @@ Apply Boris method for particles with index in `irange`.
     )
 
     return
-end
-
-"""
-    update_velocity_multistep(v, r, dt, t, n, ::Val{N}, param)
-
-Update velocity using the Multistep/Hyper Boris method, returning the new velocity as an SVector.
-`n` specifies the number of subcycles.
-`N` specifies the gyrophase correction order. When N=2, it corresponds to the Multicycle solver. When N=4 or N=6, it is the Hyper Boris solver.
-Reference: [Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)
-"""
-@muladd function update_velocity_multistep(
-        v, r, dt, t, n::Int, ::Val{N}, param
-    ) where {N}
-    q2m, _, Efunc, Bfunc, _ = param
-    E = Efunc(r, t)
-    B = Bfunc(r, t)
-
-    # t_n and e_n vectors
-    factor = q2m * dt / (2 * n)
-
-    t_n = factor * B # (q/m * dt/(2n)) * B
-    e_n = factor * E # (q/m * dt/(2n)) * E
-
-    # Hyper Boris N-th order gyrophase correction
-    if N != 2
-        t_mag2 = sum(abs2, t_n)
-        if N == 4
-            f_N = 1 + t_mag2 / 3
-            e_corr_factor = -1 / 3
-        else # N == 6
-            f_N = 1 + t_mag2 / 3 + 2 * t_mag2 * t_mag2 / 15
-            e_corr_factor = -1 / 3 - 2 * t_mag2 / 15
-        end
-
-        e_dot_t = e_n ⋅ t_n
-        e_n = f_N * e_n + (e_corr_factor * e_dot_t) * t_n
-        t_n = f_N * t_n
-    end
-
-    t_n_mag2 = sum(abs2, t_n)
-    t_n_mag = sqrt(t_n_mag2)
-
-    # Calculate coefficients
-    # Check for small t_n to avoid division by zero or precision loss
-    if t_n_mag < TN_MAG_THRESHOLD
-        # Taylor expansion limits as t_n -> 0
-        c_n1 = 1 - 2 * n * n * t_n_mag2
-
-        n_term1 = 2 * n
-        n_term3 = 4 * n * n * n
-
-        c_n2 = n_term1 - (n_term1 + n_term3) / 3 * t_n_mag2
-        c_n3 = 2 * n * n - (4 * n * n + 2 * n * n * n * n) / 3 * t_n_mag2
-        c_n6 = (n_term1 + n_term3) / 3
-    else
-        alpha_n = atan(t_n_mag)
-        n_alpha_n = n * alpha_n
-        sin_n_alpha, cos_n_alpha = sincos(n_alpha_n)
-        sin_2n_alpha = 2 * sin_n_alpha * cos_n_alpha
-        cos_2n_alpha = cos_n_alpha * cos_n_alpha - sin_n_alpha * sin_n_alpha
-
-        c_n1 = cos_2n_alpha
-        c_n2 = sin_2n_alpha / t_n_mag
-        c_n3 = 2 * sin_n_alpha * sin_n_alpha / t_n_mag2
-        c_n6 = (2 * n - c_n2) / t_n_mag2
-    end
-
-    c_n4 = c_n2
-    c_n5 = c_n3
-
-    v_dot_t = v ⋅ t_n
-    e_dot_t = e_n ⋅ t_n
-
-    v_cross_t = v × t_n
-    e_cross_t = e_n × t_n
-
-    # Update velocity
-    # Equation 39:
-    # v_new = c_n1*v + c_n2*(v x t_n) + c_n3*(v . t_n)t_n + c_n4*e_n + c_n5*(e_n x t_n) + c_n6*(e_n . t_n)t_n
-    v_new = c_n1 * v +
-        c_n2 * v_cross_t +
-        c_n3 * v_dot_t * t_n +
-        c_n4 * e_n +
-        c_n5 * e_cross_t +
-        c_n6 * e_dot_t * t_n
-
-    return v_new
-end
-
-@inline function _multistep_boris_single(
-        prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F,
-        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {N_order, SaveFields, SaveWork, F}
-
-    return _boris_single(
-        prob, i, savestepinterval, dt, nt, nout, isoutside,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        MultistepUpdater{N_order}(n_steps), :multistep_boris
-    )
-end
-
-@inline @muladd function _multistep_boris!(
-        sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        n_steps::Int, ::Val{N_order}, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {N_order, SaveFields, SaveWork, F}
-
-    @inbounds for i in irange
-        sols[i] = _multistep_boris_single(
-            prob, i, savestepinterval, dt, nt, nout, isoutside,
-            n_steps, Val(N_order), save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork)
-        )
-    end
-
-    return
-end
-
-# --- Adaptive Boris solve entry point and ensemble methods ---
-
-"""
-    solve(prob::TraceProblem, alg::Boris{true},
-        ensemblealg=EnsembleSerial(); kwargs...)
-
-Trace particles using the adaptive Boris method.
-The time step is determined by `dt = safety * 2π / |qB/m|`.
-
-# Keywords
-  - `trajectories::Int=1`: number of trajectories.
-  - `savestepinterval::Int=1`: saving output interval.
-  - `isoutside`: boundary check function.
-  - `save_start::Bool=true`: save initial condition.
-  - `save_end::Bool=true`: save final condition.
-  - `save_everystep::Bool=true`: save at intervals.
-  - `save_fields::Bool=false`: save E and B fields.
-  - `save_work::Bool=false`: save work rates.
-  - `batch_size::Int`: batch size for distributed.
-"""
-@inline function solve(
-        prob::TraceProblem, alg::Boris{true},
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1,
-        savestepinterval::Int = 1,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true,
-        save_end::Bool = true,
-        save_everystep::Bool = true,
-        save_fields::Bool = false,
-        save_work::Bool = false,
-        batch_size::Int = _default_batch_size(ensemblealg, trajectories),
-    ) where {F}
-    return _solve_adaptive(
-        ensemblealg, prob, trajectories, alg, savestepinterval, isoutside, save_start,
-        save_end, save_everystep, Val(save_fields), Val(save_work), batch_size
-    )
-end
-
-@inline function _solve_adaptive(
-        ::EnsembleSerial, prob, trajectories, alg::Boris{true}, savestepinterval, isoutside,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
-    ) where {SaveFields, SaveWork}
-    # Use array comprehension for EnsembleSerial to avoid _get_sol_type allocations
-    return [
-        _adaptive_boris_single(
-                prob, i, alg, savestepinterval, isoutside, save_start, save_end,
-                save_everystep, Val(SaveFields), Val(SaveWork)
-            ) for i in 1:trajectories
-    ]
-end
-
-function _solve_adaptive(
-        ::EnsembleThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        batch_size
-    ) where {SaveFields, SaveWork}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
-    sols = Vector{sol_type}(undef, trajectories)
-
-    nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(
-            1:trajectories; n = nchunks
-        )
-        _adaptive_boris!(
-            sols, prob, irange, alg, savestepinterval, isoutside, save_start, save_end,
-            save_everystep, Val(SaveFields), Val(SaveWork)
-        )
-    end
-
-    return sols
-end
-
-"See `_solve_single_boris` for rationale."
-function _solve_single_adaptive_boris(
-        prob, i, alg::Boris{true}, savestepinterval, isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
-    new_prob = prob.prob_func(prob, i, false)
-    single_prob = TraceProblem(
-        new_prob.u0, new_prob.tspan, new_prob.p
-    )
-    sol_type = _get_sol_type(
-        single_prob, zero(eltype(single_prob.tspan)),
-        Val(SaveFields), Val(SaveWork)
-    )
-    local_sols = Vector{sol_type}(undef, 1)
-    _adaptive_boris!(
-        local_sols, single_prob, 1:1, alg, savestepinterval, isoutside,
-        save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork)
-    )
-    return local_sols[1]
-end
-
-function _solve_adaptive(
-        ::EnsembleDistributed, prob, trajectories, alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        batch_size
-    ) where {SaveFields, SaveWork}
-    return pmap(
-        1:trajectories; batch_size = batch_size
-    ) do i
-        _solve_single_adaptive_boris(
-            prob, i, alg, savestepinterval,
-            isoutside, save_start, save_end,
-            save_everystep,
-            Val(SaveFields), Val(SaveWork)
-        )
-    end
-end
-
-function _solve_adaptive(
-        ::EnsembleSplitThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        batch_size
-    ) where {SaveFields, SaveWork}
-    sample_prob = prob.prob_func(prob, 1, false)
-    dummy_prob = TraceProblem(
-        sample_prob.u0, sample_prob.tspan,
-        sample_prob.p
-    )
-    sol_type = _get_sol_type(
-        dummy_prob, zero(eltype(dummy_prob.tspan)), Val(SaveFields), Val(SaveWork)
-    )
-    ichunks = index_chunks(
-        1:trajectories; size = batch_size
-    )
-    results = pmap(ichunks) do irange
-        local_sols = Vector{sol_type}(
-            undef, length(irange)
-        )
-        Threads.@threads for k in eachindex(irange)
-            i = irange[k]
-            local_sols[k] =
-                _solve_single_adaptive_boris(
-                prob, i, alg, savestepinterval, isoutside, save_start, save_end,
-                save_everystep, Val(SaveFields), Val(SaveWork)
-            )
-        end
-        local_sols
-    end
-    return reduce(vcat, results)
 end
 
 """
