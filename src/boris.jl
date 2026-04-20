@@ -232,11 +232,10 @@ end
         maxiters, batch_size
     ) where {SaveFields, SaveWork, F}
     # Perform preparations (checks and nout calculation)
-    # Note: _prepare also returns sols, we only use the checks and nt/nout from it for serial.
-    _, nt, nout = _prepare(
-        prob, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork), maxiters
+    # We skip sols allocation for serial runs to hit the 8-allocation goal.
+    nt, nout = _prepare_checks(
+        prob, dt, maxiters, savestepinterval,
+        save_start, save_end, save_everystep
     )
 
     # Use array comprehension for EnsembleSerial
@@ -416,32 +415,35 @@ end
     return reduce(vcat, results)
 end
 
-@generated function _get_sol_type(prob::P, dt::D, ::Val{SaveFields}, ::Val{SaveWork}) where {P <: TraceProblem, D, SaveFields, SaveWork}
-    uType = P.parameters[1]
-    tType = P.parameters[2]
-    T = eltype(uType)
-    T_t = typeof(zero(eltype(tType)) + zero(D))
-    n_vars = 6 + (SaveFields ? 6 : 0) + (SaveWork ? 4 : 0)
-    u_inner = SVector{n_vars, T}
+function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
+    u0 = prob.u0
+    tspan = prob.tspan
+    T_t = typeof(tspan[1] + dt)
+    T = eltype(u0)
 
-    # Use compile-time inference to get the solution type.
-    # Note: build_solution for RODESolution with LinearInterpolation is quite stable.
-    # We use a DataType return to ensure zero runtime overhead.
-    sol_type = Core.Compiler.return_type(
-        build_solution,
-        Tuple{P, Symbol, Vector{T_t}, Vector{u_inner}}
-    )
+    n_vars = 6
+    if SaveFields
+        n_vars += 6
+    end
+    if SaveWork
+        n_vars += 4
+    end
 
-    return :($sol_type)
+    u = SVector{n_vars, T}[]
+    interp = LinearInterpolation(T_t[], u)
+    alg = :boris
+
+    sol = build_solution(prob, alg, T_t[], u; interp = interp)
+    return typeof(sol)
 end
 
 """
-Prepare for advancing.
+Prepare for advancing (checks only).
 """
-function _prepare(
-        prob::TraceProblem, trajectories, dt, savestepinterval,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
-    ) where {SaveFields, SaveWork}
+@inline function _prepare_checks(
+        prob::TraceProblem, dt, maxiters, savestepinterval,
+        save_start, save_end, save_everystep
+    )
     if abs(dt) < 10 * eps(typeof(dt))
         throw(ArgumentError("time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"))
     end
@@ -453,6 +455,21 @@ function _prepare(
 
     nout = _calculate_nout(
         nt, savestepinterval, save_start, save_end, save_everystep
+    )
+    return nt, nout
+end
+
+"""
+Prepare for advancing (allocates sols).
+"""
+function _prepare(
+        prob::TraceProblem, trajectories, dt, savestepinterval,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, maxiters
+    ) where {SaveFields, SaveWork}
+
+    nt, nout = _prepare_checks(
+        prob, dt, maxiters, savestepinterval,
+        save_start, save_end, save_everystep
     )
 
     sol_type = _get_sol_type(prob, dt, Val(SaveFields), Val(SaveWork))
