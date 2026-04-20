@@ -1,3 +1,4 @@
+module test_adaptive_boris
 using Test
 using TestParticle
 using StaticArrays
@@ -30,11 +31,25 @@ using StaticArrays
     end
 
     @testset "Solve Integration" begin
-        sols = TestParticle.solve(
-            prob, AdaptiveBoris()
-        )
-        @test sols[1].retcode ==
-            TestParticle.ReturnCode.Success
-        @test length(sols[1].t) > 1
+        @testset "EnsembleSerial" begin
+            sols = TestParticle.solve(
+                prob, AdaptiveBoris()
+            )
+            @test sols[1].retcode ==
+                TestParticle.ReturnCode.Success
+            @test length(sols[1].t) > 1
+        end
+
+        @testset "EnsembleThreads" begin
+            trajectories = 4
+            sols = TestParticle.solve(
+                prob, AdaptiveBoris(), EnsembleThreads();
+                trajectories = trajectories
+            )
+            @test length(sols) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols)
+        end
     end
 end
+
+end # module test_adaptive_boris
