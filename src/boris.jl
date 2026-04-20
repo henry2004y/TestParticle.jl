@@ -744,8 +744,7 @@ end
         ensemblealg=EnsembleSerial(); kwargs...)
 
 Trace particles using the adaptive Boris method.
-The time step is determined by
-`dt = safety * 2π / |qB/m|`.
+The time step is determined by `dt = safety * 2π / |qB/m|`.
 
 # Keywords
   - `trajectories::Int=1`: number of trajectories.
@@ -760,8 +759,7 @@ The time step is determined by
 """
 function solve(
         prob::TraceProblem, alg::Boris{true},
-        ensemblealg::BasicEnsembleAlgorithm =
-            EnsembleSerial();
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -770,48 +768,34 @@ function solve(
         save_everystep::Bool = true,
         save_fields::Bool = false,
         save_work::Bool = false,
-        batch_size::Int = _default_batch_size(
-            ensemblealg, trajectories
-        ),
+        batch_size::Int = _default_batch_size(ensemblealg, trajectories),
     ) where {F}
     return _solve_adaptive(
-        ensemblealg, prob, trajectories, alg,
-        savestepinterval, isoutside,
-        save_start, save_end, save_everystep,
-        Val(save_fields), Val(save_work), batch_size
+        ensemblealg, prob, trajectories, alg, savestepinterval, isoutside, save_start,
+        save_end, save_everystep, Val(save_fields), Val(save_work), batch_size
     )
 end
 
 function _solve_adaptive(
-        ::EnsembleSerial, prob, trajectories,
-        alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields},
-        ::Val{SaveWork}, batch_size
+        ::EnsembleSerial, prob, trajectories, alg::Boris{true}, savestepinterval, isoutside,
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
-    sol_type = _get_sol_type(
-        prob, zero(eltype(prob.tspan)),
-        Val(SaveFields), Val(SaveWork)
-    )
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), Val(SaveFields), Val(SaveWork))
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
     _adaptive_boris!(
-        sols, prob, irange, alg,
-        savestepinterval, isoutside,
-        save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
+        sols, prob, irange, alg, savestepinterval, isoutside, save_start, save_end,
+        save_everystep, Val(SaveFields), Val(SaveWork)
     )
 
     return sols
 end
 
 function _solve_adaptive(
-        ::EnsembleThreads, prob, trajectories,
-        alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields},
-        ::Val{SaveWork}, batch_size
+        ::EnsembleThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
     ) where {SaveFields, SaveWork}
     sol_type = _get_sol_type(
         prob, zero(eltype(prob.tspan)),
@@ -824,10 +808,8 @@ function _solve_adaptive(
             1:trajectories; n = nchunks
         )
         _adaptive_boris!(
-            sols, prob, irange, alg,
-            savestepinterval, isoutside,
-            save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork)
+            sols, prob, irange, alg, savestepinterval, isoutside, save_start, save_end,
+            save_everystep, Val(SaveFields), Val(SaveWork)
         )
     end
 
@@ -836,10 +818,8 @@ end
 
 "See `_solve_single_boris` for rationale."
 function _solve_single_adaptive_boris(
-        prob, i, alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields},
-        ::Val{SaveWork}
+        prob, i, alg::Boris{true}, savestepinterval, isoutside, save_start, save_end,
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     new_prob = prob.prob_func(prob, i, false)
     single_prob = TraceProblem(
@@ -861,11 +841,9 @@ function _solve_single_adaptive_boris(
 end
 
 function _solve_adaptive(
-        ::EnsembleDistributed, prob, trajectories,
-        alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields},
-        ::Val{SaveWork}, batch_size
+        ::EnsembleDistributed, prob, trajectories, alg::Boris{true}, savestepinterval,
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
     ) where {SaveFields, SaveWork}
     return pmap(
         1:trajectories; batch_size = batch_size
@@ -880,11 +858,9 @@ function _solve_adaptive(
 end
 
 function _solve_adaptive(
-        ::EnsembleSplitThreads, prob, trajectories,
-        alg::Boris{true}, savestepinterval,
-        isoutside, save_start, save_end,
-        save_everystep, ::Val{SaveFields},
-        ::Val{SaveWork}, batch_size
+        ::EnsembleSplitThreads, prob, trajectories, alg::Boris{true}, savestepinterval,
+        isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        batch_size
     ) where {SaveFields, SaveWork}
     sample_prob = prob.prob_func(prob, 1, false)
     dummy_prob = TraceProblem(
@@ -907,13 +883,9 @@ function _solve_adaptive(
             i = irange[k]
             local_sols[k] =
                 _solve_single_adaptive_boris(
-                    prob, i, alg,
-                    savestepinterval, isoutside,
-                    save_start, save_end,
-                    save_everystep,
-                    Val(SaveFields),
-                    Val(SaveWork)
-                )
+                prob, i, alg, savestepinterval, isoutside, save_start, save_end,
+                save_everystep, Val(SaveFields), Val(SaveWork)
+            )
         end
         local_sols
     end
