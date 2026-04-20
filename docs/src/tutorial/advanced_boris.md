@@ -54,23 +54,24 @@ These analytically tuned correctors virtually eliminate phase disparity and ener
 
 ### Using the Advanced Solvers
 
-You can access these features in `TestParticle.jl` by explicitly defining the parameters `n` and `N` in the `solve` parameters.
+You can access these features in `TestParticle.jl` by explicitly defining the algorithm in the `solve` call.
 
-- `n`: Sub-cycling division count (default `1`).
-- `N`: Evaluator correction order ($2, 4,$ or $6$). `2` denotes standard uncorrected Boris.
+- `MultistepBoris2(n)`: Sub-cycling division count `n`.
+- `MultistepBoris4(n)`: 4th-order Hyper-Boris with sub-cycling `n`.
+- `MultistepBoris6(n)`: 6th-order Hyper-Boris with sub-cycling `n`.
 
 ```julia
-# Standard Boris (n=1, N=2)
-sol = TestParticle.solve(prob; dt)
+# Standard Boris (n=1)
+sol = TestParticle.solve(prob, Boris(); dt)
 
-# Multistep Boris (n=2, N=2)
-sol = TestParticle.solve(prob; dt, n=2)
+# Multistep Boris (n=2)
+sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
 
 # Hyper Boris (n=2, N=4)
-sol = TestParticle.solve(prob; dt, n=2, N=4)
+sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 ```
 
-Combining both $n > 1$ and $N > 2$ ensures ultra-high stability tracking over drastically varying gradient fields, such as inside magnetic traps or collisionless shocks!
+Combining both $n > 1$ and higher-order correction ($N > 2$) ensures ultra-high stability tracking over drastically varying gradient fields!
 
 ## 3. Adaptive Boris Method
 
@@ -94,26 +95,26 @@ To preserve the leapfrog structure and maintain energy conservation, `TestPartic
 
 This ensures that the velocity is always correctly centered relative to the current $\Delta t$ before each step. This "re-centering" at the nodes allows the integrator to remain practically time-reversible and maintains excellent energy conservation even as the time step changes by orders of magnitude.
 
-## 4. Using the Advanced Solvers
+## 4. Summary of Solvers
 
-### Fixed-step Advanced Boris
+### Fixed-step Solvers
 
-You can access multistep and hyper features in the default solver by explicitly defining the parameters `n` and `N` in the `solve` parameters.
-
-- `n`: Sub-cycling division count (default `1`).
-- `N`: Evaluator correction order ($2, 4,$ or $6$). `2` denotes standard uncorrected Boris.
+Fixed-step solvers are specified as the second argument to `solve` (after the problem) and require a `dt` keyword.
 
 ```julia
-# Multistep Boris (n=2, N=2)
-sol = TestParticle.solve(prob; dt, n=2)
+# Standard Boris
+sol = TestParticle.solve(prob, Boris(); dt)
 
-# Hyper Boris (n=2, N=4)
-sol = TestParticle.solve(prob; dt, n=2, N=4)
+# Multistep Boris (n=2)
+sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
+
+# Hyper Boris (n=4, n=2)
+sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 ```
 
 ### Adaptive Boris
 
-You can use the adaptive solver by passing an `AdaptiveBoris` object as the second argument to `solve`.
+The adaptive solver adjusts the time step automatically based on the local gyroperiod.
 
 ```julia
 # Adaptive Boris with safety factor 0.05 (20 steps per period)
