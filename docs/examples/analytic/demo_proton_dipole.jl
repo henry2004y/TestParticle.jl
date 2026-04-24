@@ -29,7 +29,7 @@ tspan = (0.0, 10.0);
 # ## Full Trajectory Tracing
 # We first show the tracing of full proton trajectory.
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9());
+sol = solve(prob, Vern7(); dt = 1.0e-6);
 
 # ## Guiding Center Tracing
 # Next, we can trace the guiding center (GC) of the particle via [`trace_gc!`](@ref).
@@ -37,7 +37,7 @@ sol = solve(prob, Vern9());
 param = prepare(B_func)
 stateinit_gc, param_gc = prepare_gc(stateinit, ZeroField(), B_func)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern7());
+sol_gc = solve(prob_gc, Tsit5());
 
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
