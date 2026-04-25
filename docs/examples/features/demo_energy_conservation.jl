@@ -203,7 +203,7 @@ plot_table(results) #hide
 # This is because Boris evaluates the electric field at the integer time step $t_n$ to update the
 # velocity from $v_{n-1/2}$ to $v_{n+1/2}$ (in its standard leapfrog staggered form), while
 # the current implementation evaluates at $t_{n+1/2}$, leading to an offset for time-varying fields.
-# Similarly to Case 2a, the Boris solvers systematically show a large error in this case, because of the initial half-step offset.
+# The Boris solvers systematically show a large error in this case, because of the initial half-step offset.
 #
 # ## Case 2b: Spatially Linear E(x), Zero B
 # Here we test energy conservation in a spatially varying electric field $\mathbf{E}(x) = E_0 x \hat{x}$.

@@ -95,7 +95,7 @@ Colorbar(f[1, 2], l_gc, label = "Curvature Radius / Gyroradius")
 f = DisplayAs.PNG(f) #hide
 
 # Solver algorithm matters in terms of energy conservation.
-# In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
+# In the above we used Verner's “Most Efficient” 7/6 Runge-Kutta method. Let's check other algorithms.
 # Default stepsize settings may not be enough for our problem.
 # By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost.
 
