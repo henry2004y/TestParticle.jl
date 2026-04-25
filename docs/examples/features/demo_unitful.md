@@ -25,7 +25,8 @@ tspan = (0.0u"s", 2π * t_max) # [s]
 
 param = prepare(E, B, q = Unitful.q, m = Unitful.mp)
 prob = ODEProblem(trace!, u0, tspan, param)
-sol = solve(prob, Vern9())
+sol = solve(prob, Vern7())
+sol[end]
 ```
 
 ## Heterogeneous arrays with `ArrayPartition`
@@ -37,7 +38,8 @@ See https://docs.sciml.ai/DiffEqDocs/stable/features/diffeq_arrays for more deta
 using RecursiveArrayTools
 u0_p = ArrayPartition(x0, v0)
 prob_p = ODEProblem(trace!, u0_p, tspan, param)
-sol_p = solve(prob_p, Vern9())
+sol_p = solve(prob_p, Vern7())
+sol_p[end]
 ```
 
 ## Tracing in standard SI units
@@ -57,16 +59,17 @@ tspan_SI = tspan ./ u"s" # [s]
 
 param_SI = prepare(E_SI, B_SI, species = Proton)
 prob_SI = ODEProblem(trace!, u0_SI, tspan_SI, param_SI)
-sol_SI = solve(prob_SI, Vern9())
+sol_SI = solve(prob_SI, Vern7())
+sol_SI[end]
 ```
 
 ## Compare performance
 
 ```@repl unit
 using Chairmarks
-@b solve(prob_SI, Vern9()) # "SI units (unitless)"
-@b solve(prob_p, Vern9()) # "Partitioned (unitful)"
-@b solve(prob, Vern9()) # "Basic (unitful)"
+@b solve(prob_SI, Vern7()) # "SI units (unitless)"
+@b solve(prob_p, Vern7()) # "Partitioned (unitful)"
+@b solve(prob, Vern7()) # "Basic (unitful)"
 ```
 
 ## Related API

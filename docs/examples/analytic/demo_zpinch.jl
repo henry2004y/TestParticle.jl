@@ -45,8 +45,8 @@ tspan = (0.0, 1.0e-5)
 prob_in = ODEProblem(trace!, stateinit_in, tspan, param)
 prob_out = ODEProblem(trace!, stateinit_out, tspan, param)
 
-sol_in = solve(prob_in, Vern9())
-sol_out = solve(prob_out, Vern9());
+sol_in = solve(prob_in, Vern7(), dt = 1.0e-6)
+sol_out = solve(prob_out, Vern7(), dt = 1.0e-6);
 
 # Visualization
 

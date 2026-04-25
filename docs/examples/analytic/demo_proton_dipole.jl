@@ -29,7 +29,7 @@ tspan = (0.0, 10.0);
 # ## Full Trajectory Tracing
 # We first show the tracing of full proton trajectory.
 prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9());
+sol = solve(prob, Vern7(); dt = 1.0e-6);
 
 # ## Guiding Center Tracing
 # Next, we can trace the guiding center (GC) of the particle via [`trace_gc!`](@ref).
@@ -37,7 +37,7 @@ sol = solve(prob, Vern9());
 param = prepare(B_func)
 stateinit_gc, param_gc = prepare_gc(stateinit, ZeroField(), B_func)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern7());
+sol_gc = solve(prob_gc, Tsit5());
 
 # ## Visualization
 # We show the full proton trajectory and the GC trajectory together with the background dipole field.
@@ -95,7 +95,7 @@ Colorbar(f[1, 2], l_gc, label = "Curvature Radius / Gyroradius")
 f = DisplayAs.PNG(f) #hide
 
 # Solver algorithm matters in terms of energy conservation.
-# In the above we used Verner's “Most Efficient” 9/8 Runge-Kutta method. Let's check other algorithms.
+# In the above we used Verner's “Most Efficient” 7/6 Runge-Kutta method. Let's check other algorithms.
 # Default stepsize settings may not be enough for our problem.
 # By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost.
 
@@ -116,11 +116,11 @@ results = Tuple{String, Float64}[]
 ode_solvers = [
     ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1.0e-3)),
     ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1.0e-4)),
-    ("Vern9", Vern9(), Dict()),
-    ("Trapezoid", Trapezoid(), Dict()),
-    ("Vern6", Vern6(), Dict()),
-    ("Tsit5", Tsit5(), Dict()),
-    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1.0e-4)),
+    ("Vern9", Vern9(), Dict(:dt => 1.0e-4)),
+    ("Trapezoid", Trapezoid(), Dict(:dt => 1.0e-4)),
+    ("Vern6", Vern6(), Dict(:dt => 1.0e-4)),
+    ("Tsit5", Tsit5(), Dict(:dt => 1.0e-4)),
+    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:dt => 1.0e-4, :reltol => 1.0e-4)),
 ]
 
 for (name, alg, kwargs) in ode_solvers
