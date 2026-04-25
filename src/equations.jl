@@ -18,7 +18,7 @@ end
 In-place solver components for `DynamicalODEProblem` (location).
 """
 function get_dx!(dx, v, x, p, t)
-    for i in eachindex(dx, v)
+    @inbounds for i in eachindex(dx, v)
         dx[i] = v[i]
     end
     return
@@ -36,7 +36,7 @@ function get_dv!(dv, v, x, p, t)
     F = Ffunc(x, t)
 
     val = q2m * (v × B + E) + F / m
-    for i in eachindex(dv, val)
+    @inbounds for i in eachindex(dv, val)
         dv[i] = val[i]
     end
 
@@ -361,7 +361,7 @@ Note that the independent variable `s` represents the arc length.
 function trace_fieldline!(dx, x, p, s)
     B = p(x, s)
     val = normalize(B)
-    for i in eachindex(dx, val)
+    @inbounds for i in eachindex(dx, val)
         dx[i] = val[i]
     end
     return

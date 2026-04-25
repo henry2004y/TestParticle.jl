@@ -7,17 +7,17 @@
 # 4. ExB drift in constant electric and magnetic fields.
 #
 # The tests are performed in dimensionless units with q=1, m=1.
-# We compare three groups of solvers:
+# We compare two groups of solvers:
 # - Common solvers from OrdinaryDiffEq.
-# - Geometric integrators from GeometricIntegratorsDiffEq.
 # - Native Boris solvers.
+#
+# (Note: Geometric integrators from GeometricIntegratorsDiffEq were previously included but removed due to poor performance and compatibility issues in the current environment.)
 
 import DisplayAs #hide
 using Markdown #hide
 using Printf
 using TestParticle
 using OrdinaryDiffEq
-using GeometricIntegratorsDiffEq
 using StaticArrays
 using LinearAlgebra: ×, norm
 using CairoMakie
@@ -34,12 +34,11 @@ const T = 2π / Ω
 function run_test(
         case_name, param, x0, v0, tspan, expected_energy_func;
         uselog = true, dt = 0.1, ymin = nothing, ymax = nothing,
-        odes = nothing, gis = nothing, symplectics = nothing, natives = nothing
+        odes = nothing, symplectics = nothing, natives = nothing
     )
     results = Tuple{String, Float64}[]
     u0 = [x0..., v0...]
     prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
-    prob_gi = ODEProblem(trace_normalized, u0, tspan, param)
     prob_tp = TraceProblem(u0, tspan, param)
     prob_dyn = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
 
@@ -96,13 +95,6 @@ function run_test(
         color_idx += 1
     end
 
-    ## Run Geometric Integrators
-    _gis = gis === nothing ? gi_solvers : gis
-    for (name, alg) in _gis
-        sol = solve(prob_gi, alg; dt)
-        plot_energy_error!(sol, name, color_idx)
-        color_idx += 1
-    end
 
     ## Run symplectic solvers
     _symplectics = symplectics === nothing ? symplectic_solvers : symplectics
@@ -142,10 +134,6 @@ const ode_solvers = [
     ("Vern9", Vern9()),
     ("BS3", BS3()),
     ("ImplicitMidpoint", ImplicitMidpoint()),
-]
-
-const gi_solvers = [
-    ("GIRK4", GIRK4()),
 ]
 
 const symplectic_solvers = []
@@ -215,7 +203,7 @@ plot_table(results) #hide
 # This is because Boris evaluates the electric field at the integer time step $t_n$ to update the
 # velocity from $v_{n-1/2}$ to $v_{n+1/2}$ (in its standard leapfrog staggered form), while
 # the current implementation evaluates at $t_{n+1/2}$, leading to an offset for time-varying fields.
-# Additionally, GIRK4 is numerically unstable for this specific case with large time steps.
+# Similarly to Case 2a, the Boris solvers systematically show a large error in this case, because of the initial half-step offset.
 #
 # ## Case 2b: Spatially Linear E(x), Zero B
 # Here we test energy conservation in a spatially varying electric field $\mathbf{E}(x) = E_0 x \hat{x}$.
@@ -327,7 +315,6 @@ f, results = run_test(
         ("Tsit5", Tsit5()),
         ("Vern7", Vern7()),
     ],
-    gis = [],
     symplectics = []
 )
 f = DisplayAs.PNG(f) #hide

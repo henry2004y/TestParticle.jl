@@ -6,7 +6,6 @@
 using Chairmarks
 using TestParticle
 using OrdinaryDiffEq
-using GeometricIntegratorsDiffEq
 using StaticArrays
 using CairoMakie
 using Statistics
@@ -40,8 +39,6 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 ## ODE solvers from DifferentialEquations.jl are optimized for StaticArrays (SVector)
 prob_ode = ODEProblem(trace, stateinit, tspan, param)
-## GeometricIntegratorsDiffEq.jl requires mutable arrays
-prob_gi = ODEProblem(trace, Vector(stateinit), tspan, param)
 
 # ## Benchmark
 #
@@ -63,9 +60,6 @@ solvers = [
     ("AutoVern7 (adaptive)", "`OrdinaryDiffEq` AutoVern7 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern7(Rodas5()); saveat = dt)),
     ("AutoVern9 (adaptive)", "`OrdinaryDiffEq` AutoVern9 with adaptive step", :Adaptive, () -> solve(prob_ode, AutoVern9(Rodas5()); saveat = dt)),
     ("ImplicitMidpoint", "`OrdinaryDiffEq` ImplicitMidpoint with fixed step", :Fixed, () -> solve(prob_ode, ImplicitMidpoint(); adaptive = false, dt, dense = false)),
-    ("GIEuler", "GeometricIntegrators Euler", :GI, () -> solve(prob_gi, GIEuler(); dt)),
-    ("GIMidpoint", "GeometricIntegrators Midpoint", :GI, () -> solve(prob_gi, GIMidpoint(); dt)),
-    ("GIRK4", "GeometricIntegrators RK4", :GI, () -> solve(prob_gi, GIRK4(); dt)),
 ]
 
 using Markdown #hide
@@ -270,3 +264,4 @@ f2 = DisplayAs.PNG(f2) #hide
 
 # In practice, it is pretty hard to find an optimal algorithm. The native Boris method is good if you want a fixed time step.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
+# Note: Geometric integrators from GeometricIntegratorsDiffEq were previously included but removed due to poor performance and compatibility issues compared to the optimized SciML solvers.
