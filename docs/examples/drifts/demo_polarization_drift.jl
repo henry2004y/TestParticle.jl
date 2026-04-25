@@ -44,7 +44,7 @@ ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = L"v_\perp \text{ [m/s]}")
 ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = L"y \text{ [m]}")
 ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = L"y_{gc} \text{ [m]}")
 
-gc_y(t, x, y, z, vx, vy, vz) = (t, gc(SA[x, y, z, vx, vy, vz])[2])
+gc_y(t, x, y, z, vx, vy, vz) = (t, gc(SA[x, y, z, vx, vy, vz, t])[2])
 v_perp(t, vy, vz) = (t, sqrt(vy^2 + vz^2))
 
 lines!(ax1, sol, idxs = (1, 2, 3))

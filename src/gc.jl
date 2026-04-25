@@ -127,7 +127,7 @@ function gc_to_full(state_gc, param, μ, phase = 0)
 end
 
 """
-    get_gc(xu, param)
+    get_gc(xu, param; use_vE = false)
     get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
@@ -138,6 +138,14 @@ Nonrelativistic definition:
 ```math
 \\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times\\mathbf{v}}{qB}
 ```
+
+If `use_vE=true`, it calculates the guiding center relative to the E × B drift frame:
+
+```math
+\\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times(\\mathbf{v}-\\mathbf{v}_E)}{qB}
+```
+
+which is essential for correctly identifying the polarization drift in time-varying fields.
 """
 function get_gc(xu, param; use_vE::Bool = false)
     q2m = get_q2m(param)
