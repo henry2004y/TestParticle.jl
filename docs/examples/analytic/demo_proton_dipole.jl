@@ -116,11 +116,11 @@ results = Tuple{String, Float64}[]
 ode_solvers = [
     ("ImplicitMidpoint, dt=1e-3", ImplicitMidpoint(), Dict(:dt => 1.0e-3)),
     ("ImplicitMidpoint, dt=1e-4", ImplicitMidpoint(), Dict(:dt => 1.0e-4)),
-    ("Vern9", Vern9(), Dict()),
-    ("Trapezoid", Trapezoid(), Dict()),
-    ("Vern6", Vern6(), Dict()),
-    ("Tsit5", Tsit5(), Dict()),
-    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:reltol => 1.0e-4)),
+    ("Vern9", Vern9(), Dict(:dt => 1.0e-4)),
+    ("Trapezoid", Trapezoid(), Dict(:dt => 1.0e-4)),
+    ("Vern6", Vern6(), Dict(:dt => 1.0e-4)),
+    ("Tsit5", Tsit5(), Dict(:dt => 1.0e-4)),
+    ("Tsit5, reltol=1e-4", Tsit5(), Dict(:dt => 1.0e-4, :reltol => 1.0e-4)),
 ]
 
 for (name, alg, kwargs) in ode_solvers
