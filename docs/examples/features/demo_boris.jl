@@ -106,7 +106,7 @@ sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
-sol2 = solve(prob, Tsit5());
+sol2 = solve(prob, Tsit5(); dt);
 
 # ### Visualization
 f = plot_trajectory(sol_boris, sol1, sol2, sol_boris_2, sol_boris_4, sol_boris_adaptive, sol_boris_hyper; alpha = 1)
@@ -151,9 +151,9 @@ sol_boris_adaptive = TP.solve(
     AdaptiveBoris(safety = 0.1)
 )[1]
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
-sol2 = solve(prob, Tsit5());
-sol3 = solve(prob, Vern7());
-sol4 = solve(prob, Vern9());
+sol2 = solve(prob, Tsit5(); dt);
+sol3 = solve(prob, Vern7(); dt);
+sol4 = solve(prob, Vern9(); dt);
 
 # ### Visualization
 f = plot_trajectory(sol_boris, sol1, sol2)

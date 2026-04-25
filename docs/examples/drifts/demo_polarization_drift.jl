@@ -25,7 +25,7 @@ param = prepare(time_varying_E, uniform_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 ## Functions for obtaining the guiding center from actual trajectory
-gc = param |> get_gc_func
+gc = param |> p -> get_gc_func(p; use_vE = true)
 v_perp(xu) = sqrt(xu[4]^2 + xu[5]^2)
 
 ## Visualization
@@ -40,11 +40,11 @@ ax1 = Axis3(
     azimuth = 0.9π,
     elevation = 0.1π
 )
-ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = "v_perp [m/s]")
-ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = "y [m]")
-ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = "gc_y [m]")
+ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = L"v_\perp \text{ [m/s]}")
+ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = L"y \text{ [m]}")
+ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = L"y_{gc} \text{ [m]}")
 
-gc_y(t, x, y, z, vx, vy, vz) = (t, gc(SA[x, y, z, vx, vy, vz])[2])
+gc_y(t, x, y, z, vx, vy, vz) = (t, gc(SA[x, y, z, vx, vy, vz, t])[2])
 v_perp(t, vy, vz) = (t, sqrt(vy^2 + vz^2))
 
 lines!(ax1, sol, idxs = (1, 2, 3))

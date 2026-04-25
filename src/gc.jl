@@ -127,7 +127,7 @@ function gc_to_full(state_gc, param, μ, phase = 0)
 end
 
 """
-    get_gc(xu, param)
+    get_gc(xu, param; use_vE = false)
     get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
@@ -138,14 +138,29 @@ Nonrelativistic definition:
 ```math
 \\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times\\mathbf{v}}{qB}
 ```
+
+If `use_vE=true`, it calculates the guiding center relative to the E × B drift frame:
+
+```math
+\\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times(\\mathbf{v}-\\mathbf{v}_E)}{qB}
+```
+
+which is essential for correctly identifying the polarization drift in time-varying fields.
 """
-function get_gc(xu, param)
+function get_gc(xu, param; use_vE::Bool = false)
     q2m = get_q2m(param)
     B_field = get_BField(param)
     t = length(xu) == 7 ? xu[end] : zero(eltype(xu))
     v = xu[SA[4:6...]]
     B = B_field(xu, t)
     B² = B[1]^2 + B[2]^2 + B[3]^2
+
+    if use_vE
+        E_field = get_EField(param)
+        E = E_field(xu, t)
+        v = v - (E × B) / B²
+    end
+
     # vector of Larmor radius
     ρ = B × v ./ (q2m * B²)
 
@@ -208,4 +223,4 @@ gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6))
 ```
 """
-get_gc_func(param) = gc(xu) = get_gc(xu, param)
+get_gc_func(param; use_vE::Bool = false) = gc(xu) = get_gc(xu, param; use_vE)
