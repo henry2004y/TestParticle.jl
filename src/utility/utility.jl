@@ -710,7 +710,7 @@ function get_particle_fluxes(
 
     # We use a summing approach here instead of collecting all crossings to save memory
     total_n_fluxes = zeros(eltype(weights), nsurfaces)
-    total_v_fluxes = [zero(SVector{3, T}) for _ in 1:nsurfaces]
+    total_v_fluxes = fill(zero(SVector{3, T}), nsurfaces)
 
     # Pre-allocate buffer for signed distances
     s1_buf = Vector{T}(undef, nsurfaces)
