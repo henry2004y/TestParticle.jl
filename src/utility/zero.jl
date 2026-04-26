@@ -20,11 +20,10 @@ struct ZeroVector end
 
 # Make ZeroVector work with array assignment
 Base.setindex!(A::AbstractArray, ::ZeroVector, I...) = fill!(view(A, I...), zero(eltype(A)))
-Base.setindex!(A::Array{Any}, z::ZeroVector, i::Int) =
-    invoke(Base.setindex!, Tuple{Array{Any}, Any, Int}, A, z, i)
 
-function Base.setindex!(A::Array, ::ZeroVector, i::Int)
-    return A[i] = zero(eltype(A))
+function Base.setindex!(A::Array{T}, z::ZeroVector, i::Int) where {T}
+    isconcretetype(T) && return A[i] = zero(T)
+    return invoke(Base.setindex!, Tuple{Array, Any, Int}, A, z, i)
 end
 
 Base.getindex(::ZeroVector, I...) = 0
