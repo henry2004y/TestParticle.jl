@@ -462,7 +462,7 @@ end
 
             param = prepare(E_func, B_func; species = Electron)
             prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-            sol = solve(prob, Vern6(); verbose = false)
+            sol = solve(prob, Vern6())
 
             # Theoretical relativistic gyroradius
             # r = p_perp / (q * B) = m * (γv)_perp / (q * B)
@@ -495,7 +495,7 @@ end
             # q2m = 1.0, m = 1.0, etc.
             param = prepare(E_func, B_func; species = Ion(1, 1), q = 1.0, m = 1.0)
             prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-            sol = solve(prob, Vern6(); verbose = false)
+            sol = solve(prob, Vern6())
 
             # Theoretical relativistic gyroradius
             # r = γ * m * v_perp / (q * B) = (γv)_perp / B (since m=q=1)

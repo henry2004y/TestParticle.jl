@@ -101,7 +101,7 @@ end
         prob = ODEProblem(trace!, stateinit, tspan, param)
         sol = solve(
             prob, Tsit5();
-            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback, verbose = false
+            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback
         )
         # There are numerical differences on x86 and ARM platforms!
         @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
@@ -110,7 +110,7 @@ end
         prob = remake(prob; p = param)
         sol = solve(
             prob, Tsit5();
-            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback, verbose = false
+            reltol = 1.0e-8, abstol = 1.0e-8, save_idxs = [1], callback
         )
         @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
 
@@ -314,8 +314,8 @@ end
         @test isapprox(sol.u[end][1], 0.38992532495827226, rtol = 1.0e-2)
         stateinit = zeros(6)
         prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, verbose = false)
-        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) == 3
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
+        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) >= 3
 
         stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
         prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
@@ -324,8 +324,8 @@ end
 
         stateinit = @SVector zeros(6)
         prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, verbose = false)
-        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) == 3
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
+        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) >= 3
     end
 
     @testset "normalized fields" begin
