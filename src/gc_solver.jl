@@ -182,7 +182,7 @@ function _solve(
     )
     irange = 1:trajectories
 
-    if alg == :rk45
+    elapsed_time = @elapsed if alg == :rk45
         _rk45!(
             sols, prob, irange, dt, isoutside,
             save_start, save_end, save_everystep, abstol, reltol, maxiters,
@@ -196,7 +196,7 @@ function _solve(
         )
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 function _solve(
@@ -211,7 +211,7 @@ function _solve(
     )
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         if alg == :rk45
             _rk45!(
                 sols, prob, irange, dt, isoutside,
@@ -227,7 +227,7 @@ function _solve(
         end
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 function _get_sol_type(prob::TraceGCProblem, dt, alg, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
@@ -343,7 +343,7 @@ function _rk4!(
 
         # set initial conditions for each trajectory i
         iout = 0
-        new_prob = prob.prob_func(prob, i, false)
+        new_prob = prob.prob_func(prob, (i = i, repeat = false))
         xv = new_prob.u0
 
         if save_start
@@ -451,7 +451,7 @@ function _rk45!(
         traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
-        new_prob = prob.prob_func(prob, i, false)
+        new_prob = prob.prob_func(prob, (i = i, repeat = false))
         xv = new_prob.u0
 
         t = tspan[1]

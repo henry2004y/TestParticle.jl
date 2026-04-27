@@ -426,7 +426,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1)) # Proton
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             # Theoretical gyroradius
             # r = m * v_perp / (q * B)
@@ -462,7 +462,7 @@ end
 
             param = prepare(E_func, B_func; species = Electron)
             prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-            sol = solve(prob, Vern6())
+            sol = solve(prob, Vern6(); dt = 1.0e-10) # small dt for small tspan
 
             # Theoretical relativistic gyroradius
             # r = p_perp / (q * B) = m * (γv)_perp / (q * B)
@@ -495,7 +495,7 @@ end
             # q2m = 1.0, m = 1.0, etc.
             param = prepare(E_func, B_func; species = Ion(1, 1), q = 1.0, m = 1.0)
             prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-            sol = solve(prob, Vern6())
+            sol = solve(prob, Vern6(); dt = 1.0e-6)
 
             # Theoretical relativistic gyroradius
             # r = γ * m * v_perp / (q * B) = (γv)_perp / B (since m=q=1)
@@ -517,7 +517,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             @test get_gyroradius(sol, 0.5) == Inf
         end
@@ -543,7 +543,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             # With pure drift, gyroradius should be effectively 0
             r_calc = get_gyroradius(sol, 0.5)
@@ -673,7 +673,7 @@ end
             tspan = (0.0, 1.0e-4) # Short duration
             param_fo = prepare(E_func_disp, B_func_disp; species = Ion(1, 1))
             prob_fo = ODEProblem(trace!, stateinit, tspan, param_fo)
-            sol_fo = solve(prob_fo, Tsit5())
+            sol_fo = solve(prob_fo, Tsit5(); dt = 1.0e-6)
 
             # Test vector output
             ε_fo = get_adiabaticity(sol_fo)
@@ -689,7 +689,7 @@ end
             # GC Solution
             stateinit_gc, param_gc = prepare_gc(stateinit, E_func_disp, B_func_disp; species = Ion(1, 1))
             prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-            sol_gc = solve(prob_gc, Tsit5())
+            sol_gc = solve(prob_gc, Tsit5(); dt = 1.0e-6)
 
             # Test vector output
             ε_gc = get_adiabaticity(sol_gc)

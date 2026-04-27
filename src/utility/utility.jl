@@ -288,12 +288,13 @@ end
 Return velocity from relativistic γv in `sol`.
 """
 function get_velocity(sol)
-    v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol))
+    v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol.u))
     inv_c2 = 1 / c^2
     @inbounds for is in axes(v, 2)
-        v1 = sol[4, is]
-        v2 = sol[5, is]
-        v3 = sol[6, is]
+        u_i = sol.u[is]
+        v1 = u_i[4]
+        v2 = u_i[5]
+        v3 = u_i[6]
         γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         inv_γ = inv(γ)
@@ -309,13 +310,14 @@ end
 Return the energy [eV] from relativistic `sol`.
 """
 function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
-    e = Vector{eltype(sol.u[1])}(undef, length(sol))
+    e = Vector{eltype(sol.u[1])}(undef, length(sol.u))
     inv_c2 = 1 / c^2
     mc2_q = m * c^2 / abs(q)
     @inbounds for i in eachindex(e)
-        v1 = sol[4, i]
-        v2 = sol[5, i]
-        v3 = sol[6, i]
+        u_i = sol.u[i]
+        v1 = u_i[4]
+        v2 = u_i[5]
+        v3 = u_i[6]
         γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         e[i] = (γ - 1) * mc2_q

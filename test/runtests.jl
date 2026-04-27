@@ -1,7 +1,7 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
-using Random, StableRNGs
+using Random
 using LinearAlgebra: norm
 using VelocityDistributionFunctions
 using Test
@@ -11,8 +11,7 @@ import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 """
 Initial state perturbation for EnsembleProblem.
 """
-prob_func(prob, i, repeat) = remake(prob, u0 = rand(StableRNG(i)) * prob.u0)
-
+prob_func(prob, ctx) = remake(prob, u0 = rand(ctx.rng) * prob.u0)
 
 """
 Test boundary check method.
@@ -127,17 +126,17 @@ end
         param = prepare(grid, E, B)
         prob = ODEProblem(trace!, stateinit, tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 8 && isapprox(sol[1, end], 0.8539409515568538, rtol = 1.0e-2)
+        @test length(sol.u) == 8 && isapprox(sol[1, end], 0.8539409515568538, rtol = 1.0e-2)
 
         trajectories = 10
         prob = ODEProblem(trace!, stateinit, tspan, param)
         ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
         sol = solve(
             ensemble_prob, Tsit5(), EnsembleThreads();
-            trajectories = trajectories, save_idxs = [1]
+            trajectories = trajectories, save_idxs = [1], seed = 42
         )
         x = getindex.(sol.u[10].u, 1)
-        @test x[7] ≈ 0.0822878816705525 rtol = 1.0e-6
+        @test x[7] ≈ 0.35505190092227473 rtol = 1.0e-6
 
         stateinit = SA[x0..., u0...]
         tspan = (0.0, 1.0)
@@ -145,7 +144,7 @@ end
         param = prepare(grid, E, B)
         prob = ODEProblem(trace, stateinit, tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 8 && isapprox(sol[1, end], 0.8539409515568538, rtol = 1.0e-2)
+        @test length(sol.u) == 8 && isapprox(sol[1, end], 0.8539409515568538, rtol = 1.0e-2)
 
         # Nonuniform spherical grid
         function setup_spherical_field()
@@ -314,8 +313,8 @@ end
         @test isapprox(sol.u[end][1], 0.38992532495827226, rtol = 1.0e-2)
         stateinit = zeros(6)
         prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
-        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) >= 3
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
+        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
 
         stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
         prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
@@ -324,8 +323,8 @@ end
 
         stateinit = @SVector zeros(6)
         prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8)
-        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol) >= 3
+        sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
+        @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
     end
 
     @testset "normalized fields" begin
@@ -356,7 +355,7 @@ end
 
         prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
         sol = solve(prob, Vern9(); save_idxs = [1])
-        @test length(sol) == 7 && isapprox(sol[1, end], 1.0, rtol = 1.0e-2)
+        @test length(sol.u) == 7 && isapprox(sol[1, end], 1.0, rtol = 1.0e-2)
 
         # 2D
         x = range(-10, 10, length = 15)
@@ -384,17 +383,17 @@ end
         param = prepare(x, y, E, B; species = Proton, bc = WrapExtrap())
         prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
+        @test length(sol.u) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
 
         prob = ODEProblem(trace_normalized, SA[stateinit...], tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
+        @test length(sol.u) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
 
         # Because the field is uniform, the order of interpolation does not matter.
         param = prepare(grid, E, B; order = 3)
         prob = remake(prob; p = param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
+        @test length(sol.u) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
 
         # 1D
         x = range(-10, 10, length = 15)
@@ -413,7 +412,7 @@ end
         param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
         prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
         sol = solve(prob, Tsit5(); save_idxs = [1])
-        @test length(sol) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
+        @test length(sol.u) == 9 && isapprox(sol[1, end], 0.9999998697180689, rtol = 1.0e-2)
     end
 
     @testset "ZeroVector" begin

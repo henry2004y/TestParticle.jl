@@ -5,7 +5,7 @@ using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
     interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
     OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
-    BasicEnsembleAlgorithm,
+    BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
@@ -51,8 +51,8 @@ export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid
-export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake,
-    FillExtrap, ClampExtrap, WrapExtrap, OnTheFly, PreCompute,
+export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
+    EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap, OnTheFly, PreCompute,
     DiscreteCallback, TerminateOutside
 
 include("types.jl")

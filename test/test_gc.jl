@@ -190,38 +190,38 @@ import TestParticle as TP
         @testset "Fixed RK4" begin
             dt = 1.0e-4
             sol = TestParticle.solve(prob; dt, alg = :rk4)
-            @test length(sol) == 1
-            @test length(sol[1].t) == 10001
-            @test sol[1].retcode == ReturnCode.MaxIters
+            @test length(sol.u) == 1
+            @test length(sol.u[1].t) == 10001
+            @test sol.u[1].retcode == ReturnCode.MaxIters
 
             # Test save_everystep=false
             sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
-            @test length(sol_no_save[1].t) == 2 # start and end
+            @test length(sol_no_save.u[1].t) == 2 # start and end
 
             # Test early exit to cover resize!
             sol_early = TestParticle.solve(
                 prob; dt, alg = :rk4,
                 isoutside = (xv, p, t) -> t > 0.5
             )
-            @test length(sol_early[1].t) == 5001
+            @test length(sol_early.u[1].t) == 5001
         end
 
         @testset "Adaptive RK45" begin
             # Default tolerances
             sol_def = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45)
-            @test length(sol_def[1].t) == 61
-            @test sol_def[1].retcode == ReturnCode.Success
+            @test length(sol_def.u[1].t) == 61
+            @test sol_def.u[1].retcode == ReturnCode.Success
 
             # Tight tolerances
             sol_tight = TestParticle.solve(
                 prob;
                 dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
             )
-            @test length(sol_tight[1].t) > length(sol_def[1].t)
+            @test length(sol_tight.u[1].t) > length(sol_def.u[1].t)
 
             # Accuracy check
             sol_rk4 = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk4)
-            diff = norm(sol_tight[1].u[end] - sol_rk4[1].u[end])
+            diff = norm(sol_tight.u[1].u[end] - sol_rk4.u[1].u[end])
             @test diff < 10.0
         end
 
@@ -234,7 +234,7 @@ import TestParticle as TP
             # Solve using Native RK4
             dt = 1.0e-4
             sol_native = TestParticle.solve(prob; dt, alg = :rk4)
-            u_native = sol_native[1].u[end]
+            u_native = sol_native.u[1].u[end]
 
             # Position difference
             @test norm(u_diffeq[1:3] - u_native[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
@@ -246,8 +246,8 @@ import TestParticle as TP
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
             sol_auto = TestParticle.solve(prob; alg = :rk45)
-            @test sol_auto[1].retcode == ReturnCode.Success
-            @test length(sol_auto[1].t) == 58
+            @test sol_auto.u[1].retcode == ReturnCode.Success
+            @test length(sol_auto.u[1].t) == 58
         end
 
         @testset "Ensemble" begin
@@ -256,13 +256,13 @@ import TestParticle as TP
 
             # Serial
             sol_serial = TestParticle.solve(prob_ens; trajectories, dt = 1.0e-4, alg = :rk45)
-            @test length(sol_serial) == trajectories
-            @test all(s.retcode == ReturnCode.Success for s in sol_serial)
+            @test length(sol_serial.u) == trajectories
+            @test all(s.retcode == ReturnCode.Success for s in sol_serial.u)
 
             # Threads
             sol_threads = TestParticle.solve(prob_ens, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45)
-            @test length(sol_threads) == trajectories
-            @test all(s.retcode == ReturnCode.Success for s in sol_threads)
+            @test length(sol_threads.u) == trajectories
+            @test all(s.retcode == ReturnCode.Success for s in sol_threads.u)
         end
 
         @testset "GC Extra Saving" begin
@@ -284,7 +284,7 @@ import TestParticle as TP
                 prob_saving; trajectories, dt = 1.0e-5, save_fields = true, save_work = true
             )
 
-            for s in sol
+            for s in sol.u
                 E, B = get_fields(s)
                 W = get_work(s)
 
