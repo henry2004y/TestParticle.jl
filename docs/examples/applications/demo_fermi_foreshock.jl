@@ -90,13 +90,13 @@ end
 
 isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
-function prob_func(prob, i, repeat)
-    x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
+function prob_func(prob, ctx)
+    x0 = SA[(0.5 + rand(ctx.rng)) * Rₑ, 0.0, 0.0] # launched in the core region
     u0 = SA[0.0, 0.0, 0.0]
     T₀ = 10 # [eV]
     vth = √(2T₀ * abs(qₑ) / mₑ) # [m/s]
     vdf = TP.Maxwellian(u0, vth)
-    v0 = rand(vdf)
+    v0 = rand(ctx.rng, vdf)
 
     return prob = remake(prob, u0 = [x0..., v0...])
 end

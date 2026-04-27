@@ -10,8 +10,8 @@ using DiffEqGPU, OrdinaryDiffEq, CUDA, StaticArrays
 using CairoMakie
 
 "Set initial state for EnsembleProblem."
-function prob_func(prob, i, repeat)
-   prob = @views remake(prob, u0=[prob.u0[1:3]..., i/3, 0.0, 0.0])
+function prob_func(prob, ctx)
+   prob = @views remake(prob, u0=[prob.u0[1:3]..., ctx.i/3, 0.0, 0.0])
 end
 
 ## Initialization
@@ -60,8 +60,8 @@ using DiffEqGPU, OrdinaryDiffEq, CUDA, StaticArrays
 using CairoMakie
 
 "Set initial state for EnsembleProblem."
-function prob_func(prob, i, repeat)
-   prob = @views remake(prob, u0=SA[prob.u0[1:3]..., i/3, 0.0, 0.0])
+function prob_func(prob, ctx)
+   prob = @views remake(prob, u0=SA[prob.u0[1:3]..., ctx.i/3, 0.0, 0.0])
 end
 
 ## Initialization

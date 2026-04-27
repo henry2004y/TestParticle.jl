@@ -20,8 +20,8 @@ Random.seed!(1234)
 """
 Set initial conditions.
 """
-function prob_func(prob, i, repeat)
-    v₀ = rand(vdf₁)
+function prob_func(prob, ctx)
+    v₀ = rand(ctx.rng, vdf₁)
     r₀ = [5_000e3, 0.0, 0.0]
 
     return prob = remake(prob; u0 = [r₀..., v₀...])
@@ -359,8 +359,8 @@ vdf₂_para = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 trajectories = 2
 weight₁ = n₁ / trajectories
 
-function prob_func_para(prob, i, repeat)
-    v₀ = rand(vdf₁_para)
+function prob_func_para(prob, ctx)
+    v₀ = rand(ctx.rng, vdf₁_para)
     r₀ = [5_000e3, 0.0, 0.0]
 
     return prob = remake(prob; u0 = [r₀..., v₀...])

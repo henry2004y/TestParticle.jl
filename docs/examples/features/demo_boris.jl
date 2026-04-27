@@ -94,13 +94,13 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob, Boris(); dt)[1];
-sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt)[1];
-sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt)[1];
-sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt)[1];
+sol_boris = TP.solve(prob, Boris(); dt).u[1];
+sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt).u[1];
+sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt).u[1];
+sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt).u[1];
 
 alg_adaptive = AdaptiveBoris(safety = 0.1)
-sol_boris_adaptive = TP.solve(prob, alg_adaptive)[1];
+sol_boris_adaptive = TP.solve(prob, alg_adaptive).u[1];
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -120,10 +120,10 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob, Boris(); dt)[1];
-sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt)[1];
-sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt)[1];
-sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt)[1];
+sol_boris = TP.solve(prob, Boris(); dt).u[1];
+sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt).u[1];
+sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt).u[1];
+sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt).u[1];
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
@@ -142,14 +142,14 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris, Boris(); dt, savestepinterval = 36)[1];
-sol_boris_2 = TP.solve(prob_boris, MultistepBoris2(; n = 2); dt, savestepinterval = 36)[1];
-sol_boris_4 = TP.solve(prob_boris, MultistepBoris2(; n = 4); dt, savestepinterval = 36)[1];
-sol_boris_hyper = TP.solve(prob_boris, MultistepBoris4(; n = 2); dt, savestepinterval = 36)[1];
+sol_boris = TP.solve(prob_boris, Boris(); dt, savestepinterval = 36).u[1];
+sol_boris_2 = TP.solve(prob_boris, MultistepBoris2(; n = 2); dt, savestepinterval = 36).u[1];
+sol_boris_4 = TP.solve(prob_boris, MultistepBoris2(; n = 4); dt, savestepinterval = 36).u[1];
+sol_boris_hyper = TP.solve(prob_boris, MultistepBoris4(; n = 2); dt, savestepinterval = 36).u[1];
 sol_boris_adaptive = TP.solve(
     prob_boris,
     AdaptiveBoris(safety = 0.1)
-)[1]
+).u[1]
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
 sol2 = solve(prob, Tsit5(); dt);
 sol3 = solve(prob, Vern7(); dt);
@@ -199,8 +199,8 @@ f = DisplayAs.PNG(f) #hide
 """
 Set initial states.
 """
-function prob_func(prob, i, repeat)
-    return prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - i * 2.0, prob.u0[5:6]...])
+function prob_func(prob, ctx)
+    return prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - ctx.i * 2.0, prob.u0[5:6]...])
 end
 
 isoutside(u, p, t) = isnan(u[1])

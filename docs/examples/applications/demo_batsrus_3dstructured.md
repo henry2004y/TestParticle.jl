@@ -18,8 +18,8 @@ function initial_conditions(i)
 end
 
 "Set initial conditions."
-function prob_func(prob, i, repeat)
-   remake(prob, u0=initial_conditions(i))
+function prob_func(prob, ctx)
+   remake(prob, u0=initial_conditions(ctx.i))
 end
 
 ## Data processing

@@ -120,7 +120,7 @@ tspan_boris = (0.0, 2π)
 prob_boris = TraceProblem(u0_boris, tspan_boris, param_boris)
 
 ## Solve with field saving enabled
-sol_fields = TestParticle.solve(prob_boris, Boris(); dt = 0.1, save_fields = true)[1];
+sol_fields = TestParticle.solve(prob_boris, Boris(); dt = 0.1, save_fields = true).u[1];
 
 # The solution now contains 12 values per time step (6 for state + 6 for fields)
 ## Access the magnetic field along the trajectory
@@ -131,7 +131,7 @@ println("First saved B field: ", B_trajectory[1])
 println("Last saved B field: ", B_trajectory[end])
 
 ## Solve with work saving enabled
-sol_work = TestParticle.solve(prob_boris, Boris(); dt = 0.1, save_work = true)[1];
+sol_work = TestParticle.solve(prob_boris, Boris(); dt = 0.1, save_work = true).u[1];
 
 # The solution now contains 10 values per time step (6 for state + 4 for work rates)
 # We access the work rates along the trajectory and show at selected time steps:
@@ -163,7 +163,7 @@ println("="^70) #hide
 # Note: This requires the problem parameters (fields) to be accessible from the solution object.
 
 ## Solving without saving extra data
-sol = TestParticle.solve(prob_boris, Boris(); dt = 0.1)[1];
+sol = TestParticle.solve(prob_boris, Boris(); dt = 0.1).u[1];
 
 ## Compute fields and work post-simulation
 E_post, B_post = get_fields(sol);

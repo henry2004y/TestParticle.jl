@@ -145,7 +145,7 @@ push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)));
 
 dt = 1.0e-4
 prob_boris = TraceProblem(stateinit, tspan, param)
-sol_boris = TestParticle.solve(prob_boris, Boris(); dt)[1]
+sol_boris = TestParticle.solve(prob_boris, Boris(); dt).u[1]
 push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
 
 # Comparison of energy conservation:

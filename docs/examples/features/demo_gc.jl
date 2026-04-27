@@ -49,8 +49,8 @@ sol_gc = solve(prob_gc, Vern9())
 
 ## Native GC Solvers
 prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_native_rk4 = TP.solve(prob_native; dt = 0.1, alg = :rk4)[1]
-sol_native_rk45 = TP.solve(prob_native; alg = :rk45)[1]
+sol_native_rk4 = TP.solve(prob_native; dt = 0.1, alg = :rk4).u[1]
+sol_native_rk45 = TP.solve(prob_native; alg = :rk45).u[1]
 
 ## Guiding Center Simulation with Numeric B Field Interpolation
 xrange = range(0.9, 1.2, length = 20)

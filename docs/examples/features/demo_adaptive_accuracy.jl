@@ -138,7 +138,7 @@ ax1b = Axis(
 )
 
 for (i, (name, alg)) in enumerate(adaptive_solvers_1)
-    sol = TP.solve(prob_tp1, alg)[1]
+    sol = TP.solve(prob_tp1, alg).u[1]
     errs = energy_error(sol, (t, u) -> E_init)
     lines!(
         ax1a, sol.t ./ T_gyro, errs;
@@ -185,7 +185,7 @@ f1 = DisplayAs.PNG(f1) #hide
 results1 = Tuple{String, Float64}[]
 
 for (name, alg) in adaptive_solvers_1
-    sol = TP.solve(prob_tp1, alg)[1]
+    sol = TP.solve(prob_tp1, alg).u[1]
     errs = energy_error(sol, (t, u) -> E_init)
     push!(results1, (name, maximum(errs)))
 end
@@ -246,7 +246,7 @@ boris_errors = Float64[]
 
 for s in safety_values
     alg = AdaptiveBoris(; safety = s)
-    sol = TP.solve(prob_tp2, alg)[1]
+    sol = TP.solve(prob_tp2, alg).u[1]
     push!(boris_steps, length(sol.t))
     push!(boris_errors, max_velocity_error(sol))
 end
@@ -374,7 +374,7 @@ ylims!(ax3, 1.0e-16, 1.0)
 results3 = Tuple{String, Float64}[]
 
 for (i, (name, alg)) in enumerate(adaptive_solvers_3)
-    sol = TP.solve(prob_tp3, alg)[1]
+    sol = TP.solve(prob_tp3, alg).u[1]
     errs = energy_error(sol, E_ref3)
     lines!(
         ax3, sol.t ./ T_gyro, errs;

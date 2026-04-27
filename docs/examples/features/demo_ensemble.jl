@@ -39,7 +39,7 @@ tspan = (0.0, 10.0)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, i, repeat) = remake(prob, u0 = [prob.u0[1:3]..., i / 3, 0.0, 0.0])
+prob_func_basic(prob, ctx) = remake(prob, u0 = [prob.u0[1:3]..., ctx.i / 3, 0.0, 0.0])
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
@@ -65,10 +65,10 @@ f = DisplayAs.PNG(f) #hide
 Random.seed!(1234)
 
 ## Define a new prob_func that samples from a Maxwellian
-function prob_func_maxwellian(prob, i, repeat)
+function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
     vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
-    v = rand(vdf)
+    v = rand(ctx.rng, vdf)
     return remake(prob; u0 = [prob.u0[1:3]..., v...])
 end
 
@@ -134,14 +134,14 @@ tspan_custom = (0.0, 2π)
 prob_custom = ODEProblem(trace_normalized!, stateinit_custom, tspan_custom, param_custom)
 
 ## Define prob_func to initialize particles with different pitch angles
-function prob_func_custom(prob, i, repeat)
+function prob_func_custom(prob, ctx)
     B0 = TP.get_BField(prob)(prob.u0)
     B0 = normalize(B0)
 
     Bperp1 = normalize(SA[0.0, -B0[3], B0[2]])
     Bperp2 = normalize(B0 × Bperp1)
 
-    ϕ = 2π * rand()
+    ϕ = 2π * rand(ctx.rng)
     θ = acos(0.5) # constant pitch angle for demonstration
     sinϕ, cosϕ = sincos(ϕ)
 

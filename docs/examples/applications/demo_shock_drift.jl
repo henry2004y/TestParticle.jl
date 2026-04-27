@@ -77,13 +77,13 @@ end;
 """
 Create ensemble of protons.
 """
-function prob_func_p(prob, i, repeat)
+function prob_func_p(prob, ctx)
     ## Randomize y and z slightly to separate lines
-    r = rand(2)
+    r = rand(ctx.rng, 2)
     r0 = (x0, (r[1] - 0.5) * 500.0e3, (r[2] - 0.5) * 500.0e3)
     ## Small thermal spread
     v_th = 50.0e3 # 50 km/s
-    v = v0_p .+ randn(3) .* v_th
+    v = v0_p .+ randn(ctx.rng, 3) .* v_th
     return remake(prob; u0 = [r0..., v...])
 end
 
@@ -100,10 +100,10 @@ prob_e = let
     ODEProblem(trace!, u0_e, (0.0, 20.0), param_e)
 end;
 
-function prob_func_e(prob, i, repeat)
-    r0 = [x0, (rand() - 0.5) * 500.0e3, (rand() - 0.5) * 500.0e3]
+function prob_func_e(prob, ctx)
+    r0 = [x0, (rand(ctx.rng) - 0.5) * 500.0e3, (rand(ctx.rng) - 0.5) * 500.0e3]
     v_th = 100.0e3
-    v = v0_p .+ randn(3) .* v_th
+    v = v0_p .+ randn(ctx.rng, 3) .* v_th
     return remake(prob; u0 = [r0..., v...])
 end
 

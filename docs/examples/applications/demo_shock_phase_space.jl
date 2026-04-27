@@ -95,8 +95,8 @@ param = prepare(get_E_shock, get_B_shock; species = Proton)
 const p_thermal = n_up * TP.qᵢ * T_ion
 const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
 
-function prob_func_maxwellian(prob, i, repeat)
-    v = rand(vdf)
+function prob_func_maxwellian(prob, ctx)
+    v = rand(ctx.rng, vdf)
     u0 = SA[x_source..., v...]
     return remake(prob, u0 = u0)
 end
@@ -218,10 +218,10 @@ const vradius_m2 = 3 * vth_ion # velocity space radius, [m/s]
 const Vsphere_m2 = (4 / 3) * π * vradius_m2^3 # velocity space volume
 
 ## Uniform sampling in a 3D sphere
-function prob_func_m2(prob, i, repeat)
-    r = vradius_m2 * rand()^(1 / 3)
-    ϕ = 2π * rand()
-    θ = acos(2 * rand() - 1)
+function prob_func_m2(prob, ctx)
+    r = vradius_m2 * rand(ctx.rng)^(1 / 3)
+    ϕ = 2π * rand(ctx.rng)
+    θ = acos(2 * rand(ctx.rng) - 1)
 
     sinθ, cosθ = sincos(θ)
     cosϕ, sinϕ = sincos(ϕ)
@@ -261,10 +261,10 @@ function reconstruct_backward_projections(
     nparticles_bw = nx * ny * nz
 
     ## Initial conditions at detector
-    function prob_func_bw(prob, i, repeat)
-        iz = (i - 1) % nz + 1
-        iy = ((i - 1) ÷ nz) % ny + 1
-        ix = ((i - 1) ÷ (nz * ny)) % nx + 1
+    function prob_func_bw(prob, ctx)
+        iz = (ctx.i - 1) % nz + 1
+        iy = ((ctx.i - 1) ÷ nz) % ny + 1
+        ix = ((ctx.i - 1) ÷ (nz * ny)) % nx + 1
 
         u0_bw = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
         return remake(prob, u0 = u0_bw)
