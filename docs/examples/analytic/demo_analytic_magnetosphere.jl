@@ -52,7 +52,8 @@ end
 """
 Set initial conditions.
 """
-function prob_func_13(prob, i, repeat)
+function prob_func_13(prob, ctx)
+    i = ctx.i
     ## initial particle energy
     Ek = 2.0e4 # [eV]
     ## initial velocity, [m/s]
@@ -63,7 +64,8 @@ function prob_func_13(prob, i, repeat)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-function prob_func_6(prob, i, repeat)
+function prob_func_6(prob, ctx)
+    i = ctx.i
     ## initial particle energy
     Ek = 4.0e3 # [eV]
     ## initial velocity, [m/s]

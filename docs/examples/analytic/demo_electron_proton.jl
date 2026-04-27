@@ -47,8 +47,8 @@ ax = Axis3(
     zlabel = "z [m]",
     aspect = :data
 )
-plot!(sol_e, idxs = (1, 2, 3), color = :tomato, label = "electron")
-plot!(sol_p, idxs = (1, 2, 3), color = :deepskyblue3, label = "proton")
+lines!(ax, sol_e, idxs = (1, 2, 3), color = :tomato, label = "electron")
+lines!(ax, sol_p, idxs = (1, 2, 3), color = :deepskyblue3, label = "proton")
 
 axislegend()
 
