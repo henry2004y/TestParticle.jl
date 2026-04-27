@@ -3,7 +3,7 @@
 # This example shows how to trace protons of a certain energy in MHD plane shocks.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner
+using TestParticle, OrdinaryDiffEq
 using TestParticle: mᵢ, kB
 import TestParticle as TP
 using VelocityDistributionFunctions

@@ -4,7 +4,7 @@
 
 import DisplayAs #hide
 using TestParticle
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using CairoMakie

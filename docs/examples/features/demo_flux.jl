@@ -17,7 +17,7 @@
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
-using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes, Random
+using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes, Random
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
 using VelocityDistributionFunctions, SpecialFunctions, CairoMakie

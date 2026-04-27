@@ -4,7 +4,7 @@
 # corresponds to an ITER-like Tokamak.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 import Magnetostatics as MS
 using GeometryBasics

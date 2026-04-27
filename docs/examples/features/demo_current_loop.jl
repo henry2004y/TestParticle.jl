@@ -9,7 +9,7 @@
 import DisplayAs #hide
 import TestParticle as TP
 import Magnetostatics as MS
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
 using CairoMakie

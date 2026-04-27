@@ -7,7 +7,7 @@ TL;DR: Tracing with units is convenient although not as performant as tracing in
 ```@example unit
 using TestParticle, StaticArrays
 using Unitful
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 import TestParticle as TP
 
 const Bmag = 1e-8u"T"

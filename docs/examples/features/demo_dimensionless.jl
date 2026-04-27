@@ -49,7 +49,7 @@
 # Now let's demonstrate this with `trace_normalized!`.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: qᵢ, mᵢ, c
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

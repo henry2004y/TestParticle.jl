@@ -5,7 +5,7 @@
 # In this model, magnetic null points appear, and the particle orbits are distorted from the idealized motions in [Demo: magnetic dipole](@ref Magnetic-Dipole).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
 import Magnetostatics as MS
 using FieldTracer

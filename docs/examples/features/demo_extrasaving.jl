@@ -7,7 +7,7 @@
 #
 # For the native Boris solvers, we also support `save_fields` and `save_work` keywords to save the fields and work done by the fields. These options are more efficient than using `SavingCallback` and are compatible with ensemble problems.
 
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: qᵢ, mᵢ
 using TestParticle: get_BField
 using Statistics

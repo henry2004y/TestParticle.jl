@@ -4,7 +4,7 @@
 # More theoretical details can be found in [Time-Varying E Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-time-varying_E), and Fundamentals of Plasma Physics by Paul Bellan.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 

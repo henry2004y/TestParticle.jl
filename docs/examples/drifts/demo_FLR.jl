@@ -4,7 +4,7 @@
 # More theoretical details can be found in [Non-uniform E Field](https://henry2004y.github.io/KeyNotes/contents/single.html#sec-nonuniform_E).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using LinearAlgebra: ×, ⋅, norm, normalize
 using Tensors: laplace
 import Tensors: Vec as Vec3

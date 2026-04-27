@@ -12,7 +12,7 @@ using TestParticle
 import TestParticle as TP
 using TestParticle: sph2cart, Rₑ, mᵢ, qᵢ, c
 import Magnetostatics as MS
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 using LinearAlgebra
 using Statistics
 using CairoMakie

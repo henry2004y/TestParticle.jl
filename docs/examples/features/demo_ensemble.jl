@@ -11,7 +11,7 @@ import DisplayAs #hide
 using TestParticle
 import TestParticle as TP
 using VelocityDistributionFunctions
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 using StaticArrays
 using Statistics
 using LinearAlgebra

@@ -6,7 +6,7 @@
 import DisplayAs #hide
 using TestParticle
 using TestParticle: mᵢ, qᵢ
-using OrdinaryDiffEqVerner
+using OrdinaryDiffEq
 using LinearAlgebra
 using Statistics
 using CairoMakie

@@ -18,8 +18,6 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 Magnetostatics = "e551bd30-f216-4325-9989-532520624021"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
-OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
 PairPlots = "43a3c2be-4208-490b-832a-a21dcd55d7da"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -36,3 +34,4 @@ TestParticle = {path = ".."}
 
 [compat]
 DocumenterVitepress = "0.3"
+OrdinaryDiffEq = "7"

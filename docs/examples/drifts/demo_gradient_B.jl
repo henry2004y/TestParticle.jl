@@ -6,7 +6,7 @@
 # More theoretical details can be found in [Grad-B Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#b-b-grad-b-drift), and Fundamentals of Plasma Physics by Paul Bellan.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using LinearAlgebra: ×, ⋅, normalize, norm
 using ForwardDiff: gradient
 using CairoMakie

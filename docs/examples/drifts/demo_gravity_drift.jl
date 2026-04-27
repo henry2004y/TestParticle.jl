@@ -3,7 +3,7 @@
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
