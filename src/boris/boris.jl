@@ -219,7 +219,7 @@ end
 Solve a single trajectory `i` of `prob` for use with `EnsembleDistributed`.
 
 `_generic_boris!` uses the loop index `i` for two purposes simultaneously:
-applying `prob_func(prob, i, false)` to select per-particle initial conditions,
+applying `prob_func(prob, (i = i, repeat = false))` to select per-particle initial conditions,
 and storing the result at `sols[i]`. For a distributed worker handling only one
 trajectory at a time, a 1-element `local_sols` would be out of bounds if `i > 1`
 were passed directly. Decoupling the two uses would require threading a storage
