@@ -35,4 +35,3 @@ TestParticle = {path = ".."}
 [compat]
 DocumenterVitepress = "0.3"
 OrdinaryDiffEq = "7"
-SciMLBase = "3.7.1"
