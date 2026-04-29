@@ -10,7 +10,7 @@
 # This example is based on `demo_magneticbottle.jl`.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqAdamsBashforthMoulton, StaticArrays
 import TestParticle as TP
 import Magnetostatics as MS
 using LinearAlgebra: normalize, norm, ⋅
@@ -158,7 +158,7 @@ callback = TP.TerminateOutside((u, p, t) -> abs(u[3]) > distance / 2)
 
 sim = solve(
     ensemble_prob, Vern9(), EnsembleThreads(); trajectories = n_particles,
-    dt = 3.0e-9, callback, verbose = false
+    dt = 3.0e-9, callback
 );
 
 # Check which particles are trapped

@@ -3,7 +3,7 @@
 # This example shows how to trace protons of a certain energy in a analytic Earth-like magnetic dipole field. There is a combination of grad-B drift, curvature drift, and the bounce motion between mirror points. It demonstrates the motions corresponding to the three adiabatic invariants.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqSDIRK
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ
 import Magnetostatics as MS
