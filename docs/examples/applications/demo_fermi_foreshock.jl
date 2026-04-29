@@ -183,7 +183,7 @@ function plot_dist(sols; t = 0, case = 1, slice = :xy)
     vz = similar(vx)
     sizehint!(vz, n)
 
-    for sol in sols
+    for sol in sols.u
         if (sol.t[end] ≥ t) && (1.5Rₑ - U * sol.t[end] > sol[1, end] > 0.5Rₑ)
             v = sol(t)[4:6] ./ 1.0e3
             push!(vx, v[1])
@@ -226,13 +226,13 @@ function find_max_acceleration_index(sols; countall = true, tend = 40)
     if countall
         ratio = [
             get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
-                for sol in sols
+                for sol in sols.u
         ]
     else
         ## only count the particles that are still trapped at t=tend
         ratio = [
             get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
-                for sol in sols if sol.t[end] > tend - 0.1
+                for sol in sols.u if sol.t[end] > tend - 0.1
         ]
     end
     imax = argmax(ratio)

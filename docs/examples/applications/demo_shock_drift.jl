@@ -119,12 +119,12 @@ ax = Axis3(
 )
 
 ## Plot Protons
-for sol in sols_p
+for sol in sols_p.u
     lines!(ax, sol, idxs = (1, 2, 3), color = :blue, linewidth = 1.5)
 end
 
 ## Plot Heavy Electrons
-for sol in sols_e
+for sol in sols_e.u
     lines!(ax, sol, idxs = (1, 2, 3), color = :gold, linewidth = 1.5)
 end
 

@@ -110,7 +110,7 @@ ax = Axis3(
 
 invRE = 1 / Rₑ
 
-for (i, sol) in enumerate(sols)
+for (i, sol) in enumerate(sols.u)
     x = sol[1, :] .* invRE
     y = sol[2, :] .* invRE
     z = sol[3, :] .* invRE
@@ -190,7 +190,7 @@ ax = Axis3(
     azimuth = 1.4
 )
 
-for (i, sol) in enumerate(sols)
+for (i, sol) in enumerate(sols.u)
     x_plot = sol[1, :] .* invRE
     y_plot = sol[2, :] .* invRE
     z_plot = sol[3, :] .* invRE

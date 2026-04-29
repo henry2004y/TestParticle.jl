@@ -138,7 +138,7 @@ function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
 
     vx = [Float64[] for _ in 1:nxchunks]
 
-    for sol in sols
+    for sol in sols.u
         for t in trange
             xv = sol(t)
             for i in 1:nxchunks
@@ -213,7 +213,7 @@ function collect_VDF(x, sols; ntchunks::Int = 20)
             ) for _ in 1:nxchunks
     ]
 
-    for sol in sols
+    for sol in sols.u
         for t in trange
             xv = sol(t)
             for i in 1:nxchunks
