@@ -7,6 +7,7 @@ using Random
 using Unitful
 import TestParticle as TP
 using Meshes: Vec, Plane, Disk, Point, Sphere
+using SciMLBase
 
 struct MockSol{T, U}
     t::T
@@ -914,5 +915,32 @@ end
         surf_miss = Plane(Point(0.0, 0.0, 20.0), orientation)
         state_miss = get_first_crossing(sol, surf_miss)
         @test all(isnan, state_miss)
+    end
+
+    @testset "EnsembleSolution Dispatches" begin
+        t_array = collect(0.0:1.0:20.0)
+        u_array = [SA[-10.0 + t, 0.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
+        sol1 = MockSol(t_array, u_array)
+        sols_vec = [sol1, sol1]
+        sim = SciMLBase.EnsembleSolution(sols_vec, 0.0, true)
+
+        center = Point(0.0, 0.0, 0.0)
+        radius = 5.0
+        orientation = Vec(1.0, 0.0, 0.0)
+        detector = Disk(Plane(center, orientation), radius)
+
+        # get_particle_crossings (singular)
+        vs, ws = get_particle_crossings(sim, detector, 1.0)
+        @test length(vs) == 2 && all(w == 1.0 for w in ws)
+
+        # get_particle_crossings (plural)
+        vs_p, ws_p = get_particle_crossings(sim, [detector, detector], 2.0)
+        @test length(vs_p) == 2 && length(vs_p[1]) == 2
+
+        # get_particle_fluxes
+        n_flux, v_flux = get_particle_fluxes(sim, detector, 1.0)
+        area = pi * radius^2
+        @test n_flux ≈ 2.0 / area
+        @test v_flux ≈ SA[2.0, 0.0, 0.0] / area
     end
 end
