@@ -39,7 +39,7 @@ tspan = (0.0, 10.0)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, ctx) = remake(prob, u0 = [prob.u0[1:3]..., ctx.i / 3, 0.0, 0.0])
+prob_func_basic(prob, ctx) = remake(prob, u0 = [prob.u0[1:3]..., ctx.sim_id / 3, 0.0, 0.0])
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)

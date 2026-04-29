@@ -262,9 +262,9 @@ function reconstruct_backward_projections(
 
     ## Initial conditions at detector
     function prob_func_bw(prob, ctx)
-        iz = (ctx.i - 1) % nz + 1
-        iy = ((ctx.i - 1) ÷ nz) % ny + 1
-        ix = ((ctx.i - 1) ÷ (nz * ny)) % nx + 1
+        iz = (ctx.sim_id - 1) % nz + 1
+        iy = ((ctx.sim_id - 1) ÷ nz) % ny + 1
+        ix = ((ctx.sim_id - 1) ÷ (nz * ny)) % nx + 1
 
         u0_bw = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
         return remake(prob, u0 = u0_bw)

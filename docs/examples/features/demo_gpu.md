@@ -11,7 +11,7 @@ using CairoMakie
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, ctx)
-   prob = @views remake(prob, u0=[prob.u0[1:3]..., ctx.i/3, 0.0, 0.0])
+   prob = @views remake(prob, u0=[prob.u0[1:3]..., ctx.sim_id/3, 0.0, 0.0])
 end
 
 ## Initialization
@@ -61,7 +61,7 @@ using CairoMakie
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, ctx)
-   prob = @views remake(prob, u0=SA[prob.u0[1:3]..., ctx.i/3, 0.0, 0.0])
+   prob = @views remake(prob, u0=SA[prob.u0[1:3]..., ctx.sim_id/3, 0.0, 0.0])
 end
 
 ## Initialization

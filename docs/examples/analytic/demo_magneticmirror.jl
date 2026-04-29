@@ -142,7 +142,7 @@ pitch_angles = range(0, π, length = n_particles)
 v_mag = norm(v₀)
 ensemble_prob = EnsembleProblem(
     prob, prob_func = (prob, ctx) -> begin
-        α = pitch_angles[ctx.i]
+        α = pitch_angles[ctx.sim_id]
         ## Velocity components: v_z = v cos(α), v_perp = v sin(α)
         ## We put v_perp in x-direction for simplicity
         vz = v_mag * cos(α)

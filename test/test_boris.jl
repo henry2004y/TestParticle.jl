@@ -33,8 +33,8 @@ using Distributed
     constant_Bz(x, t) = SA[0.0, 0.0, 1.0]
 
     function prob_func_boris_immutable(prob, ctx)
-        # Note: prob.u0[5] = ctx.i*1e5 is not thread-safe!
-        return prob = @views remake(prob; u0 = [prob.u0[1:4]..., ctx.i * 1.0e5, prob.u0[6]])
+        # Note: prob.u0[5] = ctx.sim_id*1e5 is not thread-safe!
+        return prob = @views remake(prob; u0 = [prob.u0[1:4]..., ctx.sim_id * 1.0e5, prob.u0[6]])
     end
 
     @testset "Basic Boris" begin
@@ -550,7 +550,7 @@ using Distributed
                 return remake(
                     prob; u0 = SA[
                         prob.u0[1], prob.u0[2], prob.u0[3],
-                        prob.u0[4], ctx.i * 1.0e5, prob.u0[6],
+                        prob.u0[4], ctx.sim_id * 1.0e5, prob.u0[6],
                     ]
                 )
             end

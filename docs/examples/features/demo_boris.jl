@@ -200,7 +200,7 @@ f = DisplayAs.PNG(f) #hide
 Set initial states.
 """
 function prob_func(prob, ctx)
-    return prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - ctx.i * 2.0, prob.u0[5:6]...])
+    return prob = @views remake(prob; u0 = [prob.u0[1:3]..., 10.0 - ctx.sim_id * 2.0, prob.u0[5:6]...])
 end
 
 isoutside(u, p, t) = isnan(u[1])

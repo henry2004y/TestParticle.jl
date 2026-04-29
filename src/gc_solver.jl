@@ -343,7 +343,7 @@ function _rk4!(
 
         # set initial conditions for each trajectory i
         iout = 0
-        new_prob = prob.prob_func(prob, (i = i, repeat = false))
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         xv = new_prob.u0
 
         if save_start
@@ -451,7 +451,7 @@ function _rk45!(
         traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
-        new_prob = prob.prob_func(prob, (i = i, repeat = false))
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         xv = new_prob.u0
 
         t = tspan[1]

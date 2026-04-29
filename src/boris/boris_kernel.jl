@@ -288,7 +288,7 @@ function _prepare_boris_solve(
     end
 
     for i in 1:n_particles
-        new_prob = prob.prob_func(prob, (i = i, repeat = false))
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         u0_i = new_prob.u0
         xv_init[:, i] .= u0_i
     end

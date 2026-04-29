@@ -53,7 +53,7 @@ end
 Set initial conditions.
 """
 function prob_func_13(prob, ctx)
-    i = ctx.i
+    i = ctx.sim_id
     ## initial particle energy
     Ek = 2.0e4 # [eV]
     ## initial velocity, [m/s]
@@ -65,7 +65,7 @@ function prob_func_13(prob, ctx)
 end
 
 function prob_func_6(prob, ctx)
-    i = ctx.i
+    i = ctx.sim_id
     ## initial particle energy
     Ek = 4.0e3 # [eV]
     ## initial velocity, [m/s]

@@ -47,7 +47,7 @@ Set initial conditions.
 function prob_func(prob, ctx)
     ## initial velocity, [m/s]
     ## 50% v=1.0, 50% v=2.0
-    if ctx.i % 2 == 1
+    if ctx.sim_id % 2 == 1
         v₀ = [1.0, 0.0, 0.0]
     else
         v₀ = [2.0, 0.0, 0.0]
@@ -119,7 +119,7 @@ vdf_cloud = TP.Maxwellian([0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
 v0_cloud = rand(vdf_cloud, N_cloud);
 
 ## Create TraceProblem template
-prob_func_cloud(prob, ctx) = remake(prob, u0 = vcat(x0_cloud[ctx.i], v0_cloud[ctx.i]))
+prob_func_cloud(prob, ctx) = remake(prob, u0 = vcat(x0_cloud[ctx.sim_id], v0_cloud[ctx.sim_id]))
 
 ## Define a single problem template
 param_cloud = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)

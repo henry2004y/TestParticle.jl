@@ -213,7 +213,7 @@ end
         sizehint!(traj, initial_capacity)
         sizehint!(tsave, initial_capacity)
 
-        new_prob = prob.prob_func(prob, (i = i, repeat = false))
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]
         v = xv_fo[SVector(4, 5, 6)]

@@ -42,7 +42,7 @@ const KA = KernelAbstractions
         backend = CPU()
 
         prob_func_gpu(prob, ctx) = remake(
-            prob; u0 = [prob.u0[1:3]..., ctx.i * 1.0e4, 0.0, 0.0]
+            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
@@ -60,7 +60,7 @@ const KA = KernelAbstractions
         backend = CPU()
 
         prob_func_gpu(prob, ctx) = remake(
-            prob; u0 = [prob.u0[1:3]..., ctx.i * 1.0e4, 0.0, 0.0]
+            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 

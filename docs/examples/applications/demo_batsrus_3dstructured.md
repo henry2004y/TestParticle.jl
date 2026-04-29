@@ -19,7 +19,7 @@ end
 
 "Set initial conditions."
 function prob_func(prob, ctx)
-   remake(prob, u0=initial_conditions(ctx.i))
+   remake(prob, u0=initial_conditions(ctx.sim_id))
 end
 
 ## Data processing

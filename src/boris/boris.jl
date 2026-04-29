@@ -219,7 +219,7 @@ end
 Solve a single trajectory `i` of `prob` for use with `EnsembleDistributed`.
 
 `_generic_boris!` uses the loop index `i` for two purposes simultaneously:
-applying `prob_func(prob, (i = i, repeat = false))` to select per-particle initial conditions,
+applying `prob_func(prob, (sim_id = i, repeat = false))` to select per-particle initial conditions,
 and storing the result at `sols[i]`. For a distributed worker handling only one
 trajectory at a time, a 1-element `local_sols` would be out of bounds if `i > 1`
 were passed directly. Decoupling the two uses would require threading a storage
@@ -237,7 +237,7 @@ function _solve_single_boris(
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork, F}
-    new_prob = prob.prob_func(prob, (i = i, repeat = false))
+    new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
     single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
     sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
     local_sols = Vector{sol_type}(undef, 1)
@@ -290,7 +290,7 @@ end
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    sample_prob = prob.prob_func(prob, (i = 1, repeat = false))
+    sample_prob = prob.prob_func(prob, (sim_id = 1, repeat = false))
     dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
     sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
     ichunks = index_chunks(1:trajectories; size = batch_size)
@@ -495,7 +495,7 @@ end
 
     # set initial conditions for each trajectory i
     iout = 0
-    new_prob = prob.prob_func(prob, (i = i, repeat = false))
+    new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
     u0_i = SVector{6, T}(new_prob.u0)
     r = u0_i[SVector(1, 2, 3)]
     v = u0_i[SVector(4, 5, 6)]
