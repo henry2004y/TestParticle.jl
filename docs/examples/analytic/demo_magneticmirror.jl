@@ -109,16 +109,6 @@ lines!(ax1, x, y, z, color = :red)
 z = fill(-distance / 2, size(x))
 lines!(ax1, x, y, z, color = :red)
 
-## # The distribution of magnetic field along the z-axis or x-axis
-## Bz(z) = hypot(getB(SA[0.0, 0.0, z])...)
-## Bx(x) = hypot(getB(SA[x, 0.0, 0.5*distance])...)
-## z = collect(-10:0.01:10)
-## x = collect(-0.99*a:0.01:0.99*a)
-## # Ba = Bz.(z)
-## Ba = Bx.(x)
-## # lines(z, Ba, color=:red)
-## lines(x, Ba, color=:red)
-
 f = DisplayAs.PNG(f) #hide
 
 # ### Loss Cone Distribution
@@ -168,7 +158,7 @@ sim = solve(
 # So we need to check if the simulation finished the full time span or was terminated early.
 
 ## A robust check here is: if t < tspan[2], it was stopped early (or failed).
-is_trapped = map(sim) do sol
+is_trapped = map(sim.u) do sol
     sol.t[end] ≈ tspan[2]
 end
 

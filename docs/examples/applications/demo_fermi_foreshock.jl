@@ -91,13 +91,13 @@ end
 isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
 function prob_func(prob, ctx)
-    rng = isnothing(ctx.rng) ? Random.default_rng() : ctx.rng
-    x0 = SA[(0.5 + rand(rng)) * Rₑ, 0.0, 0.0] # launched in the core region
+    #TODO: use ctx.rng for reproducibility
+    x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
     u0 = SA[0.0, 0.0, 0.0]
     T₀ = 10 # [eV]
     vth = √(2T₀ * abs(qₑ) / mₑ) # [m/s]
     vdf = TP.Maxwellian(u0, vth)
-    v0 = rand(rng, vdf)
+    v0 = rand(vdf)
 
     return prob = remake(prob, u0 = [x0..., v0...])
 end
@@ -113,9 +113,9 @@ function plot_multiple(sol)
     ## [mV/m]
     Efield = get_EField(sol)
     Bfield = get_BField(sol)
-    E = [Efield(sol[:, istep], sol.t[istep]) .* 1.0e3 for istep in eachindex(sol)]
+    E = [Efield(sol.u[i], sol.t[i]) .* 1.0e3 for i in eachindex(sol.t)]
     ## [nT]
-    B = [Bfield(sol[:, istep], sol.t[istep]) .* 1.0e9 for istep in eachindex(sol)]
+    B = [Bfield(sol.u[i], sol.t[i]) .* 1.0e9 for i in eachindex(sol.t)]
 
     Ex = [e[1] for e in E]
     Ey = [e[2] for e in E]
@@ -176,8 +176,8 @@ function plot_multiple(sol)
 end
 
 function plot_dist(sols; t = 0, case = 1, slice = :xy)
-    n = length(sols)
-    vx = Vector{eltype(sols[1].u[1])}(undef, 0)
+    n = length(sols.u)
+    vx = Vector{eltype(sols.u[1].u[1])}(undef, 0)
     sizehint!(vx, n)
     vy = similar(vx)
     sizehint!(vy, n)
@@ -238,8 +238,8 @@ function find_max_acceleration_index(sols; countall = true, tend = 40)
     end
     imax = argmax(ratio)
 
-    energy_init = get_kinetic_energy(sols[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
-    energy_final = get_kinetic_energy(sols[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
+    energy_init = get_kinetic_energy(sols.u[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
+    energy_final = get_kinetic_energy(sols.u[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
     @printf "Initial energy [eV]: %.2f " energy_init
     @printf "Final energy [eV]: %.2f " energy_final
     @printf "Kinetic energy change ratio: %.2f\n" ratio[imax]
@@ -271,7 +271,7 @@ sols = solve(
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
 
-f = plot_multiple(sols[imax])
+f = plot_multiple(sols.u[imax])
 f = DisplayAs.PNG(f) #hide
 
 # Trajectory of the most accelerated electron.
@@ -303,7 +303,7 @@ sols = TP.solve(prob, Boris(); dt, trajectories, isoutside, savestepinterval = 1
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
 
-f = plot_multiple(sols[imax])
+f = plot_multiple(sols.u[imax])
 f = DisplayAs.PNG(f) #hide
 
 # Trajectory of the most accelerated electron. Note that there are locations where we see a jump in kinetic energy with no electric field peaks; these are artifacts because we only save every 100 steps.
