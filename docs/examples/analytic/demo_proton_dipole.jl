@@ -100,9 +100,9 @@ f = DisplayAs.PNG(f) #hide
 # By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost.
 
 function get_energy_ratio(sol)
-    vx = @view sol[4, :]
-    vy = @view sol[5, :]
-    vz = @view sol[6, :]
+    vx = sol[4, :]
+    vy = sol[5, :]
+    vz = sol[6, :]
 
     Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
     Eend = vx[end]^2 + vy[end]^2 + vz[end]^2

@@ -124,12 +124,12 @@ function plot_multiple(sol)
     Bz = [b[3] for b in B]
 
     t = sol.t
-    x = @views sol[1, :] ./ Rₑ
-    y = @views sol[2, :] ./ Rₑ
-    z = @views sol[3, :] ./ Rₑ
-    vx = @views sol[4, :] ./ 1.0e3
-    vy = @views sol[5, :] ./ 1.0e3
-    vz = @views sol[6, :] ./ 1.0e3
+    x = sol[1, :] ./ Rₑ
+    y = sol[2, :] ./ Rₑ
+    z = sol[3, :] ./ Rₑ
+    vx = sol[4, :] ./ 1.0e3
+    vy = sol[5, :] ./ 1.0e3
+    vz = sol[6, :] ./ 1.0e3
 
     fig = Figure(size = (900, 600), fontsize = 20)
 

@@ -85,9 +85,9 @@ sol = solve(prob, Vern9(); reltol = 1.0e-6, maxiters = 1.0e8);
 
 ## Extract positions
 t = sol.t
-x = @view sol[1, :]
-y = @view sol[2, :]
-z = @view sol[3, :];
+x = sol[1, :]
+y = sol[2, :]
+z = sol[3, :]
 
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
