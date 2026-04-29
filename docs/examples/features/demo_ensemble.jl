@@ -25,7 +25,9 @@ CairoMakie.activate!(type = "png") #hide
 # We use `prob_func` to define unique initial conditions for each particle.
 
 ## Simulation parameters
-param = prepare(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1e-9], species = Electron)
+B_analytic(x) = SA[0, 0, 1.0e-9]
+E_analytic = ZeroField()
+param = prepare(E_analytic, B_analytic, species = Electron)
 tspan = (0.0, 10.0)
 stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -38,14 +40,14 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = 
 sols = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories)
 
 ## Visualization
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Basic Ensemble", xlabel = "X",
     ylabel = "Y", zlabel = "Z", aspect = :data
 )
 
 for (i, u) in enumerate(sols.u)
-    lines!(ax, u[1, :], u[2, :], u[3, :], label = "traj $i", color = Makie.wong_colors()[i])
+    lines!(ax, u[1, :], u[2, :], u[3, :]; label = "traj $i", color = Makie.wong_colors()[i])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -69,7 +71,7 @@ ensemble_prob_dist = EnsembleProblem(prob; prob_func = prob_func_maxwellian, saf
 sols_dist = solve(ensemble_prob_dist, Vern7(), EnsembleThreads(); trajectories = trajectories_dist)
 
 ## Visualization
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Maxwellian Sampling", xlabel = "X",
     ylabel = "Y", zlabel = "Z", aspect = :data
@@ -86,8 +88,8 @@ f = DisplayAs.PNG(f) #hide
 # The `output_func` allows us to customize what data is saved for each particle.
 
 ## Simulation parameters for custom output
-B_analytic(x) = SA[0, 0, 1e-9]
-E_analytic(x) = SA[0, 0, 0]
+B_analytic(x) = SA[0, 0, 1.0e-9]
+E_analytic = ZeroField()
 param_custom = prepare(E_analytic, B_analytic, species = Proton)
 tspan_custom = (0.0, 40.0)
 stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
@@ -130,7 +132,7 @@ sols_custom = solve(
 )
 
 ## Visualization
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Custom Output Trajectories",
     xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data
@@ -160,7 +162,7 @@ prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
 trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval)
 
 ## Visualization
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Boris Pusher Trajectories",
     xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data

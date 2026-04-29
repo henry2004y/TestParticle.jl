@@ -17,7 +17,7 @@ import DisplayAs #hide
 using Markdown #hide
 using Printf
 using TestParticle
-using OrdinaryDiffEq
+using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: ×, norm
 using CairoMakie

@@ -265,7 +265,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleThreads();
-    callback, trajectories, verbose = true
+    callback, trajectories
 );
 
 ## maximum acceleration ratio particle index

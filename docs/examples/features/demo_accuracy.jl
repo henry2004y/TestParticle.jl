@@ -17,7 +17,7 @@
 
 import DisplayAs #hide
 using TestParticle
-using OrdinaryDiffEq
+using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK
 using StaticArrays
 using LinearAlgebra
 using CairoMakie
@@ -198,7 +198,7 @@ for dt in dts2
 end
 
 # ## Visualization
-f = Figure(size = (1200, 500), fontsize = 18);
+f = Figure(size = (1200, 500), fontsize = 20);
 
 ## Phase Error Plot
 ax1 = Axis(
@@ -311,7 +311,7 @@ dts3 = [π / 6, π / 20]
 t_exact_plot = range(0.0, t_end3, length = 5000)
 x_drift_exact = exact_x_drift.(t_exact_plot)
 
-f3 = Figure(size = (1000, 1200), fontsize = 18)
+f3 = Figure(size = (1000, 1200), fontsize = 20)
 
 for (row, (name, type, config)) in enumerate(drift_solvers_all)
     for (col, dt) in enumerate(dts3)

@@ -76,9 +76,7 @@ for u0 in seeds
     probs = TP.TraceFieldlineProblem(u0, param, s_span; mode = :both)
 
     for prob in probs
-        sol = solve(
-            prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
-        )
+        sol = solve(prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6)
         push!(solutions, sol)
     end
 end

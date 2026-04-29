@@ -243,7 +243,7 @@ prob = TraceProblem(stateinit, tspan, param; prob_func)
 
 sols = TP.solve(prob, Boris(); dt, savestepinterval, isoutside, trajectories)
 
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 20)
 ax = Axis(
     f[1, 1],
     title = "Proton trajectory",
@@ -253,8 +253,8 @@ ax = Axis(
     aspect = DataAspect()
 )
 
-for i in eachindex(sols)
-    lines!(ax, sols[i]; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
+for (i, sol) in enumerate(sols.u)
+    lines!(ax, sol; idxs = (1, 2), label = string(i), color = Makie.wong_colors()[i])
 end
 
 axislegend(position = :lt, framevisible = false)

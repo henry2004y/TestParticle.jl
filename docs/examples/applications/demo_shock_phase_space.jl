@@ -96,7 +96,7 @@ const p_thermal = n_up * TP.qᵢ * T_ion
 const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
 
 function prob_func_maxwellian(prob, ctx)
-    v = rand(ctx.rng, vdf)
+    v = rand(vdf)
     u0 = SA[x_source..., v...]
     return remake(prob, u0 = u0)
 end
@@ -127,7 +127,7 @@ detector_down = Meshes.Plane(
 
 function reconstruct_flux_projections(sols, detector, n0, dv_km)
     ## Initial velocities at the source plane
-    vxi = [s.u[1][4] for s in sols] # initial vx [m/s]
+    vxi = [s.u[1][4] for s in sols.u] # initial vx [m/s]
     ## Detect crossings at the plane
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
@@ -136,7 +136,7 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
 
     ## Flux normalization factor S = n0_km3 / (N_total * dv_km^2)
     ## Conversion: n0 [m^-3] * 1e9 = n0 [km^-3]
-    S = (n0 * 1.0e9) / (length(sols) * dv_km^2)
+    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^2)
 
     for (v, vxi_val) in zip(vs, ws_init)
         ## Weight w = (v_xi / v_det) * S
@@ -193,7 +193,7 @@ fig_flux = DisplayAs.PNG(fig_flux) #hide
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_km = 20.0)
     ## 1. Initial weights from source PDF
-    ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols]
+    ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     ## 2. Crossings
     vs, ws = get_particle_crossings(sols, detector, ws0)
 
@@ -203,7 +203,7 @@ function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_
     ## Normalization in km-based units: Vsphere [km^3], dv_km [km/s]
     ## Conversion: 1 m^3 = 1e-9 km^3
     Vsphere_km = Vsphere * 1.0e-9
-    S_L = Vsphere_km / (length(sols) * dv_km^2)
+    S_L = Vsphere_km / (length(sols.u) * dv_km^2)
 
     for (v, w) in zip(vs, ws)
         ## w is in [s^3/m^6]. Convert to [s^3/km^6] by multiplying 1e18.
@@ -219,9 +219,9 @@ const Vsphere_m2 = (4 / 3) * π * vradius_m2^3 # velocity space volume
 
 ## Uniform sampling in a 3D sphere
 function prob_func_m2(prob, ctx)
-    r = vradius_m2 * rand(ctx.rng)^(1 / 3)
-    ϕ = 2π * rand(ctx.rng)
-    θ = acos(2 * rand(ctx.rng) - 1)
+    r = vradius_m2 * rand()^(1 / 3)
+    ϕ = 2π * rand()
+    θ = acos(2 * rand() - 1)
 
     sinθ, cosθ = sincos(θ)
     cosϕ, sinϕ = sincos(ϕ)
@@ -284,8 +284,7 @@ function reconstruct_backward_projections(
 
     ## Evaluate PDF at source for each traced state
     f_3d_km = zeros(nx, ny, nz)
-    for i in 1:nparticles_bw
-        sol = sols_bw[i]
+    for (i, sol) in enumerate(sols_bw.u)
         last_state = get_first_crossing(sol, source_plane)
         if !any(isnan, last_state)
             iz = (i - 1) % nz + 1
