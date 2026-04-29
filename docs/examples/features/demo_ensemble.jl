@@ -52,8 +52,8 @@ ax = Axis3(
     ylabel = "Y", zlabel = "Z", aspect = :data
 )
 
-for i in eachindex(sols)
-    lines!(ax, sols[i], idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
+for (i, u) in enumerate(sols.u)
+    lines!(ax, u, idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -83,11 +83,8 @@ ax = Axis3(
     ylabel = "Y", zlabel = "Z", aspect = :data
 )
 
-for i in eachindex(sols_dist)
-    lines!(
-        ax, sols_dist[i], idxs = (1, 2, 3), label = "$i",
-        color = Makie.wong_colors()[mod1(i, 7)]
-    )
+for (i, u) in enumerate(sols_dist.u)
+    lines!(ax, u, idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -187,12 +184,8 @@ ax = Axis3(
     xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data
 )
 
-for i in eachindex(sols_custom)
-    ## sols_custom[i][1] contains the trajectory (u)
-    xp = [s[1] for s in sols_custom[i][1]]
-    yp = [s[2] for s in sols_custom[i][1]]
-    zp = [s[3] for s in sols_custom[i][1]]
-    lines!(ax, xp, yp, zp, label = "$i")
+for (i, u) in enumerate(sols_custom.u)
+    lines!(ax, u, idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -215,10 +208,8 @@ ax = Axis3(
     xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data
 )
 
-for i in eachindex(trajs_boris)
-    lines!(
-        ax, trajs_boris[i]; idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i]
-    )
+for (i, u) in enumerate(trajs_boris.u)
+    lines!(ax, u, idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide

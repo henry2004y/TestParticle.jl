@@ -52,10 +52,8 @@ for (i, u0) in enumerate(seeds)
 
     ## Solve each problem
     for (j, prob) in enumerate(probs)
-        sol = solve(
-            prob, Tsit5(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
-        )
-        solutions[2 * (i - 1) + j] = sol
+        sol = solve(prob, Tsit5(); callback)
+        solutions[2 * (i - 1) + j] = sol.u
     end
 end
 
