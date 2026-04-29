@@ -942,5 +942,21 @@ end
         area = pi * radius^2
         @test n_flux ≈ 2.0 / area
         @test v_flux ≈ SA[2.0, 0.0, 0.0] / area
+
+        # get_particle_fluxes (multiple surfaces, scalar weight)
+        n_fluxes, v_fluxes = get_particle_fluxes(sim, [detector, detector], 1.0)
+        @test length(n_fluxes) == 2 && n_fluxes[1] ≈ 2.0 / area
+
+        # get_particle_fluxes (multiple surfaces, vector weight)
+        n_fluxes_v, v_fluxes_v = get_particle_fluxes(sim, [detector, detector], [1.0, 2.0])
+        @test n_fluxes_v[1] ≈ 3.0 / area
+
+        # get_particle_crossings (non-scalar weights)
+        vs_w, ws_w = get_particle_crossings(sim, detector, [1.0, 2.0])
+        @test sum(ws_w) == 3.0
+
+        # get_particle_crossings (multiple surfaces, non-scalar weights)
+        vs_mw, ws_mw = get_particle_crossings(sim, [detector, detector], [1.0, 2.0])
+        @test length(vs_mw) == 2 && length(ws_mw) == 2 && sum(ws_mw[1]) == 3.0
     end
 end
