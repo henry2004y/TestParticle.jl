@@ -59,7 +59,7 @@ filename_f32 = tempname() * ".jld2"
 
 ## Extract and convert data
 ## We structure the data as a vector of named tuples or a dictionary for saving
-output_data = map(sols) do s
+output_data = map(sols.u) do s
     (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
 end
 

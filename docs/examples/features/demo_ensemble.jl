@@ -24,18 +24,10 @@ CairoMakie.activate!(type = "png") #hide
 # In this section, we trace multiple electrons in a simple analytic EM field.
 # We use `prob_func` to define unique initial conditions for each particle.
 
-B_analytic(x) = SA[0, 0, 1.0e-11]
-E_analytic(x) = SA[0, 0, 1.0e-13]
-
-## Initial state
-x0 = [0.0, 0.0, 0.0] # initial position, [m]
-u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
-stateinit = [x0..., u0...]
-
-param = prepare(E_analytic, B_analytic, species = Electron)
+## Simulation parameters
+param = prepare(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1e-9], species = Electron)
 tspan = (0.0, 10.0)
-
-## Define the problem for a single particle
+stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
@@ -53,7 +45,7 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(sols.u)
-    lines!(ax, u, idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
+    lines!(ax, u[1, :], u[2, :], u[3, :], label = "traj $i", color = Makie.wong_colors()[i])
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -68,7 +60,7 @@ Random.seed!(1234)
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
     vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
-    v = rand(ctx.rng, vdf)
+    v = rand(vdf)
     return remake(prob; u0 = [prob.u0[1:3]..., v...])
 end
 
@@ -84,66 +76,26 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(sols_dist.u)
-    lines!(ax, u, idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
+    lines!(ax, u[1, :], u[2, :], u[3, :], label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
 end
 f = DisplayAs.PNG(f) #hide
 
-# ## 3. Custom Output (Reducing Memory Usage)
+# ## 3. Customizing Output
 #
-# For large ensembles or long simulations, saving the full trajectory can be memory-intensive.
-# The `output_func` argument allows us to save only what we need.
-# Here, we save the magnetic field and the cosine of the pitch angle ($\mu$) along the trajectory.
-#
-# We use a numerical field for this example to demonstrate a more complex setup.
-# See [Demo: Dimensionless Units](@ref Dimensionless-Units-and-Normalization) for details on unit conversion.
+# Sometimes we don't need the entire trajectory, or we want to save additional data calculated during the simulation.
+# The `output_func` allows us to customize what data is saved for each particle.
 
-## Generate a numerical magnetic field
-nx, ny, nz = 4, 6, 8
-x_grid = range(0, 1, length = nx)
-y_grid = range(0, 1, length = ny)
-z_grid = range(0, 1, length = nz)
-B_num = Array{Float32, 4}(undef, 3, nx, ny, nz)
-B_num[1, :, :, :] .= 0.0
-B_num[2, :, :, :] .= 0.0
-B_num[3, :, :, :] .= 2.0
+## Simulation parameters for custom output
+B_analytic(x) = SA[0, 0, 1e-9]
+E_analytic(x) = SA[0, 0, 0]
+param_custom = prepare(E_analytic, B_analytic, species = Proton)
+tspan_custom = (0.0, 40.0)
+stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+prob_custom = ODEProblem(trace!, stateinit_custom, tspan_custom, param_custom)
 
-## Compute reference values
-B₀ = get_mean_magnitude(B_num)
-U₀ = 1.0
-l₀ = 2 * nx
-E₀ = U₀ * B₀
-
-## Normalize units
-x_norm = x_grid ./ l₀
-y_norm = y_grid ./ l₀
-z_norm = z_grid ./ l₀
-B_norm = B_num ./ B₀
-E_func(x) = SA[0.0, 0.0, 0.0] # E is zero
-
-## Prepare parameters
-## bc=WrapExtrap() uses periodic boundary conditions
-param_custom = prepare(x_norm, y_norm, z_norm, E_func, B_norm; m = 1, q = 1, bc = WrapExtrap())
-
-## Initial condition
-stateinit_custom = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-tspan_custom = (0.0, 2π)
-
-prob_custom = ODEProblem(trace_normalized!, stateinit_custom, tspan_custom, param_custom)
-
-## Define prob_func to initialize particles with different pitch angles
+## Define prob_func
 function prob_func_custom(prob, ctx)
-    B0 = TP.get_BField(prob)(prob.u0)
-    B0 = normalize(B0)
-
-    Bperp1 = normalize(SA[0.0, -B0[3], B0[2]])
-    Bperp2 = normalize(B0 × Bperp1)
-
-    ϕ = 2π * rand(ctx.rng)
-    θ = acos(0.5) # constant pitch angle for demonstration
-    sinϕ, cosϕ = sincos(ϕ)
-
-    u = @. (B0 * cos(θ) + Bperp1 * (sin(θ) * cosϕ) + Bperp2 * (sin(θ) * sinϕ)) * U₀
-    return remake(prob; u0 = [prob.u0[1:3]..., u...])
+    return remake(prob, u0 = [stateinit_custom[1:3]..., 1.0, 0.0, Float64(ctx.sim_id)])
 end
 
 ## Define output_func to save specific data
@@ -153,8 +105,8 @@ function output_func_custom(sol, i)
 
     ## Calculate cosine of pitch angle
     μ = [
-        @views (b[j] ⋅ sol[4:6, j]) / (norm(b[j]) * norm(sol[4:6, j]))
-            for j in eachindex(sol)
+        @views (b[j] ⋅ sol.u[j][4:6]) / (norm(b[j]) * norm(sol.u[j][4:6]))
+            for j in eachindex(sol.u)
     ]
 
     ## Return: (trajectory, B-field, pitch-angle-cosine), rerun_flag
@@ -185,8 +137,14 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(sols_custom.u)
-    lines!(ax, u, idxs = (1, 2, 3), label = "traj $i", color = Makie.wong_colors()[i])
+    ## u[1] contains the trajectory (sol.u)
+    traj = u[1]
+    xp = [p[1] for p in traj]
+    yp = [p[2] for p in traj]
+    zp = [p[3] for p in traj]
+    lines!(ax, xp, yp, zp, label = "traj $i", color = Makie.wong_colors()[i])
 end
+
 f = DisplayAs.PNG(f) #hide
 
 # ## 4. Native Boris Pusher
@@ -209,47 +167,7 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(trajs_boris.u)
-    lines!(ax, u, idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
+    lines!(ax, u[1, :], u[2, :], u[3, :], label = "$i", color = Makie.wong_colors()[i])
 end
 
 f = DisplayAs.PNG(f) #hide
-
-# ## 5. Parallel Modes
-#
-# TestParticle.jl supports multiple parallel execution modes for ensemble simulations, leveraging the infrastructure from SciMLBase.
-# You can choose the mode by passing it as the second argument to `solve`.
-#
-# - `EnsembleSerial()`: No parallelism. Useful for debugging.
-# - `EnsembleThreads()`: Multi-threading. Highly efficient on a single machine with multiple cores.
-# - `EnsembleDistributed()`: Distributed-memory parallelism using multiple processes.
-# - `EnsembleSplitThreads()`: A hybrid approach that combines distributed processes with multi-threading. Particles are split across processes, and each process uses threads to solve its subset.
-#
-# Here is how you can use them:
-
-# ### 1. Multi-threading (usually the most convenient for local runs)
-#
-# ```julia
-# sols_threads = solve(prob_boris, Boris(), EnsembleThreads(); dt, trajectories, savestepinterval)
-# ```
-#
-# ### 2. Distributed (Multi-processing)
-#
-# Note: requires `addprocs()` and worker configuration.
-#
-# ```julia
-# using Distributed
-# addprocs()
-# @everywhere using TestParticle
-# sols_dist = solve(prob_boris, Boris(), EnsembleDistributed(); dt, trajectories, savestepinterval)
-# ```
-#
-# ### 3. Split-Threads (Hybrid Distributed + Multi-threading)
-#
-# Each worker process will utilize its own threads.
-#
-# ```julia
-# using Distributed
-# addprocs()
-# @everywhere using TestParticle
-# sols_split = solve(prob_boris, Boris(), EnsembleSplitThreads(); dt, trajectories, savestepinterval)
-# ```
