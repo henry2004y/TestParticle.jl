@@ -86,12 +86,12 @@ end
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
-    _hybrid_adaptive!(
+    elapsed_time = @elapsed _hybrid_adaptive!(
         sols, prob, irange, alg, savestepinterval,
         isoutside, save_start, save_end, save_everystep, verbose
     )
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inline function _solve(
@@ -104,7 +104,7 @@ end
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _hybrid_adaptive!(
             sols, prob, irange, alg, savestepinterval,
             isoutside, save_start, save_end,
@@ -112,7 +112,7 @@ end
         )
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 function _get_sol_type(prob::TraceHybridProblem, dt)
@@ -213,7 +213,7 @@ end
         sizehint!(traj, initial_capacity)
         sizehint!(tsave, initial_capacity)
 
-        new_prob = prob.prob_func(prob, i, false)
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]
         v = xv_fo[SVector(4, 5, 6)]

@@ -38,7 +38,7 @@ tspan = (0.0, 10.0)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define a prob_func to vary initial velocity slightly
-prob_func(prob, i, repeat) = remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand()))
+prob_func(prob, ctx) = remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand(ctx.rng)))
 
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 
@@ -59,7 +59,7 @@ filename_f32 = tempname() * ".jld2"
 
 ## Extract and convert data
 ## We structure the data as a vector of named tuples or a dictionary for saving
-output_data = map(sols) do s
+output_data = map(sols.u) do s
     (t = Float32.(s.t), u = [Float32.(state) for state in s.u])
 end
 

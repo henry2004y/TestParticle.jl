@@ -20,7 +20,7 @@ struct Species{M, Q}
     q::Q
 end
 
-const DEFAULT_PROB_FUNC(prob, i, repeat) = prob
+const DEFAULT_PROB_FUNC(prob, ctx) = prob
 
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     AbstractODEProblem{uType, tType, isinplace}

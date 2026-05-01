@@ -22,7 +22,7 @@
 # One important note about Fermi acceleration for space plasmas is that space plasmas are collisionless. Electric field is the only way to accelerate charged particles, instead of elastic collisions.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 using VelocityDistributionFunctions
 using TestParticle: mₑ, Rₑ, qₑ
@@ -90,7 +90,8 @@ end
 
 isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
-function prob_func(prob, i, repeat)
+function prob_func(prob, ctx)
+    #TODO: use ctx.rng for reproducibility
     x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
     u0 = SA[0.0, 0.0, 0.0]
     T₀ = 10 # [eV]
@@ -112,9 +113,9 @@ function plot_multiple(sol)
     ## [mV/m]
     Efield = get_EField(sol)
     Bfield = get_BField(sol)
-    E = [Efield(sol[:, istep], sol.t[istep]) .* 1.0e3 for istep in eachindex(sol)]
+    E = [Efield(sol.u[i], sol.t[i]) .* 1.0e3 for i in eachindex(sol.t)]
     ## [nT]
-    B = [Bfield(sol[:, istep], sol.t[istep]) .* 1.0e9 for istep in eachindex(sol)]
+    B = [Bfield(sol.u[i], sol.t[i]) .* 1.0e9 for i in eachindex(sol.t)]
 
     Ex = [e[1] for e in E]
     Ey = [e[2] for e in E]
@@ -124,12 +125,12 @@ function plot_multiple(sol)
     Bz = [b[3] for b in B]
 
     t = sol.t
-    x = @views sol[1, :] ./ Rₑ
-    y = @views sol[2, :] ./ Rₑ
-    z = @views sol[3, :] ./ Rₑ
-    vx = @views sol[4, :] ./ 1.0e3
-    vy = @views sol[5, :] ./ 1.0e3
-    vz = @views sol[6, :] ./ 1.0e3
+    x = sol[1, :] ./ Rₑ
+    y = sol[2, :] ./ Rₑ
+    z = sol[3, :] ./ Rₑ
+    vx = sol[4, :] ./ 1.0e3
+    vy = sol[5, :] ./ 1.0e3
+    vz = sol[6, :] ./ 1.0e3
 
     fig = Figure(size = (900, 600), fontsize = 20)
 
@@ -175,15 +176,15 @@ function plot_multiple(sol)
 end
 
 function plot_dist(sols; t = 0, case = 1, slice = :xy)
-    n = length(sols)
-    vx = Vector{eltype(sols[1].u[1])}(undef, 0)
+    n = length(sols.u)
+    vx = Vector{eltype(sols.u[1].u[1])}(undef, 0)
     sizehint!(vx, n)
     vy = similar(vx)
     sizehint!(vy, n)
     vz = similar(vx)
     sizehint!(vz, n)
 
-    for sol in sols
+    for sol in sols.u
         if (sol.t[end] ≥ t) && (1.5Rₑ - U * sol.t[end] > sol[1, end] > 0.5Rₑ)
             v = sol(t)[4:6] ./ 1.0e3
             push!(vx, v[1])
@@ -226,19 +227,19 @@ function find_max_acceleration_index(sols; countall = true, tend = 40)
     if countall
         ratio = [
             get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
-                for sol in sols
+                for sol in sols.u
         ]
     else
         ## only count the particles that are still trapped at t=tend
         ratio = [
             get_kinetic_energy(sol[4:6, end]...) / get_kinetic_energy(sol[4:6, 1]...)
-                for sol in sols if sol.t[end] > tend - 0.1
+                for sol in sols.u if sol.t[end] > tend - 0.1
         ]
     end
     imax = argmax(ratio)
 
-    energy_init = get_kinetic_energy(sols[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
-    energy_final = get_kinetic_energy(sols[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
+    energy_init = get_kinetic_energy(sols.u[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
+    energy_final = get_kinetic_energy(sols.u[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
     @printf "Initial energy [eV]: %.2f " energy_init
     @printf "Final energy [eV]: %.2f " energy_final
     @printf "Kinetic energy change ratio: %.2f\n" ratio[imax]
@@ -264,13 +265,13 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleThreads();
-    callback, trajectories, verbose = true
+    callback, trajectories
 );
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
 
-f = plot_multiple(sols[imax])
+f = plot_multiple(sols.u[imax])
 f = DisplayAs.PNG(f) #hide
 
 # Trajectory of the most accelerated electron.
@@ -302,7 +303,7 @@ sols = TP.solve(prob, Boris(); dt, trajectories, isoutside, savestepinterval = 1
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
 
-f = plot_multiple(sols[imax])
+f = plot_multiple(sols.u[imax])
 f = DisplayAs.PNG(f) #hide
 
 # Trajectory of the most accelerated electron. Note that there are locations where we see a jump in kinetic energy with no electric field peaks; these are artifacts because we only save every 100 steps.

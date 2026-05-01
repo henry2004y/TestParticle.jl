@@ -7,6 +7,7 @@ using Random
 using Unitful
 import TestParticle as TP
 using Meshes: Vec, Plane, Disk, Point, Sphere
+using SciMLBase
 
 struct MockSol{T, U}
     t::T
@@ -426,7 +427,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1)) # Proton
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             # Theoretical gyroradius
             # r = m * v_perp / (q * B)
@@ -462,7 +463,7 @@ end
 
             param = prepare(E_func, B_func; species = Electron)
             prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-            sol = solve(prob, Vern6(); verbose = false)
+            sol = solve(prob, Vern6(); dt = 1.0e-10) # small dt for small tspan
 
             # Theoretical relativistic gyroradius
             # r = p_perp / (q * B) = m * (γv)_perp / (q * B)
@@ -495,7 +496,7 @@ end
             # q2m = 1.0, m = 1.0, etc.
             param = prepare(E_func, B_func; species = Ion(1, 1), q = 1.0, m = 1.0)
             prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-            sol = solve(prob, Vern6(); verbose = false)
+            sol = solve(prob, Vern6(); dt = 1.0e-6)
 
             # Theoretical relativistic gyroradius
             # r = γ * m * v_perp / (q * B) = (γv)_perp / B (since m=q=1)
@@ -517,7 +518,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             @test get_gyroradius(sol, 0.5) == Inf
         end
@@ -543,7 +544,7 @@ end
 
             param = prepare(E_func, B_func; species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
-            sol = solve(prob, Tsit5())
+            sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
             # With pure drift, gyroradius should be effectively 0
             r_calc = get_gyroradius(sol, 0.5)
@@ -673,7 +674,7 @@ end
             tspan = (0.0, 1.0e-4) # Short duration
             param_fo = prepare(E_func_disp, B_func_disp; species = Ion(1, 1))
             prob_fo = ODEProblem(trace!, stateinit, tspan, param_fo)
-            sol_fo = solve(prob_fo, Tsit5())
+            sol_fo = solve(prob_fo, Tsit5(); dt = 1.0e-6)
 
             # Test vector output
             ε_fo = get_adiabaticity(sol_fo)
@@ -689,7 +690,7 @@ end
             # GC Solution
             stateinit_gc, param_gc = prepare_gc(stateinit, E_func_disp, B_func_disp; species = Ion(1, 1))
             prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-            sol_gc = solve(prob_gc, Tsit5())
+            sol_gc = solve(prob_gc, Tsit5(); dt = 1.0e-6)
 
             # Test vector output
             ε_gc = get_adiabaticity(sol_gc)
@@ -914,5 +915,48 @@ end
         surf_miss = Plane(Point(0.0, 0.0, 20.0), orientation)
         state_miss = get_first_crossing(sol, surf_miss)
         @test all(isnan, state_miss)
+    end
+
+    @testset "EnsembleSolution Dispatches" begin
+        t_array = collect(0.0:1.0:20.0)
+        u_array = [SA[-10.0 + t, 0.0, 0.0, 1.0, 0.0, 0.0] for t in t_array]
+        sol1 = MockSol(t_array, u_array)
+        sols_vec = [sol1, sol1]
+        sim = SciMLBase.EnsembleSolution(sols_vec, 0.0, true)
+
+        center = Point(0.0, 0.0, 0.0)
+        radius = 5.0
+        orientation = Vec(1.0, 0.0, 0.0)
+        detector = Disk(Plane(center, orientation), radius)
+
+        # get_particle_crossings (singular)
+        vs, ws = get_particle_crossings(sim, detector, 1.0)
+        @test length(vs) == 2 && all(w == 1.0 for w in ws)
+
+        # get_particle_crossings (plural)
+        vs_p, ws_p = get_particle_crossings(sim, [detector, detector], 2.0)
+        @test length(vs_p) == 2 && length(vs_p[1]) == 2
+
+        # get_particle_fluxes
+        n_flux, v_flux = get_particle_fluxes(sim, detector, 1.0)
+        area = pi * radius^2
+        @test n_flux ≈ 2.0 / area
+        @test v_flux ≈ SA[2.0, 0.0, 0.0] / area
+
+        # get_particle_fluxes (multiple surfaces, scalar weight)
+        n_fluxes, v_fluxes = get_particle_fluxes(sim, [detector, detector], 1.0)
+        @test length(n_fluxes) == 2 && n_fluxes[1] ≈ 2.0 / area
+
+        # get_particle_fluxes (multiple surfaces, vector weight)
+        n_fluxes_v, v_fluxes_v = get_particle_fluxes(sim, [detector, detector], [1.0, 2.0])
+        @test n_fluxes_v[1] ≈ 3.0 / area
+
+        # get_particle_crossings (non-scalar weights)
+        vs_w, ws_w = get_particle_crossings(sim, detector, [1.0, 2.0])
+        @test sum(ws_w) == 3.0
+
+        # get_particle_crossings (multiple surfaces, non-scalar weights)
+        vs_mw, ws_mw = get_particle_crossings(sim, [detector, detector], [1.0, 2.0])
+        @test length(vs_mw) == 2 && length(ws_mw) == 2 && sum(ws_mw[1]) == 3.0
     end
 end

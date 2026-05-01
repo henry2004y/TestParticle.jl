@@ -38,11 +38,11 @@ using OrdinaryDiffEq: ReturnCode
             sol = TP.solve(
                 prob, Boris(), dt = 0.2;
                 isoutside = callback.condition
-            )[1]
+            )
 
-            @test !any(isnan, sol.u[end])
-            @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[1].u[end])
+            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+            @test sol.u[1].retcode == ReturnCode.Terminated
         end
 
         @testset "Adaptive Boris" begin
@@ -50,33 +50,33 @@ using OrdinaryDiffEq: ReturnCode
             sol = TP.solve(
                 prob, AdaptiveBoris(safety = 0.05);
                 isoutside = callback.condition
-            )[1]
+            )
 
-            @test !any(isnan, sol.u[end])
-            @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[1].u[end])
+            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+            @test sol.u[1].retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK4" begin
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside = callback.condition)[1]
+            sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside = callback.condition)
 
-            @test !any(isnan, sol.u[end])
-            @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[1].u[end])
+            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+            @test sol.u[1].retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK45" begin
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside = callback.condition)[1]
+            sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside = callback.condition)
 
-            @test !any(isnan, sol.u[end])
-            @test norm(sol.u[end][1:3]) <= 1.0
-            @test sol.retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[1].u[end])
+            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+            @test sol.u[1].retcode == ReturnCode.Terminated
         end
     end
 
@@ -92,19 +92,19 @@ using OrdinaryDiffEq: ReturnCode
             prob = TraceProblem(u0, tspan, param)
 
             alg = AdaptiveBoris(safety = 0.1)
-            sol = TP.solve(prob, alg; isoutside)[1]
-            @test sol.u[end][1] <= 0.5
-            @test sol.t[end] < tspan[2]
-            @test sol.retcode == ReturnCode.Terminated
+            sol = TP.solve(prob, alg; isoutside)
+            @test sol.u[1].u[end][1] <= 0.5
+            @test sol.u[1].t[end] < tspan[2]
+            @test sol.u[1].retcode == ReturnCode.Terminated
         end
 
         @testset "Integer tspan (Boris)" begin
             u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
             tspan = (0, 10)
             prob = TraceProblem(u0, tspan, param)
-            sol = TP.solve(prob, Boris(); dt = 1.0)[1]
-            @test sol.t[end] == 10
-            @test sol.retcode == ReturnCode.Success
+            sol = TP.solve(prob, Boris(); dt = 1.0)
+            @test sol.u[1].t[end] == 10
+            @test sol.u[1].retcode == ReturnCode.Success
         end
 
         @testset "Time rejection (GC RK4)" begin
@@ -118,9 +118,9 @@ using OrdinaryDiffEq: ReturnCode
             dt = 1.0e-4
 
             isoutside = (u, p, t) -> t > 0.5
-            sol_early = TP.solve(prob; dt, alg = :rk4, isoutside)[1]
-            @test sol_early.t[end] ≈ 0.5
-            @test sol_early.retcode == ReturnCode.Terminated
+            sol_early = TP.solve(prob; dt, alg = :rk4, isoutside)
+            @test sol_early.u[1].t[end] ≈ 0.5
+            @test sol_early.u[1].retcode == ReturnCode.Terminated
         end
     end
 end

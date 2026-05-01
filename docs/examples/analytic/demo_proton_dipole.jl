@@ -3,7 +3,7 @@
 # This example shows how to trace protons of a certain energy in a analytic Earth-like magnetic dipole field. There is a combination of grad-B drift, curvature drift, and the bounce motion between mirror points. It demonstrates the motions corresponding to the three adiabatic invariants.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqSDIRK
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ
 import Magnetostatics as MS
@@ -100,9 +100,9 @@ f = DisplayAs.PNG(f) #hide
 # By using a smaller `abstol` and `reltol`, we can guarantee much better conservation at a higher cost.
 
 function get_energy_ratio(sol)
-    vx = @view sol[4, :]
-    vy = @view sol[5, :]
-    vz = @view sol[6, :]
+    vx = sol[4, :]
+    vy = sol[5, :]
+    vz = sol[6, :]
 
     Einit = vx[1]^2 + vy[1]^2 + vz[1]^2
     Eend = vx[end]^2 + vy[end]^2 + vz[end]^2
@@ -145,7 +145,7 @@ push!(results, ("Vern9 with StepsizeLimiter", get_energy_ratio(sol)));
 
 dt = 1.0e-4
 prob_boris = TraceProblem(stateinit, tspan, param)
-sol_boris = TestParticle.solve(prob_boris, Boris(); dt)[1]
+sol_boris = TestParticle.solve(prob_boris, Boris(); dt).u[1]
 push!(results, ("Boris method, dt=1e-4", get_energy_ratio(sol_boris)));
 
 # Comparison of energy conservation:

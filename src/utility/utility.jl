@@ -288,12 +288,13 @@ end
 Return velocity from relativistic γv in `sol`.
 """
 function get_velocity(sol)
-    v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol))
+    v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol.u))
     inv_c2 = 1 / c^2
     @inbounds for is in axes(v, 2)
-        v1 = sol[4, is]
-        v2 = sol[5, is]
-        v3 = sol[6, is]
+        u_i = sol.u[is]
+        v1 = u_i[4]
+        v2 = u_i[5]
+        v3 = u_i[6]
         γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         inv_γ = inv(γ)
@@ -309,13 +310,14 @@ end
 Return the energy [eV] from relativistic `sol`.
 """
 function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
-    e = Vector{eltype(sol.u[1])}(undef, length(sol))
+    e = Vector{eltype(sol.u[1])}(undef, length(sol.u))
     inv_c2 = 1 / c^2
     mc2_q = m * c^2 / abs(q)
     @inbounds for i in eachindex(e)
-        v1 = sol[4, i]
-        v2 = sol[5, i]
-        v3 = sol[6, i]
+        u_i = sol.u[i]
+        v1 = u_i[4]
+        v2 = u_i[5]
+        v3 = u_i[6]
         γ²v² = v1 * v1 + v2 * v2 + v3 * v3
         γ = √(1 + γ²v² * inv_c2)
         e[i] = (γ - 1) * mc2_q
@@ -642,11 +644,19 @@ end
 Calculate both the number flux density and velocity flux density for an ensemble of
 trajectories `sols`.
 """
-function get_particle_fluxes(sols::Union{AbstractVector, Tuple, EnsembleSolution}, surface::Union{Disk, Sphere}, weights::Number = 1.0)
+function get_particle_fluxes(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Sphere}, weights::Number = 1.0)
     return get_particle_fluxes(sols, surface, Base.Iterators.repeated(weights))
 end
 
-function get_particle_fluxes(sols::Union{AbstractVector, Tuple, EnsembleSolution}, surface::Union{Disk, Sphere}, weights)
+function get_particle_fluxes(sols::EnsembleSolution, surface::Union{Disk, Sphere}, weights::Number = 1.0)
+    return get_particle_fluxes(sols.u, surface, weights)
+end
+
+function get_particle_fluxes(sols::EnsembleSolution, surface::Union{Disk, Sphere}, weights)
+    return get_particle_fluxes(sols.u, surface, weights)
+end
+
+function get_particle_fluxes(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Sphere}, weights)
     T = float(eltype(first(sols).u[1]))
     W = eltype(weights)
     total_n_flux = zero(W)
@@ -697,20 +707,28 @@ Calculate particle flux densities across multiple detectors for an ensemble of t
 For optimal performance, all detectors should be of the same concrete type.
 """
 function get_particle_fluxes(
-        sols::Union{AbstractVector, Tuple, EnsembleSolution}, surfaces::AbstractVector{T}, weights::Number = 1.0
+        sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector{T}, weights::Number = 1.0
     ) where {T <: Union{Disk, Sphere}}
     return get_particle_fluxes(sols, surfaces, Base.Iterators.repeated(weights))
 end
 
+function get_particle_fluxes(sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Sphere}}, weights::Number = 1.0)
+    return get_particle_fluxes(sols.u, surfaces, weights)
+end
+
+function get_particle_fluxes(sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Sphere}}, weights)
+    return get_particle_fluxes(sols.u, surfaces, weights)
+end
+
 function get_particle_fluxes(
-        sols::Union{AbstractVector, Tuple, EnsembleSolution}, surfaces::AbstractVector{D}, weights
+        sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector{D}, weights
     ) where {D <: Union{Disk, Sphere}}
     nsurfaces = length(surfaces)
     T = float(eltype(first(sols).u[1]))
 
     # We use a summing approach here instead of collecting all crossings to save memory
     total_n_fluxes = zeros(eltype(weights), nsurfaces)
-    total_v_fluxes = [zero(SVector{3, T}) for _ in 1:nsurfaces]
+    total_v_fluxes = zeros(SVector{3, T}, nsurfaces)
 
     # Pre-allocate buffer for signed distances
     s1_buf = Vector{T}(undef, nsurfaces)
@@ -778,11 +796,19 @@ end
 Calculate both the velocities and weights of particles crossing virtual detector(s).
 Returns a tuple of vectors or a vector of tuples of vectors.
 """
-function get_particle_crossings(sols::Union{AbstractVector, Tuple, EnsembleSolution}, surface::Union{Disk, Plane, Sphere}, weights::Number = 1.0)
+function get_particle_crossings(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere}, weights::Number = 1.0)
     return get_particle_crossings(sols, surface, Base.Iterators.repeated(weights))
 end
 
-function get_particle_crossings(sols::Union{AbstractVector, Tuple, EnsembleSolution}, surface::Union{Disk, Plane, Sphere}, weights)
+function get_particle_crossings(sols::EnsembleSolution, surface::Union{Disk, Plane, Sphere}, weights::Number = 1.0)
+    return get_particle_crossings(sols.u, surface, weights)
+end
+
+function get_particle_crossings(sols::EnsembleSolution, surface::Union{Disk, Plane, Sphere}, weights)
+    return get_particle_crossings(sols.u, surface, weights)
+end
+
+function get_particle_crossings(sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere}, weights)
     T = float(eltype(first(sols).u[1]))
     velocities = SVector{3, T}[]
     sizehint!(velocities, length(sols))
@@ -815,14 +841,22 @@ function get_particle_crossings_single!(velocities, weights, sol, surface, w)
 end
 
 function get_particle_crossings(
-        sols::Union{AbstractVector, Tuple, EnsembleSolution},
+        sols::Union{AbstractVector, Tuple},
         surfaces::AbstractVector{D}, weights::Number = 1.0
     ) where {D <: Union{Disk, Plane, Sphere}}
     return get_particle_crossings(sols, surfaces, Base.Iterators.repeated(weights))
 end
 
+function get_particle_crossings(sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights::Number = 1.0)
+    return get_particle_crossings(sols.u, surfaces, weights)
+end
+
+function get_particle_crossings(sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Plane, Sphere}}, weights)
+    return get_particle_crossings(sols.u, surfaces, weights)
+end
+
 function get_particle_crossings(
-        sols::Union{AbstractVector, Tuple, EnsembleSolution}, surfaces::AbstractVector{D},
+        sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector{D},
         weights
     ) where {D <: Union{Disk, Plane, Sphere}}
     nsurfaces = length(surfaces)
@@ -832,7 +866,7 @@ function get_particle_crossings(
 
     s1_buf = Vector{T}(undef, nsurfaces)
 
-    for (sol, w) in zip(sols, weights)
+    @inbounds for (sol, w) in zip(sols, weights)
         _get_particle_crossings_single!(results_v, results_w, s1_buf, sol, surfaces, w)
     end
 
@@ -880,7 +914,6 @@ end
     ) where {T, D, S, W}
     if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
         f = s1 / (s1 - s2)
-        # Linear position check to avoid expensive sol(tc)
         pcross = p1 + f * (p2 - p1)
         if _is_valid_intersection(pcross, surface)
             tcross = muladd(f, tr - tl, tl)
@@ -908,7 +941,7 @@ end
 
 @inline function _signed_distance(p::Point, surface::Sphere)
     v = p - surface.center
-    return (v ⋅ v - surface.radius^2).val
+    return (norm(v) - surface.radius).val
 end
 
 @inline function _is_valid_intersection(p::Point, surface::Disk)

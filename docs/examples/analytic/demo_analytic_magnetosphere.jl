@@ -5,7 +5,7 @@
 # In this model, magnetic null points appear, and the particle orbits are distorted from the idealized motions in [Demo: magnetic dipole](@ref Magnetic-Dipole).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
 import Magnetostatics as MS
 using FieldTracer
@@ -52,7 +52,8 @@ end
 """
 Set initial conditions.
 """
-function prob_func_13(prob, i, repeat)
+function prob_func_13(prob, ctx)
+    i = ctx.sim_id
     ## initial particle energy
     Ek = 2.0e4 # [eV]
     ## initial velocity, [m/s]
@@ -63,7 +64,8 @@ function prob_func_13(prob, i, repeat)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-function prob_func_6(prob, i, repeat)
+function prob_func_6(prob, ctx)
+    i = ctx.sim_id
     ## initial particle energy
     Ek = 4.0e3 # [eV]
     ## initial velocity, [m/s]
@@ -108,7 +110,7 @@ ax = Axis3(
 
 invRE = 1 / Rₑ
 
-for (i, sol) in enumerate(sols)
+for (i, sol) in enumerate(sols.u)
     x = sol[1, :] .* invRE
     y = sol[2, :] .* invRE
     z = sol[3, :] .* invRE
@@ -188,7 +190,7 @@ ax = Axis3(
     azimuth = 1.4
 )
 
-for (i, sol) in enumerate(sols)
+for (i, sol) in enumerate(sols.u)
     x_plot = sol[1, :] .* invRE
     y_plot = sol[2, :] .* invRE
     z_plot = sol[3, :] .* invRE

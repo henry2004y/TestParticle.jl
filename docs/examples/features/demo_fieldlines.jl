@@ -52,9 +52,7 @@ for (i, u0) in enumerate(seeds)
 
     ## Solve each problem
     for (j, prob) in enumerate(probs)
-        sol = solve(
-            prob, Tsit5(); callback, reltol = 1.0e-6, abstol = 1.0e-6, verbose = false
-        )
+        sol = solve(prob, Tsit5(); callback)
         solutions[2 * (i - 1) + j] = sol
     end
 end
@@ -65,7 +63,7 @@ end
 # We plot the traced field lines in 3D.
 # We also overlay analytically calculated field lines for comparison.
 
-f = Figure(size = (800, 600))
+f = Figure(size = (800, 600), fontsize = 20)
 ax = Axis3(
     f[1, 1], aspect = :data, xlabel = "x [m]", ylabel = "y [m]",
     zlabel = "z [m]", title = "Dipole Field Lines"

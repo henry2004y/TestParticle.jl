@@ -17,7 +17,7 @@ import DisplayAs #hide
 using Markdown #hide
 using Printf
 using TestParticle
-using OrdinaryDiffEq
+using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: ×, norm
 using CairoMakie
@@ -107,7 +107,7 @@ function run_test(
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
     for (name, alg) in _natives
-        sol = TestParticle.solve(prob_tp, alg; dt)[1]
+        sol = TestParticle.solve(prob_tp, alg; dt).u[1]
         plot_energy_error!(sol, name, color_idx)
         color_idx += 1
     end

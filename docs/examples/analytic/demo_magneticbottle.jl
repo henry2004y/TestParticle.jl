@@ -5,7 +5,7 @@
 # Reference [wiki](https://en.wikipedia.org/wiki/Magnetic_mirror#Magnetic_bottles)
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEqAdamsBashforthMoulton, StaticArrays
 import TestParticle as TP
 import Magnetostatics as MS
 using Printf

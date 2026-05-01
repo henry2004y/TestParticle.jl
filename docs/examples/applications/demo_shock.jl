@@ -3,7 +3,7 @@
 # This example shows how to trace protons of a certain energy in MHD plane shocks.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner
+using TestParticle, OrdinaryDiffEq
 using TestParticle: mᵢ, kB
 import TestParticle as TP
 using VelocityDistributionFunctions
@@ -20,7 +20,7 @@ Random.seed!(1234)
 """
 Set initial conditions.
 """
-function prob_func(prob, i, repeat)
+function prob_func(prob, ctx)
     v₀ = rand(vdf₁)
     r₀ = [5_000e3, 0.0, 0.0]
 
@@ -100,10 +100,10 @@ function plot_traj(
         limits, azimuth, elevation
     )
 
-    t = range(sols[1].prob.tspan..., length = np)
+    t = range(sols.u[1].prob.tspan..., length = np)
 
-    for i in eachindex(sols)
-        xyz = sols[i](t) .* 1.0e-3
+    for i in eachindex(sols.u)
+        xyz = sols.u[i](t) .* 1.0e-3
         lines!(
             ax, xyz[1, :], xyz[2, :], xyz[3, :],
             label = "$i"
@@ -124,13 +124,13 @@ function plot_traj(
     return f
 end
 
-f = plot_traj(sols[1:4])
+f = plot_traj(sols)
 f = DisplayAs.PNG(f) #hide
 
 # Phase space distributions
 
 function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
-    trange = range(sols[1].prob.tspan..., length = ntchunks)
+    trange = range(sols.u[1].prob.tspan..., length = ntchunks)
 
     xrange = range(x[1], x[end], length = nxchunks + 1)
     dx = step(xrange)
@@ -138,7 +138,7 @@ function plot_dist(x, sols; nxchunks::Int = 2, ntchunks::Int = 20)
 
     vx = [Float64[] for _ in 1:nxchunks]
 
-    for sol in sols
+    for sol in sols.u
         for t in trange
             xv = sol(t)
             for i in 1:nxchunks
@@ -201,7 +201,7 @@ println("Vth₂ = ", round(vdf₂.vth / 1.0e3, digits = 2), " km/s") #hide
 
 function collect_VDF(x, sols; ntchunks::Int = 20)
     nxchunks = 2
-    trange = range(sols[1].prob.tspan..., length = ntchunks)
+    trange = range(sols.u[1].prob.tspan..., length = ntchunks)
 
     xrange = range(x[1], x[end], length = nxchunks + 1)
 
@@ -213,7 +213,7 @@ function collect_VDF(x, sols; ntchunks::Int = 20)
             ) for _ in 1:nxchunks
     ]
 
-    for sol in sols
+    for sol in sols.u
         for t in trange
             xv = sol(t)
             for i in 1:nxchunks
@@ -359,7 +359,7 @@ vdf₂_para = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
 trajectories = 2
 weight₁ = n₁ / trajectories
 
-function prob_func_para(prob, i, repeat)
+function prob_func_para(prob, ctx)
     v₀ = rand(vdf₁_para)
     r₀ = [5_000e3, 0.0, 0.0]
 

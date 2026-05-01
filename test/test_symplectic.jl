@@ -1,6 +1,8 @@
 using Test
 using TestParticle
 using OrdinaryDiffEq
+using OrdinaryDiffEqSymplecticRK
+using OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: norm
 

@@ -288,7 +288,7 @@ function _prepare_boris_solve(
     end
 
     for i in 1:n_particles
-        new_prob = prob.prob_func(prob, i, false)
+        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
         u0_i = new_prob.u0
         xv_init[:, i] .= u0_i
     end
@@ -323,12 +323,14 @@ end
         save_start, save_end, save_everystep, maxiters
     )
 
-    return _solve_serial(
+    elapsed_time = @elapsed sols = _solve_serial(
         prob, backend, 1:trajectories;
         dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
     )
+
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inbounds function solve(
@@ -350,7 +352,7 @@ end
     }(undef, trajectories)
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         chunk_sols = _solve_serial(
             prob, backend, irange;
             dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
@@ -362,7 +364,7 @@ end
         end
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inbounds function solve(

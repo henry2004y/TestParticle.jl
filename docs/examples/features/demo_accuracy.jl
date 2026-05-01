@@ -17,7 +17,7 @@
 
 import DisplayAs #hide
 using TestParticle
-using OrdinaryDiffEq
+using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK
 using StaticArrays
 using LinearAlgebra
 using CairoMakie
@@ -102,7 +102,7 @@ prob1_ode = ODEProblem(trace!, u0, tspan, param)
 
 for dt in dts1
     for (name, alg) in boris_solvers
-        sol = TestParticle.solve(prob1, alg; dt)[1]
+        sol = TestParticle.solve(prob1, alg; dt).u[1]
         vx, vy = sol.u[end][4], sol.u[end][5]
         t_final = sol.t[end]
 
@@ -174,7 +174,7 @@ prob2_ode = ODEProblem(trace!, u0, tspan2, param2)
 
 for dt in dts2
     for (name, alg) in boris_solvers
-        sol = TestParticle.solve(prob2, alg; dt)[1]
+        sol = TestParticle.solve(prob2, alg; dt).u[1]
 
         max_err = 0.0
         for i in eachindex(sol.u)
@@ -198,7 +198,7 @@ for dt in dts2
 end
 
 # ## Visualization
-f = Figure(size = (1200, 500), fontsize = 18);
+f = Figure(size = (1200, 500), fontsize = 20);
 
 ## Phase Error Plot
 ax1 = Axis(
@@ -311,7 +311,7 @@ dts3 = [π / 6, π / 20]
 t_exact_plot = range(0.0, t_end3, length = 5000)
 x_drift_exact = exact_x_drift.(t_exact_plot)
 
-f3 = Figure(size = (1000, 1200), fontsize = 18)
+f3 = Figure(size = (1000, 1200), fontsize = 20)
 
 for (row, (name, type, config)) in enumerate(drift_solvers_all)
     for (col, dt) in enumerate(dts3)
@@ -339,7 +339,7 @@ for (row, (name, type, config)) in enumerate(drift_solvers_all)
 
         ## Plot solver result
         if type == :boris
-            sol = TestParticle.solve(prob3, config; dt)[1]
+            sol = TestParticle.solve(prob3, config; dt).u[1]
             t_eval = range(0.0, t_end3, step = dt)
             x_drifts = [sol(t)[1] - vD_magnitude * t for t in t_eval]
             scatterlines!(

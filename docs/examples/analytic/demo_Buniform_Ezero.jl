@@ -4,7 +4,7 @@
 # The E field is assumed to be zero such that there is no particle acceleration.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: ZeroField
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -34,6 +34,6 @@ ax = Axis3(
     aspect = :data
 )
 
-plot!(ax, sol, idxs = (1, 2, 3))
+lines!(ax, sol, idxs = (1, 2, 3))
 
 f = DisplayAs.PNG(f) #hide

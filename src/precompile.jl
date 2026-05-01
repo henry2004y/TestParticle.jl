@@ -41,7 +41,7 @@
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = solve(prob, alg_adaptive)[1]
+        sol_adaptive = solve(prob, alg_adaptive).u[1]
 
         sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)
         E_trace, B_trace = get_fields(sol_adaptive)

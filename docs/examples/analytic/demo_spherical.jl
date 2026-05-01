@@ -51,6 +51,6 @@ ax = Axis3(
     aspect = :data
 )
 
-plot!(ax, sol, idxs = (1, 2, 3))
+lines!(ax, sol, idxs = (1, 2, 3))
 
 f = DisplayAs.PNG(f) #hide

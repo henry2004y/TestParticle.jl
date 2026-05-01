@@ -5,12 +5,13 @@ using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
     interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
     OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
-    BasicEnsembleAlgorithm,
+    BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
-    DiscreteCallback, terminate!
-using Distributed: pmap, nworkers
+    DiscreteCallback, terminate!, EnsembleContext
+using Random: default_rng
+using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
     Plane, Disk, Point, normal, Sphere, area, Vec
@@ -51,8 +52,8 @@ export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid
-export EnsembleSerial, EnsembleThreads, EnsembleDistributed, EnsembleSplitThreads, remake,
-    FillExtrap, ClampExtrap, WrapExtrap, OnTheFly, PreCompute,
+export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
+    EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap, OnTheFly, PreCompute,
     DiscreteCallback, TerminateOutside
 
 include("types.jl")
@@ -60,8 +61,10 @@ include("utility/utility.jl")
 include("utility/interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
-include("gc.jl")
-include("gc_solver.jl")
+include("gc/gc.jl")
+include("gc/gc_solver.jl")
+include("gc/rk4_gc.jl")
+include("gc/rk45_gc.jl")
 include("equations.jl")
 include("boris/boris.jl")
 include("boris/boris_kernel.jl")

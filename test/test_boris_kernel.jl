@@ -26,13 +26,13 @@ const KA = KernelAbstractions
 
         sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, savestepinterval = 10)
 
-        @test length(sol_gpu) == 1
-        @test length(sol_gpu[1].t) > 0
-        @test sol_gpu[1].t[1] == tspan[1]
-        @test sol_gpu[1].t[end] ≈ tspan[2]
+        @test length(sol_gpu.u) == 1
+        @test length(sol_gpu.u[1].t) > 0
+        @test sol_gpu.u[1].t[1] == tspan[1]
+        @test sol_gpu.u[1].t[end] ≈ tspan[2]
 
-        x_final = sol_gpu[1].u[end][1]
-        y_final = sol_gpu[1].u[end][2]
+        x_final = sol_gpu.u[1].u[end][1]
+        y_final = sol_gpu.u[1].u[end][2]
 
         @test abs(x_final) > 0
         @test abs(y_final) > 0
@@ -41,26 +41,26 @@ const KA = KernelAbstractions
     @testset "Multi-particle Kernel" begin
         backend = CPU()
 
-        prob_func_gpu(prob, i, repeat) = remake(
-            prob; u0 = [prob.u0[1:3]..., i * 1.0e4, 0.0, 0.0]
+        prob_func_gpu(prob, ctx) = remake(
+            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
         sols_gpu = TP.solve(prob_multi, Boris(), backend; dt, trajectories = 5, savestepinterval = 100)
 
-        @test length(sols_gpu) == 5
+        @test length(sols_gpu.u) == 5
 
         for i in 1:5
-            @test length(sols_gpu[i].t) > 0
-            @test sols_gpu[i].t[1] == tspan[1]
+            @test length(sols_gpu.u[i].t) > 0
+            @test sols_gpu.u[i].t[1] == tspan[1]
         end
     end
 
     @testset "EnsembleThreads" begin
         backend = CPU()
 
-        prob_func_gpu(prob, i, repeat) = remake(
-            prob; u0 = [prob.u0[1:3]..., i * 1.0e4, 0.0, 0.0]
+        prob_func_gpu(prob, ctx) = remake(
+            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
@@ -74,8 +74,8 @@ const KA = KernelAbstractions
             dt, trajectories, savestepinterval = 100
         )
 
-        @test length(sols_threads) == trajectories
-        @test sum(sol.u[end] for sol in sols_threads) ≈ sum(sol.u[end] for sol in sols_serial)
+        @test length(sols_threads.u) == trajectories
+        @test sum(sol.u[end] for sol in sols_threads.u) ≈ sum(sol.u[end] for sol in sols_serial.u)
     end
 
     @testset "Kernel vs Native Solver Equivalence" begin
@@ -84,12 +84,12 @@ const KA = KernelAbstractions
         sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, savestepinterval = 10)
         sol_cpu = TP.solve(prob, Boris(); dt, savestepinterval = 10)
 
-        @test length(sol_gpu[1].t) == length(sol_cpu[1].t)
+        @test length(sol_gpu.u[1].t) == length(sol_cpu.u[1].t)
 
         # Check only first and last steps to avoid excessive test printing
-        @test sol_gpu[1].t ≈ sol_cpu[1].t atol = 1.0e-6
+        @test sol_gpu.u[1].t ≈ sol_cpu.u[1].t atol = 1.0e-6
         # Tight tolerances as the implementations should be algorithmically equivalent
-        @test sol_gpu[1].u[end] ≈ sol_cpu[1].u[end] rtol = 1.0e-10 atol = 1.0e-10
+        @test sol_gpu.u[1].u[end] ≈ sol_cpu.u[1].u[end] rtol = 1.0e-10 atol = 1.0e-10
     end
 
     @testset "Energy Conservation" begin
@@ -108,9 +108,9 @@ const KA = KernelAbstractions
         sol_gyro = TP.solve(prob_gyro, Boris(), backend; dt = dt_gyro, savestepinterval = 10)
 
         # Check energy conservation at the final step to reduce test count
-        vx = sol_gyro[1].u[end][4]
-        vy = sol_gyro[1].u[end][5]
-        vz = sol_gyro[1].u[end][6]
+        vx = sol_gyro.u[1].u[end][4]
+        vy = sol_gyro.u[1].u[end][5]
+        vz = sol_gyro.u[1].u[end][6]
         v_mag = sqrt(vx^2 + vy^2 + vz^2)
         @test v_mag ≈ v_magnitude rtol = 1.0e-3
     end
@@ -122,16 +122,16 @@ const KA = KernelAbstractions
             prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = true, save_end = true
         )
-        @test length(sol_start_end[1].t) == 2
-        @test sol_start_end[1].t[1] == tspan[1]
-        @test sol_start_end[1].t[end] == tspan[2]
+        @test length(sol_start_end.u[1].t) == 2
+        @test sol_start_end.u[1].t[1] == tspan[1]
+        @test sol_start_end.u[1].t[end] == tspan[2]
 
         sol_end_only = TP.solve(
             prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = false, save_end = true
         )
-        @test length(sol_end_only[1].t) == 1
-        @test sol_end_only[1].t[1] == tspan[2]
+        @test length(sol_end_only.u[1].t) == 1
+        @test sol_end_only.u[1].t[1] == tspan[2]
     end
 
     @testset "Solver Limits" begin

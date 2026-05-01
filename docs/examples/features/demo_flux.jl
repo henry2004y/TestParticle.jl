@@ -17,7 +17,7 @@
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
-using TestParticle, OrdinaryDiffEqTsit5, StaticArrays, Meshes, Random
+using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes, Random
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
 using VelocityDistributionFunctions, SpecialFunctions, CairoMakie
@@ -44,10 +44,10 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 """
 Set initial conditions.
 """
-function prob_func(prob, i, repeat)
+function prob_func(prob, ctx)
     ## initial velocity, [m/s]
     ## 50% v=1.0, 50% v=2.0
-    if i % 2 == 1
+    if ctx.sim_id % 2 == 1
         v₀ = [1.0, 0.0, 0.0]
     else
         v₀ = [2.0, 0.0, 0.0]
@@ -73,7 +73,7 @@ println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 #
 # The second case assumes a point source at the origin. Particles are constantly isotropically launched from the source with unit speed. We estimate the particle flux through a sphere at radius r.
 
-function prob_func_iso(prob, i, repeat)
+function prob_func_iso(prob, ctx)
     ## initial velocity, [m/s]
     v₀ = sample_unit_sphere()
     ## initial position, [m]
@@ -119,7 +119,7 @@ vdf_cloud = TP.Maxwellian([0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
 v0_cloud = rand(vdf_cloud, N_cloud);
 
 ## Create TraceProblem template
-prob_func_cloud(prob, i, repeat) = remake(prob, u0 = vcat(x0_cloud[i], v0_cloud[i]))
+prob_func_cloud(prob, ctx) = remake(prob, u0 = vcat(x0_cloud[ctx.sim_id], v0_cloud[ctx.sim_id]))
 
 ## Define a single problem template
 param_cloud = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)

@@ -42,12 +42,13 @@ end
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
     ) where {SaveFields, SaveWork}
     # Use array comprehension for EnsembleSerial to avoid _get_sol_type allocations
-    return [
+    elapsed_time = @elapsed sols = [
         _adaptive_boris_single(
                 prob, i, savestepinterval, isoutside, save_start, save_end,
                 save_everystep, Val(SaveFields), Val(SaveWork), alg
             ) for i in 1:trajectories
     ]
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 function _solve_adaptive(
@@ -59,14 +60,14 @@ function _solve_adaptive(
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _adaptive_boris!(
             sols, prob, irange, savestepinterval, isoutside, save_start, save_end,
             save_everystep, Val(SaveFields), Val(SaveWork), alg
         )
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 "See `_solve_single_boris` for rationale."
@@ -74,7 +75,7 @@ function _solve_single_adaptive_boris(
         prob, i, savestepinterval, isoutside, save_start, save_end,
         save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork}
-    new_prob = prob.prob_func(prob, i, false)
+    new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
     single_prob = TraceProblem(
         new_prob.u0, new_prob.tspan, new_prob.p
     )
@@ -95,7 +96,8 @@ function _solve_adaptive(
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
-    return pmap(1:trajectories; batch_size = batch_size) do i
+    start_time = time()
+    sols = pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_adaptive_boris(
             prob, i, savestepinterval,
             isoutside, save_start, save_end,
@@ -103,6 +105,8 @@ function _solve_adaptive(
             Val(SaveFields), Val(SaveWork), alg
         )
     end
+    end_time = time()
+    return EnsembleSolution(sols, end_time - start_time, true)
 end
 
 function _solve_adaptive(
@@ -110,12 +114,13 @@ function _solve_adaptive(
         isoutside, save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
         batch_size
     ) where {SaveFields, SaveWork}
-    sample_prob = prob.prob_func(prob, 1, false)
+    sample_prob = prob.prob_func(prob, (sim_id = 1, repeat = false))
     dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
     sol_type = _get_sol_type(
         dummy_prob, zero(eltype(dummy_prob.tspan)), Val(SaveFields), Val(SaveWork)
     )
     ichunks = index_chunks(1:trajectories; size = batch_size)
+    start_time = time()
     results = pmap(ichunks) do irange
         local_sols = Vector{sol_type}(undef, length(irange))
         Threads.@threads for k in eachindex(irange)
@@ -128,7 +133,9 @@ function _solve_adaptive(
         end
         local_sols
     end
-    return reduce(vcat, results)
+    end_time = time()
+    sols = reduce(vcat, results)
+    return EnsembleSolution(sols, end_time - start_time, true)
 end
 
 @inline get_velocity_updater(::Boris{true}) = update_velocity
@@ -162,7 +169,7 @@ end
     sizehint!(traj, initial_capacity)
     sizehint!(tsave, initial_capacity)
 
-    new_prob = prob.prob_func(prob, i, false)
+    new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
     u0_i = SVector{6, T}(new_prob.u0)
     r = u0_i[SVector(1, 2, 3)]
     v = u0_i[SVector(4, 5, 6)]

@@ -40,11 +40,11 @@ using StaticArrays
 
     @testset "Consistency with AdaptiveBoris" begin
         # AdaptiveMultistepBoris{2}(n=1) should be identical to AdaptiveBoris
-        sol_std = TestParticle.solve(prob, AdaptiveBoris(safety = 0.1))[1]
-        sol_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{2}(n = 1, safety = 0.1))[1]
+        sol_std = TestParticle.solve(prob, AdaptiveBoris(safety = 0.1))
+        sol_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{2}(n = 1, safety = 0.1))
 
-        @test sol_std.t ≈ sol_multi.t
-        @test sol_std.u ≈ sol_multi.u
+        @test sol_std.u[1].t ≈ sol_multi.u[1].t
+        @test sol_std.u[1].u ≈ sol_multi.u[1].u
     end
 
     @testset "Higher Order Integration" begin
@@ -54,8 +54,8 @@ using StaticArrays
             sols = TestParticle.solve(
                 prob, AdaptiveMultistepBoris{N}(n = 2), EnsembleSerial(); trajectories
             )
-            @test length(sols) == trajectories
-            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols)
+            @test length(sols.u) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols.u)
         end
     end
 
@@ -67,8 +67,8 @@ using StaticArrays
             sols = TestParticle.solve(
                 prob, alg, EnsembleThreads(); trajectories
             )
-            @test length(sols) == trajectories
-            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols)
+            @test length(sols.u) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols.u)
         end
 
         @testset "EnsembleDistributed" begin
@@ -76,8 +76,8 @@ using StaticArrays
             sols = TestParticle.solve(
                 prob, alg, EnsembleDistributed(); trajectories
             )
-            @test length(sols) == trajectories
-            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols)
+            @test length(sols.u) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols.u)
         end
     end
 end

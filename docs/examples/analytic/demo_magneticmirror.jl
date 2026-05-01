@@ -10,7 +10,7 @@
 # This example is based on `demo_magneticbottle.jl`.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqAdamsBashforthMoulton, StaticArrays
 import TestParticle as TP
 import Magnetostatics as MS
 using LinearAlgebra: normalize, norm, ⋅
@@ -109,16 +109,6 @@ lines!(ax1, x, y, z, color = :red)
 z = fill(-distance / 2, size(x))
 lines!(ax1, x, y, z, color = :red)
 
-## # The distribution of magnetic field along the z-axis or x-axis
-## Bz(z) = hypot(getB(SA[0.0, 0.0, z])...)
-## Bx(x) = hypot(getB(SA[x, 0.0, 0.5*distance])...)
-## z = collect(-10:0.01:10)
-## x = collect(-0.99*a:0.01:0.99*a)
-## # Ba = Bz.(z)
-## Ba = Bx.(x)
-## # lines(z, Ba, color=:red)
-## lines(x, Ba, color=:red)
-
 f = DisplayAs.PNG(f) #hide
 
 # ### Loss Cone Distribution
@@ -141,8 +131,8 @@ n_particles = 100
 pitch_angles = range(0, π, length = n_particles)
 v_mag = norm(v₀)
 ensemble_prob = EnsembleProblem(
-    prob, prob_func = (prob, i, repeat) -> begin
-        α = pitch_angles[i]
+    prob, prob_func = (prob, ctx) -> begin
+        α = pitch_angles[ctx.sim_id]
         ## Velocity components: v_z = v cos(α), v_perp = v sin(α)
         ## We put v_perp in x-direction for simplicity
         vz = v_mag * cos(α)
@@ -158,7 +148,7 @@ callback = TP.TerminateOutside((u, p, t) -> abs(u[3]) > distance / 2)
 
 sim = solve(
     ensemble_prob, Vern9(), EnsembleThreads(); trajectories = n_particles,
-    dt = 3.0e-9, callback, verbose = false
+    dt = 3.0e-9, callback
 );
 
 # Check which particles are trapped
@@ -168,7 +158,7 @@ sim = solve(
 # So we need to check if the simulation finished the full time span or was terminated early.
 
 ## A robust check here is: if t < tspan[2], it was stopped early (or failed).
-is_trapped = map(sim) do sol
+is_trapped = map(sim.u) do sol
     sol.t[end] ≈ tspan[2]
 end
 

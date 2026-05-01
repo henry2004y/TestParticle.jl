@@ -35,9 +35,9 @@ using StaticArrays
             sols = TestParticle.solve(
                 prob, AdaptiveBoris()
             )
-            @test sols[1].retcode ==
+            @test sols.u[1].retcode ==
                 TestParticle.ReturnCode.Success
-            @test length(sols[1].t) > 1
+            @test length(sols.u[1].t) > 1
         end
 
         @testset "EnsembleThreads" begin
@@ -46,8 +46,8 @@ using StaticArrays
                 prob, AdaptiveBoris(), EnsembleThreads();
                 trajectories = trajectories
             )
-            @test length(sols) == trajectories
-            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols)
+            @test length(sols.u) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols.u)
         end
     end
 end

@@ -24,7 +24,7 @@ using Test
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
         sols = TestParticle.solve(TraceHybridProblem(u0, tspan, p), alg)
-        @test sols[1].retcode == TestParticle.ReturnCode.Success
+        @test sols.u[1].retcode == TestParticle.ReturnCode.Success
     end
 
     # 2. Non-adiabatic Case (Highly Curved Field)
@@ -49,7 +49,7 @@ using Test
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
         sols = TestParticle.solve(TraceHybridProblem(u0, tspan, p), alg)
-        @test sols[1].retcode == TestParticle.ReturnCode.Success
+        @test sols.u[1].retcode == TestParticle.ReturnCode.Success
     end
 
     # 3. Demo Hybrid Case (Explicit Switching)
@@ -89,13 +89,13 @@ using Test
 
         sols = TestParticle.solve(TraceHybridProblem(u0, tspan, p), alg)
 
-        @test sols[1].retcode == TestParticle.ReturnCode.Success
+        @test sols.u[1].retcode == TestParticle.ReturnCode.Success
         # Check that we actually have a reasonable number of steps (hybrid should adapt)
-        @test length(sols[1].t) > 100
+        @test length(sols.u[1].t) > 100
 
         # Energy conservation check (approximate for hybrid)
         KE_init = 0.5 * m * sum(abs2, v0)
-        KE_final = 0.5 * m * sum(abs2, sols[1].u[end][SA[4, 5, 6]])
+        KE_final = 0.5 * m * sum(abs2, sols.u[1].u[end][SA[4, 5, 6]])
         @test isapprox(KE_final, KE_init; rtol = 0.1)
     end
 end

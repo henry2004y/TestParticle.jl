@@ -6,7 +6,7 @@
 # More theoretical details can be found in [ExB Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#finite-e).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using LinearAlgebra: ⋅, ×, normalize
 using TestParticle: get_EField, get_BField
 using CairoMakie

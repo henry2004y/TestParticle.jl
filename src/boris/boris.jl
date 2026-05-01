@@ -149,7 +149,7 @@ end
     )
 
     # Use array comprehension for EnsembleSerial
-    return [
+    elapsed_time = @elapsed sols = [
         _solve_single(
                 prob, i, savestepinterval, dt, nt,
                 nout, isoutside,
@@ -157,6 +157,7 @@ end
                 Val(SaveFields), Val(SaveWork), alg
             ) for i in 1:trajectories
     ]
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inline function _solve_single(
@@ -200,7 +201,7 @@ end
     )
 
     nchunks = Threads.nthreads()
-    Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _dispatch_boris!(
             sols, prob, irange, savestepinterval,
             dt, nt, nout, isoutside,
@@ -209,7 +210,7 @@ end
         )
     end
 
-    return sols
+    return EnsembleSolution(sols, elapsed_time, true)
 end
 
 """
@@ -218,7 +219,7 @@ end
 Solve a single trajectory `i` of `prob` for use with `EnsembleDistributed`.
 
 `_generic_boris!` uses the loop index `i` for two purposes simultaneously:
-applying `prob_func(prob, i, false)` to select per-particle initial conditions,
+applying `prob_func(prob, EnsembleContext(i))` to select per-particle initial conditions,
 and storing the result at `sols[i]`. For a distributed worker handling only one
 trajectory at a time, a 1-element `local_sols` would be out of bounds if `i > 1`
 were passed directly. Decoupling the two uses would require threading a storage
@@ -236,7 +237,7 @@ function _solve_single_boris(
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
     ) where {SaveFields, SaveWork, F}
-    new_prob = prob.prob_func(prob, i, false)
+    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, myid(), nothing, default_rng(), nothing))
     single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
     sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
     local_sols = Vector{sol_type}(undef, 1)
@@ -263,7 +264,8 @@ end
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    return pmap(1:trajectories; batch_size = batch_size) do i
+    start_time = time()
+    sols = pmap(1:trajectories; batch_size = batch_size) do i
         _solve_single_boris(
             prob, i, savestepinterval, dt, nt, nout,
             isoutside,
@@ -271,6 +273,8 @@ end
             Val(SaveFields), Val(SaveWork), alg
         )
     end
+    end_time = time()
+    return EnsembleSolution(sols, end_time - start_time, true)
 end
 
 @inline function _solve(
@@ -286,10 +290,11 @@ end
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    sample_prob = prob.prob_func(prob, 1, false)
+    sample_prob = prob.prob_func(prob, EnsembleContext(1, 1, 0, nothing, default_rng(), default_rng()))
     dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
     sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
     ichunks = index_chunks(1:trajectories; size = batch_size)
+    start_time = time()
     results = pmap(ichunks) do irange
         local_sols = Vector{sol_type}(undef, length(irange))
         Threads.@threads for k in eachindex(irange)
@@ -304,7 +309,9 @@ end
         end
         local_sols
     end
-    return reduce(vcat, results)
+    end_time = time()
+    sols = reduce(vcat, results)
+    return EnsembleSolution(sols, end_time - start_time, true)
 end
 
 function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
@@ -488,7 +495,7 @@ end
 
     # set initial conditions for each trajectory i
     iout = 0
-    new_prob = prob.prob_func(prob, i, false)
+    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, default_rng(), default_rng()))
     u0_i = SVector{6, T}(new_prob.u0)
     r = u0_i[SVector(1, 2, 3)]
     v = u0_i[SVector(4, 5, 6)]

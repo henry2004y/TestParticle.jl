@@ -5,7 +5,7 @@
 # A Wiki reference can be found [here](https://en.wikipedia.org/wiki/Current_sheet).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
 import Magnetostatics as MS
 using TestParticle: Rₑ

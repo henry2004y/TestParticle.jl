@@ -5,7 +5,7 @@
 # More theoretical details can be found in [Curvature Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#curved-b-curvature-drift) and Computational Plasma Physics by Toshi Tajima.
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays
 using LinearAlgebra: normalize, norm, ×, ⋅
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
