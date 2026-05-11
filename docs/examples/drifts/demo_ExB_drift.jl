@@ -7,8 +7,6 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using LinearAlgebra: ⋅, ×, normalize, norm
-using TestParticle: qᵢ, mᵢ
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -57,11 +55,12 @@ function plot_exb_case(sol, sol_gc, title; layout = :three_columns)
     lines!(ax_2d, sol, idxs = (2, 1), color = :black, alpha = 0.5, label = "Particle")
     lines!(ax_2d, sol_gc, idxs = (2, 1), color = :red, linewidth = 2, label = "GC")
 
-    energy_func(x, y, z, vx, vy, vz) = 0.5 * mᵢ * (vx^2 + vy^2 + vz^2) / qᵢ
+    q2m = sol.prob.p[1]
+    energy_func(x, y, z, vx, vy, vz) = 0.5 * (vx^2 + vy^2 + vz^2) / q2m
     t_sampled = range(sol.t[1], sol.t[end], length = 200)
     sol_sampled = sol(t_sampled)
-    y_s = [u[2] for u in sol_sampled.u]
-    x_s = [u[1] for u in sol_sampled.u]
+    y_s = sol_sampled[2, :]
+    x_s = sol_sampled[1, :]
     energy_s = [energy_func(u...) for u in sol_sampled.u]
 
     sc = scatter!(ax_2d, y_s, x_s, color = energy_s, colormap = :Spectral, markersize = 6)
