@@ -37,14 +37,26 @@ function plot_exb_case(sol, sol_gc, title; layout = :three_columns)
 
     ## 2. Trajectories
     if layout == :three_columns
-        ax_3d = Axis3(fig[1, 2], title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data)
+        ax_3d = Axis3(
+            fig[1, 2];
+            title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
+        )
         gl_right = fig[1, 3] = GridLayout()
-        ax_2d = Axis(gl_right[1, 1], title = "Y-X Plane Trajectory", xlabel = "y", ylabel = "x", aspect = DataAspect())
+        ax_2d = Axis(
+            gl_right[1, 1];
+            title = "Y-X Plane Trajectory", xlabel = "y", ylabel = "x", aspect = DataAspect()
+        )
         cbar_pos = gl_right[1, 2]
     else
         gl_right = fig[1, 2] = GridLayout()
-        ax_3d = Axis3(gl_right[1, 1], title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data)
-        ax_2d = Axis(gl_right[2, 1], title = "Y-X Plane Trajectory", xlabel = "y", ylabel = "x", aspect = DataAspect())
+        ax_3d = Axis3(
+            gl_right[1, 1];
+            title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
+        )
+        ax_2d = Axis(
+            gl_right[2, 1];
+            title = "Y-X Plane Trajectory", xlabel = "y", ylabel = "x", aspect = DataAspect()
+        )
         cbar_pos = gl_right[2, 2]
     end
 

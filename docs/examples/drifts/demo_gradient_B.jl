@@ -2,7 +2,7 @@
 #
 # This example demonstrates a single proton motion under a non-uniform B field with gradient ∇B ⊥ B.
 # The orbit of guiding center includes some high order terms, it is different from the formula of magnetic field gradient drift of some textbooks which just preserves the first order term.
-# It is more complex than the simpler [ExB drift](@ref EB-Drift).
+# It is more complex than the simpler [ExB Drift](@ref).
 # More theoretical details can be found in [Grad-B Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#b-b-grad-b-drift), and Fundamentals of Plasma Physics by Paul Bellan.
 
 import DisplayAs #hide
@@ -12,10 +12,64 @@ using ForwardDiff: gradient
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
+# ## Plotting Function
+#
+# We define a function to visualize the results.
+
+function plot_drift_case(sol, sol_gc, title)
+    fig = Figure(size = (1200, 600), fontsize = 20)
+
+    ## 1. Left Column: Time Series
+    gl_left = fig[1, 1] = GridLayout()
+    ax_pos = Axis(gl_left[1, 1], ylabel = "Position [m]", title = title)
+    lines!(ax_pos, sol, idxs = (0, 1), label = "x")
+    lines!(ax_pos, sol, idxs = (0, 2), label = "y")
+    lines!(ax_pos, sol, idxs = (0, 3), label = "z")
+    axislegend(ax_pos, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
+    hidexdecorations!(ax_pos, grid = false)
+
+    ax_vel = Axis(gl_left[2, 1], xlabel = "Time [s]", ylabel = "Velocity [m/s]")
+    lines!(ax_vel, sol, idxs = (0, 4), label = "vx")
+    lines!(ax_vel, sol, idxs = (0, 5), label = "vy")
+    lines!(ax_vel, sol, idxs = (0, 6), label = "vz")
+    axislegend(ax_vel, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
+
+    linkxaxes!(ax_pos, ax_vel)
+
+    ## 2. Right Column: 3D Trajectory
+    ax_3d = Axis3(
+        fig[1, 2];
+        title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
+    )
+
+    gc = sol_gc.prob.p[1] |> p -> get_gc_func(p)
+    gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
+
+    lines!(
+        ax_3d, sol;
+        idxs = (1, 2, 3), color = Makie.wong_colors()[1], alpha = 0.5, label = "Particle"
+    )
+    lines!(
+        ax_3d, sol;
+        idxs = (gc_plot, 1, 2, 3, 4, 5, 6),
+        color = Makie.wong_colors()[2], label = "GC from Orbit"
+    )
+    lines!(
+        ax_3d, sol_gc;
+        idxs = (1, 2, 3),
+        color = Makie.wong_colors()[3], linewidth = 3, label = "Analytic GC"
+    )
+    axislegend(ax_3d, framevisible = true, backgroundcolor = (:white, 0.5))
+
+    return fig
+end
+
+# ## Grad-B Field
+#
+# We use a magnetic field with a gradient and trace a proton.
+
 grad_B(x) = SA[0, 0, 1.0e-8 + 1.0e-9 * x[2]]
-
 uniform_E(x) = SA[1.0e-9, 0, 0]
-
 abs_B(x) = norm(grad_B(x))
 
 ## Trace the orbit of the guiding center using analytical drifts
@@ -46,24 +100,7 @@ gc_x0 = gc(stateinit) |> Vector
 prob_gc = ODEProblem(trace_gc!, gc_x0, tspan, (param..., sol))
 sol_gc = solve(prob_gc, Vern7(); save_idxs = [1, 2, 3])
 
-## Numeric and analytic results
-f = Figure(fontsize = 18)
-ax = Axis3(
-    f[1, 1],
-    title = "Grad-B Drift",
-    xlabel = "x [m]",
-    ylabel = "y [m]",
-    zlabel = "z [m]",
-    aspect = :data,
-    azimuth = 0.3π
-)
-
-gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
-
-lines!(ax, sol, idxs = (1, 2, 3), color = Makie.wong_colors()[1])
-lines!(ax, sol, idxs = (gc_plot, 1, 2, 3, 4, 5, 6), color = Makie.wong_colors()[2])
-lines!(ax, sol_gc, idxs = (1, 2, 3), color = Makie.wong_colors()[3])
-
-f = DisplayAs.PNG(f) #hide
+fig = plot_drift_case(sol, sol_gc, "Grad-B Drift Case")
+fig = DisplayAs.PNG(fig) #hide
 
 # Note that in this grad-B drift case, the analytic and numeric guiding centers have different trajectories.

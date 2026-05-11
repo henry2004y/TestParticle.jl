@@ -8,10 +8,60 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
+# ## Plotting Function
+#
+# We define a function to visualize the results.
+
+function plot_drift_case(sol, title)
+    fig = Figure(size = (1200, 600), fontsize = 20)
+
+    ## 1. Left Column: Time Series
+    gl_left = fig[1, 1] = GridLayout()
+    ax_pos = Axis(gl_left[1, 1], ylabel = "Position [m]", title = title)
+    lines!(ax_pos, sol, idxs = (0, 1), label = "x")
+    lines!(ax_pos, sol, idxs = (0, 2), label = "y")
+    lines!(ax_pos, sol, idxs = (0, 3), label = "z")
+    axislegend(ax_pos, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
+    hidexdecorations!(ax_pos, grid = false)
+
+    ax_vel = Axis(gl_left[2, 1], xlabel = "Time [s]", ylabel = "Velocity [m/s]")
+    lines!(ax_vel, sol, idxs = (0, 4), label = "vx")
+    lines!(ax_vel, sol, idxs = (0, 5), label = "vy")
+    lines!(ax_vel, sol, idxs = (0, 6), label = "vz")
+    axislegend(ax_vel, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
+
+    linkxaxes!(ax_pos, ax_vel)
+
+    ## 2. Right Column: 3D Trajectory
+    ax_3d = Axis3(
+        fig[1, 2];
+        title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
+    )
+
+    gc = sol.prob.p[1] |> p -> get_gc_func(p; use_vE = true)
+    gc_plot(x, y, z, vx, vy, vz, t) = (gc(SA[x, y, z, vx, vy, vz, t])...,)
+
+    lines!(
+        ax_3d, sol;
+        idxs = (1, 2, 3), color = Makie.wong_colors()[1], alpha = 0.5, label = "Particle"
+    )
+    lines!(
+        ax_3d, sol;
+        idxs = (gc_plot, 1, 2, 3, 4, 5, 6, 0),
+        color = Makie.wong_colors()[2], label = "GC from Orbit"
+    )
+    axislegend(ax_3d, framevisible = true, backgroundcolor = (:white, 0.5))
+
+    return fig
+end
+
+# ## Time-Varying E Field
+#
+# We use a time-varying electric field and a uniform magnetic field and trace a proton.
+
 uniform_B(x) = SA[0, 0, 1.0e-8]
 
 function time_varying_E(x, t)
-    ## return SA[0, 1e-9*cos(0.1*t), 0]
     return SA[0, 1.0e-9 * 0.1 * t, 0]
 end
 
@@ -24,32 +74,6 @@ tspan = (0, 100)
 param = prepare(time_varying_E, uniform_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
-## Functions for obtaining the guiding center from actual trajectory
-gc = param |> p -> get_gc_func(p; use_vE = true)
-v_perp(xu) = sqrt(xu[4]^2 + xu[5]^2)
 
-## Visualization
-f = Figure(size = (800, 600), fontsize = 18)
-ax1 = Axis3(
-    f[1:3, 1],
-    title = "Polarization Drift",
-    xlabel = "x [m]",
-    ylabel = "y [m]",
-    zlabel = "z [m]",
-    aspect = :data,
-    azimuth = 0.9π,
-    elevation = 0.1π
-)
-ax2 = Axis(f[1, 2], xlabel = "time [s]", ylabel = L"v_\perp \text{ [m/s]}")
-ax3 = Axis(f[2, 2], xlabel = "time [s]", ylabel = L"y \text{ [m]}")
-ax4 = Axis(f[3, 2], xlabel = "time [s]", ylabel = L"y_{gc} \text{ [m]}")
-
-gc_y(t, x, y, z, vx, vy, vz) = (t, gc(SA[x, y, z, vx, vy, vz, t])[2])
-v_perp(t, vy, vz) = (t, sqrt(vy^2 + vz^2))
-
-lines!(ax1, sol, idxs = (1, 2, 3))
-lines!(ax2, sol, idxs = (v_perp, 0, 5, 6))
-lines!(ax3, sol, idxs = 2)
-lines!(ax4, sol, idxs = (gc_y, 0, 1, 2, 3, 4, 5, 6))
-
-f = DisplayAs.PNG(f) #hide
+fig = plot_drift_case(sol, "Polarization Drift Case")
+fig = DisplayAs.PNG(fig) #hide
