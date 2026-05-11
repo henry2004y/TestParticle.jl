@@ -97,6 +97,7 @@ end
 Equations for tracing the guiding center using the ExB drift and parallel velocity from a reference trajectory.
 """
 function trace_gc_exb!(dx, x, p, t)
+    # TODO: support external forces
     q2m, _, Efunc, Bfunc, _, sol = p
     xu = sol(t)
     v = get_v(xu)
@@ -118,6 +119,7 @@ end
 Equations for tracing the guiding center using the ExB drift with FLR corrections and parallel velocity.
 """
 function trace_gc_flr!(dx, x, p, t)
+    # TODO: support external forces
     q2m, _, Efunc, Bfunc, _, sol = p
     xu = sol(t)
     xp = get_x(xu)
@@ -254,6 +256,7 @@ Equations for tracing the guiding center using analytical drifts, including the 
 Parallel velocity is also added. This expression requires the full particle trajectory `p.sol`.
 """
 function trace_gc_drifts!(dx, x, p, t)
+    # TODO: support external forces
     q2m, _, Efunc, Bfunc, _, sol = p
     xu = sol(t)
     v = get_v(xu)
@@ -320,6 +323,7 @@ function get_gc_velocity(y, p, t)
 end
 
 function get_gc_derivatives(y, p, t)
+    # TODO: support external forces
     q, q2m, μ, Efunc, Bfunc = p
     X = get_x(y)
 
