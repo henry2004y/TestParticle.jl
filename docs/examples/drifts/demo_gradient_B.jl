@@ -42,7 +42,7 @@ function plot_drift_case(sol, sol_gc, title)
         title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
     )
 
-    gc = sol_gc.prob.p[1] |> p -> get_gc_func(p)
+    gc = get_gc_func(sol_gc.prob.p)
     gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 
     lines!(
