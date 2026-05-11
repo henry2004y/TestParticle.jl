@@ -1,6 +1,7 @@
 # Guiding center.
 
 function _get_gc_parameters(xv, E, B, q, m)
+    # TODO: support external forces
     x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
     bparticle = B(x)
@@ -31,6 +32,7 @@ end
     prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
 
 Prepare the guiding center parameters for a particle.
+# TODO: support external forces
 """
 function prepare_gc(
         xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
@@ -148,6 +150,7 @@ If `use_vE=true`, it calculates the guiding center relative to the E × B drift 
 which is essential for correctly identifying the polarization drift in time-varying fields.
 """
 function get_gc(xu, param; use_vE::Bool = false)
+    # TODO: support external forces
     q2m = get_q2m(param)
     B_field = get_BField(param)
     t = length(xu) == 7 ? xu[end] : zero(eltype(xu))

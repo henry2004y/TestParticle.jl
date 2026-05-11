@@ -1,4 +1,4 @@
-# # ExF Drift
+# # Gravity Drift
 #
 # This example demonstrates a single proton motion under uniform B and gravity fields.
 
@@ -69,11 +69,11 @@ stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 0.0, 0.0]
     [x0..., v0...]
 end
 ## Time span
-tspan = (0, 1.0)
+tspan = (0, 2.0)
 
 param = prepare(E, B, F, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
-fig = plot_drift_case(sol, "ExF Drift Case")
+fig = plot_drift_case(sol, "Gravity Drift Case")
 fig = DisplayAs.PNG(fig) #hide

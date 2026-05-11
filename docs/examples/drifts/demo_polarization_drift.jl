@@ -13,7 +13,7 @@ CairoMakie.activate!(type = "png") #hide
 # We define a function to visualize the results.
 
 function plot_drift_case(sol, title)
-    fig = Figure(size = (1200, 600), fontsize = 20)
+    fig = Figure(size = (1200, 700), fontsize = 20)
 
     ## 1. Left Column: Time Series
     gl_left = fig[1, 1] = GridLayout()
@@ -24,13 +24,20 @@ function plot_drift_case(sol, title)
     axislegend(ax_pos, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
     hidexdecorations!(ax_pos, grid = false)
 
-    ax_vel = Axis(gl_left[2, 1], xlabel = "Time [s]", ylabel = "Velocity [m/s]")
+    ax_field = Axis(gl_left[2, 1], ylabel = "Field")
+    Es, Bs = get_fields(sol)
+    lines!(ax_field, sol.t, [E[2] for E in Es], label = "Ey")
+    lines!(ax_field, sol.t, [B[3] for B in Bs], label = "Bz")
+    axislegend(ax_field, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
+    hidexdecorations!(ax_field, grid = false)
+
+    ax_vel = Axis(gl_left[3, 1], xlabel = "Time [s]", ylabel = "Velocity [m/s]")
     lines!(ax_vel, sol, idxs = (0, 4), label = "vx")
     lines!(ax_vel, sol, idxs = (0, 5), label = "vy")
     lines!(ax_vel, sol, idxs = (0, 6), label = "vz")
     axislegend(ax_vel, position = :lt, framevisible = true, backgroundcolor = (:white, 0.5))
 
-    linkxaxes!(ax_pos, ax_vel)
+    linkxaxes!(ax_pos, ax_field, ax_vel)
 
     ## 2. Right Column: 3D Trajectory
     ax_3d = Axis3(
