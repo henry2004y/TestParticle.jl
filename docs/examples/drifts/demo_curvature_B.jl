@@ -1,7 +1,7 @@
 # # Curvature Drift
 #
 # This example demonstrates a single proton motion under a non-uniform curved B field with ∇B ⊥ B.
-# It is more complex than the simpler [ExB drift](@ref EB-Drift).
+# It is more complex than the simpler [ExB Drift](@ref).
 # More theoretical details can be found in [Curvature Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#b-b-grad-b-drift), and Fundamentals of Plasma Physics by Paul Bellan.
 
 import DisplayAs #hide
