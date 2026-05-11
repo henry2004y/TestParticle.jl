@@ -1,4 +1,4 @@
-# # E×B Drift
+# # E×B Drift {#EB-Drift}
 #
 # This example demonstrates a single proton motion under uniform E and B fields.
 # The electric field is parallel to the magnetic field in the z-direction, so the motion consists of a cyclotron gyration and an acceleration along z.
