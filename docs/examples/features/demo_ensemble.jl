@@ -30,7 +30,7 @@ E_analytic = ZeroField()
 param = prepare(E_analytic, B_analytic, species = Electron)
 tspan = (0.0, 10.0)
 stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = ODEProblem(trace, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
 prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(SVector{3}(prob.u0[1:3]), SA[ctx.sim_id / 3, 0.0, 0.0]))
@@ -103,7 +103,7 @@ E_analytic = ZeroField()
 param_custom = prepare(E_analytic, B_analytic, species = Proton)
 tspan_custom = (0.0, 40.0)
 stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-prob_custom = ODEProblem(trace!, stateinit_custom, tspan_custom, param_custom)
+prob_custom = ODEProblem(trace, stateinit_custom, tspan_custom, param_custom)
 
 ## Define prob_func
 function prob_func_custom(prob, ctx)

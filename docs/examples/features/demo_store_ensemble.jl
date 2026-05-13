@@ -36,7 +36,7 @@ param = prepare(E_zero, B_uniform, species = Proton)
 tspan = (0.0, 10.0)
 
 ## Define the problem
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = ODEProblem(trace, stateinit, tspan, param)
 
 ## Define a prob_func to vary initial velocity slightly
 prob_func(prob, ctx) = remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand(ctx.rng)))
