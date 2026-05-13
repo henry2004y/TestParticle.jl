@@ -17,7 +17,8 @@ using StaticArrays
 using JLD2
 using Random
 
-Random.seed!(1234);
+# Set seed for reproducibility
+seed = 1234
 
 # ## Setup: Ensemble Simulation
 #
@@ -45,7 +46,7 @@ ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 ## Solve for a small ensemble
 ## We use a high-order solver (Vern9) which produces dense interpolation data by default
 trajectories = 2
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat = 0.2);
+sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat = 0.2, seed);
 
 # ## Case 1: Converting to Float32
 #

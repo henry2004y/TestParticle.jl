@@ -102,13 +102,14 @@ Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
         batch_size::Int = _default_batch_size(
             ensemblealg, trajectories
         ),
+        seed = nothing,
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, alg, trajectories, dt,
         savestepinterval, isoutside,
         save_start, save_end, save_everystep,
         Val(save_fields), Val(save_work),
-        maxiters, batch_size
+        maxiters, batch_size, seed
     )
 end
 
@@ -123,13 +124,13 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        ::Boris{false}
+        ::Boris{false}, seed = nothing
     ) where {SaveFields, SaveWork, F}
     return _boris!(
         sols, prob, irange, savestepinterval, dt, nt,
         nout, isoutside,
         save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork)
+        Val(SaveFields), Val(SaveWork), seed
     )
 end
 
@@ -139,7 +140,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size
+        maxiters, batch_size, seed
     ) where {SaveFields, SaveWork, F}
     # Perform preparations (checks and nout calculation)
     # We skip sols allocation for serial runs to hit the 8-allocation goal.
@@ -154,7 +155,7 @@ end
                 prob, i, savestepinterval, dt, nt,
                 nout, isoutside,
                 save_start, save_end, save_everystep,
-                Val(SaveFields), Val(SaveWork), alg
+                Val(SaveFields), Val(SaveWork), alg, seed
             ) for i in 1:trajectories
     ]
     return EnsembleSolution(sols, elapsed_time, true)
@@ -164,20 +165,20 @@ end
         prob::TraceProblem, i, savestepinterval, dt, nt,
         nout, isoutside,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed = nothing
     ) where {SaveFields, SaveWork}
 
     if alg isa Boris{false}
         return _boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-            update_velocity, :boris
+            update_velocity, :boris, seed
         )
     elseif alg isa MultistepBoris{N, false} where {N}
         return _multistep_boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-            alg
+            alg, seed
         )
     else
         # fallback or unreachable if we only support these for now
@@ -191,7 +192,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size
+        maxiters, batch_size, seed
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -206,7 +207,7 @@ end
             sols, prob, irange, savestepinterval,
             dt, nt, nout, isoutside,
             save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork), alg
+            Val(SaveFields), Val(SaveWork), alg, seed
         )
     end
 
@@ -235,9 +236,10 @@ function _solve_single_boris(
         prob::TraceProblem, i, savestepinterval,
         dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed = nothing
     ) where {SaveFields, SaveWork, F}
-    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, myid(), nothing, default_rng(), nothing))
+    rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, myid(), nothing, rng, seed))
     single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
     sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
     local_sols = Vector{sol_type}(undef, 1)
@@ -246,7 +248,7 @@ function _solve_single_boris(
         savestepinterval, dt, nt, nout,
         isoutside,
         save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork), alg
+        Val(SaveFields), Val(SaveWork), alg, seed
     )
     return local_sols[1]
 end
@@ -257,7 +259,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size
+        maxiters, batch_size, seed
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
@@ -270,7 +272,7 @@ end
             prob, i, savestepinterval, dt, nt, nout,
             isoutside,
             save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork), alg
+            Val(SaveFields), Val(SaveWork), alg, seed
         )
     end
     end_time = time()
@@ -283,14 +285,15 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size
+        maxiters, batch_size, seed
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
         save_start, save_end, save_everystep,
         Val(SaveFields), Val(SaveWork), maxiters
     )
-    sample_prob = prob.prob_func(prob, EnsembleContext(1, 1, 0, nothing, default_rng(), default_rng()))
+    rng_sample = isnothing(seed) ? default_rng() : Xoshiro(seed)
+    sample_prob = prob.prob_func(prob, EnsembleContext(1, 1, 0, nothing, rng_sample, seed))
     dummy_prob = TraceProblem(sample_prob.u0, sample_prob.tspan, sample_prob.p)
     sol_type = _get_sol_type(dummy_prob, dt, Val(SaveFields), Val(SaveWork))
     ichunks = index_chunks(1:trajectories; size = batch_size)
@@ -304,7 +307,7 @@ end
                 dt, nt, nout, isoutside,
                 save_start, save_end,
                 save_everystep,
-                Val(SaveFields), Val(SaveWork), alg
+                Val(SaveFields), Val(SaveWork), alg, seed
             )
         end
         local_sols
@@ -477,7 +480,7 @@ end
 @inline @muladd function _boris_single(
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater::F2, alg_name
+        velocity_updater::F2, alg_name, seed = nothing
     ) where {SaveFields, SaveWork, F1, F2}
     (; tspan, p, u0) = prob
     T = eltype(u0)
@@ -495,7 +498,8 @@ end
 
     # set initial conditions for each trajectory i
     iout = 0
-    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, default_rng(), default_rng()))
+    rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+    new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
     u0_i = SVector{6, T}(new_prob.u0)
     r = u0_i[SVector(1, 2, 3)]
     v = u0_i[SVector(4, 5, 6)]
@@ -555,14 +559,14 @@ end
 @inline @muladd function _generic_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater::F2, alg_name
+        velocity_updater::F2, alg_name, seed = nothing
     ) where {SaveFields, SaveWork, F1, F2}
 
     @inbounds for i in irange
         sols[i] = _boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-            velocity_updater, alg_name
+            velocity_updater, alg_name, seed
         )
     end
 
@@ -574,13 +578,14 @@ Apply Boris method for particles with index in `irange`.
 """
 @inline @muladd function _boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
-        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+        save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
+        seed = nothing
     ) where {SaveFields, SaveWork, F}
 
     _generic_boris!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        update_velocity, :boris
+        update_velocity, :boris, seed
     )
 
     return

@@ -342,13 +342,13 @@ Return velocity magnitude from energy in [eV].
 energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
 
 """
-    sample_unit_sphere()
+    sample_unit_sphere(rng::AbstractRNG=Random.default_rng())
 
 Sample a unit vector on a sphere uniformly.
 """
-function sample_unit_sphere()
-    ϕ = 2π * rand()
-    cosθ = 2 * rand() - 1
+function sample_unit_sphere(rng::AbstractRNG = Random.default_rng())
+    ϕ = 2π * rand(rng)
+    cosθ = 2 * rand(rng) - 1
     sinθ = sqrt(1 - cosθ^2)
     x = sinθ * cos(ϕ)
     y = sinθ * sin(ϕ)
@@ -382,8 +382,8 @@ function generate_sphere(nθ = 64, nϕ = 64, radius = 1.0)
 end
 
 """
-    sample_maxwellian(Tn, m; offset=0.0, u0=SA[0.0, 0.0, 0.0])
-    sample_maxwellian(Tn, species::String; offset=0.0, u0=SA[0.0, 0.0, 0.0])
+    sample_maxwellian([rng], Tn, m; offset=0.0, u0=SA[0.0, 0.0, 0.0])
+    sample_maxwellian([rng], Tn, species::String; offset=0.0, u0=SA[0.0, 0.0, 0.0])
 
 Sample a velocity [m/s] from a Maxwellian distribution with temperature `Tn` [K], mass `m`
 [kg], energy offset `offset` [J], and bulk velocity `u0` [m/s].

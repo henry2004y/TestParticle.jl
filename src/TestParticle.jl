@@ -10,7 +10,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
     DiscreteCallback, terminate!, EnsembleContext
-using Random: default_rng
+using Random: default_rng, AbstractRNG, Xoshiro
 using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,

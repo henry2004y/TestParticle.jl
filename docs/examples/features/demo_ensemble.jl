@@ -56,19 +56,23 @@ f = DisplayAs.PNG(f) #hide
 # Often we want to sample particle initial velocities from a distribution, such as a Maxwellian.
 # Here we demonstrate how to do this using `Maxwellian` from TestParticle.jl.
 
-Random.seed!(1234)
+# Set seed for reproducibility
+seed = 1234
 
 ## Define a new prob_func that samples from a Maxwellian
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
     vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
-    v = rand(vdf)
+    v = rand(ctx.rng, vdf)
     return remake(prob; u0 = [prob.u0[1:3]..., v...])
 end
 
 trajectories_dist = 10
 ensemble_prob_dist = EnsembleProblem(prob; prob_func = prob_func_maxwellian, safetycopy = false)
-sols_dist = solve(ensemble_prob_dist, Vern7(), EnsembleThreads(); trajectories = trajectories_dist)
+sols_dist = solve(
+    ensemble_prob_dist, Vern7(), EnsembleThreads();
+    trajectories = trajectories_dist, seed
+)
 
 ## Visualization
 f = Figure(fontsize = 20)
@@ -159,7 +163,7 @@ savestepinterval = 1
 
 ## Reuse the basic problem parameters
 prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval)
+trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval, seed)
 
 ## Visualization
 f = Figure(fontsize = 20)
