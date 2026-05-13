@@ -33,7 +33,7 @@ stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob = ODEProblem(trace, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(SVector{3}(prob.u0[1:3]), SA[ctx.sim_id / 3, 0.0, 0.0]))
+prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(prob.u0[1:3], SA[ctx.sim_id / 3, 0.0, 0.0]))
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
@@ -63,8 +63,8 @@ seed = 1234
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
     vdf = TP.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
-    v = SVector{3}(rand(ctx.rng, vdf))
-    return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
+    v = rand(ctx.rng, vdf)
+    return remake(prob; u0 = vcat(prob.u0[1:3], v))
 end
 
 trajectories_dist = 10
@@ -107,7 +107,7 @@ prob_custom = ODEProblem(trace, stateinit_custom, tspan_custom, param_custom)
 
 ## Define prob_func
 function prob_func_custom(prob, ctx)
-    return remake(prob, u0 = [stateinit_custom[1:3]..., 1.0, 0.0, Float64(ctx.sim_id)])
+    return remake(prob, u0 = vcat(stateinit_custom[1:3], SA[1.0, 0.0, Float64(ctx.sim_id)]))
 end
 
 ## Define output_func to save specific data

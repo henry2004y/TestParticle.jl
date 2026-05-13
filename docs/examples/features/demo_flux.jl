@@ -115,8 +115,8 @@ vdf_cloud = TP.Maxwellian(SA[0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
 
 ## Create TraceProblem template
 function prob_func_cloud(prob, ctx)
-    v₀ = SVector{3}(rand(ctx.rng, vdf_cloud))
-    return remake(prob, u0 = vcat(SA[0.0, 0.0, 0.0], v₀))
+    v₀ = rand(ctx.rng, vdf_cloud)
+    return remake(prob; u0 = vcat(SA[0.0, 0.0, 0.0], v₀))
 end
 
 ## Define a single problem template
