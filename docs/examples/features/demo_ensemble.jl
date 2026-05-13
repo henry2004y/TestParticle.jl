@@ -33,7 +33,7 @@ stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, ctx) = remake(prob, u0 = [prob.u0[1:3]..., ctx.sim_id / 3, 0.0, 0.0])
+prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(SVector{3}(prob.u0[1:3]), SA[ctx.sim_id / 3, 0.0, 0.0]))
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
@@ -62,13 +62,16 @@ seed = 1234
 ## Define a new prob_func that samples from a Maxwellian
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
-    vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
+    vdf = TP.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
     v = rand(ctx.rng, vdf)
-    return remake(prob; u0 = [prob.u0[1:3]..., v...])
+    return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
 end
 
 trajectories_dist = 10
-ensemble_prob_dist = EnsembleProblem(prob; prob_func = prob_func_maxwellian, safetycopy = false)
+ensemble_prob_dist = EnsembleProblem(
+    prob;
+    prob_func = prob_func_maxwellian, safetycopy = false
+)
 sols_dist = solve(
     ensemble_prob_dist, Vern7(), EnsembleThreads();
     trajectories = trajectories_dist, seed
@@ -82,7 +85,10 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(sols_dist.u)
-    lines!(ax, u[1, :], u[2, :], u[3, :], label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
+    lines!(
+        ax, u[1, :], u[2, :], u[3, :];
+        label = "$i", color = Makie.wong_colors()[mod1(i, 7)]
+    )
 end
 f = DisplayAs.PNG(f) #hide
 

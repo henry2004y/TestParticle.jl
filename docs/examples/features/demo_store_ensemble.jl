@@ -28,9 +28,9 @@ B_uniform(x) = SA[0, 0, 1.0e-8]
 E_zero = TestParticle.ZeroField()
 
 ## Initialize a proton with some perpendicular velocity
-x0 = [0.0, 0.0, 0.0]
-u0 = [1.0, 0.0, 0.0]
-stateinit = [x0..., u0...]
+x0 = SA[0.0, 0.0, 0.0]
+u0 = SA[1.0, 0.0, 0.0]
+stateinit = vcat(x0, u0)
 
 param = prepare(E_zero, B_uniform, species = Proton)
 tspan = (0.0, 10.0)
