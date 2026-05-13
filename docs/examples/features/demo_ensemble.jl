@@ -30,10 +30,10 @@ E_analytic = ZeroField()
 param = prepare(E_analytic, B_analytic, species = Electron)
 tspan = (0.0, 10.0)
 stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = ODEProblem(trace, stateinit, tspan, param)
 
 ## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, ctx) = remake(prob, u0 = [prob.u0[1:3]..., ctx.sim_id / 3, 0.0, 0.0])
+prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(SVector{3}(prob.u0[1:3]), SA[ctx.sim_id / 3, 0.0, 0.0]))
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
@@ -56,19 +56,26 @@ f = DisplayAs.PNG(f) #hide
 # Often we want to sample particle initial velocities from a distribution, such as a Maxwellian.
 # Here we demonstrate how to do this using `Maxwellian` from TestParticle.jl.
 
-Random.seed!(1234)
+# Set seed for reproducibility
+seed = 1234
 
 ## Define a new prob_func that samples from a Maxwellian
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
-    vdf = TP.Maxwellian([0.0, 0.0, 0.0], 1.0)
-    v = rand(vdf)
-    return remake(prob; u0 = [prob.u0[1:3]..., v...])
+    vdf = TP.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
+    v = SVector{3}(rand(ctx.rng, vdf))
+    return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
 end
 
 trajectories_dist = 10
-ensemble_prob_dist = EnsembleProblem(prob; prob_func = prob_func_maxwellian, safetycopy = false)
-sols_dist = solve(ensemble_prob_dist, Vern7(), EnsembleThreads(); trajectories = trajectories_dist)
+ensemble_prob_dist = EnsembleProblem(
+    prob;
+    prob_func = prob_func_maxwellian, safetycopy = false
+)
+sols_dist = solve(
+    ensemble_prob_dist, Vern7(), EnsembleThreads();
+    trajectories = trajectories_dist, seed
+)
 
 ## Visualization
 f = Figure(fontsize = 20)
@@ -78,7 +85,10 @@ ax = Axis3(
 )
 
 for (i, u) in enumerate(sols_dist.u)
-    lines!(ax, u[1, :], u[2, :], u[3, :], label = "$i", color = Makie.wong_colors()[mod1(i, 7)])
+    lines!(
+        ax, u[1, :], u[2, :], u[3, :];
+        label = "$i", color = Makie.wong_colors()[mod1(i, 7)]
+    )
 end
 f = DisplayAs.PNG(f) #hide
 
@@ -93,11 +103,11 @@ E_analytic = ZeroField()
 param_custom = prepare(E_analytic, B_analytic, species = Proton)
 tspan_custom = (0.0, 40.0)
 stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-prob_custom = ODEProblem(trace!, stateinit_custom, tspan_custom, param_custom)
+prob_custom = ODEProblem(trace, stateinit_custom, tspan_custom, param_custom)
 
 ## Define prob_func
 function prob_func_custom(prob, ctx)
-    return remake(prob, u0 = [stateinit_custom[1:3]..., 1.0, 0.0, Float64(ctx.sim_id)])
+    return remake(prob, u0 = vcat(SVector{3}(stateinit_custom[1:3]), SA[1.0, 0.0, Float64(ctx.sim_id)]))
 end
 
 ## Define output_func to save specific data
@@ -159,7 +169,7 @@ savestepinterval = 1
 
 ## Reuse the basic problem parameters
 prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval)
+trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval, seed)
 
 ## Visualization
 f = Figure(fontsize = 20)

@@ -17,7 +17,8 @@ using StaticArrays
 using JLD2
 using Random
 
-Random.seed!(1234);
+# Set seed for reproducibility
+seed = 1234
 
 # ## Setup: Ensemble Simulation
 #
@@ -27,15 +28,15 @@ B_uniform(x) = SA[0, 0, 1.0e-8]
 E_zero = TestParticle.ZeroField()
 
 ## Initialize a proton with some perpendicular velocity
-x0 = [0.0, 0.0, 0.0]
-u0 = [1.0, 0.0, 0.0]
-stateinit = [x0..., u0...]
+x0 = SA[0.0, 0.0, 0.0]
+u0 = SA[1.0, 0.0, 0.0]
+stateinit = vcat(x0, u0)
 
 param = prepare(E_zero, B_uniform, species = Proton)
 tspan = (0.0, 10.0)
 
 ## Define the problem
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = ODEProblem(trace, stateinit, tspan, param)
 
 ## Define a prob_func to vary initial velocity slightly
 prob_func(prob, ctx) = remake(prob, u0 = prob.u0 .* (1 + 0.1 * rand(ctx.rng)))
@@ -45,7 +46,7 @@ ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 ## Solve for a small ensemble
 ## We use a high-order solver (Vern9) which produces dense interpolation data by default
 trajectories = 2
-sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat = 0.2);
+sols = solve(ensemble_prob, Vern9(), EnsembleThreads(); trajectories, saveat = 0.2, seed);
 
 # ## Case 1: Converting to Float32
 #

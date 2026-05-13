@@ -12,40 +12,42 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        alg::MultistepBoris{N, false}
+        alg::MultistepBoris{N, false}, seed::Union{Nothing, Integer} = nothing
     ) where {N, SaveFields, SaveWork, F}
     return _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt,
         nout, isoutside,
         save_start, save_end, save_everystep,
-        Val(SaveFields), Val(SaveWork), alg.n, Val(N)
+        Val(SaveFields), Val(SaveWork), alg.n, Val(N), seed
     )
 end
 
 @inline function _multistep_boris_single(
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::MultistepBoris{N_order, false}
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::MultistepBoris{N_order, false},
+        seed::Union{Nothing, Integer} = nothing
     ) where {N_order, SaveFields, SaveWork, F}
 
     return _boris_single(
         prob, i, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
-        MultistepUpdater{N_order}(alg.n), :multistep_boris
+        MultistepUpdater{N_order}(alg.n), :multistep_boris, seed
     )
 end
 
 @inline @muladd function _multistep_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        n::Int, ::Val{N_order}
+        n::Int, ::Val{N_order}, seed::Union{Nothing, Integer} = nothing
     ) where {N_order, SaveFields, SaveWork, F}
 
     @inbounds for i in irange
         sols[i] = _multistep_boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep,
-            Val(SaveFields), Val(SaveWork), MultistepBoris{N_order, false}(n, 0.0)
+            Val(SaveFields), Val(SaveWork), MultistepBoris{N_order, false}(n, 0.0),
+            seed
         )
     end
 

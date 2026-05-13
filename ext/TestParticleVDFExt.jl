@@ -1,17 +1,16 @@
 module TestParticleVDFExt
 
 using TestParticle
-import TestParticle as TP
 import VelocityDistributionFunctions as VDF
-import TestParticle: Maxwellian, BiMaxwellian, Kappa, BiKappa
 using LinearAlgebra: norm
 using StaticArrays: SA
+using Random: AbstractRNG, default_rng
 using PrecompileTools: @setup_workload, @compile_workload
 
-function TP.sample_maxwellian(Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
-    vth = √(2 * TP.kB * Tn / m)
+function TestParticle.sample_maxwellian(rng::AbstractRNG, Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    vth = √(2 * TestParticle.kB * Tn / m)
     vdf = VDF.Maxwellian(vth; u0)
-    v = rand(vdf)
+    v = rand(rng, vdf)
     if offset > 0
         v_mag = norm(v)
         E = 0.5 * m * v_mag^2 + offset
@@ -21,46 +20,54 @@ function TP.sample_maxwellian(Tn, m; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
     return v
 end
 
-function TP.sample_maxwellian(Tn, species::String; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
-    haskey(TP.SpeciesDict, species) || error("Unsupported species: $species")
-    s = TP.SpeciesDict[species]
-    return TP.sample_maxwellian(Tn, s.m; offset, u0)
+function TestParticle.sample_maxwellian(Tn::Real, m::Real; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    return TestParticle.sample_maxwellian(default_rng(), Tn, m; offset, u0)
 end
 
-function Maxwellian(args...; kwargs...)
+function TestParticle.sample_maxwellian(rng::AbstractRNG, Tn::Real, species::String; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    haskey(TestParticle.SpeciesDict, species) || error("Unsupported species: $species")
+    s = TestParticle.SpeciesDict[species]
+    return TestParticle.sample_maxwellian(rng, Tn, s.m; offset, u0)
+end
+
+function TestParticle.sample_maxwellian(Tn::Real, species::String; offset = 0.0, u0 = SA[0.0, 0.0, 0.0])
+    return TestParticle.sample_maxwellian(default_rng(), Tn, species; offset, u0)
+end
+
+function TestParticle.Maxwellian(args...; kwargs...)
     return VDF.Maxwellian(args...; kwargs...)
 end
 
-function Maxwellian(u0, p, n; m = TP.mᵢ)
-    vth = TP.get_thermal_speed(p, n, m)
+function TestParticle.Maxwellian(u0, p, n; m = TestParticle.mᵢ)
+    vth = TestParticle.get_thermal_speed(p, n, m)
 
     return VDF.Maxwellian(vth; u0)
 end
 
-function BiMaxwellian(args...; kwargs...)
+function TestParticle.BiMaxwellian(args...; kwargs...)
     return VDF.BiMaxwellian(args...; kwargs...)
 end
 
-function BiMaxwellian(B, u0, ppar, pperp, n; m = TP.mᵢ)
-    vpar = TP.get_thermal_speed(ppar, n, m)
-    vperp = TP.get_thermal_speed(pperp, n, m)
+function TestParticle.BiMaxwellian(B, u0, ppar, pperp, n; m = TestParticle.mᵢ)
+    vpar = TestParticle.get_thermal_speed(ppar, n, m)
+    vperp = TestParticle.get_thermal_speed(pperp, n, m)
 
     return VDF.BiMaxwellian(vperp, vpar, B; u0)
 end
 
-Kappa(args...; kwargs...) = VDF.Kappa(args...; kwargs...)
+TestParticle.Kappa(args...; kwargs...) = VDF.Kappa(args...; kwargs...)
 
-function Kappa(u0, p, n, kappa; m = TP.mᵢ)
-    vth = TP.get_thermal_speed(p, n, m)
+function TestParticle.Kappa(u0, p, n, kappa; m = TestParticle.mᵢ)
+    vth = TestParticle.get_thermal_speed(p, n, m)
 
     return VDF.Kappa(vth, kappa; u0)
 end
 
-BiKappa(args...; kwargs...) = VDF.BiKappa(args...; kwargs...)
+TestParticle.BiKappa(args...; kwargs...) = VDF.BiKappa(args...; kwargs...)
 
-function BiKappa(B, u0, ppar, pperp, n, kappa; m = TP.mᵢ)
-    vpar = TP.get_thermal_speed(ppar, n, m)
-    vperp = TP.get_thermal_speed(pperp, n, m)
+function TestParticle.BiKappa(B, u0, ppar, pperp, n, kappa; m = TestParticle.mᵢ)
+    vpar = TestParticle.get_thermal_speed(ppar, n, m)
+    vperp = TestParticle.get_thermal_speed(pperp, n, m)
 
     return VDF.BiKappa(vperp, vpar, kappa, B; u0)
 end
@@ -80,7 +87,7 @@ end
         v = rand(vdf)
         vdf = BiKappa(B, u0, p, p, n, kappa)
         v = rand(vdf)
-        sample_maxwellian(3000.0, "O+")
+        TestParticle.sample_maxwellian(3000.0, "O+")
     end
 end
 

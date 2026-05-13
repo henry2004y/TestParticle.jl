@@ -32,30 +32,26 @@ zeroB(x) = SA[0.0, 0.0, 0.0]
 zeroE(x) = SA[0.0, 0.0, 0.0]
 
 param = prepare(zeroE, zeroB)
-stateinit = zeros(6) # particle position and velocity to be modified
+stateinit = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # particle position and velocity
 tspan = (0.0, 110.0) # Give particles enough time to reach the plane (x=100 with v>=1)
-prob = ODEProblem(trace!, stateinit, tspan, param)
+prob = ODEProblem(trace, stateinit, tspan, param)
 
 # ## Flux through a Plane
 #
 # In this example, we assume zero EM fields with constant particle velocities along the x-direction. We estimate the particle flux through a plane at x = 100.
 # The estimated particle flux shall match the source flux in this example.
 
-"""
-Set initial conditions.
-"""
 function prob_func(prob, ctx)
     ## initial velocity, [m/s]
     ## 50% v=1.0, 50% v=2.0
     if ctx.sim_id % 2 == 1
-        v₀ = [1.0, 0.0, 0.0]
+        v₀ = SA[1.0, 0.0, 0.0]
     else
-        v₀ = [2.0, 0.0, 0.0]
+        v₀ = SA[2.0, 0.0, 0.0]
     end
-    ## initial position, [m]
-    r₀ = prob.u0[1:3]
+    r₀ = SVector{3}(prob.u0[1:3])
 
-    return prob = remake(prob; u0 = [r₀..., v₀...])
+    return remake(prob; u0 = vcat(r₀, v₀))
 end
 
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
@@ -75,15 +71,18 @@ println("Particle flux through plane x = $plane_loc [m]: ", flux, " /s")
 
 function prob_func_iso(prob, ctx)
     ## initial velocity, [m/s]
-    v₀ = sample_unit_sphere()
+    v₀ = sample_unit_sphere(ctx.rng)
     ## initial position, [m]
-    r₀ = @view prob.u0[1:3]
+    r₀ = SVector{3}(prob.u0[1:3])
 
-    return prob = remake(prob; u0 = [r₀..., v₀...])
+    return remake(prob; u0 = vcat(r₀, v₀))
 end
 
 ensemble_prob_iso = EnsembleProblem(prob; prob_func = prob_func_iso, safetycopy = false)
-sols_iso = solve(ensemble_prob_iso, Tsit5(), EnsembleSerial(); trajectories = n_particles)
+sols_iso = solve(
+    ensemble_prob_iso, Tsit5(), EnsembleSerial();
+    trajectories = n_particles, seed = 1234
+)
 
 r0 = 100.0 # [m]
 detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
@@ -98,7 +97,8 @@ println("Particle flux density through sphere r = $r [m]: ", flux, " /(s * m²)"
 #
 # The third case demonstrates how to calculate the particle flux across multiple detectors (planes) and compares the results with the analytical solution for a freely expanding Maxwellian cloud.
 
-Random.seed!(1234);
+# Set seed for reproducibility
+seed = 1234
 
 ## Simulation Setup
 N_cloud = 10_000
@@ -109,25 +109,29 @@ T_cloud = 1.0
 vth = sqrt(2 * T_cloud / m)
 t_end_cloud = 2.0
 
-## Initialize particles
-## Point source at origin: r₀ = 0
-x0_cloud = [SVector(0.0, 0.0, 0.0) for _ in 1:N_cloud];
-
 ## Maxwellian velocity distribution
 ## u_bulk = 0, n=1 effectively for distribution shape
-vdf_cloud = TP.Maxwellian([0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
-v0_cloud = rand(vdf_cloud, N_cloud);
+vdf_cloud = TP.Maxwellian(SA[0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
 
 ## Create TraceProblem template
-prob_func_cloud(prob, ctx) = remake(prob, u0 = vcat(x0_cloud[ctx.sim_id], v0_cloud[ctx.sim_id]))
+function prob_func_cloud(prob, ctx)
+    v₀ = SVector{3}(rand(ctx.rng, vdf_cloud))
+    return remake(prob; u0 = vcat(SA[0.0, 0.0, 0.0], v₀))
+end
 
 ## Define a single problem template
 param_cloud = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)
 tspan_cloud = (0.0, t_end_cloud)
-prob_template = ODEProblem(trace, vcat(x0_cloud[1], v0_cloud[1]), tspan_cloud, param_cloud);
+prob_template = ODEProblem(
+    trace, vcat(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 0.0]), tspan_cloud,
+    param_cloud
+);
 
 ensemble_prob_cloud = EnsembleProblem(prob_template; prob_func = prob_func_cloud)
-sols_cloud = solve(ensemble_prob_cloud, Tsit5(), EnsembleThreads(), trajectories = N_cloud);
+sols_cloud = solve(
+    ensemble_prob_cloud, Tsit5(), EnsembleThreads();
+    trajectories = N_cloud, seed
+);
 
 ## Flux Calculation with Multiple Detectors
 L = 6.0
