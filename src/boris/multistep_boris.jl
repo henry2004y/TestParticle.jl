@@ -12,7 +12,7 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        alg::MultistepBoris{N, false}, seed = nothing
+        alg::MultistepBoris{N, false}, seed::Union{Nothing, Integer} = nothing
     ) where {N, SaveFields, SaveWork, F}
     return _multistep_boris!(
         sols, prob, irange, savestepinterval, dt, nt,
@@ -26,7 +26,7 @@ end
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, alg::MultistepBoris{N_order, false},
-        seed = nothing
+        seed::Union{Nothing, Integer} = nothing
     ) where {N_order, SaveFields, SaveWork, F}
 
     return _boris_single(
@@ -39,7 +39,7 @@ end
 @inline @muladd function _multistep_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        n::Int, ::Val{N_order}, seed = nothing
+        n::Int, ::Val{N_order}, seed::Union{Nothing, Integer} = nothing
     ) where {N_order, SaveFields, SaveWork, F}
 
     @inbounds for i in irange

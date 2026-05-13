@@ -342,11 +342,11 @@ Return velocity magnitude from energy in [eV].
 energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
 
 """
-    sample_unit_sphere(rng::AbstractRNG=Random.default_rng())
+    sample_unit_sphere(rng::AbstractRNG=default_rng())
 
 Sample a unit vector on a sphere uniformly.
 """
-function sample_unit_sphere(rng::AbstractRNG = Random.default_rng())
+function sample_unit_sphere(rng::AbstractRNG = default_rng())
     ϕ = 2π * rand(rng)
     cosθ = 2 * rand(rng) - 1
     sinθ = sqrt(1 - cosθ^2)

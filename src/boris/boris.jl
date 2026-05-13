@@ -102,7 +102,7 @@ Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
         batch_size::Int = _default_batch_size(
             ensemblealg, trajectories
         ),
-        seed = nothing,
+        seed::Union{Nothing, Integer} = nothing,
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, alg, trajectories, dt,
@@ -124,7 +124,7 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        ::Boris{false}, seed = nothing
+        ::Boris{false}, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F}
     return _boris!(
         sols, prob, irange, savestepinterval, dt, nt,
@@ -140,7 +140,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size, seed
+        maxiters, batch_size, seed::Union{Nothing, Integer}
     ) where {SaveFields, SaveWork, F}
     # Perform preparations (checks and nout calculation)
     # We skip sols allocation for serial runs to hit the 8-allocation goal.
@@ -165,7 +165,7 @@ end
         prob::TraceProblem, i, savestepinterval, dt, nt,
         nout, isoutside,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed = nothing
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork}
 
     if alg isa Boris{false}
@@ -192,7 +192,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size, seed
+        maxiters, batch_size, seed::Union{Nothing, Integer}
     ) where {SaveFields, SaveWork, F}
     sols, nt,
         nout = _prepare(
@@ -236,7 +236,7 @@ function _solve_single_boris(
         prob::TraceProblem, i, savestepinterval,
         dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep,
-        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed = nothing
+        ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F}
     rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
     new_prob = prob.prob_func(prob, EnsembleContext(i, 1, myid(), nothing, rng, seed))
@@ -259,7 +259,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size, seed
+        maxiters, batch_size, seed::Union{Nothing, Integer}
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
@@ -285,7 +285,7 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork},
-        maxiters, batch_size, seed
+        maxiters, batch_size, seed::Union{Nothing, Integer}
     ) where {SaveFields, SaveWork, F}
     _, nt, nout = _prepare(
         prob, trajectories, dt, savestepinterval,
@@ -480,7 +480,7 @@ end
 @inline @muladd function _boris_single(
         prob::TraceProblem, i, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater::F2, alg_name, seed = nothing
+        velocity_updater::F2, alg_name, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F1, F2}
     (; tspan, p, u0) = prob
     T = eltype(u0)
@@ -559,7 +559,7 @@ end
 @inline @muladd function _generic_boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F1,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        velocity_updater::F2, alg_name, seed = nothing
+        velocity_updater::F2, alg_name, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F1, F2}
 
     @inbounds for i in irange
@@ -579,7 +579,7 @@ Apply Boris method for particles with index in `irange`.
 @inline @muladd function _boris!(
         sols, prob::TraceProblem, irange, savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        seed = nothing
+        seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F}
 
     _generic_boris!(
