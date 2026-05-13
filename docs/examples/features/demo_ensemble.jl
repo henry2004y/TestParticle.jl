@@ -63,7 +63,7 @@ seed = 1234
 function prob_func_maxwellian(prob, ctx)
     ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
     vdf = TP.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
-    v = rand(ctx.rng, vdf)
+    v = SVector{3}(rand(ctx.rng, vdf))
     return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
 end
 
