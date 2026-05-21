@@ -116,40 +116,49 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
-function _fastinterp(grids, A, order, extrap::AbstractExtrap, coeffs = OnTheFly())
+function _fastinterp(grids, A, order, bc_or_extrap, coeffs = OnTheFly())
     # Ensure FillExtrap value matches eltype(A) for SVector types
-    if extrap isa FillExtrap && extrap.fill_value isa Number && isnan(extrap.fill_value)
+    if bc_or_extrap isa FillExtrap && bc_or_extrap.fill_value isa Number &&
+            isnan(bc_or_extrap.fill_value)
         T = eltype(A)
         if T <: SVector
-            extrap = FillExtrap(SVector{3, eltype(T)}(NaN, NaN, NaN))
+            bc_or_extrap = FillExtrap(SVector{3, eltype(T)}(NaN, NaN, NaN))
         else
-            extrap = FillExtrap(T(NaN))
+            bc_or_extrap = FillExtrap(T(NaN))
         end
     end
 
+    if bc_or_extrap isa AbstractExtrap
+        bc_val = NoBC()
+        extrap_val = bc_or_extrap
+    else
+        bc_val = bc_or_extrap
+        extrap_val = NoExtrap()
+    end
+
     if order == 1
-        return linear_interp(grids, A; extrap)
+        return linear_interp(grids, A; bc = bc_val, extrap = extrap_val)
     elseif order == 3
-        return cardinal_interp(grids, A; coeffs, extrap)
+        return cardinal_interp(grids, A; coeffs, bc = bc_val, extrap = extrap_val)
     elseif order == 0
-        return constant_interp(grids, A; extrap)
+        return constant_interp(grids, A; bc = bc_val, extrap = extrap_val)
     else
         throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
 end
 
-
 function _fastinterp_spherical(grids, A, order, coeffs = PreCompute())
     # r and θ always extrapolate with NaN, ϕ is always periodic.
     T = eltype(A)
     fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
-    extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), Extrap(:wrap))
+    extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), NoExtrap())
+    bc = (NoBC(), NoBC(), PeriodicBC(check = false))
     if order == 1
-        return linear_interp(grids, A; extrap)
+        return linear_interp(grids, A; bc, extrap)
     elseif order == 3
-        return cardinal_interp(grids, A; coeffs, extrap)
+        return cardinal_interp(grids, A; coeffs, bc, extrap)
     elseif order == 0
-        return constant_interp(grids, A; extrap)
+        return constant_interp(grids, A; bc, extrap)
     else
         throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
@@ -208,7 +217,7 @@ function build_interpolator end
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -218,7 +227,7 @@ end
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     _check_interpolation_consistency(A, (gridx, gridy, gridz), order)
     itp = _fastinterp((gridx, gridy, gridz), A, order, bc, coeffs)
@@ -228,7 +237,7 @@ end
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
+        order::Int = 1, bc = FillExtrap(NaN)
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -238,7 +247,7 @@ end
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN)
+        order::Int = 1, bc = FillExtrap(NaN)
     ) where {T}
     if order != 1
         throw(ArgumentError("RectilinearGrid (CartesianNonUniform) only supports order=1 (Linear) interpolation."))
@@ -250,7 +259,7 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
+        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
@@ -259,7 +268,7 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
-        gridr, gridθ, gridϕ, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); coeffs = OnTheFly()
+        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
     ) where {T}
     r_min = minimum(gridr)
     θ_min, θ_max = extrema(gridθ)
@@ -276,7 +285,7 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A,
-        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN);
+        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc = FillExtrap(NaN);
         coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
@@ -294,7 +303,7 @@ end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
-        order::Int = 1, bc::AbstractExtrap = FillExtrap(NaN); dir = 1, coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN); dir = 1, coeffs = OnTheFly()
     )
     if eltype(A) <: SVector
         @assert ndims(A) == 1 "Incompatible 1D force field and grid! Expected 1D array of SVectors."
