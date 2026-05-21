@@ -20,8 +20,12 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes, Random
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
-using VelocityDistributionFunctions, SpecialFunctions, CairoMakie
+using VelocityDistributionFunctions, CairoMakie
 import DisplayAs
+
+# We define erfc using libopenlibm to avoid dependency on SpecialFunctions.jl
+erfc(x::Float64) = ccall((:erfc, Base.Math.libm), Float64, (Float64,), x)
+erfc(x::Real) = erfc(float(Float64(x)))
 
 ## Source flux at the origin
 const source_flux = 100.0 # [real particle / s]

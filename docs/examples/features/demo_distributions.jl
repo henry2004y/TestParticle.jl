@@ -7,7 +7,7 @@
 using TestParticle
 import TestParticle as TP
 using VelocityDistributionFunctions
-using SpecialFunctions: gamma
+using Gamma: gamma
 using Random
 using StaticArrays
 using Statistics
