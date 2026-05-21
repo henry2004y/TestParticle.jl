@@ -3,7 +3,8 @@ module TestParticle
 using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
     interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
-    OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap
+    OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap,
+    NoBC, NoExtrap
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
@@ -53,8 +54,8 @@ export LazyTimeInterpolator, build_interpolator
 export TraceProblem, TraceGCProblem, TraceHybridProblem,
     CartesianGrid, RectilinearGrid, StructuredGrid
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
-    EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap, OnTheFly, PreCompute,
-    DiscreteCallback, TerminateOutside
+    EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap,
+    PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
 
 include("types.jl")
 include("utility/utility.jl")
