@@ -13,7 +13,7 @@ using CairoMakie
 using Random
 CairoMakie.activate!(type = "png") #hide
 
-Random.seed!(42);
+seed = 42;
 
 # ## Shock Parameters
 # We set up a perpendicular shock.
@@ -88,7 +88,7 @@ function prob_func_p(prob, ctx)
 end
 
 ensemble_p = EnsembleProblem(prob_p; prob_func = prob_func_p)
-sols_p = solve(ensemble_p, Vern9(), EnsembleSerial(); trajectories = 10);
+sols_p = solve(ensemble_p, Vern9(), EnsembleSerial(); trajectories = 10, seed);
 
 # ### Heavy Electrons
 
@@ -108,7 +108,7 @@ function prob_func_e(prob, ctx)
 end
 
 ensemble_e = EnsembleProblem(prob_e; prob_func = prob_func_e)
-sols_e = solve(ensemble_e, Vern9(), EnsembleSerial(); trajectories = 10);
+sols_e = solve(ensemble_e, Vern9(), EnsembleSerial(); trajectories = 10, seed);
 
 # ## Visualization
 

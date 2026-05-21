@@ -61,18 +61,34 @@ function TraceHybridProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
     )
 end
 
+# For remake
+function TraceHybridProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
+    return TraceHybridProblem{
+        typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
+        typeof(prob_func),
+    }(
+        f,
+        u0,
+        tspan,
+        p,
+        prob_func
+    )
+end
+
+
 @inline function solve(
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1, savestepinterval::Int = 1,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true,
-        save_everystep::Bool = true, verbose::Bool = false
+        save_everystep::Bool = true, verbose::Bool = false,
+        seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
     return _solve(
         ensemblealg, prob, trajectories, alg,
         savestepinterval, isoutside,
-        save_start, save_end, save_everystep, verbose
+        save_start, save_end, save_everystep, verbose, seed
     )
 end
 
@@ -80,7 +96,7 @@ end
         ::EnsembleSerial, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
         savestepinterval, isoutside::F,
-        save_start, save_end, save_everystep, verbose
+        save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
     sols = Vector{sol_type}(undef, trajectories)
@@ -88,7 +104,7 @@ end
 
     elapsed_time = @elapsed _hybrid_adaptive!(
         sols, prob, irange, alg, savestepinterval,
-        isoutside, save_start, save_end, save_everystep, verbose
+        isoutside, save_start, save_end, save_everystep, verbose, seed
     )
 
     return EnsembleSolution(sols, elapsed_time, true)
@@ -98,7 +114,7 @@ end
         ::EnsembleThreads, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
         savestepinterval, isoutside::F,
-        save_start, save_end, save_everystep, verbose
+        save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
     sols = Vector{sol_type}(undef, trajectories)
@@ -108,7 +124,7 @@ end
         _hybrid_adaptive!(
             sols, prob, irange, alg, savestepinterval,
             isoutside, save_start, save_end,
-            save_everystep, verbose
+            save_everystep, verbose, seed
         )
     end
 
@@ -188,7 +204,7 @@ end
 @inline function _hybrid_adaptive!(
         sols, prob::TraceHybridProblem, irange, alg,
         savestepinterval, isoutside::F,
-        save_start, save_end, save_everystep, verbose
+        save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc, _ = p
@@ -213,7 +229,8 @@ end
         sizehint!(traj, initial_capacity)
         sizehint!(tsave, initial_capacity)
 
-        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
+        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]
         v = xv_fo[SVector(4, 5, 6)]
@@ -264,7 +281,7 @@ end
                         mode = :FO
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
                         xv_fo_vec = _gc_to_full_at_t(
-                            xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand()
+                            xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand(rng)
                         )
                         xv_fo = xv_fo_vec
                         r = xv_fo[SVector(1, 2, 3)]

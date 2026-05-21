@@ -9,7 +9,6 @@ using OrdinaryDiffEq, OrdinaryDiffEqRosenbrock, OrdinaryDiffEqSDIRK
 using StaticArrays
 using CairoMakie
 using Statistics
-using Random
 import DisplayAs #hide
 import TestParticle as TP
 

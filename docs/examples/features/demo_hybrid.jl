@@ -100,10 +100,9 @@ alg = AdaptiveHybrid(;
     check_interval = 100,
 )
 
-Random.seed!(1234)
 ## Set verbose = true to see the dynamic switching
 prob_hybrid = TraceHybridProblem(u0, tspan, p)
-sol = TP.solve(prob_hybrid, alg; verbose = false).u[1];
+sol = TP.solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
 
 # ## Step 4: Compute Adiabaticity
 #

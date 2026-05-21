@@ -15,7 +15,6 @@ using OrdinaryDiffEq
 using SciMLBase
 using StaticArrays
 using JLD2
-using Random
 
 # Set seed for reproducibility
 seed = 1234

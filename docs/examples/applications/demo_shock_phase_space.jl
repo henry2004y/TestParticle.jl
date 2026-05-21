@@ -14,7 +14,7 @@ using CairoMakie
 using Meshes
 CairoMakie.activate!(type = "png") #hide
 
-Random.seed!(42);
+seed = 42;
 
 # ## Upstream Plasma Parameters
 
@@ -96,7 +96,7 @@ const p_thermal = n_up * TP.qᵢ * T_ion
 const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
 
 function prob_func_maxwellian(prob, ctx)
-    v = rand(vdf)
+    v = rand(ctx.rng, vdf)
     u0 = SA[x_source..., v...]
     return remake(prob, u0 = u0)
 end
@@ -105,7 +105,9 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
-@time sols = TP.solve(prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles);
+@time sols = TP.solve(
+    prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles, seed
+);
 println("Simulation complete.")
 
 ## Detector planes (upstream and downstream of the shock)
@@ -219,9 +221,9 @@ const Vsphere_m2 = (4 / 3) * π * vradius_m2^3 # velocity space volume
 
 ## Uniform sampling in a 3D sphere
 function prob_func_m2(prob, ctx)
-    r = vradius_m2 * rand()^(1 / 3)
-    ϕ = 2π * rand()
-    θ = acos(2 * rand() - 1)
+    r = vradius_m2 * rand(ctx.rng)^(1 / 3)
+    ϕ = 2π * rand(ctx.rng)
+    θ = acos(2 * rand(ctx.rng) - 1)
 
     sinθ, cosθ = sincos(θ)
     cosϕ, sinϕ = sincos(ϕ)
@@ -230,8 +232,12 @@ function prob_func_m2(prob, ctx)
     return remake(prob, u0 = u0)
 end
 
-prob_m2 = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2)
-@time sols_m2 = TP.solve(prob_m2, Boris(); dt, savestepinterval = 10, trajectories = nparticles_m2);
+prob_m2 = TraceProblem(
+    SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
+)
+@time sols_m2 = TP.solve(
+    prob_m2, Boris(); dt, savestepinterval = 10, trajectories = nparticles_m2, seed
+);
 
 hists_up_m2 = reconstruct_liouville_projections(
     sols_m2, detector_up, vdf, n_up, Vsphere_m2

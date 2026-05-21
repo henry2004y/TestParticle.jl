@@ -17,13 +17,13 @@
 #
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
-using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes, Random
+using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
 using VelocityDistributionFunctions, CairoMakie
 import DisplayAs
 
-# We define erfc using libopenlibm to avoid dependency on SpecialFunctions.jl
+# We define erfc using libopenlibm
 erfc(x::Float64) = ccall((:erfc, Base.Math.libm), Float64, (Float64,), x)
 erfc(x::Real) = erfc(float(Float64(x)))
 
