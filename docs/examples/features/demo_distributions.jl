@@ -7,7 +7,7 @@
 using TestParticle
 import TestParticle as TP
 using VelocityDistributionFunctions
-using SpecialFunctions: gamma
+using Gamma: gamma
 using Random
 using StaticArrays
 using Statistics
@@ -15,7 +15,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 import DisplayAs #hide
 
-Random.seed!(1234)
+rng = Xoshiro(1234)
 
 # Number of samples
 N = 100_000;
@@ -41,7 +41,7 @@ vdf = TP.Maxwellian(u0, p, n; m)
 println(vdf)
 
 ## Sample
-vs = rand(vdf, N)
+vs = rand(rng, vdf, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF
@@ -79,7 +79,7 @@ vdf_bi = TP.BiMaxwellian(B, u0, ppar, pperp, n; m)
 println(vdf_bi)
 
 ## Sample
-vs = rand(vdf_bi, N)
+vs = rand(rng, vdf_bi, N)
 vpar = [v[3] for v in vs] # Since B is along Z
 vperp = [hypot(v[1], v[2]) for v in vs]
 
@@ -126,7 +126,7 @@ vdf_kappa = TP.Kappa(u0, p, n, kappa; m)
 println(vdf_kappa)
 
 ## Sample
-vs = rand(vdf_kappa, N)
+vs = rand(rng, vdf_kappa, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF (1D projection of 3D Kappa)
@@ -165,7 +165,7 @@ vdf_bikappa = TP.BiKappa(B, u0, ppar, pperp, n, kappa; m)
 println(vdf_bikappa)
 
 ## Sample
-vs = rand(vdf_bikappa, N)
+vs = rand(rng, vdf_bikappa, N)
 vpar = [v[3] for v in vs]
 
 ## Theoretical PDF (1D projection)

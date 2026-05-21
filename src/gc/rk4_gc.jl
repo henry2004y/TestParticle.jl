@@ -27,7 +27,7 @@ Apply RK4 method for particles with index in `irange`.
 function _rk4!(
         sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     ttotal = tspan[2] - tspan[1]
@@ -47,7 +47,8 @@ function _rk4!(
 
         # set initial conditions for each trajectory i
         iout = 0
-        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
+        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv = new_prob.u0
 
         if save_start

@@ -52,7 +52,7 @@ Apply RK45 method for particles with index in `irange`.
 function _rk45!(
         sols, prob, irange, dt_initial, isoutside,
         save_start, save_end, save_everystep, abstol, reltol, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork},
+        ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     T = eltype(u0)
@@ -73,7 +73,8 @@ function _rk45!(
         traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
-        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
+        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv = new_prob.u0
 
         t = tspan[1]

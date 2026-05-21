@@ -63,7 +63,8 @@ function solve(
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000,
-        save_fields::Bool = false, save_work::Bool = false
+        save_fields::Bool = false, save_work::Bool = false,
+        seed::Union{Nothing, Integer} = nothing
     ) where {F}
     if alg != :rk4 && alg != :rk45
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
@@ -74,13 +75,13 @@ function solve(
             return _solve(
                 ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(true), Val(true)
+                Val(true), Val(true), seed
             )
         else
             return _solve(
                 ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(true), Val(false)
+                Val(true), Val(false), seed
             )
         end
     else
@@ -88,13 +89,13 @@ function solve(
             return _solve(
                 ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(false), Val(true)
+                Val(false), Val(true), seed
             )
         else
             return _solve(
                 ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(false), Val(false)
+                Val(false), Val(false), seed
             )
         end
     end
@@ -103,7 +104,7 @@ end
 function _solve(
         ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval,
         isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, savestepinterval,
@@ -115,13 +116,13 @@ function _solve(
         _rk45!(
             sols, prob, irange, dt, isoutside,
             save_start, save_end, save_everystep, abstol, reltol, maxiters,
-            Val(SaveFields), Val(SaveWork)
+            Val(SaveFields), Val(SaveWork), seed
         )
     else
         _rk4!(
             sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, maxiters,
-            Val(SaveFields), Val(SaveWork)
+            Val(SaveFields), Val(SaveWork), seed
         )
     end
 
@@ -131,7 +132,7 @@ end
 function _solve(
         ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval,
         isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}
+        ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare_gc(
@@ -145,13 +146,13 @@ function _solve(
             _rk45!(
                 sols, prob, irange, dt, isoutside,
                 save_start, save_end, save_everystep, abstol, reltol, maxiters,
-                Val(SaveFields), Val(SaveWork)
+                Val(SaveFields), Val(SaveWork), seed
             )
         else
             _rk4!(
                 sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
                 save_start, save_end, save_everystep, maxiters,
-                Val(SaveFields), Val(SaveWork)
+                Val(SaveFields), Val(SaveWork), seed
             )
         end
     end

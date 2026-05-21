@@ -14,14 +14,13 @@ using Random
 using CairoMakie, PairPlots
 CairoMakie.activate!(type = "png") #hide
 
-## For reproducible results
-Random.seed!(1234)
+seed = 1234
 
 """
 Set initial conditions.
 """
 function prob_func(prob, ctx)
-    v₀ = rand(vdf₁)
+    v₀ = rand(ctx.rng, vdf₁)
     r₀ = [5_000e3, 0.0, 0.0]
 
     return prob = remake(prob; u0 = [r₀..., v₀...])
@@ -80,7 +79,7 @@ prob = let
 end
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
-sols = solve(ensemble_prob, Vern6(), EnsembleSerial(); trajectories);
+sols = solve(ensemble_prob, Vern6(), EnsembleSerial(); trajectories, seed);
 
 # Sample particle trajectories
 
@@ -360,7 +359,7 @@ trajectories = 2
 weight₁ = n₁ / trajectories
 
 function prob_func_para(prob, ctx)
-    v₀ = rand(vdf₁_para)
+    v₀ = rand(ctx.rng, vdf₁_para)
     r₀ = [5_000e3, 0.0, 0.0]
 
     return prob = remake(prob; u0 = [r₀..., v₀...])
@@ -375,7 +374,7 @@ prob = let
 end
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_para, safetycopy = false)
 
-sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories);
+sols = solve(ensemble_prob, Vern9(), EnsembleSerial(); trajectories, seed);
 
 f = plot_traj(sols; azimuth = 1.08π, elevation = pi / 16)
 f = DisplayAs.PNG(f) #hide

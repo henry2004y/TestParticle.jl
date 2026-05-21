@@ -33,7 +33,7 @@ using CairoMakie, Printf
 CairoMakie.activate!(type = "png") #hide
 
 ## For reproducible results
-Random.seed!(1234)
+seed = 1234
 
 ## Analytic EM fields
 
@@ -68,13 +68,14 @@ else
     δBfunc(xu)
 end
 
-function get_B_perturb(x)
+function get_B_perturb(x; seed = 1234)
+    rng = Xoshiro(seed)
     L₀, N₀, N₁, B̃ = 1Rₑ, 100, 1000, 0.2e-9
     B = fill(0.0, 3, length(x)) # [T]
     ## Eqs (4-5) from the paper
     for N in N₀:N₁
         δBn = B̃ * (N / N₀)^-1.2
-        ϕx, ϕy, ϕz = rand(SVector{3, Float64}) .* 2
+        ϕx, ϕy, ϕz = rand(rng, SVector{3, Float64}) .* 2
         for i in axes(B, 2)
             δBx = δBn * cospi(2 * N * x[i] / L₀ + ϕx)
             δBy = δBn * cospi(2 * N * x[i] / L₀ + ϕy)
@@ -91,13 +92,12 @@ end
 isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
 function prob_func(prob, ctx)
-    #TODO: use ctx.rng for reproducibility
-    x0 = SA[(0.5 + rand()) * Rₑ, 0.0, 0.0] # launched in the core region
+    x0 = SA[(0.5 + rand(ctx.rng)) * Rₑ, 0.0, 0.0] # launched in the core region
     u0 = SA[0.0, 0.0, 0.0]
     T₀ = 10 # [eV]
     vth = √(2T₀ * abs(qₑ) / mₑ) # [m/s]
     vdf = TP.Maxwellian(u0, vth)
-    v0 = rand(vdf)
+    v0 = rand(ctx.rng, vdf)
 
     return prob = remake(prob, u0 = [x0..., v0...])
 end
@@ -265,7 +265,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 callback = TerminateOutside(isoutside)
 sols = solve(
     ensemble_prob, Vern9(), EnsembleThreads();
-    callback, trajectories
+    callback, trajectories, seed
 );
 
 ## maximum acceleration ratio particle index
@@ -291,14 +291,16 @@ f = DisplayAs.PNG(f) #hide
 
 const δBfunc = let
     x = range(0.5Rₑ, 1.5Rₑ, length = 10000)
-    δB = get_B_perturb(x)
+    δB = get_B_perturb(x; seed)
     TP.Field(build_interpolator(δB, x, 1, ClampExtrap()))
 end
 
 dt = 2.0e-4 # [s]
 param = prepare(E, Bcase2; species = Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TP.solve(prob, Boris(); dt, trajectories, isoutside, savestepinterval = 100);
+sols = TP.solve(
+    prob, Boris(); dt, trajectories, isoutside, savestepinterval = 100, seed
+);
 
 ## maximum acceleration ratio particle index
 imax = find_max_acceleration_index(sols)
