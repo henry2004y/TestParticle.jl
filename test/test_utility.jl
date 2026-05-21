@@ -105,7 +105,7 @@ end
             nfunc11 = build_interpolator(n, x, y, z)
             @test nfunc11(SA[9, 0, 0]) ≈ 11.85
             # bc=PeriodicBC(endpoint=:exclusive) (previously WrapExtrap())
-            nfunc12 = build_interpolator(n, x, y, z, 1, PeriodicBC(endpoint=:exclusive))
+            nfunc12 = build_interpolator(n, x, y, z, 1, PeriodicBC(endpoint = :exclusive))
             @test nfunc12(SA[20, 0, 0]) ≈ 9.5
             # bc=ClampExtrap() (previously bc=3)
             nfunc13 = build_interpolator(n, x, y, z, 1, ClampExtrap())
@@ -114,7 +114,7 @@ end
             nfunc31 = build_interpolator(n, x, y, z, 3)
             @test nfunc31(SA[9, 0, 0]) ≈ 11.85
             # bc=PeriodicBC(endpoint=:exclusive) (previously WrapExtrap())
-            nfunc32 = build_interpolator(n, x, y, z, 3, PeriodicBC(endpoint=:exclusive))
+            nfunc32 = build_interpolator(n, x, y, z, 3, PeriodicBC(endpoint = :exclusive))
             @test nfunc32(SA[20, 0, 0]) ≈ 9.25
             # bc=ClampExtrap() (previously bc=3)
             nfunc33 = build_interpolator(n, x, y, z, 3, ClampExtrap())
