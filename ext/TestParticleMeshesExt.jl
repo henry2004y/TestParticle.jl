@@ -507,6 +507,12 @@ end
             dims = (length(x) - 1, length(y) - 1, length(z) - 1)
         )
         param = prepare(mesh, E, B)
+        get_cell_centers(mesh)
+
+        rect_mesh = RectilinearGrid(x, y, z)
+        makegrid(rect_mesh)
+        get_cell_centers(rect_mesh)
+        param_rect = prepare(rect_mesh, E, B)
 
         # Mock a simple solution for crossing tests
         t_array = collect(0.0:1.0:2.0)

@@ -959,4 +959,43 @@ end
         vs_mw, ws_mw = get_particle_crossings(sim, [detector, detector], [1.0, 2.0])
         @test length(vs_mw) == 2 && length(ws_mw) == 2 && sum(ws_mw[1]) == 3.0
     end
+
+    @testset "Meshes Grid Helpers" begin
+        x = range(-10, 10, length = 5)
+        y = range(-10, 10, length = 6)
+        z = range(-10, 10, length = 7)
+
+        # Test CartesianGrid
+        cart_grid = CartesianGrid(
+            (first(x), first(y), first(z)), (last(x), last(y), last(z));
+            dims = (length(x) - 1, length(y) - 1, length(z) - 1)
+        )
+
+        grid_coords = TP.makegrid(cart_grid)
+        @test grid_coords[1] ≈ x
+        @test grid_coords[2] ≈ y
+        @test grid_coords[3] ≈ z
+
+        centers = TP.get_cell_centers(cart_grid)
+        @test centers[1][1] ≈ (x[1] + x[2]) / 2
+
+        # Test RectilinearGrid
+        rect_grid = RectilinearGrid(x, y, z)
+        rect_coords = TP.makegrid(rect_grid)
+        @test ustrip.(rect_coords[1]) ≈ x
+        @test ustrip.(rect_coords[2]) ≈ y
+        @test ustrip.(rect_coords[3]) ≈ z
+
+        rect_centers = TP.get_cell_centers(rect_grid)
+        @test ustrip.(rect_centers[1])[1] ≈ (x[1] + x[2]) / 2
+
+        # Test prepare for RectilinearGrid
+        B = fill(0.0, 3, length(x), length(y), length(z))
+        E = fill(0.0, 3, length(x), length(y), length(z))
+        B[3, :, :, :] .= 1.0e-8
+
+        param = prepare(rect_grid, E, B)
+        @test param[1] ≈ qᵢ / mᵢ
+    end
 end
+
