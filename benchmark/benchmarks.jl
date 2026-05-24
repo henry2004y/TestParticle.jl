@@ -5,7 +5,7 @@ using TestParticle
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
 using TestParticle: CPU
-using Meshes: Vec, Plane, Disk, Point, Sphere
+using Meshes: Vec, Plane, Disk, Point, Sphere, CartesianGrid, StructuredGrid
 
 const SUITE = BenchmarkGroup()
 

@@ -6,6 +6,7 @@ If the field is analytic, you can directly pass the generated function to [`prep
 
 ```@example interp
 using TestParticle
+using Meshes
 using StaticArrays
 using Chairmarks
 
