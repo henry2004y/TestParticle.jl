@@ -3,9 +3,9 @@
 @setup_workload begin
     @compile_workload begin
         # numerical field parameters
-        x = range(-10, 10, length=4)
-        y = range(-10, 10, length=6)
-        z = range(-10, 10, length=8)
+        x = range(-10, 10, length = 4)
+        y = range(-10, 10, length = 6)
+        z = range(-10, 10, length = 8)
         B = fill(0.0, 3, length(x), length(y), length(z)) # [T]
         E = fill(0.0, 3, length(x), length(y), length(z)) # [V/m]
 
@@ -24,30 +24,30 @@
         tspan = (0.0, 1.0)
         dt = 0.5
         prob = TraceProblem(stateinit, tspan, param)
-        sol = solve(prob, Boris(); dt, savestepinterval=100)
+        sol = solve(prob, Boris(); dt, savestepinterval = 100)
         sol = solve(
             prob, Boris(), EnsembleThreads();
-            dt, savestepinterval=100
+            dt, savestepinterval = 100
         )
 
         # Kernel Boris (CPU)
-        sol_kernel = solve(prob, Boris(), CPU(); dt, savestepinterval=100)
+        sol_kernel = solve(prob, Boris(), CPU(); dt, savestepinterval = 100)
 
         # Adaptive Boris
-        alg_adaptive = AdaptiveBoris(safety=0.1)
+        alg_adaptive = AdaptiveBoris(safety = 0.1)
         sol_adaptive = solve(prob, alg_adaptive).u[1]
 
-        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields=true, save_work=true)
+        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)
         E_trace, B_trace = get_fields(sol_adaptive)
         work = get_work(sol_adaptive)
 
         # Multistep Boris
         sol_multistep = solve(
-            prob, MultistepBoris2(; n=2); dt
+            prob, MultistepBoris2(; n = 2); dt
         )
         sol_multistep_sf = solve(
-            prob, MultistepBoris2(; n=2);
-            dt, save_fields=true
+            prob, MultistepBoris2(; n = 2);
+            dt, save_fields = true
         )
         # guiding center
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
@@ -55,12 +55,12 @@
         stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z, E, B)
         # native GC solvers
         prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
-        sol_native_rk4 = solve(prob_native; dt=0.1, alg=:rk4)
-        sol_native_rk45 = solve(prob_native; alg=:rk45)
+        sol_native_rk4 = solve(prob_native; dt = 0.1, alg = :rk4)
+        sol_native_rk45 = solve(prob_native; alg = :rk45)
 
         # hybrid solver
         prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
-        alg_hybrid = AdaptiveHybrid(threshold=0.1, dtmax=1.0)
+        alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0)
         sol_hybrid = solve(prob_hybrid, alg_hybrid)
 
         # explicit trace functions

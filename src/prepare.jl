@@ -33,14 +33,14 @@ time-dependent field
   - `itd::Bool`: whether the field function is time dependent.
   - `F`: the type of `field_function`.
 """
-struct Field{itd,F} <: AbstractField{itd}
+struct Field{itd, F} <: AbstractField{itd}
     field_function::F
-    function Field{itd,F}(field_function::F) where {itd,F}
+    function Field{itd, F}(field_function::F) where {itd, F}
         return isa(itd, Bool) ? new(field_function) : throw(ArgumentError("itd must be a boolean."))
     end
 end
 
-Field(f::Function) = Field{is_time_dependent(f),typeof(f)}(f)
+Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
 @inline (f::Field{true})(xu, t) = f.field_function(xu, t)
 @inline function (f::Field{true})(xu)
@@ -91,9 +91,9 @@ function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
 end
 
 function _prepare(
-    E, B, F, args...; species=Proton, q=nothing,
-    m=nothing, gridtype=CartesianGrid, kw...
-)
+        E, B, F, args...; species = Proton, q = nothing,
+        m = nothing, gridtype = CartesianGrid, kw...
+    )
     q = @something q species.q
     m = @something m species.m
     q2m = q / m
@@ -134,18 +134,18 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
   - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
 function prepare(
-    x::AbstractVector, y::AbstractVector, E, B, F=ZeroField(); order=1,
-    bc=FillExtrap(NaN), kw...
-)
+        x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
+        bc = FillExtrap(NaN), kw...
+    )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
-    return _prepare(E, B, F, x, y; gridtype=CartesianGrid, order, bc, kw...)
+    return _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
 end
 
 function prepare(
-    x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F=ZeroField(); order=1,
-    bc=FillExtrap(NaN), gridtype=CartesianGrid, kw...
-)
+        x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField(); order = 1,
+        bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
+    )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
     @assert issorted(z) "Grid vector `z` must be sorted."
@@ -153,18 +153,18 @@ function prepare(
 end
 
 function prepare(
-    x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F=ZeroField();
-    order=1, bc=WrapExtrap(), kw...
-)
+        x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField();
+        order = 1, bc = WrapExtrap(), kw...
+    )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
     @assert issorted(z) "Grid vector `z` must be sorted."
-    return _prepare(E, B, F, x, y, z; gridtype=StructuredGrid, order, bc, kw...)
+    return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
-function prepare(x::AbstractVector, E, B, F=ZeroField(); order=1, bc=ClampExtrap(), dir=1, kw...)
+function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = ClampExtrap(), dir = 1, kw...)
     @assert issorted(x) "Grid vector `x` must be sorted."
-    return _prepare(E, B, F, x; gridtype=CartesianGrid, order, bc, dir, kw...)
+    return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
-prepare(E, B, F=ZeroField(); kw...) = _prepare(E, B, F; kw...)
-prepare(B; E=ZeroField(), F=ZeroField(), kw...) = _prepare(E, B, F; kw...)
+prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
+prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)

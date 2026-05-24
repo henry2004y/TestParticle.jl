@@ -32,7 +32,7 @@ Convert from Cartesian to spherical coordinates vector.
 function cart2sph(x, y, z)
     r = hypot(x, y, z)
     if r == 0
-        return SVector{3,eltype(r)}(0, 0, 0)
+        return SVector{3, eltype(r)}(0, 0, 0)
     end
     θ = acos(z / r)
     ϕ = atan(y, x) |> mod2pi
@@ -66,7 +66,7 @@ function cart2sphvec(vx, vy, vz, x, y, z)
     ρ = hypot(x, y)
     r = hypot(ρ, z)
     if r == 0
-        return SVector{3,eltype(r)}(0, 0, 0)
+        return SVector{3, eltype(r)}(0, 0, 0)
     end
     vr = (x * vx + y * vy + z * vz) / r
     if ρ == 0
@@ -114,7 +114,7 @@ Return the gyrofrequency [rad/s].
   - `q`: Charge [C]. Default is proton charge.
   - `m`: Mass [kg]. Default is proton mass.
 """
-get_gyrofrequency(B=5.0e-9; q=qᵢ, m=mᵢ) = ω = q * B / m
+get_gyrofrequency(B = 5.0e-9; q = qᵢ, m = mᵢ) = ω = q * B / m
 
 @inline _get_exb_drift(E, B, Bmag) = (E × B) / Bmag^2
 
@@ -133,7 +133,7 @@ function _get_v_gamma(u, func_name)
             :trace_relativistic_normalized!,
             :trace_relativistic_normalized,
         )
-        v_real = is_normalized ? get_relativistic_v(u; c=1) : get_relativistic_v(u)
+        v_real = is_normalized ? get_relativistic_v(u; c = 1) : get_relativistic_v(u)
         v_mag = norm(v_real)
         γ = is_normalized ? 1 / sqrt(1 - v_mag^2) : 1 / sqrt(1 - (v_mag / c)^2)
     else
@@ -155,12 +155,12 @@ Return the gyroradius [m].
   - `q`: Charge [C]. Default is proton charge.
   - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyroradius(V::Number, B::Number; q=qᵢ, m=mᵢ)
+function get_gyroradius(V::Number, B::Number; q = qᵢ, m = mᵢ)
     ω = get_gyrofrequency(B; q, m)
     return r = V / ω
 end
 
-function get_gyroradius(v, B, E=SA[0.0, 0.0, 0.0]; q=qᵢ, m=mᵢ)
+function get_gyroradius(v, B, E = SA[0.0, 0.0, 0.0]; q = qᵢ, m = mᵢ)
     Bmag = norm(B)
     if Bmag == 0
         return Inf
@@ -233,7 +233,7 @@ Return the gyroperiod [s].
   - `q`: Charge [C]. Default is proton charge.
   - `m`: Mass [kg]. Default is proton mass.
 """
-function get_gyroperiod(B=5.0e-9; q=qᵢ, m=mᵢ)
+function get_gyroperiod(B = 5.0e-9; q = qᵢ, m = mᵢ)
     ω = get_gyrofrequency(B; q, m)
     return 2π / ω
 end
@@ -242,7 +242,7 @@ end
 Return velocity from relativistic γv in `sol`.
 """
 function get_velocity(sol)
-    v = Array{eltype(sol.u[1]),2}(undef, 3, length(sol.u))
+    v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol.u))
     inv_c2 = 1 / c^2
     @inbounds for is in axes(v, 2)
         u_i = sol.u[is]
@@ -263,7 +263,7 @@ end
 """
 Return the energy [eV] from relativistic `sol`.
 """
-function get_energy(sol::AbstractODESolution; m=mᵢ, q=qᵢ)
+function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
     e = Vector{eltype(sol.u[1])}(undef, length(sol.u))
     inv_c2 = 1 / c^2
     mc2_q = m * c^2 / abs(q)
@@ -283,7 +283,7 @@ end
 """
 Calculate the energy [eV] of a relativistic particle from γv in [m/s].
 """
-function get_energy(γv; m=mᵢ, q=qᵢ)
+function get_energy(γv; m = mᵢ, q = qᵢ)
     γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
     γ = √(1 + γ²v² / c^2)
 
@@ -293,14 +293,14 @@ end
 """
 Return velocity magnitude from energy in [eV].
 """
-energy2velocity(Ek; m=mᵢ, q=qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
+energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
 
 """
     sample_unit_sphere(rng::AbstractRNG=default_rng())
 
 Sample a unit vector on a sphere uniformly.
 """
-function sample_unit_sphere(rng::AbstractRNG=default_rng())
+function sample_unit_sphere(rng::AbstractRNG = default_rng())
     ϕ = 2π * rand(rng)
     cosθ = 2 * rand(rng) - 1
     sinθ = sqrt(1 - cosθ^2)
@@ -317,7 +317,7 @@ end
 Generate a sphere with `radius` and matching grid points `nθ` and `nϕ`.
 Returns a tuple of `(x, y, z)` matrices.
 """
-function generate_sphere(nθ=64, nϕ=64, radius=1.0)
+function generate_sphere(nθ = 64, nϕ = 64, radius = 1.0)
     ϕ = LinRange(0, 2π, nϕ)
     θ = LinRange(0, π, nθ)
     x = Matrix{Float64}(undef, nϕ, nθ)
@@ -421,7 +421,7 @@ end
 Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
-@inline function get_adiabaticity(r, Bfunc, q, m, μ, t=0.0)
+@inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
     Bmag = Bfunc(r, t) |> norm
     iszero(Bmag) && return Inf
 
@@ -435,7 +435,7 @@ Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`
     return ρ * invRc
 end
 
-function get_adiabaticity(r, Bfunc, μ, t::Number=0.0; species=Proton)
+function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
     return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
 end
 

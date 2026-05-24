@@ -517,7 +517,7 @@ end
         end
         # Make the mock struct callable
         (s::PrecompileMockSol)(t) = s.u[1]
-        
+
         sol = PrecompileMockSol(t_array, u_array)
 
         det = Disk(Plane(Point(0.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 1.0)
