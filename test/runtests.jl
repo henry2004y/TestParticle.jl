@@ -1,4 +1,4 @@
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes
 using TestParticle: Field, qᵢ, mᵢ, qₑ, mₑ, c
 import TestParticle as TP
 using Random

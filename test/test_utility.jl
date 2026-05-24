@@ -6,7 +6,7 @@ using OrdinaryDiffEq
 using Random
 using Unitful
 import TestParticle as TP
-using Meshes: Vec, Plane, Disk, Point, Sphere
+using Meshes: Vec, Plane, Disk, Point, Sphere, CartesianGrid, RectilinearGrid, StructuredGrid
 using SciMLBase
 
 struct MockSol{T, U}
