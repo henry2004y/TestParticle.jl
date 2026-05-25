@@ -15,7 +15,6 @@ FastInterpolations = "9ea80cae-fc13-4c00-8066-6eaedb12f34b"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 PhysicalConstants = "5ad8b20f-a522-5ce9-bfc9-ddf1d5bda6ab"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
@@ -26,10 +25,12 @@ Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
+Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [extensions]
+TestParticleMeshesExt = "Meshes"
 TestParticleRecursiveArrayToolsExt = "RecursiveArrayTools"
 TestParticleVDFExt = "VelocityDistributionFunctions"
 

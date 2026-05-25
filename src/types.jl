@@ -105,3 +105,8 @@ Adaptive Multistep/Hyper Boris method of order `N`.
 """
 AdaptiveMultistepBoris{N}(; n::Int = 1, safety = 0.1) where {N} =
     MultistepBoris{N, true}(n, Float64(safety))
+
+# Meshes.jl grid types dummy stubs used at API boundary
+abstract type CartesianGrid end
+abstract type RectilinearGrid end
+abstract type StructuredGrid end

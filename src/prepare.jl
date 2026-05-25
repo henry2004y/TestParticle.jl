@@ -133,14 +133,6 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
   - `m=nothing`: particle mass.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
-function prepare(grid::CartesianGrid, E, B, F = ZeroField(); order = 1, bc = FillExtrap(NaN), kw...)
-    return _prepare(E, B, F, makegrid(grid)...; gridtype = CartesianGrid, order, bc, kw...)
-end
-
-function prepare(grid::RectilinearGrid, E, B, F = ZeroField(); order = 1, bc = FillExtrap(NaN), kw...)
-    return _prepare(E, B, F, makegrid(grid)...; gridtype = RectilinearGrid, order, bc, kw...)
-end
-
 function prepare(
         x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
         bc = FillExtrap(NaN), kw...

@@ -12,14 +12,8 @@
         B[3, :, :, :] .= 10.0e-9
         E[3, :, :, :] .= 5.0e-10
 
-        mesh = CartesianGrid(
-            (first(x), first(y), first(z)), (last(x), last(y), last(z));
-            dims = (length(x) - 1, length(y) - 1, length(z) - 1)
-        )
-
         # numerical field
         param = prepare(x, y, z, E, B)
-        param = prepare(mesh, E, B)
         # analytical field
         B_analytic(r) = SA[0.0, 0.0, 1.0e-9]
         param = prepare(B_analytic)
@@ -90,9 +84,5 @@
         # field line
         trace_fieldline(stateinit[1:3], param[4], t)
         trace_fieldline!(out3, stateinit[1:3], param[4], t)
-        # particle flux
-        det = Disk(Plane(Point(0.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 1.0)
-        get_particle_fluxes([sol_adaptive], det)
-        get_particle_fluxes([sol_adaptive], [det])
     end
 end

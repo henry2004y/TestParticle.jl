@@ -14,8 +14,6 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 using Random: default_rng, AbstractRNG, Xoshiro
 using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
-using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
-    Plane, Disk, Point, normal, Sphere, area, Vec
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
@@ -51,8 +49,7 @@ export get_gyrofrequency,
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
-export TraceProblem, TraceGCProblem, TraceHybridProblem,
-    CartesianGrid, RectilinearGrid, StructuredGrid
+export TraceProblem, TraceGCProblem, TraceHybridProblem
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap,
     PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
