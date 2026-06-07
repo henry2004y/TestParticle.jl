@@ -323,7 +323,7 @@ end
                     xv_gc = y_next
 
                     # Evolve phase
-                    Bmag_next = norm(Bfunc(xv_gc[SVector(1, 2, 3)], t))
+                    Bmag_next = norm(Bfunc(get_x(xv_gc), t))
                     phase = mod2pi(phase - dt * (q2m * Bmag_next))
 
                     if save_everystep && (it % savestepinterval == 0)
