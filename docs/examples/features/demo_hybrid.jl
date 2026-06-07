@@ -48,6 +48,13 @@ q2m = q / m;
 #
 # First we trace the proton using the standard ODE solver to confirm
 # it is trapped and bounces inside the magnetic bottle.
+#
+# The proton is initialized at the midplane ``(x,y,z) = (0,0,0)`` with
+# a perpendicular velocity ``v_{\perp} = 5\times10^4~\mathrm{m/s}``
+# in the ``x``-direction and a parallel velocity
+# ``v_{\parallel} = 1\times10^5~\mathrm{m/s}`` in the ``z``-direction.
+# This gives a significant perpendicular component needed for the
+# mirror force to reflect the particle.
 
 x0 = SA[0.0, 0.0, 0.0]
 v_perp = 5.0e4  # [m/s]
@@ -171,15 +178,30 @@ function plot_trajectory(sol, ε_vals, title_str; figsize = (700, 500), npts = n
     return f
 end
 
-# ## Visualization
-
 f = Figure(; size = (1400, 900), fontsize = 18)
+
+## Compute shared axis limits from all three trajectories
+lims = let
+    xs = extrema(u[1] for u in sol_fo.u)
+    ys = extrema(u[2] for u in sol_fo.u)
+    zs = extrema(u[3] for u in sol_fo.u)
+    for sol_other in (sol_gc, sol)
+        xs = (min(xs[1], minimum(u[1] for u in sol_other.u)),
+            max(xs[2], maximum(u[1] for u in sol_other.u)))
+        ys = (min(ys[1], minimum(u[2] for u in sol_other.u)),
+            max(ys[2], maximum(u[2] for u in sol_other.u)))
+        zs = (min(zs[1], minimum(u[3] for u in sol_other.u)),
+            max(zs[2], maximum(u[3] for u in sol_other.u)))
+    end
+    (xs, ys, zs)
+end
 
 ## Top row: three 3D trajectories + shared colorbar
 ax_fo = Axis3(
     f[1, 1],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     title = "Full Orbit", aspect = :data,
+    limits = lims,
 )
 plot_trajectory!(ax_fo, sol_fo, ε_fo; npts = 5000)
 
@@ -187,6 +209,7 @@ ax_gc = Axis3(
     f[1, 2],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     title = "Guiding Center", aspect = :data,
+    limits = lims,
 )
 plot_trajectory!(ax_gc, sol_gc, ε_gc; npts = 5000)
 
@@ -194,22 +217,26 @@ ax_hyb = Axis3(
     f[1, 3],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     title = "Hybrid Mode", aspect = :data,
+    limits = lims,
 )
 plot_trajectory!(ax_hyb, sol, ε_hybrid)
 
 Colorbar(f[1, 4]; colormap = :turbo, limits = clims, label = L"\log_{10}(\epsilon)")
 
 ## Bottom row: time series of adiabaticity with solver mode
+t_norm = sol.t ./ T_gyro
+
 ax_ts = Axis(
     f[2, 1:4],
     xlabel = L"t / T_\text{gyro}",
     ylabel = L"\epsilon = \rho_L / R_c",
     yscale = log10,
     title = "Adiabaticity & Solver Mode",
-    limits = (nothing, (ε_clamp_lo, 10^ceil(log10(maximum(ε_hybrid))))),
+    limits = (
+        (minimum(t_norm), maximum(t_norm)),
+        (ε_clamp_lo, 10^ceil(log10(maximum(ε_hybrid)))),
+    ),
 )
-
-t_norm = sol.t ./ T_gyro
 
 ## Shade FO and GC regions
 is_fo = ε_hybrid .>= threshold
@@ -265,7 +292,10 @@ b_hy = @be TP.solve(prob_hybrid, alg; verbose = false)
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Allocations |") #hide
 println(io, "| :--- | :--- | :--- |") #hide
-Printf.@printf(io, "| Full Orbit | %s | %d |\n", median(b_fo).time, median(b_fo).bytes) #hide
-Printf.@printf(io, "| Guiding Center | %s | %d |\n", median(b_gc).time, median(b_gc).bytes) #hide
-Printf.@printf(io, "| Hybrid | %s | %d |\n", median(b_hy).time, median(b_hy).bytes) #hide
+Printf.@printf(io, "| Full Orbit | %.2f μs | %.2f KiB |\n",
+    median(b_fo).time * 1e6, median(b_fo).bytes / 1024) #hide
+Printf.@printf(io, "| Guiding Center | %.2f μs | %.2f KiB |\n",
+    median(b_gc).time * 1e6, median(b_gc).bytes / 1024) #hide
+Printf.@printf(io, "| Hybrid | %.2f μs | %.2f KiB |\n",
+    median(b_hy).time * 1e6, median(b_hy).bytes / 1024) #hide
 Markdown.parse(String(take!(io))) #hide
