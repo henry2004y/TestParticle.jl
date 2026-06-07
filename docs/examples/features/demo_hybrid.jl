@@ -27,8 +27,8 @@ CairoMakie.activate!(type = "png") #hide
 # A larger `α` produces stronger curvature at the midplane, which
 # raises the adiabaticity parameter `ε` there.
 
-B0 = 1.0e-4   # [T]
-α = 1.0e-2    # [m⁻²]
+const B0 = 1.0e-4   # [T]
+const α = 1.0e-2    # [m⁻²]
 
 function bottle_B(x, t)
     Bz = B0 * (1 + α * x[3]^2)

@@ -12,3 +12,4 @@ report.md
 /docs/node_modules/
 /test*
 !/test/
+scratch/
