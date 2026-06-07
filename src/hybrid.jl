@@ -168,7 +168,10 @@ function _get_gc_parameters_at_t(xv, E, B, q, m, t)
     w = vperp - vE
     μ = m * (w ⋅ w) / (2 * Bmag)
 
-    return X, vpar, μ
+    e1, e2 = get_perp_vector(b̂)
+    phase = atan(w ⋅ e2, w ⋅ e1)
+
+    return X, vpar, μ, phase
 end
 
 function _gc_to_full_at_t(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
@@ -219,16 +222,6 @@ end
     min_growth = 0.2
 
     @inbounds for i in irange
-        # Initialize solution containers with sizehint!
-        # Estimate initial capacity based on timespan and maximum possible dt
-        estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / alg.dtmax)
-        # Add 10% buffer and cap at reasonable maximum
-        initial_capacity = min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
-        traj = Vector{SVector{6, T}}(undef, 0)
-        tsave = Vector{typeof(tspan[1])}(undef, 0)
-        sizehint!(traj, initial_capacity)
-        sizehint!(tsave, initial_capacity)
-
         rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv_fo = SVector{6, T}(new_prob.u0)
@@ -237,7 +230,7 @@ end
         t = tspan[1]
 
         # Initial Mode Determination
-        X_gc, vpar, μ = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
+        X_gc, vpar, μ, phase = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
 
         ϵ = get_adiabaticity(r, Bfunc, q, m, μ, t)
         is_adiabatic = ϵ < alg.threshold
@@ -264,6 +257,15 @@ end
             verbose && @info "Initial mode: FO" ϵ t
         end
 
+        # Initialize solution containers with sizehint!
+        # Estimate initial capacity based on timespan and initial dt
+        estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / dt)
+        initial_capacity = min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
+        traj = Vector{SVector{6, T}}(undef, 0)
+        tsave = Vector{typeof(tspan[1])}(undef, 0)
+        sizehint!(traj, initial_capacity)
+        sizehint!(tsave, initial_capacity)
+
         if save_start
             push!(traj, SVector{6, T}(new_prob.u0))
             push!(tsave, t)
@@ -281,7 +283,7 @@ end
                         mode = :FO
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
                         xv_fo_vec = _gc_to_full_at_t(
-                            xv_gc, Efunc, Bfunc, q, m, μ, t, 2π * rand(rng)
+                            xv_gc, Efunc, Bfunc, q, m, μ, t, phase
                         )
                         xv_fo = xv_fo_vec
                         r = xv_fo[SVector(1, 2, 3)]
@@ -320,8 +322,15 @@ end
                     t += dt
                     xv_gc = y_next
 
+                    # Evolve phase
+                    Bmag_next = norm(Bfunc(xv_gc[SVector(1, 2, 3)], t))
+                    phase = mod2pi(phase - dt * (q2m * Bmag_next))
+
                     if save_everystep && (it % savestepinterval == 0)
-                        push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
+                        push!(
+                            traj,
+                            _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                        )
                         push!(tsave, t)
                     end
                     steps += 1
@@ -342,7 +351,7 @@ end
                     xv_check = SVector{6, T}(
                         r[1], r[2], r[3], v_check[1], v_check[2], v_check[3]
                     )
-                    X_gc, vpar, μ = _get_gc_parameters_at_t(
+                    X_gc, vpar, μ, phase = _get_gc_parameters_at_t(
                         xv_check, Efunc, Bfunc, q, m, t
                     )
                     ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
@@ -389,7 +398,10 @@ end
                 r_next = r + v * dt
                 t_next = t + dt
 
-                xv_check_domain = SVector{6, T}(r_next[1], r_next[2], r_next[3], v[1], v[2], v[3])
+                xv_check_domain = SVector{6, T}(
+                    r_next[1], r_next[2], r_next[3],
+                    v[1], v[2], v[3]
+                )
                 if isoutside(xv_check_domain, p, t_next)
                     break
                 end
@@ -408,17 +420,19 @@ end
                     dt_new = alg.dtmax
                 end
 
-                t_sync = is_td ? t : zero(T)
-                v = update_velocity(v, r, 0.5 * dt, t_sync, p)
-                v = update_velocity(v, r, -0.5 * dt_new, t_sync, p)
-                dt = dt_new
+                if abs(dt_new - dt) > 0.05 * dt
+                    t_sync = is_td ? t : zero(T)
+                    v = update_velocity(v, r, 0.5 * dt, t_sync, p)
+                    v = update_velocity(v, r, -0.5 * dt_new, t_sync, p)
+                    dt = dt_new
+                end
             end
         end
 
         # Final Save
         if save_end && (isempty(tsave) || tsave[end] != t)
             if mode == :GC
-                push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t))
+                push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
                 t_final = is_td ? t : zero(T)
                 v_final = update_velocity(v, r, 0.5 * dt, t_final, p)
