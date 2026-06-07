@@ -254,6 +254,47 @@ SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
     dt = 2.0e-2, savestepinterval = 100, alg = :rk45, maxiters = 10000
 )
 
+# Hybrid
+const B0_hybrid = 1.0e-4
+const α_hybrid = 1.0e-2
+function bottle_B_hybrid(x, t)
+    Bz = B0_hybrid * (1 + α_hybrid * x[3]^2)
+    Bx = -B0_hybrid * α_hybrid * x[1] * x[3]
+    By = -B0_hybrid * α_hybrid * x[2] * x[3]
+    return SA[Bx, By, Bz]
+end
+
+let
+    B_bottle = TP.Field(bottle_B_hybrid)
+    E_bottle = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
+
+    m = TP.mᵢ
+    q = TP.qᵢ
+    q2m = q / m
+
+    x0 = SA[0.0, 0.0, 0.0]
+    v0 = SA[5.0e4, 0.0, 1.0e5]
+    u0 = vcat(x0, v0)
+
+    Ω = abs(q2m) * B0_hybrid
+    T_gyro = 2π / Ω
+    tspan = (0.0, 10 * T_gyro)
+
+    p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
+    alg = AdaptiveHybrid(;
+        threshold = 0.1,
+        dtmax = T_gyro,
+        dtmin = 1.0e-4 * T_gyro,
+        maxiters = 10000,
+        check_interval = 100,
+    )
+    prob_hybrid = TraceHybridProblem(u0, tspan, p)
+
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable TP.solve(
+        $prob_hybrid, $alg; verbose = false, seed = 1234
+    )
+end
+
 # --- Flux Benchmarks ---
 
 struct MockSol{T, U}
