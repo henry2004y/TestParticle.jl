@@ -22,22 +22,28 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 import TestParticle as TP
-using LinearAlgebra: norm, ⋅, ×
+using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 # ## Physical Setup
 #
-# The magnetic field is a sheared, divergence-free field with a linear ramp:
+# The magnetic field is a tilted, sheared, divergence-free field with a
+# linear time ramp:
 #
 # ```math
-# \mathbf{B}(\mathbf{x}, t) = B_0(t) \begin{bmatrix} \alpha z \\ 0 \\ 1 \end{bmatrix},
+# \mathbf{B}(\mathbf{x}, t) = B_0(t) \begin{bmatrix} \alpha z + \delta \\ 0 \\ 1 \end{bmatrix},
 # \quad B_0(t) = B_{00} (1 + \beta t).
 # ```
 #
+# The constant offset ``\delta > 0`` ensures ``\nabla B \neq 0`` everywhere,
+# even at ``z = 0``, and permanently tilts the field lines. This breaks the
+# z-symmetry of the original setup, allowing the Fermi and grad-B drift
+# mechanisms to accumulate net work instead of oscillating around zero.
 # This field has:
 # - **Curvature** ``\boldsymbol{\kappa} \neq 0`` (from field-line bending)
-# - **Gradient** ``\nabla B \neq 0`` (from the ``z``-dependence of ``B_x``)
+# - **Gradient** ``\nabla B \neq 0`` (from the ``z``-dependence of ``B_x``,
+#   non-zero everywhere due to ``\delta``)
 # - **Time dependence** ``\partial B/\partial t \neq 0`` (from the ``B_0(t)`` ramp)
 #
 # The electric field is constant:
@@ -55,9 +61,10 @@ CairoMakie.activate!(type = "png") #hide
 # gyroradius and ``L_B = |\nabla B|^{-1} B`` is the field gradient scale:
 #
 # ```math
-# \rho_L = \frac{m v_\perp}{|q| B} \approx 0.7\,\mathrm{m}, \quad
-# L_B \approx \alpha^{-1} = 20\,\mathrm{m}, \quad
-# \epsilon \approx 0.04.
+# \rho_L = \frac{m v_\perp}{|q| B} \approx 3.5\,\mathrm{m}, \quad
+# L_B \approx \frac{B_0\sqrt{1+\delta^2}}{B_0\alpha\delta/\sqrt{1+\delta^2}}
+# = \frac{1+\delta^2}{\alpha\delta} \approx 73\,\mathrm{m}, \quad
+# \epsilon \approx 0.05.
 # ```
 #
 # With ``\epsilon \ll 1``, the GC approximation is well satisfied.
@@ -65,8 +72,9 @@ CairoMakie.activate!(type = "png") #hide
 ## --- Parameters (SI units) ---
 const B₀₀ = 1.0e-4       # baseline field strength [T]
 const α = 0.05        # shear/curvature parameter
+const δ = 0.3         # B_x offset [dimensionless]; breaks z-symmetry
 const β = 0.5         # compression rate [1/s]
-const E_perp = 5.0e-7     # perpendicular E field [V/m]
+const E_perp = 3.0e-7     # perpendicular E field [V/m]
 const E_par = 5.0e-8     # parallel E field [V/m]
 
 const eV = TP.eV  # electron volt [J]
@@ -74,10 +82,10 @@ const eV = TP.eV  # electron volt [J]
 ## Time-dependent B₀
 B₀(t) = B₀₀ * (1 + β * t)
 
-## Sheared magnetic field: ∇·B = 0
+## Tilted sheared magnetic field with δ offset: ∇·B = 0
 function shear_B(x, t = 0.0)
     B0t = B₀(t)
-    return SA[α * B0t * x[3], 0.0, B0t]
+    return SA[α * B0t * x[3] + δ * B0t, 0.0, B0t]
 end
 
 ## Constant electric field with both perp and parallel components
@@ -102,9 +110,9 @@ const tspan = (0.0, 0.8)
 q_p, m_p = species.q, species.m
 B_init = norm(shear_B(x0))
 ρ_L = m_p * v_perp0 / (abs(q_p) * B_init)
-L_B = 1 / α
+L_B = (1 + δ^2) / (α * δ)  # |∇B| = B₀ α δ / √(1+δ²), B = B₀ √(1+δ²)
 println(
-    "Adiabatic parameter ε = ρ_L / L_B = ", round(ρ_L, digits = 2),
+    "Adiabatic parameter ε = ρ_L / L_B = ", round(ρ_L, digits = 1),
     " / ", round(L_B, digits = 1), " = ", round(ρ_L / L_B, digits = 3)
 )
 
@@ -210,12 +218,12 @@ using Markdown #hide
 io = IOBuffer() #hide
 println(io, "| Quantity | ΔEnergy (eV) |") #hide
 println(io, "| -------- | ------------ |") #hide
-println(io, "| ΔK (GC) | $(round(ΔK_gc[end] / eV, digits = 1)) |") #hide
-println(io, "| Σ Work (GC) | $(round(W_total[end] / eV, digits = 1)) |") #hide
-println(io, "| Betatron | $(round(W_beta[end] / eV, digits = 1)) |") #hide
-println(io, "| Fermi | $(round(W_fermi[end] / eV, digits = 1)) |") #hide
-println(io, "| Grad-B | $(round(W_grad[end] / eV, digits = 1)) |") #hide
-println(io, "| E∥ (parallel) | $(round(W_par[end] / eV, digits = 1)) |") #hide
+println(io, "| ΔK (GC) | $(round(ΔK_gc[end] / eV, digits = 2)) |") #hide
+println(io, "| Σ Work (GC) | $(round(W_total[end] / eV, digits = 2)) |") #hide
+println(io, "| Betatron | $(round(W_beta[end] / eV, digits = 2)) |") #hide
+println(io, "| Fermi | $(round(W_fermi[end] / eV, digits = 2)) |") #hide
+println(io, "| Grad-B | $(round(W_grad[end] / eV, digits = 2)) |") #hide
+println(io, "| E∥ (parallel) | $(round(W_par[end] / eV, digits = 2)) |") #hide
 Markdown.parse(String(take!(io))) #hide
 
 # ## Visualization
@@ -225,7 +233,7 @@ f1 = Figure(size = (1100, 700), fontsize = 14)
 
 ax1 = Axis3(
     f1[1:2, 1],
-    title = "GC Trajectory (sheared, time-dependent B)",
+    title = "GC Trajectory (tilted sheared, time-dependent B)",
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     aspect = :data,
 )
@@ -262,7 +270,8 @@ lines!(ax3, ts, K_gc_eV, color = :steelblue, linewidth = 2)
 f1 = DisplayAs.PNG(f1) #hide
 
 # The GC kinetic energy shows a clear secular increase driven by the combined
-# action of all three adiabatic acceleration mechanisms.
+# action of all three adiabatic acceleration mechanisms, now with comparable
+# contributions from betatron, Fermi, and ``E_\parallel``.
 
 ## --- Figure 2: Cumulative Work Decomposition ---
 f2 = Figure(size = (1100, 800), fontsize = 14)
@@ -329,19 +338,28 @@ f2 = DisplayAs.PNG(f2) #hide
 # The cumulative work decomposition reveals three distinct acceleration channels:
 #
 # 1. **Betatron acceleration** (coral): ``\mu\,\partial B/\partial t`` provides
-#    a steady power input. Since ``\partial B/\partial t`` is nearly constant
-#    in our linear ramp model, the cumulative work grows quadratically in time.
-#    This is the dominant mechanism when the field strength changes
-#    significantly on the drift timescale.
+#    a steady power input proportional to the field compression rate ``\beta``.
+#    Unlike the original symmetric setup where betatron dominated, the
+#    tilted field (``\delta > 0``) partitions more of the initial kinetic
+#    energy into the parallel direction, moderating the betatron contribution.
 #
 # 2. **Fermi + Grad-B drift work** (teal + goldenrod): These arise from the
-#    curvature and grad-B drifts crossing ``E_\perp``. The sign depends on
-#    the relative orientation of the drift and the electric field.
+#    curvature and grad-B drifts crossing ``E_\perp``. The ``\delta`` offset
+#    ensures both drift components point consistently in the ``+y`` direction,
+#    preventing the sign oscillations that previously canceled their
+#    contributions. The Fermi term (curvature drift ``\times E_\perp``)
+#    provides the primary perpendicular work channel.
 #
-# 3. **Parallel ``E_\parallel``** (purple): Direct acceleration along ``\hat{\mathbf{b}}``
-#    by the parallel electric field. Its contribution is proportional to
-#    ``q v_\parallel E_\parallel`` and grows linearly if both are approximately
-#    constant.
+# 3. **Parallel ``E_\parallel``** (purple): Direct acceleration along
+#    ``\hat{\mathbf{b}}`` by the parallel electric field. With the tilted
+#    field, ``\hat{\mathbf{b}}`` has a non-zero ``z``-component everywhere,
+#    giving a consistent ``E_\parallel`` coupling.
+#
+# The balanced configuration (``\delta = 0.3``, ``\beta = 0.5``,
+# ``E_\perp = 3\times10^{-7}`` V/m, ``E_\parallel = 5\times10^{-8}`` V/m)
+# produces comparable contributions from all three mechanisms, making the
+# individual acceleration channels clearly visible in the cumulative work
+# decomposition.
 #
 # The dashed black line (sum of integrated work rates) tracks the actual
 # ``\Delta K`` (solid black), confirming consistency of the GC energy budget.
@@ -373,13 +391,14 @@ f3 = DisplayAs.PNG(f3) #hide
 
 # The exact conservation of ``\mu`` is a built-in property of the GC
 # equations. The secular change in ``v_\parallel`` reflects the combined
-# effect of Fermi acceleration and ``E_\parallel``.
+# effect of Fermi acceleration and ``E_\parallel``, now clearly visible
+# thanks to the balanced field configuration.
 
 ## --- Parameter Study: Effect of Compression Rate β ---
 
 function run_case(β_val)
     B_local(x, t = 0.0) = let B0t = B₀₀ * (1 + β_val * t)
-        SA[α * B0t * x[3], 0.0, B0t]
+        SA[α * B0t * x[3] + δ * B0t, 0.0, B0t]
     end
     E_local(x, t = 0.0) = SA[0.0, E_perp, E_par]
 
@@ -417,7 +436,7 @@ axislegend(ax_param; position = :lt)
 
 f4 = DisplayAs.PNG(f4) #hide
 
-# The static case (β = 0) shows no betatron or Fermi acceleration — only
-# the modest contribution from ``E_\parallel``. As β increases, the energy
-# gain grows rapidly, dominated by betatron acceleration with additional
-# contributions from Fermi acceleration.
+# The static case (β = 0) removes betatron acceleration, leaving Fermi and
+# ``E_\parallel`` as the main channels. As β increases, all mechanisms
+# contribute, with betatron joining Fermi and ``E_\parallel`` to drive the
+# net energy gain.
