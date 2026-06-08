@@ -61,10 +61,10 @@ CairoMakie.activate!(type = "png") #hide
 # gyroradius and ``L_B = |\nabla B|^{-1} B`` is the field gradient scale:
 #
 # ```math
-# \rho_L = \frac{m v_\perp}{|q| B} \approx 2.4\,\mathrm{m}, \quad
+# \rho_L = \frac{m v_\perp}{|q| B} \approx 3.5\,\mathrm{m}, \quad
 # L_B \approx \frac{B_0\sqrt{1+\delta^2}}{B_0\alpha\delta/\sqrt{1+\delta^2}}
 # = \frac{1+\delta^2}{\alpha\delta} \approx 73\,\mathrm{m}, \quad
-# \epsilon \approx 0.03.
+# \epsilon \approx 0.05.
 # ```
 #
 # With ``\epsilon \ll 1``, the GC approximation is well satisfied.
