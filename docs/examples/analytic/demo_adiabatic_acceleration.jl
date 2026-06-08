@@ -10,8 +10,9 @@
 # 3. **Local ``E_\parallel`` acceleration**: direct acceleration by the parallel
 #    electric field component ``q v_\parallel (\mathbf{E}\cdot\hat{\mathbf{b}})``.
 #
-# The physical setup uses a **sheared, time-dependent magnetic field** with a
-# constant electric field, inducing all three mechanisms simultaneously.
+# The physical setup uses a **mirror-confined, sheared, time-dependent magnetic
+# field** with a constant electric field, inducing all three mechanisms
+# simultaneously.
 # The energy gain is decomposed using the GC work rate formulas from
 # Northrop (1963).
 #
@@ -28,20 +29,21 @@ CairoMakie.activate!(type = "png") #hide
 
 # ## Physical Setup
 #
-# The magnetic field is a tilted, sheared, divergence-free field with a
-# linear time ramp:
+# The magnetic field is a sheared, divergence-free field with a ``\tanh``
+# profile that creates a magnetic mirror:
 #
 # ```math
-# \mathbf{B}(\mathbf{x}, t) = B_0(t) \begin{bmatrix} \alpha z + \delta \\ 0 \\ 1 \end{bmatrix},
+# \mathbf{B}(\mathbf{x}, t) = B_0(t) \begin{bmatrix}
+#   \alpha L \tanh(z / L) + \delta \\ 0 \\ 1
+# \end{bmatrix},
 # \quad B_0(t) = B_{00} (1 + \beta t).
 # ```
 #
-# The constant offset ``\delta > 0`` ensures ``\nabla B \neq 0`` everywhere,
-# even at ``z = 0``, and permanently tilts the field lines. This breaks the
-# z-symmetry of the original setup, allowing the Fermi and grad-B drift
-# mechanisms to accumulate net work instead of oscillating around zero.
-# This field has:
-# - **Curvature** ``\boldsymbol{\kappa} \neq 0`` (from field-line bending)
+# Near ``z = 0``, ``\tanh(z/L) \approx z/L``, giving ``B_x \approx \alpha z + \delta``.
+# The ``\tanh`` growth increases ``|\mathbf{B}|`` away from the midplane,
+# forming a magnetic mirror that confines the particle near ``z = 0`` where
+# field-line curvature and gradient are strongest. This field has:
+# - **Curvature** ``\boldsymbol{\kappa} \neq 0`` (strongest near ``z = 0``)
 # - **Gradient** ``\nabla B \neq 0`` (from the ``z``-dependence of ``B_x``,
 #   non-zero everywhere due to ``\delta``)
 # - **Time dependence** ``\partial B/\partial t \neq 0`` (from the ``B_0(t)`` ramp)
@@ -58,34 +60,37 @@ CairoMakie.activate!(type = "png") #hide
 # ### Adiabaticity Check
 #
 # The adiabatic parameter ``\epsilon = \rho_L / L_B`` where ``\rho_L`` is the
-# gyroradius and ``L_B = |\nabla B|^{-1} B`` is the field gradient scale:
+# gyroradius and ``L_B = |\nabla B|^{-1} B`` is the field gradient scale at
+# ``z = 0``:
 #
 # ```math
-# \rho_L = \frac{m v_\perp}{|q| B} \approx 3.5\,\mathrm{m}, \quad
-# L_B \approx \frac{B_0\sqrt{1+\delta^2}}{B_0\alpha\delta/\sqrt{1+\delta^2}}
-# = \frac{1+\delta^2}{\alpha\delta} \approx 73\,\mathrm{m}, \quad
-# \epsilon \approx 0.05.
+# \rho_L = \frac{m v_\perp}{|q| B} \approx 2.6\,\mathrm{m}, \quad
+# L_B \approx \frac{1+\delta^2}{\alpha\delta}
+# = \frac{2}{0.2 \times 1.0} = 10\,\mathrm{m}, \quad
+# \epsilon \approx 0.26.
 # ```
 #
-# With ``\epsilon \ll 1``, the GC approximation is well satisfied.
+# The adiabatic parameter is ``\lesssim 0.3`` throughout, keeping the GC
+# description adequate for this demonstration.
 
 ## --- Parameters (SI units) ---
 const B₀₀ = 1.0e-4       # baseline field strength [T]
-const α = 0.05        # shear/curvature parameter
-const δ = 0.3         # B_x offset [dimensionless]; breaks z-symmetry
-const β = 0.5         # compression rate [1/s]
-const E_perp = 3.0e-7     # perpendicular E field [V/m]
-const E_par = 5.0e-8     # parallel E field [V/m]
+const α = 0.2         # gradient strength at z = 0 [m⁻¹]
+const L_z = 200.0     # Bx saturation scale length [m]; creates a magnetic mirror
+const δ = 1.0         # B_x offset; breaks z-symmetry
+const β = 0.1         # compression rate [1/s]
+const E_perp = 1.0e-4     # perpendicular E field [V/m]
+const E_par = 1.0e-5     # parallel E field [V/m]
 
 const eV = TP.eV  # electron volt [J]
 
 ## Time-dependent B₀
 B₀(t) = B₀₀ * (1 + β * t)
 
-## Tilted sheared magnetic field with δ offset: ∇·B = 0
+## Mirror-confined sheared magnetic field: Bx(z) = α L tanh(z/L) + δ, ∇·B = 0
 function shear_B(x, t = 0.0)
     B0t = B₀(t)
-    return SA[α * B0t * x[3] + δ * B0t, 0.0, B0t]
+    return SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
 end
 
 ## Constant electric field with both perp and parallel components
@@ -99,9 +104,10 @@ const species = Proton
 ## --- Initial Conditions ---
 x0 = [0.1, 0.0, 0.0]
 v_mag = 5.0e4               # 50 km/s, non-relativistic
-v_par0 = v_mag / √2        # pitch angle 45°
-v_perp0 = v_mag / √2
-v0 = [v_perp0, 0.0, v_par0]
+
+## At z = 0, B ∝ (δ, 0, 1) = (1, 0, 1).  Velocity entirely in the x-direction
+## gives a 45° pitch angle: v · b̂ = v_mag/√2, |v⟂| = v_mag/√2.
+v0 = [v_mag, 0.0, 0.0]
 
 const stateinit = [x0..., v0...]
 const tspan = (0.0, 0.8)
@@ -109,11 +115,14 @@ const tspan = (0.0, 0.8)
 ## Report adiabatic parameter
 q_p, m_p = species.q, species.m
 B_init = norm(shear_B(x0))
-ρ_L = m_p * v_perp0 / (abs(q_p) * B_init)
-L_B = (1 + δ^2) / (α * δ)  # |∇B| = B₀ α δ / √(1+δ²), B = B₀ √(1+δ²)
+b̂_init = shear_B(x0) ./ B_init
+vpar_init = sum(v0 .* b̂_init)
+vperp_init = norm(v0 .- vpar_init .* b̂_init)
+ρ_L = m_p * vperp_init / (abs(q_p) * B_init)
+L_B = (1 + δ^2) / (α * δ)  # |∇B| = B₀ αδ/√(1+δ²), B = B₀√(1+δ²) at z=0
 println(
     "Adiabatic parameter ε = ρ_L / L_B = ", round(ρ_L, digits = 1),
-    " / ", round(L_B, digits = 1), " = ", round(ρ_L / L_B, digits = 3)
+    " / ", round(L_B, digits = 1), " = ", round(ρ_L / L_B, digits = 2)
 )
 
 # ## GC Tracing
@@ -214,16 +223,16 @@ W_beta_eV = W_beta ./ eV
 W_total_eV = W_total ./ eV
 P_arr_eV = P_arr ./ eV
 
-using Markdown #hide
+using Markdown, Printf #hide
 io = IOBuffer() #hide
 println(io, "| Quantity | ΔEnergy (eV) |") #hide
 println(io, "| -------- | ------------ |") #hide
-println(io, "| ΔK (GC) | $(round(ΔK_gc[end] / eV, digits = 2)) |") #hide
-println(io, "| Σ Work (GC) | $(round(W_total[end] / eV, digits = 2)) |") #hide
-println(io, "| Betatron | $(round(W_beta[end] / eV, digits = 2)) |") #hide
-println(io, "| Fermi | $(round(W_fermi[end] / eV, digits = 2)) |") #hide
-println(io, "| Grad-B | $(round(W_grad[end] / eV, digits = 2)) |") #hide
-println(io, "| E∥ (parallel) | $(round(W_par[end] / eV, digits = 2)) |") #hide
+@printf(io, "| ΔK (GC) | %.2e |\n", ΔK_gc[end] / eV) #hide
+@printf(io, "| Σ Work (GC) | %.2e |\n", W_total[end] / eV) #hide
+@printf(io, "| Betatron | %.2e |\n", W_beta[end] / eV) #hide
+@printf(io, "| Fermi | %.2e |\n", W_fermi[end] / eV) #hide
+@printf(io, "| Grad-B | %.2e |\n", W_grad[end] / eV) #hide
+@printf(io, "| E∥ (parallel) | %.2e |\n", W_par[end] / eV) #hide
 Markdown.parse(String(take!(io))) #hide
 
 # ## Visualization
@@ -233,7 +242,7 @@ f1 = Figure(size = (1100, 700), fontsize = 14)
 
 ax1 = Axis3(
     f1[1:2, 1],
-    title = "GC Trajectory (tilted sheared, time-dependent B)",
+    title = "GC Trajectory (mirror-confined, time-dependent B)",
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     aspect = :data,
 )
@@ -270,8 +279,10 @@ lines!(ax3, ts, K_gc_eV, color = :steelblue, linewidth = 2)
 f1 = DisplayAs.PNG(f1) #hide
 
 # The GC kinetic energy shows a clear secular increase driven by the combined
-# action of all three adiabatic acceleration mechanisms, now with comparable
-# contributions from betatron, Fermi, and ``E_\parallel``.
+# action of all three adiabatic acceleration mechanisms. The magnetic mirror
+# (``\tanh`` profile with ``L = 200`` m) confines the particle near ``z = 0``,
+# sustaining curvature and gradient throughout the trajectory so that all
+# work channels accumulate visibly.
 
 ## --- Figure 2: Cumulative Work Decomposition ---
 f2 = Figure(size = (1100, 800), fontsize = 14)
@@ -339,27 +350,30 @@ f2 = DisplayAs.PNG(f2) #hide
 #
 # 1. **Betatron acceleration** (coral): ``\mu\,\partial B/\partial t`` provides
 #    a steady power input proportional to the field compression rate ``\beta``.
-#    Unlike the original symmetric setup where betatron dominated, the
-#    tilted field (``\delta > 0``) partitions more of the initial kinetic
-#    energy into the parallel direction, moderating the betatron contribution.
+#    With the initial velocity at a true ``45^\circ`` pitch angle to ``\mathbf{B}``,
+#    the magnetic moment is ``\mu \approx 7.4\times10^{-15}`` J/T, giving
+#    ``P_\mathrm{betatron} \approx 0.65`` eV/s at ``z = 0``.
 #
 # 2. **Fermi + Grad-B drift work** (teal + goldenrod): These arise from the
-#    curvature and grad-B drifts crossing ``E_\perp``. The ``\delta`` offset
-#    ensures both drift components point consistently in the ``+y`` direction,
-#    preventing the sign oscillations that previously canceled their
-#    contributions. The Fermi term (curvature drift ``\times E_\perp``)
-#    provides the primary perpendicular work channel.
+#    curvature and grad-B drifts crossing ``E_\perp``. The magnetic mirror
+#    (mirror ratio ``\sim`` 30) confines the particle to ``|z| \lesssim 7.5`` m,
+#    keeping it within the region where ``\boldsymbol{\kappa}`` and ``\nabla B``
+#    are strong. This allows the drift-based work terms to accumulate over many
+#    bounce cycles rather than dying out after the first gradient crossing.
+#    In this field geometry, the two drift directions partially oppose each
+#    other — a known property of magnetostatic equilibria where ``\nabla B``
+#    and ``\boldsymbol{\kappa}`` point in opposite directions.
 #
 # 3. **Parallel ``E_\parallel``** (purple): Direct acceleration along
-#    ``\hat{\mathbf{b}}`` by the parallel electric field. With the tilted
-#    field, ``\hat{\mathbf{b}}`` has a non-zero ``z``-component everywhere,
-#    giving a consistent ``E_\parallel`` coupling.
+#    ``\hat{\mathbf{b}}`` by the parallel electric field. The tilted field
+#    ``(\delta = 1)`` gives a ``\hat{b}_z \approx 0.71`` projection of the
+#    lab-frame ``E_\parallel`` onto the field line.
 #
-# The balanced configuration (``\delta = 0.3``, ``\beta = 0.5``,
-# ``E_\perp = 3\times10^{-7}`` V/m, ``E_\parallel = 5\times10^{-8}`` V/m)
-# produces comparable contributions from all three mechanisms, making the
-# individual acceleration channels clearly visible in the cumulative work
-# decomposition.
+# The configuration (``\tanh`` mirror with ``\alpha = 0.2`` m⁻¹,
+# ``L = 200`` m, ``\delta = 1``, ``\beta = 0.1`` s⁻¹,
+# ``E_\perp = 10^{-4}`` V/m, ``E_\parallel = 10^{-5}`` V/m) produces
+# comparable contributions from all three mechanisms, making each
+# acceleration channel clearly visible in the cumulative work decomposition.
 #
 # The dashed black line (sum of integrated work rates) tracks the actual
 # ``\Delta K`` (solid black), confirming consistency of the GC energy budget.
@@ -390,15 +404,15 @@ lines!(ax_vpar, ts, vpar_vals, color = :coral, linewidth = 2)
 f3 = DisplayAs.PNG(f3) #hide
 
 # The exact conservation of ``\mu`` is a built-in property of the GC
-# equations. The secular change in ``v_\parallel`` reflects the combined
-# effect of Fermi acceleration and ``E_\parallel``, now clearly visible
-# thanks to the balanced field configuration.
+# equations. The oscillatory ``v_\parallel`` pattern reflects magnetic
+# mirroring (bounce motion), while the secular drift arises from the
+# combined effect of Fermi acceleration and ``E_\parallel``.
 
 ## --- Parameter Study: Effect of Compression Rate β ---
 
 function run_case(β_val)
     B_local(x, t = 0.0) = let B0t = B₀₀ * (1 + β_val * t)
-        SA[α * B0t * x[3] + δ * B0t, 0.0, B0t]
+        SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
     end
     E_local(x, t = 0.0) = SA[0.0, E_perp, E_par]
 
@@ -436,7 +450,6 @@ axislegend(ax_param; position = :lt)
 
 f4 = DisplayAs.PNG(f4) #hide
 
-# The static case (β = 0) removes betatron acceleration, leaving Fermi and
-# ``E_\parallel`` as the main channels. As β increases, all mechanisms
-# contribute, with betatron joining Fermi and ``E_\parallel`` to drive the
-# net energy gain.
+# The static case (β = 0) isolates Fermi, Grad-B, and ``E_\parallel`` with
+# mirror-confined trajectories. As β increases, betatron joins as a visible
+# additive channel, with all mechanisms scaling proportionally.
