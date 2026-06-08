@@ -30,7 +30,7 @@ CairoMakie.activate!(type = "png") #hide
 const B0 = 1.0e-4   # [T]
 const α = 1.0e-2    # [m⁻²]
 
-function bottle_B(x, t) 
+function bottle_B(x, t)
     Bz = B0 * (1 + α * x[3]^2)
     Bx = -B0 * α * x[1] * x[3]
     By = -B0 * α * x[2] * x[3]
@@ -293,14 +293,14 @@ println(io, "| Solver | Time | Allocations |") #hide
 println(io, "| :--- | :--- | :--- |") #hide
 Printf.@printf(
     io, "| Full Orbit | %.2f μs | %.2f KiB |\n",
-    median(b_fo).time * 1e6, median(b_fo).bytes / 1024
+    median(b_fo).time * 1.0e6, median(b_fo).bytes / 1024
 ) #hide
 Printf.@printf(
     io, "| Guiding Center | %.2f μs | %.2f KiB |\n",
-    median(b_gc).time * 1e6, median(b_gc).bytes / 1024
+    median(b_gc).time * 1.0e6, median(b_gc).bytes / 1024
 ) #hide
 Printf.@printf(
     io, "| Hybrid | %.2f μs | %.2f KiB |\n",
-    median(b_hy).time * 1e6, median(b_hy).bytes / 1024
+    median(b_hy).time * 1.0e6, median(b_hy).bytes / 1024
 ) #hide
 Markdown.parse(String(take!(io))) #hide
