@@ -227,12 +227,12 @@ using Markdown, Printf #hide
 io = IOBuffer() #hide
 println(io, "| Quantity | ΔEnergy (eV) |") #hide
 println(io, "| -------- | ------------ |") #hide
-println(io, "| ΔK (GC) | $(@sprintf("%.2e", ΔK_gc[end] / eV)) |") #hide
-println(io, "| Σ Work (GC) | $(@sprintf("%.2e", W_total[end] / eV)) |") #hide
-println(io, "| Betatron | $(@sprintf("%.2e", W_beta[end] / eV)) |") #hide
-println(io, "| Fermi | $(@sprintf("%.2e", W_fermi[end] / eV)) |") #hide
-println(io, "| Grad-B | $(@sprintf("%.2e", W_grad[end] / eV)) |") #hide
-println(io, "| E∥ (parallel) | $(@sprintf("%.2e", W_par[end] / eV)) |") #hide
+@printf(io, "| ΔK (GC) | %.2e |\n", ΔK_gc[end] / eV) #hide
+@printf(io, "| Σ Work (GC) | %.2e |\n", W_total[end] / eV) #hide
+@printf(io, "| Betatron | %.2e |\n", W_beta[end] / eV) #hide
+@printf(io, "| Fermi | %.2e |\n", W_fermi[end] / eV) #hide
+@printf(io, "| Grad-B | %.2e |\n", W_grad[end] / eV) #hide
+@printf(io, "| E∥ (parallel) | %.2e |\n", W_par[end] / eV) #hide
 Markdown.parse(String(take!(io))) #hide
 
 # ## Visualization
