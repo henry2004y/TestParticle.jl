@@ -89,7 +89,7 @@ B₀(t) = B₀₀ * (1 + β * t)
 ## Bounded sheared magnetic field: Bx(z) = α L tanh(z/L) + δ, ∇·B = 0
 function shear_B(x, t = 0.0)
     B0t = B₀(t)
-    return SA[α * L_z * tanh(x[3] / L_z) * B0t + δ * B0t, 0.0, B0t]
+    return SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
 end
 
 ## Constant electric field with both perp and parallel components
@@ -404,7 +404,7 @@ f3 = DisplayAs.PNG(f3) #hide
 
 function run_case(β_val)
     B_local(x, t = 0.0) = let B0t = B₀₀ * (1 + β_val * t)
-        SA[α * L_z * tanh(x[3] / L_z) * B0t + δ * B0t, 0.0, B0t]
+        SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
     end
     E_local(x, t = 0.0) = SA[0.0, E_perp, E_par]
 
