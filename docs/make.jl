@@ -35,6 +35,7 @@ analytic_order = [
     "demo_magneticmirror.jl",
     "demo_magneticbottle.jl",
     "demo_adiabatic_periods.jl",
+    "demo_adiabatic_acceleration.jl",
     "demo_proton_dipole.jl",
     "demo_earth_gravity.jl",
     "demo_analytic_magnetosphere.jl",
