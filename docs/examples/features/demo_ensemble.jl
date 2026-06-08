@@ -29,11 +29,14 @@ B_analytic(x) = SA[0, 0, 1.0e-9]
 E_analytic = ZeroField()
 param = prepare(E_analytic, B_analytic, species = Electron)
 tspan = (0.0, 10.0)
-stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 1.0]
 prob = ODEProblem(trace, stateinit, tspan, param)
 
-## Define prob_func to vary the initial x-velocity based on the particle index
-prob_func_basic(prob, ctx) = remake(prob, u0 = vcat(SVector{3}(prob.u0[1:3]), SA[ctx.sim_id / 3, 0.0, 0.0]))
+## Define prob_func to vary the initial velocity based on the particle index
+function prob_func_basic(prob, ctx)
+    vx = Float64(ctx.sim_id)
+    return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), SA[vx, 0.0, 1.0]))
+end
 
 trajectories = 3
 ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_basic, safetycopy = false)
@@ -43,7 +46,7 @@ sols = solve(ensemble_prob, Vern7(), EnsembleThreads(); trajectories)
 f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Basic Ensemble", xlabel = "X",
-    ylabel = "Y", zlabel = "Z", aspect = :data
+    ylabel = "Y", zlabel = "Z"
 )
 
 for (i, u) in enumerate(sols.u)
@@ -81,7 +84,7 @@ sols_dist = solve(
 f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Maxwellian Sampling", xlabel = "X",
-    ylabel = "Y", zlabel = "Z", aspect = :data
+    ylabel = "Y", zlabel = "Z"
 )
 
 for (i, u) in enumerate(sols_dist.u)
@@ -98,10 +101,10 @@ f = DisplayAs.PNG(f) #hide
 # The `output_func` allows us to customize what data is saved for each particle.
 
 ## Simulation parameters for custom output
-B_analytic(x) = SA[0, 0, 1.0e-9]
+B_analytic(x) = SA[0, 0, 2.5e-6]
 E_analytic = ZeroField()
 param_custom = prepare(E_analytic, B_analytic, species = Proton)
-tspan_custom = (0.0, 40.0)
+tspan_custom = (0.0, 0.6)
 stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob_custom = ODEProblem(trace, stateinit_custom, tspan_custom, param_custom)
 
@@ -145,7 +148,7 @@ sols_custom = solve(
 f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Custom Output Trajectories",
-    xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data
+    xlabel = "X", ylabel = "Y", zlabel = "Z"
 )
 
 for (i, u) in enumerate(sols_custom.u)
@@ -175,7 +178,7 @@ trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, save
 f = Figure(fontsize = 20)
 ax = Axis3(
     f[1, 1], title = "Boris Pusher Trajectories",
-    xlabel = "X", ylabel = "Y", zlabel = "Z", aspect = :data
+    xlabel = "X", ylabel = "Y", zlabel = "Z"
 )
 
 for (i, u) in enumerate(trajs_boris.u)
