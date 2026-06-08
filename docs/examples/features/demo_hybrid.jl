@@ -30,7 +30,7 @@ CairoMakie.activate!(type = "png") #hide
 const B0 = 1.0e-4   # [T]
 const α = 1.0e-2    # [m⁻²]
 
-function bottle_B(x, t)
+function bottle_B(x, t) 
     Bz = B0 * (1 + α * x[3]^2)
     Bx = -B0 * α * x[1] * x[3]
     By = -B0 * α * x[2] * x[3]
@@ -182,16 +182,15 @@ f = Figure(; size = (1400, 900), fontsize = 18)
 
 ## Compute shared axis limits from all three trajectories
 lims = let
-    xs = extrema(u[1] for u in sol_fo.u)
-    ys = extrema(u[2] for u in sol_fo.u)
-    zs = extrema(u[3] for u in sol_fo.u)
-    for sol_other in (sol_gc, sol)
-        xs = (min(xs[1], minimum(u[1] for u in sol_other.u)),
-            max(xs[2], maximum(u[1] for u in sol_other.u)))
-        ys = (min(ys[1], minimum(u[2] for u in sol_other.u)),
-            max(ys[2], maximum(u[2] for u in sol_other.u)))
-        zs = (min(zs[1], minimum(u[3] for u in sol_other.u)),
-            max(zs[2], maximum(u[3] for u in sol_other.u)))
+    xs = (Inf, -Inf)
+    ys = (Inf, -Inf)
+    zs = (Inf, -Inf)
+    for sol_curr in (sol_fo, sol_gc, sol)
+        for u in sol_curr.u
+            xs = (min(xs[1], u[1]), max(xs[2], u[1]))
+            ys = (min(ys[1], u[2]), max(ys[2], u[2]))
+            zs = (min(zs[1], u[3]), max(zs[2], u[3]))
+        end
     end
     (xs, ys, zs)
 end
@@ -292,10 +291,16 @@ b_hy = @be TP.solve(prob_hybrid, alg; verbose = false)
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Allocations |") #hide
 println(io, "| :--- | :--- | :--- |") #hide
-Printf.@printf(io, "| Full Orbit | %.2f μs | %.2f KiB |\n",
-    median(b_fo).time * 1e6, median(b_fo).bytes / 1024) #hide
-Printf.@printf(io, "| Guiding Center | %.2f μs | %.2f KiB |\n",
-    median(b_gc).time * 1e6, median(b_gc).bytes / 1024) #hide
-Printf.@printf(io, "| Hybrid | %.2f μs | %.2f KiB |\n",
-    median(b_hy).time * 1e6, median(b_hy).bytes / 1024) #hide
+Printf.@printf(
+    io, "| Full Orbit | %.2f μs | %.2f KiB |\n",
+    median(b_fo).time * 1e6, median(b_fo).bytes / 1024
+) #hide
+Printf.@printf(
+    io, "| Guiding Center | %.2f μs | %.2f KiB |\n",
+    median(b_gc).time * 1e6, median(b_gc).bytes / 1024
+) #hide
+Printf.@printf(
+    io, "| Hybrid | %.2f μs | %.2f KiB |\n",
+    median(b_hy).time * 1e6, median(b_hy).bytes / 1024
+) #hide
 Markdown.parse(String(take!(io))) #hide
