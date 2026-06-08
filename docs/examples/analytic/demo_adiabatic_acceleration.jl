@@ -86,7 +86,7 @@ function const_E(x, t = 0.0)
 end
 
 ## --- Species: Proton ---
-species = Proton
+const species = Proton
 
 ## --- Initial Conditions ---
 x0 = [0.1, 0.0, 0.0]
@@ -95,13 +95,13 @@ v_par0 = v_mag / √2        # pitch angle 45°
 v_perp0 = v_mag / √2
 v0 = [v_perp0, 0.0, v_par0]
 
-stateinit = [x0..., v0...]
-tspan = (0.0, 0.8)
+const stateinit = [x0..., v0...]
+const tspan = (0.0, 0.8)
 
 ## Report adiabatic parameter
 q_p, m_p = species.q, species.m
 B_init = norm(shear_B(x0))
-ρ_L = m_p * v_perp0 / (q_p * B_init)
+ρ_L = m_p * v_perp0 / (abs(q_p) * B_init)
 L_B = 1 / α
 println(
     "Adiabatic parameter ε = ρ_L / L_B = ", round(ρ_L, digits = 2),
@@ -178,7 +178,9 @@ P_arr, K_gc, B_along = energy_decomposition(sol_gc, param_gc)
 
 ## Cumulative work (trapezoidal integration)
 function cumtrapz(t, y)
-    out = similar(y); out[1] = zero(eltype(y))
+    @assert length(t) == length(y) "Dimension mismatch between t and y"
+    out = similar(y, eltype(y), length(t))
+    out[1] = zero(eltype(y))
     for i in 2:length(t)
         out[i] = out[i - 1] + 0.5 * (y[i] + y[i - 1]) * (t[i] - t[i - 1])
     end
