@@ -74,13 +74,14 @@ CairoMakie.activate!(type = "png") #hide
 # description adequate for this demonstration.
 
 ## --- Parameters (SI units) ---
-const B₀₀ = 1.0e-4       # baseline field strength [T]
+const B₀₀ = 1.0e-4    # baseline field strength [T]
 const α = 0.2         # gradient strength at z = 0 [m⁻¹]
 const L_z = 200.0     # Bx saturation scale length [m]; creates a magnetic mirror
 const δ = 1.0         # B_x offset; breaks z-symmetry
 const β = 0.1         # compression rate [1/s]
-const E_perp = 1.0e-4     # perpendicular E field [V/m]
-const E_par = 1.0e-5     # parallel E field [V/m]
+const E_perp = 1.0e-4 # perpendicular E field [V/m]
+const E_par = 2.0e-4  # parallel E field base [V/m]
+const L_E = 30.0      # E-field gradient scale length [m]; breaks bounce symmetry
 
 const eV = TP.eV  # electron volt [J]
 
@@ -93,9 +94,11 @@ function shear_B(x, t = 0.0)
     return SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
 end
 
-## Constant electric field with both perp and parallel components
+## Constant electric field with both perp and parallel components.
+## The z-dependent E∥ breaks the mirror bounce symmetry so that net
+## E∥ work accumulates rather than canceling out.
 function const_E(x, t = 0.0)
-    return SA[0.0, E_perp, E_par]
+    return SA[0.0, E_perp, E_par * (1.0 + x[3] / L_E)]
 end
 
 ## --- Species: Proton ---
@@ -110,7 +113,7 @@ v_mag = 5.0e4               # 50 km/s, non-relativistic
 v0 = [v_mag, 0.0, 0.0]
 
 const stateinit = [x0..., v0...]
-const tspan = (0.0, 0.8)
+const tspan = (0.0, 0.799015832364488)
 
 ## Report adiabatic parameter
 q_p, m_p = species.q, species.m
@@ -179,7 +182,7 @@ function energy_decomposition(sol, param_gc)
         Bmag_val = norm(Bfunc(X, t))
         B_along[i] = Bmag_val
         K_gc[i] = 0.5 * m * xu[4]^2 + μ * Bmag_val
-        wr = TestParticle.get_work_rates_gc(xu, param_gc, t)
+        wr = TP.get_work_rates_gc(xu, param_gc, t)
         P_arr[i, 1] = wr[1]  # P_par
         P_arr[i, 2] = wr[2]  # P_fermi
         P_arr[i, 3] = wr[3]  # P_grad
@@ -282,7 +285,9 @@ f1 = DisplayAs.PNG(f1) #hide
 # action of all three adiabatic acceleration mechanisms. The magnetic mirror
 # (``\tanh`` profile with ``L = 200`` m) confines the particle near ``z = 0``,
 # sustaining curvature and gradient throughout the trajectory so that all
-# work channels accumulate visibly.
+# work channels accumulate visibly.  A small offset between ``\Delta K`` and
+# ``\Sigma`` Work is expected: with ``\varepsilon = \rho_L / L_B \approx 0.26``,
+# the GC work-rate formulas carry ``\mathcal{O}(\varepsilon)`` truncation error.
 
 ## --- Figure 2: Cumulative Work Decomposition ---
 f2 = Figure(size = (1100, 800), fontsize = 14)
@@ -294,27 +299,27 @@ ax_cum = Axis(
 )
 lines!(
     ax_cum, ts, ΔK_gc_eV, color = :black, linewidth = 2.5,
-    label = "ΔK (actual)"
+    label = L"\Delta K\ \mathrm{(actual)}"
 )
 lines!(
     ax_cum, ts, W_total_eV, color = :black, linestyle = :dash,
-    linewidth = 2, label = "Σ Work rates (consistency)"
+    linewidth = 2, label = L"\Sigma\ \mathrm{Work\ rates}"
 )
 lines!(
     ax_cum, ts, W_beta_eV, color = :coral, linewidth = 2,
-    label = "Betatron (μ ∂B/∂t)"
+    label = L"\mathrm{Betatron}\ (\mu\,\partial B/\partial t)"
 )
 lines!(
     ax_cum, ts, W_fermi_eV, color = :teal, linewidth = 2,
-    label = "Fermi (curvature drift × E)"
+    label = L"\mathrm{Fermi}\ (\mathbf{v}_{\nabla B}\times\mathbf{E})"
 )
 lines!(
     ax_cum, ts, W_grad_eV, color = :goldenrod, linewidth = 2,
-    label = "Grad-B drift × E"
+    label = L"\mathrm{Grad-}B\ \mathrm{drift}\times\mathbf{E}"
 )
 lines!(
     ax_cum, ts, W_par_eV, color = :purple, linewidth = 2,
-    label = "Parallel E∥ (q v∥ E⋅b̂)"
+    label = L"E_\parallel\ (q v_\parallel\,\mathbf{E}\cdot\hat{\mathbf{b}})"
 )
 axislegend(ax_cum; position = :lt)
 
@@ -326,19 +331,19 @@ ax_inst = Axis(
 )
 @views lines!(
     ax_inst, ts, P_arr_eV[:, 1], color = :purple,
-    linewidth = 1.5, label = "P_parallel"
+    linewidth = 1.5, label = L"P_\parallel"
 )
 @views lines!(
     ax_inst, ts, P_arr_eV[:, 2], color = :teal,
-    linewidth = 1.5, label = "P_fermi"
+    linewidth = 1.5, label = L"P_\mathrm{Fermi}"
 )
 @views lines!(
     ax_inst, ts, P_arr_eV[:, 3], color = :goldenrod,
-    linewidth = 1.5, label = "P_grad"
+    linewidth = 1.5, label = L"P_{\nabla B}"
 )
 @views lines!(
     ax_inst, ts, P_arr_eV[:, 4], color = :coral,
-    linewidth = 1.5, label = "P_betatron"
+    linewidth = 1.5, label = L"P_\mathrm{betatron}"
 )
 axislegend(ax_inst; position = :rt)
 
@@ -365,18 +370,26 @@ f2 = DisplayAs.PNG(f2) #hide
 #    and ``\boldsymbol{\kappa}`` point in opposite directions.
 #
 # 3. **Parallel ``E_\parallel``** (purple): Direct acceleration along
-#    ``\hat{\mathbf{b}}`` by the parallel electric field. The tilted field
-#    ``(\delta = 1)`` gives a ``\hat{b}_z \approx 0.71`` projection of the
-#    lab-frame ``E_\parallel`` onto the field line.
+#    ``\hat{\mathbf{b}}`` by the parallel electric field. In a uniform ``E_\parallel``,
+#    the mirror bounce causes ``v_\parallel`` to oscillate in sign, nearly
+#    canceling the cumulative work. We break this symmetry with a ``z``-dependent
+#    profile ``E_z(z) = E_{\parallel 0}\,(1 + z / L_E)``, so that ``\mathbf{E}\cdot
+#    \hat{\mathbf{b}}`` is larger on one side of the bounce. The tilted field
+#    ``(\delta = 1)`` gives ``\hat{b}_z \approx 0.71``, projecting the lab-frame
+#    field onto the field line.
 #
 # The configuration (``\tanh`` mirror with ``\alpha = 0.2`` m⁻¹,
 # ``L = 200`` m, ``\delta = 1``, ``\beta = 0.1`` s⁻¹,
-# ``E_\perp = 10^{-4}`` V/m, ``E_\parallel = 10^{-5}`` V/m) produces
-# comparable contributions from all three mechanisms, making each
-# acceleration channel clearly visible in the cumulative work decomposition.
+# ``E_\perp = 10^{-4}`` V/m, ``E_{\parallel 0} = 2\times10^{-4}`` V/m,
+# ``L_E = 30`` m) produces comparable contributions from all three mechanisms,
+# making each acceleration channel clearly visible in the cumulative work
+# decomposition.
 #
 # The dashed black line (sum of integrated work rates) tracks the actual
-# ``\Delta K`` (solid black), confirming consistency of the GC energy budget.
+# ``\Delta K`` (solid black). A small offset is expected because the adiabatic
+# parameter ``\varepsilon = \rho_L / L_B \approx 0.26`` is not infinitesimal,
+# and the GC work rate formulas (Northrop 1963) are leading-order adiabatic
+# approximations that neglect ``\mathcal{O}(\varepsilon)`` corrections.
 
 ## --- Figure 4: Adiabatic Invariant and Velocity Evolution ---
 ##
@@ -414,7 +427,7 @@ function run_case(β_val)
     B_local(x, t = 0.0) = let B0t = B₀₀ * (1 + β_val * t)
         SA[(α * L_z * tanh(x[3] / L_z) + δ) * B0t, 0.0, B0t]
     end
-    E_local(x, t = 0.0) = SA[0.0, E_perp, E_par]
+    E_local(x, t = 0.0) = SA[0.0, E_perp, E_par * (1.0 + x[3] / L_E)]
 
     sigc, pgc = prepare_gc(stateinit, E_local, B_local; species)
     prob = ODEProblem(trace_gc!, sigc, tspan, pgc)
