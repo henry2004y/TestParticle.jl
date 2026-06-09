@@ -311,7 +311,7 @@ lines!(
 )
 lines!(
     ax_cum, ts, W_fermi_eV, color = :teal, linewidth = 2,
-    label = L"\mathrm{Fermi}\ (\mathbf{v}_{\nabla B}\times\mathbf{E})"
+    label = L"\mathrm{Fermi}\ (\mathbf{v}_c\times\mathbf{E})"
 )
 lines!(
     ax_cum, ts, W_grad_eV, color = :goldenrod, linewidth = 2,
