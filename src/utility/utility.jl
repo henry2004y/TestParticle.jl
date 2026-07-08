@@ -496,6 +496,46 @@ function get_adiabaticity(sol::AbstractODESolution, t)
 end
 
 """
+    adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
+    adiabaticity_components(x, Bfunc, μ, t = 0.0; species = Proton)
+
+Return the tuple `(ε_curv, ε_gradB, ε_total)` of first-order adiabaticity
+parameters at position `x` and time `t`:
+- `ε_curv  = ρ / R_c` (curvature drift; the definition used by
+  [`get_adiabaticity`](@ref)),
+- `ε_gradB = ρ / L_B` (grad-B drift; CHIMP's `eGC`), with
+  `L_B = |B| / |∇B|` the magnetic-field length scale,
+- `ε_total = ε_curv + ε_gradB` (the two first-order drift frequencies add).
+
+`ρ = √(2 μ m / |B|) / |q|` is the gyroradius. When `|B| = 0` all three
+components are `Inf`.
+"""
+@inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
+    B, JB = _get_B_jacobian(x, t, Bfunc)
+    Bmag = norm(B)
+    iszero(Bmag) && return (Inf, Inf, Inf)
+
+    ρ = sqrt(2 * μ * m / Bmag) / abs(q)
+    b̂ = B / Bmag
+
+    # grad-B length scale L_B = |B| / |∇B|, with ∇B = ∇|B|
+    ∇B = JB' * b̂
+    gradB_mag = norm(∇B)
+    L_B = iszero(gradB_mag) ? Inf : Bmag / gradB_mag
+    ε_gradB = ρ / L_B
+
+    # curvature drift: ε_curv = ρ · |κ|, κ = (b̂ ⋅ ∇) b̂
+    κ, _ = _get_curvature(B, Bmag, b̂, JB)
+    ε_curv = ρ * norm(κ)
+
+    return (ε_curv, ε_gradB, ε_curv + ε_gradB)
+end
+
+function adiabaticity_components(x, Bfunc, μ, t::Number = 0.0; species = Proton)
+    return adiabaticity_components(x, Bfunc, species.q, species.m, μ, t)
+end
+
+"""
     TerminateOutside(isoutofdomain)
 
 Create a `DiscreteCallback` that terminates the simulation if `isoutofdomain(u, p, t)` is true.

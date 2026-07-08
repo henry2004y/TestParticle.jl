@@ -13,6 +13,20 @@ rapid GC ↔ FO chattering near a single bound:
 - `threshold_fo_to_gc` (β): switch FO → GC when `ε < β`.
 With `α ≥ β` the band `β ≤ ε < α` forms a buffer where the current mode is
 retained, so a particle hovering near the boundary does not oscillate.
+
+The adiabaticity parameter `ε` compared against the thresholds is selected by
+the `adiabaticity` field, which may be:
+- `:curvature` (default) → `ε_curv = ρ_L / R_c` (the classic CHIMP-style
+  criterion; reproduces the legacy behavior exactly),
+- `:gradB` → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
+- `:both` → OR of the two criteria: the solver switches to the full orbit
+  whenever *either* `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently
+  `max(ε_curv, ε_gradB) ≥ α`).
+
+Each check point records the full component vector `(ε_curv, ε_gradB,
+ε_total)` and the active mode in `sol.stats.adiabaticity`. This diagnostic is
+only saved when `save_adiabaticity = true` (the default); set it to `false`
+to skip the buffers and reduce memory/allocation overhead.
 """
 struct AdaptiveHybrid{T}
     threshold_gc_to_fo::T
@@ -24,6 +38,8 @@ struct AdaptiveHybrid{T}
     reltol::T
     maxiters::Int
     check_interval::Int
+    adiabaticity::Symbol
+    save_adiabaticity::Bool
 end
 
 function AdaptiveHybrid(;
@@ -31,11 +47,14 @@ function AdaptiveHybrid(;
         threshold_gc_to_fo = threshold,
         threshold_fo_to_gc = threshold,
         dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
-        abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10
+        abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
+        adiabaticity = :curvature, save_adiabaticity = true
     )
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     threshold_gc_to_fo >= threshold_fo_to_gc ||
         throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
+    adiabaticity in (:curvature, :gradB, :both) ||
+        throw(ArgumentError("adiabaticity must be one of :curvature, :gradB, :both."))
     T = promote_type(
         typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
         typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
@@ -43,7 +62,7 @@ function AdaptiveHybrid(;
     )
     return AdaptiveHybrid{T}(
         T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax), T(safety_fo),
-        T(abstol), T(reltol), maxiters, check_interval
+        T(abstol), T(reltol), maxiters, check_interval, adiabaticity, save_adiabaticity
     )
 end
 
@@ -112,7 +131,8 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
     irange = 1:trajectories
 
@@ -130,7 +150,8 @@ end
         savestepinterval, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)))
+    sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
 
     nchunks = Threads.nthreads()
@@ -145,7 +166,7 @@ end
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
-function _get_sol_type(prob::TraceHybridProblem, dt)
+function _get_sol_type(prob::TraceHybridProblem, dt, stats = nothing)
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
@@ -155,8 +176,35 @@ function _get_sol_type(prob::TraceHybridProblem, dt)
     interp = LinearInterpolation(t, u)
     alg = :hybrid
 
-    sol = build_solution(prob, alg, t, u; interp = interp)
+    sol = build_solution(prob, alg, t, u; interp = interp, stats = stats)
     return typeof(sol)
+end
+
+# Select the adiabaticity criterion used for the switching decision, compared
+# against the shared thresholds. For `:both` we use OR logic: switch whenever
+# *either* component exceeds the threshold.
+@inline function _adia_select(comps, alg::AdaptiveHybrid)
+    if alg.adiabaticity === :curvature
+        return comps[1]
+    elseif alg.adiabaticity === :gradB
+        return comps[2]
+    else
+        return max(comps[1], comps[2])  # :both → OR of the two criteria
+    end
+end
+
+# Representative diagnostics structure used only to infer the solution type
+# (the actual per-trajectory vectors are built inside the solver loop).
+# Returns `nothing` when `save_adiabaticity` is false, so the affected
+# `build_solution` is constructed without the `adiabaticity` stats field.
+function _adia_sample_stats(prob::TraceHybridProblem, save_adiabaticity::Bool)
+    save_adiabaticity || return nothing
+    T = eltype(prob.u0)
+    return (adiabaticity = (
+        t = typeof(prob.tspan[1])[],
+        components = SVector{3, T}[],
+        mode = Symbol[],
+    ),)
 end
 
 # Internal helpers to handle field calls with time
@@ -255,9 +303,18 @@ end
         # Initial Mode Determination
         X_gc, vpar, μ, phase = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
 
-        ϵ = get_adiabaticity(r, Bfunc, q, m, μ, t)
+        comps0 = adiabaticity_components(r, Bfunc, q, m, μ, t)
+        ϵ = _adia_select(comps0, alg)
         # Start in GC only when clearly adiabatic (ε < α); otherwise FO.
         is_adiabatic = ϵ < alg.threshold_gc_to_fo
+
+        # Per-check diagnostic buffers, aligned with the decision points.
+        # Allocated only when diagnostics are requested.
+        if alg.save_adiabaticity
+            adia_t = typeof(tspan[1])[]
+            adia_vals = Vector{SVector{3, T}}(undef, 0)
+            adia_mode = Symbol[]
+        end
 
         if is_adiabatic
             mode = :GC
@@ -274,6 +331,11 @@ end
             dt = _fo_dt(alg, q2m, Bfunc, r, t)
             v = update_velocity(v, r, -0.5 * dt, t, p)
             verbose && @info "Initial mode: FO" ϵ t
+        end
+        if alg.save_adiabaticity
+            push!(adia_t, t)
+            push!(adia_vals, SVector{3, T}(comps0))
+            push!(adia_mode, mode)
         end
 
         # Initialize solution containers with sizehint!
@@ -296,7 +358,15 @@ end
             if mode == :GC
                 # Adiabaticity check
                 if it % alg.check_interval == 0
-                    ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
+                    comps = adiabaticity_components(
+                        xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
+                    )
+                    if alg.save_adiabaticity
+                        push!(adia_t, t)
+                        push!(adia_vals, SVector{3, T}(comps))
+                        push!(adia_mode, :GC)
+                    end
+                    ϵ = _adia_select(comps, alg)
                     if ϵ >= alg.threshold_gc_to_fo
                         # Switch to FO (GC -> FO)
                         mode = :FO
@@ -367,16 +437,24 @@ end
                     t_sync = is_td ? t : zero(T)
                     v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p)
                     xv_sync = vcat(r, v_sync)
-                    X_gc, vpar, μ, phase = _get_gc_parameters_at_t(
+                    X_gc, vpar, μ_fo, phase_fo = _get_gc_parameters_at_t(
                         xv_sync, Efunc, Bfunc, q, m, t
                     )
-                    ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
+                    comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
+                    if alg.save_adiabaticity
+                        push!(adia_t, t)
+                        push!(adia_vals, SVector{3, T}(comps))
+                        push!(adia_mode, :FO)
+                    end
+                    ϵ = _adia_select(comps, alg)
                     if ϵ < alg.threshold_fo_to_gc
                         # Switch to GC (FO -> GC)
                         mode = :GC
                         verbose && @info "Switch FO → GC" ϵ t r = r
                         xv_gc = vcat(X_gc, vpar)
-                        p_gc = (q, q2m, μ, Efunc, Bfunc)
+                        p_gc = (q, q2m, μ_fo, Efunc, Bfunc)
+                        μ = μ_fo
+                        phase = phase_fo
 
                         Bmag = norm(Bfunc(r, t))
                         omega = abs(q2m * Bmag)
@@ -428,7 +506,9 @@ end
         sol_alg = :hybrid
         interp = LinearInterpolation(tsave, traj)
         retcode = steps >= alg.maxiters ? ReturnCode.MaxIters : ReturnCode.Success
-        stats = nothing
+        stats = alg.save_adiabaticity ?
+            (adiabaticity = (t = adia_t, components = adia_vals, mode = adia_mode),) :
+            nothing
 
         sols[i] = build_solution(
             prob, sol_alg, tsave, traj; interp = interp, retcode = retcode, stats = stats

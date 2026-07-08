@@ -304,3 +304,188 @@ Printf.@printf(
     median(b_hy).time * 1.0e6, median(b_hy).bytes / 1024
 ) #hide
 Markdown.parse(String(take!(io))) #hide
+
+# ## AdaptiveHybrid: Adiabaticity Check Modes
+#
+# [`AdaptiveHybrid`](@ref) lets the user pick which adiabaticity criterion drives
+# the GC ↔ FO decision, via the `adiabaticity` keyword:
+# - `:curvature` (default) → `ε_curv = ρ_L / R_c` (the classic CHIMP-style
+#   criterion),
+# - `:gradB`     → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
+# - `:both`      → OR of the two criteria: switch to full orbit whenever *either*
+#   `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently `max(ε_curv, ε_gradB) ≥ α`).
+#
+# All three solve the same problem; they differ only in *when* the solver drops
+# into the full-orbit mode, so the trajectories stay close while the time spent
+# in each mode changes.
+
+mode_threshold = 0.1
+mode_common = (;
+    threshold = mode_threshold, dtmax = T_gyro,
+    dtmin = 1.0e-4 * T_gyro, maxiters = 500_000, check_interval = 100,
+)
+alg_curv = AdaptiveHybrid(; mode_common..., adiabaticity = :curvature)
+alg_gradB = AdaptiveHybrid(; mode_common..., adiabaticity = :gradB)
+alg_both = AdaptiveHybrid(; mode_common..., adiabaticity = :both)
+
+prob_mode = TraceHybridProblem(u0, tspan, p)
+sol_curv = TP.solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
+sol_gradB = TP.solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
+sol_both = TP.solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1]
+
+# RMS position error vs the full-orbit reference, and the FO-mode fraction.
+function _adia_rms(sol)
+    errs = Float64[]
+    for (t, u) in zip(sol.t, sol.u)
+        u_ref = sol_fo(t)
+        push!(errs, norm(u[1:3] - u_ref[1:3]))
+    end
+    return sqrt(mean(errs .^ 2))
+end
+function _adia_fo_frac(sol)
+    mode = sol.stats.adiabaticity.mode
+    return count(==(:FO), mode) / length(mode)
+end
+
+ε_col_curv = get_adiabaticity(sol_curv)
+ε_col_gradB = get_adiabaticity(sol_gradB)
+ε_col_both = get_adiabaticity(sol_both)
+
+io2 = IOBuffer() #hide
+println(io2, "### Result vs full-orbit reference") #hide
+println(io2, "") #hide
+println(io2, "| Mode | FO fraction | Saved points | RMS pos. err [m] |") #hide
+println(io2, "| :--- | :--- | :--- | :--- |") #hide
+Printf.@printf(
+    io2, "| `:curvature` | %.2f | %d | %.2e |\n",
+    _adia_fo_frac(sol_curv), length(sol_curv.t), _adia_rms(sol_curv)
+) #hide
+Printf.@printf(
+    io2, "| `:gradB` | %.2f | %d | %.2e |\n",
+    _adia_fo_frac(sol_gradB), length(sol_gradB.t), _adia_rms(sol_gradB)
+) #hide
+Printf.@printf(
+    io2, "| `:both` | %.2f | %d | %.2e |\n",
+    _adia_fo_frac(sol_both), length(sol_both.t), _adia_rms(sol_both)
+) #hide
+Markdown.parse(String(take!(io2))) #hide
+
+# ### Trajectories under the three modes
+#
+# The three modes trace nearly the same path (all stay close to the full-orbit
+# reference); they differ in *when* the solver drops into the full-orbit mode.
+
+f_modes = Figure(; size = (1400, 460), fontsize = 16)
+
+limx = (Inf, -Inf); limy = (Inf, -Inf); limz = (Inf, -Inf)
+for s in (sol_curv, sol_gradB, sol_both)
+    for u in s.u
+        limx = (min(limx[1], u[1]), max(limx[2], u[1]))
+        limy = (min(limy[1], u[2]), max(limy[2], u[2]))
+        limz = (min(limz[1], u[3]), max(limz[2], u[3]))
+    end
+end
+lms = (limx, limy, limz)
+
+ax_c = Axis3(
+    f_modes[1, 1], title = ":curvature", aspect = :data, limits = lms,
+    xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
+)
+plot_trajectory!(ax_c, sol_curv, ε_col_curv)
+
+ax_g = Axis3(
+    f_modes[1, 2], title = ":gradB", aspect = :data, limits = lms,
+    xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
+)
+plot_trajectory!(ax_g, sol_gradB, ε_col_gradB)
+
+ax_b = Axis3(
+    f_modes[1, 3], title = ":both", aspect = :data, limits = lms,
+    xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
+)
+plot_trajectory!(ax_b, sol_both, ε_col_both)
+
+f_modes = DisplayAs.PNG(f_modes) #hide
+
+# ### Why the modes differ: the adiabaticity components
+#
+# For the `:both` run we show all three components. The solver uses OR logic,
+# switching to the full orbit whenever *either* `ε_curv` *or* `ε_gradB` crosses
+# the threshold, so its full-orbit interval is the union of the two single
+# criteria — that is why `:both` spends at least as much time in the full-orbit
+# mode as either `:curvature` or `:gradB` alone.
+
+t_both = sol_both.stats.adiabaticity.t
+mode_both = sol_both.stats.adiabaticity.mode
+comps_both = sol_both.stats.adiabaticity.components
+# `:both` switches on the OR (maximum) of the two criteria.
+ε_sel_both = [max(c[1], c[2]) for c in comps_both]
+t_n_both = t_both ./ T_gyro
+ε_curv_both = [c[1] for c in comps_both]
+ε_gradB_both = [c[2] for c in comps_both]
+
+f_comp = Figure(; size = (1000, 480), fontsize = 16)
+ax_comp = Axis(
+    f_comp[1, 1],
+    xlabel = L"t / T_\text{gyro}",
+    ylabel = L"\epsilon",
+    yscale = log10,
+    title = "Adiabaticity components (:both)",
+    limits = (
+        (minimum(t_n_both), maximum(t_n_both)),
+        (ε_clamp_lo, 10^ceil(log10(maximum(ε_sel_both)))),
+    ),
+)
+
+let i_region = 1
+    while i_region <= length(t_n_both)
+        m_fo = mode_both[i_region] === :FO
+        j_region = i_region
+        while j_region < length(t_n_both) && mode_both[j_region + 1] === mode_both[i_region]
+            j_region += 1
+        end
+        c = m_fo ? (:red, 0.2) : (:blue, 0.2)
+        vspan!(ax_comp, t_n_both[i_region], t_n_both[j_region]; color = c)
+        i_region = j_region + 1
+    end
+end
+
+lines!(ax_comp, t_n_both, ε_curv_both; color = :green, label = L"\epsilon_\text{curv}")
+lines!(ax_comp, t_n_both, ε_gradB_both; color = :orange, label = L"\epsilon_{\nabla B}")
+lines!(ax_comp, t_n_both, ε_sel_both; color = :black, linewidth = 1.6,
+    label = L"\max(\epsilon_\text{curv}, \epsilon_{\nabla B})")
+hlines!(
+    ax_comp, [mode_threshold];
+    color = :gray50, linestyle = :dash, linewidth = 1.5,
+    label = "threshold = $(round(mode_threshold; sigdigits = 2))"
+)
+axislegend(ax_comp; position = :rt)
+f_comp = DisplayAs.PNG(f_comp) #hide
+
+# ### Performance
+#
+# All three modes share the same solver core; `:curvature` carries only a few KiB
+# of extra diagnostics. The `:gradB` / `:both` modes can even run *faster* in this
+# setup because they spend more time in the cheap Boris full-orbit integrator, at
+# the cost of higher memory (more saved points).
+
+b_curv = @be TP.solve($prob_mode, $alg_curv; verbose = false, seed = 1234)
+b_gradB = @be TP.solve($prob_mode, $alg_gradB; verbose = false, seed = 1234)
+b_both = @be TP.solve($prob_mode, $alg_both; verbose = false, seed = 1234)
+
+io3 = IOBuffer() #hide
+println(io3, "| Mode | Time | Allocations |") #hide
+println(io3, "| :--- | :--- | :--- |") #hide
+Printf.@printf(
+    io3, "| `:curvature` | %.2f ms | %.2f KiB |\n",
+    median(b_curv).time * 1.0e3, median(b_curv).bytes / 1024
+) #hide
+Printf.@printf(
+    io3, "| `:gradB` | %.2f ms | %.2f KiB |\n",
+    median(b_gradB).time * 1.0e3, median(b_gradB).bytes / 1024
+) #hide
+Printf.@printf(
+    io3, "| `:both` | %.2f ms | %.2f KiB |\n",
+    median(b_both).time * 1.0e3, median(b_both).bytes / 1024
+) #hide
+Markdown.parse(String(take!(io3))) #hide
