@@ -231,11 +231,9 @@ end
 
 @inline function get_B_parameters(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
-
     Bmag = norm(B)
     b̂ = B / Bmag
-
-    # ∇|B| = (J_B' * b̂)
+    # Grad-B from Jacobian
     ∇B = JB' * b̂
 
     return B, Bmag, b̂, ∇B, JB

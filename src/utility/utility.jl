@@ -346,7 +346,7 @@ This function requires `VelocityDistributionFunctions.jl` to be loaded.
 function sample_maxwellian end
 
 @inline function _get_curvature(B, Bmag, b̂, JB)
-    # ∇|B| = (J_B' * b̂)
+    # Grad-B from Jacobian
     ∇B = JB' * b̂
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
     return (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag, ∇B
@@ -381,7 +381,6 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
     end
     b̂ = B / Bmag
 
-    # Share curvature calculation logic
     κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
 
     return B, ∇B, κ, b̂, Bmag
@@ -394,9 +393,8 @@ Calculate the curvature vector `κ` of the magnetic field at position `x` and ti
 """
 @inline function get_curvature(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
-
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
 
     return B, ∇B, κ, b̂, Bmag
 end
