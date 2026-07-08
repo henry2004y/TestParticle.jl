@@ -6,9 +6,17 @@ const MIN_DT = 1.0e-14
     AdaptiveHybrid{T}
 
 Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC).
+
+Mode switching uses hysteresis with two adiabaticity thresholds to avoid
+rapid GC ↔ FO chattering near a single bound:
+- `threshold_gc_to_fo` (α): switch GC → FO when `ε ≥ α`.
+- `threshold_fo_to_gc` (β): switch FO → GC when `ε < β`.
+With `α ≥ β` the band `β ≤ ε < α` forms a buffer where the current mode is
+retained, so a particle hovering near the boundary does not oscillate.
 """
 struct AdaptiveHybrid{T}
-    threshold::T
+    threshold_gc_to_fo::T
+    threshold_fo_to_gc::T
     dtmin::T
     dtmax::T
     safety_fo::T
@@ -19,17 +27,23 @@ struct AdaptiveHybrid{T}
 end
 
 function AdaptiveHybrid(;
-        threshold = 0.1, dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
+        threshold = 0.1,
+        threshold_gc_to_fo = threshold,
+        threshold_fo_to_gc = threshold,
+        dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10
     )
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
+    threshold_gc_to_fo >= threshold_fo_to_gc ||
+        throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
     T = promote_type(
-        typeof(threshold), typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
+        typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
+        typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
         typeof(reltol)
     )
     return AdaptiveHybrid{T}(
-        T(threshold), T(dtmin), T(dtmax), T(safety_fo), T(abstol), T(reltol), maxiters,
-        check_interval
+        T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax), T(safety_fo),
+        T(abstol), T(reltol), maxiters, check_interval
     )
 end
 
@@ -204,6 +218,15 @@ function _gc_to_full_at_t(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
     return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
 end
 
+# Fixed FO (Boris) time step for the hybrid solver, derived from the local field
+# magnitude and the same `safety_fo` convention used by `AdaptiveBoris`.
+@inline function _fo_dt(alg, q2m, Bfunc, r, t = 0.0)
+    Bmag = norm(Bfunc(r, t))
+    ω = abs(q2m) * Bmag
+    dt = 2π * alg.safety_fo / ω
+    return clamp(dt, alg.dtmin, alg.dtmax)
+end
+
 @inline function _hybrid_adaptive!(
         sols, prob::TraceHybridProblem, irange, alg,
         savestepinterval, isoutside::F,
@@ -233,7 +256,8 @@ end
         X_gc, vpar, μ, phase = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
 
         ϵ = get_adiabaticity(r, Bfunc, q, m, μ, t)
-        is_adiabatic = ϵ < alg.threshold
+        # Start in GC only when clearly adiabatic (ε < α); otherwise FO.
+        is_adiabatic = ϵ < alg.threshold_gc_to_fo
 
         if is_adiabatic
             mode = :GC
@@ -247,12 +271,7 @@ end
             verbose && @info "Initial mode: GC" ϵ t
         else
             mode = :FO
-            # Initial dt for FO
-            B_vec = Bfunc(r, t)
-            Bmag = norm(B_vec)
-            ω = abs(q2m) * Bmag
-            dt = 2π * alg.safety_fo / ω
-            dt = clamp(dt, alg.dtmin, alg.dtmax)
+            dt = _fo_dt(alg, q2m, Bfunc, r, t)
             v = update_velocity(v, r, -0.5 * dt, t, p)
             verbose && @info "Initial mode: FO" ϵ t
         end
@@ -278,7 +297,7 @@ end
                 # Adiabaticity check
                 if it % alg.check_interval == 0
                     ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
-                    if ϵ >= alg.threshold
+                    if ϵ >= alg.threshold_gc_to_fo
                         # Switch to FO (GC -> FO)
                         mode = :FO
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
@@ -289,10 +308,7 @@ end
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
 
-                        B_mag = norm(Bfunc(r, t))
-                        ω = abs(q2m * B_mag)
-                        dt = 2π * alg.safety_fo / ω
-                        dt = clamp(dt, alg.dtmin, alg.dtmax)
+                        dt = _fo_dt(alg, q2m, Bfunc, r, t)
                         v = update_velocity(v, r, -0.5 * dt, t, p)
                         continue
                     end
@@ -322,9 +338,10 @@ end
                     t += dt
                     xv_gc = y_next
 
-                    # Evolve phase
-                    Bmag_next = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - dt * (q2m * Bmag_next))
+                    # Evolve phase using the (signed) gyrofrequency at the
+                    # start-of-step guiding-center position.
+                    Bmag_step = norm(Bfunc(get_x(xv_gc), t))
+                    phase = mod2pi(phase - dt * (q2m * Bmag_step))
 
                     if save_everystep && (it % savestepinterval == 0)
                         push!(
@@ -344,88 +361,55 @@ end
                 dt < MIN_DT && break
 
             else # Mode == :FO
-                t_sync = is_td ? t : zero(T)
-                v_check = update_velocity(v, r, 0.5 * dt, t_sync, p)
-
+                # Adiabaticity check only at the chosen cadence, using the
+                # synchronized (position, velocity) pair at the integer time `t`.
                 if it % alg.check_interval == 0
-                    xv_check = SVector{6, T}(
-                        r[1], r[2], r[3], v_check[1], v_check[2], v_check[3]
-                    )
+                    t_sync = is_td ? t : zero(T)
+                    v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p)
+                    xv_sync = vcat(r, v_sync)
                     X_gc, vpar, μ, phase = _get_gc_parameters_at_t(
-                        xv_check, Efunc, Bfunc, q, m, t
+                        xv_sync, Efunc, Bfunc, q, m, t
                     )
                     ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
-                    if ϵ < alg.threshold
-                        # Switch to GC
+                    if ϵ < alg.threshold_fo_to_gc
+                        # Switch to GC (FO -> GC)
                         mode = :GC
-                        verbose && @info "Switch FO → GC" ϵ t r = X_gc
-                        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
+                        verbose && @info "Switch FO → GC" ϵ t r = r
+                        xv_gc = vcat(X_gc, vpar)
                         p_gc = (q, q2m, μ, Efunc, Bfunc)
 
-                        Bmag = norm(Bfunc(X_gc, t))
+                        Bmag = norm(Bfunc(r, t))
                         omega = abs(q2m * Bmag)
                         dt = 0.5 * 2π / omega
                         continue
                     end
                 end
 
+                # Truncate the final step so we never overshoot the time span.
                 if t + dt > tspan[2]
-                    dt_step = tspan[2] - t
-                    v = update_velocity(v, r, 0.5 * dt, t_sync, p)
-                    v = update_velocity(
-                        v, r, -0.5 * dt_step, t_sync, p
-                    )
-                    dt = dt_step
+                    dt = tspan[2] - t
                 end
 
+                # One Boris leapfrog step with a fixed dt, identical in
+                # convention to `Boris(dt)` so FO segments match it exactly.
                 v_prev = v
-
-                if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
-                    if isempty(tsave) || tsave[end] < t - eps(t)
-                        v_save = update_velocity(
-                            v_prev, r, 0.5 * dt, t_sync, p
-                        )
-                        xv_save = SVector{6, T}(
-                            r[1], r[2], r[3], v_save[1], v_save[2], v_save[3]
-                        )
-                        push!(traj, xv_save)
-                        push!(tsave, t)
-                    end
-                end
-
-                t_mid = is_td ? t + 0.5 * dt : zero(T)
-                v = update_velocity(v, r, dt, t_mid, p)
+                v = update_velocity(v, r, dt, t + 0.5 * dt, p)
                 r_next = r + v * dt
                 t_next = t + dt
-
-                xv_check_domain = SVector{6, T}(
-                    r_next[1], r_next[2], r_next[3],
-                    v[1], v[2], v[3]
-                )
-                if isoutside(xv_check_domain, p, t_next)
+                if isoutside(vcat(r_next, v), p, t_next)
                     break
+                end
+
+                if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+                    v_save = update_velocity(v_prev, r, 0.5 * dt, t, p)
+                    push!(traj, vcat(r, v_save))
+                    push!(tsave, t)
                 end
 
                 r = r_next
                 t = t_next
                 it += 1
                 steps += 1
-
-                # New dt for FO
-                Bmag = norm(Bfunc(r, t))
-                if Bmag > 0
-                    dt_new = 2π * alg.safety_fo / (abs(q2m) * Bmag)
-                    dt_new = clamp(dt_new, alg.dtmin, alg.dtmax)
-                else
-                    dt_new = alg.dtmax
-                end
-
-                if abs(dt_new - dt) > 0.05 * dt
-                    t_sync = is_td ? t : zero(T)
-                    v = update_velocity(v, r, 0.5 * dt, t_sync, p)
-                    v = update_velocity(v, r, -0.5 * dt_new, t_sync, p)
-                    dt = dt_new
-                end
             end
         end
 
@@ -436,10 +420,7 @@ end
             else
                 t_final = is_td ? t : zero(T)
                 v_final = update_velocity(v, r, 0.5 * dt, t_final, p)
-                xv_final = SVector{6, T}(
-                    r[1], r[2], r[3], v_final[1], v_final[2], v_final[3]
-                )
-                push!(traj, xv_final)
+                push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)
         end

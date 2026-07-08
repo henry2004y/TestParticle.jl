@@ -346,7 +346,7 @@ This function requires `VelocityDistributionFunctions.jl` to be loaded.
 function sample_maxwellian end
 
 @inline function _get_curvature(B, Bmag, b̂, JB)
-    # ∇|B| = (J_B' * b̂)
+    # Grad-B from Jacobian
     ∇B = JB' * b̂
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
     return (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag, ∇B
@@ -381,7 +381,6 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
     end
     b̂ = B / Bmag
 
-    # Share curvature calculation logic
     κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
 
     return B, ∇B, κ, b̂, Bmag
@@ -394,9 +393,8 @@ Calculate the curvature vector `κ` of the magnetic field at position `x` and ti
 """
 @inline function get_curvature(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
-
     # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    κ = (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag
+    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
 
     return B, ∇B, κ, b̂, Bmag
 end
@@ -422,12 +420,13 @@ Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
 @inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    Bmag = Bfunc(r, t) |> norm
+    B, JB = _get_B_jacobian(r, t, Bfunc)
+    Bmag = norm(B)
     iszero(Bmag) && return Inf
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    _, _, κ, _, _ = get_magnetic_properties(r, t, Bfunc)
+    κ, _ = _get_curvature(B, Bmag, B / Bmag, JB)
 
     k_mag = norm(κ)
     invRc = iszero(k_mag) ? zero(k_mag) : k_mag
