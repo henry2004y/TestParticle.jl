@@ -16,17 +16,24 @@ retained, so a particle hovering near the boundary does not oscillate.
 
 The adiabaticity parameter `ε` compared against the thresholds is selected by
 the `adiabaticity` field, which may be:
-- `:curvature` (default) → `ε_curv = ρ_L / R_c` (the classic CHIMP-style
-  criterion; reproduces the legacy behavior exactly),
+- `:curvature` (default) → `ε_curv = ρ_L / R_c` (curvature drift; reproduces
+  the legacy `get_adiabaticity` behavior exactly),
 - `:gradB` → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
 - `:both` → OR of the two criteria: the solver switches to the full orbit
   whenever *either* `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently
-  `max(ε_curv, ε_gradB) ≥ α`).
+  `max(ε_curv, ε_gradB) ≥ α`),
+- `:jacobian` → `ε_jac = ρ_L · ‖JB‖_F / |B|`, CHIMP's original all-in-one
+  criterion (Bates & Fuentes, 2020), where `JB` is the Jacobian of `B` and
+  `‖JB‖_F` its Frobenius norm. It captures curvature, grad-B, torsion and
+  shear at once, so it switches to full orbit in non-adiabatic regions that
+  `:curvature`/`:gradB` miss (e.g. a field whose direction rotates in space
+  while keeping constant magnitude).
 
-Each check point records the full component vector `(ε_curv, ε_gradB,
-ε_total)` and the active mode in `sol.stats.adiabaticity`. This diagnostic is
-only saved when `save_adiabaticity = true` (the default); set it to `false`
-to skip the buffers and reduce memory/allocation overhead.
+Each check point records only the adiabaticity value used by the selected
+`adiabaticity` mode (a single scalar per check) together with the active mode
+in `sol.stats.adiabaticity`. This diagnostic is only saved when
+`save_adiabaticity = true` (the default); set it to `false` to skip the
+buffers and reduce memory/allocation overhead.
 """
 struct AdaptiveHybrid{T}
     threshold_gc_to_fo::T
@@ -53,8 +60,10 @@ function AdaptiveHybrid(;
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     threshold_gc_to_fo >= threshold_fo_to_gc ||
         throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
-    adiabaticity in (:curvature, :gradB, :both) ||
-        throw(ArgumentError("adiabaticity must be one of :curvature, :gradB, :both."))
+    adiabaticity in (:curvature, :gradB, :both, :jacobian) ||
+        throw(ArgumentError(
+            "adiabaticity must be one of :curvature, :gradB, :both, :jacobian."
+        ))
     T = promote_type(
         typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
         typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
@@ -188,6 +197,8 @@ end
         return comps[1]
     elseif alg.adiabaticity === :gradB
         return comps[2]
+    elseif alg.adiabaticity === :jacobian
+        return comps[3]  # Frobenius-norm criterion
     else
         return max(comps[1], comps[2])  # :both → OR of the two criteria
     end
@@ -202,7 +213,7 @@ function _adia_sample_stats(prob::TraceHybridProblem, save_adiabaticity::Bool)
     T = eltype(prob.u0)
     return (adiabaticity = (
         t = typeof(prob.tspan[1])[],
-        components = SVector{3, T}[],
+        components = T[],
         mode = Symbol[],
     ),)
 end
@@ -312,7 +323,7 @@ end
         # Allocated only when diagnostics are requested.
         if alg.save_adiabaticity
             adia_t = typeof(tspan[1])[]
-            adia_vals = Vector{SVector{3, T}}(undef, 0)
+            adia_vals = T[]
             adia_mode = Symbol[]
         end
 
@@ -334,7 +345,7 @@ end
         end
         if alg.save_adiabaticity
             push!(adia_t, t)
-            push!(adia_vals, SVector{3, T}(comps0))
+            push!(adia_vals, _adia_select(comps0, alg))
             push!(adia_mode, mode)
         end
 
@@ -363,7 +374,7 @@ end
                     )
                     if alg.save_adiabaticity
                         push!(adia_t, t)
-                        push!(adia_vals, SVector{3, T}(comps))
+                        push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :GC)
                     end
                     ϵ = _adia_select(comps, alg)
@@ -443,7 +454,7 @@ end
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     if alg.save_adiabaticity
                         push!(adia_t, t)
-                        push!(adia_vals, SVector{3, T}(comps))
+                        push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :FO)
                     end
                     ϵ = _adia_select(comps, alg)

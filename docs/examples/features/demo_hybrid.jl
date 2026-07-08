@@ -309,11 +309,12 @@ Markdown.parse(String(take!(io))) #hide
 #
 # [`AdaptiveHybrid`](@ref) lets the user pick which adiabaticity criterion drives
 # the GC ↔ FO decision, via the `adiabaticity` keyword:
-# - `:curvature` (default) → `ε_curv = ρ_L / R_c` (the classic CHIMP-style
-#   criterion),
+# - `:curvature` (default) → `ε_curv = ρ_L / R_c` (curvature drift; reproduces
+#   the legacy behaviour),
 # - `:gradB`     → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
 # - `:both`      → OR of the two criteria: switch to full orbit whenever *either*
-#   `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently `max(ε_curv, ε_gradB) ≥ α`).
+#   `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently `max(ε_curv, ε_gradB) ≥ α`),
+# - `:jacobian`  → `ε_jac = ρ_L · ‖JB‖_F / |B|`, all-in-one criterion, which also captures torsion and shear.
 #
 # All three solve the same problem; they differ only in *when* the solver drops
 # into the full-orbit mode, so the trajectories stay close while the time spent
@@ -407,22 +408,23 @@ plot_trajectory!(ax_b, sol_both, ε_col_both)
 
 f_modes = DisplayAs.PNG(f_modes) #hide
 
-# ### Why the modes differ: the adiabaticity components
+# ### Why the modes differ: the selected adiabaticity
 #
-# For the `:both` run we show all three components. The solver uses OR logic,
-# switching to the full orbit whenever *either* `ε_curv` *or* `ε_gradB` crosses
-# the threshold, so its full-orbit interval is the union of the two single
-# criteria — that is why `:both` spends at least as much time in the full-orbit
-# mode as either `:curvature` or `:gradB` alone.
+# The diagnostics store *only* the adiabaticity value used by the selected
+# mode (one scalar per check point), not the full component vector. For
+# `:curvature` and `:gradB` that is `ε_curv` and `ε_gradB`; for `:both` it is
+# `max(ε_curv, ε_gradB)`. Plotting the stored value for each mode shows that
+# `:both` switches at least as often as either single criterion alone.
 
-t_both = sol_both.stats.adiabaticity.t
-mode_both = sol_both.stats.adiabaticity.mode
-comps_both = sol_both.stats.adiabaticity.components
-# `:both` switches on the OR (maximum) of the two criteria.
-ε_sel_both = [max(c[1], c[2]) for c in comps_both]
-t_n_both = t_both ./ T_gyro
-ε_curv_both = [c[1] for c in comps_both]
-ε_gradB_both = [c[2] for c in comps_both]
+function _adia_traces(sol)
+    t = sol.stats.adiabaticity.t ./ T_gyro
+    ε = sol.stats.adiabaticity.components
+    mode = sol.stats.adiabaticity.mode
+    return t, ε, mode
+end
+t_curv, ε_curv, mode_curv = _adia_traces(sol_curv)
+t_gradB, ε_gradB, mode_gradB = _adia_traces(sol_gradB)
+t_both, ε_both, mode_both = _adia_traces(sol_both)
 
 f_comp = Figure(; size = (1000, 480), fontsize = 16)
 ax_comp = Axis(
@@ -430,30 +432,34 @@ ax_comp = Axis(
     xlabel = L"t / T_\text{gyro}",
     ylabel = L"\epsilon",
     yscale = log10,
-    title = "Adiabaticity components (:both)",
+    title = "Selected adiabaticity by mode",
     limits = (
-        (minimum(t_n_both), maximum(t_n_both)),
-        (ε_clamp_lo, 10^ceil(log10(maximum(ε_sel_both)))),
+        (0.0, 30.0),
+        (ε_clamp_lo, 10.0),
     ),
 )
 
-let i_region = 1
-    while i_region <= length(t_n_both)
-        m_fo = mode_both[i_region] === :FO
-        j_region = i_region
-        while j_region < length(t_n_both) && mode_both[j_region + 1] === mode_both[i_region]
-            j_region += 1
+# Shade full-orbit (red) vs guiding-center (blue) regions for each mode.
+function _shade!(ax, t, mode)
+    i = 1
+    while i <= length(t)
+        m_fo = mode[i] === :FO
+        j = i
+        while j < length(t) && mode[j + 1] === mode[i]
+            j += 1
         end
-        c = m_fo ? (:red, 0.2) : (:blue, 0.2)
-        vspan!(ax_comp, t_n_both[i_region], t_n_both[j_region]; color = c)
-        i_region = j_region + 1
+        c = m_fo ? (:red, 0.18) : (:blue, 0.18)
+        vspan!(ax, t[i], t[j]; color = c)
+        i = j + 1
     end
 end
+_shade!(ax_comp, t_curv, mode_curv)
+_shade!(ax_comp, t_gradB, mode_gradB)
+_shade!(ax_comp, t_both, mode_both)
 
-lines!(ax_comp, t_n_both, ε_curv_both; color = :green, label = L"\epsilon_\text{curv}")
-lines!(ax_comp, t_n_both, ε_gradB_both; color = :orange, label = L"\epsilon_{\nabla B}")
-lines!(ax_comp, t_n_both, ε_sel_both; color = :black, linewidth = 1.6,
-    label = L"\max(\epsilon_\text{curv}, \epsilon_{\nabla B})")
+lines!(ax_comp, t_curv, ε_curv; color = :green, label = ":curvature (ε_curv)")
+lines!(ax_comp, t_gradB, ε_gradB; color = :orange, label = ":gradB (ε_gradB)")
+lines!(ax_comp, t_both, ε_both; color = :black, linewidth = 1.6, label = ":both (max)")
 hlines!(
     ax_comp, [mode_threshold];
     color = :gray50, linestyle = :dash, linewidth = 1.5,
