@@ -422,12 +422,13 @@ Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
 @inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    Bmag = Bfunc(r, t) |> norm
+    B, JB = _get_B_jacobian(r, t, Bfunc)
+    Bmag = norm(B)
     iszero(Bmag) && return Inf
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    _, _, κ, _, _ = get_magnetic_properties(r, t, Bfunc)
+    κ, _ = _get_curvature(B, Bmag, B / Bmag, JB)
 
     k_mag = norm(κ)
     invRc = iszero(k_mag) ? zero(k_mag) : k_mag
