@@ -452,6 +452,7 @@ function _shade!(ax, t, mode)
         vspan!(ax, t[i], t[j]; color = c)
         i = j + 1
     end
+    return
 end
 _shade!(ax_comp, t_curv, mode_curv)
 _shade!(ax_comp, t_gradB, mode_gradB)

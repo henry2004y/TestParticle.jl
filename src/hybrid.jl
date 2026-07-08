@@ -61,9 +61,11 @@ function AdaptiveHybrid(;
     threshold_gc_to_fo >= threshold_fo_to_gc ||
         throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
     adiabaticity in (:curvature, :gradB, :both, :jacobian) ||
-        throw(ArgumentError(
+        throw(
+        ArgumentError(
             "adiabaticity must be one of :curvature, :gradB, :both, :jacobian."
-        ))
+        )
+    )
     T = promote_type(
         typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
         typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
@@ -211,11 +213,13 @@ end
 function _adia_sample_stats(prob::TraceHybridProblem, save_adiabaticity::Bool)
     save_adiabaticity || return nothing
     T = eltype(prob.u0)
-    return (adiabaticity = (
-        t = typeof(prob.tspan[1])[],
-        components = T[],
-        mode = Symbol[],
-    ),)
+    return (
+        adiabaticity = (
+            t = typeof(prob.tspan[1])[],
+            components = T[],
+            mode = Symbol[],
+        ),
+    )
 end
 
 # Internal helpers to handle field calls with time

@@ -122,13 +122,13 @@ end
     p = (q2m, m, E_field, B_bottle, TP.ZeroField())
 
     alg_args = (
-        threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100
+        threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
     )
     prob = TraceHybridProblem(u0, tspan, p)
 
     # Helper: FO-mode fraction recorded in the diagnostics.
     fo_frac(sol) = count(==(:FO), sol.stats.adiabaticity.mode) /
-                   length(sol.stats.adiabaticity.mode)
+        length(sol.stats.adiabaticity.mode)
 
     # Default (no `adiabaticity`) must equal `:curvature` exactly, i.e. the
     # legacy V1 behaviour is preserved.
@@ -194,12 +194,14 @@ end
         # mapping: `:both` is the max of `:curvature`/`:gradB`, and `:jacobian`
         # dominates both single criteria.
         @test sol_both.stats.adiabaticity.components[1] ==
-              max(sol_curv.stats.adiabaticity.components[1],
-                  sol_grad.stats.adiabaticity.components[1])
+            max(
+            sol_curv.stats.adiabaticity.components[1],
+            sol_grad.stats.adiabaticity.components[1]
+        )
         @test sol_jac.stats.adiabaticity.components[1] >=
-              sol_curv.stats.adiabaticity.components[1]
+            sol_curv.stats.adiabaticity.components[1]
         @test sol_jac.stats.adiabaticity.components[1] >=
-              sol_grad.stats.adiabaticity.components[1]
+            sol_grad.stats.adiabaticity.components[1]
     end
 
     # A field that rotates in space with constant magnitude: κ = 0 and ∇B = 0,
@@ -220,8 +222,10 @@ end
         tspan = (0.0, 30 * T_gyro)
         p = (q / m, m, E_field, B_rot_f, TP.ZeroField())
         prob_rot = TraceHybridProblem(u0, tspan, p)
-        args = (threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
-                check_interval = 20)
+        args = (
+            threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 20,
+        )
 
         sol_curv = TP.solve(
             prob_rot, TP.AdaptiveHybrid(; args..., adiabaticity = :curvature);
