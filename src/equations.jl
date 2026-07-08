@@ -290,7 +290,7 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-@inline function trace_gc!(dy, y, p, t)
+function trace_gc!(dy, y, p, t)
     v1, v2, v3, du = get_gc_derivatives(y, p, t)
 
     @inbounds dy[1] = v1
@@ -306,7 +306,7 @@ end
 
 Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
 """
-@inline function trace_gc(y, p, t)
+function trace_gc(y, p, t)
     v1, v2, v3, du = get_gc_derivatives(y, p, t)
     return SVector{4}(v1, v2, v3, du)
 end
@@ -316,12 +316,12 @@ end
 
 Get the guiding center velocity.
 """
-@inline function get_gc_velocity(y, p, t)
+function get_gc_velocity(y, p, t)
     v1, v2, v3, _ = get_gc_derivatives(y, p, t)
     return SVector{3}(v1, v2, v3)
 end
 
-@inline function get_gc_derivatives(y, p, t)
+function get_gc_derivatives(y, p, t)
     # TODO: support external forces
     q, q2m, μ, Efunc, Bfunc = p
     X = get_x(y)

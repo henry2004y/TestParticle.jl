@@ -6,9 +6,17 @@ const MIN_DT = 1.0e-14
     AdaptiveHybrid{T}
 
 Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC).
+
+Mode switching uses hysteresis with two adiabaticity thresholds to avoid
+rapid GC ↔ FO chattering near a single bound:
+- `threshold_gc_to_fo` (α): switch GC → FO when `ε ≥ α`.
+- `threshold_fo_to_gc` (β): switch FO → GC when `ε < β`.
+With `α ≥ β` the band `β ≤ ε < α` forms a buffer where the current mode is
+retained, so a particle hovering near the boundary does not oscillate.
 """
 struct AdaptiveHybrid{T}
-    threshold::T
+    threshold_gc_to_fo::T
+    threshold_fo_to_gc::T
     dtmin::T
     dtmax::T
     safety_fo::T
@@ -19,17 +27,23 @@ struct AdaptiveHybrid{T}
 end
 
 function AdaptiveHybrid(;
-        threshold = 0.1, dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
+        threshold = 0.1,
+        threshold_gc_to_fo = threshold,
+        threshold_fo_to_gc = threshold,
+        dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10
     )
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
+    threshold_gc_to_fo >= threshold_fo_to_gc ||
+        throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
     T = promote_type(
-        typeof(threshold), typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
+        typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
+        typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
         typeof(reltol)
     )
     return AdaptiveHybrid{T}(
-        T(threshold), T(dtmin), T(dtmax), T(safety_fo), T(abstol), T(reltol), maxiters,
-        check_interval
+        T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax), T(safety_fo),
+        T(abstol), T(reltol), maxiters, check_interval
     )
 end
 
@@ -242,7 +256,8 @@ end
         X_gc, vpar, μ, phase = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
 
         ϵ = get_adiabaticity(r, Bfunc, q, m, μ, t)
-        is_adiabatic = ϵ < alg.threshold
+        # Start in GC only when clearly adiabatic (ε < α); otherwise FO.
+        is_adiabatic = ϵ < alg.threshold_gc_to_fo
 
         if is_adiabatic
             mode = :GC
@@ -282,7 +297,7 @@ end
                 # Adiabaticity check
                 if it % alg.check_interval == 0
                     ϵ = get_adiabaticity(xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t)
-                    if ϵ >= alg.threshold
+                    if ϵ >= alg.threshold_gc_to_fo
                         # Switch to FO (GC -> FO)
                         mode = :FO
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
@@ -351,18 +366,16 @@ end
                 if it % alg.check_interval == 0
                     t_sync = is_td ? t : zero(T)
                     v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p)
-                    xv_sync = SVector{6, T}(
-                        r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
-                    )
+                    xv_sync = vcat(r, v_sync)
                     X_gc, vpar, μ, phase = _get_gc_parameters_at_t(
                         xv_sync, Efunc, Bfunc, q, m, t
                     )
                     ϵ = get_adiabaticity(X_gc, Bfunc, q, m, μ, t)
-                    if ϵ < alg.threshold
+                    if ϵ < alg.threshold_fo_to_gc
                         # Switch to GC (FO -> GC)
                         mode = :GC
                         verbose && @info "Switch FO → GC" ϵ t r = r
-                        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
+                        xv_gc = vcat(X_gc, vpar)
                         p_gc = (q, q2m, μ, Efunc, Bfunc)
 
                         Bmag = norm(Bfunc(r, t))
@@ -389,15 +402,12 @@ end
 
                 if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
                     v_save = update_velocity(v_prev, r, 0.5 * dt, t, p)
-                    push!(
-                        traj,
-                        SVector{6, T}(r[1], r[2], r[3], v_save[1], v_save[2], v_save[3])
-                    )
+                    push!(traj, vcat(r, v_save))
                     push!(tsave, t)
                 end
 
                 r = r_next
-                t = t + dt
+                t = t_next
                 it += 1
                 steps += 1
             end
@@ -410,10 +420,7 @@ end
             else
                 t_final = is_td ? t : zero(T)
                 v_final = update_velocity(v, r, 0.5 * dt, t_final, p)
-                xv_final = SVector{6, T}(
-                    r[1], r[2], r[3], v_final[1], v_final[2], v_final[3]
-                )
-                push!(traj, xv_final)
+                push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)
         end

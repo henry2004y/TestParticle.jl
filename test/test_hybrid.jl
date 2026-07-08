@@ -152,4 +152,56 @@ using Test
             @test isapprox(norm(uh[SA[4, 5, 6]] - ub[SA[4, 5, 6]]), 0.0; atol = 1.0e-5)
         end
     end
+
+    # 6. Hysteresis thresholds: backward-compatible `threshold` sets both
+    # bounds, and a wider buffer (α > β) reduces GC <-> FO chattering.
+    let
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0).threshold_gc_to_fo == 0.1
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0).threshold_fo_to_gc == 0.1
+
+        # α must be >= β (buffer region requires α ≥ β).
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold_gc_to_fo = 0.05, threshold_fo_to_gc = 0.2, dtmax = 1.0
+        )
+
+        # Distinct bounds are stored verbatim.
+        alg_buf = AdaptiveHybrid(;
+            threshold_gc_to_fo = 0.2, threshold_fo_to_gc = 0.05, dtmax = 1.0
+        )
+        @test alg_buf.threshold_gc_to_fo == 0.2
+        @test alg_buf.threshold_fo_to_gc == 0.05
+    end
+
+    # 7. Buffer region suppresses mode chatter: a particle whose adiabaticity
+    # parameter oscillates within [β, α) must keep a single, stable mode when a
+    # wide hysteresis band is used, whereas a zero-width band (α == β) permits
+    # switching at every crossing. We exercise this with the bottle field and
+    # verify the run still completes successfully with a wide buffer.
+    let
+        B0 = 1.0e-4
+        α = 1.0e-2
+        function bottle_B(x, t)
+            Bz = B0 * (1 + α * x[3]^2)
+            Bx = -B0 * α * x[1] * x[3]
+            By = -B0 * α * x[2] * x[3]
+            return SA[Bx, By, Bz]
+        end
+        B_bottle = TP.Field(bottle_B)
+        x0 = SA[0.0, 0.0, 0.0]
+        v0 = SA[5.0e4, 0.0, 1.0e5]
+        u0 = vcat(x0, v0)
+        Ω = abs(q2m) * B0
+        T_gyro = 2π / Ω
+        tspan = (0.0, 30 * T_gyro)
+        p = (q2m, m, E_field, B_bottle, TP.ZeroField())
+
+        # Wide hysteresis band: α = 0.2, β = 0.05.
+        alg_buf = AdaptiveHybrid(;
+            threshold_gc_to_fo = 0.2, threshold_fo_to_gc = 0.05,
+            dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
+        )
+        sol_buf = TP.solve(TraceHybridProblem(u0, tspan, p), alg_buf).u[1]
+        @test sol_buf.retcode == TP.ReturnCode.Success
+        @test length(sol_buf.t) > 100
+    end
 end
