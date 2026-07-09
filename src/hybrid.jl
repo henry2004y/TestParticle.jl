@@ -222,65 +222,6 @@ function _adia_sample_stats(prob::TraceHybridProblem, save_adiabaticity::Bool)
     )
 end
 
-# Internal helpers to handle field calls with time
-function _get_gc_parameters_at_t(xv, E, B, q, m, t)
-    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
-
-    bparticle = B(x, t)
-    Bmag_particle = norm(bparticle)
-    b̂particle = bparticle / Bmag_particle
-    # vector of Larmor radius
-    ρ = (b̂particle × v) / (q / m * Bmag_particle)
-    # Get the guiding center location
-    X = x - ρ
-    # Get EM field at guiding center
-    b = B(X, t)
-    Bmag = norm(b)
-    b̂ = b / Bmag
-    vpar = b̂ ⋅ v
-
-    vperp = v - vpar * b̂
-    e = E(X, t)
-    vE = (e × b̂) / Bmag
-    w = vperp - vE
-    μ = m * (w ⋅ w) / (2 * Bmag)
-
-    e1, e2 = get_perp_vector(b̂)
-    phase = atan(w ⋅ e2, w ⋅ e1)
-
-    return X, vpar, μ, phase
-end
-
-function _gc_to_full_at_t(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
-    R = get_x(state_gc)
-    vpar = state_gc[4]
-
-    E = E_field(R, t)
-    B = B_field(R, t)
-    Bmag = norm(B)
-    b̂ = B / Bmag
-
-    v_E = (E × b̂) / Bmag
-
-    # perp speed, μ = m * w^2 / (2B)
-    w_mag = sqrt(2 * μ * Bmag / m)
-
-    # perp vector
-    e1, e2 = get_perp_vector(b̂)
-    v_gyr = w_mag * (cos(phase) * e1 + sin(phase) * e2)
-    v_perp = v_gyr + v_E
-
-    v = vpar * b̂ + v_perp
-
-    # gyroradius
-    Ω = q * Bmag / m
-    ρ_vec = (b̂ × v_perp) / Ω
-
-    x = R + ρ_vec
-
-    return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
-end
-
 # Fixed FO (Boris) time step for the hybrid solver, derived from the local field
 # magnitude and the same `safety_fo` convention used by `AdaptiveBoris`.
 @inline function _fo_dt(alg, q2m, Bfunc, r, t = 0.0)
@@ -316,7 +257,7 @@ end
         t = tspan[1]
 
         # Initial Mode Determination
-        X_gc, vpar, μ, phase = _get_gc_parameters_at_t(xv_fo, Efunc, Bfunc, q, m, t)
+        X_gc, vpar, _, _, μ, phase = _get_gc_parameters(xv_fo, Efunc, Bfunc, q, m, t)
 
         comps0 = adiabaticity_components(r, Bfunc, q, m, μ, t)
         ϵ = _adia_select(comps0, alg)
@@ -386,7 +327,7 @@ end
                         # Switch to FO (GC -> FO)
                         mode = :FO
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
-                        xv_fo_vec = _gc_to_full_at_t(
+                        xv_fo_vec = _gc_to_full(
                             xv_gc, Efunc, Bfunc, q, m, μ, t, phase
                         )
                         xv_fo = xv_fo_vec
@@ -431,7 +372,7 @@ end
                     if save_everystep && (it % savestepinterval == 0)
                         push!(
                             traj,
-                            _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                            _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
                         )
                         push!(tsave, t)
                     end
@@ -452,7 +393,7 @@ end
                     t_sync = is_td ? t : zero(T)
                     v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p)
                     xv_sync = vcat(r, v_sync)
-                    X_gc, vpar, μ_fo, phase_fo = _get_gc_parameters_at_t(
+                    X_gc, vpar, _, _, μ_fo, phase_fo = _get_gc_parameters(
                         xv_sync, Efunc, Bfunc, q, m, t
                     )
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
@@ -509,7 +450,7 @@ end
         # Final Save
         if save_end && (isempty(tsave) || tsave[end] != t)
             if mode == :GC
-                push!(traj, _gc_to_full_at_t(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
+                push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
                 t_final = is_td ? t : zero(T)
                 v_final = update_velocity(v, r, 0.5 * dt, t_final, p)

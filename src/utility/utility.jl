@@ -360,6 +360,10 @@ end
     return B, JB
 end
 
+@inline function _get_B_jacobian(x, t, ::ZeroField)
+    return zero(x), zeros(eltype(x), 3, 3)
+end
+
 """
     get_magnetic_properties(x, t, Bfunc)
 
@@ -519,7 +523,7 @@ components are `Inf`.
 @inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
     B, JB = _get_B_jacobian(x, t, Bfunc)
     Bmag = norm(B)
-    iszero(Bmag) && return (Inf, Inf, Inf, Inf)
+    iszero(Bmag) && return (Inf, Inf, Inf)
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q)
     b̂ = B / Bmag
