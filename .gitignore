@@ -13,3 +13,4 @@ report.md
 /test*
 !/test/
 scratch/
+tmp/

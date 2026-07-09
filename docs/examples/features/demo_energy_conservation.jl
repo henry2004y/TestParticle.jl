@@ -75,8 +75,10 @@ function run_test(
     m_ = param[2]
     fo_energy(u, t) = 0.5 * m_ * norm(u[4:6])^2
 
-    function plot_energy_error!(sol, label, i; energy_of = fo_energy,
-            expected_of = expected_energy_func)
+    function plot_energy_error!(
+            sol, label, i; energy_of = fo_energy,
+            expected_of = expected_energy_func
+        )
         ## Calculate energy with the solver-specific extractor.
         E = [energy_of(u, ti) for (u, ti) in zip(sol.u, sol.t)]
 
