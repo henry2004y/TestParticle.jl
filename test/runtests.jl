@@ -480,7 +480,7 @@ end
 include("test_distributions.jl")
 include("test_gc.jl")
 include("test_hybrid.jl")
-
+include("test_adiabaticity.jl")
 include("test_boris_kernel.jl")
 include("test_boundary.jl")
 include("test_adaptive_boris.jl")

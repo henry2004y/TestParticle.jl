@@ -108,11 +108,11 @@ using Test
         for x0 in (SA[0.0, 0.0, 0.0], SA[1.0, 0.5, 1.0], SA[3.0, 0.0, 2.0])
             for v0 in (SA[5.0e4, 0.0, 1.0e5], SA[3.0e4, 4.0e4, 8.0e4])
                 xv = vcat(x0, v0)
-                X, vpar, μ, phase = TP._get_gc_parameters_at_t(
+                X, vpar, _, _, μ, phase = TP._get_gc_parameters(
                     xv, E_field, B_field, q, m, 0.0
                 )
                 state_gc = SA[X[1], X[2], X[3], vpar]
-                xv_rec = TP._gc_to_full_at_t(
+                xv_rec = TP._gc_to_full(
                     state_gc, E_field, B_field, q, m, μ, 0.0, phase
                 )
                 @test norm(xv[SA[1, 2, 3]] - xv_rec[SA[1, 2, 3]]) < 1.0e-10

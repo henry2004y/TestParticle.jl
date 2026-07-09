@@ -287,6 +287,7 @@ let
         dtmin = 1.0e-4 * T_gyro,
         maxiters = 10000,
         check_interval = 100,
+        save_adiabaticity = false,
     )
     prob_hybrid = TraceHybridProblem(u0, tspan, p)
 

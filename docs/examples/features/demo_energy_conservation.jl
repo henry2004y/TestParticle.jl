@@ -7,9 +7,18 @@
 # 4. ExB drift in constant electric and magnetic fields.
 #
 # The tests are performed in dimensionless units with q=1, m=1.
-# We compare two groups of solvers:
+# We compare the following groups of solvers:
 # - Common solvers from OrdinaryDiffEq.
 # - Native Boris solvers.
+# - The native guiding-center (GC) solver, whose conserved Hamiltonian is
+#   ``H_{GC} = \frac{1}{2} m v_\parallel^2 + \mu B + q\phi``. For ``E = 0`` this
+#   reduces to ``E_{GC} = \frac{1}{2} m v_\parallel^2 + \mu B`` and equals the
+#   full-orbit kinetic energy, so it is compared against the full-orbit
+#   reference. When ``E \neq 0`` (Case 4) the GC is a gyro-averaged model whose
+#   Hamiltonian differs from the full-orbit kinetic energy by the guiding-center
+#   approximation, so it is benchmarked against its own initial ``H_{GC}``.
+# - The native adaptive hybrid (GC <-> full-orbit) solver, whose output is the
+#   full-orbit state, so its energy is the ordinary kinetic energy.
 #
 # (Note: Geometric integrators from GeometricIntegratorsDiffEq were previously included but removed due to poor performance and compatibility issues in the current environment.)
 
@@ -34,7 +43,8 @@ const T = 2π / Ω
 function run_test(
         case_name, param, x0, v0, tspan, expected_energy_func;
         uselog = true, dt = 0.1, ymin = nothing, ymax = nothing,
-        odes = nothing, symplectics = nothing, natives = nothing
+        odes = nothing, symplectics = nothing, natives = nothing,
+        gc = false, hybrid = false, gc_phi = nothing
     )
     results = Tuple{String, Float64}[]
     u0 = [x0..., v0...]
@@ -62,18 +72,23 @@ function run_test(
     end
 
     color_idx = 1
+    m_ = param[2]
+    fo_energy(u, t) = 0.5 * m_ * norm(u[4:6])^2
 
-    function plot_energy_error!(sol, label, i)
-        ## Calculate energy
-        v_mag = [norm(u[4:6]) for u in sol.u]
-        E = 0.5 .* m .* v_mag .^ 2
+    function plot_energy_error!(
+            sol, label, i; energy_of = fo_energy,
+            expected_of = expected_energy_func
+        )
+        ## Calculate energy with the solver-specific extractor.
+        E = [energy_of(u, ti) for (u, ti) in zip(sol.u, sol.t)]
 
-        ## Expected energy
+        ## Expected energy (full-orbit analytic reference). The full state `u`
+        ## is passed as the velocity argument; all reference functions in this
+        ## demo ignore it and depend only on `t` (and `x` for Case 2b).
         t = sol.t
         x = @views [u[1:3] for u in sol.u]
-        ## Pass velocity to expected_energy_func just in case
-        E_ref = @views [
-            expected_energy_func(ti, xi, u[4:6])
+        E_ref = [
+            expected_of(ti, xi, u)
                 for (ti, xi, u) in zip(t, x, sol.u)
         ]
 
@@ -109,6 +124,54 @@ function run_test(
     for (name, alg) in _natives
         sol = TestParticle.solve(prob_tp, alg; dt).u[1]
         plot_energy_error!(sol, name, color_idx)
+        color_idx += 1
+    end
+
+    ## Run guiding-center (GC) solver. The GC conserves its own energy
+    ## E_GC = ½ m v_∥² + μ B; for static fields this equals the full-orbit
+    ## kinetic energy, so it is compared against the same analytic reference.
+    if gc
+        q2m, m_gc, Efunc, Bfunc, _ = param
+        state_gc, μ_gc = full_to_gc(SVector{6}(u0...), param)
+        p_gc = (q2m * m_gc, q2m, μ_gc, Efunc, Bfunc)
+        prob_gc = TraceGCProblem(state_gc, tspan, p_gc)
+        sol_gc = TestParticle.solve(prob_gc; dt, alg = :rk4).u[1]
+        q_gc = q2m * m_gc
+        function gc_energy(u, t)
+            e = 0.5 * m_gc * u[4]^2 + μ_gc * norm(Bfunc(u[1:3], t))
+            if !isnothing(gc_phi)
+                ## Include the electrostatic potential so that the GC conserves
+                ## its Hamiltonian H_GC = ½ m v_∥² + μ B + q φ, matching
+                ## full-orbit energy conservation when E ≠ 0.
+                e += q_gc * gc_phi(u[1:3])
+            end
+            return e
+        end
+        ## The GC conserves its Hamiltonian H_GC = ½ m v_∥² + μ B + q φ, which
+        ## differs from the full-orbit kinetic energy by the guiding-center
+        ## (gyro-averaging) approximation when E ≠ 0. For a meaningful
+        ## conservation check we benchmark it against its own initial value
+        ## rather than the full-orbit KE reference.
+        gc_E0 = gc_energy(sol_gc.u[1], sol_gc.t[1])
+        plot_energy_error!(
+            sol_gc, "GC (RK4)", color_idx;
+            energy_of = gc_energy, expected_of = (t, x, u) -> gc_E0
+        )
+        color_idx += 1
+    end
+
+    ## Run adaptive hybrid (GC <-> full-orbit) solver. Its output is the full
+    ## orbit state, so its energy is the ordinary kinetic energy.
+    if hybrid
+        q2m, m_hy, Efunc, Bfunc, _ = param
+        p_hy = (q2m, m_hy, Efunc, Bfunc, ZeroField())
+        prob_hy = TraceHybridProblem(SVector{6}(u0...), tspan, p_hy)
+        alg_hy = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = T, dtmin = 1.0e-3 * T,
+            check_interval = 20, save_adiabaticity = false
+        )
+        sol_hy = TestParticle.solve(prob_hy, alg_hy; seed = 1234).u[1]
+        plot_energy_error!(sol_hy, "Hybrid", color_idx)
         color_idx += 1
     end
 
@@ -157,7 +220,7 @@ E_func1(t, x, v) = 0.5 * m * norm(v0_1)^2 # Constant energy
 
 f, results = run_test(
     "Constant B", param1, x0_1, v0_1, tspan1, E_func1;
-    dt = T / 4, ymin = 1.0e-16, ymax = 2.0
+    dt = T / 4, ymin = 1.0e-16, ymax = 2.0, gc = true, hybrid = true
 )
 f = DisplayAs.PNG(f) #hide
 
@@ -192,7 +255,7 @@ end
 
 f, results = run_test(
     "Linear E(t)", param2a, x0_2a, v0_2a, tspan2a,
-    E_func2a; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e4
+    E_func2a; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e4, hybrid = true
 )
 f = DisplayAs.PNG(f) #hide
 
@@ -228,7 +291,7 @@ end
 
 f, results = run_test(
     "Spatially Linear E(x)", param2b, x0_2b, v0_2b, tspan2b,
-    E_func2b; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-1
+    E_func2b; dt = T / 4, ymin = 1.0e-16, ymax = 1.0e-1, hybrid = true
 )
 f = DisplayAs.PNG(f) #hide
 
@@ -266,7 +329,7 @@ E_func3(t, x, v) = E_init_3
 
 f, results = run_test(
     "Magnetic Mirror", param3, x0_3, v0_3, tspan3, E_func3;
-    dt = T / 20, ymin = 1.0e-16, ymax = 2.0
+    dt = T / 20, ymin = 1.0e-16, ymax = 2.0, gc = true, hybrid = true
 )
 f = DisplayAs.PNG(f) #hide
 
@@ -310,7 +373,8 @@ end
 
 f, results = run_test(
     "ExB Drift", param4, x0_4, v0_4, tspan4, E_ref4;
-    dt = T / 4, ymin = 1.0e-8, ymax = 1.0e-1,
+    dt = T / 4, ymin = 1.0e-8, ymax = 1.0e-1, gc = true, hybrid = true,
+    gc_phi = x -> -(E_y * x[2] + E_z * x[3]),
     odes = [
         ("Tsit5", Tsit5()),
         ("Vern7", Vern7()),
