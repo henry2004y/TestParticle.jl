@@ -378,15 +378,19 @@ Markdown.parse(String(take!(io2))) #hide
 
 f_modes = Figure(; size = (1400, 460), fontsize = 16)
 
-limx = (Inf, -Inf); limy = (Inf, -Inf); limz = (Inf, -Inf)
-for s in (sol_curv, sol_gradB, sol_both)
-    for u in s.u
-        limx = (min(limx[1], u[1]), max(limx[2], u[1]))
-        limy = (min(limy[1], u[2]), max(limy[2], u[2]))
-        limz = (min(limz[1], u[3]), max(limz[2], u[3]))
+lms = let
+    lx = (Inf, -Inf)
+    ly = (Inf, -Inf)
+    lz = (Inf, -Inf)
+    for s in (sol_curv, sol_gradB, sol_both)
+        for u in s.u
+            lx = (min(lx[1], u[1]), max(lx[2], u[1]))
+            ly = (min(ly[1], u[2]), max(ly[2], u[2]))
+            lz = (min(lz[1], u[3]), max(lz[2], u[3]))
+        end
     end
+    (lx, ly, lz)
 end
-lms = (limx, limy, limz)
 
 ax_c = Axis3(
     f_modes[1, 1], title = ":curvature", aspect = :data, limits = lms,
