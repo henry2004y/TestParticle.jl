@@ -199,13 +199,13 @@ As a rule of thumb, linear interpolation and cubic interpolation with `OnTheFly(
 
 Cubic interpolation (`order = 3`) requires high-order coefficients. By default, TestParticle uses `OnTheFly()` coefficients, which are calculated at query time. This saves memory but increases evaluation time. For maximum performance, you can use `PreCompute()`, which stores the coefficients in an additional array.
 
-!!! note "Status in v0.4.8"
-    Support for `PreCompute()` with local Hermite cubic interpolation is currently under development and not yet available in `FastInterpolations.jl` v0.4.8.
+!!! note "Status in FastInterpolations v0.4.15"
+    `PreCompute()` is now available for the global natural cubic spline (`CubicInterp`) in ND as of `FastInterpolations.jl` v0.4.15. However, it is **not yet supported** for the local Hermite cubic spline (`CardinalInterp`, i.e. `order = 3` in TestParticle) in ND — constructing such an interpolator with `coeffs = PreCompute()` raises an `ArgumentError`. `OnTheFly()` therefore remains the only option for cubic interpolation in TestParticle.
 
 ```@repl interp
 # Benchmark evaluation time
 itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
-# itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute()); # Not yet supported in v0.4.8
+# itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute()); # unsupported for ND cardinal cubic in v0.4.15
 
 @be itp_fly($loc_f64)
 
@@ -213,7 +213,7 @@ itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
 Base.summarysize(itp_fly)
 ```
 
-As shown, `OnTheFly()` preserves memory efficiency while providing higher-order accuracy. Once available, `PreCompute()` will offer a faster alternative for memory-abundant systems.
+As shown, `OnTheFly()` preserves memory efficiency while providing higher-order accuracy. Once `PreCompute()` support for ND local Hermite cubic interpolation lands, it will offer a faster alternative for memory-abundant systems.
 
 ## Time-dependent field interpolation
 
