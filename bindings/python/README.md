@@ -1,6 +1,6 @@
 # testparticle
 
-Python wrapper for [TestParticle.jl](https://github.com/JuliaSpacePhysics/TestParticle.jl) - trace charged particles in electromagnetic fields via Julia.
+Python wrapper for [TestParticle.jl](https://github.com/henry2004y/TestParticle.jl) - trace charged particles in electromagnetic fields via Julia.
 
 The Julia package and its dependencies are installed automatically on first
 use through [JuliaCall](https://juliacall.readthedocs.io/) (see `juliapkg.json`).
