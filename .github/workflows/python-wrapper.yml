@@ -34,8 +34,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
-          # Latest stable Julia. TestParticle requires Random 1.11.0, which
-          # only ships with Julia 1.11+, so anything older fails to resolve.
           version: '1'
       - uses: julia-actions/cache@v3
       - uses: actions/setup-python@v6
