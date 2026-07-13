@@ -190,12 +190,12 @@ def _wrap_field(func):
     if var_positional or n_pos >= 2:
         jl.seval(
             f"{base}_jl = (x, t) -> TestParticle.SVector{{3, Float64}}("
-            f"pyconvert(Vector{{Float64}}, {base}(Vector(x), float(t))))"
+            f"pyconvert(NTuple{{3, Float64}}, {base}(Tuple(x), float(t))))"
         )
     else:
         jl.seval(
             f"{base}_jl = (x) -> TestParticle.SVector{{3, Float64}}("
-            f"pyconvert(Vector{{Float64}}, {base}(Vector(x))))"
+            f"pyconvert(NTuple{{3, Float64}}, {base}(Tuple(x))))"
         )
     return getattr(jl, f"{base}_jl")
 
