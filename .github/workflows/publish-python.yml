@@ -1,10 +1,10 @@
-name: Publish to PyPI
+name: Publish Python wrapper to PyPI
 
 # Publishing uses PyPI Trusted Publishing (OIDC): no API token is stored in
 # the repo. Configure a Trusted Publisher on PyPI:
 #   Owner:   henry2004y
 #   Repository: TestParticle.jl
-#   Workflow name: publish.yml
+#   Workflow name: Publish Python wrapper to PyPI   # matches the `name:` above
 #   Environment name: (leave blank)
 #
 # Python releases use a dedicated tag prefix `py-` (e.g. `py-v0.1.0`) so they
