@@ -133,6 +133,7 @@ makedocs(;
             "Features Walkthrough" => "tutorial/features.md",
         ],
         "Examples" => example_pages,
+        "Python Wrapper" => "python_wrapper.md",
         "API" => "api.md",
         "Plot Functions" => "plotfunctions.md",
     ],
