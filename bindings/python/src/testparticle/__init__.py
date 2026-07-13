@@ -64,13 +64,23 @@ jl.seval(
 # ---------------------------------------------------------------------------
 # Curated re-exports of the raw Julia API for advanced usage.
 #
-# Symbols are bound defensively: if a name is absent from the loaded
-# ``TestParticle`` module (e.g. due to a version skew or a stale Julia
-# precompile cache), we emit a warning and skip it instead of crashing the
-# whole import. Functions ending with ``!`` in Julia are exposed with the
-# ``_b`` suffix (e.g. ``trace!`` is available as ``trace_b``).
+# The high-level ``trace`` / ``trace_gc`` / ``trace_fieldline`` helpers call
+# the Julia runtime directly (e.g. ``TP.prepare``, ``TP.solve``), so none of
+# the names below are required for the wrapper itself to function. They are
+# convenience exports, including the ``Species`` types and the ``Proton`` /
+# ``Electron`` constants used by the string-based ``species="proton"`` lookup.
+#
+# The Julia environment is resolved from ``juliapkg.json`` by UUID only (no
+# pinned version), so the available API may drift. If a name is absent we emit
+# a warning Functions ending with ``!`` in Julia are exposed with the ``_b``
+# suffix (e.g. ``trace!`` is ``trace_b``).
 # ---------------------------------------------------------------------------
 _REEXPORTS = [
+    ("SVector", "SVector"),
+    ("Species", "Species"),
+    ("Proton", "Proton"),
+    ("Electron", "Electron"),
+    ("Ion", "Ion"),
     ("prepare", "prepare"),
     ("prepare_gc", "prepare_gc"),
     ("get_gc", "get_gc"),
@@ -80,9 +90,6 @@ _REEXPORTS = [
     ("TraceGCProblem", "TraceGCProblem"),
     ("TraceHybridProblem", "TraceHybridProblem"),
     ("TraceFieldlineProblem", "TraceFieldlineProblem"),
-    ("Proton", "Proton"),
-    ("Electron", "Electron"),
-    ("Ion", "Ion"),
     ("ZeroField", "ZeroField"),
     ("Maxwellian", "Maxwellian"),
     ("BiMaxwellian", "BiMaxwellian"),
@@ -144,7 +151,11 @@ for _py_name, _jl_name in _REEXPORTS:
             stacklevel=2,
         )
 
-_SPECIES = {"proton": Proton, "electron": Electron}
+_SPECIES = {
+    "proton": globals().get("Proton"),
+    "electron": globals().get("Electron"),
+    "ion": globals().get("Ion"),
+}
 
 _field_counter = 0
 
