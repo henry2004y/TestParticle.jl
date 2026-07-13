@@ -1,5 +1,5 @@
 [project]
-name = "testparticle-jl"
+name = "testparticle"
 version = "0.1.0"
 description = "Python wrapper for TestParticle.jl - trace charged particles in electromagnetic fields via Julia"
 readme = "README.md"
@@ -12,7 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-dependencies = ["juliacall>=0.9.20"]
+dependencies = ["juliacall>=0.9.20", "numpy>=1.21"]
 
 [project.urls]
 Homepage = "https://henry2004y.github.io/TestParticle.jl/dev/"
