@@ -175,15 +175,19 @@ def _wrap_field(func):
     setattr(jl, base, func)
     try:
         sig = inspect.signature(func)
+        params = sig.parameters.values()
+        # A field is time-dependent when it can be called with two positional
+        # arguments ``(x, t)``. Count all positional parameters (whether or not
+        # they have defaults, e.g. ``def B(x, t=0.0)``) and accept ``*args``.
         n_pos = sum(
             1
-            for p in sig.parameters.values()
+            for p in params
             if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-            and p.default is p.empty
         )
+        var_positional = any(p.kind == p.VAR_POSITIONAL for p in params)
     except (ValueError, TypeError):
-        n_pos = 1
-    if n_pos >= 2:
+        n_pos, var_positional = 1, False
+    if var_positional or n_pos >= 2:
         jl.seval(
             f"{base}_jl = (x, t) -> TestParticle.SVector{{3, Float64}}("
             f"pyconvert(Vector{{Float64}}, {base}(Vector(x), float(t))))"
@@ -207,14 +211,25 @@ def _wrap_field_or_none(field):
 
 
 def _wrap_init_func(func):
-    """Wrap a Python ``init_func(i) -> [x, y, z, vx, vy, vz]`` for ensembles."""
+    """Wrap a Python ``init_func(i) -> [x, y, z, vx, vy, vz]`` for ensembles.
+
+    TestParticle invokes ``prob_func`` as ``prob_func(prob, ctx)`` where ``ctx``
+    is an ``EnsembleContext`` (trajectory index at ``ctx.i``) or, for the
+    adaptive solvers, a ``NamedTuple`` with ``sim_id``.
+    """
     global _field_counter
     _field_counter += 1
     base = f"_tp_init_{_field_counter}"
     setattr(jl, base, func)
+
     jl.seval(
-        f"{base}_jl = (prob, i, repeat) -> TestParticle.SVector{{6, Float64}}("
-        f"pyconvert(Vector{{Float64}}, {base}(int(i))))"
+        f"{base}_jl = (prob, ctx) -> begin\n"
+        f"    i = hasfield(typeof(ctx), :i) ? ctx.i : ctx.sim_id\n"
+        f"    u0 = TestParticle.SVector{{6, Float64}}("
+        f"pyconvert(NTuple{{6, Float64}}, {base}(i)))\n"
+        f"    TestParticle.TraceProblem(u0, prob.tspan, prob.p; "
+        f"prob_func = TestParticle.DEFAULT_PROB_FUNC)\n"
+        f"end"
     )
     return getattr(jl, f"{base}_jl")
 
@@ -501,12 +516,13 @@ def trace_fieldline(x0, B, tspan, *, mode="both", alg="Tsit5", abstol=1e-8, relt
         Dictionary with ``"forward"`` and/or ``"backward"`` entries, each a
         ``(t, x)`` tuple of numpy arrays (``x`` has shape ``(n_steps, 3)``).
     """
-    x0 = np.asarray(x0, dtype=float)
+    x0 = np.asarray(x0, dtype=float).ravel()
     if x0.shape != (3,):
         raise ValueError("x0 must have length 3")
 
     B_jl = _wrap_field_or_none(B)
-    u0 = _to_svector(x0)
+    # Use a mutable Vector for the initial state
+    u0 = jl.seval(f"Float64[{', '.join(repr(float(v)) for v in x0)}]")
     probs = TP.TraceFieldlineProblem(u0, B_jl, tuple(tspan), mode=jl.Symbol(mode))
 
     jl.seval("using OrdinaryDiffEq")
