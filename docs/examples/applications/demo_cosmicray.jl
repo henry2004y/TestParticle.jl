@@ -119,7 +119,7 @@ F = generate_turbulent_field(gridx, gridy, gridz; B0)
 itp = TP.build_interpolator(F, gridx, gridy, gridz, 1, TP.WrapExtrap())
 Bfunc(x) = itp(x) ./ B0 # normalize: background guide field -> 1
 
-param = prepare(E_zero, Bfunc; q = 1.0, m = 1.0)
+param = prepare(E_zero, Bfunc; q = 1.0, m = 1.0);
 
 # ## 3. Solver consistency: `trace_normalized!` vs Boris
 #
@@ -143,7 +143,7 @@ prob_b = TraceProblem(stateinit, tspan0, param_uniform)
 sol_b = TP.solve(
     prob_b, TP.MultistepBoris4(n = 4);
     dt = 2π / 40, trajectories = 1, savestepinterval = 1
-).u[1]
+).u[1];
 
 # The initial gyroradius from each solver (computed at the final state) should be ~1.
 function rL_of(sol, Bfunc)
@@ -271,45 +271,11 @@ alg = TP.MultistepBoris4(n = 4)
 sols = TP.solve(
     prob, alg;
     dt = 2π / 40, savestepinterval = 15, trajectories = 32, seed = 1234
-)
+);
 
 # ## 6. Analysis
 
-# ### 6.1 The injection gyroradius is constant
-#
-# For every injected particle we recompute ``r_L = |v_\perp|/|B|`` from its initial
-# state. Despite ``|B|`` varying across the box, all values collapse onto ``r_L = r_{L0}``.
-
-function gyroradius(xv, Bfunc)
-    x = xv[SA[1, 2, 3]]
-    v = xv[SA[4, 5, 6]]
-    B = Bfunc(x)
-    Bmag = norm(B)
-    b̂ = B ./ Bmag
-    vpar = b̂ ⋅ v
-    vperp = v - vpar * b̂
-    return norm(vperp) / Bmag, Bmag
-end
-
-rL_inject = Float64[]
-Bmag_inject = Float64[]
-for sol in sols.u
-    rL, Bm = gyroradius(sol.u[1], Bfunc)
-    push!(rL_inject, rL)
-    push!(Bmag_inject, Bm)
-end
-
-f = Figure(fontsize = 18)
-ax = Axis(
-    f[1, 1], title = "Initial gyroradius vs local |B|",
-    xlabel = "|B|", ylabel = "r_L"
-)
-scatter!(ax, Bmag_inject, rL_inject; color = :steelblue)
-hlines!(ax, [rL0]; color = :tomato, linestyle = :dash, label = "r_L0 = $rL0")
-axislegend(ax)
-f = DisplayAs.PNG(f) #hide
-
-# ### 6.2 Trajectories, guiding center, and phase-space evolution
+# ### 6.1 Trajectories, guiding center, and phase-space evolution
 #
 # We plot a few trajectories together with their guiding centers (computed with
 # `get_gc_func`), and for one trajectory show how the gyroradius and pitch-angle
@@ -352,16 +318,16 @@ end
 
 t1, ρ1, μ1 = phase_evolution(sols.u[1], Bfunc)
 
-f = Figure(fontsize = 16)
-axρ = Axis(f[1, 1], xlabel = "t / 2π", ylabel = "r_L")
+f = Figure(fontsize = 16, size = (1000, 600))
+axρ = Axis(f[1, 1], xlabel = "t / 2π", ylabel = r"r_L")
 axμ = Axis(f[2, 1], xlabel = "t / 2π", ylabel = "μ")
-lines!(axρ, t1 ./ (2π), ρ1; color = :steelblue, label = "r_L")
+lines!(axρ, t1 ./ (2π), ρ1; color = :steelblue, label = r"r_L")
 hlines!(axρ, [rL0]; color = :tomato, linestyle = :dash)
 lines!(axμ, t1 ./ (2π), μ1; color = :seagreen, label = "μ")
 axislegend(axρ); axislegend(axμ)
 f = DisplayAs.PNG(f) #hide
 
-# ### 6.3 Energy scan: diffusion grows with gyroradius
+# ### 6.2 Energy scan: diffusion grows with gyroradius
 #
 # A reviewer-style sweep over the initial gyroradius ``r_{L0}``. We compute the
 # ensemble-mean squared displacement ``\langle|\Delta \mathbf{x}|^2\rangle`` as a
@@ -371,7 +337,7 @@ f = DisplayAs.PNG(f) #hide
 rL_list = [0.5, 1.0, 2.0]
 colors = Makie.wong_colors()
 
-f = Figure(fontsize = 18)
+f = Figure(fontsize = 18, size = (1000, 600))
 ax = Axis(
     f[1, 1], xlabel = "t / 2π", ylabel = "⟨|Δx|²⟩",
     title = "Mean squared displacement vs initial gyroradius"
@@ -396,7 +362,7 @@ for (j, rL) in enumerate(rL_list)
     msr ./= length(ssols.u)
     lines!(ax, ssols.u[1].t ./ (2π), msr; label = "r_L0 = $rL", color = colors[j])
 end
-axislegend(ax)
+axislegend(ax; position = :topleft)
 f = DisplayAs.PNG(f) #hide
 
 # ## 7. Production notes

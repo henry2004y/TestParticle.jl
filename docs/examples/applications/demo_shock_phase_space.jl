@@ -389,7 +389,7 @@ fig_backward = DisplayAs.PNG(fig_backward) #hide
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
-t_per_bw = t_bw / n_bw * 1.0e6
+t_per_bw = t_bw / n_bw * 1.0e6;
 
 # ## Summary
 # This example illustrates three complementary ways to reconstruct the phase space density from particle simulations.
@@ -402,8 +402,8 @@ println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) |
 println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
 println(io, "| **Tail resolution** | Poor without large N | Limited by sphere radius | Uniform across grid |") #hide
 println(io, "| **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |") #hide
-@printf(
+@printf( #hide
     io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n", #hide
-    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw
+    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
