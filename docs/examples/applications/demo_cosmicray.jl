@@ -92,7 +92,6 @@ function generate_turbulent_field(
     F = zeros(3, nx, ny, nz)
     F[3, :, :, :] .= B0
     rng = MersenneTwister(seed)
-    xs, ys, zs = collect(gridx), collect(gridy), collect(gridz)
     for _ in 1:n_modes
         k = rand(rng, -kmax:kmax, 3)
         while all(k .== 0)
@@ -101,7 +100,7 @@ function generate_turbulent_field(
         phase = 2π * rand(rng)
         a = amp * randn(rng)
         for i in 1:nx, j in 1:ny, kk in 1:nz
-            s = k[1] * xs[i] + k[2] * ys[j] + k[3] * zs[kk] + phase
+            s = k[1] * gridx[i] + k[2] * gridy[j] + k[3] * gridz[kk] + phase
             F[1, i, j, kk] += a * cos(s)
             F[2, i, j, kk] += a * sin(s)
         end
@@ -179,7 +178,7 @@ Bv = Bfunc(x0); b0 = normalize(Bv)
 e1 = SA[0.0, -b0[3], b0[2]]
 e1 = norm(e1) > 1.0e-8 ? normalize(e1) : SA[0.0, 1.0, 0.0]
 v0 = e1 + 0.3 * b0                 # |v| ≈ 1, mostly perpendicular
-stateinit_t = vcat(x0, v0)
+stateinit_t = collect(vcat(x0, v0))
 tspan_t = (0.0, 2π * 3)
 
 prob_rk_t = ODEProblem(trace_normalized!, stateinit_t, tspan_t, param)
