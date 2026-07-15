@@ -105,10 +105,10 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
-@time sols = TP.solve(
+t_mc = @elapsed sols = TP.solve(
     prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles, seed
 );
-println("Simulation complete.")
+println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits=2)) s")
 
 ## Detector planes (upstream and downstream of the shock)
 const x_upstream = 2.0e5  # [m]
@@ -235,7 +235,7 @@ end
 prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
-@time sols_m2 = TP.solve(
+t_liou = @elapsed sols_m2 = TP.solve(
     prob_m2, Boris(); dt, savestepinterval = 10, trajectories = nparticles_m2, seed
 );
 
@@ -253,13 +253,21 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # In backward tracing, we start from a grid in velocity space at the detector and trace backward.
 # The phase space density at the detector is simply the source density evaluated at the traced initial state.
 # We then integrate the resulting 3D grid of values to provide a comparison for the other methods.
+#
+# The spatial resolution is set by `dv_km`, the velocity-grid spacing. The original demo used
+# `dv_km = 50` km/s, which looked blocky next to the 20 km/s histogram bins of Methods 1 & 2, so we
+# now use `dv_km = 20` km/s. `vy` is the only narrow physical dimension (populated within ≈±360 km/s
+# around `V_sw = -400` km/s), so we shrink its range to `vy_range = 400` km/s while keeping `vx`/`vz`
+# wide (±1000 km/s) to retain the shock-reflected beam that reaches positive `vx`/`vz`. This cuts the
+# trajectory count ≈2.5× per plane with no fidelity loss in the plotted projections; a non-uniform
+# grid could recover the remaining empty `vx`/`vz` space (see Tracing Time Comparison).
 
 function reconstruct_backward_projections(
         detector_x, vdf, n0, dt, param;
-        v_range = 1000.0e3, dv_km = 50.0
+        v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0
     )
     vx_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
-    vy_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
+    vy_grid = range(-vy_range, vy_range, step = dv_km * 1.0e3)
     vz_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
     dvz_km = step(vz_grid) * 1.0e-3 # km/s
 
@@ -283,7 +291,7 @@ function reconstruct_backward_projections(
         prob_func = prob_func_bw
     )
 
-    sols_bw = TP.solve(
+    t_solve = @elapsed sols_bw = TP.solve(
         prob_bw, Boris(), EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
         savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
     )
@@ -315,24 +323,46 @@ function reconstruct_backward_projections(
         end
     end
 
-    return (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+    return ((vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
         (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz)
+        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz)), t_solve, nparticles_bw
 end
 
-res_up_bw = reconstruct_backward_projections(x_upstream, vdf, n_up, dt, param)
-res_down_bw = reconstruct_backward_projections(x_downstream, vdf, n_up, dt, param)
+res_up_bw, t_bw_up, n_bw_up =
+    reconstruct_backward_projections(x_upstream, vdf, n_up, dt, param)
+res_down_bw, t_bw_down, n_bw_down =
+    reconstruct_backward_projections(x_downstream, vdf, n_up, dt, param)
+t_bw = t_bw_up + t_bw_down
+n_bw = n_bw_up + n_bw_down
 
 fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
+# ## Tracing Time Comparison
+# We compare the wall-clock tracing time of the three methods. The Monte-Carlo and forward-Liouville
+# methods each launch a fixed number (10⁴) of macro-particles, while backward Liouville tracing places
+# a regular grid in velocity space at the detector. With the finer `dv_km = 20` km/s grid and the
+# anisotropic `vy` shrink (±400 km/s instead of ±1000 km/s) this launches ≈4×10⁵ trajectories per
+# detector plane, so the *total* tracing cost is comparable to (or higher than) the forward methods
+# even though the result is noise-free and uniformly resolved.
+# Per-trajectory, however, backward tracing is actually the cheapest because it terminates early at
+# the source plane and carries no statistical weighting.
+
+t_per_mc = t_mc / nparticles * 1.0e6
+t_per_liou = t_liou / nparticles_m2 * 1.0e6
+t_per_bw = t_bw / n_bw * 1.0e6
+
 # ## Summary
 # This example illustrates three complementary ways to reconstruct the phase space density from particle simulations.
-#
-# | Method | Flux Injection | Forward Liouville Tracking | Backward Liouville Tracing |
-# |:---|:---|:---|:---|
-# | **Noise** | Statistical ($\propto 1/\sqrt{N}$) | Low (analytical weights) | None (grid-based) |
-# | **Coverage** | Source-sampled | Source-sampled | Target-sampled |
-# | **Cost** | High | Medium | Low |
-# | **Tail resolution** | Poor without large $N$ | Limited by sphere radius | Uniform across grid |
-# | **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |
+
+using Markdown, Printf #hide
+io = IOBuffer() #hide
+println(io, "| Method | Flux Injection | Forward Liouville Tracking | Backward Liouville Tracing |") #hide
+println(io, "| :--- | :--- | :--- | :--- |") #hide
+println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) | None (grid-based) |") #hide
+println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
+println(io, "| **Tail resolution** | Poor without large N | Limited by sphere radius | Uniform across grid |") #hide
+println(io, "| **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |") #hide
+@printf(io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n",
+    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw) #hide
+Markdown.parse(String(take!(io))) #hide
