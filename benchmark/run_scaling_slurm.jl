@@ -33,10 +33,10 @@ println("Number of workers: ", nworkers())
 uniform_B = x -> SA[0.0, 0.0, 1.0e-8]
 uniform_E = x -> SA[0.0, 0.0, 0.0]
 
-prob_func = (prob, i, repeat) ->
+prob_func = (prob, ctx) ->
 remake(
     prob;
-    u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0]
+    u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (ctx.sim_id / 1000.0) * 1.0e5, 0.0, 0.0]
 )
 
 param = prepare(uniform_E, uniform_B; species = Proton)

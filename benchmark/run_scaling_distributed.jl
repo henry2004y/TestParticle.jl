@@ -39,7 +39,8 @@ dt = 1.0e-9
 savestepinterval = 10000
 
 function make_prob(param, stateinit, tspan)
-    function prob_func(prob, i, repeat)
+    function prob_func(prob, ctx)
+        i = ctx.sim_id
         return remake(
             prob;
             u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (i / 1000.0) * 1.0e5, 0.0, 0.0],
