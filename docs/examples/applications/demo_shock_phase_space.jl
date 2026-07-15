@@ -108,7 +108,7 @@ println("Starting simulation with $nparticles particles...")
 t_mc = @elapsed sols = TP.solve(
     prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles, seed
 );
-println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits=2)) s")
+println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits = 2)) s")
 
 ## Detector planes (upstream and downstream of the shock)
 const x_upstream = 2.0e5  # [m]
@@ -123,9 +123,8 @@ detector_down = Meshes.Plane(
 # To get the velocity space distributions, we bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 #
 # ## Method 1: Forward Monte-Carlo Injection
-# In this method, simulated particles are treated as macro-particles.
-# Instead of calculating the density by counting snapshots in time, we treat the source as a steady-state flux injection.
-# To convert crossing events into physical phase-space density, we apply kinematic weighting that maps the instantaneous launch of macro-particles to a continuous stream in a steady state.
+# Simulated particles are treated as macro-particles launched in a steady-state flux at the source.
+# Crossing events are converted to phase-space density via kinematic weighting (see below).
 
 function reconstruct_flux_projections(sols, detector, n0, dv_km)
     ## Initial velocities at the source plane
@@ -149,7 +148,7 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
     return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
 end
 
-function plot_shock_vdf(hists_up, hists_down, x_up, x_down)
+function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
     fig = Figure(size = (1200, 600), fontsize = 20)
     xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
@@ -160,7 +159,8 @@ function plot_shock_vdf(hists_up, hists_down, x_up, x_down)
             [(1, hists_up, "Upstream", x_up), (2, hists_down, "Downstream", x_down)]
             ax = Axis(
                 fig[row, i], title = "$(label) x = $(xloc * 1.0e-3) km",
-                xlabel = xlabels[i], ylabel = ylabels[i]
+                xlabel = xlabels[i], ylabel = ylabels[i];
+                limits = (-vlim, vlim, -vlim, vlim)
             )
             h = hists[i]
             hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
@@ -179,19 +179,15 @@ hists_down = reconstruct_flux_projections(sols, detector_down, n_up, 20.0)
 fig_flux = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
 fig_flux = DisplayAs.PNG(fig_flux) #hide
 
-# The kinematic weight ``w = |v_{x,\mathrm{init}}| / |v_{x,\mathrm{det}}|`` on each
-# crossing event converts from the density-sampled launch to a steady-state flux
-# (the ``|v_{x,\mathrm{init}}|`` factor) and then back to phase-space density at
-# the detector (the ``1/|v_{x,\mathrm{det}}|`` factor).
-# If both factors are dropped (i.e. equal-weight binning), the two biases partially cancel:
-# upstream the correction is close to unity because particles are nearly unperturbed, so the
-# error is small; downstream, however, reflected and decelerated ions have very different
-# source and detector speeds, and the unweighted histogram  noticeably underestimates the
-# density in the low-``|v_x|`` tails.
+# The kinematic weight ``w = |v_{x,\mathrm{init}}| / |v_{x,\mathrm{det}}|`` converts the density-sampled
+# launch into a steady-state flux (``|v_{x,\mathrm{init}}|``) and back to phase-space density at the
+# detector (``1/|v_{x,\mathrm{det}}|``). Dropping both factors (equal-weight binning) leaves a small
+# upstream error, where particles are nearly unperturbed, but downstream it noticeably underestimates
+# the density in the low-``|v_x|`` tails of reflected and decelerated ions.
 #
 # ## Method 2: Forward Liouville Tracking
-# In forward Liouville tracking, we start from a sphere of initial conditions in velocity space at the source and trace forward to the detector.
-# Here we combine a Monte Carlo sampling of the initial velocity sphere with the Liouville theorem.
+# Forward Liouville tracking starts from a sphere of initial conditions in velocity space at the source
+# and traces forward to the detector, combining Monte-Carlo sampling of the sphere with Liouville's theorem.
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_km = 20.0)
     ## 1. Initial weights from source PDF
@@ -250,67 +246,110 @@ fig_forward = plot_shock_vdf(hists_up_m2, hists_down_m2, x_upstream, x_downstrea
 fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 # ## Method 3: Backward Tracing
-# In backward tracing, we start from a grid in velocity space at the detector and trace backward.
-# The phase space density at the detector is simply the source density evaluated at the traced initial state.
-# We then integrate the resulting 3D grid of values to provide a comparison for the other methods.
+# Starting from a velocity-space grid at the detector, particles are traced backward; the phase-space
+# density at the detector equals the source density evaluated at the traced initial state. Integrating
+# the 3D values gives the projections compared against the other methods below.
 #
-# The spatial resolution is set by `dv_km`, the velocity-grid spacing. The original demo used
-# `dv_km = 50` km/s, which looked blocky next to the 20 km/s histogram bins of Methods 1 & 2, so we
-# now use `dv_km = 20` km/s. `vy` is the only narrow physical dimension (populated within ≈±360 km/s
-# around `V_sw = -400` km/s), so we shrink its range to `vy_range = 400` km/s while keeping `vx`/`vz`
-# wide (±1000 km/s) to retain the shock-reflected beam that reaches positive `vx`/`vz`. This cuts the
-# trajectory count ≈2.5× per plane with no fidelity loss in the plotted projections; a non-uniform
-# grid could recover the remaining empty `vx`/`vz` space (see Tracing Time Comparison).
+# The grid uses `dv_km = 20` km/s, with `vy_range = ±400` km/s to cover the band around `V_sw = -400`
+# km/s and `vx`/`vz = ±1000` km/s to capture the reflected beam at positive velocities. Since the
+# populated region is a small fraction of the box, `adaptive = true` first traces a coarse grid
+# (`dv_coarse_km = 60` km/s) to locate the active cells, then a fine grid only inside that box (padded
+# by `margin_km`). Discarded cells lie below the `f_max·10⁻⁶` clipping threshold, so the projections
+# are unchanged while the trajectory count drops by ≈2–3×.
 
-function reconstruct_backward_projections(
-        detector_x, vdf, n0, dt, param;
-        v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0
-    )
-    vx_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
-    vy_grid = range(-vy_range, vy_range, step = dv_km * 1.0e3)
-    vz_grid = range(-v_range, v_range, step = dv_km * 1.0e3)
-    dvz_km = step(vz_grid) * 1.0e-3 # km/s
-
+## Solve one backward-tracing pass over a uniform velocity grid and return the 3D phase-space
+## density sampled at the source plane, in [s³/km⁶].
+function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
     nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
-    nparticles_bw = nx * ny * nz
+    ntraj = nx * ny * nz
 
-    ## Initial conditions at detector
-    function prob_func_bw(prob, ctx)
+    function prob_func(prob, ctx)
         iz = (ctx.sim_id - 1) % nz + 1
         iy = ((ctx.sim_id - 1) ÷ nz) % ny + 1
         ix = ((ctx.sim_id - 1) ÷ (nz * ny)) % nx + 1
-
-        u0_bw = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
-        return remake(prob, u0 = u0_bw)
+        u0 = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
+        return remake(prob, u0 = u0)
     end
 
-    tspan_bw = (0.0, -20.0)
     source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
-    prob_bw = TraceProblem(
-        SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
-        prob_func = prob_func_bw
+    prob = TraceProblem(
+        SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], (0.0, -20.0), param;
+        prob_func = prob_func
     )
 
-    t_solve = @elapsed sols_bw = TP.solve(
-        prob_bw, Boris(), EnsembleThreads(); dt = -dt, trajectories = nparticles_bw,
+    sols = TP.solve(
+        prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
         savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
     )
 
-    ## Evaluate PDF at source for each traced state
-    f_3d_km = zeros(nx, ny, nz)
-    for (i, sol) in enumerate(sols_bw.u)
-        last_state = get_first_crossing(sol, source_plane)
-        if !any(isnan, last_state)
+    f_3d = zeros(nx, ny, nz)
+    for (i, sol) in enumerate(sols.u)
+        st = get_first_crossing(sol, source_plane)
+        if !any(isnan, st)
             iz = (i - 1) % nz + 1
             iy = ((i - 1) ÷ nz) % ny + 1
             ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-            ## Evaluate f [s^3/m^6] and convert to [s^3/km^6]
-            f_3d_km[ix, iy, iz] = n0 * pdf(vdf, last_state[SA[4, 5, 6]]) * 1.0e18
+            f_3d[ix, iy, iz] = n0 * pdf(vdf, st[SA[4, 5, 6]]) * 1.0e18
         end
     end
+    return f_3d
+end
 
-    ## Integral over third dimension [km/s]: f_int in [s^2/km^5]
-    f_xy = dropdims(sum(f_3d_km, dims = 3), dims = 3) .* dvz_km
+function reconstruct_backward_projections(
+        detector_x, vdf, n0, dt, param;
+        v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0,
+        adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
+    )
+    dv = dv_km * 1.0e3
+
+    if adaptive
+        ## Pass 1 (coarse): locate the populated region cheaply.
+        vx_c = range(-v_range, v_range, step = dv_coarse_km * 1.0e3)
+        vy_c = range(-vy_range, vy_range, step = dv_coarse_km * 1.0e3)
+        vz_c = range(-v_range, v_range, step = dv_coarse_km * 1.0e3)
+    else
+        ## Uniform grid over the full box (baseline / no adaptation).
+        vx_c = range(-v_range, v_range, step = dv)
+        vy_c = range(-vy_range, vy_range, step = dv)
+        vz_c = range(-v_range, v_range, step = dv)
+    end
+
+    t_solve = @elapsed begin
+        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, vdf, n0, dt, param)
+        if adaptive
+            ## Keep every cell well above the display threshold, padded by `margin_km`.
+            kept = findall(f_coarse .> maximum(f_coarse) * 1.0e-5)
+            if isempty(kept)
+                vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
+                f_3d_km = f_coarse
+            else
+                ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
+                vx_grid = range(
+                    max(-v_range, floor((vx_c[minimum(ixs)] - margin_km * 1.0e3) / dv) * dv),
+                    min(v_range, ceil((vx_c[maximum(ixs)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                vy_grid = range(
+                    max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
+                    min(vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                vz_grid = range(
+                    max(-v_range, floor((vz_c[minimum(izs)] - margin_km * 1.0e3) / dv) * dv),
+                    min(v_range, ceil((vz_c[maximum(izs)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
+            end
+        else
+            vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
+            f_3d_km = f_coarse
+        end
+    end
+    nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
+
+    ## Integral over third dimension [km/s]: f_int in [s²/km⁵]
+    f_xy = dropdims(sum(f_3d_km, dims = 3), dims = 3) .* (step(vz_grid) * 1.0e-3)
     f_xz = dropdims(sum(f_3d_km, dims = 2), dims = 2) .* (step(vy_grid) * 1.0e-3)
     f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
 
@@ -323,9 +362,11 @@ function reconstruct_backward_projections(
         end
     end
 
-    return ((vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-        (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz)), t_solve, nparticles_bw
+    return (
+            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
+            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+        ), t_solve, nparticles_bw
 end
 
 res_up_bw, t_bw_up, n_bw_up =
@@ -339,14 +380,12 @@ fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
 # ## Tracing Time Comparison
-# We compare the wall-clock tracing time of the three methods. The Monte-Carlo and forward-Liouville
-# methods each launch a fixed number (10⁴) of macro-particles, while backward Liouville tracing places
-# a regular grid in velocity space at the detector. With the finer `dv_km = 20` km/s grid and the
-# anisotropic `vy` shrink (±400 km/s instead of ±1000 km/s) this launches ≈4×10⁵ trajectories per
-# detector plane, so the *total* tracing cost is comparable to (or higher than) the forward methods
-# even though the result is noise-free and uniformly resolved.
-# Per-trajectory, however, backward tracing is actually the cheapest because it terminates early at
-# the source plane and carries no statistical weighting.
+# Monte-Carlo and forward-Liouville each launch 10⁴ macro-particles; backward Liouville places a regular
+# velocity grid at the detector. With `dv_km = 20` km/s and the `vy` shrink (±400 instead of ±1000 km/s),
+# the adaptive two-pass focuses the fine grid on the populated region — about 3×10⁵ trajectories total
+# (≈3×10⁴ upstream, ≈3×10⁵ downstream). The total cost is then comparable to the forward methods.
+# Per trajectory, backward tracing is the cheapest: it terminates at the source plane and needs no
+# statistical weighting.
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
@@ -363,6 +402,8 @@ println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) |
 println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
 println(io, "| **Tail resolution** | Poor without large N | Limited by sphere radius | Uniform across grid |") #hide
 println(io, "| **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |") #hide
-@printf(io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n",
-    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw) #hide
+@printf(
+    io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n", #hide
+    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw
+) #hide
 Markdown.parse(String(take!(io))) #hide

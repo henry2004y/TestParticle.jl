@@ -13,6 +13,10 @@
 # If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
 # However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
 #
+# For the cosmic-ray-specific form of this normalization — the pitch angle,
+# energy-conserving tracing, and the ``r_{L0}/L`` resolution argument — see the
+# [Cosmic Ray Propagation](@ref Cosmic-Ray) example.
+#
 # ## Normalization
 #
 # After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``.
