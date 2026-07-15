@@ -15,7 +15,7 @@
 #
 # For the cosmic-ray-specific form of this normalization — the pitch angle,
 # energy-conserving tracing, and the ``r_{L0}/L`` resolution argument — see the
-# [Cosmic Ray Propagation](@ref) example.
+# [Cosmic Ray Propagation](@ref Cosmic-Ray) example.
 #
 # ## Normalization
 #
