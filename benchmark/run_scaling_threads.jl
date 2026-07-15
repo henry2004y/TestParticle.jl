@@ -33,9 +33,9 @@ for t in threads_to_test
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
 
     # Warmup
-    TestParticle.solve(prob_multi, EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
+    TestParticle.solve(prob_multi, Boris(), EnsembleThreads(); trajectories = 10, dt=dt, savestepinterval=10000)
 
-    bench_threads = @benchmark TestParticle.solve(\$prob_multi, EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
+    bench_threads = @benchmark TestParticle.solve(\$prob_multi, Boris(), EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, savestepinterval = 10000) samples=5 seconds=30
     time_s = median(bench_threads).time / 1.0e9
     println("RESULT_TIME_S: \$time_s")
     """

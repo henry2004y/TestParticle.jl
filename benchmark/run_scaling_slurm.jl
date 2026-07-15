@@ -54,7 +54,7 @@ println("Particles: $N_PARTICLES, samples per point: $N_SAMPLES")
 
 # Warmup
 TestParticle.solve(
-    prob_multi, EnsembleSplitThreads();
+    prob_multi, Boris(), EnsembleSplitThreads();
     trajectories = 10, dt, savestepinterval = 10000
 )
 
@@ -62,7 +62,7 @@ TestParticle.solve(
 sample_times = Float64[]
 for i in 1:N_SAMPLES
     t = @elapsed TestParticle.solve(
-        prob_multi, EnsembleSplitThreads();
+        prob_multi, Boris(), EnsembleSplitThreads();
         trajectories = N_PARTICLES, dt, savestepinterval = 10000
     )
     @printf("  Sample %d: %.3f s\n", i, t)
