@@ -108,7 +108,7 @@ println("Starting simulation with $nparticles particles...")
 t_mc = @elapsed sols = TP.solve(
     prob, Boris(); dt, savestepinterval = 10, trajectories = nparticles, seed
 );
-println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits=2)) s")
+println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits = 2)) s")
 
 ## Detector planes (upstream and downstream of the shock)
 const x_upstream = 2.0e5  # [m]
@@ -319,26 +319,32 @@ function reconstruct_backward_projections(
         if adaptive
             ## Keep every cell well above the display threshold, padded by `margin_km`.
             kept = findall(f_coarse .> maximum(f_coarse) * 1.0e-5)
-            ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
-            vx_grid = range(
-                max(-v_range, floor((vx_c[minimum(ixs)] - margin_km * 1.0e3) / dv) * dv),
-                min( v_range, ceil((vx_c[maximum(ixs)] + margin_km * 1.0e3) / dv) * dv);
-                step = dv
-            )
-            vy_grid = range(
-                max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
-                min( vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
-                step = dv
-            )
-            vz_grid = range(
-                max(-v_range, floor((vz_c[minimum(izs)] - margin_km * 1.0e3) / dv) * dv),
-                min( v_range, ceil((vz_c[maximum(izs)] + margin_km * 1.0e3) / dv) * dv);
-                step = dv
-            )
+            if isempty(kept)
+                vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
+                f_3d_km = f_coarse
+            else
+                ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
+                vx_grid = range(
+                    max(-v_range, floor((vx_c[minimum(ixs)] - margin_km * 1.0e3) / dv) * dv),
+                    min(v_range, ceil((vx_c[maximum(ixs)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                vy_grid = range(
+                    max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
+                    min(vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                vz_grid = range(
+                    max(-v_range, floor((vz_c[minimum(izs)] - margin_km * 1.0e3) / dv) * dv),
+                    min(v_range, ceil((vz_c[maximum(izs)] + margin_km * 1.0e3) / dv) * dv);
+                    step = dv
+                )
+                f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
+            end
         else
             vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
+            f_3d_km = f_coarse
         end
-        f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
@@ -356,9 +362,11 @@ function reconstruct_backward_projections(
         end
     end
 
-    return ((vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-        (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz)), t_solve, nparticles_bw
+    return (
+            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
+            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+        ), t_solve, nparticles_bw
 end
 
 res_up_bw, t_bw_up, n_bw_up =
@@ -394,6 +402,8 @@ println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) |
 println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
 println(io, "| **Tail resolution** | Poor without large N | Limited by sphere radius | Uniform across grid |") #hide
 println(io, "| **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |") #hide
-@printf(io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n", #hide
-    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw) #hide
+@printf(
+    io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n", #hide
+    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw
+) #hide
 Markdown.parse(String(take!(io))) #hide

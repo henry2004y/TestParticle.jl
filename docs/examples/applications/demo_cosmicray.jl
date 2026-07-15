@@ -1,4 +1,4 @@
-# # Cosmic Ray Propagation
+# # [Cosmic Ray Propagation](@id Cosmic-Ray)
 #
 # This example shows how to trace cosmic rays in a turbulent magnetic field.
 # Everything is dimensionless and normalized following
@@ -177,9 +177,9 @@ f = DisplayAs.PNG(f) #hide
 x0 = SA[0.5L, 0.5L, 0.5L]
 Bv = Bfunc(x0); b0 = normalize(Bv)
 e1 = SA[0.0, -b0[3], b0[2]]
-e1 = norm(e1) > 1e-8 ? normalize(e1) : SA[0.0, 1.0, 0.0]
+e1 = norm(e1) > 1.0e-8 ? normalize(e1) : SA[0.0, 1.0, 0.0]
 v0 = e1 + 0.3 * b0                 # |v| ≈ 1, mostly perpendicular
-stateinit_t = [x0..., v0...]
+stateinit_t = vcat(x0, v0)
 tspan_t = (0.0, 2π * 3)
 
 prob_rk_t = ODEProblem(trace_normalized!, stateinit_t, tspan_t, param)
@@ -237,8 +237,9 @@ function make_injection(Lx, Ly, Lz; rL = 1.0)
 
         bperp1 = SA[0.0, -b0[3], b0[2]]
         n1 = norm(bperp1)
-        bperp1 = n1 > 1e-8 ? bperp1 ./ n1 : SA[0.0, 1.0, 0.0]
+        bperp1 = n1 > 1.0e-8 ? bperp1 ./ n1 : SA[0.0, 1.0, 0.0]
         bperp2 = b0 × bperp1 |> normalize
+        bperp1 = bperp2 × b0
 
         ϕ = 2π * r[4]
         μ0 = 0.999 * r[5]          # pitch-angle cosine in [0, 1)
