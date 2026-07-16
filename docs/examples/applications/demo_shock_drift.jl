@@ -1,138 +1,188 @@
-# # Shock Drift Acceleration
+# # Shock Drift Acceleration at a Perpendicular Shock
 #
-# This example demonstrates Shock Drift Acceleration (SDA) where particles gain energy by drifting along the electric field at a shock front.
-# The setup mimics the visualization [NASA SVS 4513](https://svs.gsfc.nasa.gov/4513/), which uses a heavy electron (mass = 1/5 proton mass) to make the gyroradii comparable for visualization purposes.
+# This example shows Shock Drift Acceleration (SDA): a particle gains energy by drifting
+# along the shock front in the convective electric field while it repeatedly hits the shock.
+#
+# The setup is the textbook *perpendicular* shock (``\theta_{Bn}=90^\circ``):
+#
+# | Quantity            | Direction      |
+# |---------------------|----------------|
+# | Shock normal ``\hat{\mathbf{n}}`` | ``+\hat{\mathbf{x}}`` (upstream ``x<0``, downstream ``x>0``) |
+# | Upstream flow ``\mathbf{V}_1``    | ``+\hat{\mathbf{x}}`` (plasma flows into the shock) |
+# | Magnetic field ``\mathbf{B}_1``   | ``+\hat{\mathbf{z}}`` (purely tangential) |
+# | Convection field ``\mathbf{E}=-\mathbf{V}_1\times\mathbf{B}_1`` | ``+\hat{\mathbf{y}}`` |
+#
+# The field only varies across the shock, so the only drift along the front is the
+# gradient-``\mathbf{B}`` drift
+# ``\mathbf{v}_{\nabla B}\propto(\mathbf{B}\times\nabla B)/B^3``. Since ``\nabla B`` points
+# downstream (``+\hat{\mathbf{x}}``) and ``\mathbf{B}\parallel\hat{\mathbf{z}}``, the drift
+# runs along ``+\hat{\mathbf{y}}`` and is *parallel* to ``\mathbf{E}``. Its power input
+# ``P=q\,\mathbf{v}_{\nabla B}\!\cdot\!\mathbf{E}`` is therefore positive, so the proton is
+# accelerated as it slides along the front — the essence of SDA. (The ``\mathbf{E}\times
+# \mathbf{B}`` drift just carries the particle into the shock along ``\hat{\mathbf{x}}``; it
+# does not by itself accelerate the particle.)
+#
+# ## Cross-shock potential
+#
+# A perpendicular shock also carries an electrostatic potential ``\phi(x)`` (downstream at
+# higher potential). Its normal field ``\mathbf{E}_x=-\nabla\phi`` points upstream and
+# reflects the proton: after one hit it turns back, the ExB drift brings it in again, and it
+# meets the front repeatedly. Each crossing lets the tangential drift add more energy. (Real
+# shocks reflect only some ions; here the potential is enhanced so the reflection is easy to
+# see.)
+#
+# We trace a real *proton* (``m = mᵢ``, ``q = qᵢ``). The shock has a finite thickness (a
+# smooth tanh ramp of order the proton gyroradius) so the gradient driving the drift is
+# resolved.
 
 import DisplayAs #hide
 using TestParticle
 using TestParticle: mᵢ, qᵢ
 using OrdinaryDiffEq
 using LinearAlgebra
-using Statistics
 using CairoMakie
-using Random
 CairoMakie.activate!(type = "png") #hide
 
-seed = 42;
+# ## Shock Parameters (perpendicular)
+#
+# Upstream (Region 1) flows toward the shock along ``+x``; downstream (Region 2) is
+# compressed and slower by the ratio ``r``. ``\mathbf{B}`` is along ``z`` (tangential), so
+# the motional field ``\mathbf{E}=-\mathbf{V}\times\mathbf{B}`` points along ``y`` and stays
+# continuous across the shock (de Hoffmann-Teller frame).
 
-# ## Shock Parameters
-# We set up a perpendicular shock.
-# Upstream (Region 1): High velocity, Low B.
-# Downstream (Region 2): Low velocity, High B.
+V₁ = [545.0, 0.0, 0.0] .* 1.0e3   # upstream flow (into the shock, +x)
+r = 4.0                            # field compression ratio
+B₁ = [0.0, 0.0, 5.0] .* 1.0e-9      # upstream |B| [T], along z
+B₂ = [0.0, 0.0, r * 5.0] .* 1.0e-9  # downstream, same direction
+V₂ = V₁ ./ r                        # downstream flow (mass-flux conservation)
+E_y = -(V₁ × B₁)[2]                 # motional E along +y, continuous across shock
+println("E_y = ", E_y, "  (points along +y, as expected)")
 
-n₁ = 1.0e6
-V₁ = [-545.0, 0.0, 0.0] .* 1.0e3 # Upstream velocity (flowing left)
-B₁ = [0.0, 0.0, 5.0] .* 1.0e-9   # Upstream B (z-direction)
+# Cross-shock potential (downstream at higher potential) and its normal field:
+#   φ(x) = Δφ · ½(1 + tanh(x/L))      E_x = -dφ/dx = -Δφ/(2L)·sech²(x/L)  (points upstream)
+Δφ = 15.0e3                          # cross-shock potential drop [V] (enhanced for visibility)
+L = 1500.0e3                        # shock ramp half-width
+Ex(xq) = -Δφ / (2L) / cosh(xq / L)^2
 
-V₂ = [-172.0, 0.0, 0.0] .* 1.0e3 # Downstream velocity
-B₂ = [0.0, 0.0, 15.8] .* 1.0e-9; # Downstream B
+# ## Grid and finite-thickness shock
+#
+# The fields live on a 1D grid in ``x``; the shock sits at ``x = 0`` and is smoothed over a
+# width ``L`` so the proton (gyroradius ``\sim 1100`` km) feels a resolved gradient rather
+# than a discontinuity.
 
-# Calculate Convection Electric Field E = -V x B
-E₁ = cross(B₁, V₁)
-E₂ = cross(B₂, V₂);
+x_max = 12_000.0e3
+x = range(-x_max, x_max; length = 4000)
+Bvecs = [B₁ .+ (B₂ .- B₁) .* 0.5 .* (1 .+ tanh(xq / L)) for xq in x]
+Bm = hcat(Bvecs...)
+Em = hcat([[Ex(xq), E_y, 0.0] for xq in x]...)
 
-# ## Grid Setup
-# We use a 1D grid in x-direction.
-# The shock is located at x=0.
-x_max = 2000.0e3 # 2000 km
-x = range(-x_max, x_max, length = 1000) # 4000 km total, 4 km resolution
+param = prepare(x, Em, Bm; bc = ClampExtrap(), q = qᵢ, m = mᵢ)
 
-B = repeat(B₁, 1, length(x))
-E = repeat(E₁, 1, length(x))
-
-## Set downstream values (x < 0)
-mid_ = findfirst(v -> v >= 0, x)
-B[:, 1:(mid_ - 1)] .= B₂
-E[:, 1:(mid_ - 1)] .= E₂;
-
-# ## E-field Bump
-# Add a Gaussian enhancement to the Electric field at the shock.
-# "interaction of the two regions in the shock wave generates an increase in the electric field."
-# We enhance the magnitude of Ey (which is negative).
-bump_amp = 2.0 # Enhance by factor of 2 at peak
-bump_width = 100.0e3 # 100 km width
-for i in eachindex(x)
-    ## Gaussian centered at 0
-    factor = 1.0 + bump_amp * exp(-(x[i] / bump_width)^2)
-    E[2, i] *= factor
+function field_at(xq)
+    i = clamp(searchsortedlast(x, xq) + 1, 1, length(x))
+    return Em[:, i], Bm[:, i]
 end
 
-# ## Particle Tracing
-# We trace Protons and "Heavy Electrons".
-# Heavy Electron mass is set to m_p / 5 for visualization.
-
-const m_heavy = mᵢ / 5.0
-const q_heavy = -qᵢ
-const v0_p = V₁
-const x0 = 1000.0e3; # 1000 km upstream
-
-# ### Protons
-
-prob_p = let
-    param_p = prepare(x, E, B; species = Proton, bc = ClampExtrap())
-    u0_p = [x0, 0.0, 0.0, v0_p...]
-    ODEProblem(trace!, u0_p, (0.0, 20.0), param_p)
-end;
-
-"""
-Create ensemble of protons.
-"""
-function prob_func_p(prob, ctx)
-    ## Randomize y and z slightly to separate lines
-    r = rand(ctx.rng, 2)
-    r0 = (x0, (r[1] - 0.5) * 500.0e3, (r[2] - 0.5) * 500.0e3)
-    ## Small thermal spread
-    v_th = 50.0e3 # 50 km/s
-    v = v0_p .+ randn(ctx.rng, 3) .* v_th
-    return remake(prob; u0 = [r0..., v...])
+function drift_velocity(xq)
+    Evec, Bvec = field_at(xq)
+    return (Evec × Bvec) / dot(Bvec, Bvec)
 end
 
-ensemble_p = EnsembleProblem(prob_p; prob_func = prob_func_p)
-sols_p = solve(ensemble_p, Vern9(), EnsembleSerial(); trajectories = 10, seed);
+# ## Proton Injection
+#
+# The proton starts upstream and gyrates in the ``x``-``y`` plane (velocity along ``-y``),
+# so it is not merely convected. Carried into the shock by the normal ExB drift, it feels
+# the tangential gradient-B drift and is accelerated along ``+y``; the cross-shock potential
+# then reflects it, so it meets the front again and again.
 
-# ### Heavy Electrons
+const x₀ = -2500.0e3
+const v₀ = [0.0, -545.0e3, 0.0]
+const t_max = 35.0
 
-prob_e = let
-    ## Create parameter object for Heavy Electron.
-    param_e = prepare(x, E, B; bc = ClampExtrap(), q = q_heavy, m = m_heavy)
+u0 = [x₀, 0.0, 0.0, v₀...]
+prob = ODEProblem(trace!, u0, (0.0, t_max), param)
+sol = solve(prob, Vern9(); saveat = 0.05)
 
-    u0_e = [x0, 0.0, 0.0, v0_p...]
-    ODEProblem(trace!, u0_e, (0.0, 20.0), param_e)
-end;
+# ## Energy: the SDA signature
+#
+# The particle's kinetic energy ``K = \tfrac12 m |\mathbf{v}|^2`` oscillates within each
+# gyration. The meaningful SDA quantity is the *work done by the electric field*,
+# ``W(t)=\int_0^t q\,\mathbf{v}\cdot\mathbf{E}\,dt``, which isolates the energy fed in by the
+# tangential drift (parallel to ``\mathbf{E}``). It rises with every encounter, confirming
+# the repeated acceleration. We also count the shock crossings to show how often it hits the
+# front.
 
-function prob_func_e(prob, ctx)
-    r0 = [x0, (rand(ctx.rng) - 0.5) * 500.0e3, (rand(ctx.rng) - 0.5) * 500.0e3]
-    v_th = 100.0e3
-    v = v0_p .+ randn(ctx.rng, 3) .* v_th
-    return remake(prob; u0 = [r0..., v...])
-end
+ts = sol.t
+X = [u[1] for u in sol.u]
+Y = [u[2] for u in sol.u]
+Z = [u[3] for u in sol.u]
+vs = [u[4:6] for u in sol.u]
 
-ensemble_e = EnsembleProblem(prob_e; prob_func = prob_func_e)
-sols_e = solve(ensemble_e, Vern9(), EnsembleSerial(); trajectories = 10, seed);
+K_lab = [0.5 * mᵢ * dot(v, v) for v in vs]
+W_cum = cumsum([qᵢ * dot(v, field_at(u[1])[1]) for (u, v) in zip(sol.u, vs)]) .* sol.t[2]
+
+n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X))
+
+K_norm = K_lab ./ K_lab[1]
+W_norm = W_cum ./ K_lab[1]
+
+println("Shock encounters (crossings of x=0): ", n_cross)
+println(
+    "Perpendicular-shock SDA: proton KE ends at ", round(K_norm[end]; digits = 2),
+    "x; cumulative work from E ends at ", round(W_norm[end]; digits = 2), "x initial"
+) #hide
 
 # ## Visualization
 
-f = Figure(fontsize = 18)
-ax = Axis3(
-    f[1, 1], title = "Shock Drift Acceleration", xlabel = "x [km]",
-    ylabel = "y [km]", zlabel = "z [km]", aspect = :data
+f = Figure(size = (1500, 650), fontsize = 18)
+
+xpad = 500.0e3; ypad = 2000.0e3; zpad = 500.0e3
+xlim = (minimum(X) - xpad, maximum(X) + xpad)
+ylim = (minimum(Y) - ypad, maximum(Y) + ypad)
+zlim = (minimum(Z) - zpad, maximum(Z) + zpad)
+
+ax3d = Axis3(
+    f[1, 1];
+    title = "Proton SDA trajectory (colored by gained energy)",
+    xlabel = "x [km]", ylabel = "y [km]", zlabel = "z [km]",
+    aspect = :data,
+    limits = (xlim ./ 1.0e3, ylim ./ 1.0e3, zlim ./ 1.0e3),
 )
 
-## Plot Protons
-for sol in sols_p.u
-    lines!(ax, sol, idxs = (1, 2, 3), color = :blue, linewidth = 1.5)
-end
+lines!(
+    ax3d, X ./ 1.0e3, Y ./ 1.0e3, Z ./ 1.0e3;
+    color = K_norm, colormap = :plasma, linewidth = 2.0
+)
+cb = Colorbar(
+    f[1, 2], limits = (1, maximum(K_norm)),
+    colormap = :plasma, label = "KE / KE₀"
+)
+cb.width = 18
 
-## Plot Heavy Electrons
-for sol in sols_e.u
-    lines!(ax, sol, idxs = (1, 2, 3), color = :gold, linewidth = 1.5)
-end
-
-## Draw Shock Plane
+# Shock front (semi-transparent plane at x = 0)
 mesh!(
-    ax, Rect3f(Point3f(-10.0e3, -1000.0e3, -1000.0e3), Vec3f(20.0e3, 2000.0e3, 2000.0e3)), color = (
-        :red, 0.3,
-    )
+    ax3d,
+    Rect3f(
+        Point3f(-10.0e3, ylim[1], zlim[1]),
+        Vec3f(20.0e3, ylim[2] - ylim[1], zlim[2] - zlim[1])
+    );
+    color = (:red, 0.2),
 )
+
+axE = Axis(
+    f[1, 3];
+    title = "Energy gain",
+    xlabel = "Time [s]", ylabel = "Energy / initial",
+    limits = (nothing, (0, nothing)),
+)
+lines!(axE, ts, K_norm; label = "instantaneous KE (lab frame)", color = :gray, linewidth = 1.5)
+lines!(axE, ts, W_norm; label = "cumulative work q∫v·E dt (SDA)", color = :black, linewidth = 2.5)
+axislegend(axE; position = :lt, framevisible = true, backgroundcolor = (:white, 0.7))
 
 f = DisplayAs.PNG(f) #hide
+
+# The proton is carried into the red shock front by the normal ExB drift, reflected by the
+# cross-shock potential, and meets the front repeatedly. Each encounter adds energy from
+# ``\mathbf{E}`` (the black curve — the cumulative work — climbs with every crossing), so
+# the proton surfs along ``+y`` and leaves with a large, sustained gain: shock drift
+# acceleration enabled by the cross-shock potential.
