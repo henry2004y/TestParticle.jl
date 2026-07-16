@@ -329,9 +329,9 @@ f = DisplayAs.PNG(f) #hide
 
 # ### 6.2 Energy scan: diffusion grows with gyroradius
 #
-# A reviewer-style sweep over the initial gyroradius ``r_{L0}``. We compute the
-# ensemble-mean squared displacement ``\langle|\Delta \mathbf{x}|^2\rangle`` as a
-# function of time for several energies. Higher-energy (larger ``r_L``) particles
+# Sweep over the initial gyroradius ``r_{L0}``. We compute the ensemble-mean
+# squared displacement ``\langle|\Delta \mathbf{x}|^2\rangle`` as a function
+# of time for several energies. Higher-energy (larger ``r_L``) particles
 # sample more field modes per gyro-orbit and diffuse faster.
 
 rL_list = [0.5, 1.0, 2.0]
@@ -362,7 +362,7 @@ for (j, rL) in enumerate(rL_list)
     msr ./= length(ssols.u)
     lines!(ax, ssols.u[1].t ./ (2π), msr; label = "r_L0 = $rL", color = colors[j])
 end
-axislegend(ax; position = :topleft)
+axislegend(ax; position = :lt)
 f = DisplayAs.PNG(f) #hide
 
 # ## 7. Production notes
