@@ -134,13 +134,14 @@ println(
 
 # ## Visualization
 
-f = Figure(size = (1500, 650), fontsize = 18)
+f = Figure(size = (1500, 950), fontsize = 18)
 
 xpad = 500.0e3; ypad = 2000.0e3; zpad = 500.0e3
 xlim = (minimum(X) - xpad, maximum(X) + xpad)
 ylim = (minimum(Y) - ypad, maximum(Y) + ypad)
 zlim = (minimum(Z) - zpad, maximum(Z) + zpad)
 
+# Top row: 3D trajectory (colored by gained energy)
 ax3d = Axis3(
     f[1, 1];
     title = "Proton SDA trajectory (colored by gained energy)",
@@ -169,8 +170,9 @@ mesh!(
     color = (:red, 0.2),
 )
 
+# Bottom row: energy time series
 axE = Axis(
-    f[1, 3];
+    f[2, 1:2];
     title = "Energy gain",
     xlabel = "Time [s]", ylabel = "Energy / initial",
     limits = (nothing, (0, nothing)),
