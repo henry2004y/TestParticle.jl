@@ -40,6 +40,7 @@ using TestParticle
 using TestParticle: mᵢ, qᵢ
 using OrdinaryDiffEq
 using LinearAlgebra
+using StaticArrays: SVector
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -78,14 +79,19 @@ Em = hcat([[Ex(xq), E_y, 0.0] for xq in x]...)
 
 param = prepare(x, Em, Bm; bc = ClampExtrap(), q = qᵢ, m = mᵢ)
 
-function field_at(xq)
+function field_at(xq, Em, Bm)
     i = clamp(searchsortedlast(x, xq) + 1, 1, length(x))
-    return Em[:, i], Bm[:, i]
+    return view(Em, :, i), view(Bm, :, i)
 end
 
-function drift_velocity(xq)
-    Evec, Bvec = field_at(xq)
-    return (Evec × Bvec) / dot(Bvec, Bvec)
+function drift_velocity(xq, Em, Bm)
+    Evec, Bvec = field_at(xq, Em, Bm)
+    b² = dot(Bvec, Bvec)
+    return @inbounds SVector(
+        (Evec[2] * Bvec[3] - Evec[3] * Bvec[2]) / b²,
+        (Evec[3] * Bvec[1] - Evec[1] * Bvec[3]) / b²,
+        (Evec[1] * Bvec[2] - Evec[2] * Bvec[1]) / b²,
+    )
 end
 
 # ## Proton Injection
@@ -119,7 +125,8 @@ Z = [u[3] for u in sol.u]
 vs = [u[4:6] for u in sol.u]
 
 K_lab = [0.5 * mᵢ * dot(v, v) for v in vs]
-W_cum = cumsum([qᵢ * dot(v, field_at(u[1])[1]) for (u, v) in zip(sol.u, vs)]) .* sol.t[2]
+work_rates = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol.u, vs)]
+W_cum = [0.0; cumsum(0.5 .* (work_rates[1:end-1] .+ work_rates[2:end]) .* diff(ts))]
 
 n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X))
 
