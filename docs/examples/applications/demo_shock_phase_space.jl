@@ -122,6 +122,24 @@ detector_down = Meshes.Plane(
 
 # To get the velocity space distributions, we bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 #
+# ## Inputs and Outputs of the Three Methods
+# Although the three methods produce similar-looking velocity-space projections, they differ
+# substantially in what they take as input and what they return:
+#
+# | Method | Input (at the **source** unless noted) | Output (at the detector plane) |
+# | :--- | :--- | :--- |
+# | **1. Forward Monte-Carlo Injection** | Macro-particles launched from `x_source` with initial velocities sampled from the source `Maxwellian` (`vdf`). Each crossing carries its **initial** `v_x` for kinematic flux weighting. | 2-D projected phase-space **density** (flux-weighted histograms) at the upstream/downstream detector, in `[s²/km⁵]`. One value per detector crossing. |
+# | **2. Forward Liouville Tracking** | A uniform **sphere** of initial velocities at `x_source` (radius `3 vth_ion`); each sample is weighted by `n0·pdf(vdf)` evaluated at the source (analytical weight). | 2-D projected phase-space **density** (Liouville-weighted histograms) at the upstream/downstream detector, in `[s³/km⁶]` before projection (`[s²/km⁵]` after). |
+# | **3. Backward Liouville Tracing** | A regular **velocity grid** placed at the **detector** plane (`vx, vy, vz`); each grid point is traced *backward* in time to `x_source`. | 3-D phase-space **density** `f_3d` evaluated at the detector as `n0·pdf(vdf, traced-source-state)` (gridded, in `[s³/km⁶]`); 2-D projections are obtained by summing over the third axis. |
+#
+# Key contrasts:
+# - Methods 1 and 2 are **source-sampled**: they start at `x_source` and integrate *forward*.
+# - Method 3 is **target-sampled**: it starts at the detector and integrates *backward*, so the
+#   detector distribution is filled uniformly over the chosen grid regardless of how few source
+#   particles would have landed there.
+# - Methods 1 and 2 return binned histograms (statistical noise ∝ 1/√N); Method 3 returns a
+#   deterministic grid evaluation (no statistical noise, only the grid resolution limit).
+#
 # ## Method 1: Forward Monte-Carlo Injection
 # Simulated particles are treated as macro-particles launched in a steady-state flux at the source.
 # Crossing events are converted to phase-space density via kinematic weighting (see below).
@@ -149,7 +167,7 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
 end
 
 function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
-    fig = Figure(size = (1200, 600), fontsize = 20)
+    fig = Figure(size = (1300, 650), fontsize = 22)
     xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
 
@@ -160,13 +178,18 @@ function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
             ax = Axis(
                 fig[row, i], title = "$(label) x = $(xloc * 1.0e-3) km",
                 xlabel = xlabels[i], ylabel = ylabels[i];
+                xlabelsize = 26, ylabelsize = 26, titlesize = 24,
+                xticklabelsize = 20, yticklabelsize = 20,
                 limits = (-vlim, vlim, -vlim, vlim)
             )
             h = hists[i]
             hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
                 heatmap!(ax, h; colormap = :turbo)
             if i == 3
-                Colorbar(fig[row, 4], hm; label = L"[\mathrm{s}^2/\mathrm{km}^5]")
+                Colorbar(
+                    fig[row, 4], hm; label = L"[\mathrm{s}^2/\mathrm{km}^5]",
+                    labelsize = 22, ticklabelsize = 18
+                )
             end
         end
     end
@@ -256,6 +279,14 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # (`dv_coarse_km = 60` km/s) to locate the active cells, then a fine grid only inside that box (padded
 # by `margin_km`). Discarded cells lie below the `f_max·10⁻⁶` clipping threshold, so the projections
 # are unchanged while the trajectory count drops by ≈2–3×.
+#
+# **Termination note.** A back-traced particle that reaches the source plane must keep integrating
+# until that crossing is captured by a *saved* step (`savestepinterval = 10`). The trajectory is
+# therefore terminated only when it moves *away* from the source (`u[1] < detector_x - 100 km`), never
+# just past it: a guard placed a few km beyond the source plane would fire before the post-crossing
+# point is saved, truncating the trajectory to a single point and silently dropping the corresponding
+# cell. In the upstream `V_x–V_z` plot this formerly removed the entire fast half of the Maxwellian,
+# making the distribution look "cut in half".
 
 ## Solve one backward-tracing pass over a uniform velocity grid and return the 3D phase-space
 ## density sampled at the source plane, in [s³/km⁶].
@@ -279,7 +310,9 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
 
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
-        savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
+        savestepinterval = 10,
+        # Terminate only trajectories that move away from the source. See "Method 3".
+        isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5
     )
 
     f_3d = zeros(nx, ny, nz)
