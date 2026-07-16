@@ -346,7 +346,7 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
         savestepinterval = 10,
-        # Stop at the source plane (and terminate away-going trajectories). See "Method 3".
+        ## Stop at the source plane (and terminate away-going trajectories). See "Method 3".
         isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 || u[1] > x_source[1] + 6000.0e3
     )
 
