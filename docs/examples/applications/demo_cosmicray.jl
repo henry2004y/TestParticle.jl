@@ -319,9 +319,9 @@ end
 t1, ρ1, μ1 = phase_evolution(sols.u[1], Bfunc)
 
 f = Figure(fontsize = 16, size = (1000, 600))
-axρ = Axis(f[1, 1], xlabel = "t / 2π", ylabel = r"r_L")
+axρ = Axis(f[1, 1], xlabel = "t / 2π", ylabel = L"r_L")
 axμ = Axis(f[2, 1], xlabel = "t / 2π", ylabel = "μ")
-lines!(axρ, t1 ./ (2π), ρ1; color = :steelblue, label = r"r_L")
+lines!(axρ, t1 ./ (2π), ρ1; color = :steelblue, label = L"r_L")
 hlines!(axρ, [rL0]; color = :tomato, linestyle = :dash)
 lines!(axμ, t1 ./ (2π), μ1; color = :seagreen, label = "μ")
 axislegend(axρ); axislegend(axμ)
