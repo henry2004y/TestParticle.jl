@@ -122,6 +122,24 @@ detector_down = Meshes.Plane(
 
 # To get the velocity space distributions, we bin the crossing events into 2D orthogonal velocity planes, integrating over the third dimension.
 #
+# ## Inputs and Outputs of the Three Methods
+# Although the three methods produce similar-looking velocity-space projections, they differ
+# substantially in what they take as input and what they return:
+#
+# | Method | Input (at the **source** unless noted) | Output (at the detector plane) |
+# | :--- | :--- | :--- |
+# | **1. Forward Monte-Carlo Injection** | Macro-particles launched from `x_source` with initial velocities sampled from the source `Maxwellian` (`vdf`). Each crossing carries its **initial** `v_x` for kinematic flux weighting. | 2-D projected phase-space **density** (flux-weighted histograms) at the upstream/downstream detector, in `[s²/km⁵]`. One value per detector crossing. |
+# | **2. Forward Liouville Tracking** | A uniform **sphere** of initial velocities at `x_source` (radius `3 vth_ion`); each sample is weighted by `n0·pdf(vdf)` evaluated at the source (analytical weight). | 2-D projected phase-space **density** (Liouville-weighted histograms) at the upstream/downstream detector, in `[s³/km⁶]` before projection (`[s²/km⁵]` after). |
+# | **3. Backward Liouville Tracing** | A regular **velocity grid** placed at the **detector** plane (`vx, vy, vz`); each grid point is traced *backward* in time to `x_source`. | 3-D phase-space **density** `f_3d` evaluated at the detector as `n0·pdf(vdf, traced-source-state)` (gridded, in `[s³/km⁶]`); 2-D projections are obtained by summing over the third axis. |
+#
+# Key contrasts:
+# - Methods 1 and 2 are **source-sampled**: they start at `x_source` and integrate *forward*.
+# - Method 3 is **target-sampled**: it starts at the detector and integrates *backward*, so the
+#   detector distribution is filled uniformly over the chosen grid regardless of how few source
+#   particles would have landed there.
+# - Methods 1 and 2 return binned histograms (statistical noise ∝ 1/√N); Method 3 returns a
+#   deterministic grid evaluation (no statistical noise, only the grid resolution limit).
+#
 # ## Method 1: Forward Monte-Carlo Injection
 # Simulated particles are treated as macro-particles launched in a steady-state flux at the source.
 # Crossing events are converted to phase-space density via kinematic weighting (see below).
@@ -149,7 +167,7 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
 end
 
 function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
-    fig = Figure(size = (1200, 600), fontsize = 20)
+    fig = Figure(size = (1300, 650), fontsize = 22)
     xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
 
@@ -160,15 +178,54 @@ function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
             ax = Axis(
                 fig[row, i], title = "$(label) x = $(xloc * 1.0e-3) km",
                 xlabel = xlabels[i], ylabel = ylabels[i];
+                xlabelsize = 26, ylabelsize = 26, titlesize = 24,
+                xticklabelsize = 20, yticklabelsize = 20,
                 limits = (-vlim, vlim, -vlim, vlim)
             )
             h = hists[i]
             hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
                 heatmap!(ax, h; colormap = :turbo)
             if i == 3
-                Colorbar(fig[row, 4], hm; label = L"[\mathrm{s}^2/\mathrm{km}^5]")
+                Colorbar(
+                    fig[row, 4], hm; label = L"[\mathrm{s}^2/\mathrm{km}^5]",
+                    labelsize = 22, ticklabelsize = 18
+                )
             end
         end
+    end
+    return fig
+end
+
+function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
+    titles = [
+        "Method 1: Flux Injection",
+        "Method 2: Forward Liouville",
+        "Method 3: Backward Liouville",
+    ]
+    cols = ["V_x–V_y", "V_x–V_z", "V_y–V_z"]
+    xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
+    ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
+    hists = (h1, h2, h3)
+    fig = Figure(size = (1350, 820), fontsize = 22)
+    gl = fig[1, 1] = GridLayout()
+    Label(gl[1, 2:4], "Downstream velocity distributions (x = -200 km)"; fontsize = 24, tellwidth = false)
+    for r in 1:3
+        for i in 1:3
+            ax = Axis(
+                gl[r + 1, i + 1], title = cols[i],
+                xlabel = xlabels[i], ylabel = ylabels[i];
+                xlabelsize = 22, ylabelsize = 22, titlesize = 20,
+                xticklabelsize = 18, yticklabelsize = 18,
+                limits = (-vlim, vlim, -vlim, vlim)
+            )
+            h = hists[r][i]
+            hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
+                heatmap!(ax, h; colormap = :turbo)
+            if i == 3
+                Colorbar(gl[r + 1, 5], hm; labelsize = 18, ticklabelsize = 14)
+            end
+        end
+        Label(gl[r + 1, 1], titles[r]; fontsize = 18, rotation = π / 2, tellheight = false)
     end
     return fig
 end
@@ -256,6 +313,15 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # (`dv_coarse_km = 60` km/s) to locate the active cells, then a fine grid only inside that box (padded
 # by `margin_km`). Discarded cells lie below the `f_max·10⁻⁶` clipping threshold, so the projections
 # are unchanged while the trajectory count drops by ≈2–3×.
+#
+# **Termination note.** A back-traced trajectory is stopped as soon as it (i) moves *away* from the
+# source (`u[1] < detector_x - 100 km`) or (ii) has passed the source plane by a safe margin
+# (`u[1] > x_source[1] + 6000 km`). The margin must exceed the distance covered in one saved step at the
+# highest grid speed (≈5.3×10³ km here), otherwise the post-crossing saved point is missed and the cell
+# is dropped. A too-tight guard beyond the source formerly truncated the trajectory to a single point and
+# removed the entire fast half of the upstream Maxwellian in the `V_x–V_z` plot ("cut in half"). Stopping
+# at the source also bounds the integration length (≈half the steps) without changing the recovered
+# density.
 
 ## Solve one backward-tracing pass over a uniform velocity grid and return the 3D phase-space
 ## density sampled at the source plane, in [s³/km⁶].
@@ -279,7 +345,9 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
 
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
-        savestepinterval = 10, isoutside = (u, p, t) -> u[1] > x_source[1] + 50.0e3
+        savestepinterval = 10,
+        ## Stop at the source plane (and terminate away-going trajectories). See "Method 3".
+        isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 || u[1] > x_source[1] + 6000.0e3
     )
 
     f_3d = zeros(nx, ny, nz)
@@ -379,20 +447,35 @@ n_bw = n_bw_up + n_bw_down
 fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
-# ## Tracing Time Comparison
-# Monte-Carlo and forward-Liouville each launch 10⁴ macro-particles; backward Liouville places a regular
-# velocity grid at the detector. With `dv_km = 20` km/s and the `vy` shrink (±400 instead of ±1000 km/s),
-# the adaptive two-pass focuses the fine grid on the populated region — about 3×10⁵ trajectories total
-# (≈3×10⁴ upstream, ≈3×10⁵ downstream). The total cost is then comparable to the forward methods.
-# Per trajectory, backward tracing is the cheapest: it terminates at the source plane and needs no
-# statistical weighting.
+fig_cmp = plot_downstream_comparison(hists_down, hists_down_m2, res_down_bw)
+fig_cmp = DisplayAs.PNG(fig_cmp) #hide
+
+# ## Summary
+# This example illustrates three complementary ways to reconstruct the phase space density from particle simulations.
+#
+# ### Cost and which method to use
+# The wall-clock times in the table below are an **apples-to-oranges** comparison: Methods 1–2 launch
+# 10⁴ macro-particles to build a *noisy* histogram, whereas Method 3 fills a *complete, deterministic*
+# velocity grid of ≈3×10⁵ cells. To reproduce the same grid with forward tracing you would need roughly
+# (cells) × (≈10²–10³ particles per cell for usable statistics) ≈ 10⁷–10⁹ trajectories — orders of
+# magnitude slower. So backward Liouville *is* the most **cost-effective** method once you require a full,
+# noise-free `f(v)`: it is target-sampled (no particles wasted in empty phase-space) and deterministic (no
+# Monte-Carlo oversampling).
+#
+# Per trajectory it is also a few × cheaper (shorter effective integration, no statistical weighting, and
+# away-going trajectories terminate at once). Stopping each back-traced trajectory right after the source
+# plane (the `isoutside` guard in Method 3) cuts the integration length roughly in half; in this `dt`
+# regime the wall time is dominated by per-trajectory solve/threading overhead, so the saving is modest,
+# but the bound is worthwhile and changes no result.
+#
+# **Guidance.**
+# - **Method 1 (flux injection):** quick statistical picture or low-order moments / flux; cheapest but noisy, with poor tail resolution.
+# - **Method 2 (forward Liouville):** better than MC without a full grid; still source-sampled, so empty regions are wasted.
+# - **Method 3 (backward Liouville):** a complete, noise-free distribution on a *chosen* grid (best accuracy per cell); pair with the adaptive two-pass and source-plane termination to keep the trajectory count down. This is the method to reach for when accuracy matters.
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
 t_per_bw = t_bw / n_bw * 1.0e6;
-
-# ## Summary
-# This example illustrates three complementary ways to reconstruct the phase space density from particle simulations.
 
 using Markdown, Printf #hide
 io = IOBuffer() #hide
