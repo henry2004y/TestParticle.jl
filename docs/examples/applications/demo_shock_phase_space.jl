@@ -197,16 +197,12 @@ function plot_shock_vdf(hists_up, hists_down, x_up, x_down; vlim = 1000.0)
 end
 
 function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
-    titles = [
-        "Method 1: Flux Injection",
-        "Method 2: Forward Liouville",
-        "Method 3: Backward Liouville",
-    ]
-    cols = ["V_x–V_y", "V_x–V_z", "V_y–V_z"]
+    titles = ["Flux Injection", "Forward Liouville", "Backward Liouville"]
+    cols = [L"V_x–V_y", L"V_x–V_z", L"V_y–V_z"]
     xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
     hists = (h1, h2, h3)
-    fig = Figure(size = (1350, 820), fontsize = 22)
+    fig = Figure(size = (1300, 1100), fontsize = 22)
     gl = fig[1, 1] = GridLayout()
     Label(gl[1, 2:4], "Downstream velocity distributions (x = -200 km)"; fontsize = 24, tellwidth = false)
     for r in 1:3
@@ -216,7 +212,8 @@ function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
                 xlabel = xlabels[i], ylabel = ylabels[i];
                 xlabelsize = 22, ylabelsize = 22, titlesize = 20,
                 xticklabelsize = 18, yticklabelsize = 18,
-                limits = (-vlim, vlim, -vlim, vlim)
+                limits = (-vlim, vlim, -vlim, vlim),
+                aspect = 1
             )
             h = hists[r][i]
             hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
@@ -447,6 +444,9 @@ n_bw = n_bw_up + n_bw_down
 fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
+# The reconstructed phase-space density on both sides of the shock.
+#
+# We then compare the downstream distribution with the two forward estimates.
 fig_cmp = plot_downstream_comparison(hists_down, hists_down_m2, res_down_bw)
 fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 

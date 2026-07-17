@@ -60,13 +60,13 @@ B₁ = [0.0, 0.0, 5.0] .* 1.0e-9      # upstream |B| [T], along z
 B₂ = [0.0, 0.0, r * 5.0] .* 1.0e-9  # downstream, same direction
 V₂ = V₁ ./ r                        # downstream flow (mass-flux conservation)
 E_y = -(V₁ × B₁)[2]                 # motional E along +y, continuous across shock
-println("E_y = ", E_y, "  (points along +y, as expected)")
+println("E_y = ", E_y, "  (points along +y, as expected)") #hide
 
 # Cross-shock potential (downstream at higher potential) and its normal field:
 #   φ(x) = Δφ · ½(1 + tanh(x/L))      E_x = -dφ/dx = -Δφ/(2L)·sech²(x/L)  (points upstream)
 Δφ = 15.0e3                          # cross-shock potential drop [V] (enhanced for visibility)
 L = 1500.0e3                        # shock ramp half-width
-Ex(xq) = -Δφ / (2L) / cosh(xq / L)^2
+Ex(xq) = -Δφ / (2L) / cosh(xq / L)^2;
 
 # ## Grid and finite-thickness shock
 #
@@ -95,7 +95,7 @@ function drift_velocity(xq, Em, Bm)
         (Evec[3] * Bvec[1] - Evec[1] * Bvec[3]) / b²,
         (Evec[1] * Bvec[2] - Evec[2] * Bvec[1]) / b²,
     )
-end
+end;
 
 # ## Proton Injection
 #
@@ -110,7 +110,7 @@ const t_max = 45.0
 
 u0 = [x₀, 0.0, 0.0, v₀...]
 prob = ODEProblem(trace!, u0, (0.0, t_max), param)
-sol = solve(prob, Vern9(); saveat = 0.05)
+sol = solve(prob, Vern9(); saveat = 0.05);
 
 # Comparison case: injected *with the ExB-drift velocity E×B/B² as the only initial speed*, and
 # launched deep upstream (x₀ = -4L) where the cross-shock potential's normal field E_x ≈ 0, so
@@ -162,7 +162,7 @@ W_cum = [0.0; cumsum(0.5 .* (work_rates[1:(end - 1)] .+ work_rates[2:end]) .* di
 n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X))
 
 K_norm = K_lab ./ K_lab[1]
-W_norm = W_cum ./ K_lab[1]
+W_norm = W_cum ./ K_lab[1];
 
 # Perpendicular velocity and gyro-phase. B points along z, so the gyration lies in the x-y
 # plane; the velocity-phase atan2(v_y, v_x) measures where the perpendicular velocity points
@@ -263,12 +263,12 @@ axVy = Axis(
     xlabel = "Time [s]",
     ylabel = L"v_y\;[\mathrm{km/s}]",
 )
-lines!(axVy, ts, vys_kms; label = "v_y", color = wc[1], linewidth = 3.0)
+lines!(axVy, ts, vys_kms; label = L"v_y", color = wc[1], linewidth = 3.0)
 
 axPhase = Axis(
     f[3, 1:2];
     yaxisposition = :right,
-    ylabel = L"\textrm{gyro-phase}\;[\!^{\circ}]",
+    ylabel = L"\phi\;[\!^{\circ}]",
     limits = (nothing, (0, 360)),
     yticks = [0, 90, 180, 270, 360],
 )
