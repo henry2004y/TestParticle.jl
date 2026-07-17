@@ -21,3 +21,4 @@ TestParticle = {path = ".."}
 
 [compat]
 OrdinaryDiffEq = "7"
+VelocityDistributionFunctions = "0.2.4"
