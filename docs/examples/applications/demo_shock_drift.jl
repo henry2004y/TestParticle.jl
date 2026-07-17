@@ -1,9 +1,10 @@
 # # Shock Drift Acceleration at a Perpendicular Shock
 #
 # This example shows Shock Drift Acceleration (SDA): a particle gains energy by drifting
-# along the shock front in the convective electric field while it repeatedly hits the shock.
+# along the shock front in the convective electric field, while the cross-shock potential
+# reflects it so it repeatedly hits the shock.
 #
-# The setup is the textbook *perpendicular* shock (``\theta_{Bn}=90^\circ``):
+# The setup is the *perpendicular* shock (``\theta_{Bn}=90^\circ``):
 #
 # | Quantity            | Direction      |
 # |---------------------|----------------|
@@ -18,9 +19,11 @@
 # downstream (``+\hat{\mathbf{x}}``) and ``\mathbf{B}\parallel\hat{\mathbf{z}}``, the drift
 # runs along ``+\hat{\mathbf{y}}`` and is *parallel* to ``\mathbf{E}``. Its power input
 # ``P=q\,\mathbf{v}_{\nabla B}\!\cdot\!\mathbf{E}`` is therefore positive, so the proton is
-# accelerated as it slides along the front — the essence of SDA. (The ``\mathbf{E}\times
-# \mathbf{B}`` drift just carries the particle into the shock along ``\hat{\mathbf{x}}``; it
-# does not by itself accelerate the particle.)
+# accelerated as it slides along the front — the essence of SDA. The ``\mathbf{E}\times
+# \mathbf{B}`` drift carries the particle into the shock along ``\hat{\mathbf{x}}`` and, via
+# the cross-shock potential's normal field ``E_x`` (see below), also gains a localized
+# ``\hat{\mathbf{y}}`` component inside the ramp — in the de Hoffmann–Teller frame this is the
+# same motion as the gradient-``B`` drift, and it is what reflects the proton.
 #
 # ## Cross-shock potential
 #
@@ -101,13 +104,39 @@ end
 # the tangential gradient-B drift and is accelerated along ``+y``; the cross-shock potential
 # then reflects it, so it meets the front again and again.
 
-const x₀ = -2500.0e3
+const x₀ = -6000.0e3
 const v₀ = [0.0, -545.0e3, 0.0]
-const t_max = 35.0
+const t_max = 45.0
 
 u0 = [x₀, 0.0, 0.0, v₀...]
 prob = ODEProblem(trace!, u0, (0.0, t_max), param)
 sol = solve(prob, Vern9(); saveat = 0.05)
+
+# Comparison case: injected *with the ExB-drift velocity E×B/B² as the only initial speed*, and
+# launched deep upstream (x₀ = -4L) where the cross-shock potential's normal field E_x ≈ 0, so
+# the ExB drift is essentially along +x. NOTE this is still NOT a gyration-free guiding center:
+# the ExB speed |E|/B is itself perpendicular to B, so the proton keeps a perpendicular speed
+# v_⊥ = |E|/B, a finite gyroradius, and a magnetic moment μ. It therefore gyrates in x-y — the
+# y wiggle you still see upstream is that *gyration* (with ~zero net guiding-center y drift) —
+# and once it enters the ramp where E_x ≠ 0 it gains a real +y drift and some gradient-B
+# acceleration. (If the injection sat inside the ramp, as x₀ = -2500 km did, E_x(x₀) was ~24% of
+# E_y and the ExB drift already carried +133 km/s in y, which is the upstream y drift you saw.)
+# A truly gyration-free particle would need v ∥ B, which the exact v×B integrator could not
+# carry into the shock at all.
+v_ExB = drift_velocity(x₀, Em, Bm)          # E×B/B² at injection (includes the ramp's E_x)
+u0_exb = [x₀, 0.0, 0.0, v_ExB...]
+sol_exb = solve(ODEProblem(trace!, u0_exb, (0.0, t_max), param), Vern9(); saveat = 0.05)
+
+X_exb = [u[1] for u in sol_exb.u]
+Y_exb = [u[2] for u in sol_exb.u]
+vs_exb = [u[4:6] for u in sol_exb.u]
+K_exb = [0.5 * mᵢ * dot(v, v) for v in vs_exb]
+work_exb = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol_exb.u, vs_exb)]
+W_exb = [0.0; cumsum(0.5 .* (work_exb[1:(end - 1)] .+ work_exb[2:end]) .* diff(sol_exb.t))]
+W_exb_norm = W_exb ./ K_exb[1]              # normalized to its own initial KE
+
+println("Pure-ExB case: cumulative work ends at ", round(W_exb_norm[end]; digits = 3),
+    "x its own initial KE") #hide
 
 # ## Energy: the SDA signature
 #
@@ -133,7 +162,15 @@ n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X)
 K_norm = K_lab ./ K_lab[1]
 W_norm = W_cum ./ K_lab[1]
 
-println("Shock encounters (crossings of x=0): ", n_cross)
+# Perpendicular velocity and gyro-phase. B points along z, so the gyration lies in the x-y
+# plane; the velocity-phase atan2(v_y, v_x) measures where the perpendicular velocity points
+# and sets the sign of q v_y E_y (the energy work term). Phase 0 is defined by convention as
+# the perpendicular velocity pointing along +x (atan2(v_y, v_x) = 0 when v_y = 0, v_x > 0); we
+# wrap it into the [0, 360)° interval so it spans exactly one gyration.
+vys_kms = [v[2] for v in vs] ./ 1.0e3
+gyro_phase = [mod(atan(v[2], v[1]) * 180 / π, 360) for v in vs]
+
+println("Shock encounters (crossings of x=0): ", n_cross) #hide
 println(
     "Perpendicular-shock SDA: proton KE ends at ", round(K_norm[end]; digits = 2),
     "x; cumulative work from E ends at ", round(W_norm[end]; digits = 2), "x initial"
@@ -141,52 +178,109 @@ println(
 
 # ## Visualization
 
-f = Figure(size = (1500, 950), fontsize = 18)
+f = Figure(size = (1400, 1400), fontsize = 28)
+wc = Makie.wong_colors()    # default discrete (Wong) palette
 
-xpad = 500.0e3; ypad = 2000.0e3; zpad = 500.0e3
+xpad = 500.0e3; ypad = 2000.0e3
 xlim = (minimum(X) - xpad, maximum(X) + xpad)
 ylim = (minimum(Y) - ypad, maximum(Y) + ypad)
-zlim = (minimum(Z) - zpad, maximum(Z) + zpad)
 
-# Top row: 3D trajectory (colored by gained energy)
-ax3d = Axis3(
+## Top row: 2D X-Y trajectory (colored by gained energy)
+ax2d = Axis(
     f[1, 1];
-    title = "Proton SDA trajectory (colored by gained energy)",
-    xlabel = "x [km]", ylabel = "y [km]", zlabel = "z [km]",
-    aspect = :data,
-    limits = (xlim ./ 1.0e3, ylim ./ 1.0e3, zlim ./ 1.0e3),
+    title = "Proton trajectory (colored by gained energy)",
+    xlabel = L"x\;[\mathrm{km}]", ylabel = L"y\;[\mathrm{km}]",
+    aspect = DataAspect(),
+    limits = (xlim ./ 1.0e3, ylim ./ 1.0e3),
 )
 
-lines!(
-    ax3d, X ./ 1.0e3, Y ./ 1.0e3, Z ./ 1.0e3;
-    color = K_norm, colormap = :plasma, linewidth = 2.0
+## Cross-shock potential ramp region (where φ(x) is set); shaded band behind the trajectories
+xlo_pot, xhi_pot = -L / 1.0e3, L / 1.0e3   # nominal ramp half-width, in km
+band!(
+    ax2d, [xlo_pot, xhi_pot],
+    fill(ylim[1] / 1.0e3, 2), fill(ylim[2] / 1.0e3, 2);
+    color = (:gray, 0.18),
+)
+text!(
+    ax2d, 0.0, ylim[2] / 1.0e3;
+    text = "cross-shock potential φ(x)", align = (:center, :top), fontsize = 20,
+)
+
+## Upstream / downstream region labels (rotated 90° to save horizontal space)
+y_mid = (ylim[1] + ylim[2]) / 2.0e3
+text!(
+    ax2d, xlim[1] / 1.0e3 + 300.0, y_mid;
+    text = "upstream (x < 0)", rotation = π / 2, align = (:center, :center),
+    fontsize = 22, color = (:gray, 0.8),
+)
+text!(
+    ax2d, xlim[2] / 1.0e3 - 300.0, y_mid;
+    text = "downstream (x > 0)", rotation = π / 2, align = (:center, :center),
+    fontsize = 22, color = (:gray, 0.8),
+)
+
+l_sda = lines!(
+    ax2d, X ./ 1.0e3, Y ./ 1.0e3;
+    color = K_norm, colormap = :plasma, linewidth = 2.0,
+    label = "SDA (with gyration)",
+)
+l_exb = lines!(
+    ax2d, X_exb ./ 1.0e3, Y_exb ./ 1.0e3;
+    color = :red, linestyle = :dash, linewidth = 1.5,
+    label = "pure ExB drift",
 )
 cb = Colorbar(
-    f[1, 2], limits = (1, maximum(K_norm)),
-    colormap = :plasma, label = "KE / KE₀"
+    f[1, 3], limits = (1, maximum(K_norm)),
+    colormap = :plasma, label = L"K / K_0"
 )
 cb.width = 18
 
-# Shock front (semi-transparent plane at x = 0)
-mesh!(
-    ax3d,
-    Rect3f(
-        Point3f(-10.0e3, ylim[1], zlim[1]),
-        Vec3f(20.0e3, ylim[2] - ylim[1], zlim[2] - zlim[1])
-    );
-    color = (:red, 0.2),
+## Shock front (vertical line at x = 0)
+vlines!(ax2d, 0.0; color = (:red, 0.5), linewidth = 3)
+
+## Legend placed just right of the trajectory axis (then the colorbar sits on the far right)
+Legend(
+    f[1, 2], [l_sda, l_exb], ["SDA (with gyration)", "pure ExB drift"];
+    orientation = :vertical, framevisible = true, backgroundcolor = (:white, 0.7),
 )
 
-# Bottom row: energy time series
+## Bottom row: energy time series
 axE = Axis(
     f[2, 1:2];
-    title = "Energy gain",
-    xlabel = "Time [s]", ylabel = "Energy / initial",
-    limits = (nothing, (0, nothing)),
+    xlabel = "Time [s]", ylabel = L"K / K_0",
+    limits = (nothing, (-2, 12)),
 )
 lines!(axE, ts, K_norm; label = "instantaneous KE (lab frame)", color = :gray, linewidth = 1.5)
 lines!(axE, ts, W_norm; label = "cumulative work q∫v·E dt (SDA)", color = :black, linewidth = 2.5)
+lines!(axE, sol_exb.t, W_exb_norm; label = "pure ExB drift", color = :red, linestyle = :dash, linewidth = 2.0)
 axislegend(axE; position = :lt, framevisible = true, backgroundcolor = (:white, 0.7))
+
+## Third row: v_y and gyro-phase time series (x-axis linked with the energy panel)
+axVy = Axis(
+    f[3, 1:2];
+    xlabel = "Time [s]",
+    ylabel = L"v_y\;[\mathrm{km/s}]",
+)
+lines!(axVy, ts, vys_kms; label = "v_y", color = wc[1], linewidth = 3.0)
+
+axPhase = Axis(
+    f[3, 1:2];
+    yaxisposition = :right,
+    ylabel = L"\textrm{gyro-phase}\;[\!^{\circ}]",
+    limits = (nothing, (0, 360)),
+    yticks = [0, 90, 180, 270, 360],
+)
+hidexdecorations!(axPhase; grid = false)
+lines!(axPhase, ts, gyro_phase; label = "gyro-phase", color = wc[2], linewidth = 3.0)
+
+axislegend(axVy; position = :lt, framevisible = true, backgroundcolor = (:white, 0.7))
+axislegend(axPhase; position = :rb, framevisible = true, backgroundcolor = (:white, 0.7))
+linkxaxes!(axE, axVy, axPhase)
+
+## Row heights: trajectory panel takes the largest share, time series panels are shorter
+rowsize!(f.layout, 1, Relative(0.60))
+rowsize!(f.layout, 2, Relative(0.2))
+rowsize!(f.layout, 3, Relative(0.2))
 
 f = DisplayAs.PNG(f) #hide
 
