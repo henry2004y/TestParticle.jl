@@ -135,8 +135,10 @@ work_exb = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol_exb.u
 W_exb = [0.0; cumsum(0.5 .* (work_exb[1:(end - 1)] .+ work_exb[2:end]) .* diff(sol_exb.t))]
 W_exb_norm = W_exb ./ K_exb[1]              # normalized to its own initial KE
 
-println("Pure-ExB case: cumulative work ends at ", round(W_exb_norm[end]; digits = 3),
-    "x its own initial KE") #hide
+println( #hide
+    "Pure-ExB case: cumulative work ends at ", round(W_exb_norm[end]; digits = 3), #hide
+    "x its own initial KE" #hide
+) #hide
 
 # ## Energy: the SDA signature
 #
@@ -171,9 +173,9 @@ vys_kms = [v[2] for v in vs] ./ 1.0e3
 gyro_phase = [mod(atan(v[2], v[1]) * 180 / π, 360) for v in vs]
 
 println("Shock encounters (crossings of x=0): ", n_cross) #hide
-println(
-    "Perpendicular-shock SDA: proton KE ends at ", round(K_norm[end]; digits = 2),
-    "x; cumulative work from E ends at ", round(W_norm[end]; digits = 2), "x initial"
+println( #hide
+    "Perpendicular-shock SDA: proton KE ends at ", round(K_norm[end]; digits = 2), #hide
+    "x; cumulative work from E ends at ", round(W_norm[end]; digits = 2), "x initial" #hide
 ) #hide
 
 # ## Visualization
@@ -278,7 +280,7 @@ axislegend(axPhase; position = :rb, framevisible = true, backgroundcolor = (:whi
 linkxaxes!(axE, axVy, axPhase)
 
 ## Row heights: trajectory panel takes the largest share, time series panels are shorter
-rowsize!(f.layout, 1, Relative(0.60))
+rowsize!(f.layout, 1, Relative(0.6))
 rowsize!(f.layout, 2, Relative(0.2))
 rowsize!(f.layout, 3, Relative(0.2))
 
