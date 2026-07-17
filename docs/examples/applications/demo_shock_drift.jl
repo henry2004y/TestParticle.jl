@@ -126,7 +126,7 @@ vs = [u[4:6] for u in sol.u]
 
 K_lab = [0.5 * mᵢ * dot(v, v) for v in vs]
 work_rates = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol.u, vs)]
-W_cum = [0.0; cumsum(0.5 .* (work_rates[1:end-1] .+ work_rates[2:end]) .* diff(ts))]
+W_cum = [0.0; cumsum(0.5 .* (work_rates[1:(end - 1)] .+ work_rates[2:end]) .* diff(ts))]
 
 n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X))
 
