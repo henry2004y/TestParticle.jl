@@ -20,4 +20,5 @@ VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 TestParticle = {path = ".."}
 
 [compat]
+Meshes = "0.57.25"
 OrdinaryDiffEq = "7"
