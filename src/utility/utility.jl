@@ -34,7 +34,7 @@ so `seed` and `i` must be folded into one well-mixed integer first — which is 
 this function does.
 """
 function _rng_seed(seed::Integer, i::Integer)
-    z = UInt64(seed) + 0x9e3779b97f4a7c15 * UInt64(i)
+    z = (seed % UInt64) + 0x9e3779b97f4a7c15 * (i % UInt64)
     z = (z ⊻ (z >> 30)) * 0xbf58476d1ce4e5b9
     z = (z ⊻ (z >> 27)) * 0x94d049bb133111eb
     z = z ⊻ (z >> 31)

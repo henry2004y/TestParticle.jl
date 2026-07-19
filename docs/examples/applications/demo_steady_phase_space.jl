@@ -220,11 +220,11 @@ function reconstruct_backward_projections(
     dv = dv_km * 1.0e3
     if adaptive
         vx_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
-        vy_c = range(-vy_range, v_range; step = dv_coarse_km * 1.0e3)
+        vy_c = range(-vy_range, vy_range; step = dv_coarse_km * 1.0e3)
         vz_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
     else
         vx_c = range(-v_range, v_range; step = dv)
-        vy_c = range(-vy_range, v_range; step = dv)
+        vy_c = range(-vy_range, vy_range; step = dv)
         vz_c = range(-v_range, v_range; step = dv)
     end
 
@@ -244,7 +244,7 @@ function reconstruct_backward_projections(
                 )
                 vy_grid = range(
                     max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
-                    min(v_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
+                    min(vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
                     step = dv
                 )
                 vz_grid = range(
@@ -299,14 +299,13 @@ const z_int = range(-vlim, vlim; step = 10.0)    # km/s, integration axis
 
 function analytic_proj(vdf, n0, i, j, k, gi, gj, gk, dvk)
     M = zeros(length(gi), length(gj))
-    v = Vector{Float64}(undef, 3)
     for (bi, vi) in enumerate(gi), (bj, vj) in enumerate(gj)
         s = 0.0
         for vk in gk
-            v[i] = vi * 1.0e3
-            v[j] = vj * 1.0e3
-            v[k] = vk * 1.0e3
-            s += n0 * pdf(vdf, SVector(v...)) * 1.0e18 * dvk
+            v1 = i == 1 ? vi * 1.0e3 : (j == 1 ? vj * 1.0e3 : vk * 1.0e3)
+            v2 = i == 2 ? vi * 1.0e3 : (j == 2 ? vj * 1.0e3 : vk * 1.0e3)
+            v3 = i == 3 ? vi * 1.0e3 : (j == 3 ? vj * 1.0e3 : vk * 1.0e3)
+            s += n0 * pdf(vdf, SVector{3, Float64}(v1, v2, v3)) * 1.0e18 * dvk
         end
         M[bi, bj] = s
     end
