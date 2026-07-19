@@ -51,6 +51,7 @@ applications_order = [
     "demo_shock.jl",
     "demo_shock_drift.jl",
     "demo_shock_phase_space.jl",
+    "demo_steady_phase_space.jl",
     "demo_fermi_foreshock.jl",
     "demo_cosmicray.jl",
     "demo_radiation.jl",

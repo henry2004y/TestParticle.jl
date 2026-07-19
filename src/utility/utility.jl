@@ -12,6 +12,37 @@ function get_particle_flux end
 function get_particle_fluxes end
 
 """
+    _rng_seed(seed::Integer, i::Integer)
+
+Combine the ensemble `seed` and the trajectory index `i` into a well-mixed `UInt64`
+used to seed a per-trajectory RNG.
+
+A naive `seed + i` couples the two linearly: incrementing `seed` merely *rotates*
+which RNG each trajectory index draws from, so two nearby seeds (e.g. 1 and 2)
+produce ensembles that share almost all trajectories and are therefore not
+independent. The SplitMix64-style finalizer below is a bijection on `UInt64`, so
+any distinct `seed` decorrelates *every* trajectory while remaining deterministic
+and reproducible (no reliance on `hash`, which is salted per Julia session).
+
+Note: Julia's multi-argument `Xoshiro(seed, i, …)` constructor does *not* mix —
+it embeds the integers directly into the 4×`UInt64` state (`Xoshiro(s0,s1,s2,s3)`
+→ `initstate!`). Because `xoshiro256++`'s first output depends only on `s0` and
+`s3`, seeding with `Xoshiro(seed, i, 0, 0)` yields the *same* first draw for every
+trajectory index `i` and does not decorrelate adjacent seeds. Robust mixing in
+`Xoshiro` only happens via the single-argument constructor (SHA2-256 `hash_seed`),
+so `seed` and `i` must be folded into one well-mixed integer first — which is what
+this function does.
+"""
+function _rng_seed(seed::Integer, i::Integer)
+    z = UInt64(seed) + 0x9e3779b97f4a7c15 * UInt64(i)
+    z = (z ⊻ (z >> 30)) * 0xbf58476d1ce4e5b9
+    z = (z ⊻ (z >> 27)) * 0x94d049bb133111eb
+    z = z ⊻ (z >> 31)
+    return z
+end
+
+
+"""
     sph2cart(r, θ, ϕ)
 
 Convert from spherical to Cartesian coordinates vector.

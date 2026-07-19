@@ -238,7 +238,7 @@ function _solve_single_boris(
         save_start, save_end, save_everystep,
         ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F}
-    rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+    rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
     new_prob = prob.prob_func(prob, EnsembleContext(i, 1, myid(), nothing, rng, seed))
     single_prob = TraceProblem(new_prob.u0, new_prob.tspan, new_prob.p)
     sol_type = _get_sol_type(single_prob, dt, Val(SaveFields), Val(SaveWork))
@@ -498,7 +498,7 @@ end
 
     # set initial conditions for each trajectory i
     iout = 0
-    rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+    rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
     new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
     u0_i = SVector{6, T}(new_prob.u0)
     r = u0_i[SVector(1, 2, 3)]

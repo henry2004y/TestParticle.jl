@@ -249,7 +249,7 @@ end
     min_growth = 0.2
 
     @inbounds for i in irange
-        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]

@@ -47,7 +47,7 @@ function _rk4!(
 
         # set initial conditions for each trajectory i
         iout = 0
-        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv = new_prob.u0
 
