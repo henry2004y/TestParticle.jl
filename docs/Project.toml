@@ -39,3 +39,4 @@ TestParticle = {path = ".."}
 [compat]
 DocumenterVitepress = "0.3"
 OrdinaryDiffEq = "7"
+Tensors = "1.17.1"
