@@ -113,4 +113,72 @@ end
     end
 end
 
+@testset "Seed Independence (Boris / GC / Hybrid)" begin
+    # Distinct seeds must give *independent* ensembles, not a rotation of the same
+    # RNG stream. (A naive `Xoshiro(seed + i)` only shifts which RNG each trajectory
+    # index draws from, so seed=2 was previously a near-rotation of seed=1.)
+
+    # --- Boris (full 6D) ---
+    let
+        param_b = prepare(E_uniform, B_uniform; species = Proton)
+        function pf_b(prob, ctx)
+            v = SA[1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng)]
+            return remake(prob; u0 = SA[0.0, 0.0, 0.0, v...])
+        end
+        prob = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param_b; prob_func = pf_b)
+        init_v(sols) = [
+            SVector(sols.u[i].u[1][4], sols.u[i].u[1][5], sols.u[i].u[1][6])
+                for i in 1:length(sols.u)
+        ]
+        v1 = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        v2 = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 2))
+        v1b = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        @test v1 == v1b
+        @test !all(v2[i] == v1[i + 1] for i in 1:5)
+    end
+
+    # --- GC (rk4) ---
+    let
+        prob = TraceGCProblem(u0_gc, tspan, param; prob_func)
+        init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
+        v1 = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
+        v2 = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 2))
+        v1b = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
+        @test v1 == v1b
+        @test !all(v2[i] == v1[i + 1] for i in 1:5)
+    end
+
+    # --- Hybrid ---
+    let
+        m = TestParticle.mᵢ
+        q = TestParticle.qᵢ
+        q2m = q / m
+        E_zero = TestParticle.ZeroField()
+        function sheared_B_func(x, t)
+            B0 = 0.01
+            k = 100.0
+            return SA[B0 * cos(k * x[1]), B0 * sin(k * x[1]), 0.0]
+        end
+        sheared_B = TestParticle.Field(sheared_B_func)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        p = (q2m, m, E_zero, sheared_B, TestParticle.ZeroField())
+        function pf_h(prob, ctx)
+            v = SA[1.0e4 + 1.0e2 * rand(ctx.rng), 0.0, 1.0e3]
+            return remake(
+                prob; u0 = SVector{6, Float64}(
+                    prob.u0[1], prob.u0[2], prob.u0[3], v[1], v[2], v[3]
+                )
+            )
+        end
+        prob = TraceHybridProblem(u0, tspan, p; prob_func = pf_h)
+        alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
+        init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
+        v1 = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 1))
+        v2 = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 2))
+        v1b = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 1))
+        @test v1 == v1b
+        @test !all(v2[i] == v1[i + 1] for i in 1:5)
+    end
+end
+
 end # module test_seed_reproducibility

@@ -73,7 +73,7 @@ function _rk45!(
         traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
-        rng = isnothing(seed) ? default_rng() : Xoshiro(seed + i)
+        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv = new_prob.u0
 
