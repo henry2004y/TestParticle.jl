@@ -46,7 +46,7 @@ seed = 42;
 const B_mag = 10.0e-9  # uniform magnetic field magnitude [T]
 const B_vec = SA[0.0, 0.0, B_mag]  # along +z
 const V_drift = -400.0e3  # desired E×B drift speed [m/s] (along -x)
-# E×B drift: u_E = E×B/B²  ⇒  E = B × u_E  (with E·B = 0).
+## E×B drift: u_E = E×B/B²  ⇒  E = B × u_E  (with E·B = 0).
 const E_vec = SA[0.0, B_mag * V_drift, 0.0]  # [V/m]
 
 function get_E_steady(r, t = 0.0)
@@ -55,7 +55,7 @@ end
 
 function get_B_steady(r, t = 0.0)
     return B_vec
-end
+end;
 
 # ## Source VDF: drifting bi-Maxwellian
 # Anisotropic (perpendicular hotter than parallel) so the 2-D projections are visibly
@@ -312,14 +312,6 @@ function analytic_proj(vdf, n0, i, j, k, gi, gj, gk, dvk)
     return M
 end
 
-function make_contours()
-    return (
-        analytic_proj(vdf, n0, 1, 2, 3, fine_g, fine_g, z_int, step(z_int)),
-        analytic_proj(vdf, n0, 1, 3, 2, fine_g, fine_g, z_int, step(z_int)),
-        analytic_proj(vdf, n0, 2, 3, 1, fine_g, fine_g, z_int, step(z_int)),
-    )
-end
-
 # Analytic 2-D projections on the histogram edges used by Methods 1 & 2. Filling each
 # 3-D bin with `f_3D·dv_z` and then summing over z reproduces the same [s²/km⁵] scale.
 function analytic_hist_projections(vdf, n0, v_edges; dv_km)
@@ -348,51 +340,50 @@ end
 
 # ## Plots: reconstructed phase space vs analytic contours
 
-function plot_validation(h_flux, h_liou, h_bw, xloc, fcont; vlim = 1000.0)
-    titles = ["Flux Injection", "Forward Liouville", "Backward Liouville"]
-    cols = [L"V_x–V_y", L"V_x–V_z", L"V_y–V_z"]
-    hists = (h_flux, h_liou, h_bw)
+matrix_of(h::Hist2D) = bincounts(h)
+matrix_of(h::Tuple) = h[3]
+
+function plot_validation(h_flux, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
+    titles = ["Analytic", "Flux Injection", "Forward Liouville", "Backward Liouville"]
+    hists = (h_ana, h_flux, h_liou, h_bw)
+    nrows = 4
     xlab = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylab = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
-    fig = Figure(size = (1300, 1200), fontsize = 22)
+    fig = Figure(size = (1400, 1500), fontsize = 28)
     gl = fig[1, 1] = GridLayout()
     Label(
         gl[1, 2:4],
-        "Detector at x = $(round(xloc * 1.0e-3; digits = 0)) km — white dashed = analytic";
-        fontsize = 24, tellwidth = false
+        "Detector at x = $(round(xloc * 1.0e-3; digits = 0)) km";
+        fontsize = 32, tellwidth = false
     )
-    for r in 1:3, i in 1:3
+    global_max = maximum(
+        maximum(filter(isfinite, vec(matrix_of(hists[r][i])))) for r in 1:nrows, i in 1:3
+    )
+    last_hm = nothing
+    for r in 1:nrows, i in 1:3
         ax = Axis(
-            gl[r + 1, i + 1], title = cols[i], xlabel = xlab[i], ylabel = ylab[i];
-            xlabelsize = 22, ylabelsize = 22, titlesize = 20,
-            xticklabelsize = 18, yticklabelsize = 18,
+            gl[r + 1, i + 1], xlabel = xlab[i], ylabel = ylab[i];
+            xlabelsize = 28, ylabelsize = 28, titlesize = 24,
+            xticklabelsize = 22, yticklabelsize = 22,
             limits = (-vlim, vlim, -vlim, vlim), aspect = 1
         )
         h = hists[r][i]
-        hm = h isa Tuple ? heatmap!(ax, h...; colormap = :turbo) :
-            heatmap!(ax, h; colormap = :turbo)
-        contour!(
-            ax, fine_g, fine_g, fcont[i]; color = :white, linestyle = :dash,
-            linewidth = 2, levels = 6
-        )
-        if i == 3
-            Colorbar(gl[r + 1, 5], hm; labelsize = 18, ticklabelsize = 14)
-        end
+        last_hm = h isa Tuple ?
+            heatmap!(ax, h...; colormap = :turbo, colorrange = (0.0, global_max)) :
+            heatmap!(ax, h; colormap = :turbo, colorrange = (0.0, global_max))
     end
-    for r in 1:3
-        Label(gl[r + 1, 1], titles[r]; fontsize = 18, rotation = π / 2, tellheight = false)
+    Colorbar(
+        fig[1, 2], last_hm;
+        label = L"f\ [\mathrm{s}^2/\mathrm{km}^5]", labelsize = 24, ticklabelsize = 18
+    )
+    for r in 1:nrows
+        Label(gl[r + 1, 1], titles[r]; fontsize = 22, rotation = π / 2, tellheight = false)
     end
     return fig
 end
 
-fcont_down = make_contours()
-fcont_up = make_contours()
-
-fig_down = plot_validation(hists_down, hists_down_m2, res_down_bw, x_downstream, fcont_down)
+fig_down = plot_validation(hists_down, hists_down_m2, res_down_bw, ana_hists, x_downstream)
 fig_down = DisplayAs.PNG(fig_down) #hide
-
-fig_up = plot_validation(hists_up, hists_up_m2, res_up_bw, x_upstream, fcont_up)
-fig_up = DisplayAs.PNG(fig_up) #hide
 
 # ## 1-D slice check
 # Slice the `V_x–V_z` projection at `v_z = 0` and overlay the three reconstructions on
@@ -425,9 +416,6 @@ function slice_at(h, second::Bool, val)
     end
 end
 
-matrix_of(h::Hist2D) = bincounts(h)
-matrix_of(h::Tuple) = h[3]
-
 const fine_x = range(-vlim, vlim; step = 10.0)
 const fana_slice = [
     analytic_proj(vdf, n0, 1, 3, 2, [vx], [0.0], z_int, step(z_int))[1]
@@ -438,17 +426,27 @@ xc_f, fy_f = slice_at(hists_down[2], true, 0.0)
 xc_l, fy_l = slice_at(hists_down_m2[2], true, 0.0)
 xc_b, fy_b = slice_at(res_down_bw[2], true, 0.0)
 
-fig_slice = Figure(size = (900, 500), fontsize = 20)
+# Log-scaled slice: stretching the low-density wings makes the Monte-Carlo scatter
+# (where the methods deviate most from the analytic profile) directly visible.
+function _logslice(xc, fy)
+    m = fy .> 0
+    return xc[m], fy[m]
+end
+xc_f_l, fy_f_l = _logslice(xc_f, fy_f)
+xc_l_l, fy_l_l = _logslice(xc_l, fy_l)
+xc_b_l, fy_b_l = _logslice(xc_b, fy_b)
+
+fig_slice = Figure(size = (900, 500), fontsize = 24)
 axs = Axis(
     fig_slice[1, 1], xlabel = L"V_x [\mathrm{km/s}]",
-    ylabel = L"f(V_x, V_z=0) [\mathrm{s}^2/\mathrm{km}^5]",
-    limits = (-vlim, vlim, nothing, nothing)
+    ylabel = L"\log_{10} f(V_x, V_z=0)",
+    yscale = log10, limits = (-vlim, 0.0, 1.0e5, 1.0e12)
 )
-lines!(axs, fine_x, fana_slice; label = "Analytic", color = :black, linewidth = 3)
-scatter!(axs, xc_f, fy_f; label = "Flux", color = (:blue, 0.5), markersize = 4)
-scatter!(axs, xc_l, fy_l; label = "Forward Liouville", color = (:green, 0.5), markersize = 4)
-lines!(axs, xc_b, fy_b; label = "Backward Liouville", color = :red, linewidth = 2)
-axislegend(axs; position = :rt)
+lines!(axs, fine_x, fana_slice; label = "Analytic", color = :black, linewidth = 3, linestyle = :dash)
+scatterlines!(axs, xc_f_l, fy_f_l; label = "Flux", color = :blue, linewidth = 2, markersize = 8)
+scatterlines!(axs, xc_l_l, fy_l_l; label = "Forward Liouville", color = :green, linewidth = 2, markersize = 8)
+lines!(axs, xc_b_l, fy_b_l; label = "Backward Liouville", color = :red, linewidth = 2)
+axislegend(axs; position = :lt, framevisible = false)
 fig_slice = DisplayAs.PNG(fig_slice) #hide
 
 # ## Deviation report
@@ -541,7 +539,7 @@ end
 slope_noise = logslope(Ns, agg_noise)   # target ≈ -0.5
 slope_var = logslope(Ns, agg_var)     # target ≈ -1.0
 
-fig_scaling = Figure(size = (1300, 380), fontsize = 18)
+fig_scaling = Figure(size = (700, 460), fontsize = 24)
 ax1 = Axis(
     fig_scaling[1, 1], xscale = log10, yscale = log10,
     xlabel = L"N\ \mathrm{[trajectories]}",
@@ -551,31 +549,12 @@ ax1 = Axis(
 scatter!(ax1, Float64.(Ns), agg_noise; color = :blue, markersize = 8, label = "measured")
 ref1 = agg_noise[end] * sqrt(Ns[end]) ./ sqrt.(Float64.(Ns))
 lines!(ax1, Float64.(Ns), ref1; color = :black, linestyle = :dash, label = L"\propto 1/\sqrt{N}")
-axislegend(ax1; position = :lt)
-
-ax2 = Axis(
-    fig_scaling[1, 2], xscale = log10, yscale = log10,
-    xlabel = L"N", ylabel = L"\sum_b \mathrm{Var}_s[h_b]\ (\propto 1/N)",
-    title = "Variance ∝ 1/N  (slope = $(round(slope_var; digits = 2)))"
-)
-scatter!(ax2, Float64.(Ns), agg_var; color = :red, markersize = 8, label = "measured")
-ref2 = agg_var[end] * Ns[end] ./ Float64.(Ns)
-lines!(ax2, Float64.(Ns), ref2; color = :black, linestyle = :dash, label = L"\propto 1/N")
-axislegend(ax2; position = :lt)
-
-ax3 = Axis(
-    fig_scaling[1, 3], xscale = log10, yscale = log10,
-    xlabel = L"N", ylabel = L"relative\ L2\ vs\ analytic",
-    title = "Analytic deviation ∝ 1/√N"
-)
-scatter!(ax3, Float64.(Ns), ana_l2; color = :green, markersize = 8, label = "analytic L2")
-axislegend(ax3; position = :lt)
+axislegend(ax1; position = :rt)
 fig_scaling = DisplayAs.PNG(fig_scaling) #hide
 
-# The measured log–log slopes are close to −0.5 (noise) and −1.0 (variance), confirming
-# the expected 1/√N sampling-noise scaling. The analytic relative-L2 deviation falls on
-# the same 1/√N line, so the ≈10% Flux-Injection deviation in the report above is
-# dominated by Monte-Carlo scatter, not by method bias.
+# The measured log–log slope is close to −0.5, confirming the expected 1/√N
+# sampling-noise scaling: the ≈10% Flux-Injection deviation above is dominated by
+# Monte-Carlo scatter, not by method bias.
 
 io_s = IOBuffer() #hide
 println(io_s, "| N (trajectories) | MC noise (∝ 1/√N) | ΣVar (∝ 1/N) | analytic L2 |") #hide
