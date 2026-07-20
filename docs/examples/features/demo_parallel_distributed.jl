@@ -14,10 +14,12 @@
 
 using Distributed
 
-# We add a few workers. Adjust `N` to your environment; on a cluster you would
+# Add workers only if none exist yet, so the script is safe to re-run in the
+# same session or when Julia is started with `-p`. On a cluster you would
 # typically add one worker per physical core or per node.
-const N = min(4, Sys.CPU_THREADS)
-addprocs(N)
+if nworkers() == 1
+    addprocs(min(4, Sys.CPU_THREADS))
+end
 
 # Every package the workers touch must be loaded on every worker. `TestParticle`
 # brings in `trace`, `prepare`, `Electron`, `ZeroField`, `Boris`, and the

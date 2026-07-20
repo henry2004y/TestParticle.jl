@@ -32,20 +32,20 @@ println("Running with $nthreads Julia thread(s).")
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = ZeroField()
+const zero_E = ZeroField()
 
-param = prepare(zero_E, uniform_B; species = Electron)
-q2m = TP.get_q2m(param)
+const param = prepare(zero_E, uniform_B; species = Electron)
+const q2m = TP.get_q2m(param)
 
 const tperiod = 2π / (abs(q2m) * Bmag)
 const vth = 1.0e5
 
-tspan = (0.0, 20 * tperiod)
-dt = tperiod / 12
-stateinit = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+const tspan = (0.0, 20 * tperiod)
+const dt = tperiod / 12
+const stateinit = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-trajectories = 512
-seed = 1234
+const trajectories = 512
+const seed = 1234
 
 # `prob_func` receives an `EnsembleContext` `ctx`, whose `ctx.rng` is a per-trajectory
 # random number generator seeded deterministically from `seed`. The same
@@ -67,8 +67,8 @@ end
 # For the SciML path we wrap the base `ODEProblem` in an `EnsembleProblem` and pass
 # the desired `ensemblealg` as the third positional argument of `solve`.
 
-prob_ode = ODEProblem(trace, stateinit, tspan, param)
-ensemble_ode = EnsembleProblem(prob_ode; prob_func, safetycopy = false)
+const prob_ode = ODEProblem(trace, stateinit, tspan, param)
+const ensemble_ode = EnsembleProblem(prob_ode; prob_func, safetycopy = false)
 
 run_ode(ealg) = solve(
     ensemble_ode, Vern9(), ealg;
@@ -80,7 +80,7 @@ run_ode(ealg) = solve(
 # The native Boris pusher uses `TraceProblem` and accepts the identical
 # `ensemblealg` argument. It additionally requires a fixed timestep `dt`.
 
-prob_boris = TraceProblem(stateinit, tspan, param; prob_func)
+const prob_boris = TraceProblem(stateinit, tspan, param; prob_func)
 
 run_boris(ealg) = TP.solve(
     prob_boris, Boris(), ealg;
