@@ -21,8 +21,9 @@ cp(index_src, index_out; force = true)
 # Define orders manually
 drifts_order = [
     "demo_ExB_drift.jl",
-    "demo_gradient_B.jl",
-    "demo_curvature_B.jl",
+    "demo_curvature_gradient_B.jl",
+    "demo_magnetic_drift.jl",
+    "demo_drift_relation.jl",
     "demo_gravity_drift.jl",
     "demo_polarization_drift.jl",
     "demo_FLR.jl",

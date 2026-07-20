@@ -88,6 +88,8 @@ Explore how `TestParticle.jl` can be applied to complex physical systems:
 
 For a full list of capabilities, browse the **Examples** section in the sidebar:
 
-- **Drifts**: ExB, Gradient-B, Curvature, and more.
+- **Drifts**: [ExB Drift](@ref), [Curvature and Grad-B Drifts](@ref),
+  [Magnetic Drift and Energy Partition](@ref),
+  [Relation between the Magnetic Drifts](@ref), and more.
 - **Analytic Fields**: Dipole fields, magnetic bottles, tokamaks.
 - **Advanced Features**: GPU acceleration, co-evolution of particles and fields, custom saving callbacks.
