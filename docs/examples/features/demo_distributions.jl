@@ -15,7 +15,7 @@ using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 import DisplayAs #hide
 
-rng = Xoshiro(1234)
+rng = Xoshiro(1234);
 
 # Number of samples
 N = 100_000;
