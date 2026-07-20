@@ -38,4 +38,5 @@ TestParticle = {path = ".."}
 
 [compat]
 DocumenterVitepress = "0.3"
+Meshes = "0.57.25"
 OrdinaryDiffEq = "7"
