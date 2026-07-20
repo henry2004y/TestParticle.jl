@@ -64,6 +64,8 @@ features_order = [
     "demo_accuracy.jl",
     "demo_adaptive_accuracy.jl",
     "demo_performance.jl",
+    "demo_parallel_threads.jl",
+    "demo_parallel_distributed.jl",
     "demo_interpolation.md",
     "demo_coevolution.jl",
     "demo_dimensionless.jl",
