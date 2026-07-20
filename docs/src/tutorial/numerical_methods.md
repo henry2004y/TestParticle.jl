@@ -60,6 +60,8 @@ prob = TraceProblem(stateinit, tspan, param)
 sol = TestParticle.solve(prob; dt, savestepinterval)[1]
 ```
 
+For the full family of Boris solvers (Multistep, Hyper, and Adaptive), see [Boris Pusher](@ref Boris-Pusher).
+
 ## Boundary check
 
 Boundary check is performed via the `callback` keyword argument or `isoutside` keyword argument for the Boris solvers. By default, no boundary check is performed, but the tracing may stop if NaN values are encountered when interpolating the EM fields or numerical instability occurs.
