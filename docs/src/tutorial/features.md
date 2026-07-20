@@ -45,10 +45,29 @@ When tracing in numeric fields, memory efficiency is critical. By default, ensur
 !!! warning
     When defining a `prob_func` for an `EnsembleProblem`, avoid in-place mutation of the `ODEProblem` (e.g., `prob.u0 = ...`), especially when using `StaticArrays`. SciMLBase v2.0+ may issue a warning about "Mutation of ODEProblem detected". Instead, use `remake(prob; u0=...)` to create a new problem instance with updated parameters.
 
+## Parallelization
+
+Tracing many independent particles is an *embarrassingly parallel* workload: each trajectory is computed without communication with the others. `TestParticle.jl` exposes the same ensemble parallelization interface for both the SciML solvers (via `OrdinaryDiffEq`) and the native [Boris Method](@ref), so switching from a serial run to a parallel one only requires changing a single argument.
+
+| Algorithm | Description |
+| :--- | :--- |
+| `EnsembleSerial()` | Trajectories are solved one after another (no parallelism). |
+| `EnsembleThreads()` | Trajectories are split across the available Julia threads within a single process. |
+| `EnsembleDistributed()` | Trajectories are distributed across worker processes with `pmap` (multiple machines / NUMA nodes). |
+| `EnsembleSplitThreads()` | Hybrid: work is first split across worker processes, then multithreaded within each process. |
+
+The two execution models differ enough that they are documented separately:
+
+- [Multithreaded parallelization](@ref) (`EnsembleSerial` / `EnsembleThreads`) runs entirely inside one Julia session — no extra setup is needed, and the achievable speedup depends on `Threads.nthreads()`.
+- [Distributed parallelization](@ref) (`EnsembleDistributed` / `EnsembleSplitThreads`) requires adding worker processes up front and loading the required packages on every worker, but scales beyond a single machine.
+
+For GPU-based massively parallel tracing, see the [GPU Ensemble Tracing](@ref) example.
+
 ## Boris Pusher
 
-The native Boris particle pusher is optimized for performance and energy conservation in magnetic fields.
+The native Boris pusher is optimized for performance and energy conservation in magnetic fields. `TestParticle.jl` provides a whole family of Boris solvers — standard, Multistep, Hyper, and Adaptive — described in [Boris Pusher](@ref Boris-Pusher).
 
+- **Tutorial**: [Boris Pusher](@ref Boris-Pusher)
 - **Example**: [Boris Method](@ref)
 
 ## Numerical Field Interpolations

@@ -1,10 +1,16 @@
-# Advanced Boris Methods
+# [Boris Pusher](@id Boris-Pusher)
 
-The standard Boris method is a widely used algorithm for tracing charged particles because it exactly conserves energy in a static, uniform magnetic field. However, it requires a time step size $\Delta t$ much smaller than the gyroperiod $T = 2\pi / \Omega$ to accurately capture the orbital phase (the phase error scales as $\mathcal{O}(\Delta t^2)$).
+The native Boris pusher is a widely used algorithm for tracing charged particles in magnetic fields. It is second order, volume preserving, and exactly conserves energy in a static, uniform magnetic field, while being highly efficient for long-time tracing. A basic usage example is shown in [Boris Method](@ref); this page covers the full family of Boris solvers available in `TestParticle.jl`.
 
-To address scenarios requiring extremely high fidelity over long time scales without decreasing the simulation $\Delta t$ too drastically, `TestParticle.jl` implements two advanced variants: **Multistep Boris** and **Hyper Boris**.
+## 1. Standard Boris Method
 
-## 1. Multistep Boris ($n$-step Boris)
+The Boris method advances the particle in a staggered (leapfrog) manner: the velocity is first rotated by the magnetic field, then the position is pushed using the updated velocity, and the process repeats. Because the magnetic rotation is applied as an *exact* rotation rather than an approximate update, energy is conserved to machine precision in a static, uniform field.
+
+The method requires a fixed time step $\Delta t$ much smaller than the gyroperiod $T = 2\pi / \Omega$ to accurately capture the orbital phase. The phase error scales as $\mathcal{O}(\Delta t^2)$, so a finer step is needed when phase fidelity matters more than wall-clock time.
+
+To reach extremely high fidelity over long time scales without shrinking $\Delta t$ drastically, `TestParticle.jl` implements several advanced variants: **Multistep Boris**, **Hyper Boris**, and **Adaptive Boris**.
+
+## 2. Multistep Boris ($n$-step Boris)
 
 The Multistep Boris integrator artificially subdivides the standard update cycle into $n$ smaller sub-steps. The electric and magnetic fields are evaluated once at the full time step location, but the velocity rotation is broken into $n$ smaller partial rotations.
 
@@ -19,9 +25,9 @@ In the Multistep Boris scheme, the rotation vector is divided by $n$:
 ```
 The rotation part of the Boris method is recursively applied $n$ times using $\mathbf{t}_n$. While reducing the numerical detuning and improving rotation accuracy, it does not intrinsically change the mathematical order of the phase error (it remains 2nd order) but substantially decreases the absolute error coefficient.
 
-## 2. Hyper Boris (Gyrophase Correction)
+## 3. Hyper Boris (Gyrophase Correction)
 
-The Hyper Boris integrator ([Zenitani & Kato, 2025](https://arxiv.org/abs/2505.02270)) achieves higher-order accuracy in tracking the precise gyro-orbital phase by introducing specialized correction factors to the electric and magnetic drift terms. 
+The Hyper Boris integrator ([Zenitani & Kato, 2025](https://arxiv.org/abs/2505.02270)) achieves higher-order accuracy in tracking the precise gyro-orbital phase by introducing specialized correction factors to the electric and magnetic drift terms.
 
 Given an order $N$ ($N \in \{4, 6\}$), the normalized vectors are modified prior to the rotation:
 ```math
@@ -52,28 +58,7 @@ c_6 &= -\frac{1}{3} - \frac{2}{15} t_{mag}^2
 
 These analytically tuned correctors virtually eliminate phase disparity and energy fluctuation across standard $\Delta t$ bounds.
 
-### Using the Advanced Solvers
-
-You can access these features in `TestParticle.jl` by explicitly defining the algorithm in the `solve` call.
-
-- `MultistepBoris2(n)`: Sub-cycling division count `n`.
-- `MultistepBoris4(n)`: 4th-order Hyper-Boris with sub-cycling `n`.
-- `MultistepBoris6(n)`: 6th-order Hyper-Boris with sub-cycling `n`.
-
-```julia
-# Standard Boris (n=1)
-sol = TestParticle.solve(prob, Boris(); dt)
-
-# Multistep Boris (n=2)
-sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
-
-# Hyper Boris (n=2, N=4)
-sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
-```
-
-Combining both $n > 1$ and higher-order correction ($N > 2$) ensures ultra-high stability tracking over drastically varying gradient fields!
-
-## 3. Adaptive Boris Method
+## 4. Adaptive Boris Method
 
 The `AdaptiveBoris` solver adjusts the time step $\Delta t$ dynamically based on the local cyclotron frequency $\Omega_c = |q B / m|$. This is particularly useful in systems with strong magnetic field gradients, such as magnetic mirrors or planetary magnetospheres, where the required resolution varies significantly along the particle's trajectory.
 
@@ -95,11 +80,16 @@ To preserve the leapfrog structure and maintain energy conservation, `TestPartic
 
 This ensures that the velocity is always correctly centered relative to the current $\Delta t$ before each step. This "re-centering" at the nodes allows the integrator to remain practically time-reversible and maintains excellent energy conservation even as the time step changes by orders of magnitude.
 
-## 4. Summary of Solvers
+## 5. Using the Solvers
 
 ### Fixed-step Solvers
 
-Fixed-step solvers are specified as the second argument to `solve` (after the problem) and require a `dt` keyword.
+Fixed-step solvers are specified as the second argument to `solve` (after the problem) and require a `dt` keyword:
+
+- `Boris()`: The standard Boris pusher.
+- `MultistepBoris2(n)`: Sub-cycling division count `n`.
+- `MultistepBoris4(n)`: 4th-order Hyper-Boris with sub-cycling `n`.
+- `MultistepBoris6(n)`: 6th-order Hyper-Boris with sub-cycling `n`.
 
 ```julia
 # Standard Boris
@@ -111,6 +101,8 @@ sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
 # Hyper Boris (N=4, n=2)
 sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 ```
+
+Combining both $n > 1$ and higher-order correction ($N > 2$) ensures ultra-high stability tracking over drastically varying gradient fields.
 
 ### Adaptive Boris
 

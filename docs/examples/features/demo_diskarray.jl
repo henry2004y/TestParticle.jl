@@ -33,7 +33,7 @@ function HDF5DiskArray(ds::HDF5.Dataset)
     end
     cs = isnothing(chunks) ? nothing : GridChunks(size(ds), chunks)
     return HDF5DiskArray{eltype(ds), ndims(ds), typeof(cs)}(ds, cs)
-end
+end;
 
 # ## Create Example Data
 #
@@ -74,6 +74,10 @@ println("Successfully created $filename")
 # ## Interpolation Function
 #
 # We define a function `itp` to query the field at a single location `x`.
+#
+# We also verify the correctness of the `Periodic` boundary condition. Since the
+# data uses cell center values with a period of 10, a query at `x = -0.5` wraps
+# around to `9.5`. The expected value at `(9.5, 1.0, 1.0)` is `i + j + k = 11.5`.
 
 ## Open the file and wrap the dataset
 h5open(filename, "r") do fid
@@ -93,9 +97,6 @@ h5open(filename, "r") do fid
     loc_out = (-0.5, 1.0, 1.0)
     val_periodic = itp(loc_out...)
     println("Value at $loc_out (Periodic): ", val_periodic)
-    ## Check correctness of Periodic
-    ## Note that we assume cell center values. -0.5 wraps to 9.5 (since period is 10).
-    ## Value at 9.5, 1.0, 1.0. Data is i+j+k.
     println("Expected Periodic: ", 9.5 + 1 + 1)
 
     ## vector field

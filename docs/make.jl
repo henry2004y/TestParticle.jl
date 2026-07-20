@@ -64,6 +64,8 @@ features_order = [
     "demo_accuracy.jl",
     "demo_adaptive_accuracy.jl",
     "demo_performance.jl",
+    "demo_parallel_threads.jl",
+    "demo_parallel_distributed.jl",
     "demo_interpolation.md",
     "demo_coevolution.jl",
     "demo_dimensionless.jl",
@@ -129,8 +131,8 @@ makedocs(;
         "Tutorial" => [
             "Introduction" => "tutorial/introduction.md",
             "Numerical Methods" => "tutorial/numerical_methods.md",
+            "Boris Pusher" => "tutorial/boris.md",
             "Guiding Center" => "tutorial/guiding_center.md",
-            "Advanced Boris" => "tutorial/advanced_boris.md",
             "Features Walkthrough" => "tutorial/features.md",
         ],
         "Examples" => example_pages,
