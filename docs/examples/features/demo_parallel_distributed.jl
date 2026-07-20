@@ -21,9 +21,7 @@ if nworkers() == 1
     addprocs(min(4, Sys.CPU_THREADS))
 end
 
-# Every package the workers touch must be loaded on every worker. `TestParticle`
-# brings in `trace`, `prepare`, `Electron`, `ZeroField`, `Boris`, and the
-# `solve`/`EnsembleProblem` glue; `OrdinaryDiffEq` provides the SciML solvers.
+# Every package the workers touch must be loaded on every worker.
 @everywhere begin
     using TestParticle
     import TestParticle as TP
@@ -72,7 +70,7 @@ end
 end
 
 trajectories = 512
-seed = 1234
+seed = 1234;
 
 # ## SciML Solver: `EnsembleDistributed`
 #
@@ -80,9 +78,9 @@ seed = 1234
 # trajectories across all worker processes via `pmap`.
 
 sol_dist = solve(
-    ensemble_ode, Vern9(), EnsembleDistributed();
+    ensemble_ode, Vern6(), EnsembleDistributed();
     trajectories, saveat = dt, seed
-)
+);
 
 # ## SciML Solver: `EnsembleSplitThreads` (hybrid)
 #
@@ -91,9 +89,9 @@ sol_dist = solve(
 # `JULIA_NUM_THREADS`) so each worker has multiple threads.
 
 sol_split = solve(
-    ensemble_ode, Vern9(), EnsembleSplitThreads();
+    ensemble_ode, Vern6(), EnsembleSplitThreads();
     trajectories, saveat = dt, seed
-)
+);
 
 # ## Boris Solver (same `ensemblealg` argument)
 #
@@ -103,18 +101,26 @@ sol_split = solve(
 sol_boris = TP.solve(
     prob_boris, Boris(), EnsembleDistributed();
     dt, trajectories, savestepinterval = 1, seed
-)
+);
 
-# ## Controlling Work Granularity (`batch_size`)
+# ## Controlling Work Granularity
 #
 # Distributed solvers accept `batch_size`, the number of trajectories sent to a
 # worker per chunk. The default is `max(1, trajectories ÷ nworkers())`. For very
-# cheap trajectories a larger `batch_size` reduces communication overhead; see
-# the Features Walkthrough for details.
+# cheap trajectories a larger `batch_size` reduces communication overhead, while
+# a smaller one improves load balancing. The keyword is passed like any other
+# `solve` keyword:
+
+batch_size = 64
+sol_batched = solve(
+    ensemble_ode, Vern6(), EnsembleDistributed();
+    trajectories, saveat = dt, seed, batch_size
+);
 
 println("Distributed trajectories:    $(length(sol_dist.u))")
 println("SplitThreads trajectories:   $(length(sol_split.u))")
 println("Boris (distributed) trajectories: $(length(sol_boris.u))")
+println("Distributed (batch_size = $batch_size) trajectories: $(length(sol_batched.u))")
 
 # Clean up the workers when you are done:
 #

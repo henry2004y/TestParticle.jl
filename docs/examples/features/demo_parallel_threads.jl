@@ -7,7 +7,7 @@
 # speedup is bounded by `Threads.nthreads()`, so start Julia with e.g.
 # `julia -t auto` (or set `JULIA_NUM_THREADS`) to use more than one thread.
 #
-# We benchmark one SciML solver (`Vern9`) and one Boris solver (`Boris`) to show
+# We benchmark one SciML solver (`Vern6`) and one Boris solver (`Boris`) to show
 # that the *same* `ensemblealg` argument drives both.
 
 import DisplayAs #hide
@@ -45,7 +45,7 @@ const dt = tperiod / 12
 const stateinit = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 const trajectories = 512
-const seed = 1234
+const seed = 1234;
 
 # `prob_func` receives an `EnsembleContext` `ctx`, whose `ctx.rng` is a per-trajectory
 # random number generator seeded deterministically from `seed`. The same
@@ -60,7 +60,7 @@ function prob_func(prob, ctx)
         vth * randn(ctx.rng),
     )
     return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
-end
+end;
 
 # ## SciML Solver
 #
@@ -71,9 +71,9 @@ const prob_ode = ODEProblem(trace, stateinit, tspan, param)
 const ensemble_ode = EnsembleProblem(prob_ode; prob_func, safetycopy = false)
 
 run_ode(ealg) = solve(
-    ensemble_ode, Vern9(), ealg;
+    ensemble_ode, Vern6(), ealg;
     trajectories, saveat = dt, seed
-)
+);
 
 # ## Boris Solver
 #
@@ -95,8 +95,8 @@ run_boris(ealg) = TP.solve(
 median_time(b) = median(b).time
 
 benchmarks = [
-    ("Vern9", "Serial", () -> run_ode(EnsembleSerial())),
-    ("Vern9", "Threads", () -> run_ode(EnsembleThreads())),
+    ("Vern6", "Serial", () -> run_ode(EnsembleSerial())),
+    ("Vern6", "Threads", () -> run_ode(EnsembleThreads())),
     ("Boris", "Serial", () -> run_boris(EnsembleSerial())),
     ("Boris", "Threads", () -> run_boris(EnsembleThreads())),
 ]
@@ -107,8 +107,7 @@ times = Float64[]
 
 for (solver, mode, func) in benchmarks
     println("Benchmarking $solver ($mode)...")
-    func() # warm up / compile
-    t = median_time(@be func() seconds = 2)
+    t = median_time(@be func())
     push!(labels, "$solver\n$mode")
     push!(modes, mode)
     push!(times, t)
@@ -116,7 +115,7 @@ end
 
 speedup_ode = times[1] / times[2]
 speedup_boris = times[3] / times[4]
-println("Vern9 speedup: $(round(speedup_ode, digits = 2))x")
+println("Vern6 speedup: $(round(speedup_ode, digits = 2))x")
 println("Boris speedup: $(round(speedup_boris, digits = 2))x")
 
 # ## Results
@@ -127,7 +126,7 @@ println("Boris speedup: $(round(speedup_boris, digits = 2))x")
 colors = Makie.wong_colors()
 mode_color = Dict("Serial" => colors[1], "Threads" => colors[2])
 
-f = Figure(size = (900, 600), fontsize = 20)
+f = Figure(size = (1000, 600), fontsize = 24)
 ax = Axis(
     f[1, 1],
     title = "Ensemble tracing time ($trajectories trajectories, $nthreads threads)",

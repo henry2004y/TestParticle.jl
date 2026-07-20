@@ -167,7 +167,7 @@ end
 
 ## Create a standalone figure with a 3D trajectory colored by ε
 function plot_trajectory(sol, ε_vals, title_str; figsize = (700, 500), npts = nothing)
-    f = Figure(; size = figsize, fontsize = 18)
+    f = Figure(; size = figsize, fontsize = 20)
     ax = Axis3(
         f[1, 1],
         xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
@@ -178,7 +178,7 @@ function plot_trajectory(sol, ε_vals, title_str; figsize = (700, 500), npts = n
     return f
 end
 
-f = Figure(; size = (1400, 900), fontsize = 18)
+f = Figure(; size = (1400, 900), fontsize = 20)
 
 ## Compute shared axis limits from all three trajectories
 lims = let
@@ -332,7 +332,7 @@ alg_both = AdaptiveHybrid(; mode_common..., adiabaticity = :both)
 prob_mode = TraceHybridProblem(u0, tspan, p)
 sol_curv = TP.solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
 sol_gradB = TP.solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
-sol_both = TP.solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1]
+sol_both = TP.solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1];
 
 # RMS position error vs the full-orbit reference, and the FO-mode fraction.
 function _adia_rms(sol)
@@ -376,7 +376,7 @@ Markdown.parse(String(take!(io2))) #hide
 # The three modes trace nearly the same path (all stay close to the full-orbit
 # reference); they differ in *when* the solver drops into the full-orbit mode.
 
-f_modes = Figure(; size = (1400, 460), fontsize = 16)
+f_modes = Figure(; size = (1400, 460), fontsize = 20)
 
 lms = let
     lx = (Inf, -Inf)
@@ -430,7 +430,7 @@ t_curv, ε_curv, mode_curv = _adia_traces(sol_curv)
 t_gradB, ε_gradB, mode_gradB = _adia_traces(sol_gradB)
 t_both, ε_both, mode_both = _adia_traces(sol_both)
 
-f_comp = Figure(; size = (1000, 480), fontsize = 16)
+f_comp = Figure(; size = (1000, 480), fontsize = 20)
 ax_comp = Axis(
     f_comp[1, 1],
     xlabel = L"t / T_\text{gyro}",
@@ -443,7 +443,7 @@ ax_comp = Axis(
     ),
 )
 
-# Shade full-orbit (red) vs guiding-center (blue) regions for each mode.
+## Shade full-orbit (red) vs guiding-center (blue) regions for each mode.
 function _shade!(ax, t, mode)
     i = 1
     while i <= length(t)
