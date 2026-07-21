@@ -1,4 +1,4 @@
-# # Magnetic Drift and Energy Partition
+# # [Magnetic Drift and Energy Partition](@id demo_magnetic_drift)
 #
 # This example demonstrates the combined magnetic drift (curvature + grad-B) of a
 # single charged particle and how it partitions between the parallel and

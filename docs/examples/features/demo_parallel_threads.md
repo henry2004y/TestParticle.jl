@@ -1,4 +1,4 @@
-# Multithreaded Parallelization
+# [Multithreaded Parallelization](@id multithreaded-parallelization)
 
 This demo shows the single-process ensemble parallelization strategies:
 `EnsembleSerial()` (no parallelism) and `EnsembleThreads()` (trajectories split

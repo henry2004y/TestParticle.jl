@@ -63,7 +63,7 @@ The two execution models differ enough that they are documented separately:
 
 For GPU-based massively parallel tracing, see the [GPU Ensemble Tracing](@ref) example.
 
-## Boris Pusher
+## [Boris Pusher](@id features-boris-pusher)
 
 The native Boris pusher is optimized for performance and energy conservation in magnetic fields. `TestParticle.jl` provides a whole family of Boris solvers — standard, Multistep, Hyper, and Adaptive — described in [Boris Pusher](@ref Boris-Pusher).
 

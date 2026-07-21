@@ -3,7 +3,7 @@
 This demo shows the multi-process ensemble parallelization strategies:
 `EnsembleDistributed()` (trajectories split across separate Julia worker
 processes) and `EnsembleSplitThreads()` (a hybrid that also uses threads
-inside each worker). Unlike the [Multithreaded parallelization](@ref) demo,
+inside each worker). Unlike the [Multithreaded parallelization](@ref multithreaded-parallelization) demo,
 these require starting extra worker processes and loading the needed
 packages on every worker before solving.
 
@@ -133,4 +133,4 @@ rmprocs(workers())
 ```
 
 For single-session, shared-memory parallelism (no extra processes), see the
-[Multithreaded parallelization](@ref) demo.
+[Multithreaded parallelization](@ref multithreaded-parallelization) demo.
