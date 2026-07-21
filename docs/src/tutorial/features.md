@@ -58,12 +58,12 @@ Tracing many independent particles is an *embarrassingly parallel* workload: eac
 
 The two execution models differ enough that they are documented separately:
 
-- [Multithreaded parallelization](@ref) (`EnsembleSerial` / `EnsembleThreads`) runs entirely inside one Julia session — no extra setup is needed, and the achievable speedup depends on `Threads.nthreads()`.
-- [Distributed parallelization](@ref) (`EnsembleDistributed` / `EnsembleSplitThreads`) requires adding worker processes up front and loading the required packages on every worker, but scales beyond a single machine.
+- [Multithreaded Parallelization](@ref) (`EnsembleSerial` / `EnsembleThreads`) runs entirely inside one Julia session — no extra setup is needed, and the achievable speedup depends on `Threads.nthreads()`.
+- [Distributed Parallelization](@ref) (`EnsembleDistributed` / `EnsembleSplitThreads`) requires adding worker processes up front and loading the required packages on every worker, but scales beyond a single machine.
 
 For GPU-based massively parallel tracing, see the [GPU Ensemble Tracing](@ref) example.
 
-## Boris Pusher
+## [Boris Pusher](@id features-boris-pusher)
 
 The native Boris pusher is optimized for performance and energy conservation in magnetic fields. `TestParticle.jl` provides a whole family of Boris solvers — standard, Multistep, Hyper, and Adaptive — described in [Boris Pusher](@ref Boris-Pusher).
 
@@ -88,6 +88,8 @@ Explore how `TestParticle.jl` can be applied to complex physical systems:
 
 For a full list of capabilities, browse the **Examples** section in the sidebar:
 
-- **Drifts**: ExB, Gradient-B, Curvature, and more.
+- **Drifts**: [ExB Drift](@ref), [Curvature and Grad-B Drifts](@ref),
+  [Magnetic Drift and Energy Partition](@ref),
+  [Relation between the Magnetic Drifts](@ref), and more.
 - **Analytic Fields**: Dipole fields, magnetic bottles, tokamaks.
 - **Advanced Features**: GPU acceleration, co-evolution of particles and fields, custom saving callbacks.

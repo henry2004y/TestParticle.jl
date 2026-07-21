@@ -21,8 +21,9 @@ cp(index_src, index_out; force = true)
 # Define orders manually
 drifts_order = [
     "demo_ExB_drift.jl",
-    "demo_gradient_B.jl",
-    "demo_curvature_B.jl",
+    "demo_curvature_gradient_B.jl",
+    "demo_magnetic_drift.jl",
+    "demo_drift_relation.jl",
     "demo_gravity_drift.jl",
     "demo_polarization_drift.jl",
     "demo_FLR.jl",
@@ -64,8 +65,8 @@ features_order = [
     "demo_accuracy.jl",
     "demo_adaptive_accuracy.jl",
     "demo_performance.jl",
-    "demo_parallel_threads.jl",
-    "demo_parallel_distributed.jl",
+    "demo_parallel_threads.md",
+    "demo_parallel_distributed.md",
     "demo_interpolation.md",
     "demo_coevolution.jl",
     "demo_dimensionless.jl",

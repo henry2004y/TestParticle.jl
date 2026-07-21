@@ -108,6 +108,12 @@ Curved vacuum field:
 \end{aligned}
 ```
 
+For worked examples of these drifts, see [Curvature and Grad-B Drifts](@ref)
+(single-particle orbits and guiding centers),
+[Magnetic Drift and Energy Partition](@ref) (validation against the traced orbit),
+and [Relation between the Magnetic Drifts](@ref) (how the two drifts combine at the
+particle and fluid level).
+
 Polarization drift:[^2]
 
 ```math
