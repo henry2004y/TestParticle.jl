@@ -71,7 +71,7 @@ end
 
 x0 = SA[1.0, 0.0, 0.0]
 b0 = normalize(curve_B(x0))          # b = (0, -1, 0) at x0
-eperp = SA[0.0, 0.0, 1.0]             # perpendicular to b at x0
+eperp = SA[0.0, 0.0, 1.0]            # perpendicular to b at x0
 const v0 = 1.0
 tspan = (0.0, 30.0)
 n = 9
@@ -96,16 +96,16 @@ for α in αs
     push!(vpar_list, vpar)
     push!(vperp_list, vperp)
 
-    # Theoretical prediction from the field itself.
+    ## Theoretical prediction from the field itself.
     push!(theory_z, analytic_drift(x0, v, q, m)[3])
 
-    # Boris trace.
+    ## Boris trace.
     stateinit = [x0..., v...]
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9(); abstol = 1.0e-10, reltol = 1.0e-10)
     push!(sols, sol)
 
-    # Drift of the guiding center: slope of its z position vs time.
+    ## Drift of the guiding center: slope of its z position vs time.
     z_gc = [gc(sol(t))[3] for t in ts]
     push!(meas_z, (A \ z_gc)[2])
 end
