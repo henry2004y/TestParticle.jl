@@ -84,6 +84,11 @@ theory_z = Float64[]
 meas_z = Float64[]
 sols = []   # keep solutions for the trajectory plot
 
+param = prepare(zero_E, curve_B, species = Proton)
+gc = get_gc_func(param)
+ts = range(tspan..., length = 400)
+A = hcat(ones(length(ts)), ts)
+
 for α in αs
     vpar = v0 * cos(α)
     vperp = v0 * sin(α)
@@ -96,16 +101,12 @@ for α in αs
 
     # Boris trace.
     stateinit = [x0..., v...]
-    param = prepare(zero_E, curve_B, species = Proton)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9(); abstol = 1.0e-10, reltol = 1.0e-10)
     push!(sols, sol)
 
     # Drift of the guiding center: slope of its z position vs time.
-    gc = get_gc_func(param)
-    ts = range(tspan..., length = 400)
     z_gc = [gc(sol(t))[3] for t in ts]
-    A = hcat(ones(length(ts)), ts)
     push!(meas_z, (A \ z_gc)[2])
 end
 
@@ -136,7 +137,10 @@ ax_conf = Axis(
 )
 scatter!(ax_conf, theory_z, meas_z; markersize = 10)
 xr = extrema(theory_z)
-lines!(ax_conf, xr, xr; color = :red, linestyle = :dash, label = "y = x")
+lines!(
+    ax_conf, [xr[1], xr[2]], [xr[1], xr[2]]; color = :red, linestyle = :dash,
+    label = "y = x"
+)
 axislegend(ax_conf, position = :lt)
 
 ax_part = Axis(

@@ -130,20 +130,21 @@ function sample_ensemble(Tpar, Tperp, N; seed = 20240720)
     return vs
 end
 
-# Measured guiding-centre drift: slope of `z_gc(t)` over the orbit (averages out the
+# Measured guiding-center drift: slope of `z_gc(t)` over the orbit (averages out the
 # gyration phase).
 function ensemble_drift(vs)
     drifts = Float64[]
+    param = prepare(zero_E, curve_B, species = Proton)
+    gc = get_gc_func(param)
+    ts = range(0.0, 30.0; length = 250)
+    A = hcat(ones(length(ts)), ts)
     for v in vs
-        param = prepare(zero_E, curve_B, species = Proton)
         sol = solve(
             ODEProblem(trace!, [x0..., v...], (0.0, 30.0), param), Vern9();
             abstol = 1.0e-9, reltol = 1.0e-9
         )
-        gc = get_gc_func(param)
-        ts = range(0.0, 30.0; length = 250)
         gcz = [gc(sol(t))[3] for t in ts]
-        push!(drifts, (hcat(ones(length(ts)), ts) \ gcz)[2])
+        push!(drifts, (A \ gcz)[2])
     end
     return mean(drifts)
 end

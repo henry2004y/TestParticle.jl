@@ -8,9 +8,10 @@
 #
 # - **Curvature drift** comes from a curved field line, `κ = (b·∇)b`; the GC
 #   is traced with [`trace_gc_drifts!`](@ref).
-# - **Grad-B drift** comes from `∇B ⊥ B`; here the analytic GC includes the
-#   ExB drift too. Note that the orbit-derived and analytic GCs differ, because
-#   the GC has higher-order terms beyond the first-order textbook formula.
+# - **Grad-B drift** comes from `∇B ⊥ B`; the analytic GC is traced with the
+#   same [`trace_gc_drifts!`](@ref) and also carries the ExB drift. Note that the
+#   orbit-derived and analytic GCs differ, because the GC has higher-order terms
+#   beyond the first-order textbook formula.
 #
 # The combined effect of the two drifts for one particle is validated in
 # [`demo_magnetic_drift`](@ref), and their relation at the particle and fluid
@@ -23,7 +24,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using LinearAlgebra: ×, ⋅, normalize, norm
-using ForwardDiff: gradient
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -109,24 +109,12 @@ sol_gc_curv = solve(prob_gc_curv, Vern7(); save_idxs = [1, 2, 3])
 #
 # A straight field `B = B₀(1 + g·x₂) ẑ` with a perpendicular gradient, plus a
 # small uniform `E` so the analytic GC also carries the ExB drift. The GC is
-# traced with a hand-written drift law that keeps the first-order grad-B and ExB
-# terms.
+# traced with the library [`trace_gc_drifts!`](@ref) — the same routine used for
+# the curvature case above — which includes the grad-B, curvature, and ExB
+# drifts (the curvature term vanishes for this straight field).
 
 grad_B(x) = SA[0, 0, 1.0e-8 + 1.0e-9 * x[2]]
 uniform_E(x) = SA[1.0e-9, 0, 0]
-abs_B(x) = norm(grad_B(x))
-
-function trace_gc!(dx, x, p, t)
-    q2m, _, E, B, _, sol = p
-    xu = sol(t)
-    gradient_B = gradient(abs_B, x)
-    Bv = B(x)
-    b = normalize(Bv)
-    v_par = (xu[4:6] ⋅ b) .* b
-    v_perp = xu[4:6] - v_par
-    return dx[1:3] = norm(v_perp)^2 * (Bv × gradient_B) / (2 * q2m * norm(Bv)^3) +
-        (E(x) × Bv) / norm(Bv)^2 + v_par
-end
 
 stateinit_grad = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
     [x0..., v0...]
@@ -138,7 +126,7 @@ sol_grad = solve(prob_grad, Vern9())
 gc_grad = param_grad |> get_gc_func
 gc_x0_grad = gc_grad(stateinit_grad) |> Vector
 prob_gc_grad = ODEProblem(
-    trace_gc!, gc_x0_grad, tspan_grad,
+    trace_gc_drifts!, gc_x0_grad, tspan_grad,
     (param_grad..., sol_grad)
 )
 sol_gc_grad = solve(prob_gc_grad, Vern7(); save_idxs = [1, 2, 3])
