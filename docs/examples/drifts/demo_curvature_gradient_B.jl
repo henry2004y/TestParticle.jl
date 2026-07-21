@@ -1,4 +1,4 @@
-# # [Curvature and Grad-B Drifts](@id demo_curvature_gradient_B)
+# # Curvature and Grad-B Drifts
 #
 # This example demonstrates a single proton motion under two different
 # non-uniform magnetic fields — one with field-line curvature, one with a
@@ -14,8 +14,8 @@
 #   beyond the first-order textbook formula.
 #
 # The combined effect of the two drifts for one particle is validated in
-# [`demo_magnetic_drift`](@ref demo_magnetic_drift), and their relation at the particle and fluid
-# level is discussed in [`demo_drift_relation`](@ref demo_drift_relation).
+# [Magnetic Drift and Energy Partition](@ref), and their relation at the particle and fluid
+# level is discussed in [Relation between the Magnetic Drifts](@ref).
 #
 # More theoretical details can be found in
 # [Curvature/Grad-B Drift](https://henry2004y.github.io/KeyNotes/contents/single.html#b-b-grad-b-drift),

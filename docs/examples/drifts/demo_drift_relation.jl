@@ -1,4 +1,4 @@
-# # [Relation between the Magnetic Drifts](@id demo_drift_relation)
+# # Relation between the Magnetic Drifts
 #
 # A charged particle in a non-uniform magnetic field has two distinct drift
 # contributions that are usually discussed separately:
@@ -7,7 +7,7 @@
 # - **curvature drift** `∝ v_∥²`, driven by the field-line curvature `κ = (b·∇)b`.
 #
 # Their vector sum is the **total magnetic drift**. The standalone demos
-# [`demo_curvature_gradient_B`](@ref demo_curvature_gradient_B) and [`demo_magnetic_drift`](@ref demo_magnetic_drift) show each
+# [Curvature and Grad-B Drifts](@ref) and [Magnetic Drift and Energy Partition](@ref) show each
 # drift in detail (trajectories, guiding centre, pitch-angle partition). This demo
 # **compares** the drifts side by side and shows their **relation** at two levels:
 #

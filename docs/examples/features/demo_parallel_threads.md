@@ -1,4 +1,4 @@
-# [Multithreaded Parallelization](@id multithreaded-parallelization)
+# Multithreaded Parallelization
 
 This demo shows the single-process ensemble parallelization strategies:
 `EnsembleSerial()` (no parallelism) and `EnsembleThreads()` (trajectories split
@@ -171,5 +171,5 @@ Legend(
 ```
 
 When scaling beyond a single machine (or a single NUMA node) the same interface
-extends to multiple processes; see the [Distributed parallelization](@ref)
+extends to multiple processes; see the [Distributed Parallelization](@ref)
 demo for the `EnsembleDistributed` / `EnsembleSplitThreads` workflow.

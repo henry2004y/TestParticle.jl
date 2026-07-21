@@ -229,6 +229,13 @@ function trace_relativistic_normalized(y, p, t)
     return vcat(v, dv)
 end
 
+"""
+    get_B_parameters(x, t, Bfunc)
+
+Evaluate the magnetic field `Bfunc` at `(x, t)` and return the field vector `B`,
+its magnitude `Bmag`, the unit vector `b̂ = B / Bmag`, the gradient `∇B`, and the
+Jacobian `JB` of the field.
+"""
 @inline function get_B_parameters(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
     Bmag = norm(B)

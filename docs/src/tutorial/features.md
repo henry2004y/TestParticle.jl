@@ -58,8 +58,8 @@ Tracing many independent particles is an *embarrassingly parallel* workload: eac
 
 The two execution models differ enough that they are documented separately:
 
-- [Multithreaded parallelization](@ref) (`EnsembleSerial` / `EnsembleThreads`) runs entirely inside one Julia session — no extra setup is needed, and the achievable speedup depends on `Threads.nthreads()`.
-- [Distributed parallelization](@ref) (`EnsembleDistributed` / `EnsembleSplitThreads`) requires adding worker processes up front and loading the required packages on every worker, but scales beyond a single machine.
+- [Multithreaded Parallelization](@ref) (`EnsembleSerial` / `EnsembleThreads`) runs entirely inside one Julia session — no extra setup is needed, and the achievable speedup depends on `Threads.nthreads()`.
+- [Distributed Parallelization](@ref) (`EnsembleDistributed` / `EnsembleSplitThreads`) requires adding worker processes up front and loading the required packages on every worker, but scales beyond a single machine.
 
 For GPU-based massively parallel tracing, see the [GPU Ensemble Tracing](@ref) example.
 
