@@ -9,9 +9,15 @@
 # - **Curvature drift** comes from a curved field line, `κ = (b·∇)b`; the GC
 #   is traced with [`trace_gc_drifts!`](@ref).
 # - **Grad-B drift** comes from `∇B ⊥ B`; the analytic GC is traced with the
-#   same [`trace_gc_drifts!`](@ref) and also carries the ExB drift. Note that the
-#   orbit-derived and analytic GCs differ, because the GC has higher-order terms
-#   beyond the first-order textbook formula.
+#   same [`trace_gc_drifts!`](@ref) and also carries the ExB drift.
+#
+# In both cases the orbit-derived GC (the instantaneous guiding center obtained
+# by applying the GC transformation to each point of the full particle orbit)
+# and the analytic GC (the trajectory integrated from the first-order drift
+# formulas) follow different trajectories. They agree only to first order: the
+# analytic drifts in [`trace_gc_drifts!`](@ref) omit the higher-order (FLR)
+# terms, so the two trajectories slowly diverge as the gyration phase
+# accumulates.
 #
 # The combined effect of the two drifts for one particle is validated in
 # [Magnetic Drift and Energy Partition](@ref), and their relation at the particle and fluid
@@ -31,10 +37,12 @@ CairoMakie.activate!(type = "png") #hide
 #
 # For a traced orbit `sol` and its analytic GC `sol_gc`, draw the time series on
 # the left and the 3D trajectory (particle, GC from orbit, analytic GC) on the
-# right, into the given figure row.
+# right, into a dedicated figure.
 
-function plot_drift_case(fig, row, sol, sol_gc, title)
-    gl_left = fig[row, 1] = GridLayout()
+function plot_drift_case(sol, sol_gc, title)
+    fig = Figure(size = (1200, 640), fontsize = 18)
+
+    gl_left = fig[1, 1] = GridLayout()
     ax_pos = Axis(gl_left[1, 1], ylabel = "Position [m]", title = title)
     lines!(ax_pos, sol, idxs = (0, 1), label = "x")
     lines!(ax_pos, sol, idxs = (0, 2), label = "y")
@@ -57,7 +65,7 @@ function plot_drift_case(fig, row, sol, sol_gc, title)
     linkxaxes!(ax_pos, ax_vel)
 
     ax_3d = Axis3(
-        fig[row, 2]; title = "3D Trajectory", xlabel = "x",
+        fig[1, 2]; title = "3D Trajectory", xlabel = "x",
         ylabel = "y", zlabel = "z", aspect = :data
     )
 
@@ -78,14 +86,15 @@ function plot_drift_case(fig, row, sol, sol_gc, title)
     )
     axislegend(ax_3d, framevisible = true, backgroundcolor = (:white, 0.5))
 
-    return nothing
-end
+    return fig
+end;
 
 # ## Curvature B field
 #
 # A 2D azimuthal field circling the z-axis with radius `r`:
-# `B = B₀ (x₂, -x₁, 0) / r²`. It has a curved field line (`R_c = r`) and we
-# trace a proton with a small `v_z` so curvature drift is visible.
+# `B = B₀ (x₂, -x₁, 0) / r²`. It has a curved field line (`R_c = r`) and a
+# radial magnitude gradient, so both curvature and grad-B drifts contribute. We
+# trace a proton with a small `v_z` so the resulting drift is visible.
 
 curved_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * 1.0e-8
 zero_E(x) = SA[0.0, 0.0, 0.0]
@@ -103,7 +112,14 @@ prob_gc_curv = ODEProblem(
     trace_gc_drifts!, gc_x0_curv, tspan_curv,
     (param_curv..., sol_curv)
 )
-sol_gc_curv = solve(prob_gc_curv, Vern7(); save_idxs = [1, 2, 3])
+sol_gc_curv = solve(prob_gc_curv, Vern7(); save_idxs = [1, 2, 3]);
+
+# The orbit-derived and analytic GCs follow different trajectories, because the
+# analytic GC uses only the first-order drift formula and misses the
+# higher-order (FLR) terms that the orbit-derived GC carries.
+
+fig_curv = plot_drift_case(sol_curv, sol_gc_curv, "Curvature Drift Case")
+fig_curv = DisplayAs.PNG(fig_curv) #hide
 
 # ## Grad-B field
 #
@@ -129,15 +145,12 @@ prob_gc_grad = ODEProblem(
     trace_gc_drifts!, gc_x0_grad, tspan_grad,
     (param_grad..., sol_grad)
 )
-sol_gc_grad = solve(prob_gc_grad, Vern7(); save_idxs = [1, 2, 3])
+sol_gc_grad = solve(prob_gc_grad, Vern7(); save_idxs = [1, 2, 3]);
 
-# ## Results
-#
-# Top: curvature drift. Bottom: grad-B drift. In the grad-B case the orbit-derived
-# and analytic GCs follow different trajectories, because the GC carries
-# higher-order terms beyond the first-order drift formula.
+# As in the curvature case, the orbit-derived and analytic GCs diverge, for the
+# same reason: the analytic GC is the first-order drift trajectory, while the
+# orbit-derived GC also carries the higher-order terms beyond the textbook
+# formula.
 
-fig = Figure(size = (1200, 1100), fontsize = 18)
-plot_drift_case(fig, 1, sol_curv, sol_gc_curv, "Curvature Drift Case")
-plot_drift_case(fig, 2, sol_grad, sol_gc_grad, "Grad-B Drift Case")
-fig = DisplayAs.PNG(fig) #hide
+fig_grad = plot_drift_case(sol_grad, sol_gc_grad, "Grad-B Drift Case")
+fig_grad = DisplayAs.PNG(fig_grad) #hide

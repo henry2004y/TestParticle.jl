@@ -3,20 +3,21 @@
 # A charged particle in a non-uniform magnetic field has two distinct drift
 # contributions that are usually discussed separately:
 #
-# - **grad-B drift** `∝ v_⊥²`, driven by the field magnitude gradient `∇B`;
-# - **curvature drift** `∝ v_∥²`, driven by the field-line curvature `κ = (b·∇)b`.
+# - **grad-B drift** `\propto v_\perp^2`, driven by the field magnitude gradient `∇B`;
+# - **curvature drift** `\propto v_\parallel^2`, driven by the field-line curvature `κ = (b·∇)b`.
 #
 # Their vector sum is the **total magnetic drift**. The standalone demos
 # [Curvature and Grad-B Drifts](@ref) and [Magnetic Drift and Energy Partition](@ref) show each
 # drift in detail (trajectories, guiding centre, pitch-angle partition). This demo
-# **compares** the drifts side by side and shows their **relation** at two levels:
+# **compares** the drifts side by side and shows their **relation** from three angles:
 #
-# 1. *Single-particle*: the two drifts are really one drift split by the kinetic-energy
-#    partition `v_⊥²` vs `v_∥²` — they add vectorially to the total.
-# 2. *Fluid*: averaged over an ensemble the total depends only on `p_∥ + p_⊥`, and the
-#    grad-B piece is exactly the diamagnetic (magnetization) current while the curvature
-#    piece survives. This is the resolution of issue
-#    [#61](https://github.com/henry2004y/TestParticle.jl/issues/61).
+# - *Single particle*: the two drifts are really one drift split by the kinetic-energy
+#   partition `v_\perp^2` vs `v_\parallel^2` — they add vectorially to the total.
+# - *Fluid average*: averaged over an ensemble the total depends only on `p_\parallel + p_\perp`,
+#   so the grad-B and curvature pieces are not separately resolvable.
+# - *Magnetization current*: in a fluid the grad-B drift is exactly the diamagnetic current,
+#   while the curvature drift survives as a residual. This is the resolution of issue
+#   [#61](https://github.com/henry2004y/TestParticle.jl/issues/61).
 #
 # ## Shared field
 #
@@ -38,14 +39,14 @@ curve_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * Bmag0
 zero_E(x) = SA[0.0, 0.0, 0.0]
 x0 = SA[1.0, 0.0, 0.0]
 b0 = normalize(curve_B(x0))      # b = (0, -1, 0) at x0
-eperp = SA[0.0, 0.0, 1.0]         # perpendicular to b at x0
+eperp = SA[0.0, 0.0, 1.0]        # perpendicular to b at x0
 q, m = Proton.q, Proton.m
-coef = m / (q * Bmag0)            # |v_drift| = coef·(v_∥² + v_⊥²/2)
+coef = m / (q * Bmag0)           # |v_drift| = coef·(v_∥² + v_⊥²/2)
 
-# # Part 1 — Single-particle comparison: one drift split by energy
+# ## Single-particle drift: one drift split by energy
 #
 # For a given particle the guiding-centre magnetic drift is the vector sum of a grad-B
-# part (`∝ v_⊥²`) and a curvature part (`∝ v_∥²`). In this field both `b×∇B` and
+# part (`\propto v_\perp^2`) and a curvature part (`\propto v_\parallel^2`). In this field both `b×∇B` and
 # `b×κ` point along `-ẑ`, so the two parts are collinear and we can compare them
 # directly. We evaluate them from the field using the same quantities (`∇B`, `κ`) as
 # the package's [`trace_gc_drifts!`](@ref).
@@ -63,7 +64,7 @@ function magnetic_drift_parts(x, v, q, m)
 end
 
 # Three representative particles of the same speed `v0`: curvature-dominated
-# (`v_∥ = v0`), isotropic (`v_∥ = v_⊥`), and grad-B-dominated (`v_⊥ = v0`).
+# (`v_\parallel = v0`), isotropic (`v_\parallel = v_\perp`), and grad-B-dominated (`v_\perp = v0`).
 const v0 = 1.0
 cases_sp = Dict(
     "curvature-dominated (v∥=v0)" => v0 * b0,
@@ -83,12 +84,6 @@ for name in keys(cases_sp)
     )
 end
 
-# ## Part 1 results
-#
-# The two components and their sum for each particle: the curvature-dominated one carries
-# only the curvature bar, the grad-B-dominated one only the grad-B bar, and the isotropic
-# one carries both; in every case `v_total = v_gB + v_curv`.
-
 gBp = [-parts[name][1][3] for name in keys(cases_sp)]  # |·| (all along -ẑ)
 cvp = [-parts[name][2][3] for name in keys(cases_sp)]
 totp = gBp .+ cvp
@@ -97,7 +92,8 @@ fig1 = Figure(size = (800, 500), fontsize = 24)
 axA = Axis(
     fig1[1, 1]; title = "Drift decomposition for three particles",
     xlabel = "particle", ylabel = "|v_drift,z| [m/s]",
-    xticks = (1:3, ["curvature-\ndominated", "isotropic", "grad-B-\ndominated"])
+    xticks = (1:3, ["curvature-\ndominated", "isotropic", "grad-B-\ndominated"]),
+    xticklabelrotation = π / 6, xticklabelsize = 18
 )
 barplot!(axA, (1:3) .- 0.2, gBp; width = 0.35, color = :green, label = "grad-B ∝ v⊥²")
 barplot!(axA, (1:3) .+ 0.2, cvp; width = 0.35, color = :orange, label = "curvature ∝ v∥²")
@@ -108,10 +104,13 @@ scatter!(
 axislegend(axA, position = :lt)
 
 # The two single-particle drifts are one magnetic drift whose components add up to the
-# total; their energy weighting is shown by the pitch-angle fit in demo_magnetic_drift.jl.
+# total: the curvature-dominated particle carries only the curvature bar, the grad-B-
+# dominated one only the grad-B bar, and the isotropic one carries both; in every case
+# `v_total = v_gB + v_curv`. Their energy weighting is shown by the pitch-angle fit in
+# [Magnetic Drift and Energy Partition](@ref).
 fig1 = DisplayAs.PNG(fig1) #hide
 
-# # Part 2 — Fluid average: why only one drift appears
+# ## Fluid average: why only one drift appears
 #
 # Averaged over a (bi-Maxwellian) ensemble the two contributions collapse into one
 # magnetic drift whose *magnitude* is `⟨v_z⟩ = -coef·(⟨v_∥²⟩ + ⟨v_⊥²⟩/2)`, so it depends
@@ -169,13 +168,7 @@ for name in keys(cases)
     )
 end
 
-# ## Part 2 results
-#
-# The total fluid-level drift depends on `Tpar + Tperp` (the pressure), not separately on
-# grad-B or curvature. The two bi-Maxwellian cases therefore have the same measured
-# drift, even though their internal curvature/grad-B split is swapped.
-
-fig2 = Figure(size = (1600, 500), fontsize = 18)
+fig2 = Figure(size = (1600, 500), fontsize = 22)
 
 ax1 = Axis(
     fig2[1, 1]; title = "Ensemble-averaged drift vz",
@@ -183,7 +176,7 @@ ax1 = Axis(
 )
 barplot!(ax1, 1:3, [meas[n] for n in keys(cases)]; color = :steelblue, label = "measured")
 barplot!(ax1, 1:3, [an[n] for n in keys(cases)]; color = :red, label = "analytic sum of drifts")
-axislegend(ax1, position = :lb)
+axislegend(ax1, position = :lb, ncols = 3)
 
 ax2 = Axis(
     fig2[1, 2]; title = "Pressure-weighted decomposition",
@@ -194,7 +187,7 @@ curv = [-coef * Tpar for (_, (Tpar, _)) in cases]
 grad = [-coef * Tperp for (_, (_, Tperp)) in cases]
 barplot!(ax2, (1:3) .- 0.2, curv; width = 0.4, color = :orange, label = "curvature ∝ p∥")
 barplot!(ax2, (1:3) .+ 0.2, grad; width = 0.4, color = :green, label = "grad-B ∝ p⊥")
-axislegend(ax2, position = :lb)
+axislegend(ax2, position = :lb, ncols = 3)
 
 ax3 = Axis3(
     fig2[1, 3]; title = "Sample trajectories", xlabel = "x", ylabel = "y",
@@ -210,14 +203,15 @@ for (lab, v) in [("isotropic", vs_iso[1]), ("bi-Max (T∥>T⊥)", vs_an[1])]
     )
     lines!(ax3, sol; idxs = (1, 2, 3), label = lab)
 end
-axislegend(ax3, framevisible = true, backgroundcolor = (:white, 0.6))
+axislegend(ax3, framevisible = true, backgroundcolor = (:white, 0.6));
 
-# The averaged magnetic drift is a single quantity at the fluid level: the ensemble
-# carries only (p∥ + p⊥), so the grad-B and curvature pieces are not separately
-# resolvable.
+# The total fluid-level drift depends on `Tpar + Tperp` (the pressure), not separately on
+# grad-B or curvature: the two bi-Maxwellian cases have the same measured drift (left),
+# even though their internal curvature/grad-B split is swapped (middle). The averaged
+# magnetic drift is a single quantity at the fluid level.
 fig2 = DisplayAs.PNG(fig2) #hide
 
-# # Part 3 — Where the grad-B drift goes: the magnetization current
+# ## The magnetization current: where the grad-B drift goes
 #
 # A gyrating particle carries a magnetic moment `μ = m v_⊥²/(2B)`, whose inhomogeneity
 # produces a magnetization current `J_mag = ∇×(nμb)`. For a *pure* grad-B field the
@@ -239,7 +233,7 @@ function Bprops(x, Bfunc)
     return Bmag, b, ∇B, κ
 end
 
-# Numerical curl of a vector field at `x0` (central differences).
+## Numerical curl of a vector field at `x0` (central differences).
 function curl(F, x0, δ = 1.0e-4)
     fx(off, i, k) = (x = Vector(x0); x[i] += off; F(x)[k])
     C = SA[
@@ -259,7 +253,7 @@ function drift_currents(x, Bfunc; Tpar, Tperp, n = 1.0, m = 1.0)
     Jg = n * m * vperp2 * (b × ∇B) / (2 * Bmag^2)
     Jc = n * m * vpar2 * (b × κ) / Bmag
     return Jg, Jc, Bmag, b
-end
+end;
 
 # Magnetization current from μ = m⟨v_⊥²⟩/(2B), and the diamagnetic current from the
 # perpendicular pressure p_⊥ = n·m·⟨v_⊥²⟩/2.
@@ -268,13 +262,14 @@ function mag_current(x0, Bfunc; Tperp, n = 1.0, m = 1.0)
     Mfun(x) = (Bx = Bfunc(x); Bn = norm(Bx); n * (m * vperp2 / (2 * Bn)) * Bx / Bn)
     return curl(Mfun, x0)
 end
+
 function diamag_current(x0, Bfunc; Tperp, n = 1.0, m = 1.0)
     p_perp = n * m * (2Tperp) / 2
     F(x) = (Bx = Bfunc(x); Bn = norm(Bx); p_perp * Bx / (Bn * Bn))
     return curl(F, x0)
 end
 
-# ## Part 3A — pure grad-B straight field (κ = 0)
+# ### Pure grad-B straight field (κ = 0)
 #
 # `B = B₀(1 + g·x₂) ẑ`. There is no curvature, so only the grad-B drift exists. The
 # ensemble-averaged grad-B drift current must equal the magnetization (and diamagnetic)
@@ -290,7 +285,7 @@ println("  |J_∇B|   = ", norm(JgA))
 println("  |J_mag|  = ", norm(JmA), "   |J_∇B - J_mag| = ", norm(JgA - JmA))
 println("  |J_diam| = ", norm(JdA), "   |J_∇B - J_diam| = ", norm(JgA - JdA))
 
-# ## Part 3B — coupled curved field, isotropic vs anisotropic
+# ### Coupled curved field: isotropic vs anisotropic
 #
 # Here both drifts exist. The magnetization current depends only on `v_⊥²`, so raising
 # `T_∥` (which only feeds the curvature drift) must leave `J_mag` unchanged while
@@ -311,52 +306,45 @@ println(
     "   |J_mag| = ", norm(Jm_an), "  (unchanged: tracks T⊥ only)"
 )
 
-# ## Part 3 results
-#
-# Left: in the pure grad-B field the three currents coincide — the grad-B drift is the
-# diamagnetic current. Right: in the curved field, raising `T_∥` grows the curvature
-# current `J_curv` but not the magnetization current `J_mag` (which only carries the
-# grad-B/`v_⊥²` piece). The curvature drift is the surviving residual.
-
-fig3 = Figure(size = (1400, 500), fontsize = 18)
+fig3 = Figure(size = (1400, 500), fontsize = 22)
 
 axA = Axis(
     fig3[1, 1]; title = "Pure grad-B field: grad-B drift = diamagnetic current",
-    xlabel = "current", ylabel = "magnitude"
+    xlabel = "current", ylabel = "magnitude",
+    xticks = (1:3, ["J_∇B", "J_mag", "J_diamag"]),
+    xgridvisible = false, ygridvisible = false
 )
-barplot!(
-    axA, [1, 2, 3]; color = [:steelblue, :orange, :green],
-    label = ["J_∇B (drift)", "J_mag (magnetization)", "J_diamag (pressure)"]
-)
-hidexdecorations!(axA, grid = false)
-hideydecorations!(axA, grid = false)
-axislegend(axA, position = :rt)
+## The three currents coincide (J_∇B = J_mag = J_diamag), so the bars share one height.
+barplot!(axA, 1, norm(JgA); width = 0.6, color = :steelblue, label = "J_∇B (drift)")
+barplot!(axA, 2, norm(JmA); width = 0.6, color = :green, label = "J_mag (magnetization)")
+barplot!(axA, 3, norm(JdA); width = 0.6, color = :orange, label = "J_diamag (pressure)")
+axislegend(axA, position = :rt, ncols = 3)
 
 axB = Axis(
     fig3[1, 2]; title = "Curved field: only curvature survives anisotropy",
     xlabel = "case", ylabel = "current magnitude",
     xticks = (1:2, ["isotropic T∥=T⊥=1", "anisotropic T∥=4,T⊥=1"])
 )
-barplot!(
-    axB, 1 .+ [-0.2, 0.0, 0.2], [norm(Jg_iso), norm(Jc_iso), norm(Jm_iso)];
-    width = 0.25, color = [:steelblue, :red, :green],
-    label = ["J_∇B ∝ v⊥²", "J_curv ∝ v∥²", "J_mag ∝ v⊥²"]
-)
-barplot!(
-    axB, 2 .+ [-0.2, 0.0, 0.2], [norm(Jg_an), norm(Jc_an), norm(Jm_an)];
-    width = 0.25, color = [:steelblue, :red, :green]
-)
-axislegend(axB, position = :lt)
+barplot!(axB, 1 - 0.2, norm(Jg_iso); width = 0.25, color = :steelblue, label = "J_∇B ∝ v⊥²")
+barplot!(axB, 1 + 0.0, norm(Jc_iso); width = 0.25, color = :red, label = "J_curv ∝ v∥²")
+barplot!(axB, 1 + 0.2, norm(Jm_iso); width = 0.25, color = :green, label = "J_mag ∝ v⊥²")
+barplot!(axB, 2 - 0.2, norm(Jg_an); width = 0.25, color = :steelblue)
+barplot!(axB, 2 + 0.0, norm(Jc_an); width = 0.25, color = :red)
+barplot!(axB, 2 + 0.2, norm(Jm_an); width = 0.25, color = :green)
+axislegend(axB, position = :lt, ncols = 3);
 
-# The grad-B drift is absorbed into the diamagnetic current (it is the magnetization
-# current); the curvature drift, weighted by v∥², has no such partner and survives as
-# the centrifugal current in the single-fluid momentum balance.
+# In the pure grad-B field the three currents coincide — the grad-B drift is the
+# diamagnetic current (left). In the curved field, raising `T_∥` grows the curvature
+# current `J_curv` but not the magnetization current `J_mag` (which only carries the
+# grad-B/`v_⊥²` piece); the curvature drift is the surviving residual (right). The grad-B
+# drift is absorbed into the diamagnetic current (it is the magnetization current), while
+# the curvature drift survives as the centrifugal current in the single-fluid momentum balance.
 fig3 = DisplayAs.PNG(fig3) #hide
 
-# # Complete analysis
+# ## Complete analysis
 #
-# The three parts combine into one logical chain. Write the **ensemble magnetic-drift
-# current** as the sum of its two single-particle pieces (Part 1 showed they add
+# The single-particle drifts combine into one logical chain. Write the **ensemble magnetic-drift
+# current** as the sum of its two single-particle pieces (they add
 # vectorially to the total):
 # ```math
 # \mathbf{J}_m
@@ -364,7 +352,7 @@ fig3 = DisplayAs.PNG(fig3) #hide
 #   + n\,m\,\frac{\langle v_\perp^2\rangle}{2}\,\frac{\mathbf{b}\times\nabla B}{B^2}
 #   \equiv \mathbf{J}_\mathrm{curv} + \mathbf{J}_{\nabla B} .
 # ```
-# Part 3 shows the second term is not independent: for a gyrating ensemble the grad-B
+# The magnetization current shows the second term is not independent: for a gyrating ensemble the grad-B
 # drift current equals the magnetization (diamagnetic) current,
 # ```math
 # \mathbf{J}_{\nabla B}
@@ -374,16 +362,16 @@ fig3 = DisplayAs.PNG(fig3) #hide
 #   \mathbf{J}_{\nabla B} = \mathbf{J}_\mathrm{mag} = \mathbf{J}_\mathrm{diam} ,
 # ```
 # while the curvature term ``\mathbf{J}_\mathrm{curv}\propto\langle v_\parallel^2\rangle``
-# has no magnetization twin, because ``\mu`` depends only on ``v_\perp^2`` (Part 3B:
+# has no magnetization twin, because ``\mu`` depends only on ``v_\perp^2`` (
 # raising ``T_\parallel`` grows ``J_\mathrm{curv}`` four-fold but leaves ``J_\mathrm{mag}``
 # fixed). Hence
 # ```math
 # \mathbf{J}_m = \mathbf{J}_\mathrm{curv} + \mathbf{J}_\mathrm{diam} .
 # ```
 #
-# Part 2 then shows *why* the fluid moment cannot see the split: the total drift scales
+# The fluid average then shows *why* the moment cannot see the split: the total drift scales
 # with ``\langle v_\parallel^2\rangle + \langle v_\perp^2\rangle/2``, i.e. with
-# ``p_\parallel + p_\perp`` (the left panel has identical bars for the two swapped
+# ``p_\parallel + p_\perp`` (the left panel of the fluid-average figure has identical bars for the two swapped
 # bi-Maxwellian cases, while the middle panel swaps the curvature/grad-B shares). In the
 # single-fluid momentum equation the only place ``\mathbf{J}_m\times\mathbf{B}`` enters
 # is through the current. The ``\mathbf{J}_\mathrm{diam}\times\mathbf{B}`` part is just
