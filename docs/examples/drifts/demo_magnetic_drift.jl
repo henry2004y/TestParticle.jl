@@ -36,13 +36,13 @@ CairoMakie.activate!(type = "png") #hide
 # ```math
 # v_z = -\frac{m}{qB_0}\left(v_\parallel^2 + \frac{v_\perp^2}{2}\right).
 # ```
-# So curvature drift carries the `v_∥²` part and grad-B drift carries the
-# `v_⊥²/2` part of one and the same magnetic drift.
+# So curvature drift carries the `v_\parallel^2` part and grad-B drift carries the
+# `v_\perp^2/2` part of one and the same magnetic drift.
 
 const Bmag0 = 1.0e-7
 
 curve_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * Bmag0
-zero_E(x) = SA[0.0, 0.0, 0.0]
+zero_E(x) = SA[0.0, 0.0, 0.0];
 
 # Analytic guiding-center drift evaluated directly from the field function, using
 # exactly the same quantities (`∇B` from the B-Jacobian, `κ` from `JB·b`) as the
@@ -60,63 +60,78 @@ function analytic_drift(x, v, q, m)
     vperp = v - vpar * b
     wsq = vperp ⋅ vperp
     return wsq * (b × ∇B) / (2Ω * Bmag) + vpar^2 * (b × κ) / Ω
-end
+end;
 
 # ## Pitch-angle scan
 #
 # We launch protons from the same point `x0` with a fixed speed `v0` but varying
-# pitch angle `α` between `v` and `b`, i.e. `v_∥ = v0 cos α`, `v_⊥ = v0 sin α`.
+# pitch angle `α` between `v` and `b`, i.e. `v_\parallel = v0 cos α`, `v_\perp = v0 sin α`.
 # The predicted drift is then compared to the drift of the guiding center obtained
 # from the full Boris orbit.
 
 x0 = SA[1.0, 0.0, 0.0]
-b0 = normalize(curve_B(x0))          # b = (0, -1, 0) at x0
-eperp = SA[0.0, 0.0, 1.0]            # perpendicular to b at x0
+b0 = normalize(curve_B(x0))   # b = (0, -1, 0) at x0
+eperp = SA[0.0, 0.0, 1.0]     # perpendicular to b at x0
 const v0 = 1.0
 tspan = (0.0, 30.0)
 n = 9
 αs = range(0, π / 2; length = n)
 
 q, m = Proton.q, Proton.m
-vpar_list = Float64[]
-vperp_list = Float64[]
-theory_z = Float64[]
-meas_z = Float64[]
-sols = []   # keep solutions for the trajectory plot
 
 param = prepare(zero_E, curve_B, species = Proton)
 gc = get_gc_func(param)
-ts = range(tspan..., length = 400)
-A = hcat(ones(length(ts)), ts)
 
-for α in αs
-    vpar = v0 * cos(α)
-    vperp = v0 * sin(α)
-    v = vpar * b0 + vperp * eperp
-    push!(vpar_list, vpar)
-    push!(vperp_list, vperp)
+function scan_magnetic_drift(αs, v0, x0, b0, eperp, q, m, param, gc, tspan)
+    n = length(αs)
+    vpar_list = Vector{Float64}(undef, n)
+    vperp_list = Vector{Float64}(undef, n)
+    theory_z = Vector{Float64}(undef, n)
+    meas_z = Vector{Float64}(undef, n)
 
-    ## Theoretical prediction from the field itself.
-    push!(theory_z, analytic_drift(x0, v, q, m)[3])
+    ts = range(tspan..., length = 400)
+    A = hcat(ones(length(ts)), ts)
 
-    ## Boris trace.
-    stateinit = [x0..., v...]
-    prob = ODEProblem(trace!, stateinit, tspan, param)
-    sol = solve(prob, Vern9(); abstol = 1.0e-10, reltol = 1.0e-10)
-    push!(sols, sol)
+    ## Sample a trace to fix the element type of the solutions vector.
+    stateinit0 = [x0..., (v0 * b0)...]
+    prob0 = ODEProblem(trace!, stateinit0, tspan, param)
+    sol0 = solve(prob0, Vern9(); abstol = 1.0e-10, reltol = 1.0e-10)
+    sols = Vector{typeof(sol0)}(undef, n)
 
-    ## Drift of the guiding center: slope of its z position vs time.
-    z_gc = [gc(sol(t))[3] for t in ts]
-    push!(meas_z, (A \ z_gc)[2])
+    for (i, α) in enumerate(αs)
+        vpar = v0 * cos(α)
+        vperp = v0 * sin(α)
+        v = vpar * b0 + vperp * eperp
+        vpar_list[i] = vpar
+        vperp_list[i] = vperp
+
+        ## Theoretical prediction from the field itself.
+        theory_z[i] = analytic_drift(x0, v, q, m)[3]
+
+        ## Boris trace.
+        stateinit = [x0..., v...]
+        prob = ODEProblem(trace!, stateinit, tspan, param)
+        sol = solve(prob, Vern9(); abstol = 1.0e-10, reltol = 1.0e-10)
+        sols[i] = sol
+
+        ## Drift of the guiding center: slope of its z position vs time.
+        z_gc = [gc(sol(t))[3] for t in ts]
+        meas_z[i] = (A \ z_gc)[2]
+    end
+
+    return vpar_list, vperp_list, theory_z, meas_z, sols
 end
 
-# ## Results
+vpar_list, vperp_list, theory_z, meas_z, sols =
+    scan_magnetic_drift(αs, v0, x0, b0, eperp, q, m, param, gc, tspan)
+
+# ## Validation
 #
 # Scatter of the Boris-traced guiding-center drift against the analytic drift
 # computed directly from the field function (should lie on the `y = x` line), and
-# the linear dependence on the energy partition `(v_∥² + v_⊥²/2)`.
+# the linear dependence on the energy partition `(v_\parallel^2 + v_\perp^2/2)`.
 
-fig = Figure(size = (1500, 500), fontsize = 18)
+fig = Figure(size = (1500, 500), fontsize = 22)
 
 ax3 = Axis3(
     fig[1, 1]; title = "Sample trajectories", xlabel = "x", ylabel = "y",
@@ -154,7 +169,8 @@ xs = range(extrema(X)...; length = 50)
 lines!(ax_part, xs, slope[1] .* xs; color = :blue, label = "linear fit")
 axislegend(ax_part, position = :lt)
 
+fig = DisplayAs.PNG(fig) #hide
+
 # The fitted slope equals m/(q B₀) to within the (small) finite-Larmor-radius
 # correction; the grad-B and curvature parts therefore carry the v⊥²/2 and v∥²
 # weights, i.e. they are one magnetic drift, not two independent forces.
-fig = DisplayAs.PNG(fig) #hide
