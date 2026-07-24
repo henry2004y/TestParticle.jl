@@ -36,7 +36,7 @@ jobs:
         with:
           version: '1'
       - uses: julia-actions/cache@v3
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
