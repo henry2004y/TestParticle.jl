@@ -173,13 +173,13 @@ end
 Display a 2-D histogram or (x, y, A) tuple on a log10 colour scale.
 Zeros / NaNs are clamped to `fmin` so empty cells use the bottom of the colour bar.
 """
-function logheatmap!(ax, h::Union{Hist2D, Tuple}; colormap = :turbo, cr = (1e-8, 1.0))
+function logheatmap!(ax, h::Union{Hist2D, Tuple}; colormap = :turbo, cr = (1.0e-8, 1.0))
     if h isa Tuple
         x, y, A = h
     else
         edges = collect.(binedges(h))
-        x = 0.5 .* (edges[1][2:end] .+ edges[1][1:end-1])
-        y = 0.5 .* (edges[2][2:end] .+ edges[2][1:end-1])
+        x = 0.5 .* (edges[1][2:end] .+ edges[1][1:(end - 1)])
+        y = 0.5 .* (edges[2][2:end] .+ edges[2][1:(end - 1)])
         A = h.bincounts
     end
     fmin, fmax = cr
@@ -245,7 +245,7 @@ function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
     fig = Figure(size = (1300, 1100), fontsize = 22)
     gl = fig[1, 1] = GridLayout()
     Label(
-        gl[1, 2:4], "Downstream velocity distributions (x = $(x_downstream*1.0e-3) km)";
+        gl[1, 2:4], "Downstream velocity distributions (x = $(x_downstream * 1.0e-3) km)";
         fontsize = 30, tellwidth = false
     )
     for r in 1:3
@@ -261,9 +261,11 @@ function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
             )
             hm = logheatmap!(ax, hists[r][i]; cr)
             if r == 1 && i == 3
-                Colorbar(gl[2:4, 5], hm;
+                Colorbar(
+                    gl[2:4, 5], hm;
                     label = L"\log_{10}([\mathrm{s}^2/\mathrm{km}^5])",
-                    labelsize = 18, ticklabelsize = 14)
+                    labelsize = 18, ticklabelsize = 14
+                )
             end
         end
         Label(gl[row, 1], titles[r]; fontsize = 24, rotation = π / 2, tellheight = false)
@@ -297,7 +299,7 @@ function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0
 
     v_edges = -1000:dv_km:1000
     nb = length(v_edges) - 1
-    centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:end-1])
+    centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:(end - 1)])
     sum_f = zeros(nb, nb, nb)
     count = zeros(Int, nb, nb, nb)
 
