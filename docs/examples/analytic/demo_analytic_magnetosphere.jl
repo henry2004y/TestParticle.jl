@@ -93,10 +93,26 @@ sols = solve(
     trajectories, callback, dense = true, save_on = true
 )
 
-### Visualization
+## We now look at particles in the magnetotail region of the same model.
+param = prepare(ZeroField(), getB)
+stateinit = zeros(6) # particle position and velocity to be modified
+tspan = (0.0, 8000.0)
+trajectories = 1
 
-f = Figure(fontsize = 20)
-ax = Axis3(
+prob = ODEProblem(trace!, stateinit, tspan, param)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
+
+callback = TerminateOutside(isoutside)
+sols_tail = solve(
+    ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
+    trajectories, callback, dense = true, save_on = true
+)
+
+### Visualization
+invRE = 1 / Rₑ
+
+f = Figure(fontsize = 24, size = (1400, 600))
+ax_inner = Axis3(
     f[1, 1],
     title = "20 keV Protons in an analytical magnetosphere",
     xlabel = "x [Re]",
@@ -108,13 +124,28 @@ ax = Axis3(
     azimuth = -π / 3
 )
 
-invRE = 1 / Rₑ
-
 for (i, sol) in enumerate(sols.u)
     x = sol[1, :] .* invRE
     y = sol[2, :] .* invRE
     z = sol[3, :] .* invRE
-    lines!(ax, x, y, z, color = Makie.wong_colors()[i])
+    lines!(ax_inner, x, y, z, color = Makie.wong_colors()[i])
+end
+
+ax_tail = Axis3(
+    f[1, 2],
+    title = "4 keV Protons in the magnetotail",
+    xlabel = "x [Re]",
+    ylabel = "y [Re]",
+    zlabel = "z [Re]",
+    aspect = :data,
+    azimuth = 1.4
+)
+
+for (i, sol) in enumerate(sols_tail.u)
+    x = sol[1, :] .* invRE
+    y = sol[2, :] .* invRE
+    z = sol[3, :] .* invRE
+    lines!(ax_tail, x, y, z, color = Makie.wong_colors()[i])
 end
 
 ## Field lines
@@ -154,49 +185,11 @@ end
 x = range(-8Rₑ, 14Rₑ, length = 50)
 y = range(-10Rₑ, 10Rₑ, length = 50)
 z = range(-8Rₑ, 8Rₑ, length = 50)
-
-trace_field!(ax, x, y, z, invRE)
-
-f = DisplayAs.PNG(f) #hide
-
-# We now look at particles in the magnetotail region of the same model.
-
-param = prepare(ZeroField(), getB)
-stateinit = zeros(6) # particle position and velocity to be modified
-tspan = (0.0, 8000.0)
-trajectories = 1
-
-prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
-
-callback = TerminateOutside(isoutside)
-sols = solve(
-    ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
-    trajectories, callback, dense = true, save_on = true
-)
+trace_field!(ax_inner, x, y, z, invRE)
 
 x = range(-10Rₑ, 10Rₑ, length = 50)
 y = range(-5Rₑ, 5Rₑ, length = 20)
 z = range(-10Rₑ, 10Rₑ, length = 50)
-
-f = Figure(fontsize = 18)
-ax = Axis3(
-    f[1, 1],
-    title = "4 keV Protons in the magnetotail",
-    xlabel = "x [Re]",
-    ylabel = "y [Re]",
-    zlabel = "z [Re]",
-    aspect = :data,
-    azimuth = 1.4
-)
-
-for (i, sol) in enumerate(sols.u)
-    x_plot = sol[1, :] .* invRE
-    y_plot = sol[2, :] .* invRE
-    z_plot = sol[3, :] .* invRE
-    lines!(ax, x_plot, y_plot, z_plot, color = Makie.wong_colors()[i])
-end
-
-trace_field!(ax, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
+trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
 
 f = DisplayAs.PNG(f) #hide
