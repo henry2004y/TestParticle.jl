@@ -171,15 +171,15 @@ function trace_field!(
 end
 
 let x = range(-8Rₑ, 14Rₑ, length = 50),
-    y = range(-10Rₑ, 10Rₑ, length = 50),
-    z = range(-8Rₑ, 8Rₑ, length = 50)
+        y = range(-10Rₑ, 10Rₑ, length = 50),
+        z = range(-8Rₑ, 8Rₑ, length = 50)
 
     trace_field!(ax_inner, x, y, z, invRE)
 end
 
 let x = range(-10Rₑ, 10Rₑ, length = 50),
-    y = range(-5Rₑ, 5Rₑ, length = 20),
-    z = range(-10Rₑ, 10Rₑ, length = 50)
+        y = range(-5Rₑ, 5Rₑ, length = 20),
+        z = range(-10Rₑ, 10Rₑ, length = 50)
 
     trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
 end
