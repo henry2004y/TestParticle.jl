@@ -40,22 +40,16 @@ mag_model = MS.AnalyticalMagnetosphere(;
 
 @inbounds getB(r) = mag_model(SA[r[1], r[2], r[3]])
 
-"""
-Boundary condition check.
-"""
 function isoutside(u, p, t)
     rout = 18Rₑ
     return (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
         abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
 end
 
-"""
-Set initial conditions.
-"""
-function prob_func_13(prob, ctx)
+"Set initial conditions for protons in the inner magnetosphere."
+function prob_func_inner(prob, ctx)
     i = ctx.sim_id
-    ## initial particle energy
-    Ek = 2.0e4 # [eV]
+    Ek = 2.0e4 # initial particle energy [eV]
     ## initial velocity, [m/s]
     v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
@@ -64,10 +58,10 @@ function prob_func_13(prob, ctx)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-function prob_func_6(prob, ctx)
+"Set initial conditions for protons in the magnetotail."
+function prob_func_tail(prob, ctx)
     i = ctx.sim_id
-    ## initial particle energy
-    Ek = 4.0e3 # [eV]
+    Ek = 4.0e3 # initial particle energy [eV]
     ## initial velocity, [m/s]
     v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
@@ -76,14 +70,14 @@ function prob_func_6(prob, ctx)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-## obtain field
+
 param = prepare(ZeroField(), getB)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 2000.0)
 trajectories = 2
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_13, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_inner, safetycopy = false)
 
 ## See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
 ## for the solver options
@@ -100,7 +94,7 @@ tspan = (0.0, 8000.0)
 trajectories = 1
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_tail, safetycopy = false)
 
 callback = TerminateOutside(isoutside)
 sols_tail = solve(
