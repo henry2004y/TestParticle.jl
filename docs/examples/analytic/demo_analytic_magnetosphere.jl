@@ -143,7 +143,10 @@ for (i, sol) in enumerate(sols_tail.u)
 end
 
 ## Field lines
-function get_numerical_field(x, y, z, model)
+function trace_field!(
+        ax, x, y, z, unitscale, model = getB;
+        rmin = 4Rₑ, rmax = 16Rₑ, nr = 8, nϕ = 8
+    )
     bx = zeros(length(x), length(y), length(z))
     by = similar(bx)
     bz = similar(bx)
@@ -152,15 +155,6 @@ function get_numerical_field(x, y, z, model)
         pos = SA[x[i[1]], y[i[2]], z[i[3]]]
         bx[i], by[i], bz[i] = model(pos)
     end
-
-    return bx, by, bz
-end
-
-function trace_field!(
-        ax, x, y, z, unitscale, model = getB;
-        rmin = 4Rₑ, rmax = 16Rₑ, nr = 8, nϕ = 8
-    )
-    bx, by, bz = get_numerical_field(x, y, z, model)
 
     zs = 0.0
     dϕ = 2π / nϕ
@@ -176,14 +170,18 @@ function trace_field!(
     return
 end
 
-x = range(-8Rₑ, 14Rₑ, length = 50)
-y = range(-10Rₑ, 10Rₑ, length = 50)
-z = range(-8Rₑ, 8Rₑ, length = 50)
-trace_field!(ax_inner, x, y, z, invRE)
+let x = range(-8Rₑ, 14Rₑ, length = 50),
+    y = range(-10Rₑ, 10Rₑ, length = 50),
+    z = range(-8Rₑ, 8Rₑ, length = 50)
 
-x = range(-10Rₑ, 10Rₑ, length = 50)
-y = range(-5Rₑ, 5Rₑ, length = 20)
-z = range(-10Rₑ, 10Rₑ, length = 50)
-trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
+    trace_field!(ax_inner, x, y, z, invRE)
+end
+
+let x = range(-10Rₑ, 10Rₑ, length = 50),
+    y = range(-5Rₑ, 5Rₑ, length = 20),
+    z = range(-10Rₑ, 10Rₑ, length = 50)
+
+    trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
+end
 
 f = DisplayAs.PNG(f) #hide
