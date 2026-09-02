@@ -87,7 +87,7 @@ sols = solve(
     trajectories, callback, dense = true, save_on = true
 )
 
-## We now look at particles in the magnetotail region of the same model.
+## Look at particles in the magnetotail region of the same model.
 param = prepare(ZeroField(), getB)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 8000.0)
@@ -98,7 +98,7 @@ ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_tail, safetycopy = f
 
 callback = TerminateOutside(isoutside)
 sols_tail = solve(
-    ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
+    ensemble_prob, Vern7(), EnsembleSerial(); reltol = 1.0e-5,
     trajectories, callback, dense = true, save_on = true
 )
 
@@ -163,23 +163,23 @@ function trace_field!(
         ys = r * sin(ϕ)
         x1, y1, z1 = FieldTracer.trace(
             bx, by, bz, xs, ys, zs, x, y, z;
-            ds = 0.1Rₑ, maxstep = 10000
+            ds = 0.1Rₑ, maxstep = 6000
         )
         lines!(ax, x1 .* unitscale, y1 .* unitscale, z1 .* unitscale, color = :gray)
     end
     return
 end
 
-let x = range(-8Rₑ, 14Rₑ, length = 50),
-        y = range(-10Rₑ, 10Rₑ, length = 50),
-        z = range(-8Rₑ, 8Rₑ, length = 50)
+let x = range(-8Rₑ, 14Rₑ, length = 30),
+        y = range(-10Rₑ, 10Rₑ, length = 30),
+        z = range(-8Rₑ, 8Rₑ, length = 30)
 
     trace_field!(ax_inner, x, y, z, invRE)
 end
 
-let x = range(-10Rₑ, 10Rₑ, length = 50),
+let x = range(-10Rₑ, 10Rₑ, length = 40),
         y = range(-5Rₑ, 5Rₑ, length = 20),
-        z = range(-10Rₑ, 10Rₑ, length = 50)
+        z = range(-10Rₑ, 10Rₑ, length = 40)
 
     trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
 end
