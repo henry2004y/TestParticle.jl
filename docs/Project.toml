@@ -38,4 +38,4 @@ TestParticle = {path = ".."}
 
 [compat]
 DocumenterVitepress = "0.3"
-OrdinaryDiffEq = "7"
+OrdinaryDiffEq = "6, 7"
