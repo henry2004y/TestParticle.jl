@@ -141,16 +141,19 @@ function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
             f = s1 / (s1 - s2)
             pcross = p1 + f * (p2 - p1)
             if _is_valid_intersection(pcross, surface)
-                tcross = muladd(f, t[i + 1] - t[i], t[i])
-                ucross = sol(tcross)
-                return SVector{6, T}(ucross)
+                return muladd.(f, u2 - u1, u1)
             end
         end
         s1 = s2
         p1 = p2
+        u1 = u2
     end
 
     return fill(T(NaN), SVector{6, T})
+end
+
+function get_first_crossing(sols::EnsembleSolution, surface::Union{Disk, Plane, Sphere})
+    return [get_first_crossing(sol, surface) for sol in sols.u]
 end
 
 function get_particle_flux(sol, surface::Union{Disk, Sphere}, weight = 1.0)

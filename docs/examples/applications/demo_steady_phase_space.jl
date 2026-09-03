@@ -103,7 +103,8 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 t_mc = @elapsed sols = TP.solve(
-    prob, Boris(); dt, savestepinterval = 1, trajectories = nparticles, seed
+    prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    trajectories = nparticles, seed
 );
 
 function reconstruct_flux_projections(sols, detector, n0, dv_km)
@@ -126,26 +127,38 @@ hists_down = reconstruct_flux_projections(sols, detector_down, n0, 20.0)
 
 # ## Method 2: Forward Liouville Tracking
 
-function reconstruct_liouville_projections(sols, detector, vdf, n0, Vsphere; dv_km = 20.0)
+function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0)
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vs, ws = get_particle_crossings(sols, detector, ws0)
 
     v_edges = -1000:dv_km:1000
-    h_3d = Hist3D(; binedges = (v_edges, v_edges, v_edges))
-
-    Vsphere_km = Vsphere * 1.0e-9
-    S_L = Vsphere_km / (length(sols.u) * dv_km^2)
+    nb = length(v_edges) - 1
+    centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:(end - 1)])
+    sum_f = zeros(nb, nb, nb)
+    count = zeros(Int, nb, nb, nb)
 
     for (v, w) in zip(vs, ws)
-        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w * 1.0e18 * S_L)
+        ix = floor(Int, (v[1] * 1.0e-3 - v_edges[1]) / dv_km) + 1
+        iy = floor(Int, (v[2] * 1.0e-3 - v_edges[1]) / dv_km) + 1
+        iz = floor(Int, (v[3] * 1.0e-3 - v_edges[1]) / dv_km) + 1
+        if 1 <= ix <= nb && 1 <= iy <= nb && 1 <= iz <= nb
+            sum_f[ix, iy, iz] += w * 1.0e18
+            count[ix, iy, iz] += 1
+        end
     end
-    return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
+    f_3d = ifelse.(count .> 0, sum_f ./ count, 0.0)
+
+    dv = dv_km * 1.0e3
+    f_xy = dropdims(sum(f_3d, dims = 3), dims = 3) .* (dv * 1.0e-3)
+    f_xz = dropdims(sum(f_3d, dims = 2), dims = 2) .* (dv * 1.0e-3)
+    f_yz = dropdims(sum(f_3d, dims = 1), dims = 1) .* (dv * 1.0e-3)
+
+    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
 
-nparticles_m2 = 8000
+nparticles_m2 = 50000
 const vth_perp = sqrt(2 * p_perp / (n0 * TP.mᵢ))
 const vradius_m2 = 3 * vth_perp
-const Vsphere_m2 = (4 / 3) * π * vradius_m2^3
 
 function prob_func_m2(prob, ctx)
     r = vradius_m2 * rand(ctx.rng)^(1 / 3)
@@ -162,14 +175,15 @@ prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
 t_liou = @elapsed sols_m2 = TP.solve(
-    prob_m2, Boris(); dt, savestepinterval = 1, trajectories = nparticles_m2, seed
+    prob_m2, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    trajectories = nparticles_m2, seed
 );
 
 hists_up_m2 = reconstruct_liouville_projections(
-    sols_m2, detector_up, vdf, n0, Vsphere_m2
+    sols_m2, detector_up, vdf, n0
 )
 hists_down_m2 = reconstruct_liouville_projections(
-    sols_m2, detector_down, vdf, n0, Vsphere_m2
+    sols_m2, detector_down, vdf, n0
 )
 
 # ## Method 3: Backward Liouville Tracing
@@ -196,7 +210,7 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
         prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
         savestepinterval = 1,
         isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
-            u[1] > x_source[1] + 6000.0e3
+            u[1] > x_source[1] + 100.0e3
     )
 
     f_3d = zeros(nx, ny, nz)
@@ -453,37 +467,54 @@ fig_slice = DisplayAs.PNG(fig_slice) #hide
 # Relative L2 norm `‖f_rec − f_ana‖ / ‖f_ana‖` over the populated cells, per method and
 # projection. Methods 1 & 2 are statistical (∝ 1/√N); Method 3 is grid-limited.
 
+t_per_mc = t_mc / nparticles * 1.0e6
+t_per_liou = t_liou / nparticles_m2 * 1.0e6
+t_per_bw = t_bw / n_bw * 1.0e6
+
 using Markdown, Printf #hide
 io = IOBuffer() #hide
-println(io, "| Method | Vx–Vy | Vx–Vz | Vy–Vz |") #hide
-println(io, "| :--- | :--- | :--- | :--- |") #hide
-println(io, "| **Flux (down)** | $(round(rel_l2(matrix_of(hists_down[1]), matrix_of(ana_hists[1])); digits = 3)) | $(round(rel_l2(matrix_of(hists_down[2]), matrix_of(ana_hists[2])); digits = 3)) | $(round(rel_l2(matrix_of(hists_down[3]), matrix_of(ana_hists[3])); digits = 3)) |") #hide
-println(io, "| **Liouville (down)** | $(round(rel_l2(matrix_of(hists_down_m2[1]), matrix_of(ana_hists[1])); digits = 3)) | $(round(rel_l2(matrix_of(hists_down_m2[2]), matrix_of(ana_hists[2])); digits = 3)) | $(round(rel_l2(matrix_of(hists_down_m2[3]), matrix_of(ana_hists[3])); digits = 3)) |") #hide
-ana_bw_xy = analytic_proj(vdf, n0, 1, 2, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int))
-ana_bw_xz = analytic_proj(vdf, n0, 1, 3, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int))
-ana_bw_yz = analytic_proj(vdf, n0, 2, 3, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int))
-println(io, "| **Backward (down)** | $(round(rel_l2(res_down_bw[1][3], ana_bw_xy); digits = 3)) | $(round(rel_l2(res_down_bw[2][3], ana_bw_xz); digits = 3)) | $(round(rel_l2(res_down_bw[3][3], ana_bw_yz); digits = 3)) |") #hide
-println(io, "| **Flux (up)** | $(round(rel_l2(matrix_of(hists_up[1]), matrix_of(ana_hists[1])); digits = 3)) | $(round(rel_l2(matrix_of(hists_up[2]), matrix_of(ana_hists[2])); digits = 3)) | $(round(rel_l2(matrix_of(hists_up[3]), matrix_of(ana_hists[3])); digits = 3)) |") #hide
-println(io, "| **Liouville (up)** | $(round(rel_l2(matrix_of(hists_up_m2[1]), matrix_of(ana_hists[1])); digits = 3)) | $(round(rel_l2(matrix_of(hists_up_m2[2]), matrix_of(ana_hists[2])); digits = 3)) | $(round(rel_l2(matrix_of(hists_up_m2[3]), matrix_of(ana_hists[3])); digits = 3)) |") #hide
-ana_bw_xy_u = analytic_proj(vdf, n0, 1, 2, 3, res_up_bw[1][1], res_up_bw[1][2], z_int, step(z_int))
-ana_bw_xz_u = analytic_proj(vdf, n0, 1, 3, 2, res_up_bw[2][1], res_up_bw[2][2], z_int, step(z_int))
-ana_bw_yz_u = analytic_proj(vdf, n0, 2, 3, 1, res_up_bw[3][1], res_up_bw[3][2], z_int, step(z_int))
-println(io, "| **Backward (up)** | $(round(rel_l2(res_up_bw[1][3], ana_bw_xy_u); digits = 3)) | $(round(rel_l2(res_up_bw[2][3], ana_bw_xz_u); digits = 3)) | $(round(rel_l2(res_up_bw[3][3], ana_bw_yz_u); digits = 3)) |") #hide
+println(io, "| Method | Vx–Vy | Vx–Vz | Vy–Vz | Trajectories | Time [s] | Cost [µs/traj] |") #hide
+println(io, "| :--- | :---: | :---: | :---: | :---: | :---: | :---: |") #hide
+@printf( #hide
+    io, "| **Flux Injection (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
+    rel_l2(matrix_of(hists_down[1]), matrix_of(ana_hists[1])), #hide
+    rel_l2(matrix_of(hists_down[2]), matrix_of(ana_hists[2])), #hide
+    rel_l2(matrix_of(hists_down[3]), matrix_of(ana_hists[3])), #hide
+    nparticles, t_mc, t_per_mc #hide
+) #hide
+@printf( #hide
+    io, "| **Forward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
+    rel_l2(matrix_of(hists_down_m2[1]), matrix_of(ana_hists[1])), #hide
+    rel_l2(matrix_of(hists_down_m2[2]), matrix_of(ana_hists[2])), #hide
+    rel_l2(matrix_of(hists_down_m2[3]), matrix_of(ana_hists[3])), #hide
+    nparticles_m2, t_liou, t_per_liou #hide
+) #hide
+ana_bw_xy = analytic_proj(vdf, n0, 1, 2, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int)) #hide
+ana_bw_xz = analytic_proj(vdf, n0, 1, 3, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int)) #hide
+ana_bw_yz = analytic_proj(vdf, n0, 2, 3, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int)) #hide
+@printf( #hide
+    io, "| **Backward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
+    rel_l2(res_down_bw[1][3], ana_bw_xy), #hide
+    rel_l2(res_down_bw[2][3], ana_bw_xz), #hide
+    rel_l2(res_down_bw[3][3], ana_bw_yz), #hide
+    n_bw_down, t_bw_down, t_bw_down / n_bw_down * 1.0e6 #hide
+) #hide
 Markdown.parse(String(take!(io))) #hide
 
-# ## What the deviations tell us
-# The backward Liouville reconstruction matches the analytic bi-Maxwellian to within the
-# grid resolution (relative L2 ≈ 3×10⁻³). This confirms the core assumption — that a
-# bi-Maxwellian centred on the E×B drift velocity is an exact Vlasov steady state, so the
-# detector VDF is analytically identical to the source VDF — and validates the solver.
+# ## What the results tell us
 #
-# The two forward Monte-Carlo methods deviate more, as expected. Flux injection is off by
-# only ∼10% (pure 1/√N sampling scatter). Forward Liouville is the least accurate
-# (∼35–50%): under this formulation it weights each trajectory by its *source* phase-space
-# density but omits the detector-side `|v_x|` flux correction that flux injection applies,
-# so for a distribution with a broad velocity spread it recovers a flux-weighted rather
-# than strict phase-space density. The analytic overlay makes this deviation directly
-# visible as the white dashed contours sitting systematically off the coloured histogram.
+# 1. **Backward Liouville achieves ~0.3% error (exact up to grid resolution)**.
+#    Because it traces directly backward from the target detector grid to the source,
+#    there is zero statistical noise and uniform coverage across the distribution,
+#    including the tails.
+# 2. **Flux Injection is limited by statistical noise (∝ 1/√N)**. With N = 8,000
+#    particles, the relative deviation is ~11–12%, matching theoretical Poisson noise.
+#    Reaching the same 0.3% accuracy of Backward Liouville would require ~10⁷ trajectories
+#    (~1,000× more cost).
+# 3. **Forward Liouville provides smooth bin-averaged phase-space densities**, but
+#    exhibits an outer boundary artifact caused by truncating the source velocity sampling
+#    to a finite sphere (`r ≤ 3 vth`). In addition, forward trajectories that miss the
+#    detector or fall outside the populated region do not contribute to the target.
 
 # ## Monte-Carlo sampling noise scales as 1/√N
 # The report above quotes Flux Injection at ≈10% and attributes it to 1/√N sampling
@@ -504,7 +535,10 @@ function run_flux_N(N, rseed)
     end
     u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func)
-    sols = TP.solve(prob, Boris(); dt, savestepinterval = 1, trajectories = N, seed = rseed)
+    sols = TP.solve(
+        prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+        trajectories = N, seed = rseed
+    )
     return reconstruct_flux_projections(sols, detector_down, n0, 20.0)
 end
 

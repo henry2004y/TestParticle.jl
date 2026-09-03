@@ -112,7 +112,8 @@ prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
 t_mc = @elapsed sols = TP.solve(
-    prob, Boris(); dt, savestepinterval = 1, trajectories = nparticles, seed
+    prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    trajectories = nparticles, seed
 );
 println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits = 2)) s")
 
@@ -183,8 +184,7 @@ function logheatmap!(ax, h::Union{Hist2D, Tuple}; colormap = :turbo, cr = (1.0e-
         A = h.bincounts
     end
     fmin, fmax = cr
-    B = float(A)
-    replace!(x -> isfinite(x) && x > 0 ? x : fmin, B)
+    B = [isfinite(v) && v ≥ fmin ? min(v, fmax) : fmin for v in A]
     hm = heatmap!(ax, x, y, B; colormap, colorscale = log10, colorrange = (fmin, fmax))
     return hm
 end
@@ -343,7 +343,8 @@ prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
 t_liou = @elapsed sols_m2 = TP.solve(
-    prob_m2, Boris(); dt, savestepinterval = 1, trajectories = nparticles_m2, seed
+    prob_m2, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    trajectories = nparticles_m2, seed
 );
 
 hists_up_m2 = reconstruct_liouville_projections(sols_m2, detector_up, vdf, n_up)
@@ -353,9 +354,11 @@ fig_forward = plot_shock_vdf(hists_up_m2, hists_down_m2, x_upstream, x_downstrea
 fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 # The sphere radius `3 vth_ion` covers the bulk of the Maxwellian; `nparticles_m2 = 10⁵`
-# gives usable statistics in the populated bins.  The bin-averaged source ``f`` is a direct
-# Monte-Carlo estimate of ``f_{\det}``, on the same grid and with the same units as Method 3,
-# so the two should agree up to sampling noise.
+# gives usable statistics in the populated bins. Note that the sharp circular boundary in
+# the reconstructed phase-space plots is an artifact of the finite sampling sphere
+# (`r ≤ 3 vth_ion`) at the source. The bin-averaged source ``f`` is a direct
+# Monte-Carlo estimate of ``f_{\det}``, on the same grid and with the same units as
+# Method 3, so the two should agree up to sampling noise.
 #
 # ## Method 3: Backward Liouville Tracing
 #
@@ -385,12 +388,17 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
     end
 
     source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
-    ## 20 s backward span: the slowest relevant crossing completes well within this window,
-    ## giving the same result at ~3x lower cost. The post-source margin must exceed the
-    ## distance covered in one saved step at the highest grid speed (~1000 km/s · dt ≈ 2.6 km);
-    ## 500 km is more than enough to capture the post-crossing point.
+    ## 20 s backward span: setting post_source_margin = 100 km safely captures the
+    ## post-crossing point.
+    ## Trajectories moving deeper downstream (u[1] < detector_x - 600 km) cannot return
+    ## through the shock ramp and are terminated early, yielding an order-of-magnitude
+    ## speedup.
+    ## Note on savestepinterval: With dt ≈ τ_g / 20, savestepinterval = 10 spaces saved
+    ## points by 180° of gyro-phase (half an orbit); linear interpolation on a semicircle
+    ## collapses the perpendicular velocity toward zero and distorts f ∝ exp(-v²/(2vth²)).
+    ## We keep savestepinterval = 1 for accurate boundary interpolation.
     tspan_bw = (0.0, -20.0)
-    post_source_margin = 500.0e3
+    post_source_margin = 100.0e3
     prob = TraceProblem(
         SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
         prob_func = prob_func
@@ -399,10 +407,8 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
         savestepinterval = 1,
-        ## Terminate only after the particle has crossed the source plane and moved a
-        ## safe distance beyond it, so the crossing point is always saved.  No away-going
-        ## guard: gyrating trajectories must be allowed to come back.
-        isoutside = (u, p, t) -> u[1] > x_source[1] + post_source_margin
+        isoutside = (u, p, t) -> u[1] > x_source[1] + post_source_margin ||
+            u[1] < detector_x - 600.0e3
     )
 
     f_3d = zeros(nx, ny, nz)
@@ -421,7 +427,7 @@ end
 
 function reconstruct_backward_projections(
         detector_x, vdf, n0, dt, param;
-        v_range = 1000.0e3, vy_range = 400.0e3, vz_range = 1000.0e3, dv_km = 20.0,
+        v_range = 1000.0e3, vy_range = 1000.0e3, vz_range = 1000.0e3, dv_km = 20.0,
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
@@ -475,10 +481,24 @@ function reconstruct_backward_projections(
     f_xz = dropdims(sum(f_3d_km, dims = 2), dims = 2) .* (step(vy_grid) * 1.0e-3)
     f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
 
+    ## Embed into full grid for seamless display matching Methods 1 & 2
+    full_centers = collect(range(-v_range, v_range; step = dv) .* 1.0e-3)
+    function embed_2d(g1, g2, M)
+        full_M = zeros(length(full_centers), length(full_centers))
+        i1 = round(Int, (g1[1] - full_centers[1]) / dv_km) + 1
+        i2 = round(Int, (g2[1] - full_centers[1]) / dv_km) + 1
+        i1_end = min(length(full_centers), i1 + length(g1) - 1)
+        i2_end = min(length(full_centers), i2 + length(g2) - 1)
+        len1 = i1_end - i1 + 1
+        len2 = i2_end - i2 + 1
+        full_M[i1:i1_end, i2:i2_end] .= @view M[1:len1, 1:len2]
+        return (full_centers, full_centers, full_M)
+    end
+
     return (
-            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+            embed_2d(vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+            embed_2d(vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
+            embed_2d(vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
         ), t_solve, nparticles_bw
 end
 
