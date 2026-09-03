@@ -3,7 +3,7 @@
 # This example demonstrates how to trace ions across a collisionless shock and analyze their
 # phase space distribution, inspired by the demo from IRF-matlab.
 # We utilize Liouville's theorem (phase space density conservation), backward/forward tracing,
-# and flux injection to reconstruct the distribution function.
+# and Monte Carlo sampling to reconstruct the distribution function.
 
 import DisplayAs #hide
 using TestParticle
@@ -29,28 +29,43 @@ const P_sw = 0.08e-9; # solar wind dynamic pressure [Pa]
 
 const n_up = 3.0e6 # upstream number density [m⁻³]
 const n_down = 8.0e6 # downstream number density [m⁻³]
+## Same tanh construction as for B: the profile interpolates between n_up (x → +∞) and
+## n_down (x → −∞), so the half jump and the mean are the natural coefficients.
+const n_jump = 0.5 * (n_down - n_up) # half density jump across the ramp [m⁻³]
+const n_avg = 0.5 * (n_down + n_up) # mean density across the ramp [m⁻³]
 const shock_width = 5.0e3; # shock ramp width [m]
+## Tangential field compression across the ramp. The Rankine–Hugoniot value (B_t ∝ n) would
+## be n_down / n_up ≈ 2.7, but at this ramp width the resulting Hall term (∝ B_jump / w)
+## builds a cross-shock potential above the ion ram energy and reflects the entire beam, so
+## the weaker jump of the original demo is kept and part of the beam is transmitted.
+const r_Bt = 2.24 # B_t,down / B_t,up across the ramp
 
 # ## Magnetic Field Parameters
 
-const θ_Bn = 45.0 # shock normal angle [degree]
+const B_normal = 5.0e-9 # shock normal component of B [T], continuous across the ramp
 const B_mag = 30.0e-9 # upstream magnetic field magnitude [T]
+## The shock normal is x̂, so B_x is the normal component. The angle follows from the two
+## prescribed field strengths rather than being set independently, so the constructed field
+## really is at the angle reported here.
+const θ_Bn = acosd(B_normal / B_mag) # shock normal angle [degree]
+println("Shock normal angle θ_Bn = $(round(θ_Bn; digits = 1))°")
 
-function compute_tanh_profile_coefficients(θ_Bn, B_mag)
-    B_up_y, B_up_x = B_mag .* sincosd(θ_Bn)
-    B_up_mag = B_mag
+"""
+Tanh coefficients of the *tangential* field across the ramp, so that
+`B_y(x) = -B_jump·tanh(x/w) + B_avg` runs from the upstream tangential component
+`B_mag·sind(θ_Bn)` to `r_Bt` times that value downstream. The normal component `B_normal`
+is continuous and therefore drops out of the profile.
+"""
+function compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
+    B_up_y = B_mag * sind(θ_Bn)
+    B_down_y = r_Bt * B_up_y
 
-    B_down_x = B_up_x
-    B_down_y = 3 * B_up_y
-    B_down_mag = sqrt(B_down_x^2 + B_down_y^2)
-
-    B_jump = 0.5 * (B_down_mag - B_up_mag)
-    B_avg = 0.5 * (B_up_mag + B_down_mag)
+    B_jump = 0.5 * (B_down_y - B_up_y)
+    B_avg = 0.5 * (B_down_y + B_up_y)
     return B_jump, B_avg
 end
 
-const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag)
-const B_normal = 5.0e-9; # shock normal component of B [T]
+const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
 
 # ## Field Definitions
 # Custom analytical electric and magnetic fields across the shock transition layer.
@@ -71,7 +86,7 @@ function get_E_shock(r)
     tanh_v = tanh(xnorm)
     sech_v = sech(xnorm)
 
-    ni = -n_up * tanh_v + n_down
+    ni = -n_jump * tanh_v + n_avg
     jz = -B_jump * sech_v^2 / (TP.μ₀ * shock_width) # Ampere's law
 
     by = -B_jump * tanh_v + B_avg
@@ -115,7 +130,7 @@ t_mc = @elapsed sols = TP.solve(
     prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
     trajectories = nparticles, seed
 );
-println("Simulation complete. Flux injection tracing time: $(round(t_mc; digits = 2)) s")
+println("Simulation complete. Monte Carlo tracing time: $(round(t_mc; digits = 2)) s")
 
 ## Detector planes (upstream and downstream of the shock)
 const x_upstream = 2.0e5  # [m]
@@ -137,18 +152,28 @@ detector_down = Meshes.Plane(
 #
 # | Method | Input | Output |
 # | :--- | :--- | :--- |
-# | **1. Forward Monte-Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`). Each crossing contributes a constant weight `S = n0_km³ / (N · dv²)`, so the histogram directly estimates ``f``. | 2-D projected ``f`` (histogram), `[s²/km⁵]`. |
-# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`; each sample carries weight `n0·pdf(vdf, v_source)` (the source ``f``). By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so binning detector velocities with the source ``f`` value gives ``f`` at the detector. | 2-D projected ``f`` (bin-averaged), `[s²/km⁵]`. |
+# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram), `[s²/km⁵]`. |
+# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram), `[s²/km⁵]`. |
 # | **3. Backward Liouville** | A regular **velocity grid** at the **detector**; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated. | 3-D ``f`` on a grid `[s³/km⁶]`; 2-D projections by summing. |
 
-# ## Method 1: Forward Monte-Carlo
+# ## Method 1: Forward Monte Carlo
 #
-# Particles are launched from the source with velocities drawn from the source Maxwellian.
-# Each detector crossing contributes a constant weight `S`, so the histogram estimates the
-# phase-space density ``f`` at the detector.
+# Particles are launched from the source with velocities drawn from the source Maxwellian,
+# so the ensemble is density weighted.  A steady beam, however, crosses the source plane
+# flux weighted: faster particles are injected more often.  Multiplying each sample by
+# ``|v_{x,\mathrm{src}}|`` supplies that weighting, and dividing by ``|v_{x,\det}|`` at the
+# detector undoes the flux factor of the recorded crossings.  The net weight
+# ``S\,|v_{x,\mathrm{src}}|/|v_{x,\det}|`` reduces to a constant only when every particle
+# crosses the detector once with an unchanged ``v_x`` — which is why the simple constant
+# weight is exact upstream but not downstream of the shock.
 
-function reconstruct_flux_projections(sols, detector, n0, dv_km)
-    vs, _ = get_particle_crossings(sols, detector, 1.0)
+function reconstruct_mc_projections(sols, detector, n0, dv_km)
+    ## The launch velocities are drawn from the source VDF, i.e. density weighted, whereas a
+    ## steady beam crosses the source plane flux weighted. Carrying |v_x,src| as the sample
+    ## weight turns the ensemble into the flux-weighted one; the detector then sees a
+    ## crossing flux, and dividing by |v_x,det| converts that flux back into f.
+    vxi = [s.u[1][4] for s in sols.u]
+    vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
     h_3d = Hist3D(; binedges = (v_edges, v_edges, v_edges))
@@ -156,8 +181,9 @@ function reconstruct_flux_projections(sols, detector, n0, dv_km)
     ## S = n0 [km⁻³] / (N_total · dv_km²)  →  [s²/km⁵] after 1D projection
     S = (n0 * 1.0e9) / (length(sols.u) * dv_km^2)
 
-    for v in vs
-        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, S)
+    for (v, vxi_val) in zip(vs, ws_init)
+        w = abs(vxi_val) / abs(v[1]) * S
+        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w)
     end
 
     return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
@@ -236,7 +262,7 @@ end
 Three-row comparison of the downstream `f` from each method, with a single shared colour bar.
 """
 function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
-    titles = ["Flux Injection", "Forward Liouville", "Backward Liouville"]
+    titles = ["Monte Carlo", "Forward Liouville", "Backward Liouville"]
     xlabels = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylabels = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
     hists = (h1, h2, h3)
@@ -273,14 +299,15 @@ function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
     return fig
 end
 
-hists_up = reconstruct_flux_projections(sols, detector_up, n_up, 20.0)
-hists_down = reconstruct_flux_projections(sols, detector_down, n_up, 20.0)
+hists_up = reconstruct_mc_projections(sols, detector_up, n_up, 20.0)
+hists_down = reconstruct_mc_projections(sols, detector_down, n_up, 20.0)
 
-fig_flux = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
-fig_flux = DisplayAs.PNG(fig_flux) #hide
+fig_mc = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
+fig_mc = DisplayAs.PNG(fig_mc) #hide
 
-# Each crossing contributes a constant weight `S = n0 / (N · dv²)`, so the histogram estimates
-# the phase-space density ``f`` at the detector (the `N` and `dv` factors are removed).
+# Each crossing contributes `S · |v_x,src| / |v_x,det|`, so the histogram estimates the
+# phase-space density ``f`` at the detector: the `N` and `dv` factors are absorbed in `S`,
+# and the ``|v_x|`` ratio converts the crossing flux into a density.
 #
 # ## Method 2: Forward Liouville Tracking
 #
@@ -288,37 +315,48 @@ fig_flux = DisplayAs.PNG(fig_flux) #hide
 # the source and traces forward to the detector.  By Liouville's theorem
 # ``f_{\det}(\mathbf{v}_{\det}) = f_{\src}(\mathbf{v}_{\src})``; the source value
 # ``n_0\,\mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\src})`` is carried unchanged along each
-# trajectory.  We bin the *detector* velocities and average the source ``f`` inside each
-# bin, exactly mirroring Method 3.
+# trajectory.  Because the sphere is sampled uniformly, every sample stands for a known
+# source velocity volume ``V_{\sph}/N``, which the trajectory maps onto a detector volume
+# ``(V_{\sph}/N)\,|v_{x,\src}|/|v_{x,\det}|``.  Depositing ``f\,\Delta V`` into the detector
+# bin and dividing by the bin volume gives the same bin-averaged ``f`` as Method 3, without
+# the sampling noise of Method 1.
 
-function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0)
+function reconstruct_liouville_projections(
+        sols, detector, vdf, n0;
+        dv_km = 20.0, vsphere = (4 / 3) * π * (vradius_m2 * 1.0e-3)^3
+    )
     ## Source f for every trajectory [s³/m⁶]
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
-    ## Detector crossings carry the source f (Liouville)
+    vxi = [s.u[1][4] for s in sols.u]
+    ## Detector crossings carry the source f (Liouville) together with the launch |v_x|
     vs, ws = get_particle_crossings(sols, detector, ws0)
+    _, ws_vxi = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
     nb = length(v_edges) - 1
     centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:(end - 1)])
+    ## Each sample stands for a source velocity-space volume `vsphere / N`, which the
+    ## trajectory maps onto a detector volume `vsphere / N · |v_x,src| / |v_x,det|`. The bin
+    ## density is therefore Σ f·ΔV / dv³. A plain bin mean of f would instead fill every
+    ## visited bin with the local f value, overestimating the density wherever a single
+    ## trajectory crosses the detector several times within one bin.
     sum_f = zeros(nb, nb, nb)
-    count = zeros(Int, nb, nb, nb)
+    scale = vsphere / (length(sols.u) * dv_km^3)
 
-    for (v, w) in zip(vs, ws)
+    for (v, w, vxi_val) in zip(vs, ws, ws_vxi)
         ix = floor(Int, (v[1] * 1.0e-3 - v_edges[1]) / dv_km) + 1
         iy = floor(Int, (v[2] * 1.0e-3 - v_edges[1]) / dv_km) + 1
         iz = floor(Int, (v[3] * 1.0e-3 - v_edges[1]) / dv_km) + 1
         if 1 <= ix <= nb && 1 <= iy <= nb && 1 <= iz <= nb
-            ## [s³/m⁶] → [s³/km⁶]
-            sum_f[ix, iy, iz] += w * 1.0e18
-            count[ix, iy, iz] += 1
+            ## [s³/m⁶] → [s³/km⁶], weighted by the mapped detector volume
+            sum_f[ix, iy, iz] += w * 1.0e18 * abs(vxi_val) / abs(v[1]) * scale
         end
     end
-    f_3d = ifelse.(count .> 0, sum_f ./ count, 0.0)
 
     dv = dv_km * 1.0e3
-    f_xy = dropdims(sum(f_3d, dims = 3), dims = 3) .* (dv * 1.0e-3)
-    f_xz = dropdims(sum(f_3d, dims = 2), dims = 2) .* (dv * 1.0e-3)
-    f_yz = dropdims(sum(f_3d, dims = 1), dims = 1) .* (dv * 1.0e-3)
+    f_xy = dropdims(sum(sum_f, dims = 3), dims = 3) .* (dv * 1.0e-3)
+    f_xz = dropdims(sum(sum_f, dims = 2), dims = 2) .* (dv * 1.0e-3)
+    f_yz = dropdims(sum(sum_f, dims = 1), dims = 1) .* (dv * 1.0e-3)
 
     return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
@@ -356,9 +394,9 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # The sphere radius `3 vth_ion` covers the bulk of the Maxwellian; `nparticles_m2 = 10⁵`
 # gives usable statistics in the populated bins. Note that the sharp circular boundary in
 # the reconstructed phase-space plots is an artifact of the finite sampling sphere
-# (`r ≤ 3 vth_ion`) at the source. The bin-averaged source ``f`` is a direct
-# Monte-Carlo estimate of ``f_{\det}``, on the same grid and with the same units as
-# Method 3, so the two should agree up to sampling noise.
+# (`r ≤ 3 vth_ion`) at the source. The result is a direct Monte-Carlo estimate of
+# ``f_{\det}`` on the same grid and in the same units as Methods 1 and 3, so all three
+# should agree up to sampling noise.
 #
 # ## Method 3: Backward Liouville Tracing
 #
@@ -431,6 +469,14 @@ function reconstruct_backward_projections(
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
+    ## Grid points are bin *centres*, matching the histograms of Methods 1 & 2 whose bin
+    ## edges run from -v_range to +v_range in steps of dv. Snapping the refined window to
+    ## those centres keeps all three methods on the same velocity grid.
+    v0x = -v_range + dv / 2
+    v0y = -vy_range + dv / 2
+    v0z = -vz_range + dv / 2
+    snap_lo(x, v0) = v0 + floor((x - v0) / dv) * dv
+    snap_hi(x, v0) = v0 + ceil((x - v0) / dv) * dv
 
     if adaptive
         ## Pass 1 (coarse): locate the populated region cheaply.
@@ -438,9 +484,9 @@ function reconstruct_backward_projections(
         vy_c = range(-vy_range, vy_range, step = dv_coarse_km * 1.0e3)
         vz_c = range(-vz_range, vz_range, step = dv_coarse_km * 1.0e3)
     else
-        vx_c = range(-v_range, v_range, step = dv)
-        vy_c = range(-vy_range, vy_range, step = dv)
-        vz_c = range(-vz_range, vz_range, step = dv)
+        vx_c = range(v0x, -v0x, step = dv)
+        vy_c = range(v0y, -v0y, step = dv)
+        vz_c = range(v0z, -v0z, step = dv)
     end
 
     t_solve = @elapsed begin
@@ -453,18 +499,18 @@ function reconstruct_backward_projections(
             else
                 ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
                 vx_grid = range(
-                    max(-v_range, floor((vx_c[minimum(ixs)] - margin_km * 1.0e3) / dv) * dv),
-                    min(v_range, ceil((vx_c[maximum(ixs)] + margin_km * 1.0e3) / dv) * dv);
+                    max(v0x, snap_lo(vx_c[minimum(ixs)] - margin_km * 1.0e3, v0x)),
+                    min(-v0x, snap_hi(vx_c[maximum(ixs)] + margin_km * 1.0e3, v0x));
                     step = dv
                 )
                 vy_grid = range(
-                    max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
-                    min(vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
+                    max(v0y, snap_lo(vy_c[minimum(iys)] - margin_km * 1.0e3, v0y)),
+                    min(-v0y, snap_hi(vy_c[maximum(iys)] + margin_km * 1.0e3, v0y));
                     step = dv
                 )
                 vz_grid = range(
-                    max(-vz_range, floor((vz_c[minimum(izs)] - margin_km * 1.0e3) / dv) * dv),
-                    min(vz_range, ceil((vz_c[maximum(izs)] + margin_km * 1.0e3) / dv) * dv);
+                    max(v0z, snap_lo(vz_c[minimum(izs)] - margin_km * 1.0e3, v0z)),
+                    min(-v0z, snap_hi(vz_c[maximum(izs)] + margin_km * 1.0e3, v0z));
                     step = dv
                 )
                 f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
@@ -482,7 +528,7 @@ function reconstruct_backward_projections(
     f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
 
     ## Embed into full grid for seamless display matching Methods 1 & 2
-    full_centers = collect(range(-v_range, v_range; step = dv) .* 1.0e-3)
+    full_centers = collect(range(v0x, -v0x; step = dv) .* 1.0e-3)
     function embed_2d(g1, g2, M)
         full_M = zeros(length(full_centers), length(full_centers))
         i1 = round(Int, (g1[1] - full_centers[1]) / dv_km) + 1
@@ -520,6 +566,46 @@ fig_backward = DisplayAs.PNG(fig_backward) #hide
 fig_cmp = plot_downstream_comparison(hists_down, hists_down_m2, res_down_bw)
 fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 
+# ## Moment check: density and momentum
+#
+# Integrating a 2-D projection over velocity returns the lowest moments of the reconstructed
+# distribution: the density ``n = \int f\,\mathrm{d}v_i\mathrm{d}v_j`` and the momentum
+# ``n\,V_i = \int v_i f\,\mathrm{d}v_i\mathrm{d}v_j``. Because a steady 1-D shock conserves
+# the mass flux ``n\,V_x``, the upstream and downstream values must agree, which makes this a
+# stringent check: it integrates the whole VDF, so it is sensitive to normalisation errors
+# and to particles that are counted more than once, neither of which is obvious in the
+# 2-D maps.
+
+"""
+Integrate a 2-D projection over velocity, returning the density `n` [m⁻³] and the momentum
+`n·V_i` [m⁻³·km/s] of the reconstructed distribution.
+"""
+function moments_2d(h; dv_km = 20.0)
+    v_i, A = if h isa Tuple
+        h[1], Float64.(h[3])
+    else
+        e = collect.(binedges(h))
+        0.5 .* (e[1][2:end] .+ e[1][1:(end - 1)]), Float64.(bincounts(h))
+    end
+    c = dv_km^2 * 1.0e-9   # [s²/km⁵] · [km/s]² → [m⁻³]
+    n = sum(A) * c
+    return (n = n, nV = sum(A .* v_i) * c)
+end
+
+using Markdown, Printf #hide
+io_m = IOBuffer() #hide
+println(io_m, "| Method | n up [10⁶ m⁻³] | n·Vx up [10⁹ m⁻³·km/s] | n down [10⁶ m⁻³] | n·Vx down [10⁹ m⁻³·km/s] |") #hide
+println(io_m, "| :--- | :---: | :---: | :---: | :---: |") #hide
+for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouville")) #hide
+    mu = moments_2d(((hists_up, hists_up_m2, res_up_bw)[i])[1]) #hide
+    md = moments_2d(((hists_down, hists_down_m2, res_down_bw)[i])[1]) #hide
+    @printf( #hide
+        io_m, "| **%s** | %.2f | %.2f | %.2f | %.2f |\n", #hide
+        name, mu.n * 1.0e-6, mu.nV * 1.0e-9, md.n * 1.0e-6, md.nV * 1.0e-9 #hide
+    ) #hide
+end #hide
+Markdown.parse(String(take!(io_m))) #hide
+
 # ## Summary
 #
 # This example illustrates three complementary ways to reconstruct the phase-space density
@@ -528,11 +614,10 @@ fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
-t_per_bw = t_bw / n_bw * 1.0e6;
+t_per_bw = t_bw / n_bw * 1.0e6
 
-using Markdown, Printf #hide
 io = IOBuffer() #hide
-println(io, "| Method | Flux Injection | Forward Liouville Tracking | Backward Liouville Tracing |") #hide
+println(io, "| Method | Monte Carlo | Forward Liouville Tracking | Backward Liouville Tracing |") #hide
 println(io, "| :--- | :--- | :--- | :--- |") #hide
 println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) | None (grid-based) |") #hide
 println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
