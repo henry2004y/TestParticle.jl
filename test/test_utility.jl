@@ -958,6 +958,11 @@ end
         # get_particle_crossings (multiple surfaces, non-scalar weights)
         vs_mw, ws_mw = get_particle_crossings(sim, [detector, detector], [1.0, 2.0])
         @test length(vs_mw) == 2 && length(ws_mw) == 2 && sum(ws_mw[1]) == 3.0
+
+        # get_first_crossing (EnsembleSolution)
+        sts = get_first_crossing(sim, detector)
+        @test length(sts) == 2
+        @test all(st ≈ SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0] for st in sts)
     end
 
     @testset "Meshes Grid Helpers" begin
