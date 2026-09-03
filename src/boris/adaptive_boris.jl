@@ -44,9 +44,9 @@ end
     # Use array comprehension for EnsembleSerial to avoid _get_sol_type allocations
     elapsed_time = @elapsed sols = [
         _adaptive_boris_single(
-                prob, i, savestepinterval, isoutside, save_start, save_end,
-                save_everystep, Val(SaveFields), Val(SaveWork), alg
-            ) for i in 1:trajectories
+            prob, i, savestepinterval, isoutside, save_start, save_end,
+            save_everystep, Val(SaveFields), Val(SaveWork), alg
+        ) for i in 1:trajectories
     ]
     return EnsembleSolution(sols, elapsed_time, true)
 end

@@ -152,11 +152,11 @@ end
     # Use array comprehension for EnsembleSerial
     elapsed_time = @elapsed sols = [
         _solve_single(
-                prob, i, savestepinterval, dt, nt,
-                nout, isoutside,
-                save_start, save_end, save_everystep,
-                Val(SaveFields), Val(SaveWork), alg, seed
-            ) for i in 1:trajectories
+            prob, i, savestepinterval, dt, nt,
+            nout, isoutside,
+            save_start, save_end, save_everystep,
+            Val(SaveFields), Val(SaveWork), alg, seed
+        ) for i in 1:trajectories
     ]
     return EnsembleSolution(sols, elapsed_time, true)
 end

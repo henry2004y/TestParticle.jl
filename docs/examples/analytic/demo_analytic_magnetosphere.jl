@@ -40,22 +40,16 @@ mag_model = MS.AnalyticalMagnetosphere(;
 
 @inbounds getB(r) = mag_model(SA[r[1], r[2], r[3]])
 
-"""
-Boundary condition check.
-"""
 function isoutside(u, p, t)
     rout = 18Rₑ
     return (u[1]^2 + u[2]^2 + u[3]^2) < (1.1Rₑ)^2 ||
         abs(u[1]) > rout || abs(u[2]) > rout || abs(u[3]) > rout
 end
 
-"""
-Set initial conditions.
-"""
-function prob_func_13(prob, ctx)
+"Set initial conditions for protons in the inner magnetosphere."
+function prob_func_inner(prob, ctx)
     i = ctx.sim_id
-    ## initial particle energy
-    Ek = 2.0e4 # [eV]
+    Ek = 2.0e4 # initial particle energy [eV]
     ## initial velocity, [m/s]
     v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
@@ -64,10 +58,10 @@ function prob_func_13(prob, ctx)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-function prob_func_6(prob, ctx)
+"Set initial conditions for protons in the magnetotail."
+function prob_func_tail(prob, ctx)
     i = ctx.sim_id
-    ## initial particle energy
-    Ek = 4.0e3 # [eV]
+    Ek = 4.0e3 # initial particle energy [eV]
     ## initial velocity, [m/s]
     v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
@@ -76,14 +70,14 @@ function prob_func_6(prob, ctx)
     return prob = remake(prob; u0 = [r₀..., v₀...])
 end
 
-## obtain field
+
 param = prepare(ZeroField(), getB)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 2000.0)
 trajectories = 2
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_13, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_inner, safetycopy = false)
 
 ## See https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
 ## for the solver options
@@ -93,10 +87,26 @@ sols = solve(
     trajectories, callback, dense = true, save_on = true
 )
 
-### Visualization
+## Look at particles in the magnetotail region of the same model.
+param = prepare(ZeroField(), getB)
+stateinit = zeros(6) # particle position and velocity to be modified
+tspan = (0.0, 8000.0)
+trajectories = 1
 
-f = Figure(fontsize = 20)
-ax = Axis3(
+prob = ODEProblem(trace!, stateinit, tspan, param)
+ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_tail, safetycopy = false)
+
+callback = TerminateOutside(isoutside)
+sols_tail = solve(
+    ensemble_prob, Vern7(), EnsembleSerial(); reltol = 1.0e-5,
+    trajectories, callback, dense = true, save_on = true
+)
+
+### Visualization
+invRE = 1 / Rₑ
+
+f = Figure(fontsize = 24, size = (1400, 600))
+ax_inner = Axis3(
     f[1, 1],
     title = "20 keV Protons in an analytical magnetosphere",
     xlabel = "x [Re]",
@@ -108,17 +118,35 @@ ax = Axis3(
     azimuth = -π / 3
 )
 
-invRE = 1 / Rₑ
-
 for (i, sol) in enumerate(sols.u)
     x = sol[1, :] .* invRE
     y = sol[2, :] .* invRE
     z = sol[3, :] .* invRE
-    lines!(ax, x, y, z, color = Makie.wong_colors()[i])
+    lines!(ax_inner, x, y, z, color = Makie.wong_colors()[i])
+end
+
+ax_tail = Axis3(
+    f[1, 2],
+    title = "4 keV Protons in the magnetotail",
+    xlabel = "x [Re]",
+    ylabel = "y [Re]",
+    zlabel = "z [Re]",
+    aspect = :data,
+    azimuth = 1.4
+)
+
+for (i, sol) in enumerate(sols_tail.u)
+    x = sol[1, :] .* invRE
+    y = sol[2, :] .* invRE
+    z = sol[3, :] .* invRE
+    lines!(ax_tail, x, y, z, color = Makie.wong_colors()[i])
 end
 
 ## Field lines
-function get_numerical_field(x, y, z, model)
+function trace_field!(
+        ax, x, y, z, unitscale, model = getB;
+        rmin = 4Rₑ, rmax = 16Rₑ, nr = 8, nϕ = 8
+    )
     bx = zeros(length(x), length(y), length(z))
     by = similar(bx)
     bz = similar(bx)
@@ -128,15 +156,6 @@ function get_numerical_field(x, y, z, model)
         bx[i], by[i], bz[i] = model(pos)
     end
 
-    return bx, by, bz
-end
-
-function trace_field!(
-        ax, x, y, z, unitscale, model = getB;
-        rmin = 4Rₑ, rmax = 16Rₑ, nr = 8, nϕ = 8
-    )
-    bx, by, bz = get_numerical_field(x, y, z, model)
-
     zs = 0.0
     dϕ = 2π / nϕ
     for r in range(rmin, rmax, length = nr), ϕ in range(0, 2π - dϕ, length = nϕ)
@@ -144,59 +163,25 @@ function trace_field!(
         ys = r * sin(ϕ)
         x1, y1, z1 = FieldTracer.trace(
             bx, by, bz, xs, ys, zs, x, y, z;
-            ds = 0.1Rₑ, maxstep = 10000
+            ds = 0.1Rₑ, maxstep = 6000
         )
         lines!(ax, x1 .* unitscale, y1 .* unitscale, z1 .* unitscale, color = :gray)
     end
     return
 end
 
-x = range(-8Rₑ, 14Rₑ, length = 50)
-y = range(-10Rₑ, 10Rₑ, length = 50)
-z = range(-8Rₑ, 8Rₑ, length = 50)
+let x = range(-8Rₑ, 14Rₑ, length = 30),
+        y = range(-10Rₑ, 10Rₑ, length = 30),
+        z = range(-8Rₑ, 8Rₑ, length = 30)
 
-trace_field!(ax, x, y, z, invRE)
-
-f = DisplayAs.PNG(f) #hide
-
-# We now look at particles in the magnetotail region of the same model.
-
-param = prepare(ZeroField(), getB)
-stateinit = zeros(6) # particle position and velocity to be modified
-tspan = (0.0, 8000.0)
-trajectories = 1
-
-prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func = prob_func_6, safetycopy = false)
-
-callback = TerminateOutside(isoutside)
-sols = solve(
-    ensemble_prob, Vern9(), EnsembleSerial(); reltol = 1.0e-5,
-    trajectories, callback, dense = true, save_on = true
-)
-
-x = range(-10Rₑ, 10Rₑ, length = 50)
-y = range(-5Rₑ, 5Rₑ, length = 20)
-z = range(-10Rₑ, 10Rₑ, length = 50)
-
-f = Figure(fontsize = 18)
-ax = Axis3(
-    f[1, 1],
-    title = "4 keV Protons in the magnetotail",
-    xlabel = "x [Re]",
-    ylabel = "y [Re]",
-    zlabel = "z [Re]",
-    aspect = :data,
-    azimuth = 1.4
-)
-
-for (i, sol) in enumerate(sols.u)
-    x_plot = sol[1, :] .* invRE
-    y_plot = sol[2, :] .* invRE
-    z_plot = sol[3, :] .* invRE
-    lines!(ax, x_plot, y_plot, z_plot, color = Makie.wong_colors()[i])
+    trace_field!(ax_inner, x, y, z, invRE)
 end
 
-trace_field!(ax, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
+let x = range(-10Rₑ, 10Rₑ, length = 40),
+        y = range(-5Rₑ, 5Rₑ, length = 20),
+        z = range(-10Rₑ, 10Rₑ, length = 40)
+
+    trace_field!(ax_tail, x, y, z, invRE, getB; rmin = 4Rₑ, rmax = 8Rₑ, nϕ = 8)
+end
 
 f = DisplayAs.PNG(f) #hide

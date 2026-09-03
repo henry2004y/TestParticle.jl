@@ -437,8 +437,8 @@ function run_case(β_val)
     m = q / q2m
     K = [
         let xu = sol.u[i], t = sol.t[i]
-                X = SA[xu[1], xu[2], xu[3]]
-                (0.5 * m * xu[4]^2 + μ * norm(Bfunc(X, t))) / eV
+            X = SA[xu[1], xu[2], xu[3]]
+            (0.5 * m * xu[4]^2 + μ * norm(Bfunc(X, t))) / eV
         end for i in 1:length(sol.t)
     ]
 

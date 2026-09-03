@@ -206,10 +206,10 @@ function collect_VDF(x, sols; ntchunks::Int = 20)
 
     table = [
         (;
-                vx = Float64[],
-                vy = Float64[],
-                vz = Float64[],
-            ) for _ in 1:nxchunks
+            vx = Float64[],
+            vy = Float64[],
+            vz = Float64[],
+        ) for _ in 1:nxchunks
     ]
 
     for sol in sols.u
