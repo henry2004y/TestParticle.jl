@@ -8,10 +8,8 @@
 import DisplayAs #hide
 using TestParticle
 import TestParticle as TP
-using LinearAlgebra: norm
 using StaticArrays
 using Random
-using FHist
 using VelocityDistributionFunctions
 using CairoMakie
 using Meshes
@@ -109,6 +107,8 @@ param = prepare(get_E_shock, get_B_shock; species = Proton)
 ## Source velocity distribution (isotropic Maxwellian)
 const p_thermal = n_up * TP.qᵢ * T_ion
 const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
+## Source phase-space density [s³/m⁶]; `pdf` returns a normalized VDF.
+f_src(v) = n_up * pdf(vdf, v)
 
 function prob_func_maxwellian(prob, ctx)
     v = rand(ctx.rng, vdf)
@@ -170,17 +170,15 @@ function reconstruct_mc_projections(sols, detector, n0, dv_km)
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
-    h_3d = Hist3D(; binedges = (v_edges, v_edges, v_edges))
+    centers = bin_centers(v_edges)
+    ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
+    ## volume `dv³`, hence `S = n0 [km⁻³] / (N · dv_km³)` for `f` in [s³/km⁶].
+    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^3)
 
-    ## S = n0 [km⁻³] / (N_total · dv_km²)  →  [s²/km⁵] after 1D projection
-    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^2)
+    f_3d = bin_velocity_space(vs, fill(S, length(vs)), v_edges; vx_source = ws_init)
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
 
-    for (v, vxi_val) in zip(vs, ws_init)
-        w = abs(vxi_val) / abs(v[1]) * S
-        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w)
-    end
-
-    return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
+    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
 
 # ## Plotting helpers
@@ -191,18 +189,11 @@ end
 # scaling.
 
 """
-Display a 2-D histogram or (x, y, A) tuple on a log10 colour scale.
+Display a 2-D distribution given as an `(x, y, A)` tuple on a log10 colour scale.
 Zeros / NaNs are clamped to `fmin` so empty cells use the bottom of the colour bar.
 """
-function logheatmap!(ax, h::Union{Hist2D, Tuple}; colormap = :turbo, cr = (1.0e-8, 1.0))
-    if h isa Tuple
-        x, y, A = h
-    else
-        edges = collect.(binedges(h))
-        x = 0.5 .* (edges[1][2:end] .+ edges[1][1:(end - 1)])
-        y = 0.5 .* (edges[2][2:end] .+ edges[2][1:(end - 1)])
-        A = h.bincounts
-    end
+function logheatmap!(ax, h::Tuple; colormap = :turbo, cr = (1.0e-8, 1.0))
+    x, y, A = h
     fmin, fmax = cr
     B = [isfinite(v) && v ≥ fmin ? min(v, fmax) : fmin for v in A]
     hm = heatmap!(ax, x, y, B; colormap, colorscale = log10, colorrange = (fmin, fmax))
@@ -216,8 +207,7 @@ Return (fmin, fmax) for a shared log colour range across several 2-D distributio
 function compute_common_cr(hists; rel = 1.0e-5)
     fmax = 0.0
     for h in hists
-        A = h isa Tuple ? h[3] : h.bincounts
-        m = maximum(A)
+        m = maximum(h[3])
         m > fmax && (fmax = m)
     end
     fmax ≤ 0 && return (1.0e-30, 1.0)
@@ -327,30 +317,19 @@ function reconstruct_liouville_projections(
     _, ws_vxi = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
-    nb = length(v_edges) - 1
-    centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:(end - 1)])
-    ## Each sample stands for a source velocity-space volume `vsphere / N`, which the
-    ## trajectory maps onto a detector volume `vsphere / N · |v_x,src| / |v_x,det|`. The bin
-    ## density is therefore Σ f·ΔV / dv³. A plain bin mean of f would instead fill every
-    ## visited bin with the local f value, overestimating the density wherever a single
-    ## trajectory crosses the detector several times within one bin.
-    sum_f = zeros(nb, nb, nb)
-    scale = vsphere / (length(sols.u) * dv_km^3)
+    centers = bin_centers(v_edges)
+    ## Each sample stands for a source velocity-space volume `vsphere / N`, which
+    ## `bin_velocity_space` maps onto a detector volume `vsphere / N · |v_x,src|/|v_x,det|`
+    ## and spreads over the bin volume, so the bin density is Σ f·ΔV / dv³. This summed
+    ## estimator carries the `∝ 1/√n` counting noise of the samples per bin; the
+    ## `average = true` ratio estimator divides it out instead, at the cost of giving every
+    ## visited bin the local `f` regardless of how many times a trajectory crossed it.
+    ## With N = 10⁵ samples over the sphere the summed estimator is populated well enough
+    ## here, so we keep the more faithful rendering of the mapped velocity volume.
+    scale = vsphere * 1.0e18 / (length(sols.u) * dv_km^3) # [s³/m⁶] → [s³/km⁶]
 
-    for (v, w, vxi_val) in zip(vs, ws, ws_vxi)
-        ix = floor(Int, (v[1] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        iy = floor(Int, (v[2] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        iz = floor(Int, (v[3] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        if 1 <= ix <= nb && 1 <= iy <= nb && 1 <= iz <= nb
-            ## [s³/m⁶] → [s³/km⁶], weighted by the mapped detector volume
-            sum_f[ix, iy, iz] += w * 1.0e18 * abs(vxi_val) / abs(v[1]) * scale
-        end
-    end
-
-    dv = dv_km * 1.0e3
-    f_xy = dropdims(sum(sum_f, dims = 3), dims = 3) .* (dv * 1.0e-3)
-    f_xz = dropdims(sum(sum_f, dims = 2), dims = 2) .* (dv * 1.0e-3)
-    f_yz = dropdims(sum(sum_f, dims = 1), dims = 1) .* (dv * 1.0e-3)
+    f_3d = bin_velocity_space(vs, ws .* scale, v_edges; vx_source = ws_vxi)
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
 
     return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
@@ -360,13 +339,7 @@ const vradius_m2 = 3 * vth_ion # velocity-space radius, [m/s]
 
 ## Uniform sampling in a 3D sphere
 function prob_func_m2(prob, ctx)
-    r = vradius_m2 * rand(ctx.rng)^(1 / 3)
-    ϕ = 2π * rand(ctx.rng)
-    θ = acos(2 * rand(ctx.rng) - 1)
-
-    sinθ, cosθ = sincos(θ)
-    cosϕ, sinϕ = sincos(ϕ)
-    v = SA[V_sw + r * sinθ * cosϕ, r * sinθ * sinϕ, r * cosθ]
+    v = sample_velocity_ball(ctx.rng, vradius_m2; center = SA[V_sw, 0.0, 0.0])
     u0 = SA[x_source..., v...]
     return remake(prob, u0 = u0)
 end
@@ -405,21 +378,11 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # move away are not terminated, so every grid cell whose backward trajectory eventually
 # crosses the source receives a value.
 
+const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
+
 ## One backward-tracing pass over a uniform velocity grid; returns the 3-D phase-space
 ## density at the detector in [s³/km⁶].
-function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
-    nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
-    ntraj = nx * ny * nz
-
-    function prob_func(prob, ctx)
-        iz = (ctx.sim_id - 1) % nz + 1
-        iy = ((ctx.sim_id - 1) ÷ nz) % ny + 1
-        ix = ((ctx.sim_id - 1) ÷ (nz * ny)) % nx + 1
-        u0 = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
-        return remake(prob, u0 = u0)
-    end
-
-    source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
+function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
     ## 20 s backward span: setting post_source_margin = 100 km safely captures the
     ## post-crossing point.
     ## Trajectories moving deeper downstream (u[1] < detector_x - 600 km) cannot return
@@ -429,36 +392,27 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, p
     ## points by 180° of gyro-phase (half an orbit); linear interpolation on a semicircle
     ## collapses the perpendicular velocity toward zero and distorts f ∝ exp(-v²/(2vth²)).
     ## We keep savestepinterval = 1 for accurate boundary interpolation.
-    tspan_bw = (0.0, -20.0)
     post_source_margin = 100.0e3
-    prob = TraceProblem(
-        SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan_bw, param;
-        prob_func = prob_func
+    prob = vdf_grid_problem(
+        vx_grid, vy_grid, vz_grid, SA[detector_x, 0.0, 0.0], param, (0.0, -20.0)
     )
 
     sols = TP.solve(
-        prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
+        prob, Boris(), EnsembleThreads(); dt = -dt,
+        trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
         savestepinterval = 1,
         isoutside = (u, p, t) -> u[1] > x_source[1] + post_source_margin ||
             u[1] < detector_x - 600.0e3
     )
 
-    f_3d = zeros(nx, ny, nz)
-    for (i, sol) in enumerate(sols.u)
-        st = get_first_crossing(sol, source_plane)
-        if !any(isnan, st)
-            iz = (i - 1) % nz + 1
-            iy = ((i - 1) ÷ nz) % ny + 1
-            ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-            ## [s³/m⁶] → [s³/km⁶]
-            f_3d[ix, iy, iz] = n0 * pdf(vdf, st[SA[4, 5, 6]]) * 1.0e18
-        end
-    end
-    return f_3d
+    return vdf_backward(
+        sols, source_plane, f_src,
+        (length(vx_grid), length(vy_grid), length(vz_grid))
+    )
 end
 
 function reconstruct_backward_projections(
-        detector_x, vdf, n0, dt, param;
+        detector_x, dt, param;
         v_range = 1000.0e3, vy_range = 1000.0e3, vz_range = 1000.0e3, dv_km = 20.0,
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
@@ -469,8 +423,6 @@ function reconstruct_backward_projections(
     v0x = -v_range + dv / 2
     v0y = -vy_range + dv / 2
     v0z = -vz_range + dv / 2
-    snap_lo(x, v0) = v0 + floor((x - v0) / dv) * dv
-    snap_hi(x, v0) = v0 + ceil((x - v0) / dv) * dv
 
     if adaptive
         ## Pass 1 (coarse): locate the populated region cheaply.
@@ -484,31 +436,14 @@ function reconstruct_backward_projections(
     end
 
     t_solve = @elapsed begin
-        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, vdf, n0, dt, param)
+        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, dt, param)
         if adaptive
-            kept = findall(f_coarse .> maximum(f_coarse) * 1.0e-6)
-            if isempty(kept)
-                vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
-                f_3d_km = f_coarse
-            else
-                ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
-                vx_grid = range(
-                    max(v0x, snap_lo(vx_c[minimum(ixs)] - margin_km * 1.0e3, v0x)),
-                    min(-v0x, snap_hi(vx_c[maximum(ixs)] + margin_km * 1.0e3, v0x));
-                    step = dv
-                )
-                vy_grid = range(
-                    max(v0y, snap_lo(vy_c[minimum(iys)] - margin_km * 1.0e3, v0y)),
-                    min(-v0y, snap_hi(vy_c[maximum(iys)] + margin_km * 1.0e3, v0y));
-                    step = dv
-                )
-                vz_grid = range(
-                    max(v0z, snap_lo(vz_c[minimum(izs)] - margin_km * 1.0e3, v0z)),
-                    min(-v0z, snap_hi(vz_c[maximum(izs)] + margin_km * 1.0e3, v0z));
-                    step = dv
-                )
-                f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
-            end
+            vx_grid, vy_grid, vz_grid = refine_vdf_window(
+                f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0z), dv;
+                margin = margin_km * 1.0e3, relthresh = 1.0e-6,
+                bounds = ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z))
+            )
+            f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
         else
             vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
             f_3d_km = f_coarse
@@ -517,9 +452,7 @@ function reconstruct_backward_projections(
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
     ## Integral over third dimension [km/s]: f_int in [s²/km⁵]
-    f_xy = dropdims(sum(f_3d_km, dims = 3), dims = 3) .* (step(vz_grid) * 1.0e-3)
-    f_xz = dropdims(sum(f_3d_km, dims = 2), dims = 2) .* (step(vy_grid) * 1.0e-3)
-    f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
+    f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
 
     ## Embed into full grid for seamless display matching Methods 1 & 2
     full_centers = collect(range(v0x, -v0x; step = dv) .* 1.0e-3)
@@ -542,10 +475,8 @@ function reconstruct_backward_projections(
         ), t_solve, nparticles_bw
 end
 
-res_up_bw, t_bw_up, n_bw_up =
-    reconstruct_backward_projections(x_upstream, vdf, n_up, dt, param)
-res_down_bw, t_bw_down, n_bw_down =
-    reconstruct_backward_projections(x_downstream, vdf, n_up, dt, param)
+res_up_bw, t_bw_up, n_bw_up = reconstruct_backward_projections(x_upstream, dt, param)
+res_down_bw, t_bw_down, n_bw_down = reconstruct_backward_projections(x_downstream, dt, param)
 t_bw = t_bw_up + t_bw_down
 n_bw = n_bw_up + n_bw_down
 
@@ -583,29 +514,13 @@ fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 # ramp before it can reach either detector. The upstream to downstream deficit visible below
 # is a property of the model, not a reconstruction error.
 
-"""
-Integrate a 2-D projection over velocity, returning the density `n` [m⁻³] and the momentum
-`n·V_i` [m⁻³·km/s] of the reconstructed distribution.
-"""
-function moments_2d(h; dv_km = 20.0)
-    v_i, A = if h isa Tuple
-        h[1], Float64.(h[3])
-    else
-        e = collect.(binedges(h))
-        0.5 .* (e[1][2:end] .+ e[1][1:(end - 1)]), Float64.(bincounts(h))
-    end
-    c = dv_km^2 * 1.0e-9   # [s²/km⁵] · [km/s]² → [m⁻³]
-    n = sum(A) * c
-    return (n = n, nV = sum(A .* v_i) * c)
-end
-
 using Markdown, Printf #hide
 io_m = IOBuffer() #hide
 println(io_m, "| Method | n up [10⁶ m⁻³] | n·Vx up [10⁹ m⁻³·km/s] | n down [10⁶ m⁻³] | n·Vx down [10⁹ m⁻³·km/s] |") #hide
 println(io_m, "| :--- | :---: | :---: | :---: | :---: |") #hide
 for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouville")) #hide
-    mu = moments_2d(((hists_up, hists_up_m2, res_up_bw)[i])[1]) #hide
-    md = moments_2d(((hists_down, hists_down_m2, res_down_bw)[i])[1]) #hide
+    mu = velocity_moments(((hists_up, hists_up_m2, res_up_bw)[i])[1]; dv = 20.0) #hide
+    md = velocity_moments(((hists_down, hists_down_m2, res_down_bw)[i])[1]; dv = 20.0) #hide
     @printf( #hide
         io_m, "| **%s** | %.2f | %.2f | %.2f | %.2f |\n", #hide
         name, mu.n * 1.0e-6, mu.nV * 1.0e-9, md.n * 1.0e-6, md.nV * 1.0e-9 #hide
@@ -626,44 +541,21 @@ Markdown.parse(String(take!(io_m))) #hide
 # exact steady solution, so `vdf` itself is the reference. Downstream no analytic reference
 # exists, and the noise-free backward solution takes that role instead.
 
-matrix_of(h::Hist2D) = bincounts(h)
+## Analytic references come out as bare matrices, while the reconstructions are
+## `(vi, vj, f)` tuples; this normalizes both to the same matrix.
 matrix_of(h::Tuple) = h[3]
 matrix_of(M::AbstractMatrix) = M
 
-function rel_l2(rec, ref; thresh = 1.0e-4)
-    m = (ref .> maximum(ref) * thresh) .& isfinite.(rec)
-    return norm(rec[m] .- ref[m]) / norm(ref[m])
-end
-
-"""
-Analytic 2-D projection `f(v_i, v_j) = ∫ f_3D dv_k` in `[s²/km⁵]`, evaluated on the bin
-centres shared by the three reconstructions.
-"""
-function analytic_projection(vdf, n0, i, j, k, gi, gj, gk, dvk)
-    M = zeros(length(gi), length(gj))
-    for (bi, vi) in enumerate(gi), (bj, vj) in enumerate(gj)
-        s = 0.0
-        for vk in gk
-            v1 = i == 1 ? vi : (j == 1 ? vj : vk)
-            v2 = i == 2 ? vi : (j == 2 ? vj : vk)
-            v3 = i == 3 ? vi : (j == 3 ? vj : vk)
-            s += n0 * pdf(vdf, SVector{3, Float64}(v1, v2, v3) * 1.0e3) * 1.0e18 * dvk
-        end
-        M[bi, bj] = s
-    end
-    return M
-end
-
 const bin_edges = -1000.0:20.0:1000.0 # km/s, velocity bin edges of all three methods
-const bin_centers = 0.5 .* (bin_edges[2:end] .+ bin_edges[1:(end - 1)])
+const v_centers = bin_centers(bin_edges)
 ## Midpoint rule on the bin centres, i.e. the same quadrature the reconstructions use when
 ## they collapse the third velocity axis.
 const v_int = range(-990.0, 990.0; step = 20.0) # km/s, integration axis
 
 ana_up = (
-    analytic_projection(vdf, n_up, 1, 2, 3, bin_centers, bin_centers, v_int, step(v_int)),
-    analytic_projection(vdf, n_up, 1, 3, 2, bin_centers, bin_centers, v_int, step(v_int)),
-    analytic_projection(vdf, n_up, 2, 3, 1, bin_centers, bin_centers, v_int, step(v_int)),
+    analytic_projection(f_src, 3, v_centers, v_centers, v_int, step(v_int)),
+    analytic_projection(f_src, 2, v_centers, v_centers, v_int, step(v_int)),
+    analytic_projection(f_src, 1, v_centers, v_centers, v_int, step(v_int)),
 )
 
 io_d = IOBuffer() #hide
@@ -678,7 +570,7 @@ for (name, rec, ref, refname) in ( #hide
     ) #hide
     @printf( #hide
         io_d, "| **%s** | %s | %.3f | %.3f | %.3f |\n", #hide
-        name, refname, (rel_l2(matrix_of(rec[i]), matrix_of(ref[i])) for i in 1:3)... #hide
+        name, refname, (relative_l2(matrix_of(rec[i]), matrix_of(ref[i])) for i in 1:3)... #hide
     ) #hide
 end #hide
 Markdown.parse(String(take!(io_d))) #hide

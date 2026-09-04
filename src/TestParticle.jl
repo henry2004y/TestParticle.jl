@@ -47,6 +47,9 @@ export get_gyrofrequency,
     sample_unit_sphere, generate_sphere, sample_maxwellian,
     get_particle_flux, get_particle_fluxes, get_particle_crossings, get_first_crossing,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec
+export sample_velocity_ball, bin_centers, bin_velocity_space, project_vdf,
+    analytic_projection, relative_l2, velocity_moments,
+    vdf_grid_problem, vdf_backward, refine_vdf_window
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator

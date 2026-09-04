@@ -2,6 +2,7 @@
 
 include("constants.jl")
 include("zero.jl")
+include("phasespace.jl")
 
 # Meshes.jl grid and virtual detector function stubs implemented in package extensions
 function makegrid end
