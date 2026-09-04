@@ -8,6 +8,7 @@
 import DisplayAs #hide
 using TestParticle
 import TestParticle as TP
+using LinearAlgebra: norm
 using StaticArrays
 using Random
 using FHist
@@ -29,32 +30,25 @@ const P_sw = 0.08e-9; # solar wind dynamic pressure [Pa]
 
 const n_up = 3.0e6 # upstream number density [m⁻³]
 const n_down = 8.0e6 # downstream number density [m⁻³]
-## Same tanh construction as for B: the profile interpolates between n_up (x → +∞) and
-## n_down (x → −∞), so the half jump and the mean are the natural coefficients.
-const n_jump = 0.5 * (n_down - n_up) # half density jump across the ramp [m⁻³]
-const n_avg = 0.5 * (n_down + n_up) # mean density across the ramp [m⁻³]
+## tanh profile from n_up (x → +∞) to n_down (x → −∞)
+const n_jump = 0.5 * (n_down - n_up) # half density jump [m⁻³]
+const n_avg = 0.5 * (n_down + n_up) # mean density [m⁻³]
 const shock_width = 5.0e3; # shock ramp width [m]
-## Tangential field compression across the ramp. The Rankine–Hugoniot value (B_t ∝ n) would
-## be n_down / n_up ≈ 2.7, but at this ramp width the resulting Hall term (∝ B_jump / w)
-## builds a cross-shock potential above the ion ram energy and reflects the entire beam, so
-## the weaker jump of the original demo is kept and part of the beam is transmitted.
-const r_Bt = 2.24 # B_t,down / B_t,up across the ramp
+## B_t,down / B_t,up, kept below the Rankine-Hugoniot value n_down / n_up ≈ 2.7: at this ramp
+## width that jump gives a Hall term above the ion ram energy and reflects the entire beam.
+const r_Bt = 2.24
 
 # ## Magnetic Field Parameters
 
 const B_normal = 5.0e-9 # shock normal component of B [T], continuous across the ramp
 const B_mag = 30.0e-9 # upstream magnetic field magnitude [T]
-## The shock normal is x̂, so B_x is the normal component. The angle follows from the two
-## prescribed field strengths rather than being set independently, so the constructed field
-## really is at the angle reported here.
+## The shock normal is x̂, so θ_Bn follows from the two field strengths above.
 const θ_Bn = acosd(B_normal / B_mag) # shock normal angle [degree]
 println("Shock normal angle θ_Bn = $(round(θ_Bn; digits = 1))°")
 
 """
-Tanh coefficients of the *tangential* field across the ramp, so that
-`B_y(x) = -B_jump·tanh(x/w) + B_avg` runs from the upstream tangential component
-`B_mag·sind(θ_Bn)` to `r_Bt` times that value downstream. The normal component `B_normal`
-is continuous and therefore drops out of the profile.
+Tanh coefficients of the tangential field: `B_y(x) = -B_jump·tanh(x/w) + B_avg` runs from
+`B_mag·sind(θ_Bn)` upstream to `r_Bt` times that value downstream.
 """
 function compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
     B_up_y = B_mag * sind(θ_Bn)
@@ -570,11 +564,24 @@ fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 #
 # Integrating a 2-D projection over velocity returns the lowest moments of the reconstructed
 # distribution: the density ``n = \int f\,\mathrm{d}v_i\mathrm{d}v_j`` and the momentum
-# ``n\,V_i = \int v_i f\,\mathrm{d}v_i\mathrm{d}v_j``. Because a steady 1-D shock conserves
-# the mass flux ``n\,V_x``, the upstream and downstream values must agree, which makes this a
-# stringent check: it integrates the whole VDF, so it is sensitive to normalisation errors
-# and to particles that are counted more than once, neither of which is obvious in the
-# 2-D maps.
+# ``n\,V_i = \int v_i f\,\mathrm{d}v_i\mathrm{d}v_j``. Two different statements can be read
+# off these numbers.
+#
+# 1. **The three methods must agree with each other.** They all reconstruct the same ``f`` in
+#    the same units, so their moments have to match; any mismatch is an error in the
+#    estimator rather than in the physics. Because the moments integrate the whole VDF, they
+#    are sensitive to normalisation errors and to repeated counting of the same trajectory,
+#    neither of which is obvious on a log colour scale.
+# 2. **The upstream row is an absolute calibration.** The upstream detector sits in the
+#    uniform, undisturbed solar wind, where the answer is known a priori:
+#    ``n = n_{\up}`` and ``n\,V_x = n_{\up} V_{\sw}``. Matching those values is a genuine
+#    validation, not merely a consistency check.
+#
+# What these numbers do *not* test is the downstream state. The fields here are prescribed
+# rather than solved self-consistently, and the particles are launched as a single pulse, so
+# mass flux need not be conserved across the ramp: part of the beam is turned back inside the
+# ramp before it can reach either detector. The upstream to downstream deficit visible below
+# is a property of the model, not a reconstruction error.
 
 """
 Integrate a 2-D projection over velocity, returning the density `n` [m⁻³] and the momentum
@@ -605,6 +612,76 @@ for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouvi
     ) #hide
 end #hide
 Markdown.parse(String(take!(io_m))) #hide
+
+# ## Bin-wise deviation
+#
+# The moments collapse each VDF into four numbers, so a wrong shape with the right
+# normalisation and the right shape with the wrong normalisation can look identical to them.
+# For a pointwise comparison we use the same relative L2 norm as the steady-state demo,
+# ``\|f_{\rec} - f_{\ref}\| / \|f_{\ref}\|``, evaluated over the populated cells of the bin
+# grid that all three methods now share.
+#
+# Upstream the reference can be exact: that plane still sees the undisturbed solar wind, and
+# since ``\mathbf{E} = -\mathbf{V}_{\sw}\times\mathbf{B}`` there the drifting Maxwellian is an
+# exact steady solution, so `vdf` itself is the reference. Downstream no analytic reference
+# exists, and the noise-free backward solution takes that role instead.
+
+matrix_of(h::Hist2D) = bincounts(h)
+matrix_of(h::Tuple) = h[3]
+matrix_of(M::AbstractMatrix) = M
+
+function rel_l2(rec, ref; thresh = 1.0e-4)
+    m = (ref .> maximum(ref) * thresh) .& isfinite.(rec)
+    return norm(rec[m] .- ref[m]) / norm(ref[m])
+end
+
+"""
+Analytic 2-D projection `f(v_i, v_j) = ∫ f_3D dv_k` in `[s²/km⁵]`, evaluated on the bin
+centres shared by the three reconstructions.
+"""
+function analytic_projection(vdf, n0, i, j, k, gi, gj, gk, dvk)
+    M = zeros(length(gi), length(gj))
+    for (bi, vi) in enumerate(gi), (bj, vj) in enumerate(gj)
+        s = 0.0
+        for vk in gk
+            v1 = i == 1 ? vi : (j == 1 ? vj : vk)
+            v2 = i == 2 ? vi : (j == 2 ? vj : vk)
+            v3 = i == 3 ? vi : (j == 3 ? vj : vk)
+            s += n0 * pdf(vdf, SVector{3, Float64}(v1, v2, v3) * 1.0e3) * 1.0e18 * dvk
+        end
+        M[bi, bj] = s
+    end
+    return M
+end
+
+const bin_edges = -1000.0:20.0:1000.0 # km/s, velocity bin edges of all three methods
+const bin_centers = 0.5 .* (bin_edges[2:end] .+ bin_edges[1:(end - 1)])
+## Midpoint rule on the bin centres, i.e. the same quadrature the reconstructions use when
+## they collapse the third velocity axis.
+const v_int = range(-990.0, 990.0; step = 20.0) # km/s, integration axis
+
+ana_up = (
+    analytic_projection(vdf, n_up, 1, 2, 3, bin_centers, bin_centers, v_int, step(v_int)),
+    analytic_projection(vdf, n_up, 1, 3, 2, bin_centers, bin_centers, v_int, step(v_int)),
+    analytic_projection(vdf, n_up, 2, 3, 1, bin_centers, bin_centers, v_int, step(v_int)),
+)
+
+io_d = IOBuffer() #hide
+println(io_d, "| Comparison | Reference | Vx–Vy | Vx–Vz | Vy–Vz |") #hide
+println(io_d, "| :--- | :--- | :---: | :---: | :---: |") #hide
+for (name, rec, ref, refname) in ( #hide
+        ("Monte Carlo (up)", hists_up, ana_up, "analytic solar wind"), #hide
+        ("Forward Liouville (up)", hists_up_m2, ana_up, "analytic solar wind"), #hide
+        ("Backward Liouville (up)", res_up_bw, ana_up, "analytic solar wind"), #hide
+        ("Monte Carlo (down)", hists_down, res_down_bw, "Backward Liouville"), #hide
+        ("Forward Liouville (down)", hists_down_m2, res_down_bw, "Backward Liouville"), #hide
+    ) #hide
+    @printf( #hide
+        io_d, "| **%s** | %s | %.3f | %.3f | %.3f |\n", #hide
+        name, refname, (rel_l2(matrix_of(rec[i]), matrix_of(ref[i])) for i in 1:3)... #hide
+    ) #hide
+end #hide
+Markdown.parse(String(take!(io_d))) #hide
 
 # ## Summary
 #
