@@ -1,10 +1,10 @@
-# # Steady-State Phase Space Validation
+# # Phase Space Tracking
 #
 # This example validates the three phase-space tracing methods of TestParticle.jl
 # against an *analytically known* steady-state distribution function (VDF). Unlike the
-# shock demo (where the three methods are only compared with each other), here we know
-# the exact VDF at the detector and can quantify how far each reconstruction deviates
-# from it.
+# [Shock Phase Space](@ref) demo (where the three methods are only compared with each
+# other), here we know the exact VDF at the detector and can quantify how far each
+# reconstruction deviates from it.
 #
 # ## Scenario: E×B drift of a bi-Maxwellian
 # We use a uniform magnetic field `B = B ẑ` and a uniform perpendicular electric field
@@ -33,7 +33,6 @@ using LinearAlgebra: norm
 using StaticArrays
 using Random
 using Statistics: mean, var
-using FHist
 using VelocityDistributionFunctions
 using CairoMakie
 using Meshes
@@ -77,19 +76,46 @@ const x_source = SA[300.0e3, 0.0, 0.0] # source plane [m]
 const tspan = (0.0, 4.0) # [s]; > transport time 500 km / 400 km/s = 1.25 s
 const dt = get_gyroperiod(B_mag) / 40 # [s]; fine step so the crossing velocity is well resolved
 
-const x_upstream = 200.0e3   # detector between source and origin [m]
-const x_downstream = -200.0e3 # detector downstream of the origin [m]
+const x_downstream = -200.0e3 # detector plane downstream of the origin [m]
 
-detector_up = Meshes.Plane(
-    Meshes.Point(x_upstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
-)
 detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
 )
 
 param = prepare(get_E_steady, get_B_steady; species = Proton)
 
-# ## Method 1: Forward Monte-Carlo Injection
+# ## Analytic reference and error metric
+# The exact detector VDF is the source bi-Maxwellian evaluated at the detector
+# velocity. All three methods reconstruct the 2-D projections
+# `f(v_i, v_j) = ∫ f_3D(v_i, v_j, v_k) dv_k`, which we evaluate analytically in two ways:
+#
+# 1. `analytic_projection` integrates over an arbitrary grid, which is used for the 1-D
+#    slice and for the grid-based backward method;
+# 2. `project_vdf` applied to the analytic `f` sampled on the bin centers reproduces the
+#    binning of the two forward methods, so those are compared bin for bin.
+#
+# All reconstructions are then scored with the same relative L2 norm
+# `‖f_rec − f_ana‖ / ‖f_ana‖`, evaluated over the populated cells of each projection.
+
+const vlim = 1000.0
+const z_int = range(-vlim, vlim; step = 10.0)    # km/s, integration axis
+## Source phase-space density [s³/m⁶].
+f_src(v) = n0 * pdf(vdf, v)
+
+const v_edges = -1000:20:1000
+const centers = bin_centers(v_edges)
+const ana_f3d = [
+    f_src(SA[vx, vy, vz] * 1.0e3) * 1.0e18 for vx in centers, vy in centers, vz in centers
+]
+
+f_xy_ana, f_xz_ana, f_yz_ana = project_vdf(ana_f3d, 20.0)
+const ana_hists = (
+    (centers, centers, f_xy_ana),
+    (centers, centers, f_xz_ana),
+    (centers, centers, f_yz_ana),
+);
+
+# ## Method 1: Forward Monte Carlo
 
 nparticles = 8000
 
@@ -107,52 +133,44 @@ t_mc = @elapsed sols = TP.solve(
     trajectories = nparticles, seed
 );
 
-function reconstruct_flux_projections(sols, detector, n0, dv_km)
+function reconstruct_mc_projections(sols, detector, n0, dv_km)
     vxi = [s.u[1][4] for s in sols.u]
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
     v_edges = -1000:dv_km:1000
-    h_3d = Hist3D(; binedges = (v_edges, v_edges, v_edges))
+    centers = bin_centers(v_edges)
+    ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
+    ## volume `dv³`; the `|v_x,src| / |v_x,det|` rescale carried by `bin_velocity_space`
+    ## turns the density-weighted launch ensemble into the crossing flux recorded at the
+    ## detector and back into a density.
+    w = fill(n0 * 1.0e9 / (length(sols.u) * dv_km^3), length(vs))
+    f_3d = bin_velocity_space(vs, w, v_edges; vx_source = ws_init)
 
-    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^2)
-    for (v, vxi_val) in zip(vs, ws_init)
-        w = abs(vxi_val) / abs(v[1]) * S
-        push!(h_3d, v[1] * 1.0e-3, v[2] * 1.0e-3, v[3] * 1.0e-3, w)
-    end
-    return project(h_3d, :z), project(h_3d, :y), project(h_3d, :x)
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
+    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
 
-hists_up = reconstruct_flux_projections(sols, detector_up, n0, 20.0)
-hists_down = reconstruct_flux_projections(sols, detector_down, n0, 20.0)
+hists_down = reconstruct_mc_projections(sols, detector_down, n0, 20.0);
 
 # ## Method 2: Forward Liouville Tracking
+#
+# By Liouville's theorem `f_det(v_det) = f_src(v_src)`, so each trajectory carries its
+# source `f` unchanged to the detector. Averaging the `f` of all the crossings that land
+# in a bin (`average = true`) estimates the bin-averaged `f` as a *ratio*, which divides
+# out the `∝ 1/√n` counting noise of the samples per bin. Summing `f·ΔV/dv³` instead (the
+# `average = false` histogram estimator) is the more faithful rendering of the mapped
+# velocity volume, but at `dv = 20 km/s` the `3 vth` sampling sphere only places a handful
+# of samples in each bin, so the counting noise dominates and we average here.
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0)
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vs, ws = get_particle_crossings(sols, detector, ws0)
 
     v_edges = -1000:dv_km:1000
-    nb = length(v_edges) - 1
-    centers = 0.5 .* (v_edges[2:end] .+ v_edges[1:(end - 1)])
-    sum_f = zeros(nb, nb, nb)
-    count = zeros(Int, nb, nb, nb)
+    centers = bin_centers(v_edges)
+    f_3d = bin_velocity_space(vs, ws .* 1.0e18, v_edges; average = true)
 
-    for (v, w) in zip(vs, ws)
-        ix = floor(Int, (v[1] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        iy = floor(Int, (v[2] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        iz = floor(Int, (v[3] * 1.0e-3 - v_edges[1]) / dv_km) + 1
-        if 1 <= ix <= nb && 1 <= iy <= nb && 1 <= iz <= nb
-            sum_f[ix, iy, iz] += w * 1.0e18
-            count[ix, iy, iz] += 1
-        end
-    end
-    f_3d = ifelse.(count .> 0, sum_f ./ count, 0.0)
-
-    dv = dv_km * 1.0e3
-    f_xy = dropdims(sum(f_3d, dims = 3), dims = 3) .* (dv * 1.0e-3)
-    f_xz = dropdims(sum(f_3d, dims = 2), dims = 2) .* (dv * 1.0e-3)
-    f_yz = dropdims(sum(f_3d, dims = 1), dims = 1) .* (dv * 1.0e-3)
-
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
     return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
 end
 
@@ -161,12 +179,7 @@ const vth_perp = sqrt(2 * p_perp / (n0 * TP.mᵢ))
 const vradius_m2 = 3 * vth_perp
 
 function prob_func_m2(prob, ctx)
-    r = vradius_m2 * rand(ctx.rng)^(1 / 3)
-    ϕ = 2π * rand(ctx.rng)
-    θ = acos(2 * rand(ctx.rng) - 1)
-    sinθ, cosθ = sincos(θ)
-    cosϕ, sinϕ = sincos(ϕ)
-    v = SA[V_drift + r * sinθ * cosϕ, r * sinθ * sinϕ, r * cosθ]
+    v = sample_velocity_ball(ctx.rng, vradius_m2; center = SA[V_drift, 0.0, 0.0])
     u0 = SA[x_source..., v...]
     return remake(prob, u0 = u0)
 end
@@ -179,95 +192,61 @@ t_liou = @elapsed sols_m2 = TP.solve(
     trajectories = nparticles_m2, seed
 );
 
-hists_up_m2 = reconstruct_liouville_projections(
-    sols_m2, detector_up, vdf, n0
-)
 hists_down_m2 = reconstruct_liouville_projections(
     sols_m2, detector_down, vdf, n0
-)
+);
 
 # ## Method 3: Backward Liouville Tracing
 
-function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
-    nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
-    ntraj = nx * ny * nz
+const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-    function prob_func(prob, ctx)
-        iz = (ctx.sim_id - 1) % nz + 1
-        iy = ((ctx.sim_id - 1) ÷ nz) % ny + 1
-        ix = ((ctx.sim_id - 1) ÷ (nz * ny)) % nx + 1
-        u0 = SA[detector_x, 0.0, 0.0, vx_grid[ix], vy_grid[iy], vz_grid[iz]]
-        return remake(prob, u0 = u0)
-    end
-
-    source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
-    prob = TraceProblem(
-        SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], (0.0, -8.0), param;
-        prob_func = prob_func
+function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
+    prob = vdf_grid_problem(
+        vx_grid, vy_grid, vz_grid, SA[detector_x, 0.0, 0.0], param, (0.0, -8.0)
     )
 
     sols = TP.solve(
-        prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = ntraj,
+        prob, Boris(), EnsembleThreads(); dt = -dt,
+        trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
         savestepinterval = 1,
         isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
             u[1] > x_source[1] + 100.0e3
     )
 
-    f_3d = zeros(nx, ny, nz)
-    for (i, sol) in enumerate(sols.u)
-        st = get_first_crossing(sol, source_plane)
-        if !any(isnan, st)
-            iz = (i - 1) % nz + 1
-            iy = ((i - 1) ÷ nz) % ny + 1
-            ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-            f_3d[ix, iy, iz] = n0 * pdf(vdf, st[SA[4, 5, 6]]) * 1.0e18
-        end
-    end
-    return f_3d
+    return vdf_backward(
+        sols, source_plane, f_src, (length(vx_grid), length(vy_grid), length(vz_grid))
+    )
 end
 
 function reconstruct_backward_projections(
-        detector_x, vdf, n0, dt, param;
+        detector_x, dt, param;
         v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0,
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
+    ## Grid points are bin *centres*, matching the histograms of Methods 1 & 2 whose bin
+    ## edges run from -v_range to +v_range in steps of dv.
+    v0x = -v_range + dv / 2
+    v0y = -vy_range + dv / 2
     if adaptive
         vx_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
         vy_c = range(-vy_range, vy_range; step = dv_coarse_km * 1.0e3)
         vz_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
     else
-        vx_c = range(-v_range, v_range; step = dv)
-        vy_c = range(-vy_range, vy_range; step = dv)
-        vz_c = range(-v_range, v_range; step = dv)
+        vx_c = range(v0x, -v0x; step = dv)
+        vy_c = range(v0y, -v0y; step = dv)
+        vz_c = range(v0x, -v0x; step = dv)
     end
 
     t_solve = @elapsed begin
-        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, vdf, n0, dt, param)
+        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, dt, param)
         if adaptive
-            kept = findall(f_coarse .> maximum(f_coarse) * 1.0e-5)
-            if isempty(kept)
-                vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
-                f_3d_km = f_coarse
-            else
-                ixs, iys, izs = getindex.(kept, 1), getindex.(kept, 2), getindex.(kept, 3)
-                vx_grid = range(
-                    max(-v_range, floor((vx_c[minimum(ixs)] - margin_km * 1.0e3) / dv) * dv),
-                    min(v_range, ceil((vx_c[maximum(ixs)] + margin_km * 1.0e3) / dv) * dv);
-                    step = dv
-                )
-                vy_grid = range(
-                    max(-vy_range, floor((vy_c[minimum(iys)] - margin_km * 1.0e3) / dv) * dv),
-                    min(vy_range, ceil((vy_c[maximum(iys)] + margin_km * 1.0e3) / dv) * dv);
-                    step = dv
-                )
-                vz_grid = range(
-                    max(-v_range, floor((vz_c[minimum(izs)] - margin_km * 1.0e3) / dv) * dv),
-                    min(v_range, ceil((vz_c[maximum(izs)] + margin_km * 1.0e3) / dv) * dv);
-                    step = dv
-                )
-                f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, vdf, n0, dt, param)
-            end
+            vx_grid, vy_grid, vz_grid = refine_vdf_window(
+                f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0x), dv;
+                margin = margin_km * 1.0e3, relthresh = 1.0e-5,
+                bounds = ((-v_range, v_range), (-vy_range, vy_range), (-v_range, v_range))
+            )
+            f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
         else
             vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
             f_3d_km = f_coarse
@@ -275,17 +254,11 @@ function reconstruct_backward_projections(
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
-    f_xy = dropdims(sum(f_3d_km, dims = 3), dims = 3) .* (step(vz_grid) * 1.0e-3)
-    f_xz = dropdims(sum(f_3d_km, dims = 2), dims = 2) .* (step(vy_grid) * 1.0e-3)
-    f_yz = dropdims(sum(f_3d_km, dims = 1), dims = 1) .* (step(vx_grid) * 1.0e-3)
-
+    f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
+    ## Drop the negligible tail so that the shared colour range is set by the populated
+    ## part of the distribution.
     for f in (f_xy, f_xz, f_yz)
-        f_max = maximum(f)
-        for i in eachindex(f)
-            if f[i] < f_max * 1.0e-6
-                f[i] = NaN
-            end
-        end
+        f[f .< maximum(f) * 1.0e-6] .= NaN
     end
 
     return (
@@ -295,71 +268,16 @@ function reconstruct_backward_projections(
         ), t_solve, nparticles_bw
 end
 
-res_up_bw, t_bw_up, n_bw_up =
-    reconstruct_backward_projections(x_upstream, vdf, n0, dt, param)
 res_down_bw, t_bw_down, n_bw_down =
-    reconstruct_backward_projections(x_downstream, vdf, n0, dt, param)
-t_bw = t_bw_up + t_bw_down
-n_bw = n_bw_up + n_bw_down
+    reconstruct_backward_projections(x_downstream, dt, param);
 
-# ## Analytic reference
-# The exact detector VDF is the source bi-Maxwellian. We evaluate its 2-D projections
-# `f(v_i, v_j) = ∫ f_3D(v_i, v_j, v_k) dv_k` on an explicit grid for contour overlays,
-# and on each method's own grid for a quantitative deviation metric.
+# ## Phase space comparison
+# The three reconstructions are shown next to the analytic reference for each 2-D
+# velocity projection at the downstream detector.
 
-const vlim = 1000.0
-const fine_g = range(-vlim, vlim; step = 40.0)   # km/s, for contours
-const z_int = range(-vlim, vlim; step = 10.0)    # km/s, integration axis
-
-function analytic_proj(vdf, n0, i, j, k, gi, gj, gk, dvk)
-    M = zeros(length(gi), length(gj))
-    for (bi, vi) in enumerate(gi), (bj, vj) in enumerate(gj)
-        s = 0.0
-        for vk in gk
-            v1 = i == 1 ? vi * 1.0e3 : (j == 1 ? vj * 1.0e3 : vk * 1.0e3)
-            v2 = i == 2 ? vi * 1.0e3 : (j == 2 ? vj * 1.0e3 : vk * 1.0e3)
-            v3 = i == 3 ? vi * 1.0e3 : (j == 3 ? vj * 1.0e3 : vk * 1.0e3)
-            s += n0 * pdf(vdf, SVector{3, Float64}(v1, v2, v3)) * 1.0e18 * dvk
-        end
-        M[bi, bj] = s
-    end
-    return M
-end
-
-# Analytic 2-D projections on the histogram edges used by Methods 1 & 2. Filling each
-# 3-D bin with `f_3D·dv_z` and then summing over z reproduces the same [s²/km⁵] scale.
-function analytic_hist_projections(vdf, n0, v_edges; dv_km)
-    h = Hist3D(; binedges = (v_edges, v_edges, v_edges))
-    for xi in 1:(length(v_edges) - 1), yi in 1:(length(v_edges) - 1), zi in 1:(length(v_edges) - 1)
-        vc = SVector(
-            (v_edges[xi] + v_edges[xi + 1]) / 2,
-            (v_edges[yi] + v_edges[yi + 1]) / 2,
-            (v_edges[zi] + v_edges[zi + 1]) / 2,
-        )
-        w = n0 * pdf(vdf, vc .* 1.0e3) * 1.0e18 * dv_km
-        push!(h, vc[1], vc[2], vc[3], w)
-    end
-    return project(h, :z), project(h, :y), project(h, :x)
-end
-
-const v_edges = -1000:20:1000
-const ana_hists = analytic_hist_projections(vdf, n0, v_edges; dv_km = 20.0)
-
-function rel_l2(rec, ana; thresh = 1.0e-4)
-    m = (ana .> maximum(ana) * thresh) .& isfinite.(rec)
-    r = rec[m]
-    a = ana[m]
-    return norm(r .- a) / norm(a)
-end
-
-# ## Plots: reconstructed phase space vs analytic contours
-
-matrix_of(h::Hist2D) = bincounts(h)
-matrix_of(h::Tuple) = h[3]
-
-function plot_validation(h_flux, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
-    titles = ["Analytic", "Flux Injection", "Forward Liouville", "Backward Liouville"]
-    hists = (h_ana, h_flux, h_liou, h_bw)
+function plot_validation(h_mc, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
+    titles = ["Analytic", "Monte Carlo", "Forward Liouville", "Backward Liouville"]
+    hists = (h_ana, h_mc, h_liou, h_bw)
     nrows = 4
     xlab = [L"V_x [\mathrm{km/s}]", L"V_x [\mathrm{km/s}]", L"V_y [\mathrm{km/s}]"]
     ylab = [L"V_y [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]", L"V_z [\mathrm{km/s}]"]
@@ -371,7 +289,7 @@ function plot_validation(h_flux, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
         fontsize = 32, tellwidth = false
     )
     global_max = maximum(
-        maximum(filter(isfinite, vec(matrix_of(hists[r][i])))) for r in 1:nrows, i in 1:3
+        maximum(filter(isfinite, vec(hists[r][i][3]))) for r in 1:nrows, i in 1:3
     )
     last_hm = nothing
     for r in 1:nrows, i in 1:3
@@ -381,10 +299,9 @@ function plot_validation(h_flux, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
             xticklabelsize = 22, yticklabelsize = 22,
             limits = (-vlim, vlim, -vlim, vlim), aspect = 1
         )
-        h = hists[r][i]
-        last_hm = h isa Tuple ?
-            heatmap!(ax, h...; colormap = :turbo, colorrange = (0.0, global_max)) :
-            heatmap!(ax, h; colormap = :turbo, colorrange = (0.0, global_max))
+        last_hm = heatmap!(
+            ax, hists[r][i]...; colormap = :turbo, colorrange = (0.0, global_max)
+        )
     end
     Colorbar(
         fig[1, 2], last_hm;
@@ -403,37 +320,18 @@ fig_down = DisplayAs.PNG(fig_down) #hide
 # Slice the `V_x–V_z` projection at `v_z = 0` and overlay the three reconstructions on
 # the analytic profile. The backward (grid-based) method should sit on the curve.
 
-function centers_of(g, M, dim)
-    if length(g) == size(M, dim) + 1
-        return (g[1:(end - 1)] .+ g[2:end]) ./ 2
-    end
-    return g
-end
-
 function slice_at(h, second::Bool, val)
-    if h isa Tuple
-        g1, g2, M = h
-        c1 = centers_of(g1, M, 1)
-        c2 = centers_of(g2, M, 2)
-    else
-        ex, ey = binedges(h)
-        M = bincounts(h)
-        c1 = (ex[1:(end - 1)] .+ ex[2:end]) ./ 2
-        c2 = (ey[1:(end - 1)] .+ ey[2:end]) ./ 2
-    end
+    g1, g2, M = h
     if second
-        idx = argmin(abs.(c2 .- val))
-        return c1, M[:, idx]
+        return g1, M[:, argmin(abs.(g2 .- val))]
     else
-        idx = argmin(abs.(c1 .- val))
-        return c2, M[idx, :]
+        return g2, M[argmin(abs.(g1 .- val)), :]
     end
 end
 
 const fine_x = range(-vlim, vlim; step = 10.0)
 const fana_slice = [
-    analytic_proj(vdf, n0, 1, 3, 2, [vx], [0.0], z_int, step(z_int))[1]
-        for vx in fine_x
+    analytic_projection(f_src, 2, [vx], [0.0], z_int, step(z_int))[1] for vx in fine_x
 ]
 
 xc_f, fy_f = slice_at(hists_down[2], true, 0.0)
@@ -457,47 +355,49 @@ axs = Axis(
     yscale = log10, limits = (-vlim, 0.0, 1.0e5, 1.0e12)
 )
 lines!(axs, fine_x, fana_slice; label = "Analytic", color = :black, linewidth = 3, linestyle = :dash)
-scatterlines!(axs, xc_f_l, fy_f_l; label = "Flux", color = :blue, linewidth = 2, markersize = 8)
+scatterlines!(axs, xc_f_l, fy_f_l; label = "Monte Carlo", color = :blue, linewidth = 2, markersize = 8)
 scatterlines!(axs, xc_l_l, fy_l_l; label = "Forward Liouville", color = :green, linewidth = 2, markersize = 8)
 lines!(axs, xc_b_l, fy_b_l; label = "Backward Liouville", color = :red, linewidth = 2)
 axislegend(axs; position = :lt, framevisible = false)
 fig_slice = DisplayAs.PNG(fig_slice) #hide
 
 # ## Deviation report
-# Relative L2 norm `‖f_rec − f_ana‖ / ‖f_ana‖` over the populated cells, per method and
-# projection. Methods 1 & 2 are statistical (∝ 1/√N); Method 3 is grid-limited.
+# The relative L2 norm defined above, evaluated per method and projection on the
+# downstream detector, together with the number of trajectories and the cost per
+# trajectory. The two forward methods are statistical (∝ 1/√N); the backward method is
+# limited by grid resolution instead.
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
-t_per_bw = t_bw / n_bw * 1.0e6
+t_per_bw = t_bw_down / n_bw_down * 1.0e6
 
 using Markdown, Printf #hide
 io = IOBuffer() #hide
 println(io, "| Method | Vx–Vy | Vx–Vz | Vy–Vz | Trajectories | Time [s] | Cost [µs/traj] |") #hide
 println(io, "| :--- | :---: | :---: | :---: | :---: | :---: | :---: |") #hide
 @printf( #hide
-    io, "| **Flux Injection (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    rel_l2(matrix_of(hists_down[1]), matrix_of(ana_hists[1])), #hide
-    rel_l2(matrix_of(hists_down[2]), matrix_of(ana_hists[2])), #hide
-    rel_l2(matrix_of(hists_down[3]), matrix_of(ana_hists[3])), #hide
+    io, "| **Monte Carlo (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
+    relative_l2(hists_down[1][3], ana_hists[1][3]), #hide
+    relative_l2(hists_down[2][3], ana_hists[2][3]), #hide
+    relative_l2(hists_down[3][3], ana_hists[3][3]), #hide
     nparticles, t_mc, t_per_mc #hide
 ) #hide
 @printf( #hide
     io, "| **Forward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    rel_l2(matrix_of(hists_down_m2[1]), matrix_of(ana_hists[1])), #hide
-    rel_l2(matrix_of(hists_down_m2[2]), matrix_of(ana_hists[2])), #hide
-    rel_l2(matrix_of(hists_down_m2[3]), matrix_of(ana_hists[3])), #hide
+    relative_l2(hists_down_m2[1][3], ana_hists[1][3]), #hide
+    relative_l2(hists_down_m2[2][3], ana_hists[2][3]), #hide
+    relative_l2(hists_down_m2[3][3], ana_hists[3][3]), #hide
     nparticles_m2, t_liou, t_per_liou #hide
 ) #hide
-ana_bw_xy = analytic_proj(vdf, n0, 1, 2, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int)) #hide
-ana_bw_xz = analytic_proj(vdf, n0, 1, 3, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int)) #hide
-ana_bw_yz = analytic_proj(vdf, n0, 2, 3, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int)) #hide
+ana_bw_xy = analytic_projection(f_src, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int)) #hide
+ana_bw_xz = analytic_projection(f_src, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int)) #hide
+ana_bw_yz = analytic_projection(f_src, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int)) #hide
 @printf( #hide
     io, "| **Backward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    rel_l2(res_down_bw[1][3], ana_bw_xy), #hide
-    rel_l2(res_down_bw[2][3], ana_bw_xz), #hide
-    rel_l2(res_down_bw[3][3], ana_bw_yz), #hide
-    n_bw_down, t_bw_down, t_bw_down / n_bw_down * 1.0e6 #hide
+    relative_l2(res_down_bw[1][3], ana_bw_xy), #hide
+    relative_l2(res_down_bw[2][3], ana_bw_xz), #hide
+    relative_l2(res_down_bw[3][3], ana_bw_yz), #hide
+    n_bw_down, t_bw_down, t_per_bw #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
 
@@ -507,7 +407,7 @@ Markdown.parse(String(take!(io))) #hide
 #    Because it traces directly backward from the target detector grid to the source,
 #    there is zero statistical noise and uniform coverage across the distribution,
 #    including the tails.
-# 2. **Flux Injection is limited by statistical noise (∝ 1/√N)**. With N = 8,000
+# 2. **Monte Carlo is limited by statistical noise (∝ 1/√N)**. With N = 8,000
 #    particles, the relative deviation is ~11–12%, matching theoretical Poisson noise.
 #    Reaching the same 0.3% accuracy of Backward Liouville would require ~10⁷ trajectories
 #    (~1,000× more cost).
@@ -517,17 +417,17 @@ Markdown.parse(String(take!(io))) #hide
 #    detector or fall outside the populated region do not contribute to the target.
 
 # ## Monte-Carlo sampling noise scales as 1/√N
-# The report above quotes Flux Injection at ≈10% and attributes it to 1/√N sampling
-# scatter. Here we *verify* that statement directly. We run Flux Injection for a range of
+# The report above quotes Monte Carlo at ≈10% and attributes it to 1/√N sampling
+# scatter. Here we *verify* that statement directly. We run Monte Carlo for a range of
 # particle counts `N`, repeating each `N` with many *independent* seed realizations, and
 # measure the sampling noise as the relative RMS scatter of the reconstructed histogram
 # across realizations. For a multinomial (Monte-Carlo) estimator the per-bin density has
 # standard deviation `σ ∝ 1/√N`, so the aggregate noise should fall as `1/√N`
 # (equivalently the variance `∝ 1/N`).
 
-vec_of(h) = vcat([vec(matrix_of(p)) for p in h]...)
+vec_of(h) = vcat([vec(p[3]) for p in h]...)
 
-function run_flux_N(N, rseed)
+function run_mc_N(N, rseed)
     function prob_func(prob, ctx)
         v = rand(ctx.rng, vdf)
         u0 = SA[x_source..., v...]
@@ -539,7 +439,7 @@ function run_flux_N(N, rseed)
         prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
         trajectories = N, seed = rseed
     )
-    return reconstruct_flux_projections(sols, detector_down, n0, 20.0)
+    return reconstruct_mc_projections(sols, detector_down, n0, 20.0)
 end
 
 const Ns = [1000, 2000, 4000, 8000]
@@ -550,10 +450,10 @@ agg_var = Float64[]   # total histogram variance across seeds → ∝ 1/N
 ana_l2 = Float64[]   # analytic relative L2 per seed (averaged over projections)
 
 for N in Ns
-    hs = [run_flux_N(N, s) for s in 1:nseeds]
+    hs = [run_mc_N(N, s) for s in 1:nseeds]
     vecs = [vec_of(h) for h in hs]
 
-    l2s = [mean(rel_l2(matrix_of(h[i]), matrix_of(ana_hists[i])) for i in 1:3) for h in hs]
+    l2s = [mean(relative_l2(h[i][3], ana_hists[i][3]) for i in 1:3) for h in hs]
     push!(ana_l2, mean(l2s))
 
     mean_vec = mean(vecs)
@@ -587,13 +487,16 @@ axislegend(ax1; position = :rt)
 fig_scaling = DisplayAs.PNG(fig_scaling) #hide
 
 # The measured log–log slope is close to −0.5, confirming the expected 1/√N
-# sampling-noise scaling: the ≈10% Flux-Injection deviation above is dominated by
+# sampling-noise scaling: the ≈10% Monte-Carlo deviation above is dominated by
 # Monte-Carlo scatter, not by method bias.
 
 io_s = IOBuffer() #hide
 println(io_s, "| N (trajectories) | MC noise (∝ 1/√N) | ΣVar (∝ 1/N) | analytic L2 |") #hide
 println(io_s, "| :--- | :--- | :--- | :--- |") #hide
 for (i, N) in enumerate(Ns) #hide
-    println(io_s, "| $N | $(round(agg_noise[i]; digits = 4)) | $(round(agg_var[i]; digits = 2)) | $(round(ana_l2[i]; digits = 4)) |") #hide
+    @printf( #hide
+        io_s, "| %d | %.4f | %.2e | %.4f |\n", #hide
+        N, agg_noise[i], agg_var[i], ana_l2[i] #hide
+    ) #hide
 end #hide
 Markdown.parse(String(take!(io_s))) #hide

@@ -471,6 +471,7 @@ end
 
 include("test_boris.jl")
 include("test_utility.jl")
+include("test_phasespace.jl")
 include("test_fieldline.jl")
 
 if "makie" in ARGS

@@ -2,13 +2,69 @@
 
 include("constants.jl")
 include("zero.jl")
+include("phasespace.jl")
 
 # Meshes.jl grid and virtual detector function stubs implemented in package extensions
+
+"""
+    makegrid(grid::Union{CartesianGrid, RectilinearGrid})
+
+Return the coordinate ranges of a Meshes.jl grid, one range per dimension, e.g.
+`(x, y, z)` for a 3-D grid. Requires Meshes.jl to be loaded.
+"""
 function makegrid end
+
+"""
+    get_cell_centers(grid::Union{CartesianGrid, RectilinearGrid})
+
+Return the cell center coordinates of a Meshes.jl grid, one range per dimension.
+Requires Meshes.jl to be loaded.
+"""
 function get_cell_centers end
+
+"""
+    get_particle_crossings(sol, surface, weight = 1.0) -> (velocities, weights)
+    get_particle_crossings(sols, surface, weights = 1.0) -> (velocities, weights)
+    get_particle_crossings(sols, surfaces, weights = 1.0) -> (velocities, weights)
+
+Detect every crossing of a virtual detector `surface` and return the velocity [m/s] at
+each crossing together with the corresponding weight.
+
+A trajectory can cross the same detector more than once, so a crossing carries the weight
+of its trajectory rather than of the trajectory set: passing a scalar `weight` applies it
+to every trajectory of the ensemble. With a vector of `surfaces` the two returned vectors
+hold one vector per surface. Requires Meshes.jl to be loaded.
+"""
 function get_particle_crossings end
+
+"""
+    get_first_crossing(sol, surface) -> SVector{6}
+    get_first_crossing(sols, surface) -> Vector{SVector{6}}
+
+State `[x, y, z, vx, vy, vz]` at the *first* crossing of `surface`, linearly interpolated
+between the two bracketing saved points. Returns a state filled with `NaN` for trajectories
+that never reach `surface`, which is how unreachable velocities are flagged when tracing a
+detector grid backward to a source. Requires Meshes.jl to be loaded.
+"""
 function get_first_crossing end
+
+"""
+    get_particle_flux(sol, surface, weight = 1.0) -> (number_flux, velocity_flux)
+
+Number flux density and velocity flux density through `surface`, obtained by summing the
+crossing weights of a single trajectory and dividing by the surface area. Requires Meshes.jl
+to be loaded.
+"""
 function get_particle_flux end
+
+"""
+    get_particle_fluxes(sols, surface, weights = 1.0) -> (number_flux, velocity_flux)
+    get_particle_fluxes(sols, surfaces, weights = 1.0) -> (number_fluxes, velocity_fluxes)
+
+Number flux densities and velocity flux densities through one `surface` or through each of
+`surfaces`, summed over an ensemble of trajectories and divided by the surface area.
+Requires Meshes.jl to be loaded.
+"""
 function get_particle_fluxes end
 
 """
