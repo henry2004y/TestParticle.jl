@@ -14,6 +14,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6,
     get_q2m, get_EField, get_BField
+import SciMLBase
 using Random: default_rng, AbstractRNG, Xoshiro
 using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
@@ -75,6 +76,7 @@ include("boris/boris.jl")
 include("boris/boris_kernel.jl")
 include("boris/multistep_boris.jl")
 include("boris/adaptive_boris.jl")
+include("boris/boris_solve.jl")
 include("hybrid.jl")
 include("fieldline.jl")
 

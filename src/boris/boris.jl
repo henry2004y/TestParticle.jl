@@ -66,53 +66,6 @@ In-place cross product.
     return
 end
 
-"""
-    solve(prob::TraceProblem,
-        alg::Union{Boris, MultistepBoris},
-        ensemblealg=EnsembleSerial(); dt, kwargs...)
-
-Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
-
-# Keywords
-  - `trajectories::Int=1`: number of trajectories.
-  - `dt::AbstractFloat`: time step.
-  - `savestepinterval::Int=1`: saving output interval.
-  - `isoutside`: boundary check function.
-  - `save_start::Bool=true`: save initial condition.
-  - `save_end::Bool=true`: save final condition.
-  - `save_everystep::Bool=true`: save at intervals.
-  - `save_fields::Bool=false`: save E and B fields.
-  - `save_work::Bool=false`: save work rates.
-  - `maxiters::Int=1_000_000`: maximum iterations.
-"""
-@inline function solve(
-        prob::TraceProblem,
-        alg::Union{Boris, MultistepBoris},
-        ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1,
-        savestepinterval::Int = 1,
-        dt::AbstractFloat,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true,
-        save_end::Bool = true,
-        save_everystep::Bool = true,
-        save_fields::Bool = false,
-        save_work::Bool = false,
-        maxiters::Int = 1_000_000,
-        batch_size::Int = _default_batch_size(
-            ensemblealg, trajectories
-        ),
-        seed::Union{Nothing, Integer} = nothing,
-    ) where {EA <: BasicEnsembleAlgorithm, F}
-    return _solve(
-        ensemblealg, prob, alg, trajectories, dt,
-        savestepinterval, isoutside,
-        save_start, save_end, save_everystep,
-        Val(save_fields), Val(save_work),
-        maxiters, batch_size, seed
-    )
-end
-
 function _default_batch_size(ensemblealg, trajectories)
     if ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads
         return max(1, trajectories ÷ nworkers())

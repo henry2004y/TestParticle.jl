@@ -1,42 +1,5 @@
 # Adaptive Boris solver
 
-"""
-    solve(prob::TraceProblem, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris},
-        ensemblealg=EnsembleSerial(); kwargs...)
-
-Trace particles using the adaptive Boris method.
-The time step is determined by `dt = safety * 2π / |qB/m|`.
-
-# Keywords
-  - `trajectories::Int=1`: number of trajectories.
-  - `savestepinterval::Int=1`: saving output interval.
-  - `isoutside`: boundary check function.
-  - `save_start::Bool=true`: save initial condition.
-  - `save_end::Bool=true`: save final condition.
-  - `save_everystep::Bool=true`: save at intervals.
-  - `save_fields::Bool=false`: save E and B fields.
-  - `save_work::Bool=false`: save work rates.
-  - `batch_size::Int`: batch size for distributed.
-"""
-@inline function solve(
-        prob::TraceProblem, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris},
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1,
-        savestepinterval::Int = 1,
-        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
-        save_start::Bool = true,
-        save_end::Bool = true,
-        save_everystep::Bool = true,
-        save_fields::Bool = false,
-        save_work::Bool = false,
-        batch_size::Int = _default_batch_size(ensemblealg, trajectories),
-    ) where {F}
-    return _solve_adaptive(
-        ensemblealg, prob, trajectories, alg, savestepinterval, isoutside, save_start,
-        save_end, save_everystep, Val(save_fields), Val(save_work), batch_size
-    )
-end
-
 @inline function _solve_adaptive(
         ::EnsembleSerial, prob, trajectories, alg::AbstractBoris, savestepinterval, isoutside,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork}, batch_size
