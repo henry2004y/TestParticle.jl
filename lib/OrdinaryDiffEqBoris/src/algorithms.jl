@@ -3,7 +3,8 @@
 
 The standard Boris method for particle pushing in electric and magnetic fields.
 
-This solver expects a problem where `p` is structured as `(q2m, m, E, B, ...)`, which matches the signature used by TestParticle.jl's `TraceProblem`.
+The charge-to-mass ratio and the field functions are read from the problem
+parameter `p` through `get_q2m`, `get_EField` and `get_BField`.
 """
 struct Boris{T} <: OrdinaryDiffEqAlgorithm
     safety::T

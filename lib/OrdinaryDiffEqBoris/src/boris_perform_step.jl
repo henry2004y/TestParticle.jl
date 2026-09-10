@@ -30,9 +30,9 @@ end
     r = uprev[SVector(1, 2, 3)]
     v = uprev[SVector(4, 5, 6)]
 
-    q2m = p[1]
-    Efunc = p[3]
-    Bfunc = p[4]
+    q2m = get_q2m(p)
+    Efunc = get_EField(p)
+    Bfunc = get_BField(p)
 
     r_half = r + v * (dt / 2)
     t_half = t + dt / 2
@@ -71,9 +71,9 @@ end
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    q2m = p[1]
-    Efunc = p[3]
-    Bfunc = p[4]
+    q2m = get_q2m(p)
+    Efunc = get_EField(p)
+    Bfunc = get_BField(p)
 
     r_half = r + v * (dt / 2)
     t_half = t + dt / 2
@@ -104,7 +104,7 @@ end
 _get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
 
 @muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
-    q2m, Efunc, Bfunc = param[1], param[3], param[4]
+    q2m, Efunc, Bfunc = get_q2m(param), get_EField(param), get_BField(param)
 
     E = Efunc(r, t)
     B = Bfunc(r, t)
@@ -200,8 +200,8 @@ end
     integrator.u = vcat(r_new, v_new)
 
     if alg.safety > 0.0
-        q2m = p[1]
-        Bfunc = p[4]
+        q2m = get_q2m(p)
+        Bfunc = get_BField(p)
         Bmag = norm(Bfunc(r_new, t + dt))
         dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
         set_proposed_dt!(integrator, dt_new)
@@ -242,8 +242,8 @@ end
     integrator.u[6] = v_new[3]
 
     if alg.safety > 0.0
-        q2m = p[1]
-        Bfunc = p[4]
+        q2m = get_q2m(p)
+        Bfunc = get_BField(p)
         Bmag = norm(Bfunc(r_new, t + dt))
         dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
         set_proposed_dt!(integrator, dt_new)

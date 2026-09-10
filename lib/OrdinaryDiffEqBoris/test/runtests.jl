@@ -3,6 +3,17 @@ using OrdinaryDiffEqBoris
 using StaticArrays
 using LinearAlgebra: norm
 
+struct CustomParam{E, B}
+    q2m::Float64
+    m::Float64
+    E::E
+    B::B
+end
+
+OrdinaryDiffEqBoris.get_q2m(p::CustomParam) = p.q2m
+OrdinaryDiffEqBoris.get_EField(p::CustomParam) = p.E
+OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
+
 @testset "OrdinaryDiffEqBoris.jl" begin
     # Definitions
     constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
@@ -139,5 +150,19 @@ using LinearAlgebra: norm
         @test length(sol_ms.t) == 2
         @test sol_ms.t[1] == tspan[1]
         @test sol_ms.t[end] ≈ tspan[2]
+    end
+
+    @testset "Custom parameter container" begin
+        # The solvers must not depend on the layout of `p`, only on the accessors.
+        param = CustomParam(1.0, 1.0, constant_Ey, constant_Bz)
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
+
+        sol = solve(prob, Boris(); dt = 0.1)
+        @test sol.u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol.u[end][4] ≈ 1.0 atol = 1.0e-6
+
+        sol_ms = solve(prob, MultistepBoris4(n = 2); dt = 0.1)
+        @test sol_ms.u[end][1] ≈ 10.0 atol = 1.0e-6
     end
 end

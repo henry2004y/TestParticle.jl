@@ -12,10 +12,12 @@ using LinearAlgebra
 
 include("algorithms.jl")
 include("alg_utils.jl")
+include("parameters.jl")
 include("boris_caches.jl")
 include("boris_perform_step.jl")
 
 export Boris
 export MultistepBoris2, MultistepBoris4, MultistepBoris6
+export get_q2m, get_EField, get_BField
 
 end
