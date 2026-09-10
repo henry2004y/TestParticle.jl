@@ -3,7 +3,7 @@ using TestParticle
 import TestParticle as TP
 using StaticArrays
 using LinearAlgebra: norm
-using OrdinaryDiffEq: ReturnCode
+using OrdinaryDiffEq
 
 @testset "Callbacks and Termination" begin
 
@@ -27,7 +27,6 @@ using OrdinaryDiffEq: ReturnCode
 
         # domain check: stop if r > 1.0 or if NaN is encountered
         isoutside(u, p, t) = any(isnan, u) || norm(u[1:3]) > 1.0
-        callback = TerminateOutside(isoutside)
 
         u0 = [0.9, 0.0, 0.0, 0.0, 1.0, 0.0] # Starts inside, moving out
         tspan = (0.0, 1.0)
@@ -37,7 +36,7 @@ using OrdinaryDiffEq: ReturnCode
             prob = TraceProblem(u0, tspan, p)
             sol = TP.solve(
                 prob, Boris(), dt = 0.2;
-                isoutside = callback.condition
+                isoutside
             )
 
             @test !any(isnan, sol.u[1].u[end])
@@ -49,7 +48,7 @@ using OrdinaryDiffEq: ReturnCode
             prob = TraceProblem(u0, tspan, p)
             sol = TP.solve(
                 prob, AdaptiveBoris(safety = 0.05);
-                isoutside = callback.condition
+                isoutside
             )
 
             @test !any(isnan, sol.u[1].u[end])
@@ -61,7 +60,7 @@ using OrdinaryDiffEq: ReturnCode
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside = callback.condition)
+            sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -72,7 +71,7 @@ using OrdinaryDiffEq: ReturnCode
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside = callback.condition)
+            sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -122,5 +121,20 @@ using OrdinaryDiffEq: ReturnCode
             @test sol_early.u[1].t[end] ≈ 0.5
             @test sol_early.u[1].retcode == ReturnCode.Terminated
         end
+    end
+
+    @testset "TerminateOutside convention" begin
+        # The condition is written in TestParticle's `(u, p, t)` convention, so
+        # the callback has to adapt it to SciML's `(u, t, integrator)`. Reading
+        # `t` here pins that down: without the adaptation this `t` would be the
+        # integrator instead, and the comparison would not be defined.
+        isoutside(u, p, t) = t > 0.5
+        callback = TerminateOutside(isoutside)
+
+        prob = ODEProblem((u, p, t) -> u, zeros(6), (0.0, 10.0), (1.0,))
+        sol = solve(prob, Tsit5(); dt = 0.1, adaptive = false, callback)
+
+        @test sol.retcode == ReturnCode.Terminated
+        @test sol.t[end] ≈ 0.6
     end
 end
