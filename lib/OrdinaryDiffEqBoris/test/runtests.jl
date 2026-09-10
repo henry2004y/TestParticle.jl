@@ -79,7 +79,7 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         init_Bmag = norm(gradient_B(u0[1:3], 0.0))
         dt_init = safety * 2π / (abs(param[1]) * init_Bmag)
 
-        sol = solve(prob, Boris(safety = safety); dt = dt_init)
+        sol = solve(prob, AdaptiveBoris(safety = safety); dt = dt_init)
 
         # Check if step sizes are not uniform (hence adapted)
         dts = diff(sol.t)
@@ -113,7 +113,7 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         @test abs(sol_boris.u[end][4] - 1.0e5) > 1.0e-4
 
         # Adaptive Boris
-        sol_adaptive = solve(prob, Boris(safety = 0.1); dt = dt)
+        sol_adaptive = solve(prob, AdaptiveBoris(safety = 0.1); dt = dt)
         @test abs(sol_adaptive.u[end][4] - 1.0e5) > 1.0e-4
     end
 
@@ -164,5 +164,27 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
 
         sol_ms = solve(prob, MultistepBoris4(n = 2); dt = 0.1)
         @test sol_ms.u[end][1] ≈ 10.0 atol = 1.0e-6
+    end
+
+    @testset "adaptive keyword" begin
+        # `adaptive` is the switch between fixed and adaptive stepping, as it is
+        # for any other SciML solver.
+        param = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(dummy_f, u0, (0.0, 2π), param)
+
+        # Adaptive by default.
+        sol = solve(prob, AdaptiveBoris(safety = 0.1); dt = 0.1)
+        @test !all(y -> isapprox(y, diff(sol.t)[1], rtol = 1.0e-5), diff(sol.t))
+
+        # An adaptive algorithm can be run with a fixed time step. The final step
+        # is trimmed to land on the end of the time span, so it is excluded.
+        sol = solve(prob, AdaptiveBoris(safety = 0.1); dt = 0.1, adaptive = false)
+        dts = diff(sol.t)
+        @test all(y -> isapprox(y, 0.1, rtol = 1.0e-10), dts[1:(end - 1)])
+        @test sol.t[end] ≈ 2π
+
+        # A fixed step algorithm refuses a request for adaptivity.
+        @test_throws ArgumentError solve(prob, Boris(); dt = 0.1, adaptive = true)
     end
 end

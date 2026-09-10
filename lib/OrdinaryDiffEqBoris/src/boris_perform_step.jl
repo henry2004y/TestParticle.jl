@@ -46,12 +46,6 @@ end
 
     integrator.u = vcat(r_new, v_new)
 
-    alg = integrator.alg
-    if alg.safety > 0.0
-        Bmag = norm(Bfunc(r_new, t + dt))
-        dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
-        set_proposed_dt!(integrator, dt_new)
-    end
     return integrator.u
 end
 
@@ -92,12 +86,6 @@ end
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
 
-    alg = integrator.alg
-    if alg.safety > 0.0
-        Bmag = norm(Bfunc(r_new, t + dt))
-        dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
-        set_proposed_dt!(integrator, dt_new)
-    end
     return
 end
 
@@ -199,13 +187,6 @@ end
 
     integrator.u = vcat(r_new, v_new)
 
-    if alg.safety > 0.0
-        q2m = get_q2m(p)
-        Bfunc = get_BField(p)
-        Bmag = norm(Bfunc(r_new, t + dt))
-        dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
-        set_proposed_dt!(integrator, dt_new)
-    end
     return integrator.u
 end
 
@@ -241,12 +222,5 @@ end
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
 
-    if alg.safety > 0.0
-        q2m = get_q2m(p)
-        Bfunc = get_BField(p)
-        Bmag = norm(Bfunc(r_new, t + dt))
-        dt_new = integrator.tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
-        set_proposed_dt!(integrator, dt_new)
-    end
     return
 end

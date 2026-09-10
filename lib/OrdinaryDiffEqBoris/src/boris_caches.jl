@@ -8,7 +8,7 @@ struct BorisCache{uType, rateType} <: OrdinaryDiffEqMutableCache
 end
 
 function alg_cache(
-        alg::Boris, u, rate_prototype, ::Type{uEltypeNoUnits},
+        alg::Union{Boris, AdaptiveBoris}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{false}, args...; kwargs...
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
@@ -16,7 +16,7 @@ function alg_cache(
 end
 
 function alg_cache(
-        alg::Boris, u, rate_prototype, ::Type{uEltypeNoUnits},
+        alg::Union{Boris, AdaptiveBoris}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{true}, args...; kwargs...
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
@@ -33,7 +33,7 @@ struct MultistepBorisCache{uType, rateType} <: OrdinaryDiffEqMutableCache
 end
 
 function alg_cache(
-        alg::MultistepBoris{N}, u, rate_prototype, ::Type{uEltypeNoUnits},
+        alg::Union{MultistepBoris{N}, AdaptiveMultistepBoris{N}}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{false}, args...; kwargs...
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits, N}
@@ -41,7 +41,7 @@ function alg_cache(
 end
 
 function alg_cache(
-        alg::MultistepBoris{N}, u, rate_prototype, ::Type{uEltypeNoUnits},
+        alg::Union{MultistepBoris{N}, AdaptiveMultistepBoris{N}}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
         ::Val{true}, args...; kwargs...
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits, N}
