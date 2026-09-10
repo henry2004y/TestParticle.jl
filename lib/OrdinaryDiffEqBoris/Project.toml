@@ -12,13 +12,15 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-MuladdMacro = "0.2"
-OrdinaryDiffEqCore = "3"
-RecursiveArrayTools = "3.24, 4"
-Reexport = "1.2.2"
-SciMLBase = "2, 3"
-StaticArrays = "1"
-julia = "1.10"
+# Pinned to the minor series actually tested, since the solver hooks into
+# OrdinaryDiffEqCore's controller interface, which is still being reworked.
+MuladdMacro = "~0.2"
+OrdinaryDiffEqCore = "~4.17"
+RecursiveArrayTools = "~4.5"
+Reexport = "~1.2"
+SciMLBase = "~3.53"
+StaticArrays = "~1.9"
+julia = "1.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

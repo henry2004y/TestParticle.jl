@@ -10,26 +10,25 @@ struct BorisController{QT} <: AbstractController
     safety::QT
 end
 
-mutable struct BorisControllerCache{QT, UT} <: AbstractControllerCache
+mutable struct BorisControllerCache{QT, EEstT, UT} <: AbstractControllerCache
     controller::BorisController{QT}
     q::QT
+    EEst::EEstT
     atmp::UT
 end
 
-# The controller entry points were reworked between the OrdinaryDiffEqCore v3
-# "legacy" controllers and the v7 controllers, which changed the signatures of
-# `default_controller` and `setup_controller_cache`. The methods below are
-# written to be valid under both layouts.
-function default_controller(alg::Union{AdaptiveBoris, AdaptiveMultistepBoris}, cache, qoldinit, beta1, beta2)
-    return BorisController(alg.safety)
-end
-
-function default_controller(::Type{QT}, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris}) where {QT}
+function default_controller(
+        ::Type{QT}, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris}
+    ) where {QT}
     return BorisController(QT(alg.safety))
 end
 
-function setup_controller_cache(alg, atmp, controller::BorisController{QT}, args...) where {QT}
-    return BorisControllerCache{QT, typeof(atmp)}(controller, one(QT), atmp)
+function setup_controller_cache(
+        alg, atmp, controller::BorisController{QT}, ::Type{EEstT}, args...
+    ) where {QT, EEstT}
+    return BorisControllerCache{QT, EEstT, typeof(atmp)}(
+        controller, one(QT), oneunit(EEstT), atmp
+    )
 end
 
 """
@@ -54,8 +53,7 @@ function stepsize_controller!(integrator, cache::BorisControllerCache, alg)
     return cache.q
 end
 
-accept_step_controller(integrator, ::BorisControllerCache) = true
-
+# No error estimate is formed, so a step is never rejected.
 accept_step_controller(integrator, ::BorisControllerCache, alg) = true
 
 function step_accept_controller!(integrator, cache::BorisControllerCache, alg, q)
