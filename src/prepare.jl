@@ -79,10 +79,6 @@ function Base.show(io::IO, f::Field)
 end
 
 
-get_q2m(param) = param[1]
-get_BField(param) = param[4]
-get_EField(param) = param[3]
-
 prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
 

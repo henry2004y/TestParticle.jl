@@ -1,7 +1,7 @@
 # Adaptive Boris solver
 
 """
-    solve(prob::TraceProblem, alg::Union{Boris{true}, MultistepBoris{N, true} where N},
+    solve(prob::TraceProblem, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris},
         ensemblealg=EnsembleSerial(); kwargs...)
 
 Trace particles using the adaptive Boris method.
@@ -19,7 +19,7 @@ The time step is determined by `dt = safety * 2π / |qB/m|`.
   - `batch_size::Int`: batch size for distributed.
 """
 @inline function solve(
-        prob::TraceProblem, alg::Union{Boris{true}, MultistepBoris{N, true} where {N}},
+        prob::TraceProblem, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris},
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
@@ -138,8 +138,8 @@ function _solve_adaptive(
     return EnsembleSolution(sols, end_time - start_time, true)
 end
 
-@inline get_velocity_updater(::Boris{true}) = update_velocity
-@inline get_velocity_updater(alg::MultistepBoris{N, true}) where {N} =
+@inline get_velocity_updater(::AdaptiveBoris) = update_velocity
+@inline get_velocity_updater(alg::AdaptiveMultistepBoris{N}) where {N} =
     MultistepUpdater{N}(alg.n)
 
 @inline function _adaptive_boris_single(
@@ -158,7 +158,7 @@ end
     end
 
     velocity_updater = get_velocity_updater(alg)
-    alg_name = alg isa Boris ? :adaptive_boris : :adaptive_multistep_boris
+    alg_name = alg isa AdaptiveBoris ? :adaptive_boris : :adaptive_multistep_boris
 
     # dt = safety * 2π / (abs(q2m) * Bmag)
     C = (2π * alg.safety * sign(tspan[2] - tspan[1])) / abs(q2m)

@@ -68,7 +68,7 @@ end
 
 """
     solve(prob::TraceProblem,
-        alg::Union{Boris{false}, MultistepBoris},
+        alg::Union{Boris, MultistepBoris},
         ensemblealg=EnsembleSerial(); dt, kwargs...)
 
 Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
@@ -87,7 +87,7 @@ Trace particles using the fixed-step Boris or Multistep/Hyper Boris method.
 """
 @inline function solve(
         prob::TraceProblem,
-        alg::Union{Boris{false}, MultistepBoris{N, false} where {N}},
+        alg::Union{Boris, MultistepBoris},
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
@@ -124,7 +124,7 @@ function _dispatch_boris!(
         sols, prob::TraceProblem, irange,
         savestepinterval, dt, nt, nout, isoutside::F,
         save_start, save_end, save_everystep, ::Val{SaveFields}, ::Val{SaveWork},
-        ::Boris{false}, seed::Union{Nothing, Integer} = nothing
+        ::Boris, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork, F}
     return _boris!(
         sols, prob, irange, savestepinterval, dt, nt,
@@ -168,13 +168,13 @@ end
         ::Val{SaveFields}, ::Val{SaveWork}, alg::AbstractBoris, seed::Union{Nothing, Integer} = nothing
     ) where {SaveFields, SaveWork}
 
-    if alg isa Boris{false}
+    if alg isa Boris
         return _boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),
             update_velocity, :boris, seed
         )
-    elseif alg isa MultistepBoris{N, false} where {N}
+    elseif alg isa MultistepBoris
         return _multistep_boris_single(
             prob, i, savestepinterval, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, Val(SaveFields), Val(SaveWork),

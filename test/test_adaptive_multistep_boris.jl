@@ -18,24 +18,24 @@ using StaticArrays
     @testset "Constructor" begin
         # Test AdaptiveMultistepBoris constructors
         alg2 = AdaptiveMultistepBoris{2}(n = 1, safety = 0.2)
-        @test alg2 isa MultistepBoris{2, true}
+        @test alg2 isa AdaptiveMultistepBoris{2}
         @test alg2.n == 1
         @test alg2.safety == 0.2
 
         alg4 = AdaptiveMultistepBoris{4}(n = 2)
-        @test alg4 isa MultistepBoris{4, true}
+        @test alg4 isa AdaptiveMultistepBoris{4}
         @test alg4.n == 2
         @test alg4.safety == 0.1
 
         alg6 = AdaptiveMultistepBoris{6}()
-        @test alg6 isa MultistepBoris{6, true}
+        @test alg6 isa AdaptiveMultistepBoris{6}
         @test alg6.n == 1
         @test alg6.safety == 0.1
 
-        # Test MultistepBoris default still works (fixed-step)
+        # Fixed-step variants carry no safety factor.
         alg_fixed = MultistepBoris{2}(n = 1)
-        @test alg_fixed isa MultistepBoris{2, false}
-        @test alg_fixed.safety == 0.0
+        @test alg_fixed isa MultistepBoris{2}
+        @test alg_fixed.n == 1
     end
 
     @testset "Consistency with AdaptiveBoris" begin
