@@ -67,17 +67,24 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
     end
 
     @testset "Adaptive Boris" begin
-        constant_E(x, t) = SA[0.0, 1.0e2, 0.0]
-        gradient_B(x, t) = SA[0.0, 0.0, 1.0 * (1.0 + x[1])]
-        param = (-1.0, 1.0, constant_E, gradient_B, ZeroField()) # q2m = -1
+        # The electron-like setup below keeps the E cross B drift comparable to
+        # the particle speed. In a drift-dominated regime the kinetic and
+        # potential energies nearly cancel, which amplifies the energy error and
+        # makes a relative tolerance on the total energy meaningless.
+        q2m = -1.75882001076e11
+        m = 9.1093837015e-31
+        constant_E(x, t) = SA[0.0, 1.0e5, 0.0]
+        gradient_B(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + x[1])]
+        param = (q2m, m, constant_E, gradient_B, ZeroField())
 
-        u0 = SA[0.0, 0.0, 0.0, 10.0, 0.0, 0.0]
-        tspan = (0.0, 10.0)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e7, 0.0, 0.0]
+        safety = 0.1
+        tperiod = 2π / (abs(q2m) * 0.01)
+        tspan = (0.0, 200 * tperiod)
         prob = ODEProblem(dummy_f, u0, tspan, param)
 
-        safety = 0.1
         init_Bmag = norm(gradient_B(u0[1:3], 0.0))
-        dt_init = safety * 2π / (abs(param[1]) * init_Bmag)
+        dt_init = safety * 2π / (abs(q2m) * init_Bmag)
 
         sol = solve(prob, AdaptiveBoris(safety = safety); dt = dt_init)
 
@@ -87,7 +94,7 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         @test sol.t[end] ≈ tspan[2]
 
         # Energy conservation check
-        total_energy(u) = 0.5 * param[2] * norm(u[4:6])^2 + (param[1] * param[2]) * (-1.0e2 * u[2])
+        total_energy(u) = 0.5 * m * norm(u[4:6])^2 + (q2m * m) * (-1.0e5 * u[2])
         E_start = total_energy(sol.u[1])
         E_end = total_energy(sol.u[end])
         @test isapprox(E_end, E_start, rtol = 1.0e-3)

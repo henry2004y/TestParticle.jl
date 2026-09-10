@@ -22,6 +22,10 @@ The time step is fixed and must be supplied with the `dt` keyword.
 """
 struct MultistepBoris{N} <: OrdinaryDiffEqAlgorithm
     n::Int
+    function MultistepBoris{N}(n::Int) where {N}
+        N in (2, 4, 6) || throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
+        return new{N}(n)
+    end
 end
 MultistepBoris{N}(; n::Int = 1) where {N} = MultistepBoris{N}(n)
 
@@ -55,6 +59,7 @@ struct AdaptiveMultistepBoris{N, T} <: OrdinaryDiffEqAdaptiveAlgorithm
     safety::T
 end
 function AdaptiveMultistepBoris{N}(; n::Int = 1, safety = 0.1) where {N}
+    N in (2, 4, 6) || throw(ArgumentError("Multistep Boris order N must be 2, 4, or 6."))
     return AdaptiveMultistepBoris{N, typeof(safety)}(n, safety)
 end
 

@@ -14,83 +14,6 @@ const TN_MAG_THRESHOLD = 1.0e-4
     return v_new
 end
 
-function initialize!(integrator, cache::BorisConstantCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
-end
-
-@muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
-    t = integrator.t
-    dt = integrator.dt
-    uprev = integrator.uprev
-    p = integrator.p
-
-    r = uprev[SVector(1, 2, 3)]
-    v = uprev[SVector(4, 5, 6)]
-
-    q2m = get_q2m(p)
-    Efunc = get_EField(p)
-    Bfunc = get_BField(p)
-
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
-    E = Efunc(r_half, t_half)
-    B = Bfunc(r_half, t_half)
-
-    qdt_2m = q2m * 0.5 * dt
-    v_new = boris_velocity_update(v, E, B, qdt_2m)
-
-    r_new = r_half + v_new * (dt / 2)
-
-    integrator.u = vcat(r_new, v_new)
-
-    return integrator.u
-end
-
-function initialize!(integrator, cache::BorisCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
-end
-
-@muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
-    t = integrator.t
-    dt = integrator.dt
-    uprev = integrator.uprev
-    p = integrator.p
-
-    r = SVector(uprev[1], uprev[2], uprev[3])
-    v = SVector(uprev[4], uprev[5], uprev[6])
-
-    q2m = get_q2m(p)
-    Efunc = get_EField(p)
-    Bfunc = get_BField(p)
-
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
-    E = Efunc(r_half, t_half)
-    B = Bfunc(r_half, t_half)
-
-    qdt_2m = q2m * 0.5 * dt
-    v_new = boris_velocity_update(v, E, B, qdt_2m)
-
-    r_new = r_half + v_new * (dt / 2)
-
-    integrator.u[1] = r_new[1]
-    integrator.u[2] = r_new[2]
-    integrator.u[3] = r_new[3]
-    integrator.u[4] = v_new[1]
-    integrator.u[5] = v_new[2]
-    integrator.u[6] = v_new[3]
-
-    return
-end
-
-_get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
-
 @muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
     q2m, Efunc, Bfunc = get_q2m(param), get_EField(param), get_BField(param)
 
@@ -161,66 +84,112 @@ _get_val_N(::MultistepBoris{N}) where {N} = Val{N}()
     return v_new
 end
 
-function initialize!(integrator, cache::MultistepBorisConstantCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    return integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
+"""
+    velocity_update(v, r, dt, t, p, alg)
+
+Advance the velocity `v` by `dt`, evaluating the fields at `(r, t)`.
+"""
+@inline @muladd function velocity_update(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
+    qdt_2m = get_q2m(p) * 0.5 * dt
+    return boris_velocity_update(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
 end
 
-@muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
+@inline @muladd function velocity_update(
+        v, r, dt, t, p, alg::Union{MultistepBoris{N}, AdaptiveMultistepBoris{N}}
+    ) where {N}
+    return update_velocity_multistep(v, r, dt, t, alg.n, Val{N}(), p)
+end
+
+# The velocity is carried at the half step, as in a leapfrog scheme: the cache
+# holds `v(t - dt/2)` and the node velocity is reconstructed only for output.
+# Changing `dt` re-centres the stored velocity onto the new half step, which is
+# what keeps the scheme time-reversible under adaptive stepping.
+@inline @muladd function boris_initialize!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
-    uprev = integrator.uprev
     p = integrator.p
-    alg = integrator.alg
-
-    r = uprev[SVector(1, 2, 3)]
-    v = uprev[SVector(4, 5, 6)]
-
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
-
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, _get_val_N(alg), p)
-
-    r_new = r_half + v_new * (dt / 2)
-
-    integrator.u = vcat(r_new, v_new)
-
-    return integrator.u
-end
-
-function initialize!(integrator, cache::MultistepBorisCache)
-    integrator.fsalfirst = integrator.f(integrator.uprev, integrator.p, integrator.t)
-    integrator.stats.nf += 1
-    integrator.kshortsize = 0
-    integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
-    return
-end
-
-@muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
-    t = integrator.t
-    dt = integrator.dt
     uprev = integrator.uprev
-    p = integrator.p
-    alg = integrator.alg
-
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    r_half = r + v * (dt / 2)
-    t_half = t + dt / 2
+    cache.v_half = velocity_update(v, r, -0.5 * dt, t, p, integrator.alg)
+    cache.dt_prev = dt
 
-    v_new = update_velocity_multistep(v, r_half, dt, t_half, alg.n, _get_val_N(alg), p)
+    integrator.kshortsize = 0
+    integrator.k = typeof(integrator.k)(undef, integrator.kshortsize)
 
-    r_new = r_half + v_new * (dt / 2)
+    return
+end
 
+@inline @muladd function boris_advance!(integrator, cache)
+    t = integrator.t
+    dt = integrator.dt
+    p = integrator.p
+    alg = integrator.alg
+    uprev = integrator.uprev
+    r = SVector(uprev[1], uprev[2], uprev[3])
+
+    if cache.dt_prev != dt
+        v_node = velocity_update(cache.v_half, r, 0.5 * cache.dt_prev, t, p, alg)
+        cache.v_half = velocity_update(v_node, r, -0.5 * dt, t, p, alg)
+    end
+
+    v_half = velocity_update(cache.v_half, r, dt, t + 0.5 * dt, p, alg)
+    r_new = r + v_half * dt
+    v_new = velocity_update(v_half, r_new, 0.5 * dt, t + dt, p, alg)
+
+    cache.v_half = v_half
+    cache.dt_prev = dt
+
+    return r_new, v_new
+end
+
+function initialize!(integrator, cache::BorisConstantCache)
+    return boris_initialize!(integrator, cache)
+end
+
+function initialize!(integrator, cache::BorisCache)
+    return boris_initialize!(integrator, cache)
+end
+
+function initialize!(integrator, cache::MultistepBorisConstantCache)
+    return boris_initialize!(integrator, cache)
+end
+
+function initialize!(integrator, cache::MultistepBorisCache)
+    return boris_initialize!(integrator, cache)
+end
+
+@muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
+    r_new, v_new = boris_advance!(integrator, cache)
+    integrator.u = vcat(r_new, v_new)
+    return integrator.u
+end
+
+@muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
+    r_new, v_new = boris_advance!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]
     integrator.u[3] = r_new[3]
     integrator.u[4] = v_new[1]
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
+    return
+end
 
+@muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
+    r_new, v_new = boris_advance!(integrator, cache)
+    integrator.u = vcat(r_new, v_new)
+    return integrator.u
+end
+
+@muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
+    r_new, v_new = boris_advance!(integrator, cache)
+    integrator.u[1] = r_new[1]
+    integrator.u[2] = r_new[2]
+    integrator.u[3] = r_new[3]
+    integrator.u[4] = v_new[1]
+    integrator.u[5] = v_new[2]
+    integrator.u[6] = v_new[3]
     return
 end
