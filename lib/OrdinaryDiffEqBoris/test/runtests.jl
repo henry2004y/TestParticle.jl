@@ -194,4 +194,36 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         # A fixed step algorithm refuses a request for adaptivity.
         @test_throws ArgumentError solve(prob, Boris(); dt = 0.1, adaptive = true)
     end
+
+    @testset "saveat" begin
+        param = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(dummy_f, u0, (0.0, 2π), param)
+        dt = 0.1
+
+        sol_all = solve(prob, Boris(); dt)
+
+        # Asking for output at intermediate times must not change the
+        # integration: the steps are the same, only the saving differs. This is
+        # the property that made `saveat` unusable before the dense output
+        # existed, since it errored out trying to build a Hermite interpolant.
+        saveat = 0.3:0.3:6.0
+        sol_at = solve(prob, Boris(); dt, saveat)
+
+        @test sol_at.t ≈ collect(saveat)
+
+        # The trajectory is unchanged, so every saved value agrees with the
+        # every-step solution interpolated at the same time.
+        for (k, t) in enumerate(sol_at.t)
+            @test sol_at.u[k] ≈ sol_all(t)
+        end
+
+        # An interval is accepted as well. SciML samples it across the whole
+        # time span, so its grid is not the same as the collection above.
+        sol_interval = solve(prob, Boris(); dt, saveat = 0.3)
+        @test length(sol_interval.t) > length(saveat)
+        for (k, t) in enumerate(sol_interval.t)
+            @test sol_interval.u[k] ≈ sol_all(t)
+        end
+    end
 end

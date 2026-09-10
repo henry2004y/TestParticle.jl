@@ -108,14 +108,9 @@ function _boris_saved_indices(n, savestepinterval, save_start, save_end, save_ev
     return sort!(unique!(idxs))
 end
 
-function _boris_finalize(
-        sol::AbstractODESolution, p, savestepinterval, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+function _boris_build(
+        sol::AbstractODESolution, p, idxs, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    idxs = _boris_saved_indices(
-        length(sol.t), savestepinterval, save_start, save_end, save_everystep
-    )
-
     tsave = sol.t[idxs]
     u = [
         _prepare_saved_data(sol.u[i], p, sol.t[i], Val(SaveFields), Val(SaveWork))
@@ -128,6 +123,25 @@ function _boris_finalize(
     )
 end
 
+function _boris_finalize(
+        sol::AbstractODESolution, p, savestepinterval, save_start, save_end,
+        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    idxs = _boris_saved_indices(
+        length(sol.t), savestepinterval, save_start, save_end, save_everystep
+    )
+
+    return _boris_build(sol, p, idxs, Val(SaveFields), Val(SaveWork))
+end
+
+# With `saveat` the output times are already the ones SciML saved, so there is
+# nothing to select; only the field and work columns remain to be appended.
+function _boris_finalize(
+        sol::AbstractODESolution, p, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {SaveFields, SaveWork}
+    return _boris_build(sol, p, eachindex(sol.t), Val(SaveFields), Val(SaveWork))
+end
+
 """
     solve(prob::TraceProblem, alg::AbstractBoris, ensemblealg=EnsembleSerial(); kwargs...)
 
@@ -136,10 +150,15 @@ Trace particles with a Boris method, integrated by the SciML loop.
 # Keywords
   - `dt`: time step. Optional for adaptive methods, which otherwise start from
     `safety * 2π / |q B / m|`.
+  - `saveat`: times to save at, as a collection or as an interval. The solution
+    is interpolated linearly inside a step, which is the dense output these
+    methods admit. Mutually exclusive with `savestepinterval`.
   - `savestepinterval::Int=1`: save every `savestepinterval`-th step. Deprecated
     in favour of `saveat`.
   - `isoutside`: boundary check `(u, p, t)`; the trace terminates when it holds.
   - `save_start::Bool=true`, `save_end::Bool=true`, `save_everystep::Bool=true`.
+    With `saveat`, `save_start` and `save_end` add the ends of the time span to
+    the requested times.
   - `save_fields::Bool=false`: append E and B to every saved state.
   - `save_work::Bool=false`: append the work rates to every saved state.
   - `maxiters::Int=1_000_000`: maximum number of steps.
@@ -150,6 +169,7 @@ Trace particles with a Boris method, integrated by the SciML loop.
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
         savestepinterval::Int = 1,
+        saveat = (),
         dt::Union{Nothing, AbstractFloat} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true,
@@ -164,15 +184,36 @@ Trace particles with a Boris method, integrated by the SciML loop.
     step = dt === nothing ? _boris_initial_dt(prob, alg) : dt
     _boris_check_limits(prob, step, alg, maxiters)
 
-    solve_kwargs = (
-        dt = step,
-        save_start = true,
-        save_end = true,
-        save_everystep = true,
-        maxiters,
-        callback = _boris_callback(isoutside),
-        dense = false,
-    )
+    if !isempty(saveat) && savestepinterval != 1
+        throw(
+            ArgumentError(
+                "saveat and savestepinterval select the output times in different " *
+                    "ways and cannot be combined"
+            )
+        )
+    end
+
+    solve_kwargs = if isempty(saveat)
+        (
+            dt = step,
+            save_start = true,
+            save_end = true,
+            save_everystep = true,
+            maxiters,
+            callback = _boris_callback(isoutside),
+            dense = false,
+        )
+    else
+        (
+            dt = step,
+            saveat,
+            save_start,
+            save_end,
+            maxiters,
+            callback = _boris_callback(isoutside),
+            dense = false,
+        )
+    end
 
     ensemble_prob = EnsembleProblem(
         _boris_problem(prob); prob_func = _boris_prob_func(prob)
@@ -189,12 +230,19 @@ Trace particles with a Boris method, integrated by the SciML loop.
         trajectories, ensemble_kwargs..., solve_kwargs...
     )
 
-    sols = [
-        _boris_finalize(
-            sol, prob.p, savestepinterval, save_start, save_end, save_everystep,
-            Val(save_fields), Val(save_work)
-        ) for sol in esol.u
-    ]
+    sols = if isempty(saveat)
+        [
+            _boris_finalize(
+                sol, prob.p, savestepinterval, save_start, save_end, save_everystep,
+                Val(save_fields), Val(save_work)
+            ) for sol in esol.u
+        ]
+    else
+        [
+            _boris_finalize(sol, prob.p, Val(save_fields), Val(save_work))
+                for sol in esol.u
+        ]
+    end
 
     return EnsembleSolution(sols, elapsed_time, true)
 end

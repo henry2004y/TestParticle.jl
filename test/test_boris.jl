@@ -625,4 +625,39 @@ using Distributed
         end
     end
 
+    @testset "Saveat" begin
+        x0 = [0.0, 0.0, 0.0]
+        v0 = [0.0, 1.0e5, 0.0]
+        stateinit = [x0..., v0...]
+        tspan = (0.0, 3.0e-8)
+        dt = 3.0e-11
+        param = prepare(zero_E, uniform_B2, species = Electron)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        sol_all = TP.solve(prob, Boris(); dt).u[1]
+
+        # Requesting output at intermediate times must not change the
+        # integration, only the saving.
+        ts = collect(0.0:(3.0e-9):(3.0e-8))
+        sol_at = TP.solve(prob, Boris(); dt, saveat = ts).u[1]
+
+        @test sol_at.t ≈ ts
+        for (k, t) in enumerate(sol_at.t)
+            @test sol_at.u[k] ≈ sol_all(t)
+        end
+
+        # The field and work columns are appended on this path as well.
+        sol_fields = TP.solve(
+            prob, Boris(); dt, saveat = ts, save_fields = true
+        ).u[1]
+        @test length(sol_fields.u[1]) == 12
+        @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
+        @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
+
+        # The two ways of choosing output times are mutually exclusive.
+        @test_throws ArgumentError TP.solve(
+            prob, Boris(); dt, saveat = ts, savestepinterval = 2
+        )
+    end
+
 end
