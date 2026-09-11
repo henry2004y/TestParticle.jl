@@ -204,4 +204,49 @@ using Test
         @test sol_buf.retcode == TP.ReturnCode.Success
         @test length(sol_buf.t) > 100
     end
+
+    # 4. Saving at requested times, for a case that stays in the GC mode.
+    let
+        B_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.01])
+
+        u0 = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
+        tspan = (0.0, 1.0e-4)
+        p = (q2m, m, E_field, B_field, TP.ZeroField())
+        alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
+        prob = TraceHybridProblem(u0, tspan, p)
+
+        sol_all = TP.solve(prob, alg).u[1]
+
+        # Requesting intermediate output must not change the integration, only
+        # where the state is reported.
+        ts = collect(0.1e-4:0.1e-4:0.9e-4)
+        sol_at = TP.solve(prob, alg; saveat = ts).u[1]
+
+        @test sol_at.t ≈ vcat(0.0, ts, 1.0e-4)
+        @test sol_at.u[end] ≈ sol_all.u[end]
+
+        # A shared time must give the same state whichever grid it arrives in,
+        # which pins down that each one is interpolated inside its own step.
+        ts_fine = sort!(vcat(ts, collect(0.05e-4:0.1e-4:0.95e-4)))
+        sol_fine = TP.solve(prob, alg; saveat = ts_fine).u[1]
+
+        for t in ts
+            j = findfirst(isequal(t), sol_fine.t)
+            k = findfirst(isequal(t), sol_at.t)
+            @test j !== nothing
+            @test k !== nothing
+            @test sol_fine.u[j] ≈ sol_at.u[k]
+        end
+
+        # A plain interval is accepted too: its interior is used, since the ends
+        # of the span are reported separately.
+        sol_interval = TP.solve(prob, alg; saveat = 0.25e-4).u[1]
+        @test sol_interval.t ≈ collect(0.0:0.25e-4:1.0e-4)
+
+        # The keyword it replaces warns, and the two cannot be combined.
+        @test_logs (:warn, r"savestepinterval") match_mode = :any begin
+            TP.solve(prob, alg; savestepinterval = 10)
+        end
+        @test_throws ArgumentError TP.solve(prob, alg; saveat = ts, savestepinterval = 10)
+    end
 end

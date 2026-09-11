@@ -49,16 +49,22 @@ end
 
 """
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
-        savestepinterval::Int=1, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
+        saveat=nothing, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
         alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000,
         save_fields::Bool=false, save_work::Bool=false)
 
 Trace guiding centers using the RK4 method with specified `prob`.
 If `alg` is `:rk45`, uses adaptive time stepping.
+
+`saveat` names the times at which to report the state, as a collection or as an
+interval; the state is interpolated linearly between the two steps that bracket
+each time, leaving the trajectory unchanged. The deprecated `savestepinterval`
+saves every `k`-th step instead and cannot be combined with `saveat`.
 """
 function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1,
+        trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        saveat = (),
         dt::Union{AbstractFloat, Nothing} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
@@ -70,16 +76,20 @@ function solve(
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
     end
 
+    plan = SavingPlan(
+        saveat, savestepinterval, prob.tspan, _gc_direction(prob), _gc_time_type(prob, dt)
+    )
+
     return if save_fields
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
+                ensemblealg, prob, trajectories, dt, plan, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(true), Val(true), seed
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
+                ensemblealg, prob, trajectories, dt, plan, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(true), Val(false), seed
             )
@@ -87,13 +97,13 @@ function solve(
     else
         if save_work
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
+                ensemblealg, prob, trajectories, dt, plan, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(false), Val(true), seed
             )
         else
             return _solve(
-                ensemblealg, prob, trajectories, dt, savestepinterval, isoutside,
+                ensemblealg, prob, trajectories, dt, plan, isoutside,
                 save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
                 Val(false), Val(false), seed
             )
@@ -102,25 +112,25 @@ function solve(
 end
 
 function _solve(
-        ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, savestepinterval,
+        ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, plan,
         isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
-        prob, trajectories, dt, savestepinterval,
+        prob, trajectories, dt, plan,
         save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
     )
     irange = 1:trajectories
 
     elapsed_time = @elapsed if alg == :rk45
         _rk45!(
-            sols, prob, irange, dt, isoutside,
+            sols, prob, irange, plan, dt, isoutside,
             save_start, save_end, save_everystep, abstol, reltol, maxiters,
             Val(SaveFields), Val(SaveWork), seed
         )
     else
         _rk4!(
-            sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
+            sols, prob, irange, plan, dt, nt, nout, isoutside,
             save_start, save_end, save_everystep, maxiters,
             Val(SaveFields), Val(SaveWork), seed
         )
@@ -130,13 +140,13 @@ function _solve(
 end
 
 function _solve(
-        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, savestepinterval,
+        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, plan,
         isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {SaveFields, SaveWork}
     sols, nt,
         nout = _prepare_gc(
-        prob, trajectories, dt, savestepinterval,
+        prob, trajectories, dt, plan,
         save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
     )
 
@@ -144,13 +154,13 @@ function _solve(
     elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         if alg == :rk45
             _rk45!(
-                sols, prob, irange, dt, isoutside,
+                sols, prob, irange, plan, dt, isoutside,
                 save_start, save_end, save_everystep, abstol, reltol, maxiters,
                 Val(SaveFields), Val(SaveWork), seed
             )
         else
             _rk4!(
-                sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
+                sols, prob, irange, plan, dt, nt, nout, isoutside,
                 save_start, save_end, save_everystep, maxiters,
                 Val(SaveFields), Val(SaveWork), seed
             )
@@ -160,11 +170,27 @@ function _solve(
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
+"""
+    _gc_direction(prob) -> Int
+
+`+1` for a forward time span and `-1` for a backward one.
+"""
+_gc_direction(prob::TraceGCProblem) = _span_direction(prob.tspan)
+
+"""
+    _gc_time_type(prob, dt) -> Type
+
+The type of the time values a solve will produce.
+"""
+function _gc_time_type(prob::TraceGCProblem, dt)
+    dt_guess = isnothing(dt) ? one(eltype(prob.u0)) : dt
+    return typeof(prob.tspan[1] + dt_guess)
+end
+
 function _get_sol_type(prob::TraceGCProblem, dt, alg, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     u0 = prob.u0
     tspan = prob.tspan
-    dt_guess = isnothing(dt) ? one(eltype(u0)) : dt
-    T_t = typeof(tspan[1] + dt_guess)
+    T_t = _gc_time_type(prob, dt)
     t = Vector{T_t}(undef, 0)
     # Force u to be Vector{SVector{4, T}}
     T = eltype(u0)
@@ -185,7 +211,7 @@ function _get_sol_type(prob::TraceGCProblem, dt, alg, ::Val{SaveFields}, ::Val{S
 end
 
 function _prepare_gc(
-        prob::TraceGCProblem, trajectories, dt, savestepinterval,
+        prob::TraceGCProblem, trajectories, dt, plan,
         save_start, save_end, save_everystep, alg, maxiters, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
@@ -204,15 +230,16 @@ function _prepare_gc(
         end
     end
 
-    nout = 0
-    if save_start
-        nout += 1
-    end
+    nout = save_start ? 1 : 0
 
-    # For :rk45, we initialize nout=0 since we don't know the exact steps.
-    if alg == :rk4 && save_everystep
-        steps = nt ÷ savestepinterval
-        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
+    if use_saveat(plan)
+        # One slot per requested time, plus the end of the run. A `maxiters` cut
+        # short can leave some of them unreached, which the caller resizes away.
+        nout += length(plan.times) + (save_end ? 1 : 0)
+    elseif alg == :rk4 && save_everystep
+        # For :rk45, nout stays at the count above since we don't know the exact steps.
+        steps = nt ÷ plan.interval
+        last_is_step = (nt > 0) && (nt % plan.interval == 0)
         nout += steps
         if !save_end && last_is_step
             nout -= 1

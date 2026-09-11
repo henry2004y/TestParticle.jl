@@ -144,6 +144,41 @@ const KA = KernelAbstractions
         dt_too_small = eps(Float64)
         @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt = dt_too_small)
     end
+
+    @testset "Saveat" begin
+        backend = CPU()
+
+        sol_all = TP.solve(prob, Boris(), backend; dt, trajectories = 1).u[1]
+
+        # Requesting intermediate output must not change the integration, only
+        # where the state is reported. The requested times land on step
+        # boundaries here, so the interpolant has to reproduce them exactly.
+        ts = collect(1.0e-7:1.0e-7:9.0e-7)
+        sol_at = TP.solve(
+            prob, Boris(), backend; dt, trajectories = 1, saveat = ts
+        ).u[1]
+
+        @test sol_at.t ≈ vcat(0.0, ts, 1.0e-6)
+        for (k, t) in enumerate(sol_at.t)
+            @test sol_at.u[k] ≈ sol_all(t)
+        end
+
+        # An interval is accepted too: only its interior is used, since the ends
+        # of the span are reported separately.
+        sol_interval = TP.solve(
+            prob, Boris(), backend; dt, trajectories = 1, saveat = 2.5e-7
+        ).u[1]
+        @test sol_interval.t ≈ collect(0.0:2.5e-7:1.0e-6)
+
+        # The keyword it replaces warns, and the two cannot be combined.
+        @test_logs (:warn, r"savestepinterval") match_mode = :any begin
+            TP.solve(prob, Boris(), backend; dt, trajectories = 1, savestepinterval = 10)
+        end
+        @test_throws ArgumentError TP.solve(
+            prob, Boris(), backend; dt, trajectories = 1, saveat = ts,
+            savestepinterval = 10
+        )
+    end
 end
 
 end # module test_boris_kernel
