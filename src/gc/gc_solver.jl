@@ -58,12 +58,11 @@ If `alg` is `:rk45`, uses adaptive time stepping.
 
 `saveat` names the times at which to report the state, as a collection or as an
 interval; the state is interpolated linearly between the two steps that bracket
-each time, leaving the trajectory unchanged. The deprecated `savestepinterval`
-saves every `k`-th step instead and cannot be combined with `saveat`.
+each time, leaving the trajectory unchanged.
 """
 function solve(
         prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        trajectories::Int = 1,
         saveat = (),
         dt::Union{AbstractFloat, Nothing} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -76,9 +75,7 @@ function solve(
         @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
     end
 
-    plan = SavingPlan(
-        saveat, savestepinterval, prob.tspan, _gc_direction(prob), _gc_time_type(prob, dt)
-    )
+    plan = SavingPlan(saveat, prob.tspan, _gc_direction(prob), _gc_time_type(prob, dt))
 
     return if save_fields
         if save_work
@@ -238,9 +235,8 @@ function _prepare_gc(
         nout += length(plan.times) + (save_end ? 1 : 0)
     elseif alg == :rk4 && save_everystep
         # For :rk45, nout stays at the count above since we don't know the exact steps.
-        steps = nt ÷ plan.interval
-        last_is_step = (nt > 0) && (nt % plan.interval == 0)
-        nout += steps
+        last_is_step = nt > 0
+        nout += nt
         if !save_end && last_is_step
             nout -= 1
         end

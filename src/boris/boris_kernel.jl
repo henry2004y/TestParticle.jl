@@ -222,7 +222,7 @@ end
                     isave += 1
                 end
             end
-        elseif save_everystep && it % plan.interval == 0
+        elseif save_everystep
             if !is_cpu_accessible
                 copyto!(xv_cpu_buffer, xv_current)
             end
@@ -308,9 +308,8 @@ function _prepare_boris_solve(
         # One slot per requested time, plus the end of the run.
         nout += length(plan.times) + (save_end ? 1 : 0)
     elseif save_everystep
-        steps = nt ÷ plan.interval
-        last_is_step = (nt > 0) && (nt % plan.interval == 0)
-        nout += steps
+        last_is_step = nt > 0
+        nout += nt
         if !save_end && last_is_step
             nout -= 1
         end
@@ -357,13 +356,13 @@ end
 
 @inbounds function solve(
         prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleSerial;
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     plan = SavingPlan(
-        saveat, savestepinterval, prob.tspan, _span_direction(prob.tspan),
+        saveat, prob.tspan, _span_direction(prob.tspan),
         typeof(prob.tspan[1] + dt)
     )
     (;
@@ -386,13 +385,13 @@ end
 
 @inbounds function solve(
         prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleThreads;
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     plan = SavingPlan(
-        saveat, savestepinterval, prob.tspan, _span_direction(prob.tspan),
+        saveat, prob.tspan, _span_direction(prob.tspan),
         typeof(prob.tspan[1] + dt)
     )
     (;
@@ -426,14 +425,14 @@ end
 @inbounds function solve(
         prob::TraceProblem, alg::Boris, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     return solve(
         prob, alg, backend, ensemblealg;
-        dt, trajectories, savestepinterval, saveat, save_start, save_end,
+        dt, trajectories, saveat, save_start, save_end,
         save_everystep, workgroup_size, maxiters
     )
 end

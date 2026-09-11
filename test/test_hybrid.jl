@@ -243,10 +243,5 @@ using Test
         sol_interval = TP.solve(prob, alg; saveat = 0.25e-4).u[1]
         @test sol_interval.t ≈ collect(0.0:0.25e-4:1.0e-4)
 
-        # The keyword it replaces warns, and the two cannot be combined.
-        @test_logs (:warn, r"savestepinterval") match_mode = :any begin
-            TP.solve(prob, alg; savestepinterval = 10)
-        end
-        @test_throws ArgumentError TP.solve(prob, alg; saveat = ts, savestepinterval = 10)
     end
 end

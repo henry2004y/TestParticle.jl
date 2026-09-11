@@ -130,4 +130,4 @@ sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
 
 `save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `save_fields = true` and `save_work = true` keep appending their columns to every saved state.
 
-The older `savestepinterval = k` keyword, which saved every $k$-th step, is deprecated in favour of `saveat` — use `saveat = k * dt` for a fixed-step run — and now emits a warning. The two keywords cannot be combined.
+The older `savestepinterval = k` keyword, which saved every $k$-th step regardless of how the times were named, has been removed. Use `saveat = k * dt` to report the same times in a fixed-step run.

@@ -5,11 +5,11 @@
 # interface.
 #
 # Two ways of choosing the output times are supported. Unless `saveat` is given,
-# the integrator saves every accepted step and TestParticle's own rules (among
-# them the deprecated `savestepinterval`) select from that series. With `saveat`
-# the times go to SciML, which interpolates inside a step; the Boris methods
-# declare linear dense output for that, because a Boris step forms no derivative
-# stages to interpolate with.
+# the integrator saves every accepted step and TestParticle's own rules
+# (`save_start`, `save_end`, `save_everystep`) select from that series. With
+# `saveat` the times go to SciML, which interpolates inside a step; the Boris
+# methods declare linear dense output for that, because a Boris step forms no
+# derivative stages to interpolate with.
 
 # The Boris methods never evaluate the right-hand side, so a placeholder is
 # enough. Building the problem out of place keeps static initial conditions
@@ -85,25 +85,14 @@ function _boris_prob_func(prob::TraceProblem)
 end
 
 """
-    _boris_saved_indices(n, interval, save_start, save_end, save_everystep)
+    _boris_saved_indices(n, save_start, save_end, save_everystep)
 
 Indices of the every-step series `t[1:n]` that TestParticle's saving rules keep.
 """
-function _boris_saved_indices(n, interval, save_start, save_end, save_everystep)
+function _boris_saved_indices(n, save_start, save_end, save_everystep)
     idxs = Int[]
     save_start && push!(idxs, 1)
-
-    if save_everystep
-        if interval == 1
-            append!(idxs, 2:(n - 1))
-        else
-            # The last step is not eligible, matching a fixed-step count.
-            for j in 1:div(n - 2, interval)
-                push!(idxs, 1 + j * interval)
-            end
-        end
-    end
-
+    save_everystep && append!(idxs, 2:(n - 1))
     save_end && push!(idxs, n)
 
     return sort!(unique!(idxs))
@@ -125,12 +114,10 @@ function _boris_build(
 end
 
 function _boris_finalize(
-        sol::AbstractODESolution, p, savestepinterval, save_start, save_end,
+        sol::AbstractODESolution, p, save_start, save_end,
         save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    idxs = _boris_saved_indices(
-        length(sol.t), savestepinterval, save_start, save_end, save_everystep
-    )
+    idxs = _boris_saved_indices(length(sol.t), save_start, save_end, save_everystep)
 
     return _boris_build(sol, p, idxs, Val(SaveFields), Val(SaveWork))
 end
@@ -153,9 +140,7 @@ Trace particles with a Boris method, integrated by the SciML loop.
     `safety * 2π / |q B / m|`.
   - `saveat`: times to save at, as a collection or as an interval. The solution
     is interpolated linearly inside a step, which is the dense output these
-    methods admit. Mutually exclusive with `savestepinterval`.
-  - `savestepinterval::Int`: save every `savestepinterval`-th step. Deprecated in
-    favour of `saveat`, and warns when it is passed.
+    methods admit.
   - `isoutside`: boundary check `(u, p, t)`; the trace terminates when it holds.
   - `save_start::Bool=true`, `save_end::Bool=true`, `save_everystep::Bool=true`.
     With `saveat`, `save_start` and `save_end` add the ends of the time span to
@@ -169,7 +154,6 @@ Trace particles with a Boris method, integrated by the SciML loop.
         prob::TraceProblem, alg::AbstractBoris,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
-        savestepinterval::Union{Nothing, Int} = nothing,
         saveat = (),
         dt::Union{Nothing, AbstractFloat} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -184,24 +168,6 @@ Trace particles with a Boris method, integrated by the SciML loop.
     ) where {F}
     step = dt === nothing ? _boris_initial_dt(prob, alg) : dt
     _boris_check_limits(prob, step, alg, maxiters)
-
-    if !isnothing(savestepinterval)
-        # `maxlog` keeps the notice to one per session; the repository's own
-        # tests exercise the keyword often enough that repeating it would bury
-        # everything else.
-        @warn "The savestepinterval keyword is deprecated; use saveat instead." maxlog = 1
-    end
-
-    if !isempty(saveat) && !isnothing(savestepinterval)
-        throw(
-            ArgumentError(
-                "saveat and savestepinterval select the output times in different " *
-                    "ways and cannot be combined"
-            )
-        )
-    end
-
-    interval = isnothing(savestepinterval) ? 1 : savestepinterval
 
     solve_kwargs = if isempty(saveat)
         (
@@ -243,7 +209,7 @@ Trace particles with a Boris method, integrated by the SciML loop.
     sols = if isempty(saveat)
         [
             _boris_finalize(
-                sol, prob.p, interval, save_start, save_end, save_everystep,
+                sol, prob.p, save_start, save_end, save_everystep,
                 Val(save_fields), Val(save_work)
             ) for sol in esol.u
         ]

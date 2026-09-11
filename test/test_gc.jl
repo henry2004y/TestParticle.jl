@@ -335,13 +335,6 @@ import TestParticle as TP
             @test length(sol_fields.u[1]) == 10
             @test get_fields(sol_fields) isa Tuple
 
-            # The keyword it replaces warns, and the two cannot be combined.
-            @test_logs (:warn, r"savestepinterval") match_mode = :any begin
-                TestParticle.solve(prob; dt, alg = :rk4, savestepinterval = 10)
-            end
-            @test_throws ArgumentError TestParticle.solve(
-                prob; dt, alg = :rk4, saveat = ts, savestepinterval = 10
-            )
         end
     end
 end

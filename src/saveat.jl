@@ -1,54 +1,27 @@
 # `saveat` for the native solvers.
 #
-# `saveat` replaces the deprecated `savestepinterval`. Where that keyword picked
-# every k-th step and so tied the output to the step grid, `saveat` names the
-# times to report and the state is interpolated linearly between the two steps
+# A native solve reports every step by default. `saveat` names the times to
+# report instead, and the state is interpolated linearly between the two steps
 # that bracket each of them. The integration is untouched, so the trajectory is
-# the same as a run without `saveat`, exactly as for the Boris solvers.
+# the same as a run without `saveat`, which is also how the SciML-backed Boris
+# solvers behave.
 
 """
-    SavingPlan(saveat, savestepinterval, tspan, dir, ::Type{T})
+    SavingPlan(saveat, tspan, dir, ::Type{T})
 
-How a native solve chooses the times at which it reports the state: every
-`interval`-th step when `interval` is positive, or an explicit list of `times`
-when it is zero.
-
-`saveat` and `savestepinterval` describe the output in incompatible ways, so
-passing both is an error. `savestepinterval` is deprecated and warns once per
-session.
+The times at which a native solve reports the state, ordered along the direction
+of integration `dir`. An empty plan means `saveat` was not used and every step is
+reported.
 """
 struct SavingPlan{T}
-    interval::Int
     times::Vector{T}
     dir::Int
 end
 
-use_saveat(plan::SavingPlan) = plan.interval == 0
+use_saveat(plan::SavingPlan) = !isempty(plan.times)
 
-const _DEPRECATED_SAVESTEPINTERVAL =
-    "The savestepinterval keyword is deprecated; use saveat instead."
-
-function SavingPlan(saveat, savestepinterval, tspan, dir, ::Type{T}) where {T}
-    if !isempty(saveat)
-        isnothing(savestepinterval) || throw(
-            ArgumentError(
-                "saveat and savestepinterval select the output times in different " *
-                    "ways and cannot be combined"
-            )
-        )
-        return SavingPlan{T}(0, _saveat_times(saveat, tspan, dir, T), dir)
-    end
-
-    interval = 1
-    if !isnothing(savestepinterval)
-        # `maxlog` keeps the notice to one per session; the repository's own
-        # tests exercise the keyword often enough that repeating it would bury
-        # everything else.
-        @warn _DEPRECATED_SAVESTEPINTERVAL maxlog = 1
-        interval = savestepinterval
-    end
-
-    return SavingPlan{T}(interval, T[], dir)
+function SavingPlan(saveat, tspan, dir, ::Type{T}) where {T}
+    return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir)
 end
 
 """

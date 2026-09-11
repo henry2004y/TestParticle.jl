@@ -151,22 +151,22 @@ SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
     $prob_oop_num, Tsit5(); save_idxs = [1, 2, 3]
 )
 SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
-    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7
 )
 SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve(
-    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10, save_fields = true
+    $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, save_fields = true
 )
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
-    $prob_boris, Boris(); dt = 1 / 7, savestepinterval = 10, trajectories = 2
+    $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, trajectories = 2
 )
 SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
-    $prob_boris, MultistepBoris2(; n = 2); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, MultistepBoris2(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
 SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
-    $prob_boris, MultistepBoris4(; n = 2); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, MultistepBoris4(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
 SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
-    $prob_boris, MultistepBoris6(; n = 2); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, MultistepBoris6(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
 alg_adaptive = AdaptiveBoris(safety = 0.1)
 SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
@@ -185,7 +185,7 @@ SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=6)"] = @benchmar
     $prob_boris, $alg_adaptive_multi6
 )
 SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable TP.solve(
-    $prob_boris, Boris(), CPU(); dt = 1 / 7, savestepinterval = 10
+    $prob_boris, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7
 )
 
 # Time-Dependent Field
@@ -247,11 +247,11 @@ SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable TP.solve(
     $prob_native_gc;
-    dt = 2.0e-2, savestepinterval = 100, alg = :rk4, maxiters = 10000
+    dt = 2.0e-2, saveat = 2.0, alg = :rk4, maxiters = 10000
 )
 SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
     $prob_native_gc;
-    dt = 2.0e-2, savestepinterval = 100, alg = :rk45, maxiters = 10000
+    dt = 2.0e-2, saveat = 2.0, alg = :rk45, maxiters = 10000
 )
 
 # Hybrid

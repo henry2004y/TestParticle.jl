@@ -123,7 +123,7 @@ end
 @inline function solve(
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Union{Nothing, Int} = nothing,
+        trajectories::Int = 1,
         saveat = (),
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true,
@@ -131,8 +131,7 @@ end
         seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
     plan = SavingPlan(
-        saveat, savestepinterval, prob.tspan, _span_direction(prob.tspan),
-        typeof(prob.tspan[1])
+        saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
     )
     return _solve(
         ensemblealg, prob, trajectories, alg,
@@ -410,7 +409,7 @@ end
                     Bmag_step = norm(Bfunc(get_x(xv_gc), t))
                     phase = mod2pi(phase - dt * (q2m * Bmag_step))
 
-                    if use_saveat(plan) || (save_everystep && it % plan.interval == 0)
+                    if use_saveat(plan) || save_everystep
                         y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
                         isave, t_last, y_last = _hybrid_save!(
                             traj, tsave, plan, isave, t_last, y_last, t, y_out
@@ -474,8 +473,7 @@ end
                     break
                 end
 
-                if use_saveat(plan) ||
-                        (save_everystep && (it - 1) > 0 && (it - 1) % plan.interval == 0)
+                if use_saveat(plan) || (save_everystep && (it - 1) > 0)
                     v_save = update_velocity(v_prev, r, 0.5 * dt, t, p)
                     isave, t_last, y_last = _hybrid_save!(
                         traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)

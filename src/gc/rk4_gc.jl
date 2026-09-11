@@ -91,7 +91,7 @@ function _rk4!(
                     end
                     isave += 1
                 end
-            elseif save_everystep && (it % plan.interval == 0)
+            elseif save_everystep
                 iout += 1
                 if iout <= nout
                     traj[iout] = _prepare_saved_data_gc(
@@ -109,8 +109,7 @@ function _rk4!(
         should_save_final = false
         if save_end
             should_save_final = true
-        elseif !use_saveat(plan) && save_everystep && (final_step > 0) &&
-                (final_step % plan.interval == 0)
+        elseif !use_saveat(plan) && save_everystep && (final_step > 0)
             should_save_final = true
         end
 
