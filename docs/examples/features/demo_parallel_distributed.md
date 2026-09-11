@@ -109,7 +109,7 @@ fixed timestep `dt`.
 ```julia
 sol_boris = TP.solve(
     prob_boris, Boris(), EnsembleDistributed();
-    dt, trajectories, savestepinterval = 1, seed
+    dt, trajectories, seed
 )
 ```
 

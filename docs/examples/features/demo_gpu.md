@@ -132,7 +132,7 @@ prob = TraceProblem(stateinit, tspan, param)
 using KernelAbstractions
 const KA = KernelAbstractions
 backend = CPU()
-sols = solve(prob, backend; dt=1e-9, trajectories=1000, savestepinterval=10)
+sols = solve(prob, Boris(), backend; dt=1e-9, trajectories=1000, saveat=1e-8)
 ```
 
 The native GPU Boris solver:

@@ -121,7 +121,7 @@ prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
 t_mc = @elapsed sols = TP.solve(
-    prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    prob, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles, seed
 );
 println("Simulation complete. Monte Carlo tracing time: $(round(t_mc; digits = 2)) s")
@@ -348,7 +348,7 @@ prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
 t_liou = @elapsed sols_m2 = TP.solve(
-    prob_m2, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    prob_m2, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles_m2, seed
 );
 
@@ -372,7 +372,7 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # density evaluated at the traced-back state: ``f_{\det}(\mathbf{v}_{\det}) = n_0\,
 # \mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\src})``.
 #
-# Every step is saved (`savestepinterval = 1`) so that no source-plane crossing is missed,
+# Every step is saved (the default) so that no source-plane crossing is missed,
 # and a trajectory is terminated only once it has crossed the source plane and moved a safe
 # distance beyond it (`u[1] > x_source + margin`).  Gyrating trajectories that temporarily
 # move away are not terminated, so every grid cell whose backward trajectory eventually
@@ -388,10 +388,11 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
     ## Trajectories moving deeper downstream (u[1] < detector_x - 600 km) cannot return
     ## through the shock ramp and are terminated early, yielding an order-of-magnitude
     ## speedup.
-    ## Note on savestepinterval: With dt ≈ τ_g / 20, savestepinterval = 10 spaces saved
-    ## points by 180° of gyro-phase (half an orbit); linear interpolation on a semicircle
-    ## collapses the perpendicular velocity toward zero and distorts f ∝ exp(-v²/(2vth²)).
-    ## We keep savestepinterval = 1 for accurate boundary interpolation.
+    ## Note on the saving interval: with dt ≈ τ_g / 20, saving every 10 * dt spaces the
+    ## saved points by 180° of gyro-phase (half an orbit); linear interpolation on a
+    ## semicircle collapses the perpendicular velocity toward zero and distorts
+    ## f ∝ exp(-v²/(2vth²)). We therefore save every step for accurate interpolation at
+    ## the boundary.
     post_source_margin = 100.0e3
     prob = vdf_grid_problem(
         vx_grid, vy_grid, vz_grid, SA[detector_x, 0.0, 0.0], param, (0.0, -20.0)
@@ -400,7 +401,6 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt,
         trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
-        savestepinterval = 1,
         isoutside = (u, p, t) -> u[1] > x_source[1] + post_source_margin ||
             u[1] < detector_x - 600.0e3
     )
