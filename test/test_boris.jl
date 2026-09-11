@@ -654,6 +654,12 @@ using Distributed
         @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
         @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
 
+        # The keyword it replaces warns and still works.
+        sol_dep = @test_logs (:warn, r"savestepinterval") match_mode = :any begin
+            TP.solve(prob, Boris(); dt, savestepinterval = 100).u[1]
+        end
+        @test sol_dep.t ≈ ts
+
         # The two ways of choosing output times are mutually exclusive.
         @test_throws ArgumentError TP.solve(
             prob, Boris(); dt, saveat = ts, savestepinterval = 2

@@ -113,3 +113,21 @@ The adaptive solver adjusts the time step automatically based on the local gyrop
 alg = AdaptiveBoris(safety=0.05)
 sol = TestParticle.solve(prob, alg)[1]
 ```
+
+### Saving the Output
+
+Every accepted step is saved by default. To choose the output times explicitly, pass `saveat`, either as a collection of times or as an interval:
+
+```julia
+# Save at the given times
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 0.0:5.0e-10:3.0e-8)
+
+# Save every 5.0e-10 across the time span
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
+```
+
+`saveat` does not shorten any step, so the trajectory is identical to a run without it and only the reporting changes. Inside a step the state is interpolated **linearly**, which is the dense output these methods admit: a Boris step advances the position linearly with the half-step velocity $\mathbf{v}_{n+1/2}$, so the interpolant reproduces the stored positions exactly, whereas the velocity is only as accurate as the method itself. Requesting a value inside a step is therefore consistent with the solver's own order, not better or worse than the step values around it.
+
+`save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `save_fields = true` and `save_work = true` keep appending their columns to every saved state.
+
+The older `savestepinterval = k` keyword, which saved every $k$-th step, is deprecated in favour of `saveat` — use `saveat = k * dt` for a fixed-step run — and now emits a warning. The two keywords cannot be combined.
