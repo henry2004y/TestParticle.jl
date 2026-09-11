@@ -150,12 +150,18 @@ end
     nsave = length(plan.times)
     isave = 1
     # Interpolating inside a step needs both ends of it. The device keeps the
-    # state at the start of the step in `xv_next` after each swap, so the two
-    # are staged through host buffers of their own rather than relying on
-    # `xv_cpu_buffer`, which tracks only the array it was aliased to.
-    host_stage = zeros(T, 6, n_particles)
-    xv_cpu_prev = use_saveat(plan) ? host_stage : Matrix{T}(undef, 0, 0)
-    xv_cpu_cur = use_saveat(plan) ? similar(host_stage) : Matrix{T}(undef, 0, 0)
+    # state at the start of the step in `xv_next` after each swap, so the two are
+    # staged through host buffers of their own rather than relying on
+    # `xv_cpu_buffer`, which tracks only the array it was aliased to. Like
+    # `xv_cpu_buffer` they are sized by the whole ensemble and indexed by the
+    # global particle number, because a thread only owns a slice of it.
+    if use_saveat(plan)
+        xv_cpu_prev = zeros(T, size(xv_current))
+        xv_cpu_cur = similar(xv_cpu_prev)
+    else
+        xv_cpu_prev = Matrix{T}(undef, 0, 0)
+        xv_cpu_cur = Matrix{T}(undef, 0, 0)
+    end
 
     if save_start
         if !is_cpu_accessible
