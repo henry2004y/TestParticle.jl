@@ -337,7 +337,7 @@ def trace(
     *,
     species="proton",
     trajectories=1,
-    savestepinterval=1,
+    saveat=None,
     save_fields=False,
     save_work=False,
     parallel=False,
@@ -367,7 +367,10 @@ def trace(
     trajectories : int, optional
         Number of trajectories. Use ``init_func`` to vary the initial state
         of each trajectory.
-    savestepinterval, save_fields, save_work : optional
+    saveat : optional
+        Times at which to report the state, either a collection of times or a
+        single interval. Forwarded straight to the Julia ``solve``.
+    save_fields, save_work : optional
         Mirrors of the Julia ``solve`` keywords.
     parallel : bool, optional
         Use ``EnsembleThreads`` when ``True``.
@@ -415,10 +418,11 @@ def trace(
     solve_kw = dict(
         dt=float(dt),
         trajectories=int(trajectories),
-        savestepinterval=int(savestepinterval),
         save_fields=bool(save_fields),
         save_work=bool(save_work),
     )
+    if saveat is not None:
+        solve_kw["saveat"] = saveat
     if alg is None:
         alg_jl = TP.Boris()
     elif _is_julia(alg):
@@ -449,7 +453,7 @@ def trace_gc(
     *,
     species="proton",
     trajectories=1,
-    savestepinterval=1,
+    saveat=None,
     save_fields=False,
     save_work=False,
     alg="rk4",
@@ -488,11 +492,12 @@ def trace_gc(
     solve_kw = dict(
         dt=float(dt),
         trajectories=int(trajectories),
-        savestepinterval=int(savestepinterval),
         save_fields=bool(save_fields),
         save_work=bool(save_work),
         alg=jl.Symbol(alg),
     )
+    if saveat is not None:
+        solve_kw["saveat"] = saveat
     sols = TP.solve(prob, **solve_kw)
 
     ts, us = jl._tp_extract(sols)

@@ -142,7 +142,7 @@ sol_rk = solve(prob_rk, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 prob_b = TraceProblem(stateinit, tspan0, param_uniform)
 sol_b = TP.solve(
     prob_b, TP.MultistepBoris4(n = 4);
-    dt = 2π / 40, trajectories = 1, savestepinterval = 1
+    dt = 2π / 40, trajectories = 1
 ).u[1];
 
 # The initial gyroradius from each solver (computed at the final state) should be ~1.
@@ -187,7 +187,7 @@ sol_rk_t = solve(prob_rk_t, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 prob_b_t = TraceProblem(stateinit_t, tspan_t, param)
 sol_b_t = TP.solve(
     prob_b_t, TP.MultistepBoris4(n = 4);
-    dt = 2π / 80, trajectories = 1, savestepinterval = 1
+    dt = 2π / 80, trajectories = 1
 ).u[1]
 
 trange = range(tspan_t..., length = 201)
@@ -268,9 +268,10 @@ prob_func = make_injection(L, L, L; rL = rL0)
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 
 alg = TP.MultistepBoris4(n = 4)
+dt = 2π / 40
 sols = TP.solve(
     prob, alg;
-    dt = 2π / 40, savestepinterval = 15, trajectories = 32, seed = 1234
+    dt, saveat = 15 * dt, trajectories = 32, seed = 1234
 );
 
 # ## 6. Analysis
@@ -346,9 +347,10 @@ ax = Axis(
 for (j, rL) in enumerate(rL_list)
     pfunc = make_injection(L, L, L; rL)
     pscan = TraceProblem(stateinit, (0.0, 2π * 100), param; prob_func = pfunc)
+    dt = 2π / 40
     ssols = TP.solve(
         pscan, alg;
-        dt = 2π / 40, savestepinterval = 10, trajectories = 16, seed = 1234
+        dt, saveat = 10 * dt, trajectories = 16, seed = 1234
     )
     nt = length(ssols.u[1].u)
     msr = zeros(nt)

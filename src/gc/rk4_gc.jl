@@ -25,7 +25,7 @@ end
 Apply RK4 method for particles with index in `irange`.
 """
 function _rk4!(
-        sols, prob, irange, savestepinterval, dt, nt, nout, isoutside,
+        sols, prob, irange, plan, dt, nt, nout, isoutside,
         save_start, save_end, save_everystep, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
     ) where {SaveFields, SaveWork}
@@ -60,25 +60,44 @@ function _rk4!(
         end
 
         it = 1
+        nsave = length(plan.times)
+        isave = 1
 
         while it <= nt && it <= maxiters
             t = tspan[1] + (it - 1) * dt
+            t_next = t + dt
 
+            xv_prev = xv
             dx = update_rk4(xv, p, dt, t)
             xv_next = xv + dx
 
-            if isoutside(xv_next, p, t + dt)
+            if isoutside(xv_next, p, t_next)
                 break
             end
             xv = xv_next
 
-            if save_everystep && (it % savestepinterval == 0)
+            if use_saveat(plan)
+                # Report every requested time this step has passed, interpolating
+                # inside the step so the integration itself is untouched.
+                while isave <= nsave && _saveat_reached(plan.times[isave], t_next, plan.dir)
+                    t_target = plan.times[isave]
+                    iout += 1
+                    if iout <= nout
+                        traj[iout] = _prepare_saved_data_gc(
+                            _saveat_interpolate(t, xv_prev, t_next, xv, t_target),
+                            p, t_target, Val(SaveFields), Val(SaveWork)
+                        )
+                        tsave[iout] = t_target
+                    end
+                    isave += 1
+                end
+            elseif save_everystep
                 iout += 1
                 if iout <= nout
                     traj[iout] = _prepare_saved_data_gc(
-                        xv, p, t + dt, Val(SaveFields), Val(SaveWork)
+                        xv, p, t_next, Val(SaveFields), Val(SaveWork)
                     )
-                    tsave[iout] = t + dt
+                    tsave[iout] = t_next
                 end
             end
 
@@ -90,13 +109,13 @@ function _rk4!(
         should_save_final = false
         if save_end
             should_save_final = true
-        elseif save_everystep && (final_step > 0) && (final_step % savestepinterval == 0)
+        elseif !use_saveat(plan) && save_everystep && (final_step > 0)
             should_save_final = true
         end
 
         if iout < nout && should_save_final
             t_final = (final_step == nt) ? tspan[2] : (tspan[1] + final_step * dt)
-            if iout == 0 || tsave[iout] < t_final
+            if iout == 0 || plan.dir * (t_final - tsave[iout]) > 0
                 iout += 1
                 traj[iout] = _prepare_saved_data_gc(
                     xv, p, t_final, Val(SaveFields), Val(SaveWork)

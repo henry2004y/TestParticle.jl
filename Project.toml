@@ -6,6 +6,9 @@ authors = ["Hongyang Zhou <hyzhou@umich.edu>, Tiancheng Liu <liutc@mail.nankai.e
 [workspace]
 projects = ["test", "docs"]
 
+[sources]
+OrdinaryDiffEqBoris = {path = "lib/OrdinaryDiffEqBoris"}
+
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
@@ -16,6 +19,7 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
+OrdinaryDiffEqBoris = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
 PhysicalConstants = "5ad8b20f-a522-5ce9-bfc9-ddf1d5bda6ab"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"

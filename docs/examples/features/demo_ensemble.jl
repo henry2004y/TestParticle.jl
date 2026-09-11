@@ -165,14 +165,13 @@ f = DisplayAs.PNG(f) #hide
 # ## 4. Native Boris Pusher
 #
 # We can also solve the ensemble problem with the native [Boris Method](@ref).
-# Note that the Boris pusher requires additional parameters: a fixed timestep, and an output save interval.
+# Note that the Boris pusher requires a fixed timestep; the times at which the state is reported can be chosen with `saveat`.
 
 dt = 0.1
-savestepinterval = 1
 
 ## Reuse the basic problem parameters
 prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, savestepinterval, seed)
+trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, seed)
 
 ## Visualization
 f = Figure(fontsize = 20)

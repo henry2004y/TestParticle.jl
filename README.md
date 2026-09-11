@@ -51,7 +51,7 @@ Native Boris particle pusher also follows a similar interface:
 dt = 3e-11 # fixed time step
 prob = TraceProblem(stateinit, tspan, param)
 # Standard Boris solver
-sol = TestParticle.solve(prob, Boris(); dt, savestepinterval=10)[1]
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 10 * dt)[1]
 ```
 
 Besides the standard Boris method, we also support various advanced Boris solvers:

@@ -11,6 +11,10 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
     DiscreteCallback, terminate!, EnsembleContext
+import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
+    MultistepBoris2, MultistepBoris4, MultistepBoris6,
+    get_q2m, get_EField, get_BField
+import SciMLBase
 using Random: default_rng, AbstractRNG, Xoshiro
 using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
@@ -63,6 +67,7 @@ include("utility/utility.jl")
 include("utility/interpolation.jl")
 include("sampler.jl")
 include("prepare.jl")
+include("saveat.jl")
 include("gc/gc.jl")
 include("gc/gc_solver.jl")
 include("gc/rk4_gc.jl")
@@ -70,8 +75,7 @@ include("gc/rk45_gc.jl")
 include("equations.jl")
 include("boris/boris.jl")
 include("boris/boris_kernel.jl")
-include("boris/multistep_boris.jl")
-include("boris/adaptive_boris.jl")
+include("boris/boris_solve.jl")
 include("hybrid.jl")
 include("fieldline.jl")
 

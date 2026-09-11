@@ -91,7 +91,7 @@ const prob_boris = TraceProblem(stateinit, tspan, param; prob_func)
 
 run_boris(ealg) = TP.solve(
     prob_boris, Boris(), ealg;
-    dt, trajectories, savestepinterval = 1, seed
+    dt, trajectories, seed
 )
 ```
 

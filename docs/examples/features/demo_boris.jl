@@ -142,10 +142,10 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris, Boris(); dt, savestepinterval = 36).u[1];
-sol_boris_2 = TP.solve(prob_boris, MultistepBoris2(; n = 2); dt, savestepinterval = 36).u[1];
-sol_boris_4 = TP.solve(prob_boris, MultistepBoris2(; n = 4); dt, savestepinterval = 36).u[1];
-sol_boris_hyper = TP.solve(prob_boris, MultistepBoris4(; n = 2); dt, savestepinterval = 36).u[1];
+sol_boris = TP.solve(prob_boris, Boris(); dt, saveat = 36 * dt).u[1];
+sol_boris_2 = TP.solve(prob_boris, MultistepBoris2(; n = 2); dt, saveat = 36 * dt).u[1];
+sol_boris_4 = TP.solve(prob_boris, MultistepBoris2(; n = 4); dt, saveat = 36 * dt).u[1];
+sol_boris_hyper = TP.solve(prob_boris, MultistepBoris4(; n = 2); dt, saveat = 36 * dt).u[1];
 sol_boris_adaptive = TP.solve(
     prob_boris,
     AdaptiveBoris(safety = 0.1)
@@ -237,11 +237,10 @@ stateinit = [x0..., u0...]
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
 dt = 0.1
-savestepinterval = 1
 trajectories = 2
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-sols = TP.solve(prob, Boris(); dt, savestepinterval, isoutside, trajectories)
+sols = TP.solve(prob, Boris(); dt, isoutside, trajectories)
 
 f = Figure(fontsize = 20)
 ax = Axis(

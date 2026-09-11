@@ -18,16 +18,17 @@ using StaticArrays
 
     @testset "Constructor" begin
         alg = AdaptiveBoris(; safety = 0.2)
-        @test alg isa Boris{true}
         @test alg isa AdaptiveBoris
         @test alg.safety == 0.2
 
         alg_def = AdaptiveBoris()
         @test alg_def.safety == 0.1
 
+        # Fixed and adaptive stepping are distinct types, and `adaptive` is the
+        # keyword that selects between them at solve time.
         alg_plain = Boris()
-        @test alg_plain isa Boris{false}
-        @test alg_plain.safety == 0.0
+        @test alg_plain isa Boris
+        @test !(alg_plain isa AdaptiveBoris)
     end
 
     @testset "Solve Integration" begin

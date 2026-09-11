@@ -303,5 +303,38 @@ import TestParticle as TP
                 @test norm(E[1]) == 0.0
             end
         end
+
+        @testset "saveat" begin
+            dt = 1.0e-4
+            sol_all = TestParticle.solve(prob; dt, alg = :rk4).u[1]
+
+            # Asking for intermediate output must not change the integration,
+            # only where the state is reported. `save_start` and `save_end` keep
+            # adding the two ends of the span around the requested times.
+            ts = collect(0.1:0.1:0.9)
+            sol_at = TestParticle.solve(prob; dt, alg = :rk4, saveat = ts).u[1]
+
+            @test sol_at.t ≈ vcat(0.0, ts, 1.0)
+            for (k, t) in enumerate(sol_at.t)
+                @test sol_at.u[k] ≈ sol_all(t)
+            end
+
+            # The adaptive solver takes the same times.
+            sol_at45 = TestParticle.solve(prob; dt, alg = :rk45, saveat = ts).u[1]
+            @test sol_at45.t ≈ vcat(0.0, ts, 1.0)
+
+            # An interval is accepted as well, and only the interior is taken
+            # from it since the ends are reported separately.
+            sol_interval = TestParticle.solve(prob; dt, alg = :rk4, saveat = 0.25).u[1]
+            @test sol_interval.t ≈ collect(0.0:0.25:1.0)
+
+            # The field and work columns are appended on this path too.
+            sol_fields = TestParticle.solve(
+                prob; dt, alg = :rk4, saveat = ts, save_fields = true
+            ).u[1]
+            @test length(sol_fields.u[1]) == 10
+            @test get_fields(sol_fields) isa Tuple
+
+        end
     end
 end
