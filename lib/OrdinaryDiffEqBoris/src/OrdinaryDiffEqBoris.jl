@@ -9,7 +9,6 @@ import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgori
     accept_step_controller, default_controller, setup_controller_cache,
     step_accept_controller!, step_reject_controller!, stepsize_controller!,
     _ode_addsteps!, default_linear_interpolation
-using RecursiveArrayTools
 using StaticArrays
 using MuladdMacro
 using LinearAlgebra

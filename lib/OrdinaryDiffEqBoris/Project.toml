@@ -6,17 +6,20 @@ version = "0.1.0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
-RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-# Pinned to the minor series actually tested, since the solver hooks into
-# OrdinaryDiffEqCore's controller interface, which is still being reworked.
+# Each dependency is pinned to the minor series the solver was tested against,
+# not to the newest release. The methods here hook into OrdinaryDiffEqCore's
+# cache, controller and dense output interfaces, which are still being reworked,
+# and into SciMLBase's problem and solution types, so a minor bump on either can
+# silently change the discretization. Widen a bound only after running this
+# package's tests and TestParticle's Boris tests against the new release.
+LinearAlgebra = "1"
 MuladdMacro = "~0.2"
 OrdinaryDiffEqCore = "~4.17"
-RecursiveArrayTools = "~4.5"
 Reexport = "~1.2"
 SciMLBase = "~3.53"
 StaticArrays = "~1.9"
