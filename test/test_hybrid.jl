@@ -142,7 +142,7 @@ using Test
         sol_h = TP.solve(TraceHybridProblem(u0, tspan, p), alg_fo).u[1]
 
         dt_fo = 2π * alg_fo.safety_fo / (abs(q2m) * B0)
-        sol_b = TP.solve(TraceProblem(u0, tspan, p), Boris(); dt = dt_fo).u[1]
+        sol_b = TP.solve(TraceProblem(u0, tspan, p), Boris(); dt = dt_fo)
 
         @test length(sol_h.t) == length(sol_b.t)
         for i in 1:length(sol_b.t)
