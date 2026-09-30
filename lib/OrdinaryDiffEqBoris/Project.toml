@@ -11,10 +11,6 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-# The lower bounds are the versions the solver was tested against; anything
-# newer within the same major is allowed. Do not lower them: the caches, the
-# step size controller and the dense output hook into interfaces of
-# OrdinaryDiffEqCore and SciMLBase that are still moving.
 LinearAlgebra = "1"
 MuladdMacro = "0.2"
 OrdinaryDiffEqCore = "4.17"

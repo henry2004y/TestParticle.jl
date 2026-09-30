@@ -55,11 +55,9 @@ function _boris_check_limits(prob::TraceProblem, dt, alg, maxiters)
     return
 end
 
-# `isoutside` follows TestParticle's `(u, p, t)` convention, whereas a
-# DiscreteCallback condition receives `(u, t, integrator)`. The condition is only
-# tested once a step has been taken, so the offending step is rolled back before
-# terminating: the last saved state stays inside the domain, as in the native
-# loop, which drops the step that leaves it.
+# `isoutside` takes `(u, p, t)`; a DiscreteCallback condition takes
+# `(u, t, integrator)`. The step that leaves the domain is rolled back, so the
+# last saved state stays inside it.
 function _boris_callback(isoutside::F) where {F}
     isoutside === ODE_DEFAULT_ISOUTOFDOMAIN && return nothing
 

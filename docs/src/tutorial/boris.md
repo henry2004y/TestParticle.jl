@@ -118,7 +118,7 @@ sol = TestParticle.solve(prob, alg)
 
 ### Ensembles
 
-Several particles are traced through a SciML [`EnsembleProblem`](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/), so the whole ensemble interface applies: `EnsembleThreads()`, `EnsembleDistributed()`, `EnsembleSplitThreads()`, `trajectories`, `seed`, `batch_size`, `pmap_batch_size`, and the `output_func` and `reduction` hooks.
+Multiple particles are traced through a SciML [`EnsembleProblem`](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/), so the whole ensemble interface applies: `EnsembleThreads()`, `EnsembleDistributed()`, `EnsembleSplitThreads()`, `trajectories`, `seed`, `batch_size`, `pmap_batch_size`, and the `output_func` and `reduction` hooks.
 
 ```julia
 eprob = EnsembleProblem(prob; prob_func, safetycopy = false)
@@ -152,7 +152,11 @@ sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
 
 `save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `save_fields = true` and `save_work = true` keep appending their columns to every saved state.
 
-The older `savestepinterval = k` keyword, which saved every $k$-th step regardless of how the times were named, has been removed. Use `saveat = k * dt` to report the same times in a fixed-step run.
+!!! warning "Removed keyword: `savestepinterval`"
+    `savestepinterval = k`, which saved every $k$-th step regardless of how the
+    times were named, has been removed. Use `saveat = k * dt` to report the same
+    times in a fixed-step run. Passing `savestepinterval` is now an ordinary
+    unsupported-keyword error.
 
 ## 6. Where the solvers live
 
@@ -177,11 +181,13 @@ prob = ODEProblem((u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspa
 sol = solve(prob, AdaptiveBoris(safety = 0.1); dt)
 ```
 
-The right-hand side is never evaluated: the Boris methods read the fields
-straight from `p`, so any placeholder will do. Adaptivity is selected by the
-`adaptive` solve keyword, as for any other SciML solver, and the adaptive
-methods follow the local gyroperiod rather than an error estimate, since a Boris
-step forms none.
+An `ODEProblem` needs a right-hand side `f(u, p, t)`, but a Boris method is a
+map from one state to the next, not a differential equation, so `f` is never
+called: at every step the method takes the charge-to-mass ratio and the fields
+from `p`, and `(u, p, t) -> nothing` is enough. Adaptivity is selected by the
+`adaptive` solve keyword, as for any other SciML solver, and the adaptive methods
+follow the local gyroperiod rather than an error estimate, since a Boris step
+forms none.
 
 What TestParticle.jl still owns is the layer around the loop, in
 `src/boris/boris_solve.jl`: the conversion of a `TraceProblem` into an
