@@ -130,9 +130,9 @@ end
             SVector(sols.u[i].u[1][4], sols.u[i].u[1][5], sols.u[i].u[1][6])
                 for i in 1:length(sols.u)
         ]
-        v1 = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 1))
-        v2 = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 2))
-        v1b = init_v(TestParticle.solve(prob, Boris(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        v1 = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        v2 = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 2))
+        v1b = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
         @test v1 == v1b
         @test !all(v2[i] == v1[i + 1] for i in 1:5)
     end

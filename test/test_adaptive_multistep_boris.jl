@@ -43,8 +43,8 @@ using StaticArrays
         sol_std = TestParticle.solve(prob, AdaptiveBoris(safety = 0.1))
         sol_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{2}(n = 1, safety = 0.1))
 
-        @test sol_std.u[1].t ≈ sol_multi.u[1].t
-        @test sol_std.u[1].u ≈ sol_multi.u[1].u
+        @test sol_std.t ≈ sol_multi.t
+        @test sol_std.u ≈ sol_multi.u
     end
 
     @testset "Higher Order Integration" begin

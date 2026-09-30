@@ -31,8 +31,8 @@ using VelocityDistributionFunctions
     @test sol1.u[2].u == sol2.u[2].u
 
     # Test Boris ensemble
-    trajs_boris1 = TestParticle.solve(TraceProblem(prob.u0, prob.tspan, prob.p), Boris(); dt = 0.1, trajectories = 2, seed)
-    trajs_boris2 = TestParticle.solve(TraceProblem(prob.u0, prob.tspan, prob.p), Boris(); dt = 0.1, trajectories = 2, seed)
+    trajs_boris1 = TestParticle.solve(TraceProblem(prob.u0, prob.tspan, prob.p), Boris(), EnsembleSerial(); dt = 0.1, trajectories = 2, seed)
+    trajs_boris2 = TestParticle.solve(TraceProblem(prob.u0, prob.tspan, prob.p), Boris(), EnsembleSerial(); dt = 0.1, trajectories = 2, seed)
 
     @test trajs_boris1.u[1].u == trajs_boris2.u[1].u
     @test trajs_boris1.u[2].u == trajs_boris2.u[2].u

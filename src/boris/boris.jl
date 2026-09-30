@@ -42,35 +42,6 @@ Update velocity using the Boris method, returning the new velocity as an SVector
     return boris_velocity_update(v, E, B, qdt_2m)
 end
 
-function _default_batch_size(ensemblealg, trajectories)
-    if ensemblealg isa EnsembleDistributed || ensemblealg isa EnsembleSplitThreads
-        return max(1, trajectories ÷ nworkers())
-    end
-    return 1
-end
-
-function _get_sol_type(prob, dt, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
-    u0 = prob.u0
-    tspan = prob.tspan
-    T_t = typeof(tspan[1] + dt)
-    T = eltype(u0)
-
-    n_vars = 6
-    if SaveFields
-        n_vars += 6
-    end
-    if SaveWork
-        n_vars += 4
-    end
-
-    u = SVector{n_vars, T}[]
-    interp = LinearInterpolation(T_t[], u)
-    alg = :boris
-
-    sol = build_solution(prob, alg, T_t[], u; interp = interp)
-    return typeof(sol)
-end
-
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
 

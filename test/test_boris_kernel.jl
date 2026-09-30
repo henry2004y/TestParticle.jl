@@ -84,12 +84,12 @@ const KA = KernelAbstractions
         sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 10 * dt)
         sol_cpu = TP.solve(prob, Boris(); dt, saveat = 10 * dt)
 
-        @test length(sol_gpu.u[1].t) == length(sol_cpu.u[1].t)
+        @test length(sol_gpu.u[1].t) == length(sol_cpu.t)
 
         # Check only first and last steps to avoid excessive test printing
-        @test sol_gpu.u[1].t ≈ sol_cpu.u[1].t atol = 1.0e-6
+        @test sol_gpu.u[1].t ≈ sol_cpu.t atol = 1.0e-6
         # Tight tolerances as the implementations should be algorithmically equivalent
-        @test sol_gpu.u[1].u[end] ≈ sol_cpu.u[1].u[end] rtol = 1.0e-10 atol = 1.0e-10
+        @test sol_gpu.u[1].u[end] ≈ sol_cpu.u[end] rtol = 1.0e-10 atol = 1.0e-10
     end
 
     @testset "Energy Conservation" begin

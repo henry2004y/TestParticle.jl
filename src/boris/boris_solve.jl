@@ -1,19 +1,19 @@
-# Boris integration through the SciML loop.
+# Boris integration through the SciML loop. The algorithms live in
+# OrdinaryDiffEqBoris; this file adapts `TraceProblem` and TestParticle's keyword
+# surface to the SciML interface.
 #
-# The algorithms themselves live in OrdinaryDiffEqBoris. This file only adapts
-# the TraceProblem container and TestParticle's keyword surface to the SciML
-# interface.
+# Only a single trajectory is adapted here. Several of them are a plain SciML
+# ensemble, so threading, batching, seeding and reduction all come from SciML:
 #
-# Two ways of choosing the output times are supported. Unless `saveat` is given,
-# the integrator saves every accepted step and TestParticle's own rules
-# (`save_start`, `save_end`, `save_everystep`) select from that series. With
-# `saveat` the times go to SciML, which interpolates inside a step; the Boris
-# methods declare linear dense output for that, because a Boris step forms no
-# derivative stages to interpolate with.
+#   solve(EnsembleProblem(prob; prob_func), Boris(), EnsembleThreads();
+#       trajectories, dt)
+#
+# The three-argument form at the bottom is a shorthand that builds that ensemble
+# from the `prob_func` carried by the `TraceProblem`. It has no default
+# `ensemblealg`: a default would generate a two-argument method that clashes
+# with the single trajectory one above, and SciML calls exactly that two-argument
+# form for every trajectory it builds.
 
-# The Boris methods never evaluate the right-hand side, so a placeholder is
-# enough. Building the problem out of place keeps static initial conditions
-# working without an in-place cache.
 _boris_rhs(u, p, t) = nothing
 
 function _boris_problem(prob::TraceProblem)
@@ -56,11 +56,10 @@ function _boris_check_limits(prob::TraceProblem, dt, alg, maxiters)
 end
 
 # `isoutside` follows TestParticle's `(u, p, t)` convention, whereas a
-# DiscreteCallback condition receives `(u, t, integrator)`.
-#
-# The condition is only tested once a step has been taken, so the offending step
-# is rolled back before terminating. That keeps the last saved state inside the
-# domain, matching the native loop, which drops the step that leaves it.
+# DiscreteCallback condition receives `(u, t, integrator)`. The condition is only
+# tested once a step has been taken, so the offending step is rolled back before
+# terminating: the last saved state stays inside the domain, as in the native
+# loop, which drops the step that leaves it.
 function _boris_callback(isoutside::F) where {F}
     isoutside === ODE_DEFAULT_ISOUTOFDOMAIN && return nothing
 
@@ -73,74 +72,37 @@ function _boris_callback(isoutside::F) where {F}
     return DiscreteCallback(condition, affect!)
 end
 
-function _boris_prob_func(prob::TraceProblem)
-    return function (p, ctx)
-        new_prob = prob.prob_func(p, ctx)
-        T = eltype(new_prob.u0)
+# With `saveat` the saved times are already the requested ones, so there is
+# nothing to select; only the field and work columns remain to be appended.
+_boris_finalize(sol, p, ::Val{false}, ::Val{false}) = sol
 
-        return ODEProblem(
-            _boris_rhs, SVector{6, T}(new_prob.u0), new_prob.tspan, new_prob.p
-        )
-    end
-end
-
-"""
-    _boris_saved_indices(n, save_start, save_end, save_everystep)
-
-Indices of the every-step series `t[1:n]` that TestParticle's saving rules keep.
-"""
-function _boris_saved_indices(n, save_start, save_end, save_everystep)
-    idxs = Int[]
-    save_start && push!(idxs, 1)
-    save_everystep && append!(idxs, 2:(n - 1))
-    save_end && push!(idxs, n)
-
-    return sort!(unique!(idxs))
-end
-
-function _boris_build(
-        sol::AbstractODESolution, p, idxs, ::Val{SaveFields}, ::Val{SaveWork}
+function _boris_finalize(
+        sol, p, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
-    tsave = sol.t[idxs]
     u = [
         _prepare_saved_data(sol.u[i], p, sol.t[i], Val(SaveFields), Val(SaveWork))
-            for i in idxs
+            for i in eachindex(sol.t)
     ]
 
     return build_solution(
-        sol.prob, sol.alg, tsave, u;
-        interp = LinearInterpolation(tsave, u), retcode = sol.retcode, stats = nothing
+        sol.prob, sol.alg, sol.t, u;
+        interp = LinearInterpolation(sol.t, u), retcode = sol.retcode, stats = nothing
     )
 end
 
-function _boris_finalize(
-        sol::AbstractODESolution, p, save_start, save_end,
-        save_everystep, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
-    idxs = _boris_saved_indices(length(sol.t), save_start, save_end, save_everystep)
-
-    return _boris_build(sol, p, idxs, Val(SaveFields), Val(SaveWork))
-end
-
-# With `saveat` the output times are already the ones SciML saved, so there is
-# nothing to select; only the field and work columns remain to be appended.
-function _boris_finalize(
-        sol::AbstractODESolution, p, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
-    return _boris_build(sol, p, eachindex(sol.t), Val(SaveFields), Val(SaveWork))
-end
-
 """
-    solve(prob::TraceProblem, alg::AbstractBoris, ensemblealg=EnsembleSerial(); kwargs...)
+    solve(prob::TraceProblem, alg::AbstractBoris; kwargs...)
 
-Trace particles with a Boris method, integrated by the SciML loop.
+Trace one particle with a Boris method through the SciML loop and return an
+`ODESolution`. Trace several by wrapping the problem in a SciML
+`EnsembleProblem`, which `solve(prob, alg, ensemblealg)` does for convenience.
+`trajectories` belongs to the ensemble; it is not a keyword here.
 
 # Keywords
   - `dt`: time step. Optional for adaptive methods, which otherwise start from
     `safety * 2π / |q B / m|`.
-  - `saveat`: times to save at, as a collection or as an interval. The solution
-    is interpolated linearly inside a step, which is the dense output these
-    methods admit.
+  - `saveat`: times to save at, as a collection or as an interval. The state is
+    interpolated linearly inside a step, the dense output these methods admit.
   - `isoutside`: boundary check `(u, p, t)`; the trace terminates when it holds.
   - `save_start::Bool=true`, `save_end::Bool=true`, `save_everystep::Bool=true`.
     With `saveat`, `save_start` and `save_end` add the ends of the time span to
@@ -148,12 +110,11 @@ Trace particles with a Boris method, integrated by the SciML loop.
   - `save_fields::Bool=false`: append E and B to every saved state.
   - `save_work::Bool=false`: append the work rates to every saved state.
   - `maxiters::Int=1_000_000`: maximum number of steps.
-  - `trajectories::Int=1`, `batch_size::Int`, `seed`: ensemble controls.
+  - `rng`, `seed`: accepted and ignored; a SciML ensemble passes them to every
+    trajectory it solves.
 """
-@inline function solve(
-        prob::TraceProblem, alg::AbstractBoris,
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        trajectories::Int = 1,
+function solve(
+        prob::TraceProblem, alg::AbstractBoris;
         saveat = (),
         dt::Union{Nothing, AbstractFloat} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -163,62 +124,72 @@ Trace particles with a Boris method, integrated by the SciML loop.
         save_fields::Bool = false,
         save_work::Bool = false,
         maxiters::Int = 1_000_000,
-        batch_size::Int = _default_batch_size(ensemblealg, trajectories),
-        seed::Union{Nothing, Integer} = nothing,
+        rng = nothing,
+        seed = nothing,
+        kwargs...
     ) where {F}
     step = dt === nothing ? _boris_initial_dt(prob, alg) : dt
     _boris_check_limits(prob, step, alg, maxiters)
 
-    solve_kwargs = if isempty(saveat)
-        (
-            dt = step,
-            save_start = true,
-            save_end = true,
-            save_everystep = true,
-            maxiters,
-            callback = _boris_callback(isoutside),
-            dense = false,
+    ode_prob = _boris_problem(prob)
+    callback = _boris_callback(isoutside)
+
+    # `save_everystep` defaults to `isempty(saveat)` in SciML, so it is left out
+    # when `saveat` is given: setting it would add every step to the requested
+    # times instead of selecting from them. The branch is written out rather than
+    # splatted so that each call is specialized on its own keywords.
+    sol = if isempty(saveat)
+        solve(
+            ode_prob, alg; dt = step, save_start, save_end, save_everystep,
+            maxiters, callback, dense = false, kwargs...
         )
     else
-        (
-            dt = step,
-            saveat,
-            save_start,
-            save_end,
-            maxiters,
-            callback = _boris_callback(isoutside),
-            dense = false,
+        solve(
+            ode_prob, alg; dt = step, saveat, save_start, save_end,
+            maxiters, callback, dense = false, kwargs...
         )
     end
 
+    return _boris_finalize(sol, prob.p, Val(save_fields), Val(save_work))
+end
+
+"""
+    solve(prob::TraceProblem, alg::AbstractBoris, ensemblealg; kwargs...)
+
+Trace `trajectories` particles with a Boris method and return an
+`EnsembleSolution`. A shorthand for
+
+```julia
+solve(EnsembleProblem(prob; prob_func = prob.prob_func), alg, ensemblealg;
+    trajectories, kwargs...)
+```
+
+which is the form to use for anything it does not cover, such as an
+`output_func`, a `reduction`, or a `prob_func` other than the one carried by
+`prob`.
+
+# Keywords
+  - `trajectories::Int=1`: number of particles.
+  - `seed`: master seed. SciML derives one reproducible generator per trajectory
+    from it and hands it to `prob_func` as `ctx.rng`.
+  - `batch_size`, `pmap_batch_size`: SciML's own ensemble keywords, controlling
+    how trajectories are grouped before the reduction and how many are sent to a
+    worker at a time.
+  - Every keyword of the single trajectory `solve` above.
+"""
+function solve(
+        prob::TraceProblem, alg::AbstractBoris,
+        ensemblealg::BasicEnsembleAlgorithm;
+        trajectories::Int = 1,
+        seed::Union{Nothing, Integer} = nothing,
+        kwargs...
+    )
+    # Copy the problem per trajectory only when `prob_func` may mutate it, the
+    # rule SciML applies to an `EnsembleProblem` built from a custom `prob_func`.
     ensemble_prob = EnsembleProblem(
-        _boris_problem(prob); prob_func = _boris_prob_func(prob)
-    )
-    ensemble_kwargs = if ensemblealg isa Union{EnsembleSplitThreads, EnsembleDistributed}
-        (; batch_size)
-    else
-        NamedTuple()
-    end
-    ensemble_kwargs = isnothing(seed) ? ensemble_kwargs : merge(ensemble_kwargs, (; seed))
-
-    elapsed_time = @elapsed esol = SciMLBase.solve(
-        ensemble_prob, alg, ensemblealg;
-        trajectories, ensemble_kwargs..., solve_kwargs...
+        prob; prob_func = prob.prob_func,
+        safetycopy = prob.prob_func !== DEFAULT_PROB_FUNC
     )
 
-    sols = if isempty(saveat)
-        [
-            _boris_finalize(
-                sol, prob.p, save_start, save_end, save_everystep,
-                Val(save_fields), Val(save_work)
-            ) for sol in esol.u
-        ]
-    else
-        [
-            _boris_finalize(sol, prob.p, Val(save_fields), Val(save_work))
-                for sol in esol.u
-        ]
-    end
-
-    return EnsembleSolution(sols, elapsed_time, true)
+    return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end

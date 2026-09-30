@@ -39,9 +39,9 @@ using OrdinaryDiffEq
                 isoutside
             )
 
-            @test !any(isnan, sol.u[1].u[end])
-            @test norm(sol.u[1].u[end][1:3]) <= 1.0
-            @test sol.u[1].retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[end])
+            @test norm(sol.u[end][1:3]) <= 1.0
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "Adaptive Boris" begin
@@ -51,9 +51,9 @@ using OrdinaryDiffEq
                 isoutside
             )
 
-            @test !any(isnan, sol.u[1].u[end])
-            @test norm(sol.u[1].u[end][1:3]) <= 1.0
-            @test sol.u[1].retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[end])
+            @test norm(sol.u[end][1:3]) <= 1.0
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK4" begin
@@ -92,9 +92,9 @@ using OrdinaryDiffEq
 
             alg = AdaptiveBoris(safety = 0.1)
             sol = TP.solve(prob, alg; isoutside)
-            @test sol.u[1].u[end][1] <= 0.5
-            @test sol.u[1].t[end] < tspan[2]
-            @test sol.u[1].retcode == ReturnCode.Terminated
+            @test sol.u[end][1] <= 0.5
+            @test sol.t[end] < tspan[2]
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "Integer tspan (Boris)" begin
@@ -102,8 +102,8 @@ using OrdinaryDiffEq
             tspan = (0, 10)
             prob = TraceProblem(u0, tspan, param)
             sol = TP.solve(prob, Boris(); dt = 1.0)
-            @test sol.u[1].t[end] == 10
-            @test sol.u[1].retcode == ReturnCode.Success
+            @test sol.t[end] == 10
+            @test sol.retcode == ReturnCode.Success
         end
 
         @testset "Time rejection (GC RK4)" begin
