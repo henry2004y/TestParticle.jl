@@ -11,18 +11,16 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-# Each dependency is pinned to the minor series the solver was tested against,
-# not to the newest release. The methods here hook into OrdinaryDiffEqCore's
-# cache, controller and dense output interfaces, which are still being reworked,
-# and into SciMLBase's problem and solution types, so a minor bump on either can
-# silently change the discretization. Widen a bound only after running this
-# package's tests and TestParticle's Boris tests against the new release.
+# The lower bounds are the versions the solver was tested against; anything
+# newer within the same major is allowed. Do not lower them: the caches, the
+# step size controller and the dense output hook into interfaces of
+# OrdinaryDiffEqCore and SciMLBase that are still moving.
 LinearAlgebra = "1"
-MuladdMacro = "~0.2"
-OrdinaryDiffEqCore = "~4.17"
-Reexport = "~1.2"
-SciMLBase = "~3.53"
-StaticArrays = "~1.9"
+MuladdMacro = "0.2"
+OrdinaryDiffEqCore = "4.17"
+Reexport = "1.2"
+SciMLBase = "3.53"
+StaticArrays = "1.9"
 julia = "1.11"
 
 [extras]
