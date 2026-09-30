@@ -142,8 +142,8 @@ sol_rk = solve(prob_rk, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 prob_b = TraceProblem(stateinit, tspan0, param_uniform)
 sol_b = TP.solve(
     prob_b, TP.MultistepBoris4(n = 4);
-    dt = 2π / 40, trajectories = 1
-).u[1];
+    dt = 2π / 40
+);
 
 # The initial gyroradius from each solver (computed at the final state) should be ~1.
 function rL_of(sol, Bfunc)
@@ -188,7 +188,7 @@ prob_b_t = TraceProblem(stateinit_t, tspan_t, param)
 sol_b_t = TP.solve(
     prob_b_t, TP.MultistepBoris4(n = 4);
     dt = 2π / 80, trajectories = 1
-).u[1]
+)
 
 trange = range(tspan_t..., length = 201)
 rk_xy = [sol_rk_t(t)[SA[1, 2]] for t in trange]
@@ -349,7 +349,7 @@ for (j, rL) in enumerate(rL_list)
     pscan = TraceProblem(stateinit, (0.0, 2π * 100), param; prob_func = pfunc)
     dt = 2π / 40
     ssols = TP.solve(
-        pscan, alg;
+        pscan, alg, EnsembleThreads();
         dt, saveat = 10 * dt, trajectories = 16, seed = 1234
     )
     nt = length(ssols.u[1].u)

@@ -41,7 +41,8 @@ TP = jl.TestParticle
 jl.seval(
     """
     function _tp_extract(sols)
-        sol_list = sols isa TestParticle.EnsembleSolution ? sols.u : sols
+        sol_list = sols isa TestParticle.EnsembleSolution ? sols.u :
+            sols isa TestParticle.AbstractODESolution ? (sols,) : sols
         n = length(sol_list)
         ts = Vector{Vector{Float64}}(undef, n)
         us = Vector{Matrix{Float64}}(undef, n)
@@ -432,7 +433,7 @@ def trace(
     if parallel:
         sols = TP.solve(prob, alg_jl, TP.EnsembleThreads(), **solve_kw)
     else:
-        sols = TP.solve(prob, alg_jl, **solve_kw)
+        sols = TP.solve(prob, alg_jl, TP.EnsembleSerial(), **solve_kw)
 
     ts, us = jl._tp_extract(sols)
     ts_py = [np.asarray(t) for t in ts]

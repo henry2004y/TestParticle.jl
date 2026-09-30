@@ -122,7 +122,7 @@ function run_test(
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
     for (name, alg) in _natives
-        sol = TestParticle.solve(prob_tp, alg; dt).u[1]
+        sol = TestParticle.solve(prob_tp, alg; dt)
         plot_energy_error!(sol, name, color_idx)
         color_idx += 1
     end

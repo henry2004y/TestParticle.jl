@@ -56,7 +56,7 @@ You can also try out the native implementation of the Boris method in `TestParti
 ```julia
 dt = 3e-11 # fixed time step
 prob = TraceProblem(stateinit, tspan, param)
-sol = TestParticle.solve(prob, Boris(); dt, saveat = 10 * dt)[1]
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 10 * dt)
 ```
 
 For the full family of Boris solvers (Multistep, Hyper, and Adaptive), see [Boris Pusher](@ref Boris-Pusher).

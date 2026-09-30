@@ -157,7 +157,7 @@ SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve
     $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, save_fields = true
 )
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
-    $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, trajectories = 2
+    $prob_boris, Boris(), EnsembleSerial(); dt = 1 / 7, saveat = 10 / 7, trajectories = 2
 )
 SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
     $prob_boris, MultistepBoris2(; n = 2); dt = 1 / 7, saveat = 10 / 7
