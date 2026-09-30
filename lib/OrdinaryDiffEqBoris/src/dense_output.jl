@@ -23,12 +23,19 @@ const BorisCacheTypes = Union{
 
 """
     default_linear_interpolation(alg::BorisAlgorithm, prob)
+    default_linear_interpolation(prob, alg::BorisAlgorithm)
 
 Boris methods carry no derivative stages, so only linear interpolation is
 available. Reporting that here keeps `dense` off, instead of storing a stage
 history that is never filled.
+
+Both argument orders exist because OrdinaryDiffEqCore is inconsistent about
+them: the fallback is declared as `(alg, prob)`, while the only call site that
+decides `dense` passes `(prob, alg)`. Only the second one is reached, so
+defining both keeps the answer correct either way.
 """
 default_linear_interpolation(::BorisAlgorithm, prob) = true
+default_linear_interpolation(prob, ::BorisAlgorithm) = true
 
 @inline function _ode_addsteps!(
         k, t, uprev, u, dt, f, p, cache::BorisCacheTypes,
