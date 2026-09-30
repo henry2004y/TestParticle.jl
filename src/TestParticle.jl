@@ -17,7 +17,6 @@ import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultis
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
-using Distributed: pmap, nworkers, myid
 using StaticArrays: SVector, MVector, SA, StaticArray
 import ForwardDiff
 import DiffResults
