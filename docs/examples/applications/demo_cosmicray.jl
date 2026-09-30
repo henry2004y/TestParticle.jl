@@ -270,7 +270,7 @@ prob = TraceProblem(stateinit, tspan, param; prob_func)
 alg = TP.MultistepBoris4(n = 4)
 dt = 2π / 40
 sols = TP.solve(
-    prob, alg;
+    prob, alg, EnsembleThreads();
     dt, saveat = 15 * dt, trajectories = 32, seed = 1234
 );
 

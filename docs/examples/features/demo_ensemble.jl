@@ -171,7 +171,7 @@ dt = 0.1
 
 ## Reuse the basic problem parameters
 prob_boris = TraceProblem(stateinit, tspan, param; prob_func = prob_func_basic)
-trajs_boris = TestParticle.solve(prob_boris, Boris(); dt, trajectories = 3, seed)
+trajs_boris = TestParticle.solve(prob_boris, Boris(), EnsembleThreads(); dt, trajectories = 3, seed)
 
 ## Visualization
 f = Figure(fontsize = 20)
