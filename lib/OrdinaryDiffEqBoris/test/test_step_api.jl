@@ -7,6 +7,7 @@ using LinearAlgebra: norm
 
 zero_E(x, t) = SA[0.0, 0.0, 0.0]
 uniform_B(x, t) = SA[0.0, 0.0, 0.01]
+oscillating_E(x, t) = SA[sin(2π * t), 0.0, 0.0]
 
 "The Energy of a particle of unit mass, in a potential-free field."
 kinetic_energy(v) = 0.5 * sum(abs2, v)
@@ -73,6 +74,28 @@ end
                     @test kinetic_energy(v_node) ≈ kinetic_energy(v) rtol = 1.0e-12
                 end
             end
+        end
+    end
+
+    @testset "sampling the fields at the node keeps the method second order" begin
+        # A step advances the velocity over [t - dt/2, t + dt/2], the midpoint of
+        # which is the node t, so the fields have to be evaluated there. Taking
+        # them at t + dt/2 instead, the end of that interval, is the rectangle
+        # rule in place of the midpoint rule and costs an order, which only shows
+        # up once the fields move in time.
+        let T = 1.0, param = (1.0, 1.0, oscillating_E, uniform_B),
+            u0 = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+            final_state(dt) = solve(
+                ODEProblem((u, p, t) -> nothing, u0, (0.0, T), param), Boris();
+                dt, save_everystep = false, save_start = false
+            ).u[end]
+
+            reference = final_state(T / 8000)
+            errors = [norm(final_state(dt) - reference) for dt in (T / 250, T / 500, T / 1000)]
+            orders = [log2(errors[i] / errors[i + 1]) for i in eachindex(errors[1:(end - 1)])]
+
+            @test all(>(1.8), orders)
         end
     end
 

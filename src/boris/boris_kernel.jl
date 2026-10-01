@@ -185,7 +185,7 @@ end
     )
 
     for it in 1:nt
-        t = tspan[1] + (it - 0.5) * dt
+        t = tspan[1] + (it - 1) * dt
 
         boris_step!(
             backend, xv_current, xv_next, p_gpu, dt, t, irange, workgroup_size, alg

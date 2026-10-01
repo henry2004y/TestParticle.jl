@@ -17,12 +17,19 @@
 Advance one step of size `dt` from the node time `t`.
 
 `r` is the position at `t` and `v_half` the velocity half a step behind it, at
-`t - dt/2`. The fields are evaluated once, at `t + dt/2`, and the pair returned
-is the position at `t + dt` with the velocity half a step ahead of it, which is
-the same staggering as the input and can be fed straight into the next step.
+`t - dt/2`. The fields are evaluated once, at the node `(r, t)`, and the pair
+returned is the position at `t + dt` with the velocity half a step ahead of it,
+which is the same staggering as the input and can be fed straight into the next
+step.
+
+The sampling point matters. The velocity is advanced over `[t - dt/2, t + dt/2]`,
+whose midpoint is the node `t`, so sampling there is the midpoint rule and keeps
+the method second order. Sampling at `t + dt/2`, the end of that interval, is the
+rectangle rule and drops it to first order in a time-dependent field, which is
+only visible once the fields move in time.
 """
 @inline @muladd function advance_boris(v_half, r, dt, t, p, alg)
-    v_half_new = update_velocity(v_half, r, dt, t + 0.5 * dt, p, alg)
+    v_half_new = update_velocity(v_half, r, dt, t, p, alg)
     r_new = r + v_half_new * dt
 
     return r_new, v_half_new
