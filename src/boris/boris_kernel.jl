@@ -467,7 +467,7 @@ function solve(
     throw(
         ArgumentError(
             "$alg has no GPU path, because it chooses its own time step. Solve it on " *
-            "the CPU, `solve(prob, alg)`, or pick a fixed step solver, one of $supported."
+                "the CPU, `solve(prob, alg)`, or pick a fixed step solver, one of $supported."
         )
     )
 end

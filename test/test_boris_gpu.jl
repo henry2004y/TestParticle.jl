@@ -20,11 +20,13 @@ end
 @testset "Boris on a backend" begin
     @testset "the device walks the same trajectory as the SciML loop" begin
         let tspan = (0.0, 1.0e-6), dt = 1.0e-9, saveat = 1.0e-8,
-            param = prepare(zero_E, uniform_B; species = Proton),
-            prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
+                param = prepare(zero_E, uniform_B; species = Proton),
+                prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
-            for alg in (Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),
-                MultistepBoris6(n = 4))
+            for alg in (
+                    Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),
+                    MultistepBoris6(n = 4),
+                )
                 sol_loop = TestParticle.solve(prob, alg; dt, saveat)
                 sol_device = TP.solve(prob, alg, CPU(); dt, trajectories = 1, saveat).u[1]
 
@@ -39,8 +41,8 @@ end
 
     @testset "a solver that picks its own step has no device path" begin
         let tspan = (0.0, 1.0e-6), dt = 1.0e-9,
-            param = prepare(zero_E, uniform_B; species = Proton),
-            prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
+                param = prepare(zero_E, uniform_B; species = Proton),
+                prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
             for alg in (AdaptiveBoris(safety = 0.1), AdaptiveMultistepBoris{2}(n = 2))
                 @test_throws ArgumentError TP.solve(prob, alg, CPU(); dt, trajectories = 1)

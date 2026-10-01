@@ -37,7 +37,7 @@ end
         # Driving the step functions by hand has to walk the same trajectory the
         # SciML loop walks, since that is what any other driver gets.
         let param = (-1.75882001076e11, 9.1093837015e-31, zero_E, uniform_B),
-            u0 = SA[0.0, 0.0, 0.0, 1.0e7, 0.0, 0.0], tspan = (0.0, 1.0e-8), dt = 1.0e-11
+                u0 = SA[0.0, 0.0, 0.0, 1.0e7, 0.0, 0.0], tspan = (0.0, 1.0e-8), dt = 1.0e-11
 
             for alg in (Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2))
                 sol = solve(ODEProblem((u, p, t) -> nothing, u0, tspan, param), alg; dt)
@@ -62,7 +62,7 @@ end
         # round trip is a rotation, so in a magnetic field alone the speed has to
         # survive it, which is what keeps the scheme time-reversible.
         let param = (1.0, 1.0, zero_E, uniform_B),
-            r = SA[0.0, 0.0, 0.0], v = SA[1.0e5, 2.0e5, -3.0e5], t = 0.0, dt = 1.0e-9
+                r = SA[0.0, 0.0, 0.0], v = SA[1.0e5, 2.0e5, -3.0e5], t = 0.0, dt = 1.0e-9
 
             for alg in (Boris(), MultistepBoris6(n = 3))
                 v_half = update_velocity_half(v, r, dt, t, param, alg)
@@ -87,7 +87,7 @@ end
         # rule in place of the midpoint rule and costs an order, which only shows
         # up once the fields move in time.
         let T = 1.0, param = (1.0, 1.0, oscillating_E, uniform_B),
-            u0 = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                u0 = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
             final_state(dt) = solve(
                 ODEProblem((u, p, t) -> nothing, u0, (0.0, T), param), Boris();
@@ -107,7 +107,7 @@ end
         # state at the end of a step and once to advance the next one from that
         # same node, so the pair is carried across the step boundary.
         let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
-            prob = ODEProblem(
+                prob = ODEProblem(
                 (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
                 (0.0, nsteps * dt), param
             )
@@ -125,7 +125,7 @@ end
         # A callback can move the particle between steps, and fields carried
         # across such a move would belong to where it used to be.
         let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
-            prob = ODEProblem(
+                prob = ODEProblem(
                 (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
                 (0.0, nsteps * dt), param
             ), moved = Ref(false)
@@ -150,8 +150,10 @@ end
         # kernel, where an allocation is not merely slow but impossible.
         let param = (1.0, 1.0, zero_E, uniform_B), dt = 1.0e-9
 
-            for alg in (Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),
-                MultistepBoris6(n = 4))
+            for alg in (
+                    Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),
+                    MultistepBoris6(n = 4),
+                )
                 integrate(alg, param, 0.0, dt, 10)
                 @test @allocated(integrate(alg, param, 0.0, dt, 1000)) == 0
             end
