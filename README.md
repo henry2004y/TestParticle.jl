@@ -51,7 +51,7 @@ Native Boris particle pusher also follows a similar interface:
 dt = 3e-11 # fixed time step
 prob = TraceProblem(stateinit, tspan, param)
 # Standard Boris solver
-sol = TestParticle.solve(prob, Boris(); dt, savestepinterval=10)[1]
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 10 * dt)
 ```
 
 Besides the standard Boris method, we also support various advanced Boris solvers:
@@ -61,13 +61,13 @@ Besides the standard Boris method, we also support various advanced Boris solver
 
 ```julia
 # Adaptive Boris
-sol_adaptive = TestParticle.solve(prob, AdaptiveBoris(safety=0.1))[1]
+sol_adaptive = TestParticle.solve(prob, AdaptiveBoris(safety=0.1))
 
 # 4th-order Multistep Boris with 2 substeps
-sol_multi = TestParticle.solve(prob, MultistepBoris4(n=2); dt)[1]
+sol_multi = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 
 # Adaptive 4th-order Multistep Boris
-sol_adaptive_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))[1]
+sol_adaptive_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))
 ```
 
 For plotting with Makie,

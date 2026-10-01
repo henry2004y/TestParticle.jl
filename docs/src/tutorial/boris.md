@@ -104,6 +104,8 @@ sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
 
 Combining both $n > 1$ and higher-order correction ($N > 2$) ensures ultra-high stability tracking over drastically varying gradient fields.
 
+One trajectory returns an `ODESolution`, the same type any other SciML solver returns.
+
 ### Adaptive Boris
 
 The adaptive solver adjusts the time step automatically based on the local gyroperiod.
@@ -111,5 +113,88 @@ The adaptive solver adjusts the time step automatically based on the local gyrop
 ```julia
 # Adaptive Boris with safety factor 0.05 (20 steps per period)
 alg = AdaptiveBoris(safety=0.05)
-sol = TestParticle.solve(prob, alg)[1]
+sol = TestParticle.solve(prob, alg)
 ```
+
+### Ensembles
+
+Multiple particles are traced through a SciML [`EnsembleProblem`](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/), so the whole ensemble interface applies: `EnsembleThreads()`, `EnsembleDistributed()`, `EnsembleSplitThreads()`, `trajectories`, `seed`, `batch_size`, `pmap_batch_size`, and the `output_func` and `reduction` hooks.
+
+```julia
+eprob = EnsembleProblem(prob; prob_func, safetycopy = false)
+sols = TestParticle.solve(eprob, Boris(), EnsembleThreads();
+    dt, trajectories = 1000, seed = 1234)
+```
+
+`prob_func(prob, ctx)` prepares each trajectory. It receives an `EnsembleContext` whose `ctx.rng` is derived from `seed`, which keeps a run reproducible. Because the `prob_func` of a `TraceProblem` is used to build the same ensemble, the shorter form is equivalent:
+
+```julia
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+sols = TestParticle.solve(prob, Boris(), EnsembleThreads();
+    dt, trajectories = 1000)
+```
+
+`sols.u` is then a vector of `ODESolution`s, one per trajectory.
+
+The ensemble algorithm is a required third argument in the shorter form, because
+`solve(prob, alg)` without one means a single trajectory. It cannot have a
+default either: SciML calls exactly that two-argument form once per trajectory it
+builds, so a default would ask every trajectory to build an ensemble of its own.
+
+### Saving the Output
+
+Every accepted step is saved by default. To choose the output times explicitly, pass `saveat`, either as a collection of times or as an interval:
+
+```julia
+# Save at the given times
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 0.0:5.0e-10:3.0e-8)
+
+# Save every 5.0e-10 across the time span
+sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
+```
+
+`saveat` does not shorten any step, so the trajectory is identical to a run without it and only the reporting changes. Inside a step the state is interpolated **linearly**, which is the dense output these methods admit: a Boris step advances the position linearly with the half-step velocity $\mathbf{v}_{n+1/2}$, so the interpolant reproduces the stored positions exactly, whereas the velocity is only as accurate as the method itself. Requesting a value inside a step is therefore consistent with the solver's own order, not better or worse than the step values around it.
+
+`save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `save_fields = true` and `save_work = true` keep appending their columns to every saved state.
+
+!!! warning "Removed keyword: `savestepinterval`"
+    `savestepinterval = k`, which saved every $k$-th step regardless of how the
+    times were named, has been removed. Use `saveat = k * dt` to report the same
+    times in a fixed-step run. Passing `savestepinterval` is now an ordinary
+    unsupported-keyword error.
+
+## 6. Where the solvers live
+
+The Boris family is implemented in its own package,
+[OrdinaryDiffEqBoris](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/OrdinaryDiffEqBoris),
+which follows the SciML convention for an algorithm package: the methods are
+ordinary SciML algorithms, driven by the SciML loop, and they can be used on
+their own. TestParticle.jl depends on it and adds the parts that are specific to
+particle tracing: the `TraceProblem` container, the boundary callback, and the
+field and work columns.
+
+Used directly, the solvers only need a parameter container that answers three
+questions, `get_q2m`, `get_EField` and `get_BField`. The default methods assume
+the layout `(q2m, m, E, B, ...)` that `prepare` produces, and any other type can
+support the solvers by adding methods to those three functions:
+
+```julia
+using OrdinaryDiffEqBoris, StaticArrays
+
+param = (q2m, m, Efunc, Bfunc)   # or any type with the three accessors
+prob = ODEProblem((u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
+sol = solve(prob, AdaptiveBoris(safety = 0.1); dt)
+```
+
+An `ODEProblem` needs a right-hand side `f(u, p, t)`, but a Boris method is a
+map from one state to the next, not a differential equation, so `f` is never
+called: at every step the method takes the charge-to-mass ratio and the fields
+from `p`, and `(u, p, t) -> nothing` is enough. Adaptivity is selected by the
+`adaptive` solve keyword, as for any other SciML solver, and the adaptive methods
+follow the local gyroperiod rather than an error estimate, since a Boris step
+forms none.
+
+What TestParticle.jl still owns is the layer around the loop, in
+`src/boris/boris_solve.jl`: the conversion of a `TraceProblem` into an
+`ODEProblem`, the gyroperiod-based initial step of the adaptive methods, the
+`isoutside` callback, and the appended field and work columns.

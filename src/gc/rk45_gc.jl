@@ -50,7 +50,7 @@ end
 Apply RK45 method for particles with index in `irange`.
 """
 function _rk45!(
-        sols, prob, irange, dt_initial, isoutside,
+        sols, prob, irange, plan, dt_initial, isoutside,
         save_start, save_end, save_everystep, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
     ) where {SaveFields, SaveWork}
@@ -104,6 +104,8 @@ function _rk45!(
         end
 
         steps = 0
+        nsave = length(plan.times)
+        isave = 1
         retcode = ReturnCode.Success
         while t < tspan[2] && steps < maxiters
             if t + dt > tspan[2]
@@ -130,10 +132,24 @@ function _rk45!(
                     break
                 end
 
+                t_prev = t
+                xv_prev = xv
                 t += dt
                 xv = y_next
 
-                if save_everystep
+                if use_saveat(plan)
+                    while isave <= nsave && _saveat_reached(plan.times[isave], t, plan.dir)
+                        t_target = plan.times[isave]
+                        push!(
+                            traj, _prepare_saved_data_gc(
+                                _saveat_interpolate(t_prev, xv_prev, t, xv, t_target),
+                                p, t_target, Val(SaveFields), Val(SaveWork)
+                            )
+                        )
+                        push!(tsave, t_target)
+                        isave += 1
+                    end
+                elseif save_everystep
                     push!(
                         traj, _prepare_saved_data_gc(
                             xv, p, t, Val(SaveFields), Val(SaveWork)

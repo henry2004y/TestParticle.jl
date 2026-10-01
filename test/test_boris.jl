@@ -46,7 +46,7 @@ using Distributed
         param = prepare(zero_E, uniform_B2, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        sol = TP.solve(prob, Boris(); dt, savestepinterval = 10).u[1]
+        sol = TP.solve(prob, Boris(); dt, saveat = 10 * dt)
 
         @test sol.u[end] ≈ [
             -0.00010199137926394769, 3.46340469171306e-5, 0.0,
@@ -62,18 +62,19 @@ using Distributed
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 4
-        savestepinterval = 1000
+        saveat = 1000 * dt
         sols = TP.solve(
             prob, Boris(), EnsembleThreads();
-            dt, savestepinterval, trajectories
+            dt, saveat, trajectories
         )
         @test sum(s -> sum(s.u[end][4]), sols.u) ≈ -608930.4382490724
 
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 2
-        savestepinterval = 1000
+        saveat = 1000 * dt
         sols = TP.solve(
-            prob, Boris(); dt, savestepinterval, trajectories
+            prob, Boris(), EnsembleSerial();
+            dt, saveat, trajectories
         )
         @test sum(s -> sum(s.u[end]), sols.u) ≈ -420646.2195768674
 
@@ -84,7 +85,7 @@ using Distributed
         dt = 1.0e-4
         param = prepare(zero_E, time_varying_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
-        sol = TP.solve(prob, Boris(); dt, savestepinterval = 100).u[1]
+        sol = TP.solve(prob, Boris(); dt, saveat = 100 * dt)
         @test sol[1, end] ≈ -512.8807214528281
 
         new_tspan = (0.0, 2.0e-8)
@@ -117,12 +118,12 @@ using Distributed
             prob, MultistepBoris{2}(; n = 2); dt
         )
 
-        @test sol_std.u[1].u[end][1] ≈ 10.0 atol = 1.0e-6
-        @test sol_multi_2.u[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_std.u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_multi_2.u[end][1] ≈ 10.0 atol = 1.0e-6
 
         # Check velocities
-        @test sol_std.u[1].u[end][4] ≈ 1.0 atol = 1.0e-6
-        @test sol_multi_2.u[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_std.u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_multi_2.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Test Gyrating particle
         # B = (0, 0, 1), E = 0
@@ -146,15 +147,15 @@ using Distributed
         )
 
         # After one period, should return to origin
-        @test hypot(@views sol_1step_gyro.u[1].u[end][1:3]...) < 0.02
-        @test hypot(@views sol_2step_gyro.u[1].u[end][1:3]...) < 0.02
-        @test hypot(@views sol_4step_gyro.u[1].u[end][1:3]...) < 0.02
+        @test hypot(@views sol_1step_gyro.u[end][1:3]...) < 0.02
+        @test hypot(@views sol_2step_gyro.u[end][1:3]...) < 0.02
+        @test hypot(@views sol_4step_gyro.u[end][1:3]...) < 0.02
 
         # Energy conservation check (E=0 implies |v| is constant)
         v0_norm = hypot(@views u0_gyro[4:6]...)
 
         for sol in (sol_1step_gyro, sol_2step_gyro, sol_4step_gyro)
-            v_end = @view sol.u[1].u[end][4:6]
+            v_end = @view sol.u[end][4:6]
             @test hypot(v_end...) ≈ v0_norm atol = 2.0e-3
         end
     end
@@ -179,13 +180,13 @@ using Distributed
             prob, MultistepBoris{4}(; n = 1); dt
         )
 
-        @test sol_hyper_4.u[1].u[end][1] ≈ 10.0 atol = 1.0e-6
-        @test sol_hyper_6.u[1].u[end][1] ≈ 10.0 atol = 1.0e-6
-        @test sol_hyper_single.u[1].u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_4.u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_6.u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol_hyper_single.u[end][1] ≈ 10.0 atol = 1.0e-6
 
-        @test sol_hyper_4.u[1].u[end][4] ≈ 1.0 atol = 1.0e-6
-        @test sol_hyper_6.u[1].u[end][4] ≈ 1.0 atol = 1.0e-6
-        @test sol_hyper_single.u[1].u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_4.u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_6.u[end][4] ≈ 1.0 atol = 1.0e-6
+        @test sol_hyper_single.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Gyrating particle test
         param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
@@ -199,12 +200,12 @@ using Distributed
             prob_gyro, MultistepBoris{6}(; n = 4); dt = 0.1
         )
 
-        @test hypot(@views sol_hyper_4_gyro.u[1].u[end][1:3]...) < 0.02
-        @test hypot(@views sol_hyper_6_gyro.u[1].u[end][1:3]...) < 0.02
+        @test hypot(@views sol_hyper_4_gyro.u[end][1:3]...) < 0.02
+        @test hypot(@views sol_hyper_6_gyro.u[end][1:3]...) < 0.02
 
         v0_norm = hypot(@views u0_gyro[4:6]...)
         for sol in (sol_hyper_4_gyro, sol_hyper_6_gyro)
-            v_end = @view sol.u[1].u[end][4:6]
+            v_end = @view sol.u[end][4:6]
             @test hypot(v_end...) ≈ v0_norm atol = 2.0e-3
         end
     end
@@ -226,7 +227,7 @@ using Distributed
         param = prepare(constant_E, gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        sol = TP.solve(prob, alg_adaptive).u[1]
+        sol = TP.solve(prob, alg_adaptive)
 
         dt_end = sol.t[end - 1] - sol.t[end - 2]
         dt_start = sol.t[11] - sol.t[10]
@@ -261,13 +262,13 @@ using Distributed
         prob = TraceProblem(u0, tspan, param)
 
         # Standard Boris
-        sol_boris = TP.solve(prob, Boris(); dt = dt).u[1]
+        sol_boris = TP.solve(prob, Boris(); dt = dt)
         # If B was 0.01, vx should have changed significantly
         @test abs(sol_boris.u[end][4]) < 1.0e5 - 100
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = TP.solve(prob, alg_adaptive).u[1]
+        sol_adaptive = TP.solve(prob, alg_adaptive)
         @test abs(sol_adaptive.u[end][4]) < 1.0e5 - 100
     end
 
@@ -284,61 +285,58 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param)
 
         # Baseline: save_everystep=true (default), save_start=true (default implicit), save_end=true (default implicit)
-        # savestepinterval = 10
-        # nt = 1000. steps = 1000/10 = 100.
-        # nout = 101 (0, 10, ..., 1000)
-        sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 10
-        ).u[1]
-        @test length(sol.u) == 101
+        # nt = 1000, so nout = 1001 (0, 1, ..., 1000)
+        sol = TP.solve(prob, Boris(); dt = dt)
+        @test length(sol.u) == 1001
         @test sol.t[1] == tspan[1]
         @test sol.t[end] == tspan[2]
 
         # Scenario 2: Only final state
         sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 10,
+            prob, Boris(); dt = dt,
             save_everystep = false, save_start = false,
             save_end = true
-        ).u[1]
+        )
         @test length(sol.u) == 1
         @test sol.t[1] == tspan[2]
 
         # Scenario 3: Start and End
         sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 10,
+            prob, Boris(); dt = dt,
             save_everystep = false, save_start = true,
             save_end = true
-        ).u[1]
+        )
         @test length(sol.u) == 2
         @test sol.t[1] == tspan[1]
         @test sol.t[end] == tspan[2]
 
         # Scenario 4: Only start
         sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 10,
+            prob, Boris(); dt = dt,
             save_everystep = false, save_start = true,
             save_end = false
-        ).u[1]
+        )
         @test length(sol.u) == 1
         @test sol.t[1] == tspan[1]
 
         # Scenario 5: Every step but no start/end
         sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 10,
+            prob, Boris(); dt = dt,
             save_everystep = true,
             save_start = false, save_end = false
-        ).u[1]
-        # Steps: 10, 20, ..., 990.
-        @test length(sol.u) == 99
-        @test sol.t[1] ≈ tspan[1] + 10 * dt
-        @test sol.t[end] ≈ tspan[1] + 990 * dt
+        )
+        # Steps: 1, 2, ..., 999.
+        @test length(sol.u) == 999
+        @test sol.t[1] ≈ tspan[1] + dt
+        @test sol.t[end] ≈ tspan[1] + 999 * dt
 
-        # Scenario 6: Irregular interval
+        # Scenario 6: Requested times. Only the interior is taken from `saveat`,
+        # since the two ends are reported separately.
         sol = TP.solve(
-            prob, Boris(); dt = dt, savestepinterval = 3,
+            prob, Boris(); dt = dt, saveat = 3 * dt,
             save_everystep = true, save_start = true,
             save_end = true
-        ).u[1]
+        )
         @test length(sol.u) == 335
         @test sol.t[1] == tspan[1]
         @test sol.t[2] ≈ tspan[1] + 3 * dt
@@ -348,10 +346,10 @@ using Distributed
         # Multistep Boris test
         sol_ms = TP.solve(
             prob, MultistepBoris{2}(; n = 2);
-            dt = dt, savestepinterval = 10,
+            dt = dt,
             save_everystep = false, save_start = true,
             save_end = true
-        ).u[1]
+        )
         @test length(sol_ms.u) == 2
         @test sol_ms.t[1] == tspan[1]
         @test sol_ms.t[end] == tspan[2]
@@ -359,8 +357,8 @@ using Distributed
         # Save fields test
         sol_fields = TP.solve(
             prob, Boris();
-            dt, savestepinterval = 10, save_fields = true
-        ).u[1]
+            dt, saveat = 10 * dt, save_fields = true
+        )
         # Check dimensions of the state vector (not the solution object length)
         @test length(sol_fields.u[1]) == 12
         # Check field values. E=0, B=[0,0,0.01].
@@ -393,9 +391,9 @@ using Distributed
         # Test save_work=true
         sol = TP.solve(
             prob, Boris();
-            dt, savestepinterval = 1,
+            dt,
             save_work = true, save_everystep = true
-        ).u[1]
+        )
 
         # Dimension check: 6 (state) + 4 (work) = 10
         @test length(sol.u[1]) == 10
@@ -427,8 +425,8 @@ using Distributed
 
         sol_beta = TP.solve(
             prob_beta, Boris();
-            dt, savestepinterval = 1, save_work = true
-        ).u[1]
+            dt, save_work = true
+        )
 
         work_beta = sol_beta.u[1][7:10]
         @test work_beta[4] > 0.0 # P_betatron should be positive
@@ -436,9 +434,9 @@ using Distributed
         # Test with save_fields=true AND save_work=true
         sol_both = TP.solve(
             prob, Boris();
-            dt, savestepinterval = 1,
+            dt,
             save_fields = true, save_work = true
-        ).u[1]
+        )
         # Dim: 6 + 6 + 4 = 16
         @test length(sol_both.u[1]) == 16
         # E, B at 7-12
@@ -448,8 +446,8 @@ using Distributed
         # Test Multistep Boris with save_work
         sol_ms = TP.solve(
             prob, MultistepBoris{2}(; n = 2);
-            dt, save_work = true, savestepinterval = 1
-        ).u[1]
+            dt, save_work = true
+        )
         @test length(sol_ms.u[1]) == 10
         work_ms = sol_ms.u[1][7:10]
         @test work_ms[1] ≈ 0.0 atol = 1.0e-10
@@ -461,7 +459,7 @@ using Distributed
         sol_adaptive = TP.solve(
             prob, alg_adaptive;
             save_work = true, save_everystep = true
-        ).u[1]
+        )
         @test length(sol_adaptive.u[1]) == 10
         work_adaptive = sol_adaptive.u[1][7:10]
         @test work_adaptive[1] ≈ 0.0 atol = 1.0e-10
@@ -481,14 +479,14 @@ using Distributed
         # Reference solution with saved data
         sol_ref = TP.solve(
             prob, Boris();
-            dt, savestepinterval = 1,
+            dt,
             save_fields = true, save_work = true
-        ).u[1]
+        )
 
         # Solution without saved data
         sol = TP.solve(
-            prob, Boris(); dt, savestepinterval = 1
-        ).u[1]
+            prob, Boris(); dt
+        )
 
         # Post-process
         E_post, B_post = get_fields(sol)
@@ -559,17 +557,17 @@ using Distributed
                 stateinit, tspan, param_dist; prob_func = dist_prob_func
             )
             trajectories = 4
-            savestepinterval = 1000
+            saveat = 1000 * dt
 
             sols_serial = TP.solve(
                 prob_dist, Boris(), EnsembleSerial();
-                dt, savestepinterval, trajectories
+                dt, saveat, trajectories
             )
             @testset "Boris" begin
                 sols_dist = TP.solve(
                     prob_dist, Boris(),
                     EnsembleDistributed();
-                    dt, savestepinterval, trajectories
+                    dt, saveat, trajectories
                 )
 
                 @test length(sols_dist.u) == trajectories
@@ -581,7 +579,7 @@ using Distributed
                 sols_split = TP.solve(
                     prob_dist, Boris(),
                     EnsembleSplitThreads();
-                    dt, savestepinterval, trajectories
+                    dt, saveat, trajectories
                 )
 
                 @test length(sols_split.u) == trajectories
@@ -623,6 +621,37 @@ using Distributed
         finally
             rmprocs(pids)
         end
+    end
+
+    @testset "Saveat" begin
+        x0 = [0.0, 0.0, 0.0]
+        v0 = [0.0, 1.0e5, 0.0]
+        stateinit = [x0..., v0...]
+        tspan = (0.0, 3.0e-8)
+        dt = 3.0e-11
+        param = prepare(zero_E, uniform_B2, species = Electron)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        sol_all = TP.solve(prob, Boris(); dt)
+
+        # Requesting output at intermediate times must not change the
+        # integration, only the saving.
+        ts = collect(0.0:(3.0e-9):(3.0e-8))
+        sol_at = TP.solve(prob, Boris(); dt, saveat = ts)
+
+        @test sol_at.t ≈ ts
+        for (k, t) in enumerate(sol_at.t)
+            @test sol_at.u[k] ≈ sol_all(t)
+        end
+
+        # The field and work columns are appended on this path as well.
+        sol_fields = TP.solve(
+            prob, Boris(); dt, saveat = ts, save_fields = true
+        )
+        @test length(sol_fields.u[1]) == 12
+        @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
+        @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
+
     end
 
 end

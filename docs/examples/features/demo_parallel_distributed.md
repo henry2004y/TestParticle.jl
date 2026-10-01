@@ -109,16 +109,18 @@ fixed timestep `dt`.
 ```julia
 sol_boris = TP.solve(
     prob_boris, Boris(), EnsembleDistributed();
-    dt, trajectories, savestepinterval = 1, seed
+    dt, trajectories, seed
 )
 ```
 
 ## Controlling Work Granularity
 
-Distributed solvers also accept `batch_size` (default `max(1, trajectories ÷
-nworkers())`): a larger value reduces communication overhead for cheap
-trajectories, while a smaller one improves load balancing. It is passed like
-any other `solve` keyword, e.g. `; batch_size = 64`.
+Distributed solvers accept SciML's own ensemble keywords. `batch_size` groups
+trajectories before the reduction, and `pmap_batch_size` (default
+`batch_size ÷ 100`, at least 1) sets how many trajectories are sent to a worker
+at a time: a larger value reduces communication overhead for cheap trajectories,
+while a smaller one improves load balancing. They are passed like any other
+`solve` keyword, e.g. `; pmap_batch_size = 64`.
 
 ```julia
 println("Distributed trajectories:    $(length(sol_dist.u))")

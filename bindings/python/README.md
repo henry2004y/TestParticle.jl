@@ -99,10 +99,10 @@ package).
 The high-level helpers are:
 
 - `trace(x0, v0, tspan, dt, B, E=None, *, species="proton", trajectories=1,
-  savestepinterval=1, save_fields=False, save_work=False, parallel=False,
+  saveat=None, save_fields=False, save_work=False, parallel=False,
   alg=None, init_func=None, q=None, m=None)` - Boris pusher.
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
-  alg="rk4")` - guiding-center RK4/RK45 solver.
+  saveat=None, alg="rk4")` - guiding-center RK4/RK45 solver.
 - `trace_fieldline(x0, B, tspan, *, mode="both", alg="Tsit5",
   abstol=1e-8, reltol=1e-8)` - magnetic field lines.
 

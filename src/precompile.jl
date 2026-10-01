@@ -24,18 +24,18 @@
         tspan = (0.0, 1.0)
         dt = 0.5
         prob = TraceProblem(stateinit, tspan, param)
-        sol = solve(prob, Boris(); dt, savestepinterval = 100)
+        sol = solve(prob, Boris(); dt, saveat = 100 * dt)
         sol = solve(
             prob, Boris(), EnsembleThreads();
-            dt, savestepinterval = 100
+            dt, saveat = 100 * dt
         )
 
         # Kernel Boris (CPU)
-        sol_kernel = solve(prob, Boris(), CPU(); dt, savestepinterval = 100)
+        sol_kernel = solve(prob, Boris(), CPU(); dt, saveat = 100 * dt)
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = solve(prob, alg_adaptive).u[1]
+        sol_adaptive = solve(prob, alg_adaptive)
 
         sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)
         E_trace, B_trace = get_fields(sol_adaptive)

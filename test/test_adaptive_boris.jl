@@ -18,26 +18,39 @@ using StaticArrays
 
     @testset "Constructor" begin
         alg = AdaptiveBoris(; safety = 0.2)
-        @test alg isa Boris{true}
         @test alg isa AdaptiveBoris
         @test alg.safety == 0.2
 
         alg_def = AdaptiveBoris()
         @test alg_def.safety == 0.1
 
+        # Fixed and adaptive stepping are distinct types, and `adaptive` is the
+        # keyword that selects between them at solve time.
         alg_plain = Boris()
-        @test alg_plain isa Boris{false}
-        @test alg_plain.safety == 0.0
+        @test alg_plain isa Boris
+        @test !(alg_plain isa AdaptiveBoris)
     end
 
     @testset "Solve Integration" begin
-        @testset "EnsembleSerial" begin
-            sols = TestParticle.solve(
+        @testset "Single trajectory" begin
+            sol = TestParticle.solve(
                 prob, AdaptiveBoris()
             )
-            @test sols.u[1].retcode ==
+            @test sol.retcode ==
                 TestParticle.ReturnCode.Success
-            @test length(sols.u[1].t) > 1
+            @test length(sol.t) > 1
+        end
+
+        @testset "EnsembleProblem" begin
+            # A TraceProblem goes into a SciML ensemble as it is; SciML calls
+            # `solve` on each trajectory it builds.
+            trajectories = 4
+            sols = TestParticle.solve(
+                EnsembleProblem(prob), AdaptiveBoris(), EnsembleThreads();
+                trajectories
+            )
+            @test length(sols.u) == trajectories
+            @test all(s -> s.retcode == TestParticle.ReturnCode.Success, sols.u)
         end
 
         @testset "EnsembleThreads" begin

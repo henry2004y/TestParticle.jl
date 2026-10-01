@@ -129,7 +129,7 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 t_mc = @elapsed sols = TP.solve(
-    prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    prob, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles, seed
 );
 
@@ -188,7 +188,7 @@ prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
 t_liou = @elapsed sols_m2 = TP.solve(
-    prob_m2, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+    prob_m2, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles_m2, seed
 );
 
@@ -208,7 +208,6 @@ function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
     sols = TP.solve(
         prob, Boris(), EnsembleThreads(); dt = -dt,
         trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
-        savestepinterval = 1,
         isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
             u[1] > x_source[1] + 100.0e3
     )
@@ -436,7 +435,7 @@ function run_mc_N(N, rseed)
     u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func)
     sols = TP.solve(
-        prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+        prob, Boris(), EnsembleThreads(); dt,
         trajectories = N, seed = rseed
     )
     return reconstruct_mc_projections(sols, detector_down, n0, 20.0)

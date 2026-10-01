@@ -36,7 +36,7 @@ v0 = [1.0e5, 0.0, 0.0]
 stateinit = [x0..., v0...]
 tspan = (0.0, 1.0e-3)
 dt = 1.0e-9
-savestepinterval = 10000
+saveat = 10000 * dt
 
 function make_prob(param, stateinit, tspan)
     function prob_func(prob, ctx)
@@ -65,7 +65,7 @@ for nw in proc_counts
         # Warmup
         TestParticle.solve(
             prob, Boris(), EnsembleDistributed();
-            trajectories = 10, dt, savestepinterval, batch_size = 1
+            trajectories = 10, dt, saveat, batch_size = 1
         )
 
         # Timed samples
@@ -73,7 +73,7 @@ for nw in proc_counts
         for _ in 1:N_SAMPLES
             t = @elapsed TestParticle.solve(
                 prob, Boris(), EnsembleDistributed();
-                trajectories = N_PARTICLES, dt, savestepinterval,
+                trajectories = N_PARTICLES, dt, saveat,
                 batch_size = max(1, N_PARTICLES ÷ nw)
             )
             push!(sample_times, t)

@@ -184,7 +184,7 @@ end
         n = 50000
         prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_mc)
         sols = TP.solve(
-            prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+            prob, Boris(), EnsembleThreads(); dt,
             trajectories = n, seed = 42
         )
         vxi = [s.u[1][4] for s in sols.u]
@@ -207,7 +207,7 @@ end
         n = 50000
         prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_liouville)
         sols = TP.solve(
-            prob, Boris(), EnsembleThreads(); dt, savestepinterval = 1,
+            prob, Boris(), EnsembleThreads(); dt,
             trajectories = n, seed = 42
         )
         ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
@@ -234,7 +234,6 @@ end
         prob = vdf_grid_problem(v, v, v, SA[x_detector, 0.0, 0.0], param, (0.0, -8.0))
         sols = TP.solve(
             prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = prod(dims),
-            savestepinterval = 1,
             isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
                 u[1] > x_source[1] + 1.0e5
         )

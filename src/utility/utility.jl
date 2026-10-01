@@ -639,9 +639,12 @@ end
 """
     TerminateOutside(isoutofdomain)
 
-Create a `DiscreteCallback` that terminates the simulation if `isoutofdomain(u, p, t)` is true.
-This is a helper to replace the legacy `isoutofdomain` keyword.
+Create a `DiscreteCallback` that terminates the simulation if
+`isoutofdomain(u, p, t)` is true. The condition follows the same `(u, p, t)`
+convention as the `isoutside` keyword, and is adapted here to the
+`(u, t, integrator)` signature that SciML callbacks use.
 """
 function TerminateOutside(isoutofdomain)
-    return DiscreteCallback(isoutofdomain, terminate!)
+    condition = (u, t, integrator) -> isoutofdomain(u, integrator.p, t)
+    return DiscreteCallback(condition, terminate!)
 end

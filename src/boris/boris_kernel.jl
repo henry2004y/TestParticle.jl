@@ -129,7 +129,7 @@ end
 
 @inbounds function _solve_serial(
         prob::TraceProblem, backend::Backend, irange;
-        dt::AbstractFloat, savestepinterval::Int, save_start::Bool,
+        dt::AbstractFloat, plan, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
@@ -146,6 +146,22 @@ end
     saved_data = [Vector{SVector{6, T}}(undef, nout) for _ in 1:n_particles]
     saved_times = [Vector{typeof(tspan[1] + dt)}(undef, nout) for _ in 1:n_particles]
     iout_counters = zeros(Int, n_particles)
+
+    nsave = length(plan.times)
+    isave = 1
+    # Interpolating inside a step needs both ends of it. The device keeps the
+    # state at the start of the step in `xv_next` after each swap, so the two are
+    # staged through host buffers of their own rather than relying on
+    # `xv_cpu_buffer`, which tracks only the array it was aliased to. Like
+    # `xv_cpu_buffer` they are sized by the whole ensemble and indexed by the
+    # global particle number, because a thread only owns a slice of it.
+    if use_saveat(plan)
+        xv_cpu_prev = zeros(T, size(xv_current))
+        xv_cpu_cur = similar(xv_cpu_prev)
+    else
+        xv_cpu_prev = Matrix{T}(undef, 0, 0)
+        xv_cpu_cur = Matrix{T}(undef, 0, 0)
+    end
 
     if save_start
         if !is_cpu_accessible
@@ -177,7 +193,42 @@ end
 
         xv_current, xv_next = xv_next, xv_current
 
-        if save_everystep && it % savestepinterval == 0
+        if use_saveat(plan)
+            t_current = tspan[1] + it * dt
+            if isave <= nsave && _saveat_reached(plan.times[isave], t_current, plan.dir)
+                # The device copies are made once per event rather than per step,
+                # so their cost stays proportional to the number of samples.
+                copyto!(xv_cpu_prev, xv_next)
+                copyto!(xv_cpu_cur, xv_current)
+
+                t_prev = t_current - dt
+                qdt_2m_half = q2m * 0.5 * (0.5 * dt)
+
+                while isave <= nsave &&
+                        _saveat_reached(plan.times[isave], t_current, plan.dir)
+                    t_target = plan.times[isave]
+                    for (local_i, i) in enumerate(irange)
+                        if iout_counters[local_i] < nout
+                            iout_counters[local_i] += 1
+                            y_prev = _leapfrog_to_output(
+                                @view(xv_cpu_prev[:, i]), Efunc, Bfunc, t_prev,
+                                qdt_2m_half
+                            )
+                            y_cur = _leapfrog_to_output(
+                                @view(xv_cpu_cur[:, i]), Efunc, Bfunc, t_current,
+                                qdt_2m_half
+                            )
+                            saved_data[local_i][iout_counters[local_i]] =
+                                _saveat_interpolate(
+                                t_prev, y_prev, t_current, y_cur, t_target
+                            )
+                            saved_times[local_i][iout_counters[local_i]] = t_target
+                        end
+                    end
+                    isave += 1
+                end
+            end
+        elseif save_everystep
             if !is_cpu_accessible
                 copyto!(xv_cpu_buffer, xv_current)
             end
@@ -237,7 +288,7 @@ end
 
 function _prepare_boris_solve(
         prob::TraceProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
-        savestepinterval::Int, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
+        plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
     q2m, _, Efunc, Bfunc, _ = p
@@ -257,14 +308,14 @@ function _prepare_boris_solve(
         throw(ArgumentError("number of iterations nt ($nt) exceeds maxiters ($maxiters)"))
     end
 
-    nout = 0
-    if save_start
-        nout += 1
-    end
-    if save_everystep
-        steps = nt ÷ savestepinterval
-        last_is_step = (nt > 0) && (nt % savestepinterval == 0)
-        nout += steps
+    nout = save_start ? 1 : 0
+
+    if use_saveat(plan)
+        # One slot per requested time, plus the end of the run.
+        nout += length(plan.times) + (save_end ? 1 : 0)
+    elseif save_everystep
+        last_is_step = nt > 0
+        nout += nt
         if !save_end && last_is_step
             nout -= 1
         end
@@ -310,22 +361,27 @@ function _prepare_boris_solve(
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris{false}, backend::Backend, ::EnsembleSerial;
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleSerial;
+        dt::AbstractFloat, trajectories::Int = 1,
+        saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
+    )
+    plan = SavingPlan(
+        saveat, prob.tspan, _span_direction(prob.tspan),
+        typeof(prob.tspan[1] + dt)
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, savestepinterval,
+        prob, backend, trajectories, dt, plan,
         save_start, save_end, save_everystep, maxiters
     )
 
     elapsed_time = @elapsed sols = _solve_serial(
         prob, backend, 1:trajectories;
-        dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
+        dt, plan, save_start, save_end, save_everystep, workgroup_size,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
     )
@@ -334,16 +390,21 @@ end
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris{false}, backend::Backend, ::EnsembleThreads;
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleThreads;
+        dt::AbstractFloat, trajectories::Int = 1,
+        saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
+    )
+    plan = SavingPlan(
+        saveat, prob.tspan, _span_direction(prob.tspan),
+        typeof(prob.tspan[1] + dt)
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
         Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, savestepinterval,
+        prob, backend, trajectories, dt, plan,
         save_start, save_end, save_everystep, maxiters
     )
 
@@ -355,7 +416,7 @@ end
     elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         chunk_sols = _solve_serial(
             prob, backend, irange;
-            dt, savestepinterval, save_start, save_end, save_everystep, workgroup_size,
+            dt, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
             Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
         )
@@ -368,15 +429,16 @@ end
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris{false}, backend::Backend,
+        prob::TraceProblem, alg::Boris, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        dt::AbstractFloat, trajectories::Int = 1, savestepinterval::Int = 1,
+        dt::AbstractFloat, trajectories::Int = 1,
+        saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
     return solve(
         prob, alg, backend, ensemblealg;
-        dt, trajectories, savestepinterval, save_start, save_end, save_everystep,
-        workgroup_size, maxiters
+        dt, trajectories, saveat, save_start, save_end,
+        save_everystep, workgroup_size, maxiters
     )
 end

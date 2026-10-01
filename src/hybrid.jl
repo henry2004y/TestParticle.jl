@@ -123,15 +123,19 @@ end
 @inline function solve(
         prob::TraceHybridProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
-        trajectories::Int = 1, savestepinterval::Int = 1,
+        trajectories::Int = 1,
+        saveat = (),
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true,
         save_everystep::Bool = true, verbose::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
+    plan = SavingPlan(
+        saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
+    )
     return _solve(
         ensemblealg, prob, trajectories, alg,
-        savestepinterval, isoutside,
+        plan, isoutside,
         save_start, save_end, save_everystep, verbose, seed
     )
 end
@@ -139,7 +143,7 @@ end
 @inline function _solve(
         ::EnsembleSerial, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
-        savestepinterval, isoutside::F,
+        plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
@@ -148,7 +152,7 @@ end
     irange = 1:trajectories
 
     elapsed_time = @elapsed _hybrid_adaptive!(
-        sols, prob, irange, alg, savestepinterval,
+        sols, prob, irange, alg, plan,
         isoutside, save_start, save_end, save_everystep, verbose, seed
     )
 
@@ -158,7 +162,7 @@ end
 @inline function _solve(
         ::EnsembleThreads, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
-        savestepinterval, isoutside::F,
+        plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
@@ -168,7 +172,7 @@ end
     nchunks = Threads.nthreads()
     elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
         _hybrid_adaptive!(
-            sols, prob, irange, alg, savestepinterval,
+            sols, prob, irange, alg, plan,
             isoutside, save_start, save_end,
             save_everystep, verbose, seed
         )
@@ -231,9 +235,38 @@ end
     return clamp(dt, alg.dtmin, alg.dtmax)
 end
 
+"""
+    _hybrid_save!(traj, tsave, plan, isave, t_last, y_last, t_out, y_out)
+
+Record an output sample `(t_out, y_out)`. With `saveat` in force the sample is
+kept only as the right-hand side of the interpolation, and every requested time
+it has passed is reported in between, so the integration itself is untouched.
+Otherwise the sample is appended as it is.
+
+Returns the updated cursor and previous sample.
+"""
+@inline function _hybrid_save!(
+        traj, tsave, plan, isave, t_last, y_last, t_out, y_out
+    )
+    if use_saveat(plan)
+        nsave = length(plan.times)
+        while isave <= nsave && _saveat_reached(plan.times[isave], t_out, plan.dir)
+            t_target = plan.times[isave]
+            push!(traj, _saveat_interpolate(t_last, y_last, t_out, y_out, t_target))
+            push!(tsave, t_target)
+            isave += 1
+        end
+    else
+        push!(traj, y_out)
+        push!(tsave, t_out)
+    end
+
+    return isave, t_out, y_out
+end
+
 @inline function _hybrid_adaptive!(
         sols, prob::TraceHybridProblem, irange, alg,
-        savestepinterval, isoutside::F,
+        plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     (; tspan, p, u0) = prob
@@ -308,6 +341,13 @@ end
             push!(tsave, t)
         end
 
+        # Output samples for `saveat`. Interpolation needs the previous sample,
+        # and the state at the start of the span is the full-orbit one either way.
+        nsave = length(plan.times)
+        isave = 1
+        t_last = tspan[1]
+        y_last = SVector{6, T}(new_prob.u0)
+
         steps = 0
         it = 1
         while t < tspan[2] && steps < alg.maxiters
@@ -369,12 +409,11 @@ end
                     Bmag_step = norm(Bfunc(get_x(xv_gc), t))
                     phase = mod2pi(phase - dt * (q2m * Bmag_step))
 
-                    if save_everystep && (it % savestepinterval == 0)
-                        push!(
-                            traj,
-                            _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                    if use_saveat(plan) || save_everystep
+                        y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                        isave, t_last, y_last = _hybrid_save!(
+                            traj, tsave, plan, isave, t_last, y_last, t, y_out
                         )
-                        push!(tsave, t)
                     end
                     steps += 1
                     it += 1
@@ -434,10 +473,11 @@ end
                     break
                 end
 
-                if save_everystep && (it - 1) > 0 && (it - 1) % savestepinterval == 0
+                if use_saveat(plan) || (save_everystep && (it - 1) > 0)
                     v_save = update_velocity(v_prev, r, 0.5 * dt, t, p)
-                    push!(traj, vcat(r, v_save))
-                    push!(tsave, t)
+                    isave, t_last, y_last = _hybrid_save!(
+                        traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)
+                    )
                 end
 
                 r = r_next
