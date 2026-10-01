@@ -18,112 +18,115 @@ end
 # Fallback for ZeroField
 adapt_field_to_gpu(field::ZeroField, backend::Backend) = field
 
+# The solvers the device can run. A kernel takes one step at a time under a step
+# size fixed for the whole ensemble, so only those are candidates; the adaptive
+# ones decide their own step on the host, once per step for every trajectory,
+# which is the SciML loop's job.
+const GPUBorisAlgorithm = Union{Boris, MultistepBoris}
 
-@inline function get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
-    r_vec = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
-    v_vec = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
-    # Evaluate fields directly
-    E_val = Efunc(r_vec, t)
-    B_val = Bfunc(r_vec, t)
+# What reaches the device is a parameter container, not the fields on their own,
+# so that the kernel can call the same step functions the CPU solvers call and
+# reach the fields the same way, through get_q2m, get_EField and get_BField. The
+# layout is the one those accessors assume, `(q2m, m, E, B, ...)`, and it is built
+# once on the host with the adapted fields.
 
-    qdt_2m = q2m * 0.5 * dt
+@inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
+    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
+    v_half = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
-    v_new = boris_velocity_update(v_vec, E_val, B_val, qdt_2m)
+    r_new, v_half_new = boris_advance(v_half, r, dt, t, p, alg)
 
-    return v_new
+    # Scalar write for GPU compatibility
+    xv_out[1, i] = r_new[1]
+    xv_out[2, i] = r_new[2]
+    xv_out[3, i] = r_new[3]
+    xv_out[4, i] = v_half_new[1]
+    xv_out[5, i] = v_half_new[2]
+    xv_out[6, i] = v_half_new[3]
+
+    return
 end
 
-@inline @muladd function boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
-    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
-    # Scalar write for GPU compatibility
-    xv_out[1, i] = xv_in[1, i] + v_new[1] * dt
-    xv_out[2, i] = xv_in[2, i] + v_new[2] * dt
-    xv_out[3, i] = xv_in[3, i] + v_new[3] * dt
-    xv_out[4, i] = v_new[1]
-    xv_out[5, i] = v_new[2]
-    xv_out[6, i] = v_new[3]
+@inline function boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
+    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
+    v = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
+
+    v_half = boris_half_velocity(v, r, dt, t, p, alg)
+
+    xv_out[4, i] = v_half[1]
+    xv_out[5, i] = v_half[2]
+    xv_out[6, i] = v_half[3]
 
     return
 end
 
 @kernel function boris_velocity_kernel!(
-        xv_out, @Const(xv_in), @Const(q2m), @Const(dt), Efunc, Bfunc,
-        @Const(t), @Const(offset)
+        xv_out, @Const(xv_in), p, @Const(dt), @Const(t), @Const(offset), @Const(alg)
     )
     i = @index(Global) + offset
-    v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
-    # Scalar write for GPU compatibility
-    xv_out[4, i] = v_new[1]
-    xv_out[5, i] = v_new[2]
-    xv_out[6, i] = v_new[3]
+    boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
 end
 
 @kernel function boris_update_kernel!(
-        @Const(xv_in), xv_out, @Const(q2m), @Const(dt), Efunc, Bfunc,
-        @Const(t), @Const(offset)
+        @Const(xv_in), xv_out, p, @Const(dt), @Const(t), @Const(offset), @Const(alg)
     )
     i = @index(Global) + offset
-    boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+    boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
 end
 
 @inline function boris_step!(
-        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+        backend::Backend, xv_in, xv_out, p, dt, t, irange, workgroup_size, alg
     )
     offset = irange.start - 1
     n_particles = length(irange)
     kernel! = boris_update_kernel!(backend, workgroup_size)
-    kernel!(xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
+    kernel!(xv_in, xv_out, p, dt, t, offset, alg; ndrange = n_particles)
     synchronize(backend)
     return
 end
 
-@inline function boris_step!(
-        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
-    )
+@inline function boris_step!(::CPU, xv_in, xv_out, p, dt, t, irange, workgroup_size, alg)
     @inbounds for i in irange
-        boris_update_xv!(i, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t)
+        boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
     end
     return
 end
 
 @inline function boris_velocity_step!(
-        backend::Backend, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+        backend::Backend, xv_in, xv_out, p, dt, t, irange, workgroup_size, alg
     )
     offset = irange.start - 1
     n_particles = length(irange)
     kernel! = boris_velocity_kernel!(backend, workgroup_size)
-    kernel!(xv_out, xv_in, q2m, dt, Efunc, Bfunc, t, offset; ndrange = n_particles)
+    kernel!(xv_out, xv_in, p, dt, t, offset, alg; ndrange = n_particles)
     synchronize(backend)
     return
 end
 
 @inline function boris_velocity_step!(
-        ::CPU, xv_in, xv_out, q2m, dt, Efunc, Bfunc, t, irange, workgroup_size
+        ::CPU, xv_in, xv_out, p, dt, t, irange, workgroup_size, alg
     )
     @inbounds for i in irange
-        v_new = get_boris_velocity(i, xv_in, q2m, dt, Efunc, Bfunc, t)
-        xv_out[4, i] = v_new[1]
-        xv_out[5, i] = v_new[2]
-        xv_out[6, i] = v_new[3]
+        boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
     end
     return
 end
 
-@inline function _leapfrog_to_output(xv, Efunc, Bfunc, t, qdt_2m_half)
+"""
+    boris_output_state(xv, p, dt, t, alg)
+
+The state worth reporting for column `xv` of a device array: the position as it
+stands together with the velocity synchronised to it. Synchronising costs a
+field evaluation, which is why the driver asks for it only at the times it saves
+rather than every step.
+"""
+@inline function boris_output_state(xv, p, dt, t, alg)
     T = eltype(xv)
-    # Extract position and velocity (v^{n-1/2})
-    r_vec = SVector{3, T}(xv[1], xv[2], xv[3])
-    v_vec = SVector{3, T}(xv[4], xv[5], xv[6])
+    r = SVector{3, T}(xv[1], xv[2], xv[3])
+    v_half = SVector{3, T}(xv[4], xv[5], xv[6])
 
-    # Evaluate fields at current position and time
-    E_val = Efunc(r_vec, t)
-    B_val = Bfunc(r_vec, t)
-
-    # Correct velocity to v^n using half-step push
-    v_n = boris_velocity_update(v_vec, E_val, B_val, qdt_2m_half)
-
-    return vcat(r_vec, v_n)
+    return vcat(r, boris_node_velocity(v_half, r, dt, t, p, alg))
 end
 
 
@@ -132,10 +135,9 @@ end
         dt::AbstractFloat, plan, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
+        p_gpu, p_host, alg, nout, nt
     )
-    (; tspan, p) = prob
-    q2m, _, _, _, _ = p
+    (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
 
@@ -179,16 +181,14 @@ end
     end
 
     boris_velocity_step!(
-        backend, xv_current, xv_current, q2m, -0.5 * dt,
-        Efunc_gpu, Bfunc_gpu, tspan[1], irange, workgroup_size
+        backend, xv_current, xv_current, p_gpu, dt, tspan[1], irange, workgroup_size, alg
     )
 
     for it in 1:nt
         t = tspan[1] + (it - 0.5) * dt
 
         boris_step!(
-            backend, xv_current, xv_next, q2m, dt,
-            Efunc_gpu, Bfunc_gpu, t, irange, workgroup_size
+            backend, xv_current, xv_next, p_gpu, dt, t, irange, workgroup_size, alg
         )
 
         xv_current, xv_next = xv_next, xv_current
@@ -202,7 +202,6 @@ end
                 copyto!(xv_cpu_cur, xv_current)
 
                 t_prev = t_current - dt
-                qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
                 while isave <= nsave &&
                         _saveat_reached(plan.times[isave], t_current, plan.dir)
@@ -210,13 +209,11 @@ end
                     for (local_i, i) in enumerate(irange)
                         if iout_counters[local_i] < nout
                             iout_counters[local_i] += 1
-                            y_prev = _leapfrog_to_output(
-                                @view(xv_cpu_prev[:, i]), Efunc, Bfunc, t_prev,
-                                qdt_2m_half
+                            y_prev = boris_output_state(
+                                @view(xv_cpu_prev[:, i]), p_host, dt, t_prev, alg
                             )
-                            y_cur = _leapfrog_to_output(
-                                @view(xv_cpu_cur[:, i]), Efunc, Bfunc, t_current,
-                                qdt_2m_half
+                            y_cur = boris_output_state(
+                                @view(xv_cpu_cur[:, i]), p_host, dt, t_current, alg
                             )
                             saved_data[local_i][iout_counters[local_i]] =
                                 _saveat_interpolate(
@@ -234,13 +231,12 @@ end
             end
 
             t_current = tspan[1] + it * dt
-            qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
             for (local_i, i) in enumerate(irange)
                 if iout_counters[local_i] < nout
                     iout_counters[local_i] += 1
-                    saved_data[local_i][iout_counters[local_i]] = _leapfrog_to_output(
-                        @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                    saved_data[local_i][iout_counters[local_i]] = boris_output_state(
+                        @view(xv_cpu_buffer[:, i]), p_host, dt, t_current, alg
                     )
                     saved_times[local_i][iout_counters[local_i]] = t_current
                 end
@@ -253,13 +249,12 @@ end
             copyto!(xv_cpu_buffer, xv_current)
         end
         t_current = tspan[2]
-        qdt_2m_half = q2m * 0.5 * (0.5 * dt)
 
         for (local_i, i) in enumerate(irange)
             if iout_counters[local_i] < nout
                 iout_counters[local_i] += 1
-                saved_data[local_i][iout_counters[local_i]] = _leapfrog_to_output(
-                    @view(xv_cpu_buffer[:, i]), Efunc, Bfunc, t_current, qdt_2m_half
+                saved_data[local_i][iout_counters[local_i]] = boris_output_state(
+                    @view(xv_cpu_buffer[:, i]), p_host, dt, t_current, alg
                 )
                 saved_times[local_i][iout_counters[local_i]] = t_current
             end
@@ -291,7 +286,7 @@ function _prepare_boris_solve(
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
-    q2m, _, Efunc, Bfunc, _ = p
+    q2m, m, Efunc, Bfunc, _ = p
     T = eltype(u0)
 
     if abs(dt) < 10 * eps(typeof(dt))
@@ -354,14 +349,20 @@ function _prepare_boris_solve(
         xv_cpu_buffer = zeros(T, 6, n_particles)
     end
 
+    # One container per side: the device reads the adapted fields, the host the
+    # original ones, since a state is synchronised for output after it is copied
+    # back. Both answer get_q2m, get_EField and get_BField.
+    p_gpu = (q2m, m, Efunc_gpu, Bfunc_gpu)
+    p_host = (q2m, m, Efunc, Bfunc)
+
     return (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, q2m, tspan, p, u0, T,
+        p_gpu, p_host, tspan, u0, T,
     )
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleSerial;
+        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend, ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
@@ -373,7 +374,7 @@ end
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc,
+        p_gpu, p_host,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, plan,
         save_start, save_end, save_everystep, maxiters
@@ -383,14 +384,14 @@ end
         prob, backend, 1:trajectories;
         dt, plan, save_start, save_end, save_everystep, workgroup_size,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
+        p_gpu, p_host, alg, nout, nt
     )
 
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend, ::EnsembleThreads;
+        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend, ::EnsembleThreads;
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
@@ -402,7 +403,7 @@ end
     )
     (;
         nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, tspan, u0, T,
+        p_gpu, p_host, tspan, u0, T,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt, plan,
         save_start, save_end, save_everystep, maxiters
@@ -418,7 +419,7 @@ end
             prob, backend, irange;
             dt, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-            Efunc_gpu, Bfunc_gpu, Efunc, Bfunc, nout, nt
+            p_gpu, p_host, alg, nout, nt
         )
         for (local_i, i) in enumerate(irange)
             sols[i] = chunk_sols[local_i]
@@ -429,7 +430,7 @@ end
 end
 
 @inbounds function solve(
-        prob::TraceProblem, alg::Boris, backend::Backend,
+        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
@@ -440,5 +441,17 @@ end
         prob, alg, backend, ensemblealg;
         dt, trajectories, saveat, save_start, save_end,
         save_everystep, workgroup_size, maxiters
+    )
+end
+
+function solve(
+        prob::TraceProblem, alg::AbstractBoris, backend::Backend, args...; kwargs...
+    )
+    supported = "Boris() and MultistepBoris{N}(; n)"
+    throw(
+        ArgumentError(
+            "$alg has no GPU path, because it chooses its own time step. Solve it on " *
+            "the CPU, `solve(prob, alg)`, or pick a fixed step solver, one of $supported."
+        )
     )
 end
