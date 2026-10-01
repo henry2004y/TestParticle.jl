@@ -2,6 +2,7 @@ module OrdinaryDiffEqBoris
 
 using Reexport
 @reexport using SciMLBase
+import OrdinaryDiffEqCore
 import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgorithm,
     OrdinaryDiffEqMutableCache, OrdinaryDiffEqConstantCache,
     AbstractController, AbstractControllerCache,
@@ -22,6 +23,7 @@ include("boris_caches.jl")
 include("dense_output.jl")
 include("boris_step.jl")
 include("boris_perform_step.jl")
+include("boris_solve.jl")
 
 export Boris, AdaptiveBoris
 export MultistepBoris, MultistepBoris2, MultistepBoris4, MultistepBoris6
