@@ -19,6 +19,7 @@ include("parameters.jl")
 include("boris_controller.jl")
 include("boris_caches.jl")
 include("dense_output.jl")
+include("boris_step.jl")
 include("boris_perform_step.jl")
 
 export Boris, AdaptiveBoris
@@ -27,5 +28,6 @@ export AdaptiveMultistepBoris
 export AbstractBoris
 export get_q2m, get_EField, get_BField
 export boris_velocity_update, update_velocity_multistep, velocity_update
+export boris_advance, boris_node_velocity, boris_half_velocity, boris_resync_velocity
 
 end

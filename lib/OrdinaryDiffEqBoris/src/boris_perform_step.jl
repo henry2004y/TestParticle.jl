@@ -112,7 +112,7 @@ end
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    cache.v_half = velocity_update(v, r, -0.5 * dt, t, p, integrator.alg)
+    cache.v_half = boris_half_velocity(v, r, dt, t, p, integrator.alg)
     cache.dt_prev = dt
 
     integrator.kshortsize = 0
@@ -129,14 +129,14 @@ end
     uprev = integrator.uprev
     r = SVector(uprev[1], uprev[2], uprev[3])
 
-    if cache.dt_prev != dt
-        v_node = velocity_update(cache.v_half, r, 0.5 * cache.dt_prev, t, p, alg)
-        cache.v_half = velocity_update(v_node, r, -0.5 * dt, t, p, alg)
+    v_half_prev = if cache.dt_prev == dt
+        cache.v_half
+    else
+        boris_resync_velocity(cache.v_half, r, cache.dt_prev, dt, t, p, alg)
     end
 
-    v_half = velocity_update(cache.v_half, r, dt, t + 0.5 * dt, p, alg)
-    r_new = r + v_half * dt
-    v_new = velocity_update(v_half, r_new, 0.5 * dt, t + dt, p, alg)
+    r_new, v_half = boris_advance(v_half_prev, r, dt, t, p, alg)
+    v_new = boris_node_velocity(v_half, r_new, dt, t + dt, p, alg)
 
     cache.v_half = v_half
     cache.dt_prev = dt
