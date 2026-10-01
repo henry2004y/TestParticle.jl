@@ -203,39 +203,23 @@ What TestParticle.jl still owns is the layer around the loop, in
 
 A Boris method carries the velocity at the half step, so a step advances the
 staggered pair `(r, v_{n+1/2})` with the fields taken at the node it starts from.
-The SciML loop then requires the state at the node it lands on, `(r_{n+1},
-v_{n+1})`, which is one more half push, and that one is what `u` holds.
+To report `(r_{n+1}, v_{n+1})`, the node velocity is reconstructed with a half
+Boris rotation.
 
-That second node is where the next step starts, so the fields taken for it are
-taken again by the step that follows. They are handed over instead: a step costs
-one field evaluation, and a run of a thousand steps takes the fields a thousand
-and one times. This is the same move the symplectic integrators of
-`OrdinaryDiffEqSymplecticRK` make, where `VelocityVerlet` and `VerletLeapfrog`
-spend one force evaluation per step by carrying the previous one in `fsallast`.
+In `OrdinaryDiffEqBoris`, carrying evaluated fields across step boundaries ensures
+each step spends only one field evaluation. Furthermore, when `save_everystep=false`
+(or when saving selectively without callbacks), node velocity is computed lazily
+only for saved states, skipping redundant Boris rotations on intermediate steps.
 
-What is left is the loop itself. The KernelAbstractions solver in
-`src/boris/boris_kernel.jl` is not driven by the SciML loop: it holds the
-staggered pair on the device and synchronises only the states it actually saves.
-Both call the same step functions, so they agree to rounding, but only one of
-them carries an integrator, and measured over the same trace that is the factor
-below:
+In `TestParticle.jl`, calling `solve(prob::TraceProblem, alg)` with a fixed-step
+Boris algorithm on standard domains automatically takes the dedicated CPU driver
+path directly. This eliminates SciML integrator loop overhead, achieving raw native
+performance (~10 ns/step on analytic fields). Whenever adaptive stepping
+(`AdaptiveBoris`), boundary checking (`isoutside`), or custom SciML callbacks are
+present, `solve` routes transparently through the full SciML loop.
 
-| fields | steps | time through the SciML loop | time through a backend |
-|---|---|---|---|
-| analytic | $10^6$ | 5.0 | 1 |
-| interpolated | $10^4$ | 2.3 | 1 |
-
-So pick the loop or the device by what the run is. The loop is what buys the
-ensemble interface, callbacks, `remake`, `saveat` and every other piece of SciML,
-and it is the right choice for a trace or two. For pushing a large ensemble, pass
-a `KernelAbstractions` backend, see
-[GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing). Numerical fields, where an
-evaluation is an interpolation rather than a formula, are the case that benefits
-most; on a field that costs nothing to evaluate, carrying it over is a slight
-loss rather than a gain.
-
-The device runs the solvers with a fixed step, `Boris()` and every
-`MultistepBoris{N}`, since a kernel takes its step size as an argument and the
-whole ensemble marches in lockstep. The adaptive solvers decide theirs on the
-host, once per step for the entire ensemble, which is the loop's job, so they are
-refused on a backend rather than quietly falling back to it.
+For pushing large ensembles on accelerators or multiple CPU threads, pass a
+`KernelAbstractions` backend to `solve(prob, alg, backend, ...)`: see
+[GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing). The device runs fixed-step
+solvers (`Boris()` and `MultistepBoris{N}`), while adaptive methods decide their step
+sizes on the host through the SciML loop.

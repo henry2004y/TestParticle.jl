@@ -6,6 +6,12 @@
 Adapt interpolation fields to GPU memory using Adapt.jl.
 Analytic functions are returned unchanged.
 """
+adapt_field_to_gpu(field, ::CPU) = field
+adapt_field_to_gpu(field::Field, ::CPU) = field
+adapt_field_to_gpu(field::ZeroField, ::CPU) = field
+adapt_field_to_gpu(field::ZeroField, ::Backend) = field
+adapt_field_to_gpu(field, backend::Backend) = Adapt.adapt(backend, field)
+
 function adapt_field_to_gpu(field::Field, backend::Backend)
     backend isa CPU && return field
 
@@ -14,9 +20,6 @@ function adapt_field_to_gpu(field::Field, backend::Backend)
 
     return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
 end
-
-# Fallback for ZeroField
-adapt_field_to_gpu(field::ZeroField, backend::Backend) = field
 
 # The solvers the device can run. A kernel takes one step at a time under a step
 # size fixed for the whole ensemble, so only those are candidates; the adaptive
@@ -140,13 +143,14 @@ end
     (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
+    time_type = typeof(tspan[1] + dt)
 
     sols = Vector{
-        typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(prob.u0)])),
+        typeof(build_solution(prob, alg, [time_type(tspan[1])], [SVector{6, T}(prob.u0)])),
     }(undef, n_particles)
 
     saved_data = [Vector{SVector{6, T}}(undef, nout) for _ in 1:n_particles]
-    saved_times = [Vector{typeof(tspan[1] + dt)}(undef, nout) for _ in 1:n_particles]
+    saved_times = [Vector{time_type}(undef, nout) for _ in 1:n_particles]
     iout_counters = zeros(Int, n_particles)
 
     nsave = length(plan.times)
@@ -176,7 +180,7 @@ end
                 xv_cpu_buffer[1, i], xv_cpu_buffer[2, i], xv_cpu_buffer[3, i],
                 xv_cpu_buffer[4, i], xv_cpu_buffer[5, i], xv_cpu_buffer[6, i]
             )
-            saved_times[local_i][iout_counters[local_i]] = tspan[1]
+            saved_times[local_i][iout_counters[local_i]] = time_type(tspan[1])
         end
     end
 
@@ -226,8 +230,11 @@ end
                 end
             end
         elseif save_everystep
-            if !is_cpu_accessible
+            buf = if is_cpu_accessible
+                xv_current
+            else
                 copyto!(xv_cpu_buffer, xv_current)
+                xv_cpu_buffer
             end
 
             t_current = tspan[1] + it * dt
@@ -236,7 +243,7 @@ end
                 if iout_counters[local_i] < nout
                     iout_counters[local_i] += 1
                     saved_data[local_i][iout_counters[local_i]] = boris_output_state(
-                        @view(xv_cpu_buffer[:, i]), p_host, dt, t_current, alg
+                        @view(buf[:, i]), p_host, dt, t_current, alg
                     )
                     saved_times[local_i][iout_counters[local_i]] = t_current
                 end
@@ -245,16 +252,19 @@ end
     end
 
     if save_end
-        if !is_cpu_accessible
+        buf = if is_cpu_accessible
+            xv_current
+        else
             copyto!(xv_cpu_buffer, xv_current)
+            xv_cpu_buffer
         end
-        t_current = tspan[2]
+        t_current = time_type(tspan[2])
 
         for (local_i, i) in enumerate(irange)
             if iout_counters[local_i] < nout
                 iout_counters[local_i] += 1
                 saved_data[local_i][iout_counters[local_i]] = boris_output_state(
-                    @view(xv_cpu_buffer[:, i]), p_host, dt, t_current, alg
+                    @view(buf[:, i]), p_host, dt, t_current, alg
                 )
                 saved_times[local_i][iout_counters[local_i]] = t_current
             end
@@ -273,7 +283,7 @@ end
 
         interp = LinearInterpolation(saved_times[local_i], saved_data[local_i])
         sols[local_i] = build_solution(
-            prob, :boris, saved_times[local_i], saved_data[local_i];
+            prob, alg, saved_times[local_i], saved_data[local_i];
             interp, retcode, stats = nothing
         )
     end
@@ -286,7 +296,8 @@ function _prepare_boris_solve(
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
-    q2m, m, Efunc, Bfunc, _ = p
+    q2m, m = get_q2m(p), p[2]
+    Efunc, Bfunc = get_EField(p), get_BField(p)
     T = eltype(u0)
 
     if abs(dt) < 10 * eps(typeof(dt))
@@ -334,8 +345,12 @@ function _prepare_boris_solve(
     end
 
     for i in 1:n_particles
-        new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
-        u0_i = new_prob.u0
+        u0_i = if n_particles == 1
+            prob.u0
+        else
+            new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
+            new_prob.u0
+        end
         xv_init[:, i] .= u0_i
     end
 
@@ -409,8 +424,9 @@ end
         save_start, save_end, save_everystep, maxiters
     )
 
+    time_type = typeof(tspan[1] + dt)
     sols = Vector{
-        typeof(build_solution(prob, :boris, [tspan[1]], [SVector{6, T}(u0)])),
+        typeof(build_solution(prob, alg, [time_type(tspan[1])], [SVector{6, T}(u0)])),
     }(undef, trajectories)
 
     nchunks = Threads.nthreads()
