@@ -318,7 +318,7 @@ end
         else
             mode = :FO
             dt = _fo_dt(alg, q2m, Bfunc, r, t)
-            v = update_velocity(v, r, -0.5 * dt, t, p)
+            v = velocity_update(v, r, -0.5 * dt, t, p, Boris())
             verbose && @info "Initial mode: FO" ϵ t
         end
         if alg.save_adiabaticity
@@ -375,7 +375,7 @@ end
                         v = xv_fo[SVector(4, 5, 6)]
 
                         dt = _fo_dt(alg, q2m, Bfunc, r, t)
-                        v = update_velocity(v, r, -0.5 * dt, t, p)
+                        v = velocity_update(v, r, -0.5 * dt, t, p, Boris())
                         continue
                     end
                 end
@@ -430,7 +430,7 @@ end
                 # synchronized (position, velocity) pair at the integer time `t`.
                 if it % alg.check_interval == 0
                     t_sync = is_td ? t : zero(T)
-                    v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p)
+                    v_sync = velocity_update(v, r, 0.5 * dt, t_sync, p, Boris())
                     xv_sync = vcat(r, v_sync)
                     X_gc, vpar, _, _, μ_fo, phase_fo = _get_gc_parameters(
                         xv_sync, Efunc, Bfunc, q, m, t
@@ -466,7 +466,7 @@ end
                 # One Boris leapfrog step with a fixed dt, identical in
                 # convention to `Boris(dt)` so FO segments match it exactly.
                 v_prev = v
-                v = update_velocity(v, r, dt, t + 0.5 * dt, p)
+                v = velocity_update(v, r, dt, t + 0.5 * dt, p, Boris())
                 r_next = r + v * dt
                 t_next = t + dt
                 if isoutside(vcat(r_next, v), p, t_next)
@@ -474,7 +474,7 @@ end
                 end
 
                 if use_saveat(plan) || (save_everystep && (it - 1) > 0)
-                    v_save = update_velocity(v_prev, r, 0.5 * dt, t, p)
+                    v_save = velocity_update(v_prev, r, 0.5 * dt, t, p, Boris())
                     isave, t_last, y_last = _hybrid_save!(
                         traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)
                     )
@@ -493,7 +493,7 @@ end
                 push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
                 t_final = is_td ? t : zero(T)
-                v_final = update_velocity(v, r, 0.5 * dt, t_final, p)
+                v_final = velocity_update(v, r, 0.5 * dt, t_final, p, Boris())
                 push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)

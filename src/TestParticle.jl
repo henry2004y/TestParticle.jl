@@ -13,7 +13,8 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DiscreteCallback, terminate!, EnsembleContext
 import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6,
-    get_q2m, get_EField, get_BField
+    get_q2m, get_EField, get_BField,
+    boris_velocity_update, update_velocity_multistep, velocity_update
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro

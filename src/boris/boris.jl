@@ -8,39 +8,8 @@ get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
 
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
-"""
-    boris_velocity_update(v, E, B, qdt_2m)
-
-Update velocity using the Boris method, returning the new velocity as an SVector.
-This is the core logic shared between the standard solver and the kernel solver.
-"""
-@inline @muladd function boris_velocity_update(v, E, B, qdt_2m)
-    t_rotate = qdt_2m * B
-    t_mag2 = sum(abs2, t_rotate)
-    s_rotate = 2 * t_rotate / (1 + t_mag2)
-
-    v⁻ = v + qdt_2m * E
-    v′ = v⁻ + (v⁻ × t_rotate)
-    v⁺ = v⁻ + (v′ × s_rotate)
-
-    v_new = v⁺ + qdt_2m * E
-
-    return v_new
-end
-
-"""
-    update_velocity(v, r, dt, t, param)
-
-Update velocity using the Boris method, returning the new velocity as an SVector.
-"""
-@inline @muladd function update_velocity(v, r, dt, t, param)
-    q2m, _, Efunc, Bfunc, _ = param
-    E = Efunc(r, t)
-    B = Bfunc(r, t)
-    qdt_2m = q2m * 0.5 * dt
-
-    return boris_velocity_update(v, E, B, qdt_2m)
-end
+# The Boris velocity update itself lives in OrdinaryDiffEqBoris, which owns the
+# physics; `boris_velocity_update` and `velocity_update` are imported from there.
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
