@@ -146,9 +146,9 @@ function plot_multiple(sol)
 
     axs = [
         Axis(
-                fig[row, col], xlabel = xlabels[row],
-                ylabel = ylabels[row], limits = limits[row]
-            )
+            fig[row, col], xlabel = xlabels[row],
+            ylabel = ylabels[row], limits = limits[row]
+        )
             for row in eachindex(xlabels), col in 1:1
     ]
 

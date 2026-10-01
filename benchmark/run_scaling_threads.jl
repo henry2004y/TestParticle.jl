@@ -31,10 +31,10 @@ for t in threads_to_test
     tspan = (0.0, 1.0e-3); dt = 1.0e-9
     prob_func(prob, ctx) = remake(prob; u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (ctx.sim_id / 1000.0) * 1.0e5, 0.0, 0.0])
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
-    
+
     # Warmup
     TestParticle.solve(prob_multi, Boris(), EnsembleThreads(); trajectories = 10, dt=dt, saveat=10000 * dt)
-    
+
     bench_threads = @benchmark TestParticle.solve(\$prob_multi, Boris(), EnsembleThreads(); trajectories = \$n_particles, dt = \$dt, saveat = 10000 * \$dt) samples=5 seconds=30
     time_s = median(bench_threads).time / 1.0e9
     println("RESULT_TIME_S: \$time_s")
