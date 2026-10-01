@@ -1,18 +1,7 @@
 # Boris integration through the SciML loop. The algorithms live in
 # OrdinaryDiffEqBoris; this file adapts `TraceProblem` and TestParticle's keyword
-# surface to the SciML interface.
-#
-# Only a single trajectory is adapted here. Several of them are a plain SciML
-# ensemble, so threading, batching, seeding and reduction all come from SciML:
-#
-#   solve(EnsembleProblem(prob; prob_func), Boris(), EnsembleThreads();
-#       trajectories, dt)
-#
-# The three-argument form at the bottom is a shorthand that builds that ensemble
-# from the `prob_func` carried by the `TraceProblem`. It has no default
-# `ensemblealg`: a default would generate a two-argument method that clashes
-# with the single trajectory one above, and SciML calls exactly that two-argument
-# form for every trajectory it builds.
+# surface to the SciML interface. Only one trajectory is adapted here: several of
+# them are a SciML `EnsembleProblem`, see the Boris tutorial.
 
 _boris_rhs(u, p, t) = nothing
 

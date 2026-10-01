@@ -136,6 +136,11 @@ sols = TestParticle.solve(prob, Boris(), EnsembleThreads();
 
 `sols.u` is then a vector of `ODESolution`s, one per trajectory.
 
+The ensemble algorithm is a required third argument in the shorter form, because
+`solve(prob, alg)` without one means a single trajectory. It cannot have a
+default either: SciML calls exactly that two-argument form once per trajectory it
+builds, so a default would ask every trajectory to build an ensemble of its own.
+
 ### Saving the Output
 
 Every accepted step is saved by default. To choose the output times explicitly, pass `saveat`, either as a collection of times or as an interval:

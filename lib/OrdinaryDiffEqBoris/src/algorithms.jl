@@ -13,10 +13,20 @@ struct Boris <: OrdinaryDiffEqAlgorithm end
 """
     MultistepBoris{N}(; n=1)
 
-The Multistep/Hyper Boris method of order `N`.
-`n` specifies the number of subcycles.
-`N` specifies the gyrophase correction order. `N=2` corresponds to the
-Multicycle solver, while `N=4` or `N=6` are the Hyper Boris solvers.
+The Boris method with `n` subcycles per step, optionally corrected to order `N`
+([Zenitani & Kato, 2025](https://arxiv.org/abs/2505.02270)).
+
+`n` splits the rotation of one step into `n` smaller rotations while the fields
+are still evaluated once per step. The gyration is then resolved more finely at
+almost no cost, but the order of the method is unchanged.
+
+`N` is the order to which the gyrophase is tracked:
+
+  - `N = 2`: no correction. This is the *multicycle* method, so called because
+    the rotation cycle is repeated `n` times within one step. Second order.
+  - `N = 4`, `N = 6`: the *Hyper Boris* methods, which correct the electric and
+    magnetic terms with the factors `f_N` and `c_N` so that the gyrophase error
+    shrinks as `Δt⁴` and `Δt⁶` instead of `Δt²`.
 
 The time step is fixed and must be supplied with the `dt` keyword.
 """
@@ -51,8 +61,8 @@ AdaptiveBoris(; safety = 0.1) = AdaptiveBoris(safety)
 """
     AdaptiveMultistepBoris{N}(; n=1, safety=0.1)
 
-The Multistep/Hyper Boris method of order `N` with a time step that tracks the
-local gyroperiod, as in `AdaptiveBoris`.
+`MultistepBoris{N}` with a time step that tracks the local gyroperiod, as in
+`AdaptiveBoris`. See `MultistepBoris{N}` for `n` and `N`.
 """
 struct AdaptiveMultistepBoris{N, T} <: OrdinaryDiffEqAdaptiveAlgorithm
     n::Int
@@ -66,20 +76,20 @@ end
 """
     MultistepBoris2(; n=1)
 
-The Multicycle Boris method (MultistepBoris with N=2).
+The multicycle Boris method, `MultistepBoris` with `N = 2`. Second order.
 """
 const MultistepBoris2 = MultistepBoris{2}
 
 """
     MultistepBoris4(; n=1)
 
-The 4th order Hyper Boris method (MultistepBoris with N=4).
+The fourth order Hyper Boris method, `MultistepBoris` with `N = 4`.
 """
 const MultistepBoris4 = MultistepBoris{4}
 
 """
     MultistepBoris6(; n=1)
 
-The 6th order Hyper Boris method (MultistepBoris with N=6).
+The sixth order Hyper Boris method, `MultistepBoris` with `N = 6`.
 """
 const MultistepBoris6 = MultistepBoris{6}
