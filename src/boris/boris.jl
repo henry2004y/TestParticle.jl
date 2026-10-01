@@ -9,7 +9,7 @@ get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 # The Boris velocity update itself lives in OrdinaryDiffEqBoris, which owns the
-# physics; `boris_velocity_update` and `velocity_update` are imported from there.
+# physics; `boris_velocity_update` and `update_velocity` are imported from there.
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv

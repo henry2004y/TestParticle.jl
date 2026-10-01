@@ -85,16 +85,16 @@ end
 end
 
 """
-    velocity_update(v, r, dt, t, p, alg)
+    update_velocity(v, r, dt, t, p, alg)
 
 Advance the velocity `v` by `dt`, evaluating the fields at `(r, t)`.
 """
-@inline @muladd function velocity_update(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
+@inline @muladd function update_velocity(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
     qdt_2m = get_q2m(p) * 0.5 * dt
     return boris_velocity_update(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
 end
 
-@inline @muladd function velocity_update(
+@inline @muladd function update_velocity(
         v, r, dt, t, p, alg::Union{MultistepBoris{N}, AdaptiveMultistepBoris{N}}
     ) where {N}
     return update_velocity_multistep(v, r, dt, t, alg.n, Val{N}(), p)

@@ -22,7 +22,7 @@ is the position at `t + dt` with the velocity half a step ahead of it, which is
 the same staggering as the input and can be fed straight into the next step.
 """
 @inline @muladd function boris_advance(v_half, r, dt, t, p, alg)
-    v_half_new = velocity_update(v_half, r, dt, t + 0.5 * dt, p, alg)
+    v_half_new = update_velocity(v_half, r, dt, t + 0.5 * dt, p, alg)
     r_new = r + v_half_new * dt
 
     return r_new, v_half_new
@@ -39,7 +39,7 @@ field evaluation a step would not otherwise make, so a caller that saves rarely
 should call it rarely.
 """
 @inline function boris_node_velocity(v_half, r, dt, t, p, alg)
-    return velocity_update(v_half, r, 0.5 * dt, t, p, alg)
+    return update_velocity(v_half, r, 0.5 * dt, t, p, alg)
 end
 
 """
@@ -50,7 +50,7 @@ the integration carries. This is how a trajectory is started, from an initial
 condition given at a node.
 """
 @inline function boris_half_velocity(v, r, dt, t, p, alg)
-    return velocity_update(v, r, -0.5 * dt, t, p, alg)
+    return update_velocity(v, r, -0.5 * dt, t, p, alg)
 end
 
 """

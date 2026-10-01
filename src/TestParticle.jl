@@ -14,7 +14,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
     get_q2m, get_EField, get_BField,
-    boris_velocity_update, update_velocity_multistep, velocity_update,
+    boris_velocity_update, update_velocity_multistep, update_velocity,
     boris_advance, boris_node_velocity, boris_half_velocity, boris_resync_velocity
 import SciMLBase
 import SciMLBase: solve
