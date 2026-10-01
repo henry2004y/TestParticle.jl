@@ -112,7 +112,7 @@ end
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    cache.v_half = boris_half_velocity(v, r, dt, t, p, integrator.alg)
+    cache.v_half = update_velocity_half(v, r, dt, t, p, integrator.alg)
     cache.dt_prev = dt
 
     integrator.kshortsize = 0
@@ -121,7 +121,7 @@ end
     return
 end
 
-@inline @muladd function boris_advance!(integrator, cache)
+@inline @muladd function advance_boris!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
     p = integrator.p
@@ -132,11 +132,11 @@ end
     v_half_prev = if cache.dt_prev == dt
         cache.v_half
     else
-        boris_resync_velocity(cache.v_half, r, cache.dt_prev, dt, t, p, alg)
+        update_velocity_resync(cache.v_half, r, cache.dt_prev, dt, t, p, alg)
     end
 
-    r_new, v_half = boris_advance(v_half_prev, r, dt, t, p, alg)
-    v_new = boris_node_velocity(v_half, r_new, dt, t + dt, p, alg)
+    r_new, v_half = advance_boris(v_half_prev, r, dt, t, p, alg)
+    v_new = update_velocity_node(v_half, r_new, dt, t + dt, p, alg)
 
     cache.v_half = v_half
     cache.dt_prev = dt
@@ -161,13 +161,13 @@ function initialize!(integrator, cache::MultistepBorisCache)
 end
 
 @muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u = vcat(r_new, v_new)
     return integrator.u
 end
 
 @muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]
     integrator.u[3] = r_new[3]
@@ -178,13 +178,13 @@ end
 end
 
 @muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u = vcat(r_new, v_new)
     return integrator.u
 end
 
 @muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]
     integrator.u[3] = r_new[3]

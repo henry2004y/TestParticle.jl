@@ -15,7 +15,7 @@ import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultis
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
-    boris_advance, boris_node_velocity, boris_half_velocity, boris_resync_velocity
+    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro

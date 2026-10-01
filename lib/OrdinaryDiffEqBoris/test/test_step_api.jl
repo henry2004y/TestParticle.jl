@@ -15,13 +15,13 @@ function integrate(alg, p, t0, dt, nsteps)
     r = SA[0.0, 0.0, 0.0]
     v = SA[1.0e5, 0.0, 0.0]
     t = t0
-    v_half = boris_half_velocity(v, r, dt, t, p, alg)
+    v_half = update_velocity_half(v, r, dt, t, p, alg)
     v_sum = zero(eltype(v))
 
     for _ in 1:nsteps
-        r, v_half = boris_advance(v_half, r, dt, t, p, alg)
+        r, v_half = advance_boris(v_half, r, dt, t, p, alg)
         t += dt
-        v_node = boris_node_velocity(v_half, r, dt, t, p, alg)
+        v_node = update_velocity_node(v_half, r, dt, t, p, alg)
         v_sum += v_node[1]
     end
 
@@ -41,12 +41,12 @@ end
                 r = SA[u0[1], u0[2], u0[3]]
                 v = SA[u0[4], u0[5], u0[6]]
                 t = tspan[1]
-                v_half = boris_half_velocity(v, r, dt, t, param, alg)
+                v_half = update_velocity_half(v, r, dt, t, param, alg)
 
                 for n in 1:(length(sol.t) - 1)
-                    r, v_half = boris_advance(v_half, r, dt, t, param, alg)
+                    r, v_half = advance_boris(v_half, r, dt, t, param, alg)
                     t += dt
-                    v_node = boris_node_velocity(v_half, r, dt, t, param, alg)
+                    v_node = update_velocity_node(v_half, r, dt, t, param, alg)
                     @test vcat(r, v_node) ≈ sol.u[n + 1] rtol = 1.0e-10
                 end
             end
@@ -61,11 +61,15 @@ end
             r = SA[0.0, 0.0, 0.0], v = SA[1.0e5, 2.0e5, -3.0e5], t = 0.0, dt = 1.0e-9
 
             for alg in (Boris(), MultistepBoris6(n = 3))
-                v_half = boris_half_velocity(v, r, dt, t, param, alg)
+                v_half = update_velocity_half(v, r, dt, t, param, alg)
 
                 for new_dt in (dt, 2dt, dt / 4)
-                    recentered = boris_resync_velocity(v_half, r, dt, new_dt, t, param, alg)
-                    v_node = boris_node_velocity(recentered, r, new_dt, t, param, alg)
+                    recentered = update_velocity_resync(
+                        v_half, r, dt, new_dt, t, param, alg
+                    )
+                    v_node = update_velocity_node(
+                        recentered, r, new_dt, t, param, alg
+                    )
                     @test kinetic_energy(v_node) ≈ kinetic_energy(v) rtol = 1.0e-12
                 end
             end

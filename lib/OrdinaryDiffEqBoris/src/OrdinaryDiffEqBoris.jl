@@ -28,6 +28,6 @@ export AdaptiveMultistepBoris
 export AbstractBoris
 export get_q2m, get_EField, get_BField
 export update_velocity_boris, update_velocity_multistep, update_velocity
-export boris_advance, boris_node_velocity, boris_half_velocity, boris_resync_velocity
+export advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
 
 end

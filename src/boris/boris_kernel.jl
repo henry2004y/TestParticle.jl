@@ -35,7 +35,7 @@ const GPUBorisAlgorithm = Union{Boris, MultistepBoris}
     r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
     v_half = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
-    r_new, v_half_new = boris_advance(v_half, r, dt, t, p, alg)
+    r_new, v_half_new = advance_boris(v_half, r, dt, t, p, alg)
 
     # Scalar write for GPU compatibility
     xv_out[1, i] = r_new[1]
@@ -52,7 +52,7 @@ end
     r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
     v = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
 
-    v_half = boris_half_velocity(v, r, dt, t, p, alg)
+    v_half = update_velocity_half(v, r, dt, t, p, alg)
 
     xv_out[4, i] = v_half[1]
     xv_out[5, i] = v_half[2]
@@ -126,7 +126,7 @@ rather than every step.
     r = SVector{3, T}(xv[1], xv[2], xv[3])
     v_half = SVector{3, T}(xv[4], xv[5], xv[6])
 
-    return vcat(r, boris_node_velocity(v_half, r, dt, t, p, alg))
+    return vcat(r, update_velocity_node(v_half, r, dt, t, p, alg))
 end
 
 
