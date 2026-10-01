@@ -93,3 +93,31 @@ const MultistepBoris4 = MultistepBoris{4}
 The sixth order Hyper Boris method, `MultistepBoris` with `N = 6`.
 """
 const MultistepBoris6 = MultistepBoris{6}
+
+"""
+    AbstractBoris
+
+Union of the Boris particle pushers defined in this package:
+
+- `Boris()`: the standard Boris method, second order, fixed step.
+- `AdaptiveBoris(; safety)`: the same method with a step that follows the local
+  gyroperiod.
+- `MultistepBoris{N}(; n)`: `n` sub-cycles per step with a gyrophase correction
+  of order `N` (`N = 2` is the multicycle method, `N = 4` and `N = 6` are the
+  Hyper Boris methods), fixed step.
+- `AdaptiveMultistepBoris{N}(; n, safety)`: the same with a gyroperiod-following
+  step.
+
+They are ordinary SciML algorithms, so they are used like any other one,
+`solve(prob, Boris(); dt)`, and are accepted inside a SciML `EnsembleProblem`.
+Instead of indexing into the parameter container `p`, the methods ask it for the
+charge-to-mass ratio and the two field functions through `get_q2m(p)`,
+`get_EField(p)` and `get_BField(p)`, so any container that answers those three
+can be traced.
+
+The algorithms are immutable and hold nothing but numbers, so one can be passed
+into a GPU kernel. Keeping it that way is a constraint: a field function or any
+other non-isbits value in an algorithm would stop it from crossing to the device.
+"""
+const AbstractBoris =
+    Union{Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris}

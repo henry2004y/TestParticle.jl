@@ -10,9 +10,9 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
-    DiscreteCallback, terminate!, EnsembleContext
+    DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
-    MultistepBoris2, MultistepBoris4, MultistepBoris6,
+    MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
     get_q2m, get_EField, get_BField,
     boris_velocity_update, update_velocity_multistep, velocity_update
 import SciMLBase

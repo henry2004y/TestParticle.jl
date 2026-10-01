@@ -24,6 +24,7 @@ include("boris_perform_step.jl")
 export Boris, AdaptiveBoris
 export MultistepBoris, MultistepBoris2, MultistepBoris4, MultistepBoris6
 export AdaptiveMultistepBoris
+export AbstractBoris
 export get_q2m, get_EField, get_BField
 export boris_velocity_update, update_velocity_multistep, velocity_update
 
