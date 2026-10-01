@@ -9,7 +9,7 @@
     !opts.adaptive || return false
     isempty(opts.callback.continuous_callbacks) || return false
     isempty(opts.callback.discrete_callbacks) || return false
-    opts.isoutofdomain === OrdinaryDiffEqCore.DiffEqBase.ODE_DEFAULT_ISOUTOFDOMAIN ||
+    opts.isoutofdomain === ODE_DEFAULT_ISOUTOFDOMAIN ||
         return false
     opts.save_idxs === nothing || return false
     isempty(opts.saveat) || return false
@@ -27,7 +27,7 @@ end
 
 function SciMLBase.solve!(integrator::ODEIntegrator{<:AbstractBoris})
     if !_can_fastpath_boris(integrator)
-        return invoke(SciMLBase.solve!, Tuple{OrdinaryDiffEqCore.ODEIntegrator}, integrator)
+        return invoke(SciMLBase.solve!, Tuple{ODEIntegrator}, integrator)
     end
 
     dt = integrator.dt

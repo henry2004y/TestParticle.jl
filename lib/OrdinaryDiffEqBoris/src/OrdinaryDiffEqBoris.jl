@@ -2,7 +2,6 @@ module OrdinaryDiffEqBoris
 
 using Reexport
 @reexport using SciMLBase
-import OrdinaryDiffEqCore
 import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgorithm,
     OrdinaryDiffEqMutableCache, OrdinaryDiffEqConstantCache,
     AbstractController, AbstractControllerCache,
@@ -10,7 +9,7 @@ import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgori
     accept_step_controller, default_controller, setup_controller_cache,
     step_accept_controller!, step_reject_controller!, stepsize_controller!,
     _ode_addsteps!, default_linear_interpolation, get_fsalfirstlast,
-    postamble!, _postamble!, ODEIntegrator
+    postamble!, _postamble!, ODEIntegrator, ODE_DEFAULT_ISOUTOFDOMAIN
 using StaticArrays
 using MuladdMacro
 using LinearAlgebra
