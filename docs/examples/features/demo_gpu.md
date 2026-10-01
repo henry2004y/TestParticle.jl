@@ -141,6 +141,13 @@ The native GPU Boris solver:
 - Dispatches on `KA.Backend` type for GPU execution
 - Processes particles in parallel on the GPU
 - Returns solutions in the same format as the CPU solver
+- Runs every fixed step solver, `Boris()` as well as `MultistepBoris{N}`, taking
+  one field evaluation per step where the SciML loop spends two, see
+  [Boris Pusher](@ref Boris-Pusher)
+
+The adaptive solvers are not available here: choosing a time step happens on the
+host, once per step for the whole ensemble, so trace those with `Boris()` on the
+CPU instead.
 
 To use actual GPU acceleration, install the appropriate backend package and create the corresponding backend:
 ```julia

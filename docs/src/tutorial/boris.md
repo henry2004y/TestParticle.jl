@@ -198,3 +198,38 @@ What TestParticle.jl still owns is the layer around the loop, in
 `src/boris/boris_solve.jl`: the conversion of a `TraceProblem` into an
 `ODEProblem`, the gyroperiod-based initial step of the adaptive methods, the
 `isoutside` callback, and the appended field and work columns.
+
+## 7. What a step costs, and running on a device
+
+A Boris method carries the velocity at the half step, so a step advances the
+staggered pair `(r, v_{n+1/2})` with a single field evaluation. The SciML loop,
+however, requires every step to hand back the state at the node, `(r, v_n)`, so
+the velocity has to be synchronised at the end of each one, and that second half
+push evaluates the fields again. Two evaluations per step, therefore, where the
+method itself needs one.
+
+The KernelAbstractions solver in `src/boris/boris_kernel.jl` is not driven by the
+SciML loop: it holds the staggered pair on the device and synchronises only the
+states it actually saves. Both now call the same step functions, so they agree to
+rounding, but their cost per step differs, and measured over the same trace it
+is the factor below:
+
+| fields | steps | time through the SciML loop | time through a backend |
+|---|---|---|---|
+| analytic | $10^6$ | 3.2 | 1 |
+| interpolated | $10^4$ | 2.8 | 1 |
+
+So pick the loop or the device by what the run is. The loop is what buys the
+ensemble interface, callbacks, `remake`, `saveat` and every other piece of SciML,
+and it is the right choice for a trace or two. For pushing a large ensemble,
+where the ecosystem features do not pay for twice the field evaluations, pass a
+`KernelAbstractions` backend, see
+[GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing). Numerical fields, where an
+evaluation is an interpolation rather than a formula, are the case that benefits
+most.
+
+The device runs the solvers with a fixed step, `Boris()` and every
+`MultistepBoris{N}`, since a kernel takes its step size as an argument and the
+whole ensemble marches in lockstep. The adaptive solvers decide theirs on the
+host, once per step for the entire ensemble, which is the loop's job, so they are
+refused on a backend rather than quietly falling back to it.
