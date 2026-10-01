@@ -104,6 +104,11 @@ end
 # holds `v(t - dt/2)` and the node velocity is reconstructed only for output.
 # Changing `dt` re-centres the stored velocity onto the new half step, which is
 # what keeps the scheme time-reversible under adaptive stepping.
+#
+# The fields are carried the same way. A step advances with the fields at the
+# node it starts from and synchronises with the fields at the node it lands on,
+# and the second node is where the next step starts, so the pair is handed over
+# rather than evaluated again. That is what keeps a step at one field evaluation.
 @inline @muladd function boris_initialize!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
@@ -112,7 +117,9 @@ end
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    cache.v_half = update_velocity_half(v, r, dt, t, p, integrator.alg)
+    fields = _fields_at(cache.fields, p, r, t)
+    cache.v_half = update_velocity_half(v, r, dt, t, fields, integrator.alg)
+    cache.fields = fields
     cache.dt_prev = dt
 
     integrator.kshortsize = 0
@@ -129,15 +136,19 @@ end
     uprev = integrator.uprev
     r = SVector(uprev[1], uprev[2], uprev[3])
 
+    fields = _fields_at(cache.fields, p, r, t)
+
     v_half_prev = if cache.dt_prev == dt
         cache.v_half
     else
-        update_velocity_resync(cache.v_half, r, cache.dt_prev, dt, t, p, alg)
+        update_velocity_resync(cache.v_half, r, cache.dt_prev, dt, t, fields, alg)
     end
 
-    r_new, v_half = advance_boris(v_half_prev, r, dt, t, p, alg)
-    v_new = update_velocity_node(v_half, r_new, dt, t + dt, p, alg)
+    r_new, v_half = advance_boris(v_half_prev, r, dt, t, fields, alg)
+    fields_new = _node_fields(p, r_new, t + dt)
+    v_new = update_velocity_node(v_half, r_new, dt, t + dt, fields_new, alg)
 
+    cache.fields = fields_new
     cache.v_half = v_half
     cache.dt_prev = dt
 

@@ -9,6 +9,9 @@ zero_E(x, t) = SA[0.0, 0.0, 0.0]
 uniform_B(x, t) = SA[0.0, 0.0, 0.01]
 oscillating_E(x, t) = SA[sin(2π * t), 0.0, 0.0]
 
+const EVALUATIONS = Ref(0)
+counting_E(x, t) = (EVALUATIONS[] += 1; SA[0.0, 0.0, 0.0])
+
 "The Energy of a particle of unit mass, in a potential-free field."
 kinetic_energy(v) = 0.5 * sum(abs2, v)
 
@@ -96,6 +99,49 @@ end
             orders = [log2(errors[i] / errors[i + 1]) for i in eachindex(errors[1:(end - 1)])]
 
             @test all(>(1.8), orders)
+        end
+    end
+
+    @testset "a step costs one field evaluation" begin
+        # A solver asks for the fields at a node twice, once to synchronise the
+        # state at the end of a step and once to advance the next one from that
+        # same node, so the pair is carried across the step boundary.
+        let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
+            prob = ODEProblem(
+                (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
+                (0.0, nsteps * dt), param
+            )
+
+            for alg in (Boris(), MultistepBoris4(n = 3))
+                EVALUATIONS[] = 0
+                solve(prob, alg; dt, save_everystep = false, save_start = false)
+                # One to start the staggered velocity, then one per step.
+                @test EVALUATIONS[] == nsteps + 1
+            end
+        end
+    end
+
+    @testset "the fields are taken again when the state is moved" begin
+        # A callback can move the particle between steps, and fields carried
+        # across such a move would belong to where it used to be.
+        let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
+            prob = ODEProblem(
+                (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
+                (0.0, nsteps * dt), param
+            ), moved = Ref(false)
+
+            callback = DiscreteCallback(
+                (u, t, integrator) -> t >= 0.25 && !moved[],
+                function (integrator)
+                    moved[] = true
+                    integrator.u = SA[1.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+                    return
+                end
+            )
+
+            EVALUATIONS[] = 0
+            solve(prob, Boris(); dt, callback, save_everystep = false, save_start = false)
+            @test EVALUATIONS[] == nsteps + 2
         end
     end
 

@@ -202,31 +202,37 @@ What TestParticle.jl still owns is the layer around the loop, in
 ## 7. What a step costs, and running on a device
 
 A Boris method carries the velocity at the half step, so a step advances the
-staggered pair `(r, v_{n+1/2})` with a single field evaluation. The SciML loop,
-however, requires every step to hand back the state at the node, `(r, v_n)`, so
-the velocity has to be synchronised at the end of each one, and that second half
-push evaluates the fields again. Two evaluations per step, therefore, where the
-method itself needs one.
+staggered pair `(r, v_{n+1/2})` with the fields taken at the node it starts from.
+The SciML loop then requires the state at the node it lands on, `(r_{n+1},
+v_{n+1})`, which is one more half push, and that one is what `u` holds.
 
-The KernelAbstractions solver in `src/boris/boris_kernel.jl` is not driven by the
-SciML loop: it holds the staggered pair on the device and synchronises only the
-states it actually saves. Both now call the same step functions, so they agree to
-rounding, but their cost per step differs, and measured over the same trace it
-is the factor below:
+That second node is where the next step starts, so the fields taken for it are
+taken again by the step that follows. They are handed over instead: a step costs
+one field evaluation, and a run of a thousand steps takes the fields a thousand
+and one times. This is the same move the symplectic integrators of
+`OrdinaryDiffEqSymplecticRK` make, where `VelocityVerlet` and `VerletLeapfrog`
+spend one force evaluation per step by carrying the previous one in `fsallast`.
+
+What is left is the loop itself. The KernelAbstractions solver in
+`src/boris/boris_kernel.jl` is not driven by the SciML loop: it holds the
+staggered pair on the device and synchronises only the states it actually saves.
+Both call the same step functions, so they agree to rounding, but only one of
+them carries an integrator, and measured over the same trace that is the factor
+below:
 
 | fields | steps | time through the SciML loop | time through a backend |
 |---|---|---|---|
-| analytic | $10^6$ | 3.2 | 1 |
-| interpolated | $10^4$ | 2.8 | 1 |
+| analytic | $10^6$ | 5.0 | 1 |
+| interpolated | $10^4$ | 2.3 | 1 |
 
 So pick the loop or the device by what the run is. The loop is what buys the
 ensemble interface, callbacks, `remake`, `saveat` and every other piece of SciML,
-and it is the right choice for a trace or two. For pushing a large ensemble,
-where the ecosystem features do not pay for twice the field evaluations, pass a
-`KernelAbstractions` backend, see
+and it is the right choice for a trace or two. For pushing a large ensemble, pass
+a `KernelAbstractions` backend, see
 [GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing). Numerical fields, where an
 evaluation is an interpolation rather than a formula, are the case that benefits
-most.
+most; on a field that costs nothing to evaluate, carrying it over is a slight
+loss rather than a gain.
 
 The device runs the solvers with a fixed step, `Boris()` and every
 `MultistepBoris{N}`, since a kernel takes its step size as an argument and the
