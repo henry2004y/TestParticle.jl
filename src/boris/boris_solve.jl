@@ -116,31 +116,6 @@ function solve(
     step = dt === nothing ? _boris_initial_dt(prob, alg) : dt
     _boris_check_limits(prob, step, alg, maxiters)
 
-    if alg isa GPUBorisAlgorithm &&
-       isoutside === ODE_DEFAULT_ISOUTOFDOMAIN &&
-       isempty(kwargs)
-        plan = SavingPlan(
-            saveat, prob.tspan, _span_direction(prob.tspan),
-            typeof(prob.tspan[1] + step)
-        )
-        backend = CPU()
-        (;
-            nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-            p_gpu, p_host,
-        ) = _prepare_boris_solve(
-            prob, backend, 1, step, plan,
-            save_start, save_end, save_everystep, maxiters
-        )
-        sols = _solve_serial(
-            prob, backend, 1:1;
-            dt = step, plan, save_start, save_end, save_everystep,
-            workgroup_size = 256,
-            xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-            p_gpu, p_host, alg, nout, nt
-        )
-        return _boris_finalize(sols[1], prob.p, Val(save_fields), Val(save_work))
-    end
-
     ode_prob = _boris_problem(prob)
     callback = _boris_callback(isoutside)
 

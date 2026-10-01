@@ -211,12 +211,12 @@ each step spends only one field evaluation. Furthermore, when `save_everystep=fa
 (or when saving selectively without callbacks), node velocity is computed lazily
 only for saved states, skipping redundant Boris rotations on intermediate steps.
 
-In `TestParticle.jl`, calling `solve(prob::TraceProblem, alg)` with a fixed-step
-Boris algorithm on standard domains automatically takes the dedicated CPU driver
-path directly. This eliminates SciML integrator loop overhead, achieving raw native
-performance (~10 ns/step on analytic fields). Whenever adaptive stepping
-(`AdaptiveBoris`), boundary checking (`isoutside`), or custom SciML callbacks are
-present, `solve` routes transparently through the full SciML loop.
+In `OrdinaryDiffEqBoris`, fixed-step Boris solves on standard domains automatically take
+a specialized fast path inside `solve!`. This eliminates generic SciML integrator loop
+bookkeeping and preallocates trajectory arrays, achieving raw native performance (~5 ns/step
+on analytic fields). Whenever adaptive stepping (`AdaptiveBoris`), boundary checking
+(`isoutside`), intermediate save targets (`saveat`), or custom SciML callbacks are present,
+`solve!` routes transparently through the full SciML integrator loop.
 
 For pushing large ensembles on accelerators or multiple CPU threads, pass a
 `KernelAbstractions` backend to `solve(prob, alg, backend, ...)`: see
