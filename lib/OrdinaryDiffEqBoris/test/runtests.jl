@@ -173,6 +173,26 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         @test sol_ms.u[end][1] ≈ 10.0 atol = 1.0e-6
     end
 
+    @testset "In-place problem" begin
+        # A mutable initial condition runs on the mutable cache instead of the
+        # constant one; both have to reach the same trajectory.
+        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(
+            ODEFunction{true}((du, u, p, t) -> nothing), u0, (0.0, 10.0), param
+        )
+
+        sol = solve(prob, Boris(); dt = 0.1)
+        @test sol.u[end][1] ≈ 10.0 atol = 1.0e-6
+        @test sol.u[end][4] ≈ 1.0 atol = 1.0e-6
+
+        sol_ms = solve(prob, MultistepBoris4(n = 2); dt = 0.1)
+        @test sol_ms.u[end][1] ≈ 10.0 atol = 1.0e-6
+
+        sol_adaptive = solve(prob, AdaptiveBoris(safety = 0.1); dt = 0.1)
+        @test sol_adaptive.u[end][1] ≈ 10.0 atol = 1.0e-6
+    end
+
     @testset "adaptive keyword" begin
         # `adaptive` is the switch between fixed and adaptive stepping, as it is
         # for any other SciML solver.

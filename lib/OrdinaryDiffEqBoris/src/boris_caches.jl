@@ -28,6 +28,11 @@ end
 
 @inline _empty_half_velocity(u) = zero(SVector(u[1], u[2], u[3]))
 
+# A Boris step forms no derivative stages, so the mutable caches have no first
+# and last stage to hand to the integrator, unlike the caches of a Runge-Kutta
+# method.
+get_fsalfirstlast(::Union{BorisCache, MultistepBorisCache}, u) = (nothing, nothing)
+
 function alg_cache(
         alg::Union{Boris, AdaptiveBoris}, u, rate_prototype, ::Type{uEltypeNoUnits},
         ::Type{uBottomEltypeNoUnits}, ::Type{tTypeNoUnits}, uprev, uprev2, f, t, dt, reltol, p, calck,
