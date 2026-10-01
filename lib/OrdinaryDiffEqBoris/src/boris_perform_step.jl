@@ -128,6 +128,15 @@ end
     return
 end
 
+@inline function _needs_node_velocity(integrator)
+    opts = integrator.opts
+    opts.save_everystep && return true
+    !isempty(opts.saveat) && return true
+    !isempty(opts.callback.continuous_callbacks) && return true
+    !isempty(opts.callback.discrete_callbacks) && return true
+    return false
+end
+
 @inline @muladd function advance_boris!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
@@ -145,10 +154,16 @@ end
     end
 
     r_new, v_half = advance_boris(v_half_prev, r, dt, t, fields, alg)
-    fields_new = _node_fields(p, r_new, t + dt)
-    v_new = update_velocity_node(v_half, r_new, dt, t + dt, fields_new, alg)
 
-    cache.fields = fields_new
+    if _needs_node_velocity(integrator)
+        fields_new = _node_fields(p, r_new, t + dt)
+        v_new = update_velocity_node(v_half, r_new, dt, t + dt, fields_new, alg)
+        cache.fields = fields_new
+    else
+        v_new = v_half
+        cache.fields = fields
+    end
+
     cache.v_half = v_half
     cache.dt_prev = dt
 
@@ -203,4 +218,26 @@ end
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
     return
+end
+
+function postamble!(integrator::ODEIntegrator{<:AbstractBoris})
+    if !_needs_node_velocity(integrator)
+        cache = integrator.cache
+        t = integrator.t
+        r = SVector(integrator.u[1], integrator.u[2], integrator.u[3])
+        fields = _fields_at(cache.fields, integrator.p, r, t)
+        v_node = update_velocity_node(
+            cache.v_half, r, integrator.dt, t, fields, integrator.alg
+        )
+        if integrator.u isa SVector
+            integrator.u = vcat(r, v_node)
+        else
+            integrator.u[4] = v_node[1]
+            integrator.u[5] = v_node[2]
+            integrator.u[6] = v_node[3]
+        end
+        cache.fields = fields
+    end
+    _postamble!(integrator)
+    return nothing
 end
