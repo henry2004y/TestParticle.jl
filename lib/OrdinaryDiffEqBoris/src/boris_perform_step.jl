@@ -1,6 +1,6 @@
 const TN_MAG_THRESHOLD = 1.0e-4
 
-@inline @muladd function boris_velocity_update(v, E, B, qdt_2m)
+@inline @muladd function update_velocity_boris(v, E, B, qdt_2m)
     t_rotate = qdt_2m * B
     t_mag2 = sum(abs2, t_rotate)
     s_rotate = 2 * t_rotate / (1 + t_mag2)
@@ -91,7 +91,7 @@ Advance the velocity `v` by `dt`, evaluating the fields at `(r, t)`.
 """
 @inline @muladd function update_velocity(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
     qdt_2m = get_q2m(p) * 0.5 * dt
-    return boris_velocity_update(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
+    return update_velocity_boris(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
 end
 
 @inline @muladd function update_velocity(
