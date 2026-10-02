@@ -1,6 +1,7 @@
 using Test
 using BorisPushers
 using StaticArrays
+using KernelAbstractions
 using LinearAlgebra: norm
 
 struct CustomParam{E, B}
@@ -273,5 +274,23 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         sol_mut_full = solve(prob_mut, Boris(); dt, save_everystep = true)
         sol_mut_lazy = solve(prob_mut, Boris(); dt, save_everystep = false)
         @test sol_mut_lazy.u[end] == sol_mut_full.u[end]
+    end
+
+    @testset "Backend execution (GPU kernel)" begin
+        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
+        dt = 0.1
+        backend = CPU()
+
+        sol_device = solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 1.0).u[1]
+        sol_loop = solve(prob, Boris(); dt, saveat = 1.0)
+
+        @test length(sol_device.u) == length(sol_loop.u)
+        @test sol_device.t ≈ sol_loop.t
+        @test sol_device.u[end] ≈ sol_loop.u[end] atol = 1.0e-10
+
+        # Adaptive solvers have no GPU path
+        @test_throws ArgumentError solve(prob, AdaptiveBoris(), backend; dt, trajectories = 1)
     end
 end

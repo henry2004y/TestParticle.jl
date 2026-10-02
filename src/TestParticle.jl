@@ -13,6 +13,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
+    GPUBorisAlgorithm, adapt_field_to_gpu,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
     advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
@@ -77,7 +78,6 @@ include("gc/rk45_gc.jl")
 include("equations.jl")
 include("problem.jl")
 include("boris/boris.jl")
-include("boris/boris_kernel.jl")
 include("boris/boris_solve.jl")
 include("hybrid.jl")
 include("fieldline.jl")

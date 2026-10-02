@@ -82,6 +82,17 @@ end
 prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
 
+adapt_field_to_gpu(field::Field, ::CPU) = field
+adapt_field_to_gpu(field::ZeroField, ::CPU) = field
+adapt_field_to_gpu(field::ZeroField, ::Backend) = field
+
+function adapt_field_to_gpu(field::Field, backend::Backend)
+    backend isa CPU && return field
+
+    adapted_func = Adapt.adapt(backend, field.field_function)
+    return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
+end
+
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
     return Field(build_interpolator(gridtype, f, x..., order, bc; kw...))
 end
