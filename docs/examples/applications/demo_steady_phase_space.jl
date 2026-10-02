@@ -10,7 +10,7 @@
 # We use a uniform magnetic field `B = B ẑ` and a uniform perpendicular electric field
 # `E ⟂ B`. The resulting E×B drift carries particle guiding centers steadily from the
 # source plane to the detector. Crucially, with `E·B = 0` there is no parallel
-# acceleration, so a bi-Maxwellian centred on the E×B drift velocity
+# acceleration, so a bi-Maxwellian centerd on the E×B drift velocity
 # `u_E = E×B/B²` is an *exact* steady solution of the Vlasov equation. By Liouville's
 # theorem the phase-space density is conserved along each characteristic, and because
 # the gyration only rotates the perpendicular velocity (preserving `|v_⊥ - u_E|` and
@@ -223,7 +223,7 @@ function reconstruct_backward_projections(
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
-    ## Grid points are bin *centres*, matching the histograms of Methods 1 & 2 whose bin
+    ## Grid points are bin *centers*, matching the histograms of Methods 1 & 2 whose bin
     ## edges run from -v_range to +v_range in steps of dv.
     v0x = -v_range + dv / 2
     v0y = -vy_range + dv / 2

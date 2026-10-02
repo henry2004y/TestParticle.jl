@@ -8,7 +8,7 @@
 #
 # Their vector sum is the **total magnetic drift**. The standalone demos
 # [Curvature and Grad-B Drifts](@ref) and [Magnetic Drift and Energy Partition](@ref) show each
-# drift in detail (trajectories, guiding centre, pitch-angle partition). This demo
+# drift in detail (trajectories, guiding center, pitch-angle partition). This demo
 # **compares** the drifts side by side and shows their **relation** from three angles:
 #
 # - *Single particle*: the two drifts are really one drift split by the kinetic-energy
@@ -45,7 +45,7 @@ coef = m / (q * Bmag0)           # |v_drift| = coef·(v_∥² + v_⊥²/2)
 
 # ## Single-particle drift: one drift split by energy
 #
-# For a given particle the guiding-centre magnetic drift is the vector sum of a grad-B
+# For a given particle the guiding-center magnetic drift is the vector sum of a grad-B
 # part (`\propto v_\perp^2`) and a curvature part (`\propto v_\parallel^2`). In this field both `b×∇B` and
 # `b×κ` point along `-ẑ`, so the two parts are collinear and we can compare them
 # directly. We evaluate them from the field using the same quantities (`∇B`, `κ`) as
@@ -244,7 +244,7 @@ function curl(F, x0, δ = 1.0e-4)
     return C
 end
 
-# Drift currents from the guiding-centre formula (perpendicular, ensemble-averaged).
+# Drift currents from the guiding-center formula (perpendicular, ensemble-averaged).
 #   J_∇B  = n·m·⟨v_⊥²⟩  (b×∇B) / (2B²)        (∝ v_⊥²)
 #   J_curv = n·m·⟨v_∥²⟩  (b×κ)  / B            (∝ v_∥²)
 function drift_currents(x, Bfunc; Tpar, Tperp, n = 1.0, m = 1.0)

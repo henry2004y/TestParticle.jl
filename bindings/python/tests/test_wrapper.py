@@ -54,10 +54,10 @@ def test_trace_gyroradius_circle():
     dt = t_end / 2000
     res = tp.trace(x0, v, (0.0, t_end), dt, get_B, species="proton")
 
-    # Over a full orbit the mean position is the circle centre; the distance
-    # from that centre equals the gyroradius everywhere.
-    centre = res.x[:, 0:2].mean(axis=0)
-    radius = np.sqrt((res.x[:, 0] - centre[0]) ** 2 + (res.x[:, 1] - centre[1]) ** 2)
+    # Over a full orbit the mean position is the circle center; the distance
+    # from that center equals the gyroradius everywhere.
+    center = res.x[:, 0:2].mean(axis=0)
+    radius = np.sqrt((res.x[:, 0] - center[0]) ** 2 + (res.x[:, 1] - center[1]) ** 2)
     assert np.all(np.abs(radius - r_expected) / r_expected < 0.05)
 
 

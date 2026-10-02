@@ -102,7 +102,7 @@ end
 
 # The velocity is carried at the half step, as in a leapfrog scheme: the cache
 # holds `v(t - dt/2)` and the node velocity is reconstructed only for output.
-# Changing `dt` re-centres the stored velocity onto the new half step, which is
+# Changing `dt` re-centers the stored velocity onto the new half step, which is
 # what keeps the scheme time-reversible under adaptive stepping.
 #
 # The fields are carried the same way. A step advances with the fields at the

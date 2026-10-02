@@ -63,10 +63,10 @@ end
 """
     update_velocity_resync(v_half, r, dt_prev, dt, t, p, alg) -> v_half_new
 
-Move a half-step velocity centred on `dt_prev` onto the half step of `dt`, both
+Move a half-step velocity centerd on `dt_prev` onto the half step of `dt`, both
 at the node `t`, by going through the node velocity.
 
-Changing the step size re-centres the velocity, which is what keeps the scheme
+Changing the step size re-centers the velocity, which is what keeps the scheme
 time-reversible under adaptive stepping: without it a change of step would leave
 the velocity staggered against the position.
 """

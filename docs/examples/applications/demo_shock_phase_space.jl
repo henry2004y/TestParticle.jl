@@ -417,9 +417,9 @@ function reconstruct_backward_projections(
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
-    ## Grid points are bin *centres*, matching the histograms of Methods 1 & 2 whose bin
+    ## Grid points are bin *centers*, matching the histograms of Methods 1 & 2 whose bin
     ## edges run from -v_range to +v_range in steps of dv. Snapping the refined window to
-    ## those centres keeps all three methods on the same velocity grid.
+    ## those centers keeps all three methods on the same velocity grid.
     v0x = -v_range + dv / 2
     v0y = -vy_range + dv / 2
     v0z = -vz_range + dv / 2
@@ -548,7 +548,7 @@ matrix_of(M::AbstractMatrix) = M
 
 const bin_edges = -1000.0:20.0:1000.0 # km/s, velocity bin edges of all three methods
 const v_centers = bin_centers(bin_edges)
-## Midpoint rule on the bin centres, i.e. the same quadrature the reconstructions use when
+## Midpoint rule on the bin centers, i.e. the same quadrature the reconstructions use when
 ## they collapse the third velocity axis.
 const v_int = range(-990.0, 990.0; step = 20.0) # km/s, integration axis
 
