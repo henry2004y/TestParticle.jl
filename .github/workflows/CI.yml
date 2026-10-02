@@ -47,7 +47,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   test-subpackage:
-    name: OrdinaryDiffEqBoris - ${{ matrix.os }} - ${{ github.event_name }}
+    name: BorisPushers - ${{ matrix.os }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -65,5 +65,5 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-runtest@v1
         with:
-          project: lib/OrdinaryDiffEqBoris
+          project: lib/BorisPushers
           coverage: false
