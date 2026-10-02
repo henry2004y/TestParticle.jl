@@ -60,8 +60,13 @@ ODE equations for charged particle moving in EM field and external force field w
 """
 function trace!(dy, y, p, t)
     v = get_v(y)
-    @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = get_dv(v, y, p, t)
+    dv = get_dv(v, y, p, t)
+    @inbounds dy[1] = v[1]
+    @inbounds dy[2] = v[2]
+    @inbounds dy[3] = v[3]
+    @inbounds dy[4] = dv[1]
+    @inbounds dy[5] = dv[2]
+    @inbounds dy[6] = dv[3]
 
     return
 end

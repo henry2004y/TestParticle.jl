@@ -23,7 +23,7 @@ x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
 
-param = prepare(E, B, species=Electron)
+param = prepare(E, B; species=Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -45,8 +45,8 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-for i in eachindex(sols)
-   lines!(ax, sols[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
+for i in 1:trajectories
+   lines!(ax, sols.u[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
 end
 
 f
@@ -73,7 +73,7 @@ x0 = SA[0.0, 0.0, 0.0] # initial position, [m]
 u0 = SA[1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = SA[x0..., u0...]
 
-param = prepare(E, B, species=Electron)
+param = prepare(E, B; species=Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -97,8 +97,8 @@ ax = Axis3(f[1, 1],
    aspect = :data,
 )
 
-for i in eachindex(sols)
-   lines!(ax, sols[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
+for i in 1:trajectories
+   lines!(ax, sols.u[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
 end
 
 f
@@ -111,12 +111,12 @@ TestParticle provides a native GPU Boris solver implemented with
 backend-agnostic GPU execution. The solver uses method dispatch on `KA.Backend` type.
 
 ```julia
-using TestParticle, KernelAbstractions
-using StaticArrays
+using TestParticle, KernelAbstractions, StaticArrays
+import TestParticle: solve
 
 # Define fields
-B(x) = SA[0, 0, 1e-8]  # Uniform B field
-E(x) = SA[0, 0, 0]     # No E field
+B(x) = SA[0.0, 0.0, 1.0e-8]  # Uniform B field
+E(x) = SA[0.0, 0.0, 0.0]     # No E field
 
 # Initial conditions
 x0 = [0.0, 0.0, 0.0]
@@ -128,11 +128,9 @@ tspan = (0.0, 1.0e-6)
 param = prepare(E, B; species=Proton)
 prob = TraceProblem(stateinit, tspan, param)
 
-# Solve on CPU backend (GPU backend requires CUDA.jl, AMDGPU.jl, etc.)
-using KernelAbstractions
-const KA = KernelAbstractions
+# Solve on CPU backend
 backend = CPU()
-sols = solve(prob, Boris(), backend; dt=1e-9, trajectories=1000, saveat=1e-8)
+sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
 ```
 
 The native GPU Boris solver:
@@ -141,8 +139,8 @@ The native GPU Boris solver:
 - Dispatches on `KA.Backend` type for GPU execution
 - Processes particles in parallel on the GPU
 - Returns solutions in the same format as the CPU solver
-- Runs every fixed step solver, `Boris()` as well as `MultistepBoris{N}`, taking
-  one field evaluation per step where the SciML loop spends two, see
+- Runs every fixed step solver, `Boris()` as well as `MultistepBoris{N}`, sharing
+  the same stateless step implementation as the CPU solver, see
   [Boris Pusher](@ref Boris-Pusher)
 
 The adaptive solvers are not available here: choosing a time step happens on the
@@ -154,12 +152,12 @@ To use actual GPU acceleration, install the appropriate backend package and crea
 # For NVIDIA GPUs
 using CUDA
 backend = CUDABackend()
-sols = solve(prob, backend; dt=1e-9, trajectories=1000)
+sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
 
 # For AMD GPUs
 using AMDGPU
 backend = ROCBackend()
-sols = solve(prob, backend; dt=1e-9, trajectories=1000)
+sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
 ```
 
 > **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.

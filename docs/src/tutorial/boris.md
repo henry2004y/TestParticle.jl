@@ -199,27 +199,57 @@ What TestParticle.jl still owns is the layer around the loop, in
 `ODEProblem`, the gyroperiod-based initial step of the adaptive methods, the
 `isoutside` callback, and the appended field and work columns.
 
-## 7. What a step costs, and running on a device
-
-A Boris method carries the velocity at the half step, so a step advances the
-staggered pair `(r, v_{n+1/2})` with the fields taken at the node it starts from.
-To report `(r_{n+1}, v_{n+1})`, the node velocity is reconstructed with a half
-Boris rotation.
-
-In `OrdinaryDiffEqBoris`, carrying evaluated fields across step boundaries ensures
-each step spends only one field evaluation. Furthermore, when `save_everystep=false`
-(or when saving selectively without callbacks), node velocity is computed lazily
-only for saved states, skipping redundant Boris rotations on intermediate steps.
-
-In `OrdinaryDiffEqBoris`, fixed-step Boris solves on standard domains automatically take
+To maximize performance, fixed-step Boris solves on standard domains automatically take
 a specialized fast path inside `solve!`. This eliminates generic SciML integrator loop
-bookkeeping and preallocates trajectory arrays, achieving raw native performance (~5 ns/step
-on analytic fields). Whenever adaptive stepping (`AdaptiveBoris`), boundary checking
-(`isoutside`), intermediate save targets (`saveat`), or custom SciML callbacks are present,
+bookkeeping and preallocates trajectory arrays, achieving raw native performance.
+Whenever adaptive stepping (`AdaptiveBoris`), boundary checking (`isoutside`),
+intermediate save targets (`saveat`), or custom SciML callbacks are present,
 `solve!` routes transparently through the full SciML integrator loop.
 
-For pushing large ensembles on accelerators or multiple CPU threads, pass a
-`KernelAbstractions` backend to `solve(prob, alg, backend, ...)`: see
-[GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing). The device runs fixed-step
-solvers (`Boris()` and `MultistepBoris{N}`), while adaptive methods decide their step
-sizes on the host through the SciML loop.
+## 7. GPU Portability with KernelAbstractions
+
+The Boris algorithms are fully portable across CPU and GPU architectures.
+SciML integrator loops typically rely on mutable integrator caches that cannot
+be executed within device kernels. To achieve backend-agnostic execution without
+code duplication, `OrdinaryDiffEqBoris` provides a stateless step API that
+separates the physics and stepping math from the integrator bookkeeping:
+
+- `advance_boris(v_half, r, dt, t, p, alg)`: advances the staggered position `r`
+  and half-step velocity `v_half` by a time step `dt`.
+- `update_velocity_half(v, r, dt, t, p, alg)`: shifts the node velocity back by
+  `dt / 2` to initialize the leapfrog staggering.
+- `update_velocity_node(v_half, r, dt, t, p, alg)`: reconstructs the synchronous
+  velocity at the node for saved states.
+
+Because all algorithm types in `AbstractBoris` are `isbits` structs, they can be
+passed directly into GPU kernels.
+
+### Switching Between CPU and Device Backends
+
+TestParticle.jl routes execution based on the chosen solver interface and backend:
+
+- **Host CPU solves**: Standard calls to `solve(prob, alg; ...)` or
+  `solve(prob, alg, EnsembleThreads(); ...)` route through `OrdinaryDiffEqBoris`.
+  This path handles single-particle trajectories, adaptive stepping (`AdaptiveBoris`),
+  and traces requiring SciML callbacks.
+- **Device ensemble solves**: Passing a `KernelAbstractions` backend to
+  `solve(prob, alg, backend; trajectories, ...)` routes execution through the
+  native KernelAbstractions driver. The device kernels call the exact same
+  stateless `advance_boris` and `update_velocity_half` functions from
+  `OrdinaryDiffEqBoris`, ensuring identical numerical behavior between CPU and GPU.
+
+### Algorithm and Field Portability
+
+- **Supported Solvers**: All fixed-step solvers—including standard `Boris()` and the
+  higher-order Hyper-Boris variants `MultistepBoris{N}`—run natively on device
+  backends (such as CUDA, AMDGPU, oneAPI, Metal, or multi-threaded CPU).
+- **Adaptive Solvers**: `AdaptiveBoris` dynamically adjusts the time step per
+  particle based on the local gyrofrequency. Because non-uniform per-particle time
+  stepping diverges across SIMD threads on device hardware, adaptive methods run
+  exclusively on the host CPU through the SciML loop.
+- **Fields**: Both analytic and discrete grid interpolations are supported.
+  Interpolated fields are automatically transferred to device memory via
+  `Adapt.jl`.
+
+For detailed usage, backend setup, and large-scale ensemble benchmarks, see
+[GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing).
