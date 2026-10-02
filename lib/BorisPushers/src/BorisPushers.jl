@@ -1,4 +1,4 @@
-module OrdinaryDiffEqBoris
+module BorisPushers
 
 using Reexport
 @reexport using SciMLBase

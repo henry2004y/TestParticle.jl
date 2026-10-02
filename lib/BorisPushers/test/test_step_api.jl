@@ -1,7 +1,7 @@
 module test_step_api
 
 using Test
-using OrdinaryDiffEqBoris
+using BorisPushers
 using StaticArrays
 using LinearAlgebra: norm
 

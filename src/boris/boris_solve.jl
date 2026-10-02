@@ -1,5 +1,5 @@
 # Boris integration through the SciML loop. The algorithms live in
-# OrdinaryDiffEqBoris; this file adapts `TraceProblem` and TestParticle's keyword
+# BorisPushers; this file adapts `TraceProblem` and TestParticle's keyword
 # surface to the SciML interface. Only one trajectory is adapted here: several of
 # them are a SciML `EnsembleProblem`, see the Boris tutorial.
 

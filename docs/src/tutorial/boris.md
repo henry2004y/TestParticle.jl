@@ -166,7 +166,7 @@ sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
 ## 6. Where the solvers live
 
 The Boris family is implemented in its own package,
-[OrdinaryDiffEqBoris](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/OrdinaryDiffEqBoris),
+[BorisPushers](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers),
 which follows the SciML convention for an algorithm package: the methods are
 ordinary SciML algorithms, driven by the SciML loop, and they can be used on
 their own. TestParticle.jl depends on it and adds the parts that are specific to
@@ -179,7 +179,7 @@ the layout `(q2m, m, E, B, ...)` that `prepare` produces, and any other type can
 support the solvers by adding methods to those three functions:
 
 ```julia
-using OrdinaryDiffEqBoris, StaticArrays
+using BorisPushers, StaticArrays
 
 param = (q2m, m, Efunc, Bfunc)   # or any type with the three accessors
 prob = ODEProblem((u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
@@ -211,7 +211,7 @@ intermediate save targets (`saveat`), or custom SciML callbacks are present,
 The Boris algorithms are fully portable across CPU and GPU architectures.
 SciML integrator loops typically rely on mutable integrator caches that cannot
 be executed within device kernels. To achieve backend-agnostic execution without
-code duplication, `OrdinaryDiffEqBoris` provides a stateless step API that
+code duplication, `BorisPushers` provides a stateless step API that
 separates the physics and stepping math from the integrator bookkeeping:
 
 - `advance_boris(v_half, r, dt, t, p, alg)`: advances the staggered position `r`
@@ -229,14 +229,14 @@ passed directly into GPU kernels.
 TestParticle.jl routes execution based on the chosen solver interface and backend:
 
 - **Host CPU solves**: Standard calls to `solve(prob, alg; ...)` or
-  `solve(prob, alg, EnsembleThreads(); ...)` route through `OrdinaryDiffEqBoris`.
+  `solve(prob, alg, EnsembleThreads(); ...)` route through `BorisPushers`.
   This path handles single-particle trajectories, adaptive stepping (`AdaptiveBoris`),
   and traces requiring SciML callbacks.
 - **Device ensemble solves**: Passing a `KernelAbstractions` backend to
   `solve(prob, alg, backend; trajectories, ...)` routes execution through the
   native KernelAbstractions driver. The device kernels call the exact same
   stateless `advance_boris` and `update_velocity_half` functions from
-  `OrdinaryDiffEqBoris`, ensuring identical numerical behavior between CPU and GPU.
+  `BorisPushers`, ensuring identical numerical behavior between CPU and GPU.
 
 ### Algorithm and Field Portability
 

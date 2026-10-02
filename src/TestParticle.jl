@@ -11,7 +11,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
-import OrdinaryDiffEqBoris: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
+import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
