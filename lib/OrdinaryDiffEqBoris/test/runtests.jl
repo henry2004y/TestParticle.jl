@@ -14,6 +14,8 @@ OrdinaryDiffEqBoris.get_q2m(p::CustomParam) = p.q2m
 OrdinaryDiffEqBoris.get_EField(p::CustomParam) = p.E
 OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
 
+@testset "step API" include("test_step_api.jl")
+
 @testset "OrdinaryDiffEqBoris.jl" begin
     # Definitions
     constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
@@ -245,5 +247,31 @@ OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
         for (k, t) in enumerate(sol_interval.t)
             @test sol_interval.u[k] ≈ sol_all(t)
         end
+    end
+
+    @testset "save_everystep=false lazy node velocity" begin
+        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
+        dt = 0.1
+
+        sol_full = solve(prob, Boris(); dt, save_everystep = true)
+        sol_lazy = solve(prob, Boris(); dt, save_everystep = false)
+
+        @test length(sol_lazy.u) == 2
+        @test sol_lazy.t[1] == 0.0
+        @test sol_lazy.t[end] ≈ 10.0
+        @test sol_lazy.u[1] == sol_full.u[1]
+        @test sol_lazy.u[end] == sol_full.u[end]
+
+        sol_multi_full = solve(prob, MultistepBoris2(n = 2); dt, save_everystep = true)
+        sol_multi_lazy = solve(prob, MultistepBoris2(n = 2); dt, save_everystep = false)
+        @test sol_multi_lazy.u[end] == sol_multi_full.u[end]
+
+        u0_mut = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        prob_mut = ODEProblem(dummy_f, u0_mut, (0.0, 10.0), param)
+        sol_mut_full = solve(prob_mut, Boris(); dt, save_everystep = true)
+        sol_mut_lazy = solve(prob_mut, Boris(); dt, save_everystep = false)
+        @test sol_mut_lazy.u[end] == sol_mut_full.u[end]
     end
 end

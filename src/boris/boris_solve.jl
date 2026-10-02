@@ -10,8 +10,6 @@ function _boris_problem(prob::TraceProblem)
     return ODEProblem(_boris_rhs, SVector{6, T}(prob.u0), prob.tspan, prob.p)
 end
 
-_boris_isadaptive(alg) = hasfield(typeof(alg), :safety)
-
 function _boris_initial_dt(prob::TraceProblem, alg)
     q2m = get_q2m(prob.p)
     u0 = prob.u0
@@ -31,7 +29,7 @@ function _boris_check_limits(prob::TraceProblem, dt, alg, maxiters)
         )
     end
 
-    if !_boris_isadaptive(alg)
+    if !isadaptive(alg)
         ttotal = prob.tspan[2] - prob.tspan[1]
         nt = abs(round(Int, ttotal / dt))
         if nt > maxiters
@@ -107,7 +105,7 @@ function solve(
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true,
         save_end::Bool = true,
-        save_everystep::Bool = true,
+        save_everystep::Bool = isempty(saveat),
         save_fields::Bool = false,
         save_work::Bool = false,
         maxiters::Int = 1_000_000,

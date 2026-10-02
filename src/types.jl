@@ -6,30 +6,6 @@ Abstract type for tracing solutions.
 abstract type AbstractTraceSolution{T, N, S} <: AbstractODESolution{T, N, S} end
 
 """
-    AbstractBoris
-
-Union of the Boris particle pushers, which are SciML algorithms defined in the
-`OrdinaryDiffEqBoris` package and re-exported here:
-
-- `Boris()`: the standard Boris method, second order, fixed step.
-- `AdaptiveBoris(; safety)`: the same method with a step that follows the local
-  gyroperiod.
-- `MultistepBoris{N}(; n)`: `n` sub-cycles per step with a gyrophase correction
-  of order `N` (`N = 2` is the multicycle method, `N = 4` and `N = 6` are the
-  Hyper Boris methods), fixed step.
-- `AdaptiveMultistepBoris{N}(; n, safety)`: the same with a gyroperiod-following
-  step.
-
-They are used like any other SciML algorithm, `solve(prob, Boris(); dt)`, and
-are also accepted inside a SciML `EnsembleProblem`. Instead of indexing into the
-parameter container `p`, the methods ask it for the charge-to-mass ratio and the
-two field functions through `get_q2m(p)`, `get_EField(p)` and `get_BField(p)`,
-so any container that answers those three can be traced.
-"""
-const AbstractBoris =
-    Union{Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris}
-
-"""
 Abstract type for velocity distribution functions.
 """
 abstract type VDF end

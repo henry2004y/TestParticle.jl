@@ -14,21 +14,19 @@
 # by evaluating `f`, which these methods do not define, and the solve would fail
 # as soon as `saveat` asked for a value inside a step.
 
-const BorisAlgorithm = Union{Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris}
-
 const BorisCacheTypes = Union{
     BorisConstantCache, BorisCache,
     MultistepBorisConstantCache, MultistepBorisCache,
 }
 
 """
-    default_linear_interpolation(prob, alg::BorisAlgorithm)
+    default_linear_interpolation(prob, alg::AbstractBoris)
 
 Boris methods carry no derivative stages, so only linear interpolation is
 available. Reporting that here keeps `dense` off, instead of storing a stage
 history that is never filled.
 """
-default_linear_interpolation(prob, ::BorisAlgorithm) = true
+default_linear_interpolation(prob, ::AbstractBoris) = true
 
 @inline function _ode_addsteps!(
         k, t, uprev, u, dt, f, p, cache::BorisCacheTypes,

@@ -1,6 +1,6 @@
 const TN_MAG_THRESHOLD = 1.0e-4
 
-@inline @muladd function boris_velocity_update(v, E, B, qdt_2m)
+@inline @muladd function update_velocity_boris(v, E, B, qdt_2m)
     t_rotate = qdt_2m * B
     t_mag2 = sum(abs2, t_rotate)
     s_rotate = 2 * t_rotate / (1 + t_mag2)
@@ -85,16 +85,16 @@ end
 end
 
 """
-    velocity_update(v, r, dt, t, p, alg)
+    update_velocity(v, r, dt, t, p, alg)
 
 Advance the velocity `v` by `dt`, evaluating the fields at `(r, t)`.
 """
-@inline @muladd function velocity_update(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
+@inline @muladd function update_velocity(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
     qdt_2m = get_q2m(p) * 0.5 * dt
-    return boris_velocity_update(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
+    return update_velocity_boris(v, get_EField(p)(r, t), get_BField(p)(r, t), qdt_2m)
 end
 
-@inline @muladd function velocity_update(
+@inline @muladd function update_velocity(
         v, r, dt, t, p, alg::Union{MultistepBoris{N}, AdaptiveMultistepBoris{N}}
     ) where {N}
     return update_velocity_multistep(v, r, dt, t, alg.n, Val{N}(), p)
@@ -104,6 +104,11 @@ end
 # holds `v(t - dt/2)` and the node velocity is reconstructed only for output.
 # Changing `dt` re-centres the stored velocity onto the new half step, which is
 # what keeps the scheme time-reversible under adaptive stepping.
+#
+# The fields are carried the same way. A step advances with the fields at the
+# node it starts from and synchronises with the fields at the node it lands on,
+# and the second node is where the next step starts, so the pair is handed over
+# rather than evaluated again. That is what keeps a step at one field evaluation.
 @inline @muladd function boris_initialize!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
@@ -112,7 +117,9 @@ end
     r = SVector(uprev[1], uprev[2], uprev[3])
     v = SVector(uprev[4], uprev[5], uprev[6])
 
-    cache.v_half = velocity_update(v, r, -0.5 * dt, t, p, integrator.alg)
+    fields = _fields_at(cache.fields, p, r, t)
+    cache.v_half = update_velocity_half(v, r, dt, t, fields, integrator.alg)
+    cache.fields = fields
     cache.dt_prev = dt
 
     integrator.kshortsize = 0
@@ -121,7 +128,16 @@ end
     return
 end
 
-@inline @muladd function boris_advance!(integrator, cache)
+@inline function _needs_node_velocity(integrator)
+    opts = integrator.opts
+    opts.save_everystep && return true
+    !isempty(opts.saveat) && return true
+    !isempty(opts.callback.continuous_callbacks) && return true
+    !isempty(opts.callback.discrete_callbacks) && return true
+    return false
+end
+
+@inline @muladd function advance_boris!(integrator, cache)
     t = integrator.t
     dt = integrator.dt
     p = integrator.p
@@ -129,14 +145,24 @@ end
     uprev = integrator.uprev
     r = SVector(uprev[1], uprev[2], uprev[3])
 
-    if cache.dt_prev != dt
-        v_node = velocity_update(cache.v_half, r, 0.5 * cache.dt_prev, t, p, alg)
-        cache.v_half = velocity_update(v_node, r, -0.5 * dt, t, p, alg)
+    fields = _fields_at(cache.fields, p, r, t)
+
+    v_half_prev = if cache.dt_prev == dt
+        cache.v_half
+    else
+        update_velocity_resync(cache.v_half, r, cache.dt_prev, dt, t, fields, alg)
     end
 
-    v_half = velocity_update(cache.v_half, r, dt, t + 0.5 * dt, p, alg)
-    r_new = r + v_half * dt
-    v_new = velocity_update(v_half, r_new, 0.5 * dt, t + dt, p, alg)
+    r_new, v_half = advance_boris(v_half_prev, r, dt, t, fields, alg)
+
+    if _needs_node_velocity(integrator)
+        fields_new = _node_fields(p, r_new, t + dt)
+        v_new = update_velocity_node(v_half, r_new, dt, t + dt, fields_new, alg)
+        cache.fields = fields_new
+    else
+        v_new = v_half
+        cache.fields = fields
+    end
 
     cache.v_half = v_half
     cache.dt_prev = dt
@@ -161,13 +187,13 @@ function initialize!(integrator, cache::MultistepBorisCache)
 end
 
 @muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u = vcat(r_new, v_new)
     return integrator.u
 end
 
 @muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]
     integrator.u[3] = r_new[3]
@@ -178,13 +204,13 @@ end
 end
 
 @muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u = vcat(r_new, v_new)
     return integrator.u
 end
 
 @muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
-    r_new, v_new = boris_advance!(integrator, cache)
+    r_new, v_new = advance_boris!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]
     integrator.u[3] = r_new[3]
@@ -192,4 +218,26 @@ end
     integrator.u[5] = v_new[2]
     integrator.u[6] = v_new[3]
     return
+end
+
+function postamble!(integrator::ODEIntegrator{<:AbstractBoris})
+    if !_needs_node_velocity(integrator)
+        cache = integrator.cache
+        t = integrator.t
+        r = SVector(integrator.u[1], integrator.u[2], integrator.u[3])
+        fields = _fields_at(cache.fields, integrator.p, r, t)
+        v_node = update_velocity_node(
+            cache.v_half, r, integrator.dt, t, fields, integrator.alg
+        )
+        if integrator.u isa SVector
+            integrator.u = vcat(r, v_node)
+        else
+            integrator.u[4] = v_node[1]
+            integrator.u[5] = v_node[2]
+            integrator.u[6] = v_node[3]
+        end
+        cache.fields = fields
+    end
+    _postamble!(integrator)
+    return nothing
 end

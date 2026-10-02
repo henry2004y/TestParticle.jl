@@ -9,6 +9,7 @@ report.md
 /.benchmarkci
 /benchmark/*.json
 /.vscode
+/.codebuddy/
 /docs/node_modules/
 /test*
 !/test/

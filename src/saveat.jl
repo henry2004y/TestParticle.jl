@@ -16,12 +16,14 @@ reported.
 struct SavingPlan{T}
     times::Vector{T}
     dir::Int
+    has_saveat::Bool
 end
 
-use_saveat(plan::SavingPlan) = !isempty(plan.times)
+use_saveat(plan::SavingPlan) = plan.has_saveat
 
 function SavingPlan(saveat, tspan, dir, ::Type{T}) where {T}
-    return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir)
+    has_saveat = !isempty(saveat)
+    return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir, has_saveat)
 end
 
 """
