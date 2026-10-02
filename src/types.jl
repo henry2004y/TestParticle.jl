@@ -33,17 +33,11 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     prob_func::PF
 end
 
-function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
-    _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
-    return TraceProblem{
-        typeof(u0), typeof(tspan), true, typeof(p), typeof(_f), typeof(prob_func),
-    }(_f, u0, tspan, p, prob_func)
-end
-# For remake
-function TraceProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
-    return TraceProblem{
-        typeof(u0), typeof(tspan), iip, typeof(p), typeof(f), typeof(prob_func),
-    }(f, u0, tspan, p, prob_func)
+Base.propertynames(::TraceProblem) = (:f, :u0, :tspan, :p, :prob_func, :kwargs)
+
+function Base.getproperty(prob::TraceProblem, sym::Symbol)
+    sym === :kwargs && return (;)
+    return getfield(prob, sym)
 end
 
 # Meshes.jl grid types dummy stubs used at API boundary
