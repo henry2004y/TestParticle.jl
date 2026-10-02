@@ -1,5 +1,5 @@
 using Test
-using OrdinaryDiffEqBoris
+using BorisPushers
 using StaticArrays
 using LinearAlgebra: norm
 
@@ -10,13 +10,13 @@ struct CustomParam{E, B}
     B::B
 end
 
-OrdinaryDiffEqBoris.get_q2m(p::CustomParam) = p.q2m
-OrdinaryDiffEqBoris.get_EField(p::CustomParam) = p.E
-OrdinaryDiffEqBoris.get_BField(p::CustomParam) = p.B
+BorisPushers.get_q2m(p::CustomParam) = p.q2m
+BorisPushers.get_EField(p::CustomParam) = p.E
+BorisPushers.get_BField(p::CustomParam) = p.B
 
 @testset "step API" include("test_step_api.jl")
 
-@testset "OrdinaryDiffEqBoris.jl" begin
+@testset "BorisPushers.jl" begin
     # Definitions
     constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
     constant_Bz(x, t) = SA[0.0, 0.0, 1.0]
