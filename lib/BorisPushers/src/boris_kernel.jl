@@ -12,31 +12,30 @@ adapt_field_to_gpu(field, backend::Backend) = Adapt.adapt(backend, field)
 const GPUBorisAlgorithm = Union{Boris, MultistepBoris}
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
-    v_half = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
+    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+    v_half = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
 
     r_new, v_half_new = advance_boris(v_half, r, dt, t, p, alg)
 
-    # Scalar write for GPU compatibility
-    xv_out[1, i] = r_new[1]
-    xv_out[2, i] = r_new[2]
-    xv_out[3, i] = r_new[3]
-    xv_out[4, i] = v_half_new[1]
-    xv_out[5, i] = v_half_new[2]
-    xv_out[6, i] = v_half_new[3]
+    xv_out[i, 1] = r_new[1]
+    xv_out[i, 2] = r_new[2]
+    xv_out[i, 3] = r_new[3]
+    xv_out[i, 4] = v_half_new[1]
+    xv_out[i, 5] = v_half_new[2]
+    xv_out[i, 6] = v_half_new[3]
 
     return
 end
 
 @inline function boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
-    v = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
+    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+    v = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
 
     v_half = update_velocity_half(v, r, dt, t, p, alg)
 
-    xv_out[4, i] = v_half[1]
-    xv_out[5, i] = v_half[2]
-    xv_out[6, i] = v_half[3]
+    xv_out[i, 4] = v_half[1]
+    xv_out[i, 5] = v_half[2]
+    xv_out[i, 6] = v_half[3]
 
     return
 end
@@ -100,8 +99,8 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[1, i], xv[2, i], xv[3, i])
-    v = SVector(xv[4, i], xv[5, i], xv[6, i])
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
 
@@ -113,12 +112,12 @@ end
     t_end = t0 + nt * dt
     v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
 
-    xv[1, i] = r[1]
-    xv[2, i] = r[2]
-    xv[3, i] = r[3]
-    xv[4, i] = v_end[1]
-    xv[5, i] = v_end[2]
-    xv[6, i] = v_end[3]
+    xv[i, 1] = r[1]
+    xv[i, 2] = r[2]
+    xv[i, 3] = r[3]
+    xv[i, 4] = v_end[1]
+    xv[i, 5] = v_end[2]
+    xv[i, 6] = v_end[3]
 end
 
 @kernel function boris_saveat_kernel!(
@@ -128,18 +127,18 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[1, i], xv[2, i], xv[3, i])
-    v = SVector(xv[4, i], xv[5, i], xv[6, i])
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
 
     iout = 0
     if save_start
         iout += 1
-        saved_data[1, iout, i] = r[1]
-        saved_data[2, iout, i] = r[2]
-        saved_data[3, iout, i] = r[3]
-        saved_data[4, iout, i] = v[1]
-        saved_data[5, iout, i] = v[2]
-        saved_data[6, iout, i] = v[3]
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v[1]
+        saved_data[i, 5, iout] = v[2]
+        saved_data[i, 6, iout] = v[3]
     end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
@@ -170,12 +169,12 @@ end
                 t_target = plan_times[isave]
                 y_target = _saveat_interpolate(t_prev, y_prev, t_current, y_cur, t_target)
                 iout += 1
-                saved_data[1, iout, i] = y_target[1]
-                saved_data[2, iout, i] = y_target[2]
-                saved_data[3, iout, i] = y_target[3]
-                saved_data[4, iout, i] = y_target[4]
-                saved_data[5, iout, i] = y_target[5]
-                saved_data[6, iout, i] = y_target[6]
+                saved_data[i, 1, iout] = y_target[1]
+                saved_data[i, 2, iout] = y_target[2]
+                saved_data[i, 3, iout] = y_target[3]
+                saved_data[i, 4, iout] = y_target[4]
+                saved_data[i, 5, iout] = y_target[5]
+                saved_data[i, 6, iout] = y_target[6]
                 isave += 1
             end
         end
@@ -185,12 +184,12 @@ end
         t_end = t0 + nt * dt
         v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
         iout += 1
-        saved_data[1, iout, i] = r[1]
-        saved_data[2, iout, i] = r[2]
-        saved_data[3, iout, i] = r[3]
-        saved_data[4, iout, i] = v_end[1]
-        saved_data[5, iout, i] = v_end[2]
-        saved_data[6, iout, i] = v_end[3]
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v_end[1]
+        saved_data[i, 5, iout] = v_end[2]
+        saved_data[i, 6, iout] = v_end[3]
     end
 end
 
@@ -201,18 +200,18 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[1, i], xv[2, i], xv[3, i])
-    v = SVector(xv[4, i], xv[5, i], xv[6, i])
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
 
     iout = 0
     if save_start
         iout += 1
-        saved_data[1, iout, i] = r[1]
-        saved_data[2, iout, i] = r[2]
-        saved_data[3, iout, i] = r[3]
-        saved_data[4, iout, i] = v[1]
-        saved_data[5, iout, i] = v[2]
-        saved_data[6, iout, i] = v[3]
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v[1]
+        saved_data[i, 5, iout] = v[2]
+        saved_data[i, 6, iout] = v[3]
     end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
@@ -225,12 +224,12 @@ end
         if it < nt || save_end
             v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
             iout += 1
-            saved_data[1, iout, i] = r[1]
-            saved_data[2, iout, i] = r[2]
-            saved_data[3, iout, i] = r[3]
-            saved_data[4, iout, i] = v_node[1]
-            saved_data[5, iout, i] = v_node[2]
-            saved_data[6, iout, i] = v_node[3]
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v_node[1]
+            saved_data[i, 5, iout] = v_node[2]
+            saved_data[i, 6, iout] = v_node[3]
         end
     end
 end
@@ -305,7 +304,7 @@ end
         )
         synchronize(backend)
 
-        xv_cpu_end = is_cpu_accessible ? xv_current : zeros(T, 6, size(xv_current, 2))
+        xv_cpu_end = is_cpu_accessible ? xv_current : zeros(T, size(xv_current, 1), 6)
         if !is_cpu_accessible
             copyto!(xv_cpu_end, xv_current)
         end
@@ -316,15 +315,15 @@ end
             if save_start
                 idx += 1
                 traj[idx] = SVector{6, T}(
-                    xv_init[1, i], xv_init[2, i], xv_init[3, i],
-                    xv_init[4, i], xv_init[5, i], xv_init[6, i]
+                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
+                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
                 )
             end
             if save_end
                 idx += 1
                 traj[idx] = SVector{6, T}(
-                    xv_cpu_end[1, i], xv_cpu_end[2, i], xv_cpu_end[3, i],
-                    xv_cpu_end[4, i], xv_cpu_end[5, i], xv_cpu_end[6, i]
+                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
+                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
                 )
             end
             interp = LinearInterpolation(saved_times, traj)
@@ -334,7 +333,8 @@ end
             )
         end
     else
-        saved_data_gpu = KA.zeros(backend, T, 6, nout, size(xv_current, 2))
+        n_total = size(xv_current, 1)
+        saved_data_gpu = KA.zeros(backend, T, n_total, 6, nout)
 
         if use_saveat(plan)
             plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
@@ -358,7 +358,7 @@ end
         saved_data_buf = if is_cpu_accessible
             saved_data_gpu
         else
-            saved_cpu = zeros(T, 6, nout, size(xv_current, 2))
+            saved_cpu = zeros(T, n_total, 6, nout)
             copyto!(saved_cpu, saved_data_gpu)
             saved_cpu
         end
@@ -367,12 +367,12 @@ end
             traj = Vector{SVector{6, T}}(undef, nout)
             for j in 1:nout
                 traj[j] = SVector{6, T}(
-                    saved_data_buf[1, j, i],
-                    saved_data_buf[2, j, i],
-                    saved_data_buf[3, j, i],
-                    saved_data_buf[4, j, i],
-                    saved_data_buf[5, j, i],
-                    saved_data_buf[6, j, i]
+                    saved_data_buf[i, 1, j],
+                    saved_data_buf[i, 2, j],
+                    saved_data_buf[i, 3, j],
+                    saved_data_buf[i, 4, j],
+                    saved_data_buf[i, 5, j],
+                    saved_data_buf[i, 6, j]
                 )
             end
             interp = LinearInterpolation(saved_times, traj)
@@ -431,10 +431,10 @@ function _prepare_boris_solve(
     end
 
     n_particles = trajectories
-    xv_current = KA.zeros(backend, T, 6, n_particles)
+    xv_current = KA.zeros(backend, T, n_particles, 6)
     is_cpu_accessible = xv_current isa Array
 
-    xv_init = zeros(T, 6, n_particles)
+    xv_init = zeros(T, n_particles, 6)
     prob_func = hasproperty(prob, :prob_func) ? prob.prob_func : ((p, ctx) -> p)
 
     for i in 1:n_particles
@@ -444,7 +444,9 @@ function _prepare_boris_solve(
             new_prob = prob_func(prob, (sim_id = i, repeat = false))
             new_prob.u0
         end
-        xv_init[:, i] .= u0_i
+        for c in 1:6
+            xv_init[i, c] = u0_i[c]
+        end
     end
 
     copyto!(xv_current, xv_init)
