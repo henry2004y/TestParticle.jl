@@ -1,38 +1,15 @@
 # GPU Boris solver using KernelAbstractions.jl
 
 """
-    adapt_field_to_gpu(field::Field, backend::KA.Backend)
+    adapt_field_to_gpu(field, backend::Backend)
 
-Adapt interpolation fields to GPU memory using Adapt.jl.
-Analytic functions are returned unchanged.
+Adapt interpolation fields or parameters to GPU memory using Adapt.jl.
+Analytic functions and CPU backend return the input unchanged.
 """
 adapt_field_to_gpu(field, ::CPU) = field
-adapt_field_to_gpu(field::Field, ::CPU) = field
-adapt_field_to_gpu(field::ZeroField, ::CPU) = field
-adapt_field_to_gpu(field::ZeroField, ::Backend) = field
 adapt_field_to_gpu(field, backend::Backend) = Adapt.adapt(backend, field)
 
-function adapt_field_to_gpu(field::Field, backend::Backend)
-    backend isa CPU && return field
-
-    # Adapt the inner function (FieldInterpolator or analytic)
-    adapted_func = Adapt.adapt(backend, field.field_function)
-
-    return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
-end
-
-# The solvers the device can run. A kernel takes one step at a time under a step
-# size fixed for the whole ensemble, so only those are candidates; the adaptive
-# ones decide their own step on the host, once per step for every trajectory,
-# which is the SciML loop's job.
 const GPUBorisAlgorithm = Union{Boris, MultistepBoris}
-
-
-# What reaches the device is a parameter container, not the fields on their own,
-# so that the kernel can call the same step functions the CPU solvers call and
-# reach the fields the same way, through get_q2m, get_EField and get_BField. The
-# layout is the one those accessors assume, `(q2m, m, E, B, ...)`, and it is built
-# once on the host with the adapted fields.
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
     r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
@@ -120,9 +97,7 @@ end
     boris_output_state(xv, p, dt, t, alg)
 
 The state worth reporting for column `xv` of a device array: the position as it
-stands together with the velocity synchronised to it. Synchronising costs a
-field evaluation, which is why the driver asks for it only at the times it saves
-rather than every step.
+stands together with the velocity synchronised to it.
 """
 @inline function boris_output_state(xv, p, dt, t, alg)
     T = eltype(xv)
@@ -132,9 +107,8 @@ rather than every step.
     return vcat(r, update_velocity_node(v_half, r, dt, t, p, alg))
 end
 
-
 @inbounds function _solve_serial(
-        prob::TraceProblem, backend::Backend, irange;
+        prob::AbstractODEProblem, backend::Backend, irange;
         dt::AbstractFloat, plan, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
@@ -155,12 +129,6 @@ end
 
     nsave = length(plan.times)
     isave = 1
-    # Interpolating inside a step needs both ends of it. The device keeps the
-    # state at the start of the step in `xv_next` after each swap, so the two are
-    # staged through host buffers of their own rather than relying on
-    # `xv_cpu_buffer`, which tracks only the array it was aliased to. Like
-    # `xv_cpu_buffer` they are sized by the whole ensemble and indexed by the
-    # global particle number, because a thread only owns a slice of it.
     if use_saveat(plan)
         xv_cpu_prev = zeros(T, size(xv_current))
         xv_cpu_cur = similar(xv_cpu_prev)
@@ -200,8 +168,6 @@ end
         if use_saveat(plan)
             t_current = tspan[1] + it * dt
             if isave <= nsave && _saveat_reached(plan.times[isave], t_current, plan.dir)
-                # The device copies are made once per event rather than per step,
-                # so their cost stays proportional to the number of samples.
                 copyto!(xv_cpu_prev, xv_next)
                 copyto!(xv_cpu_cur, xv_current)
 
@@ -292,7 +258,7 @@ end
 end
 
 function _prepare_boris_solve(
-        prob::TraceProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
+        prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
@@ -301,7 +267,11 @@ function _prepare_boris_solve(
     T = eltype(u0)
 
     if abs(dt) < 10 * eps(typeof(dt))
-        throw(ArgumentError("time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"))
+        throw(
+            ArgumentError(
+                "time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"
+            )
+        )
     end
 
     Efunc_gpu = adapt_field_to_gpu(Efunc, backend)
@@ -317,7 +287,6 @@ function _prepare_boris_solve(
     nout = save_start ? 1 : 0
 
     if use_saveat(plan)
-        # One slot per requested time, plus the end of the run.
         nout += length(plan.times) + (save_end ? 1 : 0)
     elseif save_everystep
         last_is_step = nt > 0
@@ -344,11 +313,13 @@ function _prepare_boris_solve(
         xv_init = zeros(T, 6, n_particles)
     end
 
+    prob_func = hasproperty(prob, :prob_func) ? prob.prob_func : ((p, ctx) -> p)
+
     for i in 1:n_particles
         u0_i = if n_particles == 1
             prob.u0
         else
-            new_prob = prob.prob_func(prob, (sim_id = i, repeat = false))
+            new_prob = prob_func(prob, (sim_id = i, repeat = false))
             new_prob.u0
         end
         xv_init[:, i] .= u0_i
@@ -364,9 +335,6 @@ function _prepare_boris_solve(
         xv_cpu_buffer = zeros(T, 6, n_particles)
     end
 
-    # One container per side: the device reads the adapted fields, the host the
-    # original ones, since a state is synchronised for output after it is copied
-    # back. Both answer get_q2m, get_EField and get_BField.
     p_gpu = (q2m, m, Efunc_gpu, Bfunc_gpu)
     p_host = (q2m, m, Efunc, Bfunc)
 
@@ -376,8 +344,9 @@ function _prepare_boris_solve(
     )
 end
 
-@inbounds function solve(
-        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend, ::EnsembleSerial;
+@inbounds function SciMLBase.solve(
+        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        ::EnsembleSerial;
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
@@ -405,8 +374,9 @@ end
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
-@inbounds function solve(
-        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend, ::EnsembleThreads;
+@inbounds function SciMLBase.solve(
+        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        ::EnsembleThreads;
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
@@ -430,7 +400,8 @@ end
     }(undef, trajectories)
 
     nchunks = Threads.nthreads()
-    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    chunks = index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed Threads.@threads for irange in chunks
         chunk_sols = _solve_serial(
             prob, backend, irange;
             dt, plan, save_start, save_end, save_everystep, workgroup_size,
@@ -445,29 +416,30 @@ end
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
-@inbounds function solve(
-        prob::TraceProblem, alg::GPUBorisAlgorithm, backend::Backend,
+@inbounds function SciMLBase.solve(
+        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::AbstractFloat, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
-    return solve(
+    return SciMLBase.solve(
         prob, alg, backend, ensemblealg;
         dt, trajectories, saveat, save_start, save_end,
         save_everystep, workgroup_size, maxiters
     )
 end
 
-function solve(
-        prob::TraceProblem, alg::AbstractBoris, backend::Backend, args...; kwargs...
+function SciMLBase.solve(
+        prob::AbstractODEProblem, alg::AbstractBoris, backend::Backend, args...;
+        kwargs...
     )
     supported = "Boris() and MultistepBoris{N}(; n)"
     throw(
         ArgumentError(
-            "$alg has no GPU path, because it chooses its own time step. Solve it on " *
-                "the CPU, `solve(prob, alg)`, or pick a fixed step solver, one of $supported."
+            "$alg has no GPU path, because it chooses its own time step. " *
+                "Solve it on the CPU, `solve(prob, alg)`, or pick one of $supported."
         )
     )
 end
