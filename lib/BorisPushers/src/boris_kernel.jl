@@ -417,15 +417,19 @@ end
 end
 
 function _prepare_boris_solve(
-        prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
+        prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::Real,
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
     )
     (; tspan, p, u0) = prob
-    q2m, m = get_q2m(p), p[2]
-    Efunc, Bfunc = get_EField(p), get_BField(p)
     T = eltype(u0)
+    q2m, m = T(get_q2m(p)), T(p[2])
+    Efunc, Bfunc = get_EField(p), get_BField(p)
+    dt = T(dt)
+    tspan = (T(tspan[1]), T(tspan[2]))
 
-    if abs(dt) < 10 * eps(typeof(dt))
+    timescale = max(abs(tspan[1]), abs(tspan[2]), abs(tspan[2] - tspan[1]))
+    min_dt = 10 * eps(T) * timescale
+    if abs(dt) < min_dt
         throw(
             ArgumentError(
                 "time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"
@@ -506,26 +510,30 @@ end
 @inbounds function SciMLBase.solve(
         prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
         ::EnsembleSerial;
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
+    T = eltype(prob.u0)
+    dt_T = T(dt)
+    tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
+    time_type = typeof(tspan_T[1] + dt_T)
     plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan),
-        typeof(prob.tspan[1] + dt)
+        saveat, tspan_T, _span_direction(tspan_T),
+        time_type
     )
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
         p_gpu, p_host,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, plan,
+        prob, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters
     )
 
     elapsed_time = @elapsed sols = _solve_serial(
         prob, backend, 1:trajectories;
-        dt, plan, save_start, save_end, save_everystep, workgroup_size,
+        dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
         xv_current, xv_init, is_cpu_accessible,
         p_gpu, p_host, alg, nout, nt
     )
@@ -536,36 +544,39 @@ end
 @inbounds function SciMLBase.solve(
         prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
         ::EnsembleThreads;
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000
     )
+    T = eltype(prob.u0)
+    dt_T = T(dt)
+    tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
+    time_type = typeof(tspan_T[1] + dt_T)
     plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan),
-        typeof(prob.tspan[1] + dt)
+        saveat, tspan_T, _span_direction(tspan_T),
+        time_type
     )
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, T,
+        p_gpu, p_host, tspan, u0,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, plan,
+        prob, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters
     )
 
     if !(backend isa CPU)
         elapsed_time = @elapsed sols = _solve_serial(
             prob, backend, 1:trajectories;
-            dt, plan, save_start, save_end, save_everystep, workgroup_size,
+            dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_init, is_cpu_accessible,
             p_gpu, p_host, alg, nout, nt
         )
         return EnsembleSolution(sols, elapsed_time, true)
     end
 
-    time_type = typeof(tspan[1] + dt)
     saved_times = _build_saved_times(
-        tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
+        tspan, dt_T, nt, plan, save_start, save_end, save_everystep, time_type
     )
     sols = Vector{
         typeof(build_solution(prob, alg, saved_times, [SVector{6, T}(u0)])),
@@ -576,7 +587,7 @@ end
     elapsed_time = @elapsed Threads.@threads for irange in chunks
         chunk_sols = _solve_serial(
             prob, backend, irange;
-            dt, plan, save_start, save_end, save_everystep, workgroup_size,
+            dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_init, is_cpu_accessible,
             p_gpu, p_host, alg, nout, nt
         )
@@ -591,7 +602,7 @@ end
 @inbounds function SciMLBase.solve(
         prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000

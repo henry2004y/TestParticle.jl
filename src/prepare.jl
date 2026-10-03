@@ -99,15 +99,27 @@ end
 
 function _prepare(
         E, B, F, args...; species = Proton, q = nothing,
-        m = nothing, gridtype = CartesianGrid, kw...
+        m = nothing, gridtype = CartesianGrid, type = nothing, kw...
     )
-    q = @something q species.q
-    m = @something m species.m
-    q2m = q / m
-    fE = prepare_field(E, args...; gridtype, kw...)
-    fB = prepare_field(B, args...; gridtype, kw...)
-    fF = prepare_field(F, args...; gridtype, kw...)
-    return q2m, m, fE, fB, fF
+    if type !== nothing
+        T = type
+        sp = species isa Species ? Species{T}(species) : species
+        q_val = isnothing(q) ? sp.q : T(q)
+        m_val = isnothing(m) ? sp.m : T(m)
+        q2m = q_val / m_val
+        fE = prepare_field(E, args...; gridtype, kw...)
+        fB = prepare_field(B, args...; gridtype, kw...)
+        fF = prepare_field(F, args...; gridtype, kw...)
+        return q2m, m_val, fE, fB, fF
+    else
+        q = @something q species.q
+        m = @something m species.m
+        q2m = q / m
+        fE = prepare_field(E, args...; gridtype, kw...)
+        fB = prepare_field(B, args...; gridtype, kw...)
+        fF = prepare_field(F, args...; gridtype, kw...)
+        return q2m, m, fE, fB, fF
+    end
 end
 
 """

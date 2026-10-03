@@ -50,8 +50,12 @@ get_q2m(f::CachedFields) = get_q2m(f.p)
 get_EField(f::CachedFields) = Base.Returns(f.E)
 get_BField(f::CachedFields) = Base.Returns(f.B)
 
-"The fields of `p` at `(r, t)`, remembered together with where they were taken."
-@inline _node_fields(p, r, t) = CachedFields(p, get_EField(p)(r, t), get_BField(p)(r, t), r, t)
+@inline function _node_fields(p, r, t)
+    T = eltype(r)
+    E = SVector{3, T}(get_EField(p)(r, t))
+    B = SVector{3, T}(get_BField(p)(r, t))
+    return CachedFields(p, E, B, r, t)
+end
 
 """
     _fields_at(fields, p, r, t)

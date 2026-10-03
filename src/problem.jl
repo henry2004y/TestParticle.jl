@@ -1,5 +1,24 @@
 # TraceProblem constructors and SciML interface integration
 
+@inline function _promote_p(::Type{T}, p::Tuple) where {T <: AbstractFloat}
+    if length(p) >= 2 && p[1] isa Number && p[2] isa Number
+        return (T(p[1]), T(p[2]), Base.tail(Base.tail(p))...)
+    end
+    return p
+end
+@inline _promote_p(::Type{T}, p) where {T} = p
+
+@inline function _promote_trace_args(u0, tspan, p)
+    T = eltype(u0)
+    if T <: AbstractFloat
+        tspan_T = (T(tspan[1]), T(tspan[2]))
+        p_T = _promote_p(T, p)
+        return tspan_T, p_T
+    else
+        return tspan, p
+    end
+end
+
 """
     TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
     TraceProblem(f, u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
@@ -9,6 +28,7 @@ solvers (e.g. Tsit5, Vern7). When `f` is not provided, defaults to `trace!` (in-
 for mutable arrays or `trace` (out-of-place) for `StaticArray`s.
 """
 function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+    tspan, p = _promote_trace_args(u0, tspan, p)
     isinplace = !(u0 isa StaticArray)
     _func = isinplace ? trace! : trace
     _f = ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(_func)
@@ -18,6 +38,7 @@ function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
 end
 
 function TraceProblem(f::Function, u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+    tspan, p = _promote_trace_args(u0, tspan, p)
     isinplace = !(u0 isa StaticArray)
     _f = ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(f)
     return TraceProblem{
@@ -29,12 +50,14 @@ function TraceProblem(
         f::AbstractODEFunction{iip}, u0, tspan, p;
         prob_func = DEFAULT_PROB_FUNC
     ) where {iip}
+    tspan, p = _promote_trace_args(u0, tspan, p)
     return TraceProblem{
         typeof(u0), typeof(tspan), iip, typeof(p), typeof(f), typeof(prob_func),
     }(f, u0, tspan, p, prob_func)
 end
 
 function TraceProblem{iip}(; f, u0, tspan, p, prob_func = DEFAULT_PROB_FUNC) where {iip}
+    tspan, p = _promote_trace_args(u0, tspan, p)
     return TraceProblem{
         typeof(u0), typeof(tspan), iip, typeof(p), typeof(f), typeof(prob_func),
     }(f, u0, tspan, p, prob_func)
@@ -49,6 +72,7 @@ function SciMLBase.remake(
         prob_func = prob.prob_func,
         kwargs...
     )
+    tspan, p = _promote_trace_args(u0, tspan, p)
     isinplace = !(u0 isa StaticArray)
     _f = if f === prob.f && (prob.f.f === trace! || prob.f.f === trace)
         isinplace ? ODEFunction{true, DEFAULT_SPECIALIZATION}(trace!) :

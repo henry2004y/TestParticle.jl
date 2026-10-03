@@ -49,6 +49,20 @@ end
             end
         end
     end
+
+    @testset "Float32 Boris on a backend" begin
+        let tspan = (0.0f0, 1.0f-6), dt = 1.0f-9, saveat = 1.0f-8,
+                param = prepare(zero_E, uniform_B; species = Proton),
+                prob = TraceProblem(Float32[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
+
+            sol_loop = TestParticle.solve(prob, Boris(); dt, saveat)
+            sol_device = TP.solve(prob, Boris(), CPU(); dt, trajectories = 1, saveat).u[1]
+
+            @test eltype(sol_device.u[end]) === Float32
+            @test eltype(sol_device.t) === Float32
+            @test max_rel_diff(sol_device.u, sol_loop.u) < 1.0e-5
+        end
+    end
 end
 
 end
