@@ -15,11 +15,11 @@ using Printf
 
 function detect_gpu_backend()
     for (pkg, backend_expr) in [
-        (:CUDA, "CUDA.CUDABackend()"),
-        (:AMDGPU, "AMDGPU.ROCBackend()"),
-        (:Metal, "Metal.MetalBackend()"),
-        (:oneAPI, "oneAPI.oneAPIBackend()"),
-    ]
+            (:CUDA, "CUDA.CUDABackend()"),
+            (:AMDGPU, "AMDGPU.ROCBackend()"),
+            (:Metal, "Metal.MetalBackend()"),
+            (:oneAPI, "oneAPI.oneAPIBackend()"),
+        ]
         if isdefined(Main, pkg)
             try
                 backend = eval(Meta.parse(backend_expr))
@@ -135,10 +135,12 @@ function main()
 
     trajectory_counts = [10, 100, 1000, 5000]
 
-    for (scen_idx, (scen_name, saveat, save_everystep)) in enumerate([
-        ("Scenario A: Save End State Only (Pusher Compute)", (), false),
-        ("Scenario B: Save Every 100 Steps (Dense Output)", saveat_interval, false),
-    ])
+    for (scen_idx, (scen_name, saveat, save_everystep)) in enumerate(
+            [
+                ("Scenario A: Save End State Only (Pusher Compute)", (), false),
+                ("Scenario B: Save Every 100 Steps (Dense Output)", saveat_interval, false),
+            ]
+        )
         println("\n" * "-"^88)
         println(" $scen_name")
         println("-"^88)
@@ -182,11 +184,13 @@ function main()
     println("\n" * "="^88)
     println("Tips:")
     println(" - To run on NVIDIA GPUs:")
-    println("     julia --project=test -e " *
-            "\"using CUDA; include(\\\"benchmark/compare_boris_backends.jl\\\")\"")
+    println(
+        "     julia --project=test -e " *
+            "\"using CUDA; include(\\\"benchmark/compare_boris_backends.jl\\\")\""
+    )
     println(" - To run with multiple CPU threads:")
     println("     julia --project=test -t auto benchmark/compare_boris_backends.jl")
-    println("="^88)
+    return println("="^88)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
