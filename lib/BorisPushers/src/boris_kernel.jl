@@ -416,9 +416,46 @@ end
     return sols
 end
 
+@inline function _part1by2(n::UInt32)
+    n &= 0x000003ff
+    n = (n | (n << 16)) & 0x030000ff
+    n = (n | (n << 8)) & 0x0300f00f
+    n = (n | (n << 4)) & 0x030c30c3
+    n = (n | (n << 2)) & 0x09249249
+    return n
+end
+
+@inline function morton3D(ix::Integer, iy::Integer, iz::Integer)
+    return (_part1by2(UInt32(clamp(ix, 0, 1023))) << 2) |
+        (_part1by2(UInt32(clamp(iy, 0, 1023))) << 1) |
+        _part1by2(UInt32(clamp(iz, 0, 1023)))
+end
+
+function morton_sort_particles(xv_init::AbstractMatrix{T}) where {T}
+    N = size(xv_init, 1)
+    xmin, xmax = extrema(@view xv_init[:, 1])
+    ymin, ymax = extrema(@view xv_init[:, 2])
+    zmin, zmax = extrema(@view xv_init[:, 3])
+
+    sx = xmax > xmin ? T(1023) / (xmax - xmin) : zero(T)
+    sy = ymax > ymin ? T(1023) / (ymax - ymin) : zero(T)
+    sz = zmax > zmin ? T(1023) / (zmax - zmin) : zero(T)
+
+    codes = Vector{UInt32}(undef, N)
+    @inbounds for i in 1:N
+        x_val, y_val, z_val = xv_init[i, 1], xv_init[i, 2], xv_init[i, 3]
+        ix = isnan(x_val) ? 0 : clamp(floor(Int, (x_val - xmin) * sx), 0, 1023)
+        iy = isnan(y_val) ? 0 : clamp(floor(Int, (y_val - ymin) * sy), 0, 1023)
+        iz = isnan(z_val) ? 0 : clamp(floor(Int, (z_val - zmin) * sz), 0, 1023)
+        codes[i] = morton3D(ix, iy, iz)
+    end
+    return sortperm(codes)
+end
+
 function _prepare_boris_solve(
         prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::Real,
-        plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
+        plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
+        sort_particles::Bool = false,
     )
     (; tspan, p, u0) = prob
     T = eltype(u0)
@@ -496,6 +533,16 @@ function _prepare_boris_solve(
         end
     end
 
+    perm = if sort_particles && n_particles > 1
+        morton_sort_particles(xv_init)
+    else
+        nothing
+    end
+
+    if perm !== nothing
+        xv_init = xv_init[perm, :]
+    end
+
     copyto!(xv_current, xv_init)
 
     p_gpu = (q2m, m, Efunc_gpu, Bfunc_gpu)
@@ -503,7 +550,7 @@ function _prepare_boris_solve(
 
     return (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, T,
+        p_gpu, p_host, tspan, u0, T, perm,
     )
 end
 
@@ -513,7 +560,8 @@ end
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
     )
     T = eltype(prob.u0)
     dt_T = T(dt)
@@ -525,10 +573,11 @@ end
     )
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host,
+        p_gpu, p_host, perm,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt_T, plan,
-        save_start, save_end, save_everystep, maxiters
+        save_start, save_end, save_everystep, maxiters;
+        sort_particles,
     )
 
     elapsed_time = @elapsed sols = _solve_serial(
@@ -537,6 +586,10 @@ end
         xv_current, xv_init, is_cpu_accessible,
         p_gpu, p_host, alg, nout, nt
     )
+
+    if perm !== nothing
+        sols = sols[invperm(perm)]
+    end
 
     return EnsembleSolution(sols, elapsed_time, true)
 end
@@ -547,7 +600,8 @@ end
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
     )
     T = eltype(prob.u0)
     dt_T = T(dt)
@@ -559,10 +613,11 @@ end
     )
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0,
+        p_gpu, p_host, tspan, u0, perm,
     ) = _prepare_boris_solve(
         prob, backend, trajectories, dt_T, plan,
-        save_start, save_end, save_everystep, maxiters
+        save_start, save_end, save_everystep, maxiters;
+        sort_particles,
     )
 
     if !(backend isa CPU)
@@ -572,6 +627,9 @@ end
             xv_current, xv_init, is_cpu_accessible,
             p_gpu, p_host, alg, nout, nt
         )
+        if perm !== nothing
+            sols = sols[invperm(perm)]
+        end
         return EnsembleSolution(sols, elapsed_time, true)
     end
 
@@ -596,6 +654,10 @@ end
         end
     end
 
+    if perm !== nothing
+        sols = sols[invperm(perm)]
+    end
+
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
@@ -605,12 +667,13 @@ end
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
     )
     return SciMLBase.solve(
         prob, alg, backend, ensemblealg;
         dt, trajectories, saveat, save_start, save_end,
-        save_everystep, workgroup_size, maxiters
+        save_everystep, workgroup_size, maxiters, sort_particles
     )
 end
 
