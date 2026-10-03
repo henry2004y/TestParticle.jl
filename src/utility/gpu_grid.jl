@@ -231,52 +231,85 @@ end
 @inline (g::GPUGrid1D)(xu::AbstractVector) = g(xu[g.dir])
 @inline (g::GPUGrid1D)(xu::AbstractVector, t) = g(xu)
 
+@inline function _grid_props(g)
+    if hasproperty(g, :lo)
+        return g.lo, g.h, g.inv_h, g.len
+    elseif hasproperty(g, :inner)
+        x0 = g.inner[1]
+        len = length(g.inner)
+        h = g.h isa AbstractArray ? g.h[1] : g.h
+        inv_h = g.inv_h isa AbstractArray ? g.inv_h[1] : g.inv_h
+        return x0, h, inv_h, len
+    elseif hasproperty(g, :x)
+        return _grid_props(g.x)
+    else
+        x0 = first(g)
+        len = length(g)
+        h = step(g)
+        inv_h = inv(h)
+        return x0, h, inv_h, len
+    end
+end
+
 function _to_gpu_grid(itp, backend::Backend; dir = 1)
     if isdefined(itp, :grids) && isdefined(itp, :data)
         N = length(itp.grids)
         if N == 3
             gx, gy, gz = itp.grids
-            T = typeof(gx.lo)
+            x0, dx, inv_dx, nx = _grid_props(gx)
+            y0, dy, inv_dy, ny = _grid_props(gy)
+            z0, dz, inv_dz, nz = _grid_props(gz)
+            T = typeof(x0)
             data_gpu = Adapt.adapt(backend, itp.data)
             bc = itp.extraps
             return GPUGrid3D(
                 data_gpu,
-                T(gx.lo), T(gx.h), T(gx.inv_h), Int32(gx.len),
-                T(gy.lo), T(gy.h), T(gy.inv_h), Int32(gy.len),
-                T(gz.lo), T(gz.h), T(gz.inv_h), Int32(gz.len),
+                T(x0), T(dx), T(inv_dx), Int32(nx),
+                T(y0), T(dy), T(inv_dy), Int32(ny),
+                T(z0), T(dz), T(inv_dz), Int32(nz),
                 bc,
             )
         elseif N == 2
             gx, gy = itp.grids
-            T = typeof(gx.lo)
+            x0, dx, inv_dx, nx = _grid_props(gx)
+            y0, dy, inv_dy, ny = _grid_props(gy)
+            T = typeof(x0)
             data_gpu = Adapt.adapt(backend, itp.data)
             bc = itp.extraps
             return GPUGrid2D(
                 data_gpu,
-                T(gx.lo), T(gx.h), T(gx.inv_h), Int32(gx.len),
-                T(gy.lo), T(gy.h), T(gy.inv_h), Int32(gy.len),
+                T(x0), T(dx), T(inv_dx), Int32(nx),
+                T(y0), T(dy), T(inv_dy), Int32(ny),
                 bc,
             )
         elseif N == 1
             gx = itp.grids[1]
-            T = typeof(gx.lo)
+            x0, dx, inv_dx, nx = _grid_props(gx)
+            T = typeof(x0)
             data_gpu = Adapt.adapt(backend, itp.data)
             bc = itp.extraps
             return GPUGrid1D(
                 data_gpu,
-                T(gx.lo), T(gx.h), T(gx.inv_h), Int32(gx.len),
+                T(x0), T(dx), T(inv_dx), Int32(nx),
                 Int32(dir),
                 bc,
             )
         end
-    elseif isdefined(itp, :grid) && isdefined(itp, :data)
-        gx = itp.grid
-        T = typeof(gx.lo)
+    elseif (isdefined(itp, :grid) || isdefined(itp, :x)) && isdefined(itp, :data)
+        g = isdefined(itp, :grid) ? itp.grid : itp.x
+        x0, dx, inv_dx, nx = _grid_props(g)
+        T = typeof(x0)
         data_gpu = Adapt.adapt(backend, itp.data)
-        bc = itp.extraps
+        bc = if hasproperty(itp, :extraps)
+            itp.extraps
+        elseif hasproperty(itp, :extrap)
+            itp.extrap
+        else
+            nothing
+        end
         return GPUGrid1D(
             data_gpu,
-            T(gx.lo), T(gx.h), T(gx.inv_h), Int32(gx.len),
+            T(x0), T(dx), T(inv_dx), Int32(nx),
             Int32(dir),
             bc,
         )
