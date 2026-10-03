@@ -276,6 +276,70 @@ function _build_saved_times(
     return saved_times
 end
 
+function _unpack_endpoint_solutions!(
+        sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start::Bool,
+        save_end::Bool, prob, alg, ::Type{T}
+    ) where {T}
+    n_particles = length(irange)
+    chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+    Threads.@threads for chunk in chunks
+        for local_i in chunk
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            if save_start
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
+                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
+                )
+            end
+            if save_end
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
+                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+    end
+    return sols
+end
+
+function _unpack_dense_solutions!(
+        sols, irange, saved_data_buf, saved_times, nout, prob, alg, ::Type{T}
+    ) where {T}
+    n_particles = length(irange)
+    chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+    Threads.@threads for chunk in chunks
+        for local_i in chunk
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            for j in 1:nout
+                traj[j] = SVector{6, T}(
+                    saved_data_buf[i, 1, j],
+                    saved_data_buf[i, 2, j],
+                    saved_data_buf[i, 3, j],
+                    saved_data_buf[i, 4, j],
+                    saved_data_buf[i, 5, j],
+                    saved_data_buf[i, 6, j]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+    end
+    return sols
+end
+
 @inbounds function _solve_serial(
         prob::AbstractODEProblem, backend::Backend, irange;
         dt::AbstractFloat, plan, save_start::Bool,
@@ -309,29 +373,10 @@ end
             copyto!(xv_cpu_end, xv_current)
         end
 
-        for (local_i, i) in enumerate(irange)
-            traj = Vector{SVector{6, T}}(undef, nout)
-            idx = 0
-            if save_start
-                idx += 1
-                traj[idx] = SVector{6, T}(
-                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
-                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
-                )
-            end
-            if save_end
-                idx += 1
-                traj[idx] = SVector{6, T}(
-                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
-                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
-                )
-            end
-            interp = LinearInterpolation(saved_times, traj)
-            sols[local_i] = build_solution(
-                prob, alg, saved_times, traj;
-                interp, retcode = ReturnCode.Success, stats = nothing
-            )
-        end
+        _unpack_endpoint_solutions!(
+            sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start,
+            save_end, prob, alg, T
+        )
     else
         n_total = size(xv_current, 1)
         saved_data_gpu = KA.zeros(backend, T, n_total, 6, nout)
@@ -363,24 +408,9 @@ end
             saved_cpu
         end
 
-        for (local_i, i) in enumerate(irange)
-            traj = Vector{SVector{6, T}}(undef, nout)
-            for j in 1:nout
-                traj[j] = SVector{6, T}(
-                    saved_data_buf[i, 1, j],
-                    saved_data_buf[i, 2, j],
-                    saved_data_buf[i, 3, j],
-                    saved_data_buf[i, 4, j],
-                    saved_data_buf[i, 5, j],
-                    saved_data_buf[i, 6, j]
-                )
-            end
-            interp = LinearInterpolation(saved_times, traj)
-            sols[local_i] = build_solution(
-                prob, alg, saved_times, traj;
-                interp, retcode = ReturnCode.Success, stats = nothing
-            )
-        end
+        _unpack_dense_solutions!(
+            sols, irange, saved_data_buf, saved_times, nout, prob, alg, T
+        )
     end
 
     return sols
@@ -437,15 +467,28 @@ function _prepare_boris_solve(
     xv_init = zeros(T, n_particles, 6)
     prob_func = hasproperty(prob, :prob_func) ? prob.prob_func : ((p, ctx) -> p)
 
-    for i in 1:n_particles
-        u0_i = if n_particles == 1
-            prob.u0
-        else
-            new_prob = prob_func(prob, (sim_id = i, repeat = false))
-            new_prob.u0
-        end
+    if n_particles == 1
         for c in 1:6
-            xv_init[i, c] = u0_i[c]
+            xv_init[1, c] = prob.u0[c]
+        end
+    elseif Threads.nthreads() > 1
+        chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+        Threads.@threads for chunk in chunks
+            for i in chunk
+                new_prob = prob_func(prob, (sim_id = i, repeat = false))
+                u0_i = new_prob.u0
+                for c in 1:6
+                    xv_init[i, c] = u0_i[c]
+                end
+            end
+        end
+    else
+        for i in 1:n_particles
+            new_prob = prob_func(prob, (sim_id = i, repeat = false))
+            u0_i = new_prob.u0
+            for c in 1:6
+                xv_init[i, c] = u0_i[c]
+            end
         end
     end
 
