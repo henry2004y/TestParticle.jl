@@ -281,6 +281,34 @@ function _unpack_endpoint_solutions!(
         save_end::Bool, prob, alg, ::Type{T}
     ) where {T}
     n_particles = length(irange)
+    if n_particles <= 16 || Threads.nthreads() == 1
+        for local_i in 1:n_particles
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            if save_start
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
+                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
+                )
+            end
+            if save_end
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
+                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
+
     chunks = index_chunks(1:n_particles; n = Threads.nthreads())
     Threads.@threads for chunk in chunks
         for local_i in chunk
@@ -315,6 +343,29 @@ function _unpack_dense_solutions!(
         sols, irange, saved_data_buf, saved_times, nout, prob, alg, ::Type{T}
     ) where {T}
     n_particles = length(irange)
+    if n_particles <= 16 || Threads.nthreads() == 1
+        for local_i in 1:n_particles
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            for j in 1:nout
+                traj[j] = SVector{6, T}(
+                    saved_data_buf[i, 1, j],
+                    saved_data_buf[i, 2, j],
+                    saved_data_buf[i, 3, j],
+                    saved_data_buf[i, 4, j],
+                    saved_data_buf[i, 5, j],
+                    saved_data_buf[i, 6, j]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
+
     chunks = index_chunks(1:n_particles; n = Threads.nthreads())
     Threads.@threads for chunk in chunks
         for local_i in chunk
@@ -341,12 +392,12 @@ function _unpack_dense_solutions!(
 end
 
 @inbounds function _solve_serial(
-        prob::AbstractODEProblem, backend::Backend, irange;
-        dt::AbstractFloat, plan, save_start::Bool,
+        prob::P, backend::B, irange::R;
+        dt::D, plan::PL, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, alg, nout, nt
-    )
+        p_gpu, p_host, alg::A, nout::Int, nt::Int
+    ) where {P <: AbstractODEProblem, B <: Backend, R, D <: AbstractFloat, PL, A}
     (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
@@ -359,6 +410,71 @@ end
     sols = Vector{
         typeof(build_solution(prob, alg, saved_times, [SVector{6, T}(prob.u0)])),
     }(undef, n_particles)
+
+    if backend isa CPU
+        nsave = length(plan.times)
+        for (local_i, i) in enumerate(irange)
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            r = SVector{3, T}(xv_current[i, 1], xv_current[i, 2], xv_current[i, 3])
+            v = SVector{3, T}(xv_current[i, 4], xv_current[i, 5], xv_current[i, 6])
+
+            if save_start
+                idx += 1
+                traj[idx] = vcat(r, v)
+            end
+
+            v_half = update_velocity_half(v, r, dt, tspan[1], p_host, alg)
+            isave = 1
+
+            for it in 1:nt
+                t = tspan[1] + (it - 1) * dt
+                r, v_half = advance_boris(v_half, r, dt, t, p_host, alg)
+
+                if use_saveat(plan)
+                    t_current = tspan[1] + it * dt
+                    t_prev = t_current - dt
+                    while isave <= nsave &&
+                            _saveat_reached(plan.times[isave], t_current, plan.dir)
+                        t_target = plan.times[isave]
+                        v_node = update_velocity_node(
+                            v_half, r, dt, t_current, p_host, alg
+                        )
+                        y_cur = vcat(r, v_node)
+                        θ = (t_target - t_prev) / dt
+                        idx += 1
+                        traj[idx] = traj[idx - 1] + θ * (y_cur - traj[idx - 1])
+                        isave += 1
+                    end
+                elseif save_everystep
+                    if it < nt || save_end
+                        idx += 1
+                        v_node = update_velocity_node(
+                            v_half, r, dt, tspan[1] + it * dt, p_host, alg
+                        )
+                        traj[idx] = vcat(r, v_node)
+                    end
+                end
+            end
+
+            if save_end && (!use_saveat(plan) && !save_everystep)
+                idx += 1
+                v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+                traj[idx] = vcat(r, v_node)
+            elseif save_end && use_saveat(plan) && idx < nout
+                idx += 1
+                v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+                traj[idx] = vcat(r, v_node)
+            end
+
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
 
     if !use_saveat(plan) && !save_everystep
         traj_kernel! = boris_trajectory_kernel!(backend, workgroup_size)
@@ -452,11 +568,43 @@ function morton_sort_particles(xv_init::AbstractMatrix{T}) where {T}
     return sortperm(codes)
 end
 
+function _init_particles!(
+        xv_init::AbstractMatrix{T}, prob::P, prob_func::PF, n_particles::Int
+    ) where {T, P <: AbstractODEProblem, PF}
+    if n_particles == 1
+        u0 = prob.u0
+        @inbounds for c in 1:6
+            xv_init[1, c] = u0[c]
+        end
+    elseif Threads.nthreads() > 1 && n_particles > 16
+        chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+        Threads.@threads for chunk in chunks
+            for i in chunk
+                new_prob = prob_func(prob, (sim_id = i, repeat = false))
+                u0_i = new_prob.u0
+                for c in 1:6
+                    xv_init[i, c] = u0_i[c]
+                end
+            end
+        end
+    else
+        for i in 1:n_particles
+            new_prob = prob_func(prob, (sim_id = i, repeat = false))
+            u0_i = new_prob.u0
+            for c in 1:6
+                xv_init[i, c] = u0_i[c]
+            end
+        end
+    end
+    return xv_init
+end
+
+
 function _prepare_boris_solve(
-        prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::Real,
-        plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
+        prob::P, backend::B, trajectories::Int, dt::D,
+        plan::PL, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
         sort_particles::Bool = false,
-    )
+    ) where {P <: AbstractODEProblem, B <: Backend, D <: Real, PL}
     (; tspan, p, u0) = prob
     T = eltype(u0)
     q2m, m = T(get_q2m(p)), T(p[2])
@@ -505,64 +653,46 @@ function _prepare_boris_solve(
     xv_current = KA.zeros(backend, T, n_particles, 6)
     is_cpu_accessible = xv_current isa Array
 
-    xv_init = zeros(T, n_particles, 6)
+    xv_init = if is_cpu_accessible && (!sort_particles || n_particles <= 1)
+        xv_current
+    else
+        zeros(T, n_particles, 6)
+    end
     prob_func = hasproperty(prob, :prob_func) ? prob.prob_func : ((p, ctx) -> p)
 
-    if n_particles == 1
-        for c in 1:6
-            xv_init[1, c] = prob.u0[c]
-        end
-    elseif Threads.nthreads() > 1
-        chunks = index_chunks(1:n_particles; n = Threads.nthreads())
-        Threads.@threads for chunk in chunks
-            for i in chunk
-                new_prob = prob_func(prob, (sim_id = i, repeat = false))
-                u0_i = new_prob.u0
-                for c in 1:6
-                    xv_init[i, c] = u0_i[c]
-                end
-            end
-        end
-    else
-        for i in 1:n_particles
-            new_prob = prob_func(prob, (sim_id = i, repeat = false))
-            u0_i = new_prob.u0
-            for c in 1:6
-                xv_init[i, c] = u0_i[c]
-            end
-        end
-    end
-
-    perm = if sort_particles && n_particles > 1
-        morton_sort_particles(xv_init)
-    else
-        nothing
-    end
-
-    if perm !== nothing
-        xv_init = xv_init[perm, :]
-    end
-
-    copyto!(xv_current, xv_init)
+    _init_particles!(xv_init, prob, prob_func, n_particles)
 
     p_gpu = (q2m, m, Efunc_gpu, Bfunc_gpu)
     p_host = (q2m, m, Efunc, Bfunc)
 
-    return (;
-        nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, T, perm,
-    )
+    if sort_particles && n_particles > 1
+        perm = morton_sort_particles(xv_init)
+        xv_init_sorted = xv_init[perm, :]
+        copyto!(xv_current, xv_init_sorted)
+        return (;
+            nt, nout, xv_current, xv_init = xv_init_sorted, is_cpu_accessible,
+            p_gpu, p_host, tspan, u0, T, perm,
+        )
+    else
+        if xv_current !== xv_init
+            copyto!(xv_current, xv_init)
+        end
+        return (;
+            nt, nout, xv_current, xv_init, is_cpu_accessible,
+            p_gpu, p_host, tspan, u0, T, perm = nothing,
+        )
+    end
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ::EnsembleSerial;
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000,
         sort_particles::Bool = false,
-    )
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
     T = eltype(prob.u0)
     dt_T = T(dt)
     tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
@@ -580,29 +710,29 @@ end
         sort_particles,
     )
 
-    elapsed_time = @elapsed sols = _solve_serial(
+    t0 = time_ns()
+    sols = _solve_serial(
         prob, backend, 1:trajectories;
         dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
         xv_current, xv_init, is_cpu_accessible,
         p_gpu, p_host, alg, nout, nt
     )
+    elapsed_time = (time_ns() - t0) * 1.0e-9
 
-    if perm !== nothing
-        sols = sols[invperm(perm)]
-    end
+    sols_final = perm === nothing ? sols : sols[invperm(perm)]
 
-    return EnsembleSolution(sols, elapsed_time, true)
+    return EnsembleSolution(sols_final, elapsed_time, true)
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ::EnsembleThreads;
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000,
         sort_particles::Bool = false,
-    )
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
     T = eltype(prob.u0)
     dt_T = T(dt)
     tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
@@ -662,14 +792,14 @@ end
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         workgroup_size::Int = 256, maxiters::Int = 1_000_000,
         sort_particles::Bool = false,
-    )
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
     return SciMLBase.solve(
         prob, alg, backend, ensemblealg;
         dt, trajectories, saveat, save_start, save_end,
