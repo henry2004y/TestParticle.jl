@@ -73,12 +73,12 @@ Reproducible benchmark scripts are available in [benchmark/compare_boris_backend
 
 #### 1. Analytical Uniform Field Tracing (1,000 steps)
 
-| Number of Particles $N$ | CPU Serial (FP64) | CPU Threads (FP64) | GPU (FP64) | GPU (FP32) | Speedup (FP32 vs Serial) |
+| Number of Particles $N$ | CPU Serial (FP64) | CPU 2 Threads (FP64) | CPU 4 Threads (FP64) | GPU (FP64) | GPU (FP32) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 100 | 1.56 ms | 1.53 ms | 1.11 ms | 0.70 ms | 2.2x |
-| 1,000 | 14.55 ms | 15.41 ms | 2.15 ms | 0.70 ms | 20.8x |
-| 5,000 | 72.18 ms | 70.88 ms | 3.73 ms | 1.89 ms | 38.2x |
-| 10,000 | 147.43 ms | 145.47 ms | 6.76 ms | 3.67 ms | 40.2x |
+| 100 | 1.56 ms | 0.98 ms (1.6x) | 0.54 ms (2.9x) | 1.11 ms (1.4x) | 0.70 ms (2.2x) |
+| 1,000 | 14.55 ms | 7.68 ms (1.9x) | 4.09 ms (3.6x) | 2.15 ms (6.8x) | 0.70 ms (20.8x) |
+| 5,000 | 72.18 ms | 38.10 ms (1.9x) | 20.57 ms (3.5x) | 3.73 ms (19.4x) | 1.89 ms (38.2x) |
+| 10,000 | 147.43 ms | 75.88 ms (1.9x) | 39.56 ms (3.7x) | 6.76 ms (21.8x) | 3.67 ms (40.2x) |
 
 > [!NOTE]
 > The table above includes host Julia overhead (allocating and assembling `ODESolution` wrapper structures). At the pure GPU kernel level without host data unpacking, an ensemble of $200,000$ particles over $1,000$ steps completes in **0.58 ms** in `Float32` ($>3.4 \times 10^{11}$ particle-steps/s), compared to **30.36 ms** in `Float64` (~52x faster kernel execution due to consumer GPU FP32:FP64 ALU architecture).
@@ -87,11 +87,11 @@ Reproducible benchmark scripts are available in [benchmark/compare_boris_backend
 
 For discrete electromagnetic grids, TestParticle.jl automatically converts grid interpolations into device-native [`GPUGrid3D`](https://github.com/henry2004y/TestParticle.jl/blob/master/src/utility/gpu_grid.jl) structures with hardware register trilinear evaluation. Furthermore, passing `sort_particles = true` spatially orders particles along a 3D Morton Z-order curve prior to tracing, maximizing GPU L1/L2 cache hit rates for adjacent threads in a warp.
 
-| Number of Particles $N$ | CPU Multithreading | GPU (Unsorted) | GPU (Morton Sorted) | Speedup (GPU vs CPU) |
-| :--- | :--- | :--- | :--- | :--- |
-| 500 | 2192.54 ms | 3.51 ms | 2.19 ms | ~1000x |
-| 2,000 | 830.26 ms | 11.34 ms | 10.65 ms | 78.0x |
-| 10,000 | 3325.21 ms | 69.23 ms | 63.11 ms | 52.7x |
+| Number of Particles $N$ | CPU (4 Threads) | GPU Unsorted | GPU Morton Sorted |
+| :--- | :--- | :--- | :--- |
+| 500 | 2192.54 ms | 3.51 ms (624x) | 2.19 ms (1001x) |
+| 2,000 | 830.26 ms | 11.34 ms (73x) | 10.65 ms (78x) |
+| 10,000 | 3325.21 ms | 69.23 ms (48x) | 63.11 ms (53x) |
 
 ### Precision Considerations: Float64 vs Float32
 
