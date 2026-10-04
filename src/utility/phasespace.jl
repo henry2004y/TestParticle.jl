@@ -217,7 +217,8 @@ function vdf_backward(sols, source, f_src, dims)
     T = float(eltype(first(states).u[1]))
     f = zeros(T, nx, ny, nz)
 
-    for (i, sol) in enumerate(states)
+    Threads.@threads for i in eachindex(states)
+        sol = states[i]
         st = get_first_crossing(sol, source)
         any(isnan, st) && continue
         iz = (i - 1) % nz + 1

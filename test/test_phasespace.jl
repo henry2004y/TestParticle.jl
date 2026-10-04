@@ -214,10 +214,14 @@ end
         vxi = [s.u[1][4] for s in sols.u]
         vs, ws = get_particle_crossings(sols, detector, ws0)
         _, ws_vxi = get_particle_crossings(sols, detector, vxi)
+        vs_tup, (ws_tup, ws_vxi_tup) = get_particle_crossings(sols, detector, (ws0, vxi))
+        @test vs_tup == vs
+        @test ws_tup == ws
+        @test ws_vxi_tup == ws_vxi
         ## Each sample stands for the source velocity volume `V_ball / N`.
         V_ball = (4 / 3) * π * (vradius * 1.0e-3)^3  # [km³/s³]
         f3d = bin_velocity_space(
-            vs, ws .* (V_ball * 1.0e18 / (n * dv_km^3)), v_edges; vx_source = ws_vxi
+            vs_tup, ws_tup .* (V_ball * 1.0e18 / (n * dv_km^3)), v_edges; vx_source = ws_vxi_tup
         )
         rec = project_vdf(f3d, dv_km)
         for i in 1:3
