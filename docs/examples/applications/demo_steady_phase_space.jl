@@ -200,56 +200,23 @@ hists_down_m2 = reconstruct_liouville_projections(
 
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
-    prob = vdf_grid_problem(
-        vx_grid, vy_grid, vz_grid, SA[detector_x, 0.0, 0.0], param, (0.0, -8.0)
-    )
-
-    sols = TP.solve(
-        prob, Boris(), EnsembleThreads(); dt = -dt,
-        trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
-        isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
-            u[1] > x_source[1] + 100.0e3
-    )
-
-    return vdf_backward(
-        sols, source_plane, f_src, (length(vx_grid), length(vy_grid), length(vz_grid))
-    )
-end
-
 function reconstruct_backward_projections(
         detector_x, dt, param;
         v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0,
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
-    ## Grid points are bin *centers*, matching the histograms of Methods 1 & 2 whose bin
-    ## edges run from -v_range to +v_range in steps of dv.
-    v0x = -v_range + dv / 2
-    v0y = -vy_range + dv / 2
-    if adaptive
-        vx_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
-        vy_c = range(-vy_range, vy_range; step = dv_coarse_km * 1.0e3)
-        vz_c = range(-v_range, v_range; step = dv_coarse_km * 1.0e3)
-    else
-        vx_c = range(v0x, -v0x; step = dv)
-        vy_c = range(v0y, -v0y; step = dv)
-        vz_c = range(v0x, -v0x; step = dv)
-    end
+    bounds = ((-v_range, v_range), (-vy_range, vy_range), (-v_range, v_range))
 
     t_solve = @elapsed begin
-        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, dt, param)
-        if adaptive
-            vx_grid, vy_grid, vz_grid = refine_vdf_window(
-                f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0x), dv;
-                margin = margin_km * 1.0e3, relthresh = 1.0e-5,
-                bounds = ((-v_range, v_range), (-vy_range, vy_range), (-v_range, v_range))
-            )
-            f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
-        else
-            vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
-            f_3d_km = f_coarse
-        end
+        f_3d_km, (vx_grid, vy_grid, vz_grid) = vdf_backward_trace(
+            param, detector_x, source_plane, f_src;
+            v_range, vy_range, vz_range = v_range, dv, dt, tspan = (0.0, -8.0),
+            adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
+            relthresh = 1.0e-5, bounds,
+            isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
+                u[1] > x_source[1] + 100.0e3
+        )
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
@@ -261,10 +228,10 @@ function reconstruct_backward_projections(
     end
 
     return (
-            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
-        ), t_solve, nparticles_bw
+        (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+        (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
+        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+    ), t_solve, nparticles_bw
 end
 
 res_down_bw, t_bw_down, n_bw_down =
