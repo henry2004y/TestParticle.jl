@@ -12,31 +12,30 @@ adapt_field_to_gpu(field, backend::Backend) = Adapt.adapt(backend, field)
 const GPUBorisAlgorithm = Union{Boris, MultistepBoris}
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
-    v_half = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
+    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+    v_half = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
 
     r_new, v_half_new = advance_boris(v_half, r, dt, t, p, alg)
 
-    # Scalar write for GPU compatibility
-    xv_out[1, i] = r_new[1]
-    xv_out[2, i] = r_new[2]
-    xv_out[3, i] = r_new[3]
-    xv_out[4, i] = v_half_new[1]
-    xv_out[5, i] = v_half_new[2]
-    xv_out[6, i] = v_half_new[3]
+    xv_out[i, 1] = r_new[1]
+    xv_out[i, 2] = r_new[2]
+    xv_out[i, 3] = r_new[3]
+    xv_out[i, 4] = v_half_new[1]
+    xv_out[i, 5] = v_half_new[2]
+    xv_out[i, 6] = v_half_new[3]
 
     return
 end
 
 @inline function boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[1, i], xv_in[2, i], xv_in[3, i])
-    v = SVector(xv_in[4, i], xv_in[5, i], xv_in[6, i])
+    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+    v = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
 
     v_half = update_velocity_half(v, r, dt, t, p, alg)
 
-    xv_out[4, i] = v_half[1]
-    xv_out[5, i] = v_half[2]
-    xv_out[6, i] = v_half[3]
+    xv_out[i, 4] = v_half[1]
+    xv_out[i, 5] = v_half[2]
+    xv_out[i, 6] = v_half[3]
 
     return
 end
@@ -44,14 +43,16 @@ end
 @kernel function boris_velocity_kernel!(
         xv_out, @Const(xv_in), p, @Const(dt), @Const(t), @Const(offset), @Const(alg)
     )
-    i = @index(Global) + offset
+    idx = @index(Global)
+    i = idx + offset
     boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
 end
 
 @kernel function boris_update_kernel!(
         @Const(xv_in), xv_out, p, @Const(dt), @Const(t), @Const(offset), @Const(alg)
     )
-    i = @index(Global) + offset
+    idx = @index(Global)
+    i = idx + offset
     boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
 end
 
@@ -93,6 +94,146 @@ end
     return
 end
 
+@kernel function boris_trajectory_kernel!(
+        xv, p, @Const(dt), @Const(t0), @Const(nt), @Const(offset), @Const(alg)
+    )
+    idx = @index(Global)
+    i = idx + offset
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
+
+    for it in 1:nt
+        t = t0 + (it - 1) * dt
+        r, v_half = advance_boris(v_half, r, dt, t, p, alg)
+    end
+
+    t_end = t0 + nt * dt
+    v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
+
+    xv[i, 1] = r[1]
+    xv[i, 2] = r[2]
+    xv[i, 3] = r[3]
+    xv[i, 4] = v_end[1]
+    xv[i, 5] = v_end[2]
+    xv[i, 6] = v_end[3]
+end
+
+@kernel function boris_saveat_kernel!(
+        saved_data, @Const(xv), @Const(plan_times), p, @Const(dt),
+        @Const(t0), @Const(nt), @Const(nsave), @Const(dir),
+        @Const(save_start), @Const(save_end), @Const(offset), @Const(alg)
+    )
+    idx = @index(Global)
+    i = idx + offset
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+
+    iout = 0
+    if save_start
+        iout += 1
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v[1]
+        saved_data[i, 5, iout] = v[2]
+        saved_data[i, 6, iout] = v[3]
+    end
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
+    isave = 1
+
+    for it in 1:nt
+        t_prev = t0 + (it - 1) * dt
+        r_prev = r
+        v_half_prev = v_half
+
+        r, v_half = advance_boris(v_half, r, dt, t_prev, p, alg)
+        t_current = t0 + it * dt
+
+        if isave <= nsave && _saveat_reached(plan_times[isave], t_current, dir)
+            v_prev = update_velocity_node(v_half_prev, r_prev, dt, t_prev, p, alg)
+            v_cur = update_velocity_node(v_half, r, dt, t_current, p, alg)
+
+            y_prev = SVector(
+                r_prev[1], r_prev[2], r_prev[3],
+                v_prev[1], v_prev[2], v_prev[3]
+            )
+            y_cur = SVector(
+                r[1], r[2], r[3],
+                v_cur[1], v_cur[2], v_cur[3]
+            )
+
+            while isave <= nsave && _saveat_reached(plan_times[isave], t_current, dir)
+                t_target = plan_times[isave]
+                y_target = _saveat_interpolate(t_prev, y_prev, t_current, y_cur, t_target)
+                iout += 1
+                saved_data[i, 1, iout] = y_target[1]
+                saved_data[i, 2, iout] = y_target[2]
+                saved_data[i, 3, iout] = y_target[3]
+                saved_data[i, 4, iout] = y_target[4]
+                saved_data[i, 5, iout] = y_target[5]
+                saved_data[i, 6, iout] = y_target[6]
+                isave += 1
+            end
+        end
+    end
+
+    if save_end
+        t_end = t0 + nt * dt
+        v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
+        iout += 1
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v_end[1]
+        saved_data[i, 5, iout] = v_end[2]
+        saved_data[i, 6, iout] = v_end[3]
+    end
+end
+
+@kernel function boris_everystep_kernel!(
+        saved_data, @Const(xv), p, @Const(dt),
+        @Const(t0), @Const(nt), @Const(save_start), @Const(save_end),
+        @Const(offset), @Const(alg)
+    )
+    idx = @index(Global)
+    i = idx + offset
+    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+
+    iout = 0
+    if save_start
+        iout += 1
+        saved_data[i, 1, iout] = r[1]
+        saved_data[i, 2, iout] = r[2]
+        saved_data[i, 3, iout] = r[3]
+        saved_data[i, 4, iout] = v[1]
+        saved_data[i, 5, iout] = v[2]
+        saved_data[i, 6, iout] = v[3]
+    end
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
+
+    for it in 1:nt
+        t_prev = t0 + (it - 1) * dt
+        r, v_half = advance_boris(v_half, r, dt, t_prev, p, alg)
+        t_current = t0 + it * dt
+
+        if it < nt || save_end
+            v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
+            iout += 1
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v_node[1]
+            saved_data[i, 5, iout] = v_node[2]
+            saved_data[i, 6, iout] = v_node[3]
+        end
+    end
+end
+
 """
     boris_output_state(xv, p, dt, t, alg)
 
@@ -107,166 +248,373 @@ stands together with the velocity synchronised to it.
     return vcat(r, update_velocity_node(v_half, r, dt, t, p, alg))
 end
 
+function _build_saved_times(
+        tspan, dt, nt, plan, save_start::Bool, save_end::Bool,
+        save_everystep::Bool, ::Type{time_type}
+    ) where {time_type}
+    saved_times = time_type[]
+    if save_start
+        push!(saved_times, time_type(tspan[1]))
+    end
+    if use_saveat(plan)
+        append!(saved_times, plan.times)
+        if save_end
+            push!(saved_times, time_type(tspan[2]))
+        end
+    elseif save_everystep
+        for it in 1:nt
+            if it < nt || save_end
+                push!(saved_times, time_type(tspan[1] + it * dt))
+            end
+        end
+        if nt == 0 && save_end
+            push!(saved_times, time_type(tspan[2]))
+        end
+    elseif save_end
+        push!(saved_times, time_type(tspan[2]))
+    end
+    return saved_times
+end
+
+function _unpack_endpoint_solutions!(
+        sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start::Bool,
+        save_end::Bool, prob, alg, ::Type{T}
+    ) where {T}
+    n_particles = length(irange)
+    if n_particles <= 16 || Threads.nthreads() == 1
+        for local_i in 1:n_particles
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            if save_start
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
+                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
+                )
+            end
+            if save_end
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
+                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
+
+    chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+    Threads.@threads for chunk in chunks
+        for local_i in chunk
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            if save_start
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_init[i, 1], xv_init[i, 2], xv_init[i, 3],
+                    xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
+                )
+            end
+            if save_end
+                idx += 1
+                traj[idx] = SVector{6, T}(
+                    xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
+                    xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+    end
+    return sols
+end
+
+function _unpack_dense_solutions!(
+        sols, irange, saved_data_buf, saved_times, nout, prob, alg, ::Type{T}
+    ) where {T}
+    n_particles = length(irange)
+    if n_particles <= 16 || Threads.nthreads() == 1
+        for local_i in 1:n_particles
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            for j in 1:nout
+                traj[j] = SVector{6, T}(
+                    saved_data_buf[i, 1, j],
+                    saved_data_buf[i, 2, j],
+                    saved_data_buf[i, 3, j],
+                    saved_data_buf[i, 4, j],
+                    saved_data_buf[i, 5, j],
+                    saved_data_buf[i, 6, j]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
+
+    chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+    Threads.@threads for chunk in chunks
+        for local_i in chunk
+            i = irange[local_i]
+            traj = Vector{SVector{6, T}}(undef, nout)
+            for j in 1:nout
+                traj[j] = SVector{6, T}(
+                    saved_data_buf[i, 1, j],
+                    saved_data_buf[i, 2, j],
+                    saved_data_buf[i, 3, j],
+                    saved_data_buf[i, 4, j],
+                    saved_data_buf[i, 5, j],
+                    saved_data_buf[i, 6, j]
+                )
+            end
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+    end
+    return sols
+end
+
 @inbounds function _solve_serial(
-        prob::AbstractODEProblem, backend::Backend, irange;
-        dt::AbstractFloat, plan, save_start::Bool,
+        prob::P, backend::B, irange::R;
+        dt::D, plan::PL, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
-        xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        p_gpu, p_host, alg, nout, nt
-    )
+        xv_current, xv_init, is_cpu_accessible,
+        p_gpu, p_host, alg::A, nout::Int, nt::Int
+    ) where {P <: AbstractODEProblem, B <: Backend, R, D <: AbstractFloat, PL, A}
     (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
+    offset = irange.start - 1
     time_type = typeof(tspan[1] + dt)
-
-    sols = Vector{
-        typeof(build_solution(prob, alg, [time_type(tspan[1])], [SVector{6, T}(prob.u0)])),
-    }(undef, n_particles)
-
-    saved_data = [Vector{SVector{6, T}}(undef, nout) for _ in 1:n_particles]
-    saved_times = [Vector{time_type}(undef, nout) for _ in 1:n_particles]
-    iout_counters = zeros(Int, n_particles)
-
-    nsave = length(plan.times)
-    isave = 1
-    if use_saveat(plan)
-        xv_cpu_prev = zeros(T, size(xv_current))
-        xv_cpu_cur = similar(xv_cpu_prev)
-    else
-        xv_cpu_prev = Matrix{T}(undef, 0, 0)
-        xv_cpu_cur = Matrix{T}(undef, 0, 0)
-    end
-
-    if save_start
-        if !is_cpu_accessible
-            copyto!(xv_cpu_buffer, xv_current)
-        end
-        for (local_i, i) in enumerate(irange)
-            iout_counters[local_i] += 1
-            saved_data[local_i][iout_counters[local_i]] =
-                SVector{6, T}(
-                xv_cpu_buffer[1, i], xv_cpu_buffer[2, i], xv_cpu_buffer[3, i],
-                xv_cpu_buffer[4, i], xv_cpu_buffer[5, i], xv_cpu_buffer[6, i]
-            )
-            saved_times[local_i][iout_counters[local_i]] = time_type(tspan[1])
-        end
-    end
-
-    boris_velocity_step!(
-        backend, xv_current, xv_current, p_gpu, dt, tspan[1], irange, workgroup_size, alg
+    saved_times = _build_saved_times(
+        tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
     )
 
-    for it in 1:nt
-        t = tspan[1] + (it - 1) * dt
+    sols = Vector{
+        typeof(build_solution(prob, alg, saved_times, [SVector{6, T}(prob.u0)])),
+    }(undef, n_particles)
 
-        boris_step!(
-            backend, xv_current, xv_next, p_gpu, dt, t, irange, workgroup_size, alg
+    if backend isa CPU
+        nsave = length(plan.times)
+        for (local_i, i) in enumerate(irange)
+            traj = Vector{SVector{6, T}}(undef, nout)
+            idx = 0
+            r = SVector{3, T}(xv_current[i, 1], xv_current[i, 2], xv_current[i, 3])
+            v = SVector{3, T}(xv_current[i, 4], xv_current[i, 5], xv_current[i, 6])
+
+            if save_start
+                idx += 1
+                traj[idx] = vcat(r, v)
+            end
+
+            v_half = update_velocity_half(v, r, dt, tspan[1], p_host, alg)
+            isave = 1
+
+            for it in 1:nt
+                t = tspan[1] + (it - 1) * dt
+                r, v_half = advance_boris(v_half, r, dt, t, p_host, alg)
+
+                if use_saveat(plan)
+                    t_current = tspan[1] + it * dt
+                    t_prev = t_current - dt
+                    while isave <= nsave &&
+                            _saveat_reached(plan.times[isave], t_current, plan.dir)
+                        t_target = plan.times[isave]
+                        v_node = update_velocity_node(
+                            v_half, r, dt, t_current, p_host, alg
+                        )
+                        y_cur = vcat(r, v_node)
+                        θ = (t_target - t_prev) / dt
+                        idx += 1
+                        traj[idx] = traj[idx - 1] + θ * (y_cur - traj[idx - 1])
+                        isave += 1
+                    end
+                elseif save_everystep
+                    if it < nt || save_end
+                        idx += 1
+                        v_node = update_velocity_node(
+                            v_half, r, dt, tspan[1] + it * dt, p_host, alg
+                        )
+                        traj[idx] = vcat(r, v_node)
+                    end
+                end
+            end
+
+            if save_end && (!use_saveat(plan) && !save_everystep)
+                idx += 1
+                v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+                traj[idx] = vcat(r, v_node)
+            elseif save_end && use_saveat(plan) && idx < nout
+                idx += 1
+                v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+                traj[idx] = vcat(r, v_node)
+            end
+
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+        return sols
+    end
+
+    if !use_saveat(plan) && !save_everystep
+        traj_kernel! = boris_trajectory_kernel!(backend, workgroup_size)
+        traj_kernel!(
+            xv_current, p_gpu, dt, tspan[1], nt, offset, alg;
+            ndrange = n_particles
         )
+        synchronize(backend)
 
-        xv_current, xv_next = xv_next, xv_current
+        xv_cpu_end = is_cpu_accessible ? xv_current : zeros(T, size(xv_current, 1), 6)
+        if !is_cpu_accessible
+            copyto!(xv_cpu_end, xv_current)
+        end
+
+        _unpack_endpoint_solutions!(
+            sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start,
+            save_end, prob, alg, T
+        )
+    else
+        n_total = size(xv_current, 1)
+        saved_data_gpu = KA.zeros(backend, T, n_total, 6, nout)
 
         if use_saveat(plan)
-            t_current = tspan[1] + it * dt
-            if isave <= nsave && _saveat_reached(plan.times[isave], t_current, plan.dir)
-                copyto!(xv_cpu_prev, xv_next)
-                copyto!(xv_cpu_cur, xv_current)
-
-                t_prev = t_current - dt
-
-                while isave <= nsave &&
-                        _saveat_reached(plan.times[isave], t_current, plan.dir)
-                    t_target = plan.times[isave]
-                    for (local_i, i) in enumerate(irange)
-                        if iout_counters[local_i] < nout
-                            iout_counters[local_i] += 1
-                            y_prev = boris_output_state(
-                                @view(xv_cpu_prev[:, i]), p_host, dt, t_prev, alg
-                            )
-                            y_cur = boris_output_state(
-                                @view(xv_cpu_cur[:, i]), p_host, dt, t_current, alg
-                            )
-                            saved_data[local_i][iout_counters[local_i]] =
-                                _saveat_interpolate(
-                                t_prev, y_prev, t_current, y_cur, t_target
-                            )
-                            saved_times[local_i][iout_counters[local_i]] = t_target
-                        end
-                    end
-                    isave += 1
-                end
-            end
-        elseif save_everystep
-            buf = if is_cpu_accessible
-                xv_current
-            else
-                copyto!(xv_cpu_buffer, xv_current)
-                xv_cpu_buffer
-            end
-
-            t_current = tspan[1] + it * dt
-
-            for (local_i, i) in enumerate(irange)
-                if iout_counters[local_i] < nout
-                    iout_counters[local_i] += 1
-                    saved_data[local_i][iout_counters[local_i]] = boris_output_state(
-                        @view(buf[:, i]), p_host, dt, t_current, alg
-                    )
-                    saved_times[local_i][iout_counters[local_i]] = t_current
-                end
-            end
-        end
-    end
-
-    if save_end
-        buf = if is_cpu_accessible
-            xv_current
+            plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
+            nsave = length(plan.times)
+            kernel! = boris_saveat_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_data_gpu, xv_current, plan_times_gpu, p_gpu, dt,
+                tspan[1], nt, nsave, plan.dir, save_start, save_end,
+                offset, alg; ndrange = n_particles
+            )
         else
-            copyto!(xv_cpu_buffer, xv_current)
-            xv_cpu_buffer
+            kernel! = boris_everystep_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_data_gpu, xv_current, p_gpu, dt,
+                tspan[1], nt, save_start, save_end,
+                offset, alg; ndrange = n_particles
+            )
         end
-        t_current = time_type(tspan[2])
+        synchronize(backend)
 
-        for (local_i, i) in enumerate(irange)
-            if iout_counters[local_i] < nout
-                iout_counters[local_i] += 1
-                saved_data[local_i][iout_counters[local_i]] = boris_output_state(
-                    @view(buf[:, i]), p_host, dt, t_current, alg
-                )
-                saved_times[local_i][iout_counters[local_i]] = t_current
-            end
-        end
-    end
-
-    for local_i in 1:n_particles
-        actual_len = iout_counters[local_i]
-        if actual_len < nout
-            resize!(saved_data[local_i], actual_len)
-            resize!(saved_times[local_i], actual_len)
-            retcode = ReturnCode.Terminated
+        saved_data_buf = if is_cpu_accessible
+            saved_data_gpu
         else
-            retcode = ReturnCode.Success
+            saved_cpu = zeros(T, n_total, 6, nout)
+            copyto!(saved_cpu, saved_data_gpu)
+            saved_cpu
         end
 
-        interp = LinearInterpolation(saved_times[local_i], saved_data[local_i])
-        sols[local_i] = build_solution(
-            prob, alg, saved_times[local_i], saved_data[local_i];
-            interp, retcode, stats = nothing
+        _unpack_dense_solutions!(
+            sols, irange, saved_data_buf, saved_times, nout, prob, alg, T
         )
     end
 
     return sols
 end
 
-function _prepare_boris_solve(
-        prob::AbstractODEProblem, backend::Backend, trajectories::Int, dt::AbstractFloat,
-        plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int
-    )
-    (; tspan, p, u0) = prob
-    q2m, m = get_q2m(p), p[2]
-    Efunc, Bfunc = get_EField(p), get_BField(p)
-    T = eltype(u0)
+@inline function _part1by2(n::UInt32)
+    n &= 0x000003ff
+    n = (n | (n << 16)) & 0x030000ff
+    n = (n | (n << 8)) & 0x0300f00f
+    n = (n | (n << 4)) & 0x030c30c3
+    n = (n | (n << 2)) & 0x09249249
+    return n
+end
 
-    if abs(dt) < 10 * eps(typeof(dt))
+@inline function morton3D(ix::Integer, iy::Integer, iz::Integer)
+    return (_part1by2(UInt32(clamp(ix, 0, 1023))) << 2) |
+        (_part1by2(UInt32(clamp(iy, 0, 1023))) << 1) |
+        _part1by2(UInt32(clamp(iz, 0, 1023)))
+end
+
+function morton_sort_particles(xv_init::AbstractMatrix{T}) where {T}
+    N = size(xv_init, 1)
+    xmin, xmax = extrema(@view xv_init[:, 1])
+    ymin, ymax = extrema(@view xv_init[:, 2])
+    zmin, zmax = extrema(@view xv_init[:, 3])
+
+    sx = xmax > xmin ? T(1023) / (xmax - xmin) : zero(T)
+    sy = ymax > ymin ? T(1023) / (ymax - ymin) : zero(T)
+    sz = zmax > zmin ? T(1023) / (zmax - zmin) : zero(T)
+
+    codes = Vector{UInt32}(undef, N)
+    @inbounds for i in 1:N
+        x_val, y_val, z_val = xv_init[i, 1], xv_init[i, 2], xv_init[i, 3]
+        ix = isnan(x_val) ? 0 : clamp(floor(Int, (x_val - xmin) * sx), 0, 1023)
+        iy = isnan(y_val) ? 0 : clamp(floor(Int, (y_val - ymin) * sy), 0, 1023)
+        iz = isnan(z_val) ? 0 : clamp(floor(Int, (z_val - zmin) * sz), 0, 1023)
+        codes[i] = morton3D(ix, iy, iz)
+    end
+    return sortperm(codes)
+end
+
+function _init_particles!(
+        xv_init::AbstractMatrix{T}, prob::P, prob_func::PF, n_particles::Int
+    ) where {T, P <: AbstractODEProblem, PF}
+    if n_particles == 1
+        u0 = prob.u0
+        @inbounds for c in 1:6
+            xv_init[1, c] = u0[c]
+        end
+    elseif Threads.nthreads() > 1 && n_particles > 16
+        chunks = index_chunks(1:n_particles; n = Threads.nthreads())
+        Threads.@threads for chunk in chunks
+            for i in chunk
+                new_prob = prob_func(prob, (sim_id = i, repeat = false))
+                u0_i = new_prob.u0
+                for c in 1:6
+                    xv_init[i, c] = u0_i[c]
+                end
+            end
+        end
+    else
+        for i in 1:n_particles
+            new_prob = prob_func(prob, (sim_id = i, repeat = false))
+            u0_i = new_prob.u0
+            for c in 1:6
+                xv_init[i, c] = u0_i[c]
+            end
+        end
+    end
+    return xv_init
+end
+
+
+function _prepare_boris_solve(
+        prob::P, backend::B, trajectories::Int, dt::D,
+        plan::PL, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
+        sort_particles::Bool = false,
+    ) where {P <: AbstractODEProblem, B <: Backend, D <: Real, PL}
+    (; tspan, p, u0) = prob
+    T = eltype(u0)
+    q2m, m = T(get_q2m(p)), T(p[2])
+    Efunc, Bfunc = get_EField(p), get_BField(p)
+    dt = T(dt)
+    tspan = (T(tspan[1]), T(tspan[2]))
+
+    timescale = max(abs(tspan[1]), abs(tspan[2]), abs(tspan[2] - tspan[1]))
+    min_dt = 10 * eps(T) * timescale
+    if abs(dt) < min_dt
         throw(
             ArgumentError(
                 "time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"
@@ -302,101 +650,124 @@ function _prepare_boris_solve(
     end
 
     n_particles = trajectories
-    xv_current = KA.zeros(backend, T, 6, n_particles)
-    xv_next = KA.zeros(backend, T, 6, n_particles)
-
+    xv_current = KA.zeros(backend, T, n_particles, 6)
     is_cpu_accessible = xv_current isa Array
 
-    if is_cpu_accessible
-        xv_init = xv_current
+    xv_init = if is_cpu_accessible && (!sort_particles || n_particles <= 1)
+        xv_current
     else
-        xv_init = zeros(T, 6, n_particles)
+        zeros(T, n_particles, 6)
     end
-
     prob_func = hasproperty(prob, :prob_func) ? prob.prob_func : ((p, ctx) -> p)
 
-    for i in 1:n_particles
-        u0_i = if n_particles == 1
-            prob.u0
-        else
-            new_prob = prob_func(prob, (sim_id = i, repeat = false))
-            new_prob.u0
-        end
-        xv_init[:, i] .= u0_i
-    end
-
-    if !is_cpu_accessible
-        copyto!(xv_current, xv_init)
-    end
-
-    if is_cpu_accessible
-        xv_cpu_buffer = xv_current
-    else
-        xv_cpu_buffer = zeros(T, 6, n_particles)
-    end
+    _init_particles!(xv_init, prob, prob_func, n_particles)
 
     p_gpu = (q2m, m, Efunc_gpu, Bfunc_gpu)
     p_host = (q2m, m, Efunc, Bfunc)
 
-    return (;
-        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, T,
-    )
+    if sort_particles && n_particles > 1
+        perm = morton_sort_particles(xv_init)
+        xv_init_sorted = xv_init[perm, :]
+        copyto!(xv_current, xv_init_sorted)
+        return (;
+            nt, nout, xv_current, xv_init = xv_init_sorted, is_cpu_accessible,
+            p_gpu, p_host, tspan, u0, T, perm,
+        )
+    else
+        if xv_current !== xv_init
+            copyto!(xv_current, xv_init)
+        end
+        return (;
+            nt, nout, xv_current, xv_init, is_cpu_accessible,
+            p_gpu, p_host, tspan, u0, T, perm = nothing,
+        )
+    end
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ::EnsembleSerial;
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
-    )
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
+    T = eltype(prob.u0)
+    dt_T = T(dt)
+    tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
+    time_type = typeof(tspan_T[1] + dt_T)
     plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan),
-        typeof(prob.tspan[1] + dt)
+        saveat, tspan_T, _span_direction(tspan_T),
+        time_type
     )
     (;
-        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        p_gpu, p_host,
+        nt, nout, xv_current, xv_init, is_cpu_accessible,
+        p_gpu, p_host, perm,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, plan,
-        save_start, save_end, save_everystep, maxiters
+        prob, backend, trajectories, dt_T, plan,
+        save_start, save_end, save_everystep, maxiters;
+        sort_particles,
     )
 
-    elapsed_time = @elapsed sols = _solve_serial(
+    t0 = time_ns()
+    sols = _solve_serial(
         prob, backend, 1:trajectories;
-        dt, plan, save_start, save_end, save_everystep, workgroup_size,
-        xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+        dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
+        xv_current, xv_init, is_cpu_accessible,
         p_gpu, p_host, alg, nout, nt
     )
+    elapsed_time = (time_ns() - t0) * 1.0e-9
 
-    return EnsembleSolution(sols, elapsed_time, true)
+    sols_final = perm === nothing ? sols : sols[invperm(perm)]
+
+    return EnsembleSolution(sols_final, elapsed_time, true)
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ::EnsembleThreads;
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
-    )
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
+    T = eltype(prob.u0)
+    dt_T = T(dt)
+    tspan_T = (T(prob.tspan[1]), T(prob.tspan[2]))
+    time_type = typeof(tspan_T[1] + dt_T)
     plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan),
-        typeof(prob.tspan[1] + dt)
+        saveat, tspan_T, _span_direction(tspan_T),
+        time_type
     )
     (;
-        nt, nout, xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, T,
+        nt, nout, xv_current, xv_init, is_cpu_accessible,
+        p_gpu, p_host, tspan, u0, perm,
     ) = _prepare_boris_solve(
-        prob, backend, trajectories, dt, plan,
-        save_start, save_end, save_everystep, maxiters
+        prob, backend, trajectories, dt_T, plan,
+        save_start, save_end, save_everystep, maxiters;
+        sort_particles,
     )
 
-    time_type = typeof(tspan[1] + dt)
+    if !(backend isa CPU)
+        elapsed_time = @elapsed sols = _solve_serial(
+            prob, backend, 1:trajectories;
+            dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
+            xv_current, xv_init, is_cpu_accessible,
+            p_gpu, p_host, alg, nout, nt
+        )
+        if perm !== nothing
+            sols = sols[invperm(perm)]
+        end
+        return EnsembleSolution(sols, elapsed_time, true)
+    end
+
+    saved_times = _build_saved_times(
+        tspan, dt_T, nt, plan, save_start, save_end, save_everystep, time_type
+    )
     sols = Vector{
-        typeof(build_solution(prob, alg, [time_type(tspan[1])], [SVector{6, T}(u0)])),
+        typeof(build_solution(prob, alg, saved_times, [SVector{6, T}(u0)])),
     }(undef, trajectories)
 
     nchunks = Threads.nthreads()
@@ -404,8 +775,8 @@ end
     elapsed_time = @elapsed Threads.@threads for irange in chunks
         chunk_sols = _solve_serial(
             prob, backend, irange;
-            dt, plan, save_start, save_end, save_everystep, workgroup_size,
-            xv_current, xv_next, xv_cpu_buffer, is_cpu_accessible,
+            dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
+            xv_current, xv_init, is_cpu_accessible,
             p_gpu, p_host, alg, nout, nt
         )
         for (local_i, i) in enumerate(irange)
@@ -413,21 +784,26 @@ end
         end
     end
 
+    if perm !== nothing
+        sols = sols[invperm(perm)]
+    end
+
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
 @inbounds function SciMLBase.solve(
-        prob::AbstractODEProblem, alg::GPUBorisAlgorithm, backend::Backend,
+        prob::P, alg::A, backend::B,
         ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
-        dt::AbstractFloat, trajectories::Int = 1,
+        dt::Real, trajectories::Int = 1,
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        workgroup_size::Int = 256, maxiters::Int = 1_000_000
-    )
+        workgroup_size::Int = 256, maxiters::Int = 1_000_000,
+        sort_particles::Bool = false,
+    ) where {P <: AbstractODEProblem, A <: GPUBorisAlgorithm, B <: Backend}
     return SciMLBase.solve(
         prob, alg, backend, ensemblealg;
         dt, trajectories, saveat, save_start, save_end,
-        save_everystep, workgroup_size, maxiters
+        save_everystep, workgroup_size, maxiters, sort_particles
     )
 end
 

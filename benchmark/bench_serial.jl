@@ -36,12 +36,12 @@ println("\nSetting up TestParticle TraceProblem (Boris)...")
 prob_boris = TraceProblem(stateinit, tspan, param)
 
 # Precompile
-TestParticle.solve(prob_boris, Boris(); dt = dt, saveat = 10000 * dt, maxiters)
+TestParticle.solve(prob_boris, Boris(); dt = dt, save_everystep, maxiters)
 
 println("Running Boris Benchmark...")
 bench_boris = @benchmark TestParticle.solve(
     $prob_boris, Boris();
-    dt = $dt, saveat = 100000 * $dt, maxiters = $maxiters
+    dt = $dt, save_everystep = $save_everystep, maxiters = $maxiters
 )
 display(bench_boris)
 
@@ -49,7 +49,7 @@ display(bench_boris)
 println("\nSetting up ODEProblem (OrdinaryDiffEq Tsit5)...")
 prob_tsit5 = ODEProblem(trace!, stateinit, tspan, param)
 
-# Precompile (limit maxiters for tests to prevent hanging just in case, though it should be fine)
+# Precompile (limit maxiters for tests to prevent hanging just in case)
 OrdinaryDiffEq.solve(
     prob_tsit5, Tsit5();
     dt, adaptive, save_everystep, maxiters
@@ -86,6 +86,12 @@ time_tsit5 = median(bench_tsit5).time / 1.0e6 # in ms
 time_vern9 = median(bench_vern9).time / 1.0e6 # in ms
 
 @printf("TestParticle Boris: %8.2f ms\n", time_boris)
-@printf("ODE Tsit5 (fixed):  %8.2f ms  [ %.2fx slower ]\n", time_tsit5, time_tsit5 / time_boris)
-@printf("ODE Vern9 (fixed):  %8.2f ms  [ %.2fx slower ]\n", time_vern9, time_vern9 / time_boris)
+@printf(
+    "ODE Tsit5 (fixed):  %8.2f ms  [ %.2fx slower ]\n",
+    time_tsit5, time_tsit5 / time_boris
+)
+@printf(
+    "ODE Vern9 (fixed):  %8.2f ms  [ %.2fx slower ]\n",
+    time_vern9, time_vern9 / time_boris
+)
 println("="^70)

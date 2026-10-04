@@ -7,7 +7,9 @@ _boris_rhs(u, p, t) = nothing
 
 function _boris_problem(prob::TraceProblem)
     T = eltype(prob.u0)
-    return ODEProblem(_boris_rhs, SVector{6, T}(prob.u0), prob.tspan, prob.p)
+    tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
+    p = _promote_p(T, prob.p)
+    return ODEProblem(_boris_rhs, SVector{6, T}(prob.u0), tspan, p)
 end
 
 function _boris_initial_dt(prob::TraceProblem, alg)
@@ -21,7 +23,11 @@ function _boris_initial_dt(prob::TraceProblem, alg)
 end
 
 function _boris_check_limits(prob::TraceProblem, dt, alg, maxiters)
-    if abs(dt) < 10 * eps(typeof(dt))
+    T = typeof(dt)
+    tspan = prob.tspan
+    timescale = max(abs(tspan[1]), abs(tspan[2]), abs(tspan[2] - tspan[1]))
+    min_dt = 10 * eps(T) * timescale
+    if abs(dt) < min_dt
         throw(
             ArgumentError(
                 "time step dt is too small, violating min_dt = 10 * eps(typeof(dt))"
@@ -101,7 +107,7 @@ Trace one particle with a Boris method through the SciML loop and return an
 function solve(
         prob::TraceProblem, alg::AbstractBoris;
         saveat = (),
-        dt::Union{Nothing, AbstractFloat} = nothing,
+        dt::Union{Nothing, Real} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true,
         save_end::Bool = true,
@@ -113,7 +119,8 @@ function solve(
         seed = nothing,
         kwargs...
     ) where {F}
-    step = dt === nothing ? _boris_initial_dt(prob, alg) : dt
+    T = eltype(prob.u0)
+    step = dt === nothing ? T(_boris_initial_dt(prob, alg)) : T(dt)
     _boris_check_limits(prob, step, alg, maxiters)
 
     ode_prob = _boris_problem(prob)

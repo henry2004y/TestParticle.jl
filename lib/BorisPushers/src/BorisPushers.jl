@@ -43,5 +43,6 @@ export SavingPlan, use_saveat
 export get_q2m, get_EField, get_BField
 export update_velocity_boris, update_velocity_multistep, update_velocity
 export advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
+export morton3D, morton_sort_particles
 
 end

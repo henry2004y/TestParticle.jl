@@ -100,6 +100,45 @@ using SciMLBase
         )
         @test length(sols_boris.u) == trajectories
     end
+
+    @testset "Float32 tracing" begin
+        u0_f32 = Float32[x0..., v0...]
+        tspan_f32 = (0.0f0, 1.0f-6)
+        dt_f32 = 1.0f-9
+
+        # Automatic promotion when passing Float32 u0 with Float64 param
+        prob_f32 = TraceProblem(u0_f32, tspan, param)
+        @test eltype(prob_f32.u0) === Float32
+        @test eltype(prob_f32.tspan) === Float32
+        @test prob_f32.p[1] isa Float32
+        @test prob_f32.p[2] isa Float32
+
+        # ODE solver (Tsit5) in Float32
+        sol_ode_f32 = solve(prob_f32, Tsit5())
+        @test eltype(sol_ode_f32.t) === Float32
+        @test eltype(sol_ode_f32.u[end]) === Float32
+
+        # Boris solver in Float32
+        sol_boris_f32 = solve(prob_f32, Boris(); dt = dt_f32)
+        @test eltype(sol_boris_f32.t) === Float32
+        @test eltype(sol_boris_f32.u[end]) === Float32
+
+        # remake switching from Float64 to Float32
+        prob_f64 = TraceProblem(stateinit_vec, tspan, param)
+        prob_switched = remake(prob_f64; u0 = u0_f32)
+        @test eltype(prob_switched.u0) === Float32
+        @test eltype(prob_switched.tspan) === Float32
+        @test prob_switched.p[1] isa Float32
+
+        # prepare with type = Float32
+        param_f32 = prepare(uniform_E, uniform_B; species = Proton, type = Float32)
+        @test param_f32[1] isa Float32
+        @test param_f32[2] isa Float32
+        prob_direct_f32 = TraceProblem(u0_f32, tspan_f32, param_f32)
+        sol_direct = solve(prob_direct_f32, Boris(); dt = dt_f32)
+        @test eltype(sol_direct.t) === Float32
+        @test eltype(sol_direct.u[end]) === Float32
+    end
 end
 
 end # module test_traceproblem

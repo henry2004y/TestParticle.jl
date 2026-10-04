@@ -16,7 +16,8 @@ import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBori
     GPUBorisAlgorithm, adapt_field_to_gpu,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
-    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
+    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync,
+    morton3D, morton_sort_particles
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -60,6 +61,8 @@ export sample_velocity_ball, bin_centers, bin_velocity_space, project_vdf,
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
+export GPUGrid3D, GPUGrid2D, GPUGrid1D
+export morton3D, morton_sort_particles
 export TraceProblem, TraceGCProblem, TraceHybridProblem
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap,
@@ -68,6 +71,7 @@ export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
 include("types.jl")
 include("utility/utility.jl")
 include("utility/interpolation.jl")
+include("utility/gpu_grid.jl")
 include("sampler.jl")
 include("prepare.jl")
 include("saveat.jl")

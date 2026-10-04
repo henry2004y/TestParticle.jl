@@ -18,6 +18,11 @@ struct Species{M, Q}
     q::Q
 end
 
+Species{T}(m, q) where {T} = Species(T(m), T(q))
+Species{T}(s::Species) where {T} = Species(T(s.m), T(s.q))
+Base.convert(::Type{Species{T}}, s::Species) where {T} = Species{T}(s)
+
+
 const DEFAULT_PROB_FUNC(prob, ctx) = prob
 
 struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
