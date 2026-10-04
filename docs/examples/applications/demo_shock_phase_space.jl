@@ -410,10 +410,10 @@ function reconstruct_backward_projections(
     g3 = vz_grid .* 1.0e-3
 
     return (
-        (full_centers, full_centers, embed_vdf(g1, g2, full_centers, f_xy)),
-        (full_centers, full_centers, embed_vdf(g1, g3, full_centers, f_xz)),
-        (full_centers, full_centers, embed_vdf(g2, g3, full_centers, f_yz)),
-    ), t_solve, nparticles_bw
+            (full_centers, full_centers, embed_vdf(g1, g2, full_centers, f_xy)),
+            (full_centers, full_centers, embed_vdf(g1, g3, full_centers, f_xz)),
+            (full_centers, full_centers, embed_vdf(g2, g3, full_centers, f_yz)),
+        ), t_solve, nparticles_bw
 end
 
 res_up_bw, t_bw_up, n_bw_up = reconstruct_backward_projections(x_upstream, dt, param)

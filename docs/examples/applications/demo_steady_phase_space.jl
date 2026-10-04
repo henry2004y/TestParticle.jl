@@ -228,10 +228,10 @@ function reconstruct_backward_projections(
     end
 
     return (
-        (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-        (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-        (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
-    ), t_solve, nparticles_bw
+            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
+            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
+            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+        ), t_solve, nparticles_bw
 end
 
 res_down_bw, t_bw_down, n_bw_down =
