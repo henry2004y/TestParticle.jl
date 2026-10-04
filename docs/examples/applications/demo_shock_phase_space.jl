@@ -404,7 +404,9 @@ function reconstruct_backward_projections(
 
     f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
 
-    full_centers = collect(range(v0x, -v0x; step = dv) .* 1.0e-3)
+    ## `embed_vdf` places the sub-grid on the full grid by its step, so the centers
+    ## have to stay a range instead of a materialized vector.
+    full_centers = range(v0x, -v0x; step = dv) .* 1.0e-3
     g1 = vx_grid .* 1.0e-3
     g2 = vy_grid .* 1.0e-3
     g3 = vz_grid .* 1.0e-3
