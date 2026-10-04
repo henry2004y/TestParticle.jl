@@ -131,11 +131,11 @@ function run_benchmark_grid(N, dt; grid_res = 32)
             0.1f0 + 0.8f0 * Float32(mod(ctx.sim_id, 100)) / 100.0f0,
             0.1f0 + 0.8f0 * Float32(mod(div(ctx.sim_id, 100), 100)) / 100.0f0,
             0.5f0,
-            1.0f4, 0.0f0, 0.0f0
+            1.0f4, 0.0f0, 0.0f0,
         ]
     )
     tspan32 = (0.0f0, Float32(dt * 200))
-    prob32 = TraceProblem(Float32[0.1, 0.1, 0.5, 1e4, 0, 0], tspan32, param32; prob_func)
+    prob32 = TraceProblem(Float32[0.1, 0.1, 0.5, 1.0e4, 0, 0], tspan32, param32; prob_func)
 
     # CPU multithreading grid
     GC.gc()
