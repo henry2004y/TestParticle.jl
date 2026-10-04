@@ -4,6 +4,7 @@
 using CairoMakie
 using Statistics
 using Printf
+using DelimitedFiles
 
 # Thread counts to test (powers of 2 up to the system's logical cores)
 max_threads = Sys.CPU_THREADS
@@ -22,29 +23,39 @@ for t in threads_to_test
 
     # We write a small runner script to extract the median time of the threads benchmark
     runner_code = """
-    using BenchmarkTools, TestParticle, StaticArrays, Printf
+    using BenchmarkTools
+    using TestParticle
+    using StaticArrays
+    using Printf
+
     n_particles = 16384
     uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
     uniform_E(x) = SA[0.0, 0.0, 0.0]
     param = prepare(uniform_E, uniform_B; species = Proton)
-    x0 = [0.0, 0.0, 0.0]; v0 = [1.0e5, 0.0, 0.0]; stateinit = [x0..., v0...]
-    tspan = (0.0, 1.0e-3); dt = 1.0e-9
+    x0 = [0.0, 0.0, 0.0]
+    v0 = [1.0e5, 0.0, 0.0]
+    stateinit = [x0..., v0...]
+    tspan = (0.0, 1.0e-3)
+    dt = 1.0e-9
     prob_func(prob, ctx) = remake(
         prob;
-        u0 = [prob.u0[1], prob.u0[2], prob.u0[3], (ctx.sim_id / 1000.0) * 1.0e5, 0.0, 0.0]
+        u0 = [
+            prob.u0[1], prob.u0[2], prob.u0[3],
+            (ctx.sim_id / 1000.0) * 1.0e5, 0.0, 0.0,
+        ],
     )
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
-    
+
     # Warmup
     TestParticle.solve(
         prob_multi, Boris(), EnsembleThreads();
-        trajectories = 10, dt = dt, saveat = 10000 * dt
+        trajectories = 10, dt = dt, saveat = 10000 * dt,
     )
-    
+
     bench_threads = @benchmark TestParticle.solve(
         \$prob_multi, Boris(), EnsembleThreads();
-        trajectories = \$n_particles, dt = \$dt, saveat = 10000 * \$dt
-    ) samples=5 seconds=30
+        trajectories = \$n_particles, dt = \$dt, saveat = 10000 * \$dt,
+    ) samples = 5 seconds = 30
     time_s = median(bench_threads).time / 1.0e9
     println("RESULT_TIME_S: \$time_s")
     """
@@ -86,7 +97,7 @@ scatterlines!(ax, threads_to_test, speedups, label = "Measured Speedup")
 # Ideal linear scaling
 lines!(
     ax, threads_to_test, threads_to_test, color = :black, linestyle = :dash,
-    label = "Ideal Linear Scaling"
+    label = "Ideal Linear Scaling",
 )
 
 axislegend(ax, position = :lt)
@@ -96,6 +107,5 @@ save(plot_path, fig)
 println("\nSaved scaling plot to: ", plot_path)
 
 # Save results to CSV
-using DelimitedFiles
 writedlm(joinpath(@__DIR__, "threads_scaling.csv"), [threads_to_test times], ',')
 println("Saved scaling results to: ", joinpath(@__DIR__, "threads_scaling.csv"))
