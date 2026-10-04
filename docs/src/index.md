@@ -43,17 +43,17 @@ Tracing many particles can be computationally intensive. TestParticle.jl is desi
 
 ### Serial Performance
 
-The following table compares the performance of TestParticle's Boris solver against standard ODE solvers from DifferentialEquations.jl for a single particle simulation.
+The following table compares the performance of TestParticle's Boris solver against standard ODE solvers from DifferentialEquations.jl for a single particle simulation. Reproducible benchmark scripts are available in [benchmark/bench_serial.jl](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/bench_serial.jl).
 
 **Benchmark Configuration:**
-- Hardware: Intel Ultra 7 265K
-- Task: Simulating 1 particle for 0.1 second with $dt = 1$ ns ($10^8$ steps).
+- Hardware: Intel Core Ultra 7 265K (20 cores, 20 threads)
+- Task: Simulating 1 particle for 0.1 second with $dt = 1$ ns ($10^8$ steps, saving endpoint).
 
 | Solver | Median Time | Speedup | Allocations | Memory |
 | :--- | :--- | :--- | :--- | :--- |
-| TestParticle Boris | 923 ms | 1.0x | 8 | 55.12 KiB |
-| ODE Tsit5 (fixed) | 15773 ms | 17x slower | 64 | 3.74 KiB |
-| ODE Vern9 (fixed) | 39555 ms | 43x slower | 72 | 4.35 KiB |
+| TestParticle Boris | 477 ms | 1.0x | 91 | 4.83 KiB |
+| ODE Tsit5 (fixed) | 10392 ms | 22x slower | 66 | 4.04 KiB |
+| ODE Vern9 (fixed) | 24962 ms | 52x slower | 74 | 4.70 KiB |
 
 ### Parallel Scaling
 
@@ -65,7 +65,11 @@ TestParticle.jl supports both multithreading and distributed computing for ensem
 
 TestParticle.jl provides vendor-agnostic GPU acceleration via [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl). Passing a GPU backend such as `CUDA.CUDABackend()`, `AMDGPU.ROCBackend()`, `Metal.MetalBackend()`, or `oneAPI.oneAPIBackend()` to `solve(prob, Boris(), backend)` executes the Boris pusher kernels directly on hardware accelerators.
 
-The following benchmarks were conducted on an **NVIDIA GeForce RTX 5070** against a modern multi-core CPU. Reproducible benchmark scripts are available in [benchmark/compare_boris_backends.jl](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/compare_boris_backends.jl).
+**Benchmark Configuration:**
+- CPU: Intel Core Ultra 7 265K (20 cores, 20 threads)
+- GPU: NVIDIA GeForce RTX 5070 (12 GB GDDR7)
+
+Reproducible benchmark scripts are available in [benchmark/compare_boris_backends.jl](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/compare_boris_backends.jl).
 
 #### 1. Analytical Uniform Field Tracing (1,000 steps)
 
