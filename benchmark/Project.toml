@@ -7,8 +7,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 
 [sources]
-## BorisPushers is not registered yet, so it has to come from the repository rather
-## than the registry. Benchmarks are copied into a temporary environment, therefore its
-## source may not be a path relative to this file. Drop this once it is registered.
+## TODO: drop BorisPushers from both [deps] and [sources] once it is registered in
+## General. Until then it cannot be removed at all, because TestParticle depends on it and
+## the registry has no version of it, and it cannot be a path either, because this file is
+## copied into a temporary benchmark environment where a relative path points elsewhere.
 BorisPushers = {url = "https://github.com/henry2004y/TestParticle.jl.git", subdir = "lib/BorisPushers"}
 TestParticle = {path = ".."}
