@@ -117,6 +117,89 @@ end
             end
         end
     end
+
+    @testset "GPUGrid interpolators on CPU" begin
+        x = 0.0:1.0:4.0
+        y = 0.0:1.0:4.0
+        z = 0.0:1.0:4.0
+
+        # 3D Grid
+        B_grid3d = zeros(3, length(x), length(y), length(z))
+        for i in 1:length(x), j in 1:length(y), k in 1:length(z)
+            B_grid3d[:, i, j, k] .= [x[i], y[j], z[k]]
+        end
+        param3d = prepare(x, y, z, zeros(size(B_grid3d)), B_grid3d; species = Proton)
+        fi3d = param3d[4].field_function
+        g3d = TP._to_gpu_grid(fi3d.itp, CPU())
+
+        @test g3d(1.5, 2.5, 3.5) ≈ SA[1.5, 2.5, 3.5]
+        @test g3d((1.5, 2.5, 3.5)) ≈ SA[1.5, 2.5, 3.5]
+        @test g3d(SA[1.5, 2.5, 3.5]) ≈ SA[1.5, 2.5, 3.5]
+        @test g3d(SA[1.5, 2.5, 3.5], 0.0) ≈ SA[1.5, 2.5, 3.5]
+
+        g3d_adapt = TP.Adapt.adapt(CPU(), g3d)
+        @test g3d_adapt(1.0, 1.0, 1.0) == g3d(1.0, 1.0, 1.0)
+
+        # 2D Grid
+        B_grid2d = zeros(3, length(x), length(y))
+        for i in 1:length(x), j in 1:length(y)
+            B_grid2d[:, i, j] .= [x[i], y[j], 0.0]
+        end
+        param2d = prepare(x, y, zeros(size(B_grid2d)), B_grid2d; species = Proton)
+        fi2d = param2d[4].field_function
+        g2d = TP._to_gpu_grid(fi2d.itp, CPU())
+
+        @test g2d(1.5, 2.5) ≈ SA[1.5, 2.5, 0.0]
+        @test g2d((1.5, 2.5)) ≈ SA[1.5, 2.5, 0.0]
+        @test g2d(SA[1.5, 2.5, 0.0]) ≈ SA[1.5, 2.5, 0.0]
+        @test g2d(SA[1.5, 2.5, 0.0], 0.0) ≈ SA[1.5, 2.5, 0.0]
+
+        g2d_adapt = TP.Adapt.adapt(CPU(), g2d)
+        @test g2d_adapt(1.0, 1.0) == g2d(1.0, 1.0)
+
+        # 1D Grid
+        B_grid1d = zeros(3, length(x))
+        for i in 1:length(x)
+            B_grid1d[:, i] .= [x[i], 0.0, 0.0]
+        end
+        param1d = prepare(x, zeros(size(B_grid1d)), B_grid1d; species = Proton)
+        fi1d = param1d[4].field_function
+        g1d = TP._to_gpu_grid(fi1d.itp, CPU(); dir = 1)
+
+        @test g1d(2.5) ≈ SA[2.5, 0.0, 0.0]
+        @test g1d((2.5,)) ≈ SA[2.5, 0.0, 0.0]
+        @test g1d(SA[2.5, 0.0, 0.0]) ≈ SA[2.5, 0.0, 0.0]
+        @test g1d(SA[2.5, 0.0, 0.0], 0.0) ≈ SA[2.5, 0.0, 0.0]
+
+        g1d_adapt = TP.Adapt.adapt(CPU(), g1d)
+        @test g1d_adapt(2.0) == g1d(2.0)
+
+        # Boundary conditions
+        let data = collect(1.0:5.0)
+            bc_fill = TP.FillExtrap(0.0)
+            grid_fill = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_fill)
+            @test grid_fill(0.0) == 0.0
+            @test grid_fill(6.0) == 0.0
+            @test grid_fill(2.5) == 2.5
+
+            bc_clamp = TP.ClampExtrap()
+            grid_clamp = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_clamp)
+            @test grid_clamp(0.0) == 1.0
+            @test grid_clamp(6.0) == 5.0
+
+            bc_wrap = TP.WrapExtrap()
+            grid_wrap = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_wrap)
+            @test grid_wrap(5.5) ≈ grid_wrap(1.5)
+        end
+
+        # Tracing with Field(g3d) on CPU
+        prob3d = TraceProblem(
+            [1.0, 1.0, 1.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6),
+            (param3d[1], param3d[2], param3d[3], TP.Field(g3d))
+        )
+        sol3d = TP.solve(prob3d, Boris(), CPU(); dt = 1.0e-9)
+        @test length(sol3d.u[1].u) == 1001
+    end
 end
 
 end

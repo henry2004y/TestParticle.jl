@@ -295,11 +295,13 @@ function _to_gpu_grid(itp, backend::Backend; dir = 1)
                 bc,
             )
         end
-    elseif (isdefined(itp, :grid) || isdefined(itp, :x)) && isdefined(itp, :data)
+    elseif (isdefined(itp, :grid) || isdefined(itp, :x)) &&
+           (isdefined(itp, :data) || isdefined(itp, :y))
         g = isdefined(itp, :grid) ? itp.grid : itp.x
         x0, dx, inv_dx, nx = _grid_props(g)
         T = typeof(x0)
-        data_gpu = Adapt.adapt(backend, itp.data)
+        data = isdefined(itp, :data) ? itp.data : itp.y
+        data_gpu = Adapt.adapt(backend, data)
         bc = if hasproperty(itp, :extraps)
             itp.extraps
         elseif hasproperty(itp, :extrap)
