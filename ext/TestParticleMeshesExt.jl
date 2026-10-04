@@ -9,7 +9,7 @@ using StaticArrays: SVector
 using SciMLBase: EnsembleSolution
 using LinearAlgebra: norm, ⋅
 using PrecompileTools: @setup_workload, @compile_workload
-using ChunkSplitters: ChunkSplitters
+using ChunkSplitters: index_chunks
 
 # Grid build_interpolator forwarding
 TestParticle.build_interpolator(::Type{<:CartesianGrid}, args...; kwargs...) =
@@ -378,12 +378,12 @@ function get_particle_crossings(
     nthreads = Threads.nthreads()
 
     if nthreads > 1 && nsols > 200
-        chunks = ChunkSplitters.chunks(1:nsols; n = nthreads, split = :batch)
+        chunks = index_chunks(1:nsols; n = nthreads)
         th_vels = [SVector{3, T}[] for _ in 1:length(chunks)]
         th_counts = [ntuple(j -> eltype(weights[j])[], nweights) for _ in 1:length(chunks)]
 
-        Threads.@threads for (tid, (rng, _)) in collect(enumerate(chunks))
-            for i in rng
+        Threads.@threads for (tid, irange) in collect(enumerate(chunks))
+            for i in irange
                 w_tuple = ntuple(j -> weights[j][i], nweights)
                 get_particle_crossings_single!(
                     th_vels[tid], th_counts[tid], sols[i], surface, w_tuple
@@ -420,12 +420,12 @@ function get_particle_crossings(
     nthreads = Threads.nthreads()
 
     if nthreads > 1 && nsols > 200 && weights isa AbstractVector
-        chunks = ChunkSplitters.chunks(1:nsols; n = nthreads, split = :batch)
+        chunks = index_chunks(1:nsols; n = nthreads)
         th_vels = [SVector{3, T}[] for _ in 1:length(chunks)]
         th_counts = [eltype(weights)[] for _ in 1:length(chunks)]
 
-        Threads.@threads for (tid, (rng, _)) in collect(enumerate(chunks))
-            for i in rng
+        Threads.@threads for (tid, irange) in collect(enumerate(chunks))
+            for i in irange
                 get_particle_crossings_single!(
                     th_vels[tid], th_counts[tid], sols[i], surface, weights[i]
                 )
