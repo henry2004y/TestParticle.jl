@@ -245,6 +245,36 @@ end
         ref = [f_src(SA[a, b, c]) * 1.0e18 for a in v, b in v, c in v]
         @test relative_l2(f3d, ref) < 0.05
     end
+
+    @testset "embed_vdf" begin
+        sub_centers = -50.0:20.0:50.0
+        full_centers = -100.0:20.0:100.0
+        M = ones(length(sub_centers), length(sub_centers))
+        full_M = embed_vdf(sub_centers, sub_centers, full_centers, M)
+        @test size(full_M) == (length(full_centers), length(full_centers))
+        @test sum(full_M) == sum(M)
+    end
+
+    @testset "vdf_backward_trace and vdf_forward_trace" begin
+        f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
+            param, x_detector, source_plane, f_src;
+            v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0),
+            adaptive = false,
+            isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
+                u[1] > x_source[1] + 1.0e5
+        )
+        ref = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
+        @test relative_l2(f3d_bw, ref) < 0.05
+
+        f3d_fw, proj_fw = vdf_forward_trace(
+            param, x_source[1], detector, vdf, n0;
+            nparticles = 50000, vradius, tspan, dt, dv_km,
+            center = SA[V_drift, 0.0, 0.0]
+        )
+        for i in 1:3
+            @test relative_l2(proj_fw[i], ana[i]) < 0.15
+        end
+    end
 end
 
 end # module test_phasespace

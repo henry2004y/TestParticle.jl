@@ -72,6 +72,8 @@ function TestParticle.BiKappa(B, u0, ppar, pperp, n, kappa; m = TestParticle.máµ
     return VDF.BiKappa(vperp, vpar, kappa, B; u0)
 end
 
+TestParticle._eval_f_src(vdf::VDF.AbstractVelocityPDF, v) = VDF.pdf(vdf, v)
+
 @setup_workload begin
     @compile_workload begin
         u0 = [0.0, 0.0, 0.0]
