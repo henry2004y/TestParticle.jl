@@ -6,11 +6,19 @@ get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 function get_dv(v, x, p, t)
     q2m, m, Efunc, Bfunc, Ffunc = p
     T = eltype(v)
-    E = SVector{3, T}(Efunc(x, t))
-    B = SVector{3, T}(Bfunc(x, t))
-    F = SVector{3, T}(Ffunc(x, t))
+    if T <: AbstractFloat
+        E = SVector{3, T}(Efunc(x, t))
+        B = SVector{3, T}(Bfunc(x, t))
+        F = SVector{3, T}(Ffunc(x, t))
 
-    return T(q2m) * (v × B + E) + F / T(m)
+        return T(q2m) * (v × B + E) + F / T(m)
+    else
+        E = Efunc(x, t)
+        B = Bfunc(x, t)
+        F = Ffunc(x, t)
+
+        return q2m * (v × B + E) + F / m
+    end
 end
 
 """
@@ -46,14 +54,24 @@ end
 
 function get_relativistic_v(γv; c = c)
     T = eltype(γv)
-    c_val = T(c)
-    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-    if γ²v² > eps(T)
-        v̂ = normalize(γv)
-    else # no velocity
-        v̂ = SVector{3, T}(0, 0, 0)
+    if T <: AbstractFloat
+        c_val = T(c)
+        γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+        if γ²v² > eps(T)
+            v̂ = normalize(γv)
+        else # no velocity
+            v̂ = SVector{3, T}(0, 0, 0)
+        end
+        return √(γ²v² / (1 + γ²v² / c_val^2)) * v̂
+    else
+        γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
+        if γ²v² > eps(eltype(γv))
+            v̂ = normalize(γv)
+        else # no velocity
+            v̂ = zero(γv)
+        end
+        return √(γ²v² / (1 + γ²v² / c^2)) * v̂
     end
-    return √(γ²v² / (1 + γ²v² / c_val^2)) * v̂
 end
 
 """
