@@ -11,19 +11,19 @@ using CairoMakie
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, ctx)
-   prob = @views remake(prob, u0=[prob.u0[1:3]..., ctx.sim_id/3, 0.0, 0.0])
+    return prob = @views remake(prob, u0 = [prob.u0[1:3]..., ctx.sim_id / 3, 0.0, 0.0])
 end
 
 ## Initialization
 
-B(x) = SA[0, 0, 1e-11]
-E(x) = SA[0, 0, 1e-13]
+B(x) = SA[0, 0, 1.0e-11]
+E(x) = SA[0, 0, 1.0e-13]
 
 x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
 
-param = prepare(E, B; species=Electron)
+param = prepare(E, B; species = Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -31,22 +31,23 @@ trajectories = 3
 ## Solve for the trajectories
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 sols = solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()); trajectories)
 
 ## Visualization
 
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Electron trajectories",
-   xlabel = "X",
-   ylabel = "Y",
-   zlabel = "Z",
-   aspect = :data,
+ax = Axis3(
+    f[1, 1],
+    title = "Electron trajectories",
+    xlabel = "X",
+    ylabel = "Y",
+    zlabel = "Z",
+    aspect = :data,
 )
 
 for i in 1:trajectories
-   lines!(ax, sols.u[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
+    lines!(ax, sols.u[i], idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f
@@ -61,19 +62,19 @@ using CairoMakie
 
 "Set initial state for EnsembleProblem."
 function prob_func(prob, ctx)
-   prob = @views remake(prob, u0=SA[prob.u0[1:3]..., ctx.sim_id/3, 0.0, 0.0])
+    return prob = @views remake(prob, u0 = SA[prob.u0[1:3]..., ctx.sim_id / 3, 0.0, 0.0])
 end
 
 ## Initialization
 
-B(x) = SA[0, 0, 1e-11]
-E(x) = SA[0, 0, 1e-13]
+B(x) = SA[0, 0, 1.0e-11]
+E(x) = SA[0, 0, 1.0e-13]
 
 x0 = SA[0.0, 0.0, 0.0] # initial position, [m]
 u0 = SA[1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = SA[x0..., u0...]
 
-param = prepare(E, B; species=Electron)
+param = prepare(E, B; species = Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -81,24 +82,27 @@ trajectories = 3
 ## Solve for the trajectories
 
 prob = ODEProblem(trace, stateinit, tspan, param)
-ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy=false)
-## saving time interval is required for dense output! 
-sols = solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
-   trajectories, saveat=0.4)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
+## saving time interval is required for dense output!
+sols = solve(
+    ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+    trajectories, saveat = 0.4
+)
 
 ## Visualization
 
 f = Figure(fontsize = 18)
-ax = Axis3(f[1, 1],
-   title = "Electron trajectories",
-   xlabel = "X",
-   ylabel = "Y",
-   zlabel = "Z",
-   aspect = :data,
+ax = Axis3(
+    f[1, 1],
+    title = "Electron trajectories",
+    xlabel = "X",
+    ylabel = "Y",
+    zlabel = "Z",
+    aspect = :data,
 )
 
 for i in 1:trajectories
-   lines!(ax, sols.u[i], idxs=(1,2,3), label="$i", color=Makie.wong_colors()[i])
+    lines!(ax, sols.u[i], idxs = (1, 2, 3), label = "$i", color = Makie.wong_colors()[i])
 end
 
 f
@@ -125,12 +129,12 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 1.0e-6)
 
 # Prepare problem
-param = prepare(E, B; species=Proton)
+param = prepare(E, B; species = Proton)
 prob = TraceProblem(stateinit, tspan, param)
 
 # Solve on CPU backend
 backend = CPU()
-sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
 ```
 
 The native GPU Boris solver:
@@ -152,12 +156,12 @@ To use actual GPU acceleration, install the appropriate backend package and crea
 # For NVIDIA GPUs
 using CUDA
 backend = CUDABackend()
-sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
 
 # For AMD GPUs
 using AMDGPU
 backend = ROCBackend()
-sols = solve(prob, Boris(), backend; dt=1.0e-9, trajectories=1000, saveat=1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
 ```
 
 > **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.

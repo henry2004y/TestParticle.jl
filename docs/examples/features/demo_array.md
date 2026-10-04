@@ -29,9 +29,9 @@ using NPZ
 
 vars = npzread("my_field.npz")
 B = vars["data"] # size (nx, ny, nz, 3)
-B = permutedims(B, (4,1,2,3)) # size (3, nx, ny, nz)
+B = permutedims(B, (4, 1, 2, 3)) # size (3, nx, ny, nz)
 # Validation
-println(B[2,1,2,3]) # should be 26
+println(B[2, 1, 2, 3]) # should be 26
 ```
 
 Note that the shape of the Julia-style array is now `(3, nx, ny, nz)`, instead of `(3, nz, ny, nx)`. The key thing here is that the array storage ordering is an implementation detail that is not related to how we do math. When we use the `NPZ` package to load the Numpy array, the storage ordering has already been modified. We perform one permutation of the vector dimension to move it to the first index such that the vector components becomes continuous and adapt to the expection of TestParticle.jl.
