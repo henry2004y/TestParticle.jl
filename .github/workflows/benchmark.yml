@@ -20,3 +20,7 @@ jobs:
       - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
           julia-version: '1'
+          # The benchmark environment is declared in benchmark/Project.toml, so freeze the
+          # script and its dependencies to this branch instead of the default branch: the
+          # copy on master still points BorisPushers at a path outside the runner.
+          bench-on: ${{ github.event.pull_request.head.sha }}
