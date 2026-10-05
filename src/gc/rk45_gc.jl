@@ -138,11 +138,11 @@ function _rk45!(
                 xv = y_next
 
                 if use_saveat(plan)
-                    while isave <= nsave && _saveat_reached(plan.times[isave], t, plan.dir)
+                    while isave <= nsave && saveat_reached(plan.times[isave], t, plan.dir)
                         t_target = plan.times[isave]
                         push!(
                             traj, _prepare_saved_data_gc(
-                                _saveat_interpolate(t_prev, xv_prev, t, xv, t_target),
+                                saveat_interpolate(t_prev, xv_prev, t, xv, t_target),
                                 p, t_target, Val(SaveFields), Val(SaveWork)
                             )
                         )

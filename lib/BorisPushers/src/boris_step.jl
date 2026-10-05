@@ -46,7 +46,7 @@ field evaluation a step would not otherwise make, so a caller that saves rarely
 should call it rarely.
 """
 @inline function update_velocity_node(v_half, r, dt, t, p, alg)
-    return update_velocity(v_half, r, 0.5 * dt, t, p, alg)
+    return update_velocity(v_half, r, dt / 2, t, p, alg)
 end
 
 """
@@ -57,13 +57,13 @@ the integration carries. This is how a trajectory is started, from an initial
 condition given at a node.
 """
 @inline function update_velocity_half(v, r, dt, t, p, alg)
-    return update_velocity(v, r, -0.5 * dt, t, p, alg)
+    return update_velocity(v, r, -dt / 2, t, p, alg)
 end
 
 """
     update_velocity_resync(v_half, r, dt_prev, dt, t, p, alg) -> v_half_new
 
-Move a half-step velocity centerd on `dt_prev` onto the half step of `dt`, both
+Move a half-step velocity centered on `dt_prev` onto the half step of `dt`, both
 at the node `t`, by going through the node velocity.
 
 Changing the step size re-centers the velocity, which is what keeps the scheme

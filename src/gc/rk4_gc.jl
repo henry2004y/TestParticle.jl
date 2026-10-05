@@ -79,12 +79,12 @@ function _rk4!(
             if use_saveat(plan)
                 # Report every requested time this step has passed, interpolating
                 # inside the step so the integration itself is untouched.
-                while isave <= nsave && _saveat_reached(plan.times[isave], t_next, plan.dir)
+                while isave <= nsave && saveat_reached(plan.times[isave], t_next, plan.dir)
                     t_target = plan.times[isave]
                     iout += 1
                     if iout <= nout
                         traj[iout] = _prepare_saved_data_gc(
-                            _saveat_interpolate(t, xv_prev, t_next, xv, t_target),
+                            saveat_interpolate(t, xv_prev, t_next, xv, t_target),
                             p, t_target, Val(SaveFields), Val(SaveWork)
                         )
                         tsave[iout] = t_target

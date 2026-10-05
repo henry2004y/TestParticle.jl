@@ -13,7 +13,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
-    GPUBorisAlgorithm, adapt_field_to_gpu,
+    adapt_field_to_gpu, EnsembleKernel,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
     advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync,
@@ -66,7 +66,7 @@ export GPUGrid3D, GPUGrid2D, GPUGrid1D
 export morton3D, morton_sort_particles
 export TraceProblem, TraceGCProblem, TraceHybridProblem
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
-    EnsembleSplitThreads, remake, FillExtrap, ClampExtrap, WrapExtrap,
+    EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
     PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
 
 include("types.jl")

@@ -233,8 +233,9 @@ TestParticle.jl routes execution based on the chosen solver interface and backen
   This path handles single-particle trajectories, adaptive stepping (`AdaptiveBoris`),
   and traces requiring SciML callbacks.
 - **Device ensemble solves**: Passing a `KernelAbstractions` backend to
-  `solve(prob, alg, backend; trajectories, ...)` routes execution through the
-  native KernelAbstractions driver. The device kernels call the exact same
+  `solve(prob, alg, backend; trajectories, ...)` or using the SciML ensemble interface
+  `solve(prob, alg, EnsembleKernel(backend); trajectories, ...)` routes execution through
+  the native KernelAbstractions driver. The device kernels call the exact same
   stateless `advance_boris` and `update_velocity_half` functions from
   `BorisPushers`, ensuring identical numerical behavior between CPU and GPU.
 
