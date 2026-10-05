@@ -578,8 +578,10 @@ end #hide
 const n_traj = (nparticles, nparticles_m2, n_bw) # trajectories behind each method
 const t_cost = (t_mc, t_liou, t_bw) # wall-clock cost of each method [s]
 println(io_s, "| Trajectories | ", join(n_traj, " | "), " |") #hide
-cost = [@sprintf("%.1f s (%.1f µs/traj)", t_cost[i], t_cost[i] / n_traj[i] * 1.0e6) #hide
-    for i in 1:3] #hide
+cost = [
+    @sprintf("%.1f s (%.1f µs/traj)", t_cost[i], t_cost[i] / n_traj[i] * 1.0e6) #hide
+        for i in 1:3
+] #hide
 println(io_s, "| **Wall-clock cost** | ", join(cost, " | "), " |") #hide
 Markdown.parse(String(take!(io_s))) #hide
 
