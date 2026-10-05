@@ -177,7 +177,7 @@ vlines!(ax_mem, [1.0]; color = :black, linestyle = :dash, linewidth = 2)
 elements = [
     PolyElement(polycolor = color_time),
     PolyElement(polycolor = color_mem),
-    LineElement(color = :black, linestyle = :dash, linewidth = 2)
+    LineElement(color = :black, linestyle = :dash, linewidth = 2),
 ]
 labels = ["Relative Elapsed Time", "Relative Memory Allocations", "Baseline"]
 Legend(
