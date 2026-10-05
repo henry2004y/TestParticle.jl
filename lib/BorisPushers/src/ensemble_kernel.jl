@@ -372,7 +372,7 @@ function _prepare_ensemble_solve(
         copyto!(xv_current, xv_init_sorted)
         return (;
             nt, nout, xv_current, xv_init = xv_init_sorted, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0, T, dt = dt_T, perm
+            p_gpu, p_host, tspan = tspan_T, u0, T, dt = dt_T, perm,
         )
     else
         if xv_current !== xv_init
@@ -380,7 +380,7 @@ function _prepare_ensemble_solve(
         end
         return (;
             nt, nout, xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0, T, dt = dt_T, perm = nothing
+            p_gpu, p_host, tspan = tspan_T, u0, T, dt = dt_T, perm = nothing,
         )
     end
 end
@@ -414,7 +414,7 @@ function _execute_ensemble_kernel(
 
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, u0, perm
+        p_gpu, p_host, tspan, u0, perm,
     ) = _prepare_ensemble_solve(
         base_prob, prob_func, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters;

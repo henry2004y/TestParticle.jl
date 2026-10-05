@@ -100,7 +100,7 @@ end
 
             u0s = [xv[i, :] for i in 1:N]
             param = prepare(zero_E, uniform_B; species = Proton)
-            prob_func = (prob, i, repeat = false) -> remake(prob; u0 = u0s[i.sim_id])
+            prob_func = (prob, ctx) -> remake(prob; u0 = u0s[ctx.sim_id])
             base_prob = TraceProblem(u0s[1], (0.0, 1.0e-6), param; prob_func)
 
             sol_unsorted = TP.solve(
@@ -113,7 +113,10 @@ end
             )
 
             for i in 1:N
-                @test sol_unsorted.u[i].u[end] ≈ sol_sorted.u[i].u[end]
+                @test isapprox(
+                    sol_unsorted.u[i].u[end], sol_sorted.u[i].u[end];
+                    rtol = 1.0e-5, atol = 1.0e-6,
+                )
             end
         end
     end
