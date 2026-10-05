@@ -214,16 +214,46 @@ end
         vxi = [s.u[1][4] for s in sols.u]
         vs, ws = get_particle_crossings(sols, detector, ws0)
         _, ws_vxi = get_particle_crossings(sols, detector, vxi)
+        vs_tup, (ws_tup, ws_vxi_tup) = get_particle_crossings(sols, detector, (ws0, vxi))
+        @test vs_tup == vs
+        @test ws_tup == ws
+        @test ws_vxi_tup == ws_vxi
         ## Each sample stands for the source velocity volume `V_ball / N`.
         V_ball = (4 / 3) * π * (vradius * 1.0e-3)^3  # [km³/s³]
         f3d = bin_velocity_space(
-            vs, ws .* (V_ball * 1.0e18 / (n * dv_km^3)), v_edges; vx_source = ws_vxi
+            vs_tup, ws_tup .* (V_ball * 1.0e18 / (n * dv_km^3)), v_edges; vx_source = ws_vxi_tup
         )
         rec = project_vdf(f3d, dv_km)
         for i in 1:3
             @test relative_l2(rec[i], ana[i]) < 0.15
         end
         @test velocity_moments(v_centers, rec[1]; dv = dv_km).n ≈ n0 rtol = 0.1
+    end
+
+    @testset "get_particle_crossings serially" begin
+        ## Ensembles below the chunking threshold accumulate without threads, and
+        ## the multi-weight form has to agree with single-weight calls on them.
+        n_small = 120
+        prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_liouville)
+        sols_small = TP.solve(
+            prob, Boris(), EnsembleThreads(); dt,
+            trajectories = n_small, seed = 42
+        )
+        ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols_small.u]
+        vxi = [s.u[1][4] for s in sols_small.u]
+
+        vs_t, (ws_t, wvxi_t) = get_particle_crossings(sols_small, detector, (ws0, vxi))
+        vs_s, ws_s = get_particle_crossings(sols_small, detector, ws0)
+        _, wvxi_s = get_particle_crossings(sols_small, detector, vxi)
+        @test !isempty(vs_t)
+        @test vs_t == vs_s
+        @test ws_t == ws_s
+        @test wvxi_t == wvxi_s
+        @test length(vs_t) == length(ws_t) == length(wvxi_t)
+
+        ## A scalar weight is shared by every crossing.
+        _, ws_unit = get_particle_crossings(sols_small, detector)
+        @test ws_unit == fill(1.0, length(vs_t))
     end
 
     @testset "backward Liouville" begin
@@ -240,6 +270,75 @@ end
         f3d = vdf_backward(sols, source_plane, f_src, dims)
         ref = [f_src(SA[a, b, c]) * 1.0e18 for a in v, b in v, c in v]
         @test relative_l2(f3d, ref) < 0.05
+    end
+
+    @testset "vdf_backward_trace adaptive refinement" begin
+        dv_bw = 50.0e3                # [m/s]
+        v0_bw = -300.0e3 + dv_bw / 2  # first bin center shared by every fine grid
+        full = range(v0_bw, -v0_bw; step = dv_bw)
+        isoutside_bw = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
+            u[1] > x_source[1] + 1.0e5
+
+        f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
+            param, x_detector, source_plane, f_src;
+            v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
+            isoutside = isoutside_bw
+        )
+        ## The coarse pass only locates the support: the second pass retraces that
+        ## region on the requested spacing, snapped onto the full grid lattice.
+        @test step(vx_bw) == dv_bw && step(vy_bw) == dv_bw && step(vz_bw) == dv_bw
+        @test rem(first(vy_bw) - v0_bw, dv_bw) ≈ 0 atol = 1.0e-6
+        @test rem(first(vz_bw) - v0_bw, dv_bw) ≈ 0 atol = 1.0e-6
+        @test first(vx_bw) ≥ first(full) && last(vx_bw) ≤ last(full)
+        ## The source drifts towards -x, hence the empty +x half is dropped.
+        @test length(vx_bw) < length(full)
+        ## Backward tracing returns `f_src` on whichever grid it is sampled.
+        ref_bw = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
+        @test size(f3d_bw) == (length(vx_bw), length(vy_bw), length(vz_bw))
+        @test relative_l2(f3d_bw, ref_bw) < 0.05
+
+        ## `bounds` clamps the refinement to a prescribed instead of the probed box.
+        yz_bounds = (-100.0e3, 100.0e3)
+        _, (vx_cl, vy_cl, vz_cl) = vdf_backward_trace(
+            param, x_detector, source_plane, f_src;
+            v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
+            bounds = ((first(full), last(full)), yz_bounds, yz_bounds),
+            isoutside = isoutside_bw
+        )
+        @test step(vz_cl) == dv_bw
+        @test first(vy_cl) ≥ yz_bounds[1] && last(vy_cl) ≤ yz_bounds[2]
+        @test first(vz_cl) ≥ yz_bounds[1] && last(vz_cl) ≤ yz_bounds[2]
+        @test length(vz_cl) < length(full)
+    end
+
+    @testset "embed_vdf" begin
+        sub_centers = -50.0:20.0:50.0
+        full_centers = -100.0:20.0:100.0
+        M = ones(length(sub_centers), length(sub_centers))
+        full_M = embed_vdf(sub_centers, sub_centers, full_centers, M)
+        @test size(full_M) == (length(full_centers), length(full_centers))
+        @test sum(full_M) == sum(M)
+    end
+
+    @testset "vdf_backward_trace and vdf_forward_trace" begin
+        f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
+            param, x_detector, source_plane, f_src;
+            v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0),
+            adaptive = false,
+            isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
+                u[1] > x_source[1] + 1.0e5
+        )
+        ref = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
+        @test relative_l2(f3d_bw, ref) < 0.05
+
+        f3d_fw, proj_fw = vdf_forward_trace(
+            param, x_source[1], detector, vdf, n0;
+            nparticles = 50000, vradius, tspan, dt, dv_km,
+            center = SA[V_drift, 0.0, 0.0]
+        )
+        for i in 1:3
+            @test relative_l2(proj_fw[i], ana[i]) < 0.15
+        end
     end
 end
 

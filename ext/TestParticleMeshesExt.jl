@@ -9,6 +9,7 @@ using StaticArrays: SVector
 using SciMLBase: EnsembleSolution
 using LinearAlgebra: norm, ⋅
 using PrecompileTools: @setup_workload, @compile_workload
+using ChunkSplitters: index_chunks
 
 # Grid build_interpolator forwarding
 TestParticle.build_interpolator(::Type{<:CartesianGrid}, args...; kwargs...) =
@@ -96,7 +97,7 @@ end
 
 # Virtual detectors
 function get_particle_crossings(sol, surface::Union{Disk, Plane, Sphere}, weight = 1.0)
-    t, u = sol.t, sol.u
+    u = sol.u
     T = float(eltype(u[1]))
     velocities = SVector{3, T}[]
     weights = typeof(weight)[]
@@ -105,23 +106,24 @@ function get_particle_crossings(sol, surface::Union{Disk, Plane, Sphere}, weight
     p1 = Point(u1[1], u1[2], u1[3])
     s1 = _signed_distance(p1, surface)
 
-    @inbounds for i in 1:(length(t) - 1)
+    @inbounds for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
         s2 = _signed_distance(p2, surface)
 
         _check_intersection!(
-            velocities, weights, s1, s2, surface, sol, t[i], t[i + 1], weight, p1, p2
+            velocities, weights, s1, s2, surface, u1, u2, weight, p1, p2
         )
         s1 = s2
         p1 = p2
+        u1 = u2
     end
 
     return velocities, weights
 end
 
 function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
-    t, u = sol.t, sol.u
+    u = sol.u
     T = float(eltype(u[1]))
 
     u1 = u[1]
@@ -132,7 +134,7 @@ function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
         return SVector{6, T}(u1)
     end
 
-    @inbounds for i in 1:(length(t) - 1)
+    @inbounds for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
         s2 = _signed_distance(p2, surface)
@@ -153,7 +155,19 @@ function get_first_crossing(sol, surface::Union{Disk, Plane, Sphere})
 end
 
 function get_first_crossing(sols::EnsembleSolution, surface::Union{Disk, Plane, Sphere})
-    return [get_first_crossing(sol, surface) for sol in sols.u]
+    return get_first_crossing(sols.u, surface)
+end
+
+function get_first_crossing(
+        sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere}
+    )
+    nsols = length(sols)
+    T = float(eltype(first(sols).u[1]))
+    res = Vector{SVector{6, T}}(undef, nsols)
+    Threads.@threads for i in 1:nsols
+        res[i] = get_first_crossing(sols[i], surface)
+    end
+    return res
 end
 
 function get_particle_flux(sol, surface::Union{Disk, Sphere}, weight = 1.0)
@@ -208,11 +222,13 @@ function get_particle_fluxes(
 end
 
 function _get_particle_flux_single_sum!(total_n_flux, total_v_flux, sol, surface, w)
-    t, u = sol.t, sol.u
-    p1 = Point(u[1][1], u[1][2], u[1][3])
+    u = sol.u
+    u1 = u[1]
+    p1 = Point(u1[1], u1[2], u1[3])
     s1 = _signed_distance(p1, surface)
+    T = float(eltype(u1))
 
-    for i in 1:(length(t) - 1)
+    for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
         s2 = _signed_distance(p2, surface)
@@ -221,15 +237,18 @@ function _get_particle_flux_single_sum!(total_n_flux, total_v_flux, sol, surface
             f = s1 / (s1 - s2)
             pcross = p1 + f * (p2 - p1)
             if _is_valid_intersection(pcross, surface)
-                tcross = muladd(f, t[i + 1] - t[i], t[i])
-                ucross = sol(tcross)
-                vcross = SVector(ucross[4], ucross[5], ucross[6])
+                vcross = SVector{3, T}(
+                    muladd(f, u2[4] - u1[4], u1[4]),
+                    muladd(f, u2[5] - u1[5], u1[5]),
+                    muladd(f, u2[6] - u1[6], u1[6])
+                )
                 total_n_flux += w
                 total_v_flux += vcross * w
             end
         end
         s1 = s2
         p1 = p2
+        u1 = u2
     end
 
     return total_n_flux, total_v_flux
@@ -287,17 +306,16 @@ function _get_particle_fluxes_single_sum!(
         surfaces::AbstractVector{D},
         w::W
     ) where {T, W, S, D}
-    t, u = sol.t, sol.u
+    u = sol.u
     u1 = u[1]
     p1 = Point(u1[1], u1[2], u1[3])
     @inbounds for j in eachindex(surfaces)
         s1s[j] = _signed_distance(p1, surfaces[j])
     end
 
-    @inbounds for i in 1:(length(t) - 1)
+    @inbounds for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
-        tl, tr = t[i], t[i + 1]
 
         for j in eachindex(surfaces)
             surface = surfaces[j]
@@ -307,9 +325,11 @@ function _get_particle_fluxes_single_sum!(
                 f = s1s[j] / (s1s[j] - s2)
                 pcross = p1 + f * (p2 - p1)
                 if _is_valid_intersection(pcross, surface)
-                    tcross = muladd(f, tr - tl, tl)
-                    ucross = sol(tcross)
-                    vcross = SVector(ucross[4], ucross[5], ucross[6])
+                    vcross = SVector{3, T}(
+                        muladd(f, u2[4] - u1[4], u1[4]),
+                        muladd(f, u2[5] - u1[5], u1[5]),
+                        muladd(f, u2[6] - u1[6], u1[6])
+                    )
                     total_n_fluxes[j] += w
                     total_v_fluxes[j] += vcross * w
                 end
@@ -317,6 +337,7 @@ function _get_particle_fluxes_single_sum!(
             s1s[j] = s2
         end
         p1 = p2
+        u1 = u2
     end
 
     return
@@ -341,37 +362,110 @@ function get_particle_crossings(sols::EnsembleSolution, surface::Union{Disk, Pla
 end
 
 function get_particle_crossings(
+        sols::EnsembleSolution, surface::Union{Disk, Plane, Sphere},
+        weights::Tuple{Vararg{AbstractVector}}
+    )
+    return get_particle_crossings(sols.u, surface, weights)
+end
+
+function get_particle_crossings(
+        sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere},
+        weights::Tuple{Vararg{AbstractVector}}
+    )
+    nsols = length(sols)
+    T = float(eltype(first(sols).u[1]))
+    nweights = length(weights)
+    nthreads = Threads.nthreads()
+
+    if nthreads > 1 && nsols > 200
+        chunks = index_chunks(1:nsols; n = nthreads)
+        th_vels = [SVector{3, T}[] for _ in 1:length(chunks)]
+        th_counts = [ntuple(j -> eltype(weights[j])[], nweights) for _ in 1:length(chunks)]
+
+        Threads.@threads for (tid, irange) in collect(enumerate(chunks))
+            for i in irange
+                w_tuple = ntuple(j -> weights[j][i], nweights)
+                get_particle_crossings_single!(
+                    th_vels[tid], th_counts[tid], sols[i], surface, w_tuple
+                )
+            end
+        end
+
+        velocities = reduce(vcat, th_vels)
+        counts = ntuple(
+            j -> reduce(vcat, [th_counts[t][j] for t in 1:length(chunks)]),
+            nweights
+        )
+        return velocities, counts
+    else
+        velocities = SVector{3, T}[]
+        sizehint!(velocities, nsols)
+        counts = ntuple(j -> eltype(weights[j])[], nweights)
+        for c in counts
+            sizehint!(c, nsols)
+        end
+        w_iter = zip(weights...)
+        @inbounds for (sol, w) in zip(sols, w_iter)
+            get_particle_crossings_single!(velocities, counts, sol, surface, w)
+        end
+        return velocities, counts
+    end
+end
+
+function get_particle_crossings(
         sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Plane, Sphere}, weights
     )
+    nsols = length(sols)
     T = float(eltype(first(sols).u[1]))
-    velocities = SVector{3, T}[]
-    sizehint!(velocities, length(sols))
-    counts = eltype(weights)[]
-    sizehint!(counts, length(sols))
+    nthreads = Threads.nthreads()
 
-    @inbounds for (sol, w) in zip(sols, weights)
-        get_particle_crossings_single!(velocities, counts, sol, surface, w)
+    if nthreads > 1 && nsols > 200 && weights isa AbstractVector
+        chunks = index_chunks(1:nsols; n = nthreads)
+        th_vels = [SVector{3, T}[] for _ in 1:length(chunks)]
+        th_counts = [eltype(weights)[] for _ in 1:length(chunks)]
+
+        Threads.@threads for (tid, irange) in collect(enumerate(chunks))
+            for i in irange
+                get_particle_crossings_single!(
+                    th_vels[tid], th_counts[tid], sols[i], surface, weights[i]
+                )
+            end
+        end
+
+        velocities = reduce(vcat, th_vels)
+        counts = reduce(vcat, th_counts)
+        return velocities, counts
+    else
+        velocities = SVector{3, T}[]
+        sizehint!(velocities, nsols)
+        counts = eltype(weights)[]
+        sizehint!(counts, nsols)
+
+        @inbounds for (sol, w) in zip(sols, weights)
+            get_particle_crossings_single!(velocities, counts, sol, surface, w)
+        end
+
+        return velocities, counts
     end
-
-    return velocities, counts
 end
 
 function get_particle_crossings_single!(velocities, weights, sol, surface, w)
-    t, u = sol.t, sol.u
+    u = sol.u
     u1 = u[1]
     p1 = Point(u1[1], u1[2], u1[3])
     s1 = _signed_distance(p1, surface)
 
-    @inbounds for i in 1:(length(t) - 1)
+    @inbounds for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
         s2 = _signed_distance(p2, surface)
 
         _check_intersection!(
-            velocities, weights, s1, s2, surface, sol, t[i], t[i + 1], w, p1, p2
+            velocities, weights, s1, s2, surface, u1, u2, w, p1, p2
         )
         s1 = s2
         p1 = p2
+        u1 = u2
     end
     return
 end
@@ -417,52 +511,66 @@ end
 
 function _get_particle_crossings_single!(
         results_v::Vector{Vector{SVector{3, T}}},
-        results_w::Vector{Vector{W}},
+        results_w,
         s1s::AbstractVector{T},
         sol::S,
         surfaces::AbstractVector{D},
-        w::W
-    ) where {T, W, S, D}
-    t, u = sol.t, sol.u
+        w
+    ) where {T, S, D}
+    u = sol.u
     u1 = u[1]
     p1 = Point(u1[1], u1[2], u1[3])
     @inbounds for j in eachindex(surfaces)
         s1s[j] = _signed_distance(p1, surfaces[j])
     end
 
-    @inbounds for i in 1:(length(t) - 1)
+    @inbounds for i in 1:(length(u) - 1)
         u2 = u[i + 1]
         p2 = Point(u2[1], u2[2], u2[3])
-        tl, tr = t[i], t[i + 1]
 
         for j in eachindex(surfaces)
             surface = surfaces[j]
             s2 = _signed_distance(p2, surface)
             _check_intersection!(
-                results_v[j], results_w[j], s1s[j], s2, surface, sol, tl, tr, w, p1, p2
+                results_v[j], results_w[j], s1s[j], s2, surface, u1, u2, w, p1, p2
             )
             s1s[j] = s2
         end
         p1 = p2
+        u1 = u2
     end
 
     return
 end
 
+@inline function _push_weight!(weights::AbstractVector, w)
+    push!(weights, w)
+    return
+end
+
+@inline function _push_weight!(weights::Tuple, w::Tuple)
+    for j in eachindex(weights)
+        push!(weights[j], w[j])
+    end
+    return
+end
+
 @inline function _check_intersection!(
         velocities::AbstractVector{SVector{3, T}},
-        weights::AbstractVector{W},
-        s1, s2, surface::D, sol::S, tl, tr, weight::W, p1::Point, p2::Point
-    ) where {T, D, S, W}
+        weights,
+        s1, s2, surface::D, u1, u2, weight, p1::Point, p2::Point
+    ) where {T, D}
     if s1 * s2 < 0 || (s1 != 0 && s2 == 0)
         f = s1 / (s1 - s2)
         pcross = p1 + f * (p2 - p1)
         if _is_valid_intersection(pcross, surface)
-            tcross = muladd(f, tr - tl, tl)
-            ucross = sol(tcross)
-            vcross = SVector(ucross[4], ucross[5], ucross[6])
+            vcross = SVector{3, T}(
+                muladd(f, u2[4] - u1[4], u1[4]),
+                muladd(f, u2[5] - u1[5], u1[5]),
+                muladd(f, u2[6] - u1[6], u1[6])
+            )
             push!(velocities, vcross)
-            push!(weights, weight)
+            _push_weight!(weights, weight)
         end
     end
 

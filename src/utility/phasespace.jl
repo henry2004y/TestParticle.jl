@@ -217,7 +217,8 @@ function vdf_backward(sols, source, f_src, dims)
     T = float(eltype(first(states).u[1]))
     f = zeros(T, nx, ny, nz)
 
-    for (i, sol) in enumerate(states)
+    Threads.@threads for i in eachindex(states)
+        sol = states[i]
         st = get_first_crossing(sol, source)
         any(isnan, st) && continue
         iz = (i - 1) % nz + 1
@@ -278,4 +279,199 @@ function _refine_range(lo, hi, bound_lo, bound_hi, v0, dv)
     snap(x, r) = v0 + r((x - v0) / dv) * dv
 
     return range(max(bound_lo, snap(lo, floor)), min(bound_hi, snap(hi, ceil)); step = dv)
+end
+
+_detector_point(x::Real) = SA[Float64(x), 0.0, 0.0]
+_detector_point(p::SVector{3}) = Float64.(p)
+function _detector_point(p)
+    return isdefined(@__MODULE__, :coords) && applicable(coords, p) ?
+        (c = coords(p); SA[Float64(c.x.val), Float64(c.y.val), Float64(c.z.val)]) :
+        SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]
+end
+
+function _run_backward_pass(
+        vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
+        alg, ensemblealg
+    )
+    nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
+    ntraj = nx * ny * nz
+
+    prob = vdf_grid_problem(vx_grid, vy_grid, vz_grid, x0, param, tspan)
+
+    function output_func(sol, i)
+        st = get_first_crossing(sol, source)
+        val = any(isnan, st) ? 0.0 : f_src(st[SA[4, 5, 6]]) * 1.0e18
+        return (val, false)
+    end
+
+    ensemble_prob = EnsembleProblem(
+        prob; prob_func = prob.prob_func, output_func, safetycopy = false
+    )
+
+    solve_kwargs = isoutside === nothing ? (;) : (; isoutside)
+    sols = solve(
+        ensemble_prob, alg, ensemblealg;
+        dt = -abs(dt), trajectories = ntraj, solve_kwargs...
+    )
+
+    f_linear = sols.u
+    f_perm = permutedims(reshape(f_linear, nz, ny, nx), (3, 2, 1))
+    return f_perm
+end
+
+"""
+    vdf_backward_trace(
+        param, detector, source, f_src;
+        v_range = 1000.0e3, vy_range = v_range, vz_range = v_range,
+        dv = 20.0e3, dt, tspan = (0.0, -20.0),
+        adaptive = true, dv_coarse = 3 * dv, margin = 3 * dv,
+        relthresh = 1.0e-5, bounds = nothing, isoutside = nothing,
+        alg = Boris(), ensemblealg = EnsembleThreads()
+    ) -> (f_3d, (vx_grid, vy_grid, vz_grid))
+
+Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` by tracing a velocity
+grid backward in time to `source` and evaluating `f_src` on the traced-back states.
+"""
+function vdf_backward_trace(
+        param, detector, source, f_src;
+        v_range::Real = 1000.0e3, vy_range::Real = v_range, vz_range::Real = v_range,
+        dv::Real = 20.0e3, dt::Real, tspan = (0.0, -20.0),
+        adaptive::Bool = true, dv_coarse::Real = 3 * dv, margin::Real = 3 * dv,
+        relthresh::Real = 1.0e-5, bounds = nothing, isoutside = nothing,
+        alg = Boris(), ensemblealg = EnsembleThreads()
+    )
+    x0 = _detector_point(detector)
+    v0x = -v_range + dv / 2
+    v0y = -vy_range + dv / 2
+    v0z = -vz_range + dv / 2
+
+    if adaptive
+        vx_c = range(-v_range, v_range; step = dv_coarse)
+        vy_c = range(-vy_range, vy_range; step = dv_coarse)
+        vz_c = range(-vz_range, vz_range; step = dv_coarse)
+
+        f_coarse = _run_backward_pass(
+            vx_c, vy_c, vz_c, x0, param, tspan, dt, source, f_src, isoutside,
+            alg, ensemblealg
+        )
+
+        bnds = bounds === nothing ? ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z)) : bounds
+        vx_grid, vy_grid, vz_grid = refine_vdf_window(
+            f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0z), dv;
+            margin, relthresh, bounds = bnds
+        )
+
+        f_3d = _run_backward_pass(
+            vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
+            alg, ensemblealg
+        )
+    else
+        vx_grid = range(v0x, -v0x; step = dv)
+        vy_grid = range(v0y, -v0y; step = dv)
+        vz_grid = range(v0z, -v0z; step = dv)
+
+        f_3d = _run_backward_pass(
+            vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
+            alg, ensemblealg
+        )
+    end
+
+    return f_3d, (vx_grid, vy_grid, vz_grid)
+end
+
+"""
+    embed_vdf(g1, g2, full_centers, M) -> Matrix
+
+Embed a 2-D sub-grid projection `M` onto a canvas defined by `full_centers`.
+`g1` and `g2` are bin centers along the two axes in [km/s], and `full_centers`
+is the target full grid of bin centers.
+"""
+function embed_vdf(
+        g1::AbstractRange, g2::AbstractRange, full_centers::AbstractRange,
+        M::AbstractMatrix{T}
+    ) where {T}
+    dv = step(full_centers)
+    full_M = zeros(T, length(full_centers), length(full_centers))
+    i1 = round(Int, (first(g1) - first(full_centers)) / dv) + 1
+    i2 = round(Int, (first(g2) - first(full_centers)) / dv) + 1
+    i1_end = min(length(full_centers), i1 + length(g1) - 1)
+    i2_end = min(length(full_centers), i2 + length(g2) - 1)
+    len1 = i1_end - i1 + 1
+    len2 = i2_end - i2 + 1
+    full_M[i1:i1_end, i2:i2_end] .= @view M[1:len1, 1:len2]
+    return full_M
+end
+
+"""
+    vdf_forward_trace(
+        param, source, detector, vdf, n0;
+        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt,
+        center = SA[0.0, 0.0, 0.0], dv_km = 20.0,
+        v_edges = -1000.0:dv_km:1000.0,
+        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
+        seed = 42
+    ) -> (f_3d, (f_xy, f_xz, f_yz))
+
+Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` using forward
+Liouville tracking from a uniformly sampled velocity ball at `source`.
+"""
+_eval_f_src(f::Function, v) = f(v)
+_eval_f_src(f, v) = f(v)
+
+"""
+    vdf_forward_trace(
+        param, source, detector, f_src;
+        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt,
+        center = SA[0.0, 0.0, 0.0], dv_km = 20.0,
+        v_edges = -1000.0:dv_km:1000.0,
+        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
+        seed = 42
+    ) -> (f_3d, (f_xy, f_xz, f_yz))
+
+Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` using forward
+Liouville tracking from a uniformly sampled velocity ball at `source`.
+"""
+function vdf_forward_trace(
+        param, source, detector, f_src;
+        nparticles::Int = 50000, vradius::Real, tspan = (0.0, 20.0), dt::Real,
+        center = SA[0.0, 0.0, 0.0], dv_km::Real = 20.0,
+        v_edges::AbstractRange = -1000.0:dv_km:1000.0,
+        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
+        seed = 42
+    )
+    x_source = _detector_point(source)
+    v_center = SVector{3, Float64}(center)
+
+    function prob_func(prob, ctx)
+        v = sample_velocity_ball(ctx.rng, vradius; center = v_center)
+        u0 = SA[x_source..., v...]
+        return remake(prob; u0)
+    end
+
+    prob = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func)
+    solve_kwargs = isoutside === nothing ? (;) : (; isoutside)
+    sols = solve(
+        prob, alg, ensemblealg;
+        dt, trajectories = nparticles, seed, solve_kwargs...
+    )
+
+    ws0 = [_eval_f_src(f_src, s.u[1][SA[4, 5, 6]]) for s in sols.u]
+    vxi = [s.u[1][4] for s in sols.u]
+
+    vs, (ws, ws_vxi) = get_particle_crossings(sols, detector, (ws0, vxi))
+
+    vsphere = (4 / 3) * π * (vradius * 1.0e-3)^3
+    scale = vsphere * 1.0e18 / (nparticles * dv_km^3)
+    f_3d = bin_velocity_space(vs, ws .* scale, v_edges; vx_source = ws_vxi)
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
+
+    return f_3d, (f_xy, f_xz, f_yz)
+end
+
+function vdf_forward_trace(
+        param, source, detector, vdf, n0::Real;
+        kwargs...
+    )
+    f_src = v -> _eval_f_src(vdf, v) * n0
+    return vdf_forward_trace(param, source, detector, f_src; kwargs...)
 end

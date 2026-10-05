@@ -57,7 +57,8 @@ export get_gyrofrequency,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec
 export sample_velocity_ball, bin_centers, bin_velocity_space, project_vdf,
     analytic_projection, relative_l2, velocity_moments,
-    vdf_grid_problem, vdf_backward, refine_vdf_window
+    vdf_grid_problem, vdf_backward, refine_vdf_window,
+    vdf_backward_trace, vdf_forward_trace, embed_vdf
 export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator

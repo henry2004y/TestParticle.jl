@@ -313,8 +313,7 @@ function reconstruct_liouville_projections(
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vxi = [s.u[1][4] for s in sols.u]
     ## Detector crossings carry the source f (Liouville) together with the launch |v_x|
-    vs, ws = get_particle_crossings(sols, detector, ws0)
-    _, ws_vxi = get_particle_crossings(sols, detector, vxi)
+    vs, (ws, ws_vxi) = get_particle_crossings(sols, detector, (ws0, vxi))
 
     v_edges = -1000:dv_km:1000
     centers = bin_centers(v_edges)
@@ -380,98 +379,42 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-## One backward-tracing pass over a uniform velocity grid; returns the 3-D phase-space
-## density at the detector in [s³/km⁶].
-function run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
-    ## 20 s backward span: setting post_source_margin = 100 km safely captures the
-    ## post-crossing point.
-    ## Trajectories moving deeper downstream (u[1] < detector_x - 600 km) cannot return
-    ## through the shock ramp and are terminated early, yielding an order-of-magnitude
-    ## speedup.
-    ## Note on the saving interval: with dt ≈ τ_g / 20, saving every 10 * dt spaces the
-    ## saved points by 180° of gyro-phase (half an orbit); linear interpolation on a
-    ## semicircle collapses the perpendicular velocity toward zero and distorts
-    ## f ∝ exp(-v²/(2vth²)). We therefore save every step for accurate interpolation at
-    ## the boundary.
-    post_source_margin = 100.0e3
-    prob = vdf_grid_problem(
-        vx_grid, vy_grid, vz_grid, SA[detector_x, 0.0, 0.0], param, (0.0, -20.0)
-    )
-
-    sols = TP.solve(
-        prob, Boris(), EnsembleThreads(); dt = -dt,
-        trajectories = length(vx_grid) * length(vy_grid) * length(vz_grid),
-        isoutside = (u, p, t) -> u[1] > x_source[1] + post_source_margin ||
-            u[1] < detector_x - 600.0e3
-    )
-
-    return vdf_backward(
-        sols, source_plane, f_src,
-        (length(vx_grid), length(vy_grid), length(vz_grid))
-    )
-end
-
 function reconstruct_backward_projections(
         detector_x, dt, param;
         v_range = 1000.0e3, vy_range = 1000.0e3, vz_range = 1000.0e3, dv_km = 20.0,
         adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
-    ## Grid points are bin *centers*, matching the histograms of Methods 1 & 2 whose bin
-    ## edges run from -v_range to +v_range in steps of dv. Snapping the refined window to
-    ## those centers keeps all three methods on the same velocity grid.
     v0x = -v_range + dv / 2
     v0y = -vy_range + dv / 2
     v0z = -vz_range + dv / 2
-
-    if adaptive
-        ## Pass 1 (coarse): locate the populated region cheaply.
-        vx_c = range(-v_range, v_range, step = dv_coarse_km * 1.0e3)
-        vy_c = range(-vy_range, vy_range, step = dv_coarse_km * 1.0e3)
-        vz_c = range(-vz_range, vz_range, step = dv_coarse_km * 1.0e3)
-    else
-        vx_c = range(v0x, -v0x, step = dv)
-        vy_c = range(v0y, -v0y, step = dv)
-        vz_c = range(v0z, -v0z, step = dv)
-    end
+    bounds = ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z))
 
     t_solve = @elapsed begin
-        f_coarse = run_backward_pass(vx_c, vy_c, vz_c, detector_x, dt, param)
-        if adaptive
-            vx_grid, vy_grid, vz_grid = refine_vdf_window(
-                f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0z), dv;
-                margin = margin_km * 1.0e3, relthresh = 1.0e-6,
-                bounds = ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z))
-            )
-            f_3d_km = run_backward_pass(vx_grid, vy_grid, vz_grid, detector_x, dt, param)
-        else
-            vx_grid, vy_grid, vz_grid = vx_c, vy_c, vz_c
-            f_3d_km = f_coarse
-        end
+        f_3d_km, (vx_grid, vy_grid, vz_grid) = vdf_backward_trace(
+            param, detector_x, source_plane, f_src;
+            v_range, vy_range, vz_range, dv, dt, tspan = (0.0, -20.0),
+            adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
+            relthresh = 1.0e-6, bounds,
+            isoutside = (u, p, t) -> u[1] > x_source[1] + 100.0e3 ||
+                u[1] < detector_x - 600.0e3
+        )
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
-    ## Integral over third dimension [km/s]: f_int in [s²/km⁵]
     f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
 
-    ## Embed into full grid for seamless display matching Methods 1 & 2
-    full_centers = collect(range(v0x, -v0x; step = dv) .* 1.0e-3)
-    function embed_2d(g1, g2, M)
-        full_M = zeros(length(full_centers), length(full_centers))
-        i1 = round(Int, (g1[1] - full_centers[1]) / dv_km) + 1
-        i2 = round(Int, (g2[1] - full_centers[1]) / dv_km) + 1
-        i1_end = min(length(full_centers), i1 + length(g1) - 1)
-        i2_end = min(length(full_centers), i2 + length(g2) - 1)
-        len1 = i1_end - i1 + 1
-        len2 = i2_end - i2 + 1
-        full_M[i1:i1_end, i2:i2_end] .= @view M[1:len1, 1:len2]
-        return (full_centers, full_centers, full_M)
-    end
+    ## `embed_vdf` places the sub-grid on the full grid by its step, so the centers
+    ## have to stay a range instead of a materialized vector.
+    full_centers = range(v0x, -v0x; step = dv) .* 1.0e-3
+    g1 = vx_grid .* 1.0e-3
+    g2 = vy_grid .* 1.0e-3
+    g3 = vz_grid .* 1.0e-3
 
     return (
-            embed_2d(vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-            embed_2d(vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-            embed_2d(vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
+            (full_centers, full_centers, embed_vdf(g1, g2, full_centers, f_xy)),
+            (full_centers, full_centers, embed_vdf(g1, g3, full_centers, f_xz)),
+            (full_centers, full_centers, embed_vdf(g2, g3, full_centers, f_yz)),
         ), t_solve, nparticles_bw
 end
 
