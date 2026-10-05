@@ -18,36 +18,77 @@ CairoMakie.activate!(type = "png") #hide
 seed = 42;
 
 # ## Upstream Plasma Parameters
+#
+# The upstream state is isothermal, `T_ion = T_e = 20 eV`. Together with the field below it
+# fixes the whole shock: the MHD jump conditions then give the compression ratio
+# `n_down / n_up = 2` and the downstream bulk speed, so nothing in the setup is a free knob
+# that was tuned to make the pictures look nicer.
 
 const T_ion = 20.0  # ion temperature [eV]
 const vth_ion = sqrt(2 * TP.qᵢ * T_ion / TP.mᵢ) # ion thermal speed [m/s]
 const V_sw = -400.0e3 # solar wind bulk speed [m/s]
-const P_sw = 0.08e-9; # solar wind dynamic pressure [Pa]
 
 # ## Shock Structure Parameters
 
 const n_up = 3.0e6 # upstream number density [m⁻³]
-const n_down = 8.0e6 # downstream number density [m⁻³]
+const n_down = 6.0e6 # downstream number density [m⁻³]
 ## tanh profile from n_up (x → +∞) to n_down (x → −∞)
 const n_jump = 0.5 * (n_down - n_up) # half density jump [m⁻³]
 const n_avg = 0.5 * (n_down + n_up) # mean density [m⁻³]
 const shock_width = 5.0e3; # shock ramp width [m]
-## B_t,down / B_t,up, kept below the Rankine-Hugoniot value n_down / n_up ≈ 2.7: at this ramp
-## width that jump gives a Hall term above the ion ram energy and reflects the entire beam.
-const r_Bt = 2.24
+## Amplitude of the electron pressure jump across the ramp. It enters the electric field
+## only through the pressure-gradient part of Ohm's law, `-∇p_e/(n_e q)`, with
+## `p_e = n k_B T_e` and constant `T_e`, so `Δp_e = k_B T_e · n_jump`. It is *not* the solar
+## wind dynamic pressure `n_up m_i V_sw² = 0.80 nPa`, two orders of magnitude larger.
+const Δp_e = TP.qᵢ * T_ion * n_jump # electron pressure jump across the ramp [Pa]
 
 # ## Magnetic Field Parameters
 
-const B_normal = 5.0e-9 # shock normal component of B [T], continuous across the ramp
-const B_mag = 30.0e-9 # upstream magnetic field magnitude [T]
+const B_normal = 1.7e-9 # shock normal component of B [T]
+const B_mag = 9.8e-9 # upstream magnetic field magnitude [T]
 ## The shock normal is x̂, so θ_Bn follows from the two field strengths above.
 const θ_Bn = acosd(B_normal / B_mag) # shock normal angle [degree]
 println("Shock normal angle θ_Bn = $(round(θ_Bn; digits = 1))°")
 
-"""
-Tanh coefficients of the tangential field: `B_y(x) = -B_jump·tanh(x/w) + B_avg` runs from
-`B_mag·sind(θ_Bn)` upstream to `r_Bt` times that value downstream.
-"""
+# ## Tangential Field Jump
+#
+# The shock is oblique, `θ_Bn ≈ 80°`, so the tangential field jump follows from the
+# oblique-shock jump conditions. In the plasma frame, which is the frame `E` is written in,
+# the transverse momentum balance `ρ U_n ∂ₓU_t = (J × B)_t` together with the tangential
+# field-line footpoint mapping `[U_n B_t] = 0` gives
+#
+# ```math
+# B_{t,\mathrm{down}} / B_{t,\mathrm{up}} = r\,(M_{A,n}^2 - 1) / (M_{A,n}^2 - r)
+# ```
+#
+# with `r = n_down / n_up` and the *normal* Alfvén Mach number
+# `M_{A,n} = V_sw √(μ₀ n_up m_i) / B_normal`. It is not a free knob: for a perpendicular
+# shock `B_normal → 0`, `M_{A,n} → ∞` and it reduces to the flux-freezing value `r`.
+
+const r_comp = n_down / n_up # density compression ratio
+const M_A_n = abs(V_sw) * sqrt(TP.μ₀ * n_up * TP.mᵢ) / B_normal # normal Alfvén Mach
+const r_Bt = r_comp * (M_A_n^2 - 1) / (M_A_n^2 - r_comp) # B_t,down / B_t,up
+println("Normal Alfvén Mach number M_A,n = $(round(M_A_n; digits = 2))")
+println("Tangential field jump B_t,down / B_t,up = $(round(r_Bt; digits = 3))")
+
+# The field strength is not a knob either: `B_mag = 9.8 nT` at `θ_Bn = 80°` is the value for
+# which the *full* MHD jump conditions, energy equation included, return a compression
+# ratio of exactly 2 for this upstream state (`M_A = 3.3`, `β₁ = 0.5`). The remaining jump
+# condition, the normal momentum balance `[ρ U_n² + p + B_t²/2μ₀] = 0`, then holds as well:
+# it reads 0.859 nPa upstream against 0.860 nPa downstream.
+#
+# What the *prescribed* fields cannot do is the kinetic part of the transition. Converting
+# the whole ram energy into the RH downstream state relies on the non-adiabatic compression
+# of each ion, which a smooth single-particle field does not reproduce; here the only
+# deceleration channel is the electrostatic barrier `∫E_x dx ≈ 0.17 kV`, about a quarter of
+# the 0.63 kV the bulk actually loses. Ions therefore leave the ramp at ~300 km/s instead of
+# the RH 200 km/s, and the downstream row of the moment check below is correspondingly too
+# fast. This is a property of the model, not of the reconstruction.
+
+# Tanh coefficients of the tangential field:
+# `B_y(x) = -B_jump·tanh(x/w) + B_avg`
+# runs from `B_mag·sind(θ_Bn)` upstream to `r_Bt` times that value downstream.
+
 function compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
     B_up_y = B_mag * sind(θ_Bn)
     B_down_y = r_Bt * B_up_y
@@ -57,7 +98,7 @@ function compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
     return B_jump, B_avg
 end
 
-const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt)
+const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt);
 
 # ## Field Definitions
 # Custom analytical electric and magnetic fields across the shock transition layer.
@@ -71,7 +112,12 @@ function get_B_shock(r)
 end
 
 """
-Electric field from generalized Ohm's law (Hall term + electron pressure).
+Electric field from the generalized Ohm's law
+`E = -V_sw × B + (J × B)/(n q) - ∇p_e/(n q)`.
+
+The Hall term takes `J = (∇×B)/μ₀` from Ampère's law and sets both transverse components.
+The pressure term follows from `p_e = p̄_e - Δp_e·tanh(x/w)`, which gives
+`-∇p_e/(n q) = Δp_e·sech²(x/w)/(n w)` along `x̂`.
 """
 function get_E_shock(r)
     xnorm = r[1] / shock_width
@@ -84,7 +130,7 @@ function get_E_shock(r)
     by = -B_jump * tanh_v + B_avg
     eni = TP.qᵢ * ni
 
-    ex = -jz * by / eni + P_sw * sech_v^2 / (eni * shock_width)
+    ex = -jz * by / eni + Δp_e * sech_v^2 / (eni * shock_width)
     ey = jz * B_normal / eni
     ez = -V_sw * (B_avg - B_jump)
 
@@ -93,14 +139,19 @@ end;
 
 # ## Simulation Setup
 #
-# The source plane is placed just upstream of the shock, far enough that the fastest particle
-# gyroradius (~350 km at 1000 km/s in 30 nT) fits inside the uniform upstream region without
-# the source plane clipping any gyro-orbit.
+# The source plane is placed upstream of the shock, far enough that the fastest particle
+# gyroradius (~430 km at 400 km/s in 9.8 nT) fits inside the uniform upstream region without
+# the source plane clipping any gyro-orbit. With the bulk at 400 km/s and nothing reflected,
+# 10 s is plenty for the ~1200 km trip to either detector.
 
 nparticles = 10000
-const x_source = SA[500.0e3, 0.0, 0.0] # source plane location [m]
-const tspan = (0.0, 20.0) # forward simulation time span [s]
-const dt = get_gyroperiod(3 * B_mag) / 20 # time step [s]
+const x_source = SA[1000.0e3, 0.0, 0.0] # source plane location [m]
+const tspan = (0.0, 10.0) # forward simulation time span [s]
+## The step has to resolve the Hall term, not the gyromotion: `E_x` peaks at 0.017 V/m inside
+## the ramp, so `q E_x dt/m` must stay well below the ~400 km/s bulk speed. `T_gyro(3 B)/70`
+## gives 32 ms and changes `v_x` by 50 km/s per step, which leaves the moments converged
+## (checked against `/140` and `/280`).
+const dt = get_gyroperiod(3 * B_mag) / 70 # time step [s]
 
 param = prepare(get_E_shock, get_B_shock; species = Proton)
 
@@ -141,25 +192,26 @@ detector_down = Meshes.Plane(
 #
 # ## What each method computes
 #
-# All three methods return the **phase-space density** ``f`` at the detector, in
-# ``[\mathrm{s}^3/\mathrm{km}^6]`` (3D) or ``[\mathrm{s}^2/\mathrm{km}^5]`` (2D projection):
+# All three methods return the same physical quantity at the detector, the **phase-space
+# density** ``f``, in ``[\mathrm{s}^3/\mathrm{km}^6]`` (3D) or
+# ``[\mathrm{s}^2/\mathrm{km}^5]`` (2D projection), so their outputs are directly comparable:
 #
 # | Method | Input | Output |
 # | :--- | :--- | :--- |
-# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram), `[s²/km⁵]`. |
-# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram), `[s²/km⁵]`. |
-# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated. | 3-D ``f`` on a grid `[s³/km⁶]`; 2-D projections by summing. |
+# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted, hence the result carries sampling noise `∝ 1/√N`. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram) |
+# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`, so the coverage is limited by the sphere radius; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram) |
+# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**, sampled uniformly and without noise, so every grid cell is filled; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated, i.e. only the PDF is evaluated per crossing, with no binning weights. | 3-D ``f`` on a grid, 2-D projections by summing |
 
 # ## Method 1: Forward Monte Carlo
 #
 # Particles are launched from the source with velocities drawn from the source Maxwellian,
 # so the ensemble is density weighted.  A steady beam, however, crosses the source plane
 # flux weighted: faster particles are injected more often.  Multiplying each sample by
-# ``|v_{x,\mathrm{src}}|`` supplies that weighting, and dividing by ``|v_{x,\det}|`` at the
-# detector undoes the flux factor of the recorded crossings.  The net weight
-# ``S\,|v_{x,\mathrm{src}}|/|v_{x,\det}|`` reduces to a constant only when every particle
-# crosses the detector once with an unchanged ``v_x`` — which is why the simple constant
-# weight is exact upstream but not downstream of the shock.
+# ``|v_{x,\mathrm{src}}|`` supplies that weighting, and dividing by ``|v_{x,\mathrm{det}}|``
+# at the detector undoes the flux factor of the recorded crossings.  The net weight
+# ``S\,|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|`` reduces to a constant only when every
+# particle crosses the detector once with an unchanged ``v_x`` — which is why the simple
+# constant weight is exact upstream but not downstream of the shock.
 
 function reconstruct_mc_projections(sols, detector, n0, dv_km)
     ## The launch velocities are drawn from the source VDF, i.e. density weighted, whereas a
@@ -295,13 +347,14 @@ fig_mc = DisplayAs.PNG(fig_mc) #hide
 #
 # ## Method 2: Forward Liouville Tracking
 #
-# Forward Liouville tracking starts from a sphere of initial conditions in velocity space at
-# the source and traces forward to the detector.  By Liouville's theorem
-# ``f_{\det}(\mathbf{v}_{\det}) = f_{\src}(\mathbf{v}_{\src})``; the source value
-# ``n_0\,\mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\src})`` is carried unchanged along each
-# trajectory.  Because the sphere is sampled uniformly, every sample stands for a known
-# source velocity volume ``V_{\sph}/N``, which the trajectory maps onto a detector volume
-# ``(V_{\sph}/N)\,|v_{x,\src}|/|v_{x,\det}|``.  Depositing ``f\,\Delta V`` into the detector
+# Forward Liouville tracking starts from a sphere of initial conditions in velocity space
+# at the source and traces forward to the detector.  By Liouville's theorem
+# ``f_{\mathrm{det}}(\mathbf{v}_{\mathrm{det}}) = f_{\mathrm{src}}(\mathbf{v}_{\mathrm{src}})``;
+# the source value ``n_0\,\mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\mathrm{src}})`` is carried
+# unchanged along each trajectory.  Because the sphere is sampled uniformly, every sample
+# stands for a known source velocity volume ``V_{\mathrm{sph}}/N``, which the trajectory maps
+# onto a detector volume ``(V_{\mathrm{sph}}/N)\,|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|``.
+# Depositing ``f\,\Delta V`` into the detector
 # bin and dividing by the bin volume gives the same bin-averaged ``f`` as Method 3, without
 # the sampling noise of Method 1.
 
@@ -361,15 +414,16 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # gives usable statistics in the populated bins. Note that the sharp circular boundary in
 # the reconstructed phase-space plots is an artifact of the finite sampling sphere
 # (`r ≤ 3 vth_ion`) at the source. The result is a direct Monte-Carlo estimate of
-# ``f_{\det}`` on the same grid and in the same units as Methods 1 and 3, so all three
-# should agree up to sampling noise.
+# ``f_{\mathrm{det}}`` on the same grid and in the same units as Methods 1 and 3, so all
+# three should agree up to sampling noise.
 #
 # ## Method 3: Backward Liouville Tracing
 #
 # Starting from a velocity-space grid at the detector, each grid point is traced *backward*
 # in time to the source plane.  The phase-space density at the detector equals the source
-# density evaluated at the traced-back state: ``f_{\det}(\mathbf{v}_{\det}) = n_0\,
-# \mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\src})``.
+# density evaluated at the traced-back state:
+# ``f_{\mathrm{det}}(\mathbf{v}_{\mathrm{det}}) = n_0\,
+# \mathrm{pdf}(\mathrm{vdf}, \mathbf{v}_{\mathrm{src}})``.
 #
 # Every step is saved (the default) so that no source-plane crossing is missed,
 # and a trajectory is terminated only once it has crossed the source plane and moved a safe
@@ -393,7 +447,7 @@ function reconstruct_backward_projections(
     t_solve = @elapsed begin
         f_3d_km, (vx_grid, vy_grid, vz_grid) = vdf_backward_trace(
             param, detector_x, source_plane, f_src;
-            v_range, vy_range, vz_range, dv, dt, tspan = (0.0, -20.0),
+            v_range, vy_range, vz_range, dv, dt, tspan = (0.0, -10.0),
             adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
             relthresh = 1.0e-6, bounds,
             isoutside = (u, p, t) -> u[1] > x_source[1] + 100.0e3 ||
@@ -448,14 +502,16 @@ fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 #    neither of which is obvious on a log colour scale.
 # 2. **The upstream row is an absolute calibration.** The upstream detector sits in the
 #    uniform, undisturbed solar wind, where the answer is known a priori:
-#    ``n = n_{\up}`` and ``n\,V_x = n_{\up} V_{\sw}``. Matching those values is a genuine
-#    validation, not merely a consistency check.
-#
-# What these numbers do *not* test is the downstream state. The fields here are prescribed
-# rather than solved self-consistently, and the particles are launched as a single pulse, so
-# mass flux need not be conserved across the ramp: part of the beam is turned back inside the
-# ramp before it can reach either detector. The upstream to downstream deficit visible below
-# is a property of the model, not a reconstruction error.
+#    ``n = n_{\mathrm{up}}`` and ``n\,V_x = n_{\mathrm{up}} V_{\mathrm{sw}}``. Matching
+#    those values is a genuine validation, not merely a consistency check.
+# 3. **The downstream row splits into one check that passes and one that cannot.** Nothing
+#    is reflected at this Mach number and every ion crosses each detector plane exactly
+#    once, so the crossing-flux estimator carries no counting bias, and the momentum
+#    density does come out at the mass-flux value ``n_{\mathrm{up}} V_{\mathrm{sw}}``. The
+#    density, however, lands near 4.9 instead of 6.0 [10⁶ m⁻³]: the transmitted beam
+#    arrives at ~250 km/s rather than the RH 200 km/s, because the prescribed fields can
+#    only decelerate the bulk through the electrostatic barrier discussed above. Read the
+#    downstream row as a statement about the *model*, not about the reconstruction.
 
 using Markdown, Printf #hide
 io_m = IOBuffer() #hide
@@ -471,18 +527,22 @@ for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouvi
 end #hide
 Markdown.parse(String(take!(io_m))) #hide
 
-# ## Bin-wise deviation
+# ## Accuracy and cost
 #
 # The moments collapse each VDF into four numbers, so a wrong shape with the right
-# normalisation and the right shape with the wrong normalisation can look identical to them.
+# normalisation and the wrong shape with the wrong normalisation can look identical to them.
 # For a pointwise comparison we use the same relative L2 norm as the steady-state demo,
-# ``\|f_{\rec} - f_{\ref}\| / \|f_{\ref}\|``, evaluated over the populated cells of the bin
-# grid that all three methods now share.
+# ``\|f_{\mathrm{rec}} - f_{\mathrm{ref}}\| / \|f_{\mathrm{ref}}\|``, evaluated over the
+# populated cells of the bin grid that all three methods now share.
 #
 # Upstream the reference can be exact: that plane still sees the undisturbed solar wind, and
-# since ``\mathbf{E} = -\mathbf{V}_{\sw}\times\mathbf{B}`` there the drifting Maxwellian is an
-# exact steady solution, so `vdf` itself is the reference. Downstream no analytic reference
-# exists, and the noise-free backward solution takes that role instead.
+# since ``\mathbf{E} = -\mathbf{V}_{\mathrm{sw}}\times\mathbf{B}`` there the drifting
+# Maxwellian is an exact steady solution, so `vdf` itself is the reference. Downstream no
+# analytic reference exists, and the noise-free backward solution takes that role instead,
+# so it is its own reference there and only the two forward methods get scored.
+#
+# The last two rows are what each method needed to produce its ``f``: the number of
+# trajectories and the wall-clock time to trace them on this machine.
 
 ## Analytic references come out as bare matrices, while the reconstructions are
 ## `(vi, vj, f)` tuples; this normalizes both to the same matrix.
@@ -501,42 +561,30 @@ ana_up = (
     analytic_projection(f_src, 1, v_centers, v_centers, v_int, step(v_int)),
 )
 
-io_d = IOBuffer() #hide
-println(io_d, "| Comparison | Reference | Vx–Vy | Vx–Vz | Vy–Vz |") #hide
-println(io_d, "| :--- | :--- | :---: | :---: | :---: |") #hide
-for (name, rec, ref, refname) in ( #hide
-        ("Monte Carlo (up)", hists_up, ana_up, "analytic solar wind"), #hide
-        ("Forward Liouville (up)", hists_up_m2, ana_up, "analytic solar wind"), #hide
-        ("Backward Liouville (up)", res_up_bw, ana_up, "analytic solar wind"), #hide
-        ("Monte Carlo (down)", hists_down, res_down_bw, "Backward Liouville"), #hide
-        ("Forward Liouville (down)", hists_down_m2, res_down_bw, "Backward Liouville"), #hide
-    ) #hide
-    @printf( #hide
-        io_d, "| **%s** | %s | %.3f | %.3f | %.3f |\n", #hide
-        name, refname, (relative_l2(matrix_of(rec[i]), matrix_of(ref[i])) for i in 1:3)... #hide
-    ) #hide
+const recs_up = (hists_up, hists_up_m2, res_up_bw) # reconstructions at x_upstream
+const recs_down = (hists_down, hists_down_m2) # forward reconstructions at x_downstream
+
+io_s = IOBuffer() #hide
+println(io_s, "| Quantity | Monte Carlo | Forward Liouville | Backward Liouville |") #hide
+println(io_s, "| :--- | :---: | :---: | :---: |") #hide
+for (i, comp) in enumerate(("Vx–Vy", "Vx–Vz", "Vy–Vz")) #hide
+    up = [relative_l2(matrix_of(r[i]), matrix_of(ana_up[i])) for r in recs_up] #hide
+    dn = [relative_l2(matrix_of(r[i]), matrix_of(res_down_bw[i])) for r in recs_down] #hide
+    lbl_u = "Upstream rel. L2 error vs analytic solar wind, $comp" #hide
+    lbl_d = "Downstream rel. L2 error vs backward Liouville, $comp" #hide
+    @printf(io_s, "| %s | %.3f | %.3f | %.3f |\n", lbl_u, up...) #hide
+    @printf(io_s, "| %s | %.3f | %.3f | ref |\n", lbl_d, dn...) #hide
 end #hide
-Markdown.parse(String(take!(io_d))) #hide
+const n_traj = (nparticles, nparticles_m2, n_bw) # trajectories behind each method
+const t_cost = (t_mc, t_liou, t_bw) # wall-clock cost of each method [s]
+println(io_s, "| Trajectories | ", join(n_traj, " | "), " |") #hide
+cost = [@sprintf("%.1f s (%.1f µs/traj)", t_cost[i], t_cost[i] / n_traj[i] * 1.0e6) #hide
+    for i in 1:3] #hide
+println(io_s, "| **Wall-clock cost** | ", join(cost, " | "), " |") #hide
+Markdown.parse(String(take!(io_s))) #hide
 
 # ## Summary
 #
 # This example illustrates three complementary ways to reconstruct the phase-space density
 # from particle simulations, all returning the same physical quantity ``f`` and sharing a
 # common colour scale in the comparison plot.
-
-t_per_mc = t_mc / nparticles * 1.0e6
-t_per_liou = t_liou / nparticles_m2 * 1.0e6
-t_per_bw = t_bw / n_bw * 1.0e6
-
-io = IOBuffer() #hide
-println(io, "| Method | Monte Carlo | Forward Liouville Tracking | Backward Liouville Tracing |") #hide
-println(io, "| :--- | :--- | :--- | :--- |") #hide
-println(io, "| **Noise** | Statistical (∝ 1/√N) | Low (analytical weights) | None (grid-based) |") #hide
-println(io, "| **Coverage** | Source-sampled | Source-sampled | Target-sampled |") #hide
-println(io, "| **Tail resolution** | Poor without large N | Limited by sphere radius | Uniform across grid |") #hide
-println(io, "| **Post-processing** | Binning + weighting | Binning + projection | PDF evaluation only |") #hide
-@printf( #hide
-    io, "| **Cost** | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) | %.1f s (%.1f µs/traj, %d traj.) |\n", #hide
-    t_mc, t_per_mc, nparticles, t_liou, t_per_liou, nparticles_m2, t_bw, t_per_bw, n_bw #hide
-) #hide
-Markdown.parse(String(take!(io))) #hide

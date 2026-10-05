@@ -2,24 +2,26 @@
 #
 # This example validates the three phase-space tracing methods of TestParticle.jl
 # against an *analytically known* steady-state distribution function (VDF). Unlike the
-# [Shock Phase Space](@ref) demo (where the three methods are only compared with each
-# other), here we know the exact VDF at the detector and can quantify how far each
+# [Shock Phase Space](@ref) demo where the three methods are only compared with each
+# other, here we know the exact VDF at the detector and can quantify how far each
 # reconstruction deviates from it.
 #
 # ## Scenario: E×B drift of a bi-Maxwellian
-# We use a uniform magnetic field `B = B ẑ` and a uniform perpendicular electric field
-# `E ⟂ B`. The resulting E×B drift carries particle guiding centers steadily from the
-# source plane to the detector. Crucially, with `E·B = 0` there is no parallel
-# acceleration, so a bi-Maxwellian centerd on the E×B drift velocity
-# `u_E = E×B/B²` is an *exact* steady solution of the Vlasov equation. By Liouville's
-# theorem the phase-space density is conserved along each characteristic, and because
-# the gyration only rotates the perpendicular velocity (preserving `|v_⊥ - u_E|` and
-# `v_∥`), the VDF at the detector is *identical* to the source VDF:
+# We use a uniform magnetic field $\mathbf{B} = B\hat{\mathbf{z}}$ and a uniform
+# perpendicular electric field $\mathbf{E} \perp \mathbf{B}$. The resulting E×B drift
+# carries particle guiding centers steadily from the source plane to the detector.
+# Crucially, with $\mathbf{E}\cdot\mathbf{B} = 0$ there is no parallel acceleration, so a
+# bi-Maxwellian centered on the E×B drift velocity
+# $\mathbf{u}_E = \mathbf{E}\times\mathbf{B}/B^2$ is an *exact* steady solution of the
+# Vlasov equation. By Liouville's theorem the phase-space density is conserved along each
+# characteristic, and because the gyration only rotates the perpendicular velocity
+# (preserving $|\mathbf{v}_\perp - \mathbf{u}_E|$ and $v_\parallel$), the VDF at the
+# detector is *identical* to the source VDF:
 #
 # ```math
-# f_{\rm det}(\mathbf{v}) = f_{\rm src}(\mathbf{v}) =
-#   n_0\,\exp\!\Bigl(-\frac{|\mathbf{v}_⊥ - \mathbf{u}_E|^2}{2v_{th,⊥}^2}\Bigr)
-#   \exp\!\Bigl(-\frac{(v_∥ - u_{E,∥})^2}{2v_{th,∥}^2}\Bigr).
+# f_{\mathrm{det}}(\mathbf{v}) = f_{\mathrm{src}}(\mathbf{v}) = n_0\,
+#   \exp\Bigl(-\frac{|\mathbf{v}_\perp - \mathbf{u}_E|^2}{2v_{\mathrm{th},\perp}^2}\Bigr)
+#   \exp\Bigl(-\frac{(v_\parallel - u_{E,\parallel})^2}{2v_{\mathrm{th},\parallel}^2}\Bigr).
 # ```
 #
 # This gives us a rigorous control experiment: any discrepancy between a reconstructed
@@ -57,8 +59,8 @@ function get_B_steady(r, t = 0.0)
 end;
 
 # ## Source VDF: drifting bi-Maxwellian
-# Anisotropic (perpendicular hotter than parallel) so the 2-D projections are visibly
-# elliptical, giving the reconstruction a non-trivial structure to recover.
+# The test distribution is anisotropic ($p_\parallel \neq p_\perp$) so the
+# 2-D projections are visibly elliptical, giving the reconstruction a non-trivial structure to recover.
 
 const n0 = 3.0e6        # number density [m⁻³]
 const T_par_eV = 15.0   # parallel temperature [eV]
@@ -74,7 +76,7 @@ const vdf = TP.BiMaxwellian(
 
 const x_source = SA[300.0e3, 0.0, 0.0] # source plane [m]
 const tspan = (0.0, 4.0) # [s]; > transport time 500 km / 400 km/s = 1.25 s
-const dt = get_gyroperiod(B_mag) / 40 # [s]; fine step so the crossing velocity is well resolved
+const dt = get_gyroperiod(B_mag) / 40 # [s]
 
 const x_downstream = -200.0e3 # detector plane downstream of the origin [m]
 
@@ -82,12 +84,13 @@ detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
 )
 
-param = prepare(get_E_steady, get_B_steady; species = Proton)
+param = prepare(get_E_steady, get_B_steady; species = Proton);
 
 # ## Analytic reference and error metric
 # The exact detector VDF is the source bi-Maxwellian evaluated at the detector
 # velocity. All three methods reconstruct the 2-D projections
-# `f(v_i, v_j) = ∫ f_3D(v_i, v_j, v_k) dv_k`, which we evaluate analytically in two ways:
+# $f_{2D}(v_i, v_j) = \int f_{3D}(v_i, v_j, v_k) \mathrm{d}v_k$,
+# which we evaluate analytically in two ways:
 #
 # 1. `analytic_projection` integrates over an arbitrary grid, which is used for the 1-D
 #    slice and for the grid-based backward method;
@@ -95,7 +98,8 @@ param = prepare(get_E_steady, get_B_steady; species = Proton)
 #    binning of the two forward methods, so those are compared bin for bin.
 #
 # All reconstructions are then scored with the same relative L2 norm
-# `‖f_rec − f_ana‖ / ‖f_ana‖`, evaluated over the populated cells of each projection.
+# $\|f_{\mathrm{rec}} - f_{\mathrm{ana}}\| / \|f_{\mathrm{ana}}\|$, evaluated over the
+# populated cells of each projection.
 
 const vlim = 1000.0
 const z_int = range(-vlim, vlim; step = 10.0)    # km/s, integration axis
@@ -116,8 +120,11 @@ const ana_hists = (
 );
 
 # ## Method 1: Forward Monte Carlo
+#
+# `nparticles` matches the trajectory budget of the two other methods, so that the three
+# errors in the deviation report below are directly comparable.
 
-nparticles = 8000
+nparticles = 50000
 
 function prob_func_maxwellian(prob, ctx)
     v = rand(ctx.rng, vdf)
@@ -127,6 +134,11 @@ end
 
 u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
+
+## Warm up the machinery shared by all three methods (ensemble solve, `prob_func`, crossing
+## detection), otherwise the compilation cost lands on whichever method happens to run first
+## and the per-trajectory costs below are not comparable.
+TP.solve(prob, Boris(), EnsembleThreads(); dt, trajectories = 100, seed)
 
 t_mc = @elapsed sols = TP.solve(
     prob, Boris(), EnsembleThreads(); dt,
@@ -139,10 +151,10 @@ function reconstruct_mc_projections(sols, detector, n0, dv_km)
 
     v_edges = -1000:dv_km:1000
     centers = bin_centers(v_edges)
-    ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
-    ## volume `dv³`; the `|v_x,src| / |v_x,det|` rescale carried by `bin_velocity_space`
-    ## turns the density-weighted launch ensemble into the crossing flux recorded at the
-    ## detector and back into a density.
+    ## Each macro-particle stands for $n_0/N$ of the source density spread over one bin
+    ## volume $dv^3$; the $|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|$ rescale carried by
+    ## `bin_velocity_space` turns the density-weighted launch ensemble into the crossing
+    ## flux recorded at the detector and back into a density.
     w = fill(n0 * 1.0e9 / (length(sols.u) * dv_km^3), length(vs))
     f_3d = bin_velocity_space(vs, w, v_edges; vx_source = ws_init)
 
@@ -154,13 +166,15 @@ hists_down = reconstruct_mc_projections(sols, detector_down, n0, 20.0);
 
 # ## Method 2: Forward Liouville Tracking
 #
-# By Liouville's theorem `f_det(v_det) = f_src(v_src)`, so each trajectory carries its
-# source `f` unchanged to the detector. Averaging the `f` of all the crossings that land
-# in a bin (`average = true`) estimates the bin-averaged `f` as a *ratio*, which divides
-# out the `∝ 1/√n` counting noise of the samples per bin. Summing `f·ΔV/dv³` instead (the
-# `average = false` histogram estimator) is the more faithful rendering of the mapped
-# velocity volume, but at `dv = 20 km/s` the `3 vth` sampling sphere only places a handful
-# of samples in each bin, so the counting noise dominates and we average here.
+# By Liouville's theorem $f_{\mathrm{det}}(\mathbf{v}_{\mathrm{det}}) =
+# f_{\mathrm{src}}(\mathbf{v}_{\mathrm{src}})$, so each trajectory carries its source $f$
+# unchanged to the detector. Averaging the $f$ of all the crossings that land in a bin
+# (`average = true`) estimates the bin-averaged $f$ as a *ratio*, which divides out the
+# $\propto 1/\sqrt{n}$ counting noise of the samples per bin. Summing $f\,\Delta V/dv^3$
+# instead (the `average = false` histogram estimator) is the more faithful rendering of
+# the mapped velocity volume, but at `dv = 20 km/s` the `3 vth` sampling sphere only
+# places a handful of samples in each bin, so the counting noise dominates and we average
+# here.
 
 function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0)
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
@@ -203,7 +217,7 @@ const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0
 function reconstruct_backward_projections(
         detector_x, dt, param;
         v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0,
-        adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
+        adaptive = true, dv_coarse_km = 80.0, margin_km = 150.0
     )
     dv = dv_km * 1.0e3
     bounds = ((-v_range, v_range), (-vy_range, vy_range), (-v_range, v_range))
@@ -221,10 +235,11 @@ function reconstruct_backward_projections(
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
 
     f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
-    ## Drop the negligible tail so that the shared colour range is set by the populated
-    ## part of the distribution.
+    ## Drop the negligible tail. Zeroing rather than `NaN`-ing keeps those cells at the
+    ## floor of the log colour scale below (a `NaN` would render transparent, unlike the
+    ## empty bins of the other three rows) and keeps them out of the log-scaled slice.
     for f in (f_xy, f_xz, f_yz)
-        f[f .< maximum(f) * 1.0e-6] .= NaN
+        f[f .< maximum(f) * 1.0e-6] .= 0.0
     end
 
     return (
@@ -241,7 +256,7 @@ res_down_bw, t_bw_down, n_bw_down =
 # The three reconstructions are shown next to the analytic reference for each 2-D
 # velocity projection at the downstream detector.
 
-function plot_validation(h_mc, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
+function plot_validation(h_mc, h_liou, h_bw, h_ana, xloc; vlim = 1000.0, rel = 1.0e-5)
     titles = ["Analytic", "Monte Carlo", "Forward Liouville", "Backward Liouville"]
     hists = (h_ana, h_mc, h_liou, h_bw)
     nrows = 4
@@ -257,6 +272,7 @@ function plot_validation(h_mc, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
     global_max = maximum(
         maximum(filter(isfinite, vec(hists[r][i][3]))) for r in 1:nrows, i in 1:3
     )
+    cr = (rel * global_max, global_max)
     last_hm = nothing
     for r in 1:nrows, i in 1:3
         ax = Axis(
@@ -266,7 +282,8 @@ function plot_validation(h_mc, h_liou, h_bw, h_ana, xloc; vlim = 1000.0)
             limits = (-vlim, vlim, -vlim, vlim), aspect = 1
         )
         last_hm = heatmap!(
-            ax, hists[r][i]...; colormap = :turbo, colorrange = (0.0, global_max)
+            ax, hists[r][i]...;
+            colormap = :turbo, colorscale = Makie.pseudolog10, colorrange = cr
         )
     end
     Colorbar(
@@ -282,8 +299,8 @@ end
 fig_down = plot_validation(hists_down, hists_down_m2, res_down_bw, ana_hists, x_downstream)
 fig_down = DisplayAs.PNG(fig_down) #hide
 
-# ## 1-D slice check
-# Slice the `V_x–V_z` projection at `v_z = 0` and overlay the three reconstructions on
+# ### 1-D slice check
+# Slice the $V_x$–$V_z$ projection at $v_z = 0$ and overlay the three reconstructions on
 # the analytic profile. The backward (grid-based) method should sit on the curve.
 
 function slice_at(h, second::Bool, val)
@@ -304,8 +321,8 @@ xc_f, fy_f = slice_at(hists_down[2], true, 0.0)
 xc_l, fy_l = slice_at(hists_down_m2[2], true, 0.0)
 xc_b, fy_b = slice_at(res_down_bw[2], true, 0.0)
 
-# Log-scaled slice: stretching the low-density wings makes the Monte-Carlo scatter
-# (where the methods deviate most from the analytic profile) directly visible.
+## Log-scaled slice: stretching the low-density wings makes the Monte-Carlo scatter
+## (where the methods deviate most from the analytic profile) directly visible.
 function _logslice(xc, fy)
     m = fy .> 0
     return xc[m], fy[m]
@@ -318,20 +335,39 @@ fig_slice = Figure(size = (900, 500), fontsize = 24)
 axs = Axis(
     fig_slice[1, 1], xlabel = L"V_x [\mathrm{km/s}]",
     ylabel = L"\log_{10} f(V_x, V_z=0)",
-    yscale = log10, limits = (-vlim, 0.0, 1.0e5, 1.0e12)
+    yscale = log10, limits = (-vlim, 0.0, 1.0e7, 1.0e12)
 )
+## Bang Wong's colour-blind-safe palette. Green and red are skipped on purpose: they are the
+## pair that deuteranopia and protanopia collapse onto each other.
+const wc = Makie.wong_colors()
 lines!(axs, fine_x, fana_slice; label = "Analytic", color = :black, linewidth = 3, linestyle = :dash)
-scatterlines!(axs, xc_f_l, fy_f_l; label = "Monte Carlo", color = :blue, linewidth = 2, markersize = 8)
-scatterlines!(axs, xc_l_l, fy_l_l; label = "Forward Liouville", color = :green, linewidth = 2, markersize = 8)
-lines!(axs, xc_b_l, fy_b_l; label = "Backward Liouville", color = :red, linewidth = 2)
+scatterlines!(
+    axs, xc_f_l, fy_f_l; label = "Monte Carlo", color = wc[1],
+    linewidth = 2, markersize = 13
+)
+scatterlines!(
+    axs, xc_l_l, fy_l_l; label = "Forward Liouville", color = wc[6],
+    linewidth = 2, markersize = 13
+)
+lines!(axs, xc_b_l, fy_b_l; label = "Backward Liouville", color = wc[4], linewidth = 2.5)
 axislegend(axs; position = :lt, framevisible = false)
 fig_slice = DisplayAs.PNG(fig_slice) #hide
 
-# ## Deviation report
-# The relative L2 norm defined above, evaluated per method and projection on the
-# downstream detector, together with the number of trajectories and the cost per
-# trajectory. The two forward methods are statistical (∝ 1/√N); the backward method is
-# limited by grid resolution instead.
+# ### Deviation report
+# One number per method: the three 2-D projections are pooled and the relative L2 norm is
+# taken over the union, so the number does not depend on how the density happens to project
+# onto each velocity plane.
+#
+# All three methods are given the same budget of ≈5·10⁴ trajectories, so both the errors and
+# the costs are directly comparable. The two forward methods are statistical, with error
+# ∝ 1/√N; the backward method has no statistical noise and its error is set by the grid
+# resolution instead, which is why it wins on accuracy while spending about twice as much
+# per trajectory.
+
+mats(h::Tuple) = (h[1][3], h[2][3], h[3][3])
+pooled_relative_l2(recs, refs) = relative_l2(
+    reduce(vcat, (vec(A) for A in recs)), reduce(vcat, (vec(A) for A in refs))
+)
 
 t_per_mc = t_mc / nparticles * 1.0e6
 t_per_liou = t_liou / nparticles_m2 * 1.0e6
@@ -339,57 +375,54 @@ t_per_bw = t_bw_down / n_bw_down * 1.0e6
 
 using Markdown, Printf #hide
 io = IOBuffer() #hide
-println(io, "| Method | Vx–Vy | Vx–Vz | Vy–Vz | Trajectories | Time [s] | Cost [µs/traj] |") #hide
-println(io, "| :--- | :---: | :---: | :---: | :---: | :---: | :---: |") #hide
+println(io, "| Method | Rel. L2 error | Trajectories | Time [s] | Cost [µs/traj] |") #hide
+println(io, "| :--- | ---: | ---: | ---: | ---: |") #hide
 @printf( #hide
-    io, "| **Monte Carlo (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    relative_l2(hists_down[1][3], ana_hists[1][3]), #hide
-    relative_l2(hists_down[2][3], ana_hists[2][3]), #hide
-    relative_l2(hists_down[3][3], ana_hists[3][3]), #hide
+    io, "| **Monte Carlo** | %.4f | %d | %.2f | %.1f |\n", #hide
+    pooled_relative_l2(mats(hists_down), mats(ana_hists)), #hide
     nparticles, t_mc, t_per_mc #hide
 ) #hide
 @printf( #hide
-    io, "| **Forward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    relative_l2(hists_down_m2[1][3], ana_hists[1][3]), #hide
-    relative_l2(hists_down_m2[2][3], ana_hists[2][3]), #hide
-    relative_l2(hists_down_m2[3][3], ana_hists[3][3]), #hide
+    io, "| **Forward Liouville** | %.4f | %d | %.2f | %.1f |\n", #hide
+    pooled_relative_l2(mats(hists_down_m2), mats(ana_hists)), #hide
     nparticles_m2, t_liou, t_per_liou #hide
 ) #hide
 ana_bw_xy = analytic_projection(f_src, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int)) #hide
 ana_bw_xz = analytic_projection(f_src, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int)) #hide
 ana_bw_yz = analytic_projection(f_src, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int)) #hide
 @printf( #hide
-    io, "| **Backward Liouville (down)** | %.3f | %.3f | %.3f | %d | %.2f | %.1f |\n", #hide
-    relative_l2(res_down_bw[1][3], ana_bw_xy), #hide
-    relative_l2(res_down_bw[2][3], ana_bw_xz), #hide
-    relative_l2(res_down_bw[3][3], ana_bw_yz), #hide
+    io, "| **Backward Liouville** | %.4f | %d | %.2f | %.1f |\n", #hide
+    pooled_relative_l2(mats(res_down_bw), (ana_bw_xy, ana_bw_xz, ana_bw_yz)), #hide
     n_bw_down, t_bw_down, t_per_bw #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
 
-# ## What the results tell us
+# ### What the results tell us
 #
-# 1. **Backward Liouville achieves ~0.3% error (exact up to grid resolution)**.
+# 1. **Backward Liouville is the most accurate (0.34% error, exact up to grid resolution)**.
 #    Because it traces directly backward from the target detector grid to the source,
 #    there is zero statistical noise and uniform coverage across the distribution,
-#    including the tails.
-# 2. **Monte Carlo is limited by statistical noise (∝ 1/√N)**. With N = 8,000
-#    particles, the relative deviation is ~11–12%, matching theoretical Poisson noise.
-#    Reaching the same 0.3% accuracy of Backward Liouville would require ~10⁷ trajectories
-#    (~1,000× more cost).
+#    including the tails. It is also the most expensive per trajectory, since a backward
+#    trajectory has to run until it reaches the source plane, with every step stored.
+# 2. **Monte Carlo is limited by statistical noise ($\propto 1/\sqrt{N}$)**. With the
+#    $N = 5\times10^4$ trajectories used here, its relative deviation is ~4.7%, matching
+#    theoretical Poisson noise.
+#    Reaching the 0.34% of Backward Liouville would need ~200× more trajectories, of order
+#    10⁷, which at the per-trajectory costs above is ~100× the compute.
 # 3. **Forward Liouville provides smooth bin-averaged phase-space densities**, but
 #    exhibits an outer boundary artifact caused by truncating the source velocity sampling
-#    to a finite sphere (`r ≤ 3 vth`). In addition, forward trajectories that miss the
-#    detector or fall outside the populated region do not contribute to the target.
+#    to a finite sphere ($r \le 3 v_{\mathrm{th}}$). In addition, forward trajectories that
+#    miss the detector or fall outside the populated region do not contribute to the
+#    target.
 
-# ## Monte-Carlo sampling noise scales as 1/√N
-# The report above quotes Monte Carlo at ≈10% and attributes it to 1/√N sampling
+# ### Monte-Carlo sampling noise scales as 1/√N
+# The report above quotes Monte Carlo at ≈5% and attributes it to $1/\sqrt{N}$ sampling
 # scatter. Here we *verify* that statement directly. We run Monte Carlo for a range of
 # particle counts `N`, repeating each `N` with many *independent* seed realizations, and
 # measure the sampling noise as the relative RMS scatter of the reconstructed histogram
 # across realizations. For a multinomial (Monte-Carlo) estimator the per-bin density has
-# standard deviation `σ ∝ 1/√N`, so the aggregate noise should fall as `1/√N`
-# (equivalently the variance `∝ 1/N`).
+# standard deviation $\sigma \propto 1/\sqrt{N}$, so the aggregate noise should fall as
+# $1/\sqrt{N}$ (equivalently the variance $\propto 1/N$).
 
 vec_of(h) = vcat([vec(p[3]) for p in h]...)
 
@@ -453,7 +486,7 @@ axislegend(ax1; position = :rt)
 fig_scaling = DisplayAs.PNG(fig_scaling) #hide
 
 # The measured log–log slope is close to −0.5, confirming the expected 1/√N
-# sampling-noise scaling: the ≈10% Monte-Carlo deviation above is dominated by
+# sampling-noise scaling: the ≈5% Monte-Carlo deviation above is dominated by
 # Monte-Carlo scatter, not by method bias.
 
 io_s = IOBuffer() #hide
