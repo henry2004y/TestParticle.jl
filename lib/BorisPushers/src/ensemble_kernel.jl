@@ -123,22 +123,25 @@ end
 end
 
 
+@inline function _init_particle!(
+        xv_init::AbstractMatrix, prob, prob_func, i::Int, seed
+    )
+    new_prob = _call_prob_func(prob_func, prob, i, 0, seed)
+    u0_i = new_prob.u0
+    @inbounds for c in 1:6
+        xv_init[i, c] = u0_i[c]
+    end
+    return nothing
+end
+
 function _init_particles!(
         xv_init::AbstractMatrix{T}, prob, prob_func, n_particles::Int, seed
     ) where {T}
     if n_particles == 1
-        new_prob = _call_prob_func(prob_func, prob, 1, 0, seed)
-        u0 = new_prob.u0
-        @inbounds for c in 1:6
-            xv_init[1, c] = u0[c]
-        end
+        _init_particle!(xv_init, prob, prob_func, 1, seed)
     else
         _foreach_chunked(n_particles) do i
-            new_prob = _call_prob_func(prob_func, prob, i, 0, seed)
-            u0_i = new_prob.u0
-            @inbounds for c in 1:6
-                xv_init[i, c] = u0_i[c]
-            end
+            _init_particle!(xv_init, prob, prob_func, i, seed)
         end
     end
     return xv_init
