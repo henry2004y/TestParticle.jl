@@ -14,10 +14,7 @@
 # by evaluating `f`, which these methods do not define, and the solve would fail
 # as soon as `saveat` asked for a value inside a step.
 
-const BorisCacheTypes = Union{
-    BorisConstantCache, BorisCache,
-    MultistepBorisConstantCache, MultistepBorisCache,
-}
+const BorisCacheTypes = Union{BorisConstantCache, BorisCache}
 
 """
     default_linear_interpolation(prob, alg::AbstractBoris)

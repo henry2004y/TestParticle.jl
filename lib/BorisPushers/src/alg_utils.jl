@@ -11,3 +11,6 @@ isfsal(::AdaptiveBoris) = false
 
 alg_order(::AdaptiveMultistepBoris{N}) where {N} = N
 isfsal(::AdaptiveMultistepBoris{N}) where {N} = false
+
+SciMLBase.isadaptive(::Union{AdaptiveBoris, AdaptiveMultistepBoris}) = true
+SciMLBase.isadaptive(::Union{Boris, MultistepBoris}) = false

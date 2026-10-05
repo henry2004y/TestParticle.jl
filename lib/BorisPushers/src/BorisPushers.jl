@@ -31,18 +31,21 @@ include("boris_step.jl")
 include("boris_perform_step.jl")
 include("boris_solve.jl")
 include("saveat.jl")
-include("boris_kernel.jl")
+include("morton.jl")
+include("kernels.jl")
+include("ensemble_kernel.jl")
 
 export Boris, AdaptiveBoris
 export MultistepBoris, MultistepBoris2, MultistepBoris4, MultistepBoris6
 export AdaptiveMultistepBoris
-export AbstractBoris
-export GPUBorisAlgorithm
-export adapt_field_to_gpu
-export SavingPlan, use_saveat
-export get_q2m, get_EField, get_BField
-export update_velocity_boris, update_velocity_multistep, update_velocity
-export advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
-export morton3D, morton_sort_particles
+export EnsembleKernel
+export advance_boris, update_velocity, update_velocity_half, update_velocity_node
+
+public AbstractBoris
+public get_q2m, get_EField, get_BField
+public adapt_field_to_gpu, adapt_params
+public SavingPlan, use_saveat, saveat_reached, saveat_interpolate
+public update_velocity_boris, update_velocity_multistep, update_velocity_resync
+public morton3D, morton_sort_particles
 
 end

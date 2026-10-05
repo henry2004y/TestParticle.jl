@@ -290,7 +290,73 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         @test sol_device.t ≈ sol_loop.t
         @test sol_device.u[end] ≈ sol_loop.u[end] atol = 1.0e-10
 
+        # EnsembleKernel API
+        ens = EnsembleKernel(backend)
+        sol_ens = solve(prob, Boris(), ens; dt, trajectories = 1, saveat = 1.0).u[1]
+        @test sol_ens.u[end] ≈ sol_loop.u[end] atol = 1.0e-10
+
+        # Unaligned saveat and save_start = false
+        sol_unaligned = solve(
+            prob, Boris(), backend;
+            dt = 0.1, trajectories = 1, saveat = 0.25, save_start = false
+        ).u[1]
+        sol_unaligned_ref = solve(
+            prob, Boris();
+            dt = 0.1, saveat = 0.25, save_start = false
+        )
+        @test sol_unaligned.t ≈ sol_unaligned_ref.t
+        for k in eachindex(sol_unaligned.t)
+            @test sol_unaligned.u[k] ≈ sol_unaligned_ref.u[k] atol = 1.0e-10
+        end
+
+        # prob_func, output_func, reduction with EnsembleProblem
+        prob_func = (p, ctx) -> remake(p; u0 = SA[0.0, 0.0, 0.0, Float64(ctx.sim_id), 0.0, 0.0])
+        output_func = (sol, i) -> (sol.u[1][4], false)
+        reduction = (u, batch, I) -> (append!(u === nothing ? Float64[] : u, batch), false)
+        eprob = EnsembleProblem(prob; prob_func, output_func, reduction)
+        sol_reduced = solve(eprob, Boris(), ens; dt, trajectories = 3)
+        @test sol_reduced.u == [1.0, 2.0, 3.0]
+
+        # Custom parameter on backend path
+        custom_p = CustomParam(1.0, 1.0, constant_Ey, constant_Bz)
+        prob_custom = ODEProblem(dummy_f, u0, (0.0, 1.0), custom_p)
+        sol_custom = solve(prob_custom, Boris(), backend; dt = 0.1, trajectories = 1).u[1]
+        @test sol_custom.u[end][1] ≈ 1.0 atol = 1.0e-6
+
         # Adaptive solvers have no GPU path
         @test_throws ArgumentError solve(prob, AdaptiveBoris(), backend; dt, trajectories = 1)
+        @test_throws ArgumentError solve(prob, AdaptiveMultistepBoris{4}(), backend; dt, trajectories = 1)
+    end
+
+    @testset "Constructor input validation" begin
+        @test_throws ArgumentError MultistepBoris{1}(n = 1)
+        @test_throws ArgumentError MultistepBoris{2}(n = 0)
+        @test_throws ArgumentError MultistepBoris{2}(n = -1)
+        @test_throws ArgumentError AdaptiveBoris(safety = 0.0)
+        @test_throws ArgumentError AdaptiveBoris(safety = -0.1)
+        @test_throws ArgumentError AdaptiveMultistepBoris{3}(n = 1, safety = 0.1)
+        @test_throws ArgumentError AdaptiveMultistepBoris{4}(n = 0, safety = 0.1)
+        @test_throws ArgumentError AdaptiveMultistepBoris{4}(n = 1, safety = -0.1)
+    end
+
+    @testset "Float32 preservation across algorithms" begin
+        u0_f32 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0]
+        p_f32 = (1.0f0, 1.0f0, constant_Ey, constant_Bz, ZeroField())
+        prob_f32 = ODEProblem(dummy_f, u0_f32, (0.0f0, 1.0f0), p_f32)
+        dt_f32 = 0.1f0
+
+        algs = (
+            Boris(),
+            MultistepBoris2(n = 2),
+            MultistepBoris4(n = 2),
+            MultistepBoris6(n = 2),
+            AdaptiveBoris(safety = 0.1f0),
+            AdaptiveMultistepBoris{4}(n = 2, safety = 0.1f0),
+        )
+        for alg in algs
+            sol = solve(prob_f32, alg; dt = dt_f32)
+            @test eltype(sol.u[1]) === Float32
+            @test eltype(sol.t) === Float32
+        end
     end
 end

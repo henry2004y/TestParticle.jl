@@ -20,6 +20,10 @@ function SavingPlan(saveat, tspan, dir, ::Type{T}) where {T}
     return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir, has_saveat)
 end
 
+function SavingPlan(saveat, tspan, ::Type{T}) where {T}
+    return SavingPlan(saveat, tspan, _span_direction(tspan), T)
+end
+
 """
     _span_direction(tspan) -> Int
 
@@ -51,20 +55,20 @@ function _saveat_times(saveat, tspan, dir, ::Type{T}) where {T}
 end
 
 """
-    _saveat_reached(target, t, dir) -> Bool
+    saveat_reached(target, t, dir) -> Bool
 
 Whether a solve that has advanced to `t` has reached `target`.
 """
-@inline _saveat_reached(target, t, dir) = dir * (target - t) <= 0
+@inline saveat_reached(target, t, dir) = dir * (target - t) <= 0
 
 """
-    _saveat_interpolate(t_prev, xv_prev, t_next, xv_next, t) -> xv
+    saveat_interpolate(t_prev, xv_prev, t_next, xv_next, t) -> xv
 
 Linear interpolation of the state between two consecutive steps, which is the
 dense output these solvers admit: it reproduces the step values exactly at the
 step times and is as accurate as the method in between.
 """
-@inline function _saveat_interpolate(t_prev, xv_prev, t_next, xv_next, t)
+@inline function saveat_interpolate(t_prev, xv_prev, t_next, xv_next, t)
     θ = (t - t_prev) / (t_next - t_prev)
     return xv_prev + θ * (xv_next - xv_prev)
 end

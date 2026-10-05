@@ -29,11 +29,11 @@ end
     if N != 2
         t_mag2 = sum(abs2, t_n)
         if N == 4
-            f_N = 1 + t_mag2 / 3
-            e_corr_factor = -1 / 3
+            f_N = one(T) + t_mag2 / T(3)
+            e_corr_factor = -one(T) / T(3)
         else # N == 6
-            f_N = 1 + t_mag2 / 3 + 2 * t_mag2 * t_mag2 / 15
-            e_corr_factor = -1 / 3 - 2 * t_mag2 / 15
+            f_N = one(T) + t_mag2 / T(3) + T(2) * t_mag2 * t_mag2 / T(15)
+            e_corr_factor = -one(T) / T(3) - T(2) * t_mag2 / T(15)
         end
 
         e_dot_t = e_n ⋅ t_n
@@ -44,18 +44,18 @@ end
     t_n_mag2 = sum(abs2, t_n)
     t_n_mag = sqrt(t_n_mag2)
 
-    if t_n_mag < TN_MAG_THRESHOLD
-        c_n1 = 1 - 2 * n * n * t_n_mag2
+    if t_n_mag < T(TN_MAG_THRESHOLD)
+        c_n1 = one(T) - T(2 * n * n) * t_n_mag2
 
-        n_term1 = 2 * n
-        n_term3 = 4 * n * n * n
+        n_term1 = T(2 * n)
+        n_term3 = T(4 * n * n * n)
 
-        c_n2 = n_term1 - (n_term1 + n_term3) / 3 * t_n_mag2
-        c_n3 = 2 * n * n - (4 * n * n + 2 * n * n * n * n) / 3 * t_n_mag2
-        c_n6 = (n_term1 + n_term3) / 3
+        c_n2 = n_term1 - (n_term1 + n_term3) / T(3) * t_n_mag2
+        c_n3 = T(2 * n * n) - T(4 * n * n + 2 * n * n * n * n) / T(3) * t_n_mag2
+        c_n6 = (n_term1 + n_term3) / T(3)
     else
         alpha_n = atan(t_n_mag)
-        n_alpha_n = n * alpha_n
+        n_alpha_n = T(n) * alpha_n
         sin_n_alpha, cos_n_alpha = sincos(n_alpha_n)
         sin_2n_alpha = 2 * sin_n_alpha * cos_n_alpha
         cos_2n_alpha = cos_n_alpha * cos_n_alpha - sin_n_alpha * sin_n_alpha
@@ -63,7 +63,7 @@ end
         c_n1 = cos_2n_alpha
         c_n2 = sin_2n_alpha / t_n_mag
         c_n3 = 2 * sin_n_alpha * sin_n_alpha / t_n_mag2
-        c_n6 = (2 * n - c_n2) / t_n_mag2
+        c_n6 = (T(2 * n) - c_n2) / t_n_mag2
     end
 
     c_n4 = c_n2
@@ -182,14 +182,6 @@ function initialize!(integrator, cache::BorisCache)
     return boris_initialize!(integrator, cache)
 end
 
-function initialize!(integrator, cache::MultistepBorisConstantCache)
-    return boris_initialize!(integrator, cache)
-end
-
-function initialize!(integrator, cache::MultistepBorisCache)
-    return boris_initialize!(integrator, cache)
-end
-
 @muladd function perform_step!(integrator, cache::BorisConstantCache, repeat_step = false)
     r_new, v_new = advance_boris!(integrator, cache)
     integrator.u = vcat(r_new, v_new)
@@ -197,23 +189,6 @@ end
 end
 
 @muladd function perform_step!(integrator, cache::BorisCache, repeat_step = false)
-    r_new, v_new = advance_boris!(integrator, cache)
-    integrator.u[1] = r_new[1]
-    integrator.u[2] = r_new[2]
-    integrator.u[3] = r_new[3]
-    integrator.u[4] = v_new[1]
-    integrator.u[5] = v_new[2]
-    integrator.u[6] = v_new[3]
-    return
-end
-
-@muladd function perform_step!(integrator, cache::MultistepBorisConstantCache, repeat_step = false)
-    r_new, v_new = advance_boris!(integrator, cache)
-    integrator.u = vcat(r_new, v_new)
-    return integrator.u
-end
-
-@muladd function perform_step!(integrator, cache::MultistepBorisCache, repeat_step = false)
     r_new, v_new = advance_boris!(integrator, cache)
     integrator.u[1] = r_new[1]
     integrator.u[2] = r_new[2]

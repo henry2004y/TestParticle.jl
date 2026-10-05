@@ -250,9 +250,9 @@ Returns the updated cursor and previous sample.
     )
     if use_saveat(plan)
         nsave = length(plan.times)
-        while isave <= nsave && _saveat_reached(plan.times[isave], t_out, plan.dir)
+        while isave <= nsave && saveat_reached(plan.times[isave], t_out, plan.dir)
             t_target = plan.times[isave]
-            push!(traj, _saveat_interpolate(t_last, y_last, t_out, y_out, t_target))
+            push!(traj, saveat_interpolate(t_last, y_last, t_out, y_out, t_target))
             push!(tsave, t_target)
             isave += 1
         end

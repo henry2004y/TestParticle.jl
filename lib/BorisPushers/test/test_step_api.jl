@@ -2,6 +2,7 @@ module test_step_api
 
 using Test
 using BorisPushers
+import BorisPushers: update_velocity_resync
 using StaticArrays
 using LinearAlgebra: norm
 
