@@ -17,7 +17,13 @@ CairoMakie.activate!(type = "png") #hide
 
 seed = 42;
 
-# ## Upstream Plasma Parameters
+# ## Shock model
+#
+# The shock is prescribed analytically: a tanh ramp in density and magnetic field together
+# with the electric field from the generalized Ohm's law. The subsections below fix one
+# ingredient at a time.
+#
+# ### Upstream plasma parameters
 #
 # The upstream state is isothermal, `T_ion = T_e = 20 eV`. Together with the field below it
 # fixes the whole shock: the MHD jump conditions then give the compression ratio
@@ -26,9 +32,9 @@ seed = 42;
 
 const T_ion = 20.0  # ion temperature [eV]
 const vth_ion = sqrt(2 * TP.qᵢ * T_ion / TP.mᵢ) # ion thermal speed [m/s]
-const V_sw = -400.0e3 # solar wind bulk speed [m/s]
+const V_sw = -400.0e3; # solar wind bulk speed [m/s]
 
-# ## Shock Structure Parameters
+# ### Shock structure parameters
 
 const n_up = 3.0e6 # upstream number density [m⁻³]
 const n_down = 6.0e6 # downstream number density [m⁻³]
@@ -40,9 +46,9 @@ const shock_width = 5.0e3; # shock ramp width [m]
 ## only through the pressure-gradient part of Ohm's law, `-∇p_e/(n_e q)`, with
 ## `p_e = n k_B T_e` and constant `T_e`, so `Δp_e = k_B T_e · n_jump`. It is *not* the solar
 ## wind dynamic pressure `n_up m_i V_sw² = 0.80 nPa`, two orders of magnitude larger.
-const Δp_e = TP.qᵢ * T_ion * n_jump # electron pressure jump across the ramp [Pa]
+const Δp_e = TP.qᵢ * T_ion * n_jump; # electron pressure jump across the ramp [Pa]
 
-# ## Magnetic Field Parameters
+# ### Magnetic field parameters
 
 const B_normal = 1.7e-9 # shock normal component of B [T]
 const B_mag = 9.8e-9 # upstream magnetic field magnitude [T]
@@ -50,7 +56,7 @@ const B_mag = 9.8e-9 # upstream magnetic field magnitude [T]
 const θ_Bn = acosd(B_normal / B_mag) # shock normal angle [degree]
 println("Shock normal angle θ_Bn = $(round(θ_Bn; digits = 1))°")
 
-# ## Tangential Field Jump
+# #### Tangential field jump
 #
 # The shock is oblique, `θ_Bn ≈ 80°`, so the tangential field jump follows from the
 # oblique-shock jump conditions. In the plasma frame, which is the frame `E` is written in,
@@ -100,7 +106,8 @@ end
 
 const B_jump, B_avg = compute_tanh_profile_coefficients(θ_Bn, B_mag, r_Bt);
 
-# ## Field Definitions
+# ### Field definitions
+#
 # Custom analytical electric and magnetic fields across the shock transition layer.
 
 function get_B_shock(r)
@@ -137,7 +144,7 @@ function get_E_shock(r)
     return SVector{3}(ex, ey, ez)
 end;
 
-# ## Simulation Setup
+# ## Simulation setup
 #
 # The source plane is placed upstream of the shock, far enough that the fastest particle
 # gyroradius (~430 km at 400 km/s in 9.8 nT) fits inside the uniform upstream region without
@@ -155,11 +162,17 @@ const dt = get_gyroperiod(3 * B_mag) / 70 # time step [s]
 
 param = prepare(get_E_shock, get_B_shock; species = Proton)
 
-## Source velocity distribution (isotropic Maxwellian)
+# ### Source distribution
+#
+# Isotropic Maxwellian carried by the solar wind bulk flow.
 const p_thermal = n_up * TP.qᵢ * T_ion
 const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
 ## Source phase-space density [s³/m⁶]; `pdf` returns a normalized VDF.
 f_src(v) = n_up * pdf(vdf, v)
+
+# ### Tracing
+#
+# Each ensemble member starts on the source plane with a velocity drawn from `vdf`.
 
 function prob_func_maxwellian(prob, ctx)
     v = rand(ctx.rng, vdf)
@@ -177,7 +190,11 @@ t_mc = @elapsed sols = TP.solve(
 );
 println("Simulation complete. Monte Carlo tracing time: $(round(t_mc; digits = 2)) s")
 
-## Detector planes (upstream and downstream of the shock)
+# ### Detector planes
+#
+# One plane upstream and one downstream of the shock, both sampling the crossing events of
+# the same ensemble.
+
 const x_upstream = 2.0e5  # [m]
 const x_downstream = -2.0e5 # [m]
 detector_up = Meshes.Plane(
@@ -187,53 +204,7 @@ detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
 );
 
-# To get the velocity space distributions, we bin the crossing events into 2D orthogonal
-# velocity planes, integrating over the third dimension.
-#
-# ## What each method computes
-#
-# All three methods return the same physical quantity at the detector, the **phase-space
-# density** ``f``, in ``[\mathrm{s}^3/\mathrm{km}^6]`` (3D) or
-# ``[\mathrm{s}^2/\mathrm{km}^5]`` (2D projection), so their outputs are directly comparable:
-#
-# | Method | Input | Output |
-# | :--- | :--- | :--- |
-# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted, hence the result carries sampling noise `∝ 1/√N`. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram) |
-# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`, so the coverage is limited by the sphere radius; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram) |
-# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**, sampled uniformly and without noise, so every grid cell is filled; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated, i.e. only the PDF is evaluated per crossing, with no binning weights. | 3-D ``f`` on a grid, 2-D projections by summing |
-
-# ## Method 1: Forward Monte Carlo
-#
-# Particles are launched from the source with velocities drawn from the source Maxwellian,
-# so the ensemble is density weighted.  A steady beam, however, crosses the source plane
-# flux weighted: faster particles are injected more often.  Multiplying each sample by
-# ``|v_{x,\mathrm{src}}|`` supplies that weighting, and dividing by ``|v_{x,\mathrm{det}}|``
-# at the detector undoes the flux factor of the recorded crossings.  The net weight
-# ``S\,|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|`` reduces to a constant only when every
-# particle crosses the detector once with an unchanged ``v_x`` — which is why the simple
-# constant weight is exact upstream but not downstream of the shock.
-
-function reconstruct_mc_projections(sols, detector, n0, dv_km)
-    ## The launch velocities are drawn from the source VDF, i.e. density weighted, whereas a
-    ## steady beam crosses the source plane flux weighted. Carrying |v_x,src| as the sample
-    ## weight turns the ensemble into the flux-weighted one; the detector then sees a
-    ## crossing flux, and dividing by |v_x,det| converts that flux back into f.
-    vxi = [s.u[1][4] for s in sols.u]
-    vs, ws_init = get_particle_crossings(sols, detector, vxi)
-
-    v_edges = -1000:dv_km:1000
-    centers = bin_centers(v_edges)
-    ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
-    ## volume `dv³`, hence `S = n0 [km⁻³] / (N · dv_km³)` for `f` in [s³/km⁶].
-    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^3)
-
-    f_3d = bin_velocity_space(vs, fill(S, length(vs)), v_edges; vx_source = ws_init)
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-
-    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
-end
-
-# ## Plotting helpers
+# ## Visualization helpers
 #
 # A single log-scale colour map is used everywhere.  `compute_common_cr` finds a global
 # `(fmin, fmax)` across a set of 2-D distributions so that the comparison plot uses one
@@ -335,17 +306,66 @@ function plot_downstream_comparison(h1, h2, h3; vlim = 1000.0)
     return fig
 end
 
+# ## Reconstructing the phase-space density
+#
+# To get the velocity space distributions, we bin the crossing events into 2D orthogonal
+# velocity planes, integrating over the third dimension.
+#
+# ### What each method computes
+#
+# All three methods return the same physical quantity at the detector, the **phase-space
+# density** ``f``, in ``[\mathrm{s}^3/\mathrm{km}^6]`` (3D) or
+# ``[\mathrm{s}^2/\mathrm{km}^5]`` (2D projection), so their outputs are directly comparable:
+#
+# | Method | Input | Output |
+# | :--- | :--- | :--- |
+# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted, hence the result carries sampling noise `∝ 1/√N`. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram) |
+# | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`, so the coverage is limited by the sphere radius; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram) |
+# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**, sampled uniformly and without noise, so every grid cell is filled; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated, i.e. only the PDF is evaluated per crossing, with no binning weights. | 3-D ``f`` on a grid, 2-D projections by summing |
+
+# ### Method 1: Forward Monte Carlo
+#
+# Particles are launched from the source with velocities drawn from the source Maxwellian,
+# so the ensemble is density weighted.  A steady beam, however, crosses the source plane
+# flux weighted: faster particles are injected more often.  Multiplying each sample by
+# ``|v_{x,\mathrm{src}}|`` supplies that weighting, and dividing by ``|v_{x,\mathrm{det}}|``
+# at the detector undoes the flux factor of the recorded crossings.  The net weight
+# ``S\,|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|`` reduces to a constant only when every
+# particle crosses the detector once with an unchanged ``v_x`` — which is why the simple
+# constant weight is exact upstream but not downstream of the shock.
+
+function reconstruct_mc_projections(sols, detector, n0, dv_km)
+    ## The launch velocities are drawn from the source VDF, i.e. density weighted, whereas a
+    ## steady beam crosses the source plane flux weighted. Carrying |v_x,src| as the sample
+    ## weight turns the ensemble into the flux-weighted one; the detector then sees a
+    ## crossing flux, and dividing by |v_x,det| converts that flux back into f.
+    vxi = [s.u[1][4] for s in sols.u]
+    vs, ws_init = get_particle_crossings(sols, detector, vxi)
+
+    v_edges = -1000:dv_km:1000
+    centers = bin_centers(v_edges)
+    ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
+    ## volume `dv³`, hence `S = n0 [km⁻³] / (N · dv_km³)` for `f` in [s³/km⁶].
+    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^3)
+
+    f_3d = bin_velocity_space(vs, fill(S, length(vs)), v_edges; vx_source = ws_init)
+    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
+
+    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
+end;
+
 hists_up = reconstruct_mc_projections(sols, detector_up, n_up, 20.0)
 hists_down = reconstruct_mc_projections(sols, detector_down, n_up, 20.0)
 
 fig_mc = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
 fig_mc = DisplayAs.PNG(fig_mc) #hide
 
-# Each crossing contributes `S · |v_x,src| / |v_x,det|`, so the histogram estimates the
-# phase-space density ``f`` at the detector: the `N` and `dv` factors are absorbed in `S`,
-# and the ``|v_x|`` ratio converts the crossing flux into a density.
+# Each crossing contributes ``S\,\|v_{x,\mathrm{src}}\|/\|v_{x,\mathrm{det}}\|``, so the
+# histogram estimates the phase-space density ``f`` at the detector: the `N` and `dv`
+# factors are absorbed in `S`, and the ``\|v_x\|`` ratio converts the crossing flux into a
+# density.
 #
-# ## Method 2: Forward Liouville Tracking
+# ### Method 2: Forward Liouville tracking
 #
 # Forward Liouville tracking starts from a sphere of initial conditions in velocity space
 # at the source and traces forward to the detector.  By Liouville's theorem
@@ -354,9 +374,8 @@ fig_mc = DisplayAs.PNG(fig_mc) #hide
 # unchanged along each trajectory.  Because the sphere is sampled uniformly, every sample
 # stands for a known source velocity volume ``V_{\mathrm{sph}}/N``, which the trajectory maps
 # onto a detector volume ``(V_{\mathrm{sph}}/N)\,|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|``.
-# Depositing ``f\,\Delta V`` into the detector
-# bin and dividing by the bin volume gives the same bin-averaged ``f`` as Method 3, without
-# the sampling noise of Method 1.
+# Depositing ``f\,\Delta V`` into the detector bin and dividing by the bin volume gives the same
+# bin-averaged ``f`` as Method 3, without the sampling noise of Method 1.
 
 function reconstruct_liouville_projections(
         sols, detector, vdf, n0;
@@ -370,14 +389,9 @@ function reconstruct_liouville_projections(
 
     v_edges = -1000:dv_km:1000
     centers = bin_centers(v_edges)
-    ## Each sample stands for a source velocity-space volume `vsphere / N`, which
-    ## `bin_velocity_space` maps onto a detector volume `vsphere / N · |v_x,src|/|v_x,det|`
-    ## and spreads over the bin volume, so the bin density is Σ f·ΔV / dv³. This summed
-    ## estimator carries the `∝ 1/√n` counting noise of the samples per bin; the
-    ## `average = true` ratio estimator divides it out instead, at the cost of giving every
-    ## visited bin the local `f` regardless of how many times a trajectory crossed it.
-    ## With N = 10⁵ samples over the sphere the summed estimator is populated well enough
-    ## here, so we keep the more faithful rendering of the mapped velocity volume.
+    ## Each sample stands for a source velocity volume `vsphere / N`, mapped onto the
+    ## detector and spread over the bin volume, so the bin density is Σ f·ΔV / dv³.
+    ## Summing keeps the `∝ 1/√n` counting noise; `average = true` divides it out instead.
     scale = vsphere * 1.0e18 / (length(sols.u) * dv_km^3) # [s³/m⁶] → [s³/km⁶]
 
     f_3d = bin_velocity_space(vs, ws .* scale, v_edges; vx_source = ws_vxi)
@@ -417,7 +431,7 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 # ``f_{\mathrm{det}}`` on the same grid and in the same units as Methods 1 and 3, so all
 # three should agree up to sampling noise.
 #
-# ## Method 3: Backward Liouville Tracing
+# ### Method 3: Backward Liouville tracing
 #
 # Starting from a velocity-space grid at the detector, each grid point is traced *backward*
 # in time to the source plane.  The phase-space density at the detector equals the source
@@ -480,7 +494,7 @@ n_bw = n_bw_up + n_bw_down
 fig_backward = plot_shock_vdf(res_up_bw, res_down_bw, x_upstream, x_downstream)
 fig_backward = DisplayAs.PNG(fig_backward) #hide
 
-# ## Comparison of the three methods (shared colour scale)
+# ### Comparison of the three methods (shared colour scale)
 #
 # The downstream `f` from the three methods is compared using a **single shared colour bar**,
 # so the colour ranges are directly comparable.
@@ -488,7 +502,9 @@ fig_backward = DisplayAs.PNG(fig_backward) #hide
 fig_cmp = plot_downstream_comparison(hists_down, hists_down_m2, res_down_bw)
 fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 
-# ## Moment check: density and momentum
+# ## Validation
+#
+# ### Moment check: density and momentum
 #
 # Integrating a 2-D projection over velocity returns the lowest moments of the reconstructed
 # distribution: the density ``n = \int f\,\mathrm{d}v_i\mathrm{d}v_j`` and the momentum
@@ -527,7 +543,7 @@ for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouvi
 end #hide
 Markdown.parse(String(take!(io_m))) #hide
 
-# ## Accuracy and cost
+# ### Accuracy and cost
 #
 # The moments collapse each VDF into four numbers, so a wrong shape with the right
 # normalisation and the wrong shape with the wrong normalisation can look identical to them.

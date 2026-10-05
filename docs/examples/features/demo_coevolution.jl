@@ -1,12 +1,5 @@
-# ---
-# title: Time-dependent B Field Tracing
-# id: demo_coevolution
-# date: 2026-01-28
-# author: "[Hongyang Zhou](https://github.com/henry2004y)"
-# julia: 1.12
-# description: Tracing a particle in a time-dependent magnetic field.
-# ---
-
+# # Time-dependent B Field Tracing
+#
 # This example demonstrates how to trace a particle in a time-dependent numerical magnetic field.
 # For analytical field, the time-dependency can be directly specified with time.
 # For numerical field, the time-dependency can be specified with `LazyTimeInterpolator` that performs linear interpolation between time points.
@@ -45,7 +38,7 @@ function loader(i)
     return build_interpolator(CartesianGrid, B_data, gx, gy, gz)
 end
 
-# Create the time-dependent interpolator
+## Create the time-dependent interpolator
 itp_B = LazyTimeInterpolator(times, loader)
 
 ## Define a zero Electric field

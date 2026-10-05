@@ -97,16 +97,29 @@ for (i, (name, desc, group, func)) in enumerate(solvers)
     groups[i] = group
 end
 
-# Normalize results
-min_time = minimum(results_time)
-min_mem = minimum(results_mem)
+# Normalize results to the standard Boris method with a fixed timestep
+baseline_idx = findfirst(==("Boris (n=1, N=2)"), names)
+baseline_time = results_time[baseline_idx]
+baseline_mem = results_mem[baseline_idx]
 
-results_time_norm = results_time ./ min_time
-results_mem_norm = results_mem ./ min_mem;
+results_time_norm = results_time ./ baseline_time
+results_mem_norm = results_mem ./ baseline_mem;
 
-# ## Detailed Performance Comparison
+# ### Detailed Performance Comparison
 #
-# First, we present a detailed comparison of elapsed time and memory allocations for the solvers as a bar plot.
+# All the results below are normalized to the standard Boris method with a fixed timestep.
+# The absolute cost of this baseline is
+
+t_base = round(baseline_time * 1.0e3; digits = 2)
+m_base = round(baseline_mem / 1024; digits = 1)
+
+io_base = IOBuffer() #hide
+println(io_base, "| Solver | Elapsed Time (ms) | Memory Allocations (kB) |") #hide
+println(io_base, "| :--- | :--- | :--- |") #hide
+println(io_base, "| $(names[baseline_idx]) | $t_base | $m_base |") #hide
+Markdown.parse(String(take!(io_base))) #hide
+
+# A relative value of 1.0 therefore means the same cost as the baseline.
 
 colors = Makie.wong_colors()
 
@@ -116,7 +129,7 @@ y_positions = 1:n_solvers
 
 ax_time = Axis(
     f[1, 1],
-    xlabel = "Elapsed Time (s)",
+    xlabel = "Relative Elapsed Time (1.0 = standard Boris)",
     ylabel = "Solvers",
     yticks = (y_positions, names),
     xscale = log10,
@@ -129,7 +142,7 @@ ax_time = Axis(
 ax_mem = Axis(
     f[1, 1],
     xaxisposition = :top,
-    xlabel = "Memory Allocations (kB)",
+    xlabel = "Relative Memory Allocations (1.0 = standard Boris)",
     xscale = log10,
     xgridvisible = false,
     ygridvisible = false,
@@ -146,20 +159,27 @@ color_time = colors[1]
 color_mem = colors[2]
 
 barplot!(
-    ax_time, y_positions .- bar_width / 2, results_time;
+    ax_time, y_positions .- bar_width / 2, results_time_norm;
     direction = :x, width = bar_width, color = color_time
 )
 
 ## Avoid 0 for log plot
-results_mem_kb = results_mem ./ 1024
-safe_results_mem = max.(results_mem_kb, 1.0e-3)
+safe_results_mem = max.(results_mem_norm, 1.0e-3)
 barplot!(
     ax_mem, y_positions .+ bar_width / 2, safe_results_mem;
     direction = :x, width = bar_width, color = color_mem
 )
 
-elements = [PolyElement(polycolor = color_time), PolyElement(polycolor = color_mem)]
-labels = ["Elapsed Time", "Memory Allocations"]
+## Mark the baseline
+vlines!(ax_time, [1.0]; color = :black, linestyle = :dash, linewidth = 2)
+vlines!(ax_mem, [1.0]; color = :black, linestyle = :dash, linewidth = 2)
+
+elements = [
+    PolyElement(polycolor = color_time),
+    PolyElement(polycolor = color_mem),
+    LineElement(color = :black, linestyle = :dash, linewidth = 2)
+]
+labels = ["Relative Elapsed Time", "Relative Memory Allocations", "Baseline"]
 Legend(
     f[1, 1], elements, labels, "Metrics";
     framevisible = false, halign = :right, valign = :bottom,
@@ -168,7 +188,7 @@ Legend(
 
 f = DisplayAs.PNG(f) #hide
 
-# ## Solver Efficiency
+# ### Solver Efficiency
 #
 # Next, we evaluate the solver efficiency by plotting relative time versus relative memory.
 
@@ -177,8 +197,8 @@ f2 = Figure(size = (1200, 800), fontsize = 24)
 ax = Axis(
     f2[1, 1],
     title = "Solver Efficiency (Time vs. Memory)",
-    xlabel = "Relative Time (1.0 = Fastest)",
-    ylabel = "Relative Memory (1.0 = Lowest)",
+    xlabel = "Relative Time (1.0 = standard Boris)",
+    ylabel = "Relative Memory (1.0 = standard Boris)",
     xgridstyle = :dash,
     ygridstyle = :dash,
     xscale = log10,
@@ -189,11 +209,11 @@ ax = Axis(
     yminorticks = IntervalsBetween(9)
 )
 
-# Defined groups and colors
+## Defined groups and colors
 unique_groups = unique(groups)
 group_colors = Dict(g => colors[i] for (i, g) in enumerate(unique_groups))
 
-# Marker palette for the individual solvers in each group
+## Marker palette for the individual solvers in each group
 marker_palette = [:circle, :rect, :utriangle, :dtriangle, :diamond, :pentagon, :hexagon, :star5, :xcross, :cross]
 
 legend_elements = Vector{Vector{MarkerElement}}()
@@ -229,19 +249,19 @@ for g in unique_groups
     push!(legend_titles, string(g))
 end
 
-# Add Legend outside the plot
+## Add Legend outside the plot
 Legend(f2[1, 2], legend_elements, legend_labels, legend_titles, framevisible = false)
 
-## Highlight the "Utopia Point" (Theoretical Best)
+## Highlight the baseline
 scatter!(
     ax, [1.0], [1.0],
     marker = :star5,
     markersize = 20,
     color = (:red, 0.7),
-    label = "Ideal Limit"
+    label = "Standard Boris"
 )
 text!(
-    ax, 1.0, 1.0, text = "Utopia Point", align = (:right, :top),
+    ax, 1.0, 1.0, text = "Baseline", align = (:right, :top),
     offset = (55, -5), color = :red, fontsize = 15
 )
 
