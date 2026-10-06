@@ -1,24 +1,28 @@
 #!/bin/bash
-#SBATCH --job-name=TP_scaling
+#SBATCH --job-name=TP_multinode
 #SBATCH --constraint=cpu
 #SBATCH --output=res_scaling_%j.txt
 #SBATCH --error=err_scaling_%j.txt
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
 #SBATCH --time=00:10:00
 #SBATCH --qos=debug
 
-# Keep the master Julia process lightweight to allow 2 full workers on Node 1
+# One Julia worker per node, each running EnsembleThreads over the cores of that node.
+# The master process stays single-threaded: SciMLBase drives EnsembleSplitThreads through
+# Distributed's asynchronous `pmap`, which needs no OS threads on the master.
 export JULIA_NUM_THREADS=1
 
-echo "Starting SLURM job with $SLURM_JOB_NUM_NODES nodes and $SLURM_NTASKS tasks total."
-echo "Threads for master process: $JULIA_NUM_THREADS"
-echo "Threads per worker task: $SLURM_CPUS_PER_TASK"
+# Add `--account=<project>` here or on the sbatch command line if your cluster requires it.
+#
+# Override --nodes, --ntasks-per-node and --cpus-per-task from the command line to sweep
+# the scaling curve, e.g. `sbatch --nodes=4 submit_slurm.sh`.
+echo "Nodes: $SLURM_JOB_NUM_NODES, tasks: $SLURM_NTASKS, cpus/task: $SLURM_CPUS_PER_TASK"
+echo "Master threads: $JULIA_NUM_THREADS"
 
 module load julia
 
-# Run the benchmark
-# Note: We don't use srun here because SlurmClusterManager.jl handles worker creation.
-# We just launch one Julia process as the master.
-julia run_scaling_slurm.jl
+# SlurmClusterManager.jl starts the workers, so the master is launched without srun.
+BENCH_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+julia --project="$BENCH_DIR" "$BENCH_DIR/run_scaling_slurm.jl"
