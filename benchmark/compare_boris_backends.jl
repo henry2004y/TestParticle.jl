@@ -255,7 +255,7 @@ particle, and no saved initial state, which lets the raw output alias the state 
 The pusher kernel is untouched, so only the host side of the timing changes.
 """
 raw_kwargs(prob, N) = (;
-    u0 = initial_state_matrix(prob, N), raw_output = true, save_start = false
+    u0 = initial_state_matrix(prob, N), raw_output = true, save_start = false,
 )
 
 """

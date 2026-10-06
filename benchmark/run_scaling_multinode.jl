@@ -20,12 +20,14 @@ using Printf
 const DEFAULT_NODES = [1, 2, 4, 8]
 const BENCH_DIR = @__DIR__
 const POLL_INTERVAL = 15
-const ACTIVE_STATES = Set([
-    "PENDING", "RUNNING", "CONFIGURING", "SUSPENDED", "COMPLETING", "REQUEUE", "RESIZING"
-])
+const ACTIVE_STATES = Set(
+    [
+        "PENDING", "RUNNING", "CONFIGURING", "SUSPENDED", "COMPLETING", "REQUEUE", "RESIZING",
+    ]
+)
 
 const HEADER = [
-    "nodes" "workers" "threads_per_worker" "ensemble_alg" "particles" "median_s" "msteps_per_s"
+"nodes" "workers" "threads_per_worker" "ensemble_alg" "particles" "median_s" "msteps_per_s"
 ]
 
 function clear_previous_results()

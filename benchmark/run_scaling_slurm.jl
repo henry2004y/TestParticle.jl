@@ -125,7 +125,7 @@ end
 job_id = get(ENV, "SLURM_JOB_ID", "local")
 csv_path = joinpath(@__DIR__, "multinode_$(job_id).csv")
 header = [
-    "nodes" "workers" "threads_per_worker" "ensemble_alg" "particles" "median_s" "msteps_per_s"
+"nodes" "workers" "threads_per_worker" "ensemble_alg" "particles" "median_s" "msteps_per_s"
 ]
 open(csv_path, "w") do io
     writedlm(io, header, ',')
