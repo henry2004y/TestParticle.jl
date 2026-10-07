@@ -25,24 +25,47 @@ function pinned_array(T, dims)
     nbytes = prod(dims) * sizeof(T)
     CUDA = Main.CUDA
 
-    if isdefined(CUDA.Mem, :alloc) && isdefined(CUDA.Mem, :Host)
+    if isdefined(CUDA, :alloc) && isdefined(CUDA, :HostMemory)
         try
-            buf = CUDA.Mem.alloc(CUDA.Mem.Host, nbytes)
+            buf = CUDA.alloc(CUDA.HostMemory, nbytes)
             ptr = Ptr{T}(UInt(pointer(buf)))
             wrapped = unsafe_wrap(Array{T}, ptr, dims; own = false)
-            return (; array = wrapped, route = "Mem.alloc(Mem.Host)")
+            return (; array = wrapped, route = "alloc(HostMemory)")
         catch err
-            println("  route Mem.alloc(Mem.Host) failed: ", err)
+            println("  route alloc(HostMemory) failed: ", err)
         end
     end
 
-    if isdefined(CUDA.Mem, :pin)
+    if isdefined(CUDA, :pin)
         try
             a = zeros(T, dims)
-            CUDA.Mem.pin(a)
-            return (; array = a, route = "Mem.pin")
+            CUDA.pin(a)
+            return (; array = a, route = "pin")
         catch err
-            println("  route Mem.pin failed: ", err)
+            println("  route pin failed: ", err)
+        end
+    end
+
+    if isdefined(CUDA, :Mem)
+        if isdefined(CUDA.Mem, :alloc) && isdefined(CUDA.Mem, :Host)
+            try
+                buf = CUDA.Mem.alloc(CUDA.Mem.Host, nbytes)
+                ptr = Ptr{T}(UInt(pointer(buf)))
+                wrapped = unsafe_wrap(Array{T}, ptr, dims; own = false)
+                return (; array = wrapped, route = "Mem.alloc(Mem.Host)")
+            catch err
+                println("  route Mem.alloc(Mem.Host) failed: ", err)
+            end
+        end
+
+        if isdefined(CUDA.Mem, :pin)
+            try
+                a = zeros(T, dims)
+                CUDA.Mem.pin(a)
+                return (; array = a, route = "Mem.pin")
+            catch err
+                println("  route Mem.pin failed: ", err)
+            end
         end
     end
 
@@ -52,7 +75,12 @@ end
 bandwidth_gbs(nbytes, seconds) = nbytes / (seconds * 1.0e9)
 
 function median_transfer(f, repeats = 5)
-    return median([@elapsed f() for _ in 1:repeats])
+    f()
+    Main.CUDA.synchronize()
+    return median([@elapsed begin
+        f()
+        Main.CUDA.synchronize()
+    end for _ in 1:repeats])
 end
 
 function run()

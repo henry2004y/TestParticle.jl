@@ -248,15 +248,16 @@ function initial_state_matrix(prob, N)
 end
 
 """
-    raw_kwargs(prob, N)
+    raw_kwargs(prob, N; pin = true)
 
 Keywords that switch a run to the configuration with the lowest host cost: a bulk `u0`
 matrix instead of a per-particle `prob_func`, raw output instead of one `ODESolution` per
-particle, and no saved initial state, which lets the raw output alias the state buffer.
-The pusher kernel is untouched, so only the host side of the timing changes.
+particle, pinned host staging buffer, and no saved initial state, which lets the raw
+output alias the state buffer. The pusher kernel is untouched, so only the host side of
+the timing changes.
 """
-raw_kwargs(prob, N) = (;
-    u0 = initial_state_matrix(prob, N), raw_output = true, save_start = false,
+raw_kwargs(prob, N; pin::Bool = true) = (;
+    u0 = initial_state_matrix(prob, N), raw_output = true, save_start = false, pin,
 )
 
 """

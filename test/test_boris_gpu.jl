@@ -86,6 +86,16 @@ end
                 ).u[1]
                 @test length(sol_gpu.u) == length(sol_loop.u)
                 @test max_rel_diff(sol_gpu.u, sol_loop.u) < 1.0e-12
+
+                # Pinned host staging buffer
+                ens_pin = EnsembleKernel(backend; pin = true)
+                @test ens_pin.pin == true
+                sol_gpu_pin = TP.solve(
+                    prob, Boris(), ens_pin;
+                    dt = 1.0e-9, trajectories = 2, raw_output = true
+                )
+                @test size(sol_gpu_pin.u, 1) == 2
+                @test length(sol_gpu_pin.t) == length(sol_gpu.t)
             end
         end
     end
