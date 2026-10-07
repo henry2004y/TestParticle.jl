@@ -144,22 +144,28 @@ end
     fy = clamp((y_adj - g.y0) * g.inv_dy, zero(T), T(g.ny - Int32(1)))
     fz = clamp((z_adj - g.z0) * g.inv_dz, zero(T), T(g.nz - Int32(1)))
 
-    ix = min(floor(Int32, fx) + Int32(1), g.nx - Int32(1))
-    iy = min(floor(Int32, fy) + Int32(1), g.ny - Int32(1))
-    iz = min(floor(Int32, fz) + Int32(1), g.nz - Int32(1))
+    ix0 = min(unsafe_trunc(Int32, fx), g.nx - Int32(2))
+    iy0 = min(unsafe_trunc(Int32, fy), g.ny - Int32(2))
+    iz0 = min(unsafe_trunc(Int32, fz), g.nz - Int32(2))
 
-    wx = fx - T(ix - Int32(1))
-    wy = fy - T(iy - Int32(1))
-    wz = fz - T(iz - Int32(1))
+    wx = fx - T(ix0)
+    wy = fy - T(iy0)
+    wz = fz - T(iz0)
 
-    c000 = g.data[ix, iy, iz]
-    c100 = g.data[ix + 1, iy, iz]
-    c010 = g.data[ix, iy + 1, iz]
-    c110 = g.data[ix + 1, iy + 1, iz]
-    c001 = g.data[ix, iy, iz + 1]
-    c101 = g.data[ix + 1, iy, iz + 1]
-    c011 = g.data[ix, iy + 1, iz + 1]
-    c111 = g.data[ix + 1, iy + 1, iz + 1]
+    ix = ix0 + Int32(1)
+    iy = iy0 + Int32(1)
+    iz = iz0 + Int32(1)
+
+    @inbounds begin
+        c000 = g.data[ix, iy, iz]
+        c100 = g.data[ix + 1, iy, iz]
+        c010 = g.data[ix, iy + 1, iz]
+        c110 = g.data[ix + 1, iy + 1, iz]
+        c001 = g.data[ix, iy, iz + 1]
+        c101 = g.data[ix + 1, iy, iz + 1]
+        c011 = g.data[ix, iy + 1, iz + 1]
+        c111 = g.data[ix + 1, iy + 1, iz + 1]
+    end
 
     c00 = _lerp(c000, c100, wx)
     c10 = _lerp(c010, c110, wx)
@@ -191,16 +197,21 @@ end
     fx = clamp((x_adj - g.x0) * g.inv_dx, zero(T), T(g.nx - Int32(1)))
     fy = clamp((y_adj - g.y0) * g.inv_dy, zero(T), T(g.ny - Int32(1)))
 
-    ix = min(floor(Int32, fx) + Int32(1), g.nx - Int32(1))
-    iy = min(floor(Int32, fy) + Int32(1), g.ny - Int32(1))
+    ix0 = min(unsafe_trunc(Int32, fx), g.nx - Int32(2))
+    iy0 = min(unsafe_trunc(Int32, fy), g.ny - Int32(2))
 
-    wx = fx - T(ix - Int32(1))
-    wy = fy - T(iy - Int32(1))
+    wx = fx - T(ix0)
+    wy = fy - T(iy0)
 
-    c00 = g.data[ix, iy]
-    c10 = g.data[ix + 1, iy]
-    c01 = g.data[ix, iy + 1]
-    c11 = g.data[ix + 1, iy + 1]
+    ix = ix0 + Int32(1)
+    iy = iy0 + Int32(1)
+
+    @inbounds begin
+        c00 = g.data[ix, iy]
+        c10 = g.data[ix + 1, iy]
+        c01 = g.data[ix, iy + 1]
+        c11 = g.data[ix + 1, iy + 1]
+    end
 
     c0 = _lerp(c00, c10, wx)
     c1 = _lerp(c01, c11, wx)
@@ -220,11 +231,14 @@ end
     out_x && return _fill_value(g.bc, V)
 
     fx = clamp((x_adj - g.x0) * g.inv_dx, zero(T), T(g.nx - Int32(1)))
-    ix = min(floor(Int32, fx) + Int32(1), g.nx - Int32(1))
-    wx = fx - T(ix - Int32(1))
+    ix0 = min(unsafe_trunc(Int32, fx), g.nx - Int32(2))
+    wx = fx - T(ix0)
+    ix = ix0 + Int32(1)
 
-    c0 = g.data[ix]
-    c1 = g.data[ix + 1]
+    @inbounds begin
+        c0 = g.data[ix]
+        c1 = g.data[ix + 1]
+    end
 
     return _lerp(c0, c1, wx)
 end
