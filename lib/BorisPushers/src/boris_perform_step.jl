@@ -1,17 +1,16 @@
 const TN_MAG_THRESHOLD = 1.0e-4
 
 @inline @muladd function update_velocity_boris(v, E, B, qdt_2m)
+    qE_2m = qdt_2m * E
     t_rotate = qdt_2m * B
     t_mag2 = sum(abs2, t_rotate)
-    s_rotate = 2 * t_rotate / (1 + t_mag2)
+    s_rotate = (2 / (1 + t_mag2)) * t_rotate
 
-    v⁻ = v + qdt_2m * E
+    v⁻ = v + qE_2m
     v′ = v⁻ + (v⁻ × t_rotate)
     v⁺ = v⁻ + (v′ × s_rotate)
 
-    v_new = v⁺ + qdt_2m * E
-
-    return v_new
+    return v⁺ + qE_2m
 end
 
 @muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
