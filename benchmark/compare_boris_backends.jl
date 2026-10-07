@@ -6,34 +6,12 @@
 # If you have an NVIDIA/AMD/Apple GPU, install the backend package (CUDA, AMDGPU, Metal)
 # and run with that package loaded, e.g.:
 #   julia --project=test -t auto -e "using CUDA; include(\"benchmark/compare_boris_backends.jl\")"
-#
-# Methodology:
-#  - Each reported number is the median of `N_REPEATS` runs, every run preceded by
-#    `GC.gc()`, and all of them taken after one untimed warmup call. This removes
-#    one-off costs (JIT compilation, CUDA context creation, first-time kernel
-#    compilation) that otherwise land entirely on the smallest problem size.
-#  - Both CPU benchmarks trace with `saveat = ()` and `save_everystep = false`, so only
-#    the initial and final states are assembled on the host. The two tables are
-#    therefore directly comparable, and neither is dominated by trajectory output.
-#  - GPU runs are explicitly synchronized. The reported time still includes the
-#    host-side assembly of `ODESolution` wrappers, which dominates at small N.
-#  - Timings and speedups are kept apart: each section prints absolute times first, then
-#    a separate table of speedups relative to one baseline column.
-#  - Sections [3] and [4] repeat the GPU measurement with a bulk `u0` matrix and
-#    `raw_output = true`. That removes the per-particle host bookkeeping without touching
-#    the kernel, so the kernel figures are unchanged while the end-to-end times are not.
-#  - Section [4] sweeps the step count at fixed N. The host cost does not depend on the
-#    number of steps, so fitting `t = a + b*steps` separates it from the kernel.
-#  - Do not benchmark on a shared login node: run inside an exclusive allocation.
 
 using TestParticle
 using StaticArrays
 using Statistics: median
 import TestParticle: solve
 using Printf
-
-# Only `CPU` is imported unqualified: `synchronize` is exported by both
-# KernelAbstractions.jl and CUDA.jl, so it is always called as `KA.synchronize`.
 using KernelAbstractions: CPU
 import KernelAbstractions as KA
 
@@ -42,12 +20,9 @@ const NSTEPS_ANALYTICAL = 1_000
 const NSTEPS_GRID = 200
 const ANALYTICAL_COUNTS = [1_000, 10_000, 100_000]
 const GRID_COUNTS = [2_000, 10_000, 50_000]
-# GPU-only: at these sizes the pusher kernel, not the host, sets the time.
+# GPU-only. At these sizes the kernel, not the host, sets the time.
 const LARGE_COUNTS = [100_000, 500_000, 1_000_000, 5_000_000]
-# GPU-only step sweep used to isolate the kernel from the host cost. The host cost is
-# O(N) and does not depend on the step count, so the sweep has to reach step counts
-# where the kernel term is comparable to or larger than the host term; at N = 10^6 the
-# two cross over around 10^4 steps.
+# GPU-only. The sweep must reach where b*steps exceeds a, which is around 10^4 steps.
 const KERNEL_SWEEP_N = 1_000_000
 const KERNEL_SWEEP_STEPS = [100, 1_000, 10_000, 50_000, 200_000]
 
@@ -299,7 +274,7 @@ function run_benchmark_gpu_scaling(
             push!(times32, t32)
             push!(times32raw, t32raw)
         catch err
-            @warn "GPU large-scale run stopped at N = $N" exception = err
+            @warn "GPU large-scale run stopped at $N particles" exception = err
             break
         end
     end
@@ -309,11 +284,9 @@ end
 """
     run_benchmark_kernel_sweep(prob64, prob32, N, dt64, dt32, steps)
 
-Time the GPU backend at a fixed N while sweeping the number of Boris steps. Neither the
-particle initialization nor the `ODESolution` assembly depends on the step count, so
-fitting `t = a + b*steps` puts those costs in `a` and the kernel in `b`. With
-`raw = true` the sweep is repeated with `raw_kwargs`: `b` must come out unchanged, while
-`a` is the host cost that the bulk `u0` matrix and the raw output remove.
+Time the GPU backend at a fixed particle count while sweeping the number of Boris steps.
+The host cost does not depend on the step count, so a fit of `t = a + b*steps` separates
+the host cost `a` from the kernel `b`.
 """
 function run_benchmark_kernel_sweep(
         prob64, prob32, N, dt64, dt32, steps;
@@ -394,14 +367,14 @@ in the values or in the baseline, prints `-`.
 """
 function print_speedup_table(ylabel, row_names, col_names, values, baselines)
     width = 13
-    @printf("%-8s", ylabel)
+    @printf("%-9s", ylabel)
     for c in col_names
         @printf(" | %-*s", width, c)
     end
     println()
-    println("-"^(9 + (width + 3) * length(col_names)))
+    println("-"^(10 + (width + 3) * length(col_names)))
     for (i, row) in enumerate(row_names)
-        @printf("%-8s", row)
+        @printf("%-9s", row)
         for j in eachindex(col_names)
             v = values[i][j]
             s = (v === nothing || baselines[i] === nothing) ? "-" :
@@ -463,13 +436,13 @@ function main()
 
     if gpu_name != "None"
         @printf(
-            "%-8s | %-10s | %-10s | %-10s | %-10s | %-10s\n",
-            "N", "CPU Ser", "CPU Thr", "KA CPU", "GPU (FP64)", "GPU (FP32)"
+            "%-9s | %-10s | %-10s | %-10s | %-10s | %-10s\n",
+            "Particles", "CPU Ser", "CPU Thr", "KA CPU", "GPU (FP64)", "GPU (FP32)"
         )
     else
         @printf(
-            "%-8s | %-13s | %-13s | %-13s\n",
-            "N", "CPU Serial", "CPU Threads", "KA CPU"
+            "%-9s | %-13s | %-13s | %-13s\n",
+            "Particles", "CPU Serial", "CPU Threads", "KA CPU"
         )
     end
     println("-"^88)
@@ -480,12 +453,12 @@ function main()
         analytical[k] = res
         if res.t_gpu32 !== nothing
             @printf(
-                "%-8d | %7.2f ms | %7.2f ms | %7.2f ms | %7.2f ms | %7.2f ms\n",
+                "%-9d | %7.2f ms | %7.2f ms | %7.2f ms | %7.2f ms | %7.2f ms\n",
                 N, res.t_serial, res.t_threads, res.t_ka_cpu, res.t_gpu64, res.t_gpu32
             )
         else
             @printf(
-                "%-8d | %8.2f ms  | %8.2f ms  | %8.2f ms\n",
+                "%-9d | %8.2f ms  | %8.2f ms  | %8.2f ms\n",
                 N, res.t_serial, res.t_threads, res.t_ka_cpu
             )
         end
@@ -493,7 +466,7 @@ function main()
 
     println("\n  Speedup relative to CPU Serial:")
     print_speedup_table(
-        "N",
+        "Particles",
         string.(ANALYTICAL_COUNTS),
         ["CPU Thr", "KA CPU", "GPU (FP64)", "GPU (FP32)"],
         [[r.t_threads, r.t_ka_cpu, r.t_gpu64, r.t_gpu32] for r in analytical],
@@ -501,7 +474,7 @@ function main()
     )
 
     let res = analytical[end], N = res.N
-        println("\n  Effective throughput at N = $N ($(NSTEPS_ANALYTICAL) steps):")
+        println("\n  Effective throughput at $N particles ($(NSTEPS_ANALYTICAL) steps):")
         @printf(
             "    CPU serial %8.1f | CPU threads %8.1f | KA CPU %8.1f",
             throughput(N, NSTEPS_ANALYTICAL, res.t_serial),
@@ -527,11 +500,11 @@ function main()
 
     if gpu_name != "None"
         @printf(
-            "%-8s | %-15s | %-15s | %-15s | %-15s\n",
-            "N", "CPU Thr", "KA CPU", "GPU Unsort", "GPU Morton"
+            "%-9s | %-15s | %-15s | %-15s | %-15s\n",
+            "Particles", "CPU Thr", "KA CPU", "GPU Unsort", "GPU Morton"
         )
     else
-        @printf("%-8s | %-15s | %-15s\n", "N", "CPU Threads", "KA CPU")
+        @printf("%-9s | %-15s | %-15s\n", "Particles", "CPU Threads", "KA CPU")
     end
     println("-"^88)
 
@@ -541,11 +514,11 @@ function main()
         grid[k] = gres
         if gres.t_gpu !== nothing
             @printf(
-                "%-8d | %12.2f ms | %12.2f ms | %12.2f ms | %12.2f ms\n",
+                "%-9d | %12.2f ms | %12.2f ms | %12.2f ms | %12.2f ms\n",
                 N, gres.t_cpu, gres.t_ka_cpu, gres.t_gpu, gres.t_gpu_sorted
             )
         else
-            @printf("%-8d | %12.2f ms | %12.2f ms\n", N, gres.t_cpu, gres.t_ka_cpu)
+            @printf("%-9d | %12.2f ms | %12.2f ms\n", N, gres.t_cpu, gres.t_ka_cpu)
         end
     end
 
@@ -555,7 +528,7 @@ function main()
     )
     println("\n  Speedup relative to CPU Threads:")
     print_speedup_table(
-        "N",
+        "Particles",
         string.(GRID_COUNTS),
         ["KA CPU", "GPU Unsort", "GPU Morton"],
         [[g.t_ka_cpu, g.t_gpu, g.t_gpu_sorted] for g in grid],
@@ -567,8 +540,8 @@ function main()
         println("\n[3] GPU-only large-scale throughput (", NSTEPS_ANALYTICAL, " steps)")
         println("-"^88)
         @printf(
-            "%-8s | %-13s | %-13s | %-13s | %-12s | %-12s\n",
-            "N", "GPU (FP64)", "GPU (FP32)", "FP32 raw", "FP32 M/s", "Raw M/s"
+            "%-9s | %-13s | %-13s | %-13s | %-12s | %-12s\n",
+            "Particles", "GPU (FP64)", "GPU (FP32)", "FP32 raw", "FP32 M/s", "Raw M/s"
         )
         println("-"^88)
 
@@ -577,7 +550,7 @@ function main()
         )
         for (i, N) in enumerate(large.Ns)
             @printf(
-                "%-8d | %10.2f ms | %10.2f ms | %10.2f ms | %12.1f | %12.1f\n",
+                "%-9d | %10.2f ms | %10.2f ms | %10.2f ms | %12.1f | %12.1f\n",
                 N, large.times64[i], large.times32[i], large.times32raw[i],
                 throughput(N, NSTEPS_ANALYTICAL, large.times32[i]),
                 throughput(N, NSTEPS_ANALYTICAL, large.times32raw[i])
@@ -586,7 +559,7 @@ function main()
 
         println("\n  Speedup relative to GPU (FP64):")
         print_speedup_table(
-            "N", string.(large.Ns), ["GPU (FP32)", "FP32 raw"],
+            "Particles", string.(large.Ns), ["GPU (FP32)", "FP32 raw"],
             [[large.times32[i], large.times32raw[i]] for i in eachindex(large.Ns)],
             large.times64
         )
@@ -595,11 +568,13 @@ function main()
                 "  ODESolution is built. It changes the host bookkeeping only."
         )
 
-        # 4. Kernel isolation: sweep the step count at fixed N.
-        println("\n[4] GPU-only kernel isolation (N = $KERNEL_SWEEP_N, step sweep)")
+        # 4. Kernel isolation: sweep the step count at fixed particle count.
+        println(
+            "\n[4] GPU-only kernel isolation ($KERNEL_SWEEP_N particles, step sweep)"
+        )
         println("-"^88)
         @printf(
-            "%-8s | %-13s | %-13s | %-13s | %-13s\n",
+            "%-9s | %-13s | %-13s | %-13s | %-13s\n",
             "Steps", "GPU (FP64)", "GPU (FP32)", "FP64 raw", "FP32 raw"
         )
         println("-"^88)
@@ -609,7 +584,7 @@ function main()
         )
         for (i, nt) in enumerate(sweep.steps)
             @printf(
-                "%-8d | %10.2f ms | %10.2f ms | %10.2f ms | %10.2f ms\n",
+                "%-9d | %10.2f ms | %10.2f ms | %10.2f ms | %10.2f ms\n",
                 nt, sweep.times64[i], sweep.times32[i],
                 sweep.times64raw[i], sweep.times32raw[i]
             )
@@ -629,7 +604,7 @@ function main()
                 ("raw", "FP64", linear_fit(Float64.(sweep.steps), sweep.times64raw)),
                 ("raw", "FP32", linear_fit(Float64.(sweep.steps), sweep.times32raw)),
             )
-            println("\n  Fit of t = a + b*steps at N = $(sweep.N)")
+            println("\n  Fit of t = a + b*steps at $(sweep.N) particles")
             @printf(
                 "    %-10s %-5s | %-13s | %-17s | %s\n",
                 "variant", "prec", "host cost a", "kernel per step b", "kernel M steps/s"

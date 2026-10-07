@@ -12,7 +12,7 @@
 # TP_SBATCH_ARGS, e.g.
 #   TP_SBATCH_ARGS="--qos=regular --time=00:30:00 --account=m1234" julia ...
 #
-# Plot the collected curve with plot_scaling_multinode.jl.
+# Plot the collected curve with plot_scaling.jl.
 
 using DelimitedFiles
 using Printf
@@ -152,7 +152,7 @@ function main()
     isempty(rows) &&
         error("No results collected; check res_scaling_*.txt and err_scaling_*.txt.")
     report(rows)
-    println("Run plot_scaling_multinode.jl to plot the curve.")
+    println("Run plot_scaling.jl multinode to plot the curve.")
     return nothing
 end
 
