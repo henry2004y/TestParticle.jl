@@ -160,6 +160,7 @@ end
 end
 
 @inline function _apply_bc_1d(x, x0, xmax, bc)
+    isnan(x) && return (x, true)
     if bc isa FillExtrap
         (x < x0 || x > xmax) && return (x, true)
     elseif bc isa ClampExtrap
@@ -390,3 +391,240 @@ function _to_gpu_grid(itp, backend::Backend; dir = 1)
     end
     return Adapt.adapt(backend, itp)
 end
+
+"""
+    GPUUniformAxis{T, B}
+
+Uniform 1D grid axis for GPU-compatible interpolators.
+"""
+struct GPUUniformAxis{T, B}
+    x0::T
+    dx::T
+    inv_dx::T
+    n::Int32
+    xmax::T
+    bc::B
+end
+
+function GPUUniformAxis(x0::T, dx::T, inv_dx::T, n::Integer, xmax::T, bc::B) where {T, B}
+    return GPUUniformAxis{T, B}(x0, dx, inv_dx, Int32(n), xmax, bc)
+end
+
+function GPUUniformAxis(x0::T, dx::T, inv_dx::T, n::Integer, bc::B) where {T, B}
+    xmax = x0 + T(n - 1) * dx
+    return GPUUniformAxis(x0, dx, inv_dx, Int32(n), xmax, bc)
+end
+
+Adapt.adapt_structure(to, ax::GPUUniformAxis) = GPUUniformAxis(
+    ax.x0, ax.dx, ax.inv_dx, ax.n, ax.xmax, Adapt.adapt(to, ax.bc),
+)
+
+"""
+    GPUNonUniformAxis{T, V<:AbstractVector{T}, B}
+
+Non-uniform 1D grid axis for GPU-compatible interpolators.
+"""
+struct GPUNonUniformAxis{T, V <: AbstractVector{T}, B}
+    coords::V
+    x0::T
+    xmax::T
+    n::Int32
+    bc::B
+end
+
+function GPUNonUniformAxis(
+        coords::V, x0::T, xmax::T, n::Integer, bc::B
+    ) where {T, V <: AbstractVector{T}, B}
+    return GPUNonUniformAxis{T, V, B}(coords, x0, xmax, Int32(n), bc)
+end
+
+function GPUNonUniformAxis(coords::V, bc::B) where {T, V <: AbstractVector{T}, B}
+    x0 = coords[1]
+    xmax = coords[end]
+    n = Int32(length(coords))
+    return GPUNonUniformAxis{T, V, B}(coords, x0, xmax, n, bc)
+end
+
+Adapt.adapt_structure(to, ax::GPUNonUniformAxis) = GPUNonUniformAxis(
+    Adapt.adapt(to, ax.coords), ax.x0, ax.xmax, ax.n, Adapt.adapt(to, ax.bc),
+)
+
+@inline function _search_bracket(coords::AbstractVector{T}, val::T, n::Int32) where {T}
+    c_first = @inbounds coords[1]
+    c_last = @inbounds coords[n]
+    val <= c_first && return (Int32(1), zero(T))
+    val >= c_last && return (n - Int32(1), one(T))
+
+    low = Int32(1)
+    high = n
+    @inbounds while low <= high
+        mid = (low + high) >> 1
+        if coords[mid] <= val
+            low = mid + Int32(1)
+        else
+            high = mid - Int32(1)
+        end
+    end
+    i = clamp(high, Int32(1), n - Int32(1))
+    @inbounds begin
+        c_i = coords[i]
+        c_next = coords[i + 1]
+    end
+    w = (val - c_i) / (c_next - c_i)
+    return (i, clamp(w, zero(T), one(T)))
+end
+
+@inline function _axis_eval(ax::GPUUniformAxis{T}, val::Real) where {T}
+    v = T(val)
+    v_adj, out = _apply_bc_1d(v, ax.x0, ax.xmax, ax.bc)
+    out && return (Int32(1), zero(T), true)
+    fv = clamp((v_adj - ax.x0) * ax.inv_dx, zero(T), T(ax.n - Int32(1)))
+    i0 = min(unsafe_trunc(Int32, fv), ax.n - Int32(2))
+    w = fv - T(i0)
+    return (i0 + Int32(1), w, false)
+end
+
+@inline function _axis_eval(ax::GPUNonUniformAxis{T}, val::Real) where {T}
+    v = T(val)
+    v_adj, out = _apply_bc_1d(v, ax.x0, ax.xmax, ax.bc)
+    out && return (Int32(1), zero(T), true)
+    i, w = _search_bracket(ax.coords, v_adj, ax.n)
+    return (i, w, false)
+end
+
+"""
+    GPUSphericalGrid{T, Ar, Aθ, Aϕ, V, A, B} <: AbstractFieldInterpolator
+
+Spherical grid interpolator compatible with GPU device execution.
+Supports both uniform and non-uniform grids in r, θ, and ϕ.
+"""
+struct GPUSphericalGrid{
+    T, Ar, Aθ, Aϕ, V, A <: AbstractArray{V, 3}, B
+} <: AbstractFieldInterpolator
+    data::A
+    axis_r::Ar
+    axis_θ::Aθ
+    axis_ϕ::Aϕ
+    bc::B
+end
+
+function GPUSphericalGrid(
+        data::A,
+        axis_r::Ar,
+        axis_θ::Aθ,
+        axis_ϕ::Aϕ,
+        bc::B
+    ) where {Ar, Aθ, Aϕ, V, A <: AbstractArray{V, 3}, B}
+    T = typeof(axis_r.x0)
+    return GPUSphericalGrid{T, Ar, Aθ, Aϕ, V, A, B}(data, axis_r, axis_θ, axis_ϕ, bc)
+end
+
+Adapt.adapt_structure(to, g::GPUSphericalGrid) = GPUSphericalGrid(
+    Adapt.adapt(to, g.data),
+    Adapt.adapt(to, g.axis_r),
+    Adapt.adapt(to, g.axis_θ),
+    Adapt.adapt(to, g.axis_ϕ),
+    Adapt.adapt(to, g.bc),
+)
+
+@inline _transform_spherical_result(res::SVector{3}, θ, ϕ) =
+    sph2cartvec(res[1], res[2], res[3], θ, ϕ)
+@inline _transform_spherical_result(res::Number, θ, ϕ) = res
+@inline _transform_spherical_result(res, θ, ϕ) =
+    length(res) > 1 ? sph2cartvec(res[1], res[2], res[3], θ, ϕ) : res
+
+@inline function (g::GPUSphericalGrid{T, Ar, Aθ, Aϕ, V})(
+        x::Real, y::Real, z::Real
+    ) where {T, Ar, Aθ, Aϕ, V}
+    rθϕ = cart2sph(x, y, z)
+    r = rθϕ[1]
+    θ = rθϕ[2]
+    ϕ = rθϕ[3]
+
+    ir, wr, out_r = _axis_eval(g.axis_r, r)
+    iθ, wθ, out_θ = _axis_eval(g.axis_θ, θ)
+    iϕ, wϕ, out_ϕ = _axis_eval(g.axis_ϕ, ϕ)
+
+    (out_r || out_θ || out_ϕ) && return _fill_value(g.bc, V)
+
+    @inbounds begin
+        c000 = g.data[ir, iθ, iϕ]
+        c100 = g.data[ir + 1, iθ, iϕ]
+        c010 = g.data[ir, iθ + 1, iϕ]
+        c110 = g.data[ir + 1, iθ + 1, iϕ]
+        c001 = g.data[ir, iθ, iϕ + 1]
+        c101 = g.data[ir + 1, iθ, iϕ + 1]
+        c011 = g.data[ir, iθ + 1, iϕ + 1]
+        c111 = g.data[ir + 1, iθ + 1, iϕ + 1]
+    end
+
+    c00 = _lerp(c000, c100, wr)
+    c10 = _lerp(c010, c110, wr)
+    c01 = _lerp(c001, c101, wr)
+    c11 = _lerp(c011, c111, wr)
+
+    c0 = _lerp(c00, c10, wθ)
+    c1 = _lerp(c01, c11, wθ)
+
+    res = _lerp(c0, c1, wϕ)
+    return _transform_spherical_result(res, θ, ϕ)
+end
+
+@inline (g::GPUSphericalGrid)(coords::Tuple) = g(coords[1], coords[2], coords[3])
+@inline (g::GPUSphericalGrid)(coords::Tuple, t) = g(coords[1], coords[2], coords[3])
+@inline (g::GPUSphericalGrid)(xu::AbstractVector) = g(xu[1], xu[2], xu[3])
+@inline (g::GPUSphericalGrid)(xu::AbstractVector, t) = g(xu[1], xu[2], xu[3])
+@inline (g::GPUSphericalGrid)(x::Real, y::Real, z::Real, t) = g(x, y, z)
+
+function _to_gpu_axis(g, backend::Backend, bc)
+    if hasproperty(g, :lo) && g.h isa Number
+        T = typeof(g.lo)
+        x0 = T(g.lo)
+        dx = T(g.h)
+        inv_dx = T(g.inv_h)
+        n = Int32(g.len)
+        xmax = x0 + T(n - 1) * dx
+        return GPUUniformAxis(x0, dx, inv_dx, n, xmax, bc)
+    elseif hasproperty(g, :inner)
+        coords = g.inner
+        T = eltype(coords)
+        coords_gpu = Adapt.adapt(backend, coords)
+        n = Int32(length(coords))
+        return GPUNonUniformAxis(coords_gpu, T(coords[1]), T(coords[end]), n, bc)
+    elseif g isa AbstractRange && !(g isa Base.LogRange)
+        T = eltype(g)
+        x0 = T(first(g))
+        dx = T(step(g))
+        inv_dx = inv(dx)
+        n = Int32(length(g))
+        xmax = x0 + T(n - 1) * dx
+        return GPUUniformAxis(x0, dx, inv_dx, n, xmax, bc)
+    elseif g isa AbstractVector
+        T = eltype(g)
+        coords_gpu = Adapt.adapt(backend, collect(g))
+        n = Int32(length(g))
+        return GPUNonUniformAxis(coords_gpu, T(first(g)), T(last(g)), n, bc)
+    else
+        throw(ArgumentError("Unsupported grid axis type: $(typeof(g))"))
+    end
+end
+
+function _to_gpu_spherical_grid(itp, backend::Backend)
+    if isdefined(itp, :grids) && isdefined(itp, :data)
+        gr, gθ, gϕ = itp.grids
+        bc = itp.extraps
+        bcr = _get_bc_dim(bc, 1)
+        bcθ = _get_bc_dim(bc, 2)
+        bcϕ = _get_bc_dim(bc, 3)
+
+        axis_r = _to_gpu_axis(gr, backend, bcr)
+        axis_θ = _to_gpu_axis(gθ, backend, bcθ)
+        axis_ϕ = _to_gpu_axis(gϕ, backend, bcϕ)
+
+        data_gpu = Adapt.adapt(backend, itp.data)
+        return GPUSphericalGrid(data_gpu, axis_r, axis_θ, axis_ϕ, bc)
+    else
+        throw(ArgumentError("Expected interpolant with grids and data fields."))
+    end
+end
+

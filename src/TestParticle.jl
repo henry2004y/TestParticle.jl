@@ -62,6 +62,7 @@ export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export GPUGrid3D, GPUGrid2D, GPUGrid1D
+export GPUSphericalGrid, GPUUniformAxis, GPUNonUniformAxis
 export TraceProblem, TraceGCProblem, TraceHybridProblem
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
