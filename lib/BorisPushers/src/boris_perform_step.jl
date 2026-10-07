@@ -49,9 +49,9 @@ end
         n_term1 = T(2 * n)
         n_term3 = T(4 * n * n * n)
 
-        c_n2 = n_term1 - (n_term1 + n_term3) / T(3) * t_n_mag2
-        c_n3 = T(2 * n * n) - T(4 * n * n + 2 * n * n * n * n) / T(3) * t_n_mag2
         c_n6 = (n_term1 + n_term3) / T(3)
+        c_n2 = n_term1 - c_n6 * t_n_mag2
+        c_n3 = T(2 * n * n) - T(4 * n * n + 2 * n * n * n * n) / T(3) * t_n_mag2
     else
         alpha_n = atan(t_n_mag)
         n_alpha_n = T(n) * alpha_n
@@ -65,21 +65,18 @@ end
         c_n6 = (T(2 * n) - c_n2) / t_n_mag2
     end
 
-    c_n4 = c_n2
-    c_n5 = c_n3
-
     v_dot_t = v ⋅ t_n
     e_dot_t = e_n ⋅ t_n
 
     v_cross_t = v × t_n
     e_cross_t = e_n × t_n
 
+    t_coeff = muladd(c_n3, v_dot_t, c_n6 * e_dot_t)
+
     v_new = c_n1 * v +
-        c_n2 * v_cross_t +
-        c_n3 * v_dot_t * t_n +
-        c_n4 * e_n +
-        c_n5 * e_cross_t +
-        c_n6 * e_dot_t * t_n
+        c_n2 * (v_cross_t + e_n) +
+        c_n3 * e_cross_t +
+        t_coeff * t_n
 
     return v_new
 end
