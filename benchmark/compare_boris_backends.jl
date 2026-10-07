@@ -550,41 +550,56 @@ function main()
     end
 
     println("\n  Speedup relative to CPU Serial:")
+    cols_analytical = gpu_name != "None" ?
+        ["CPU Thr", "KA CPU", "GPU (FP64)", "GPU (FP32)"] : ["CPU Thr", "KA CPU"]
+    vals_analytical = gpu_name != "None" ?
+        [[r.t_threads, r.t_ka_cpu, r.t_gpu64, r.t_gpu32] for r in analytical] :
+        [[r.t_threads, r.t_ka_cpu] for r in analytical]
     print_speedup_table(
         "Particles",
         string.(ANALYTICAL_COUNTS),
-        ["CPU Thr", "KA CPU", "GPU (FP64)", "GPU (FP32)"],
-        [[r.t_threads, r.t_ka_cpu, r.t_gpu64, r.t_gpu32] for r in analytical],
+        cols_analytical,
+        vals_analytical,
         [r.t_serial for r in analytical]
     )
 
     # Same sweep through the raw path, which is the configuration the rest of the
     # script reports. `EnsembleSerial` and `EnsembleThreads` have no raw path.
     println("\n  Raw output (bulk `u0` matrix, no ODESolution per particle):")
-    @printf(
-        "%-9s | %-13s | %-13s | %-13s\n",
-        "Particles", "KA CPU", "GPU (FP64)", "GPU (FP32)"
-    )
+    if gpu_name != "None"
+        @printf(
+            "%-9s | %-13s | %-13s | %-13s\n",
+            "Particles", "KA CPU", "GPU (FP64)", "GPU (FP32)"
+        )
+    else
+        @printf("%-9s | %-13s\n", "Particles", "KA CPU")
+    end
     println("-"^88)
 
     analytical_raw = Vector{NamedTuple}(undef, length(ANALYTICAL_COUNTS))
     for (k, N) in enumerate(ANALYTICAL_COUNTS)
         res = run_benchmark_analytical(prob64, prob32, N, dt64, dt32; raw = true)
         analytical_raw[k] = res
-        @printf(
-            "%-9d | %10.2f ms | %10.2f ms | %10.2f ms\n",
-            N, res.t_ka_cpu, res.t_gpu64, res.t_gpu32
-        )
+        if res.t_gpu32 !== nothing
+            @printf(
+                "%-9d | %10.2f ms | %10.2f ms | %10.2f ms\n",
+                N, res.t_ka_cpu, res.t_gpu64, res.t_gpu32
+            )
+        else
+            @printf("%-9d | %10.2f ms\n", N, res.t_ka_cpu)
+        end
     end
 
-    println("\n  Speedup relative to KA CPU, raw output:")
-    print_speedup_table(
-        "Particles",
-        string.(ANALYTICAL_COUNTS),
-        ["GPU (FP64)", "GPU (FP32)"],
-        [[r.t_gpu64, r.t_gpu32] for r in analytical_raw],
-        [r.t_ka_cpu for r in analytical_raw]
-    )
+    if gpu_name != "None"
+        println("\n  Speedup relative to KA CPU, raw output:")
+        print_speedup_table(
+            "Particles",
+            string.(ANALYTICAL_COUNTS),
+            ["GPU (FP64)", "GPU (FP32)"],
+            [[r.t_gpu64, r.t_gpu32] for r in analytical_raw],
+            [r.t_ka_cpu for r in analytical_raw]
+        )
+    end
 
     let res = analytical[end], N = res.N
         println("\n  Effective throughput at $N particles ($(NSTEPS_ANALYTICAL) steps):")
@@ -640,33 +655,47 @@ function main()
             "  costs far more than the pusher itself; `KA CPU` is the fair CPU baseline."
     )
     println("\n  Speedup relative to CPU Threads:")
+    cols_grid = gpu_name != "None" ? ["KA CPU", "GPU"] : ["KA CPU"]
+    vals_grid = gpu_name != "None" ?
+        [[g.t_ka_cpu, g.t_gpu] for g in grid] :
+        [[g.t_ka_cpu] for g in grid]
     print_speedup_table(
         "Particles",
         string.(GRID_COUNTS),
-        ["KA CPU", "GPU"],
-        [[g.t_ka_cpu, g.t_gpu] for g in grid],
+        cols_grid,
+        vals_grid,
         [g.t_cpu for g in grid]
     )
 
     println("\n  Raw output (bulk `u0` matrix, no ODESolution per particle):")
-    @printf("%-9s | %-15s | %-15s\n", "Particles", "KA CPU", "GPU")
+    if gpu_name != "None"
+        @printf("%-9s | %-15s | %-15s\n", "Particles", "KA CPU", "GPU")
+    else
+        @printf("%-9s | %-15s\n", "Particles", "KA CPU")
+    end
     println("-"^88)
 
     grid_raw = Vector{NamedTuple}(undef, length(GRID_COUNTS))
     for (k, N) in enumerate(GRID_COUNTS)
         gres = run_benchmark_grid(grid_prob, N, dt_grid; raw = true)
         grid_raw[k] = gres
-        @printf("%-9d | %12.2f ms | %12.2f ms\n", N, gres.t_ka_cpu, gres.t_gpu)
+        if gres.t_gpu !== nothing
+            @printf("%-9d | %12.2f ms | %12.2f ms\n", N, gres.t_ka_cpu, gres.t_gpu)
+        else
+            @printf("%-9d | %12.2f ms\n", N, gres.t_ka_cpu)
+        end
     end
 
-    println("\n  Speedup relative to KA CPU, raw output:")
-    print_speedup_table(
-        "Particles",
-        string.(GRID_COUNTS),
-        ["GPU"],
-        [[g.t_gpu] for g in grid_raw],
-        [g.t_ka_cpu for g in grid_raw]
-    )
+    if gpu_name != "None"
+        println("\n  Speedup relative to KA CPU, raw output:")
+        print_speedup_table(
+            "Particles",
+            string.(GRID_COUNTS),
+            ["GPU"],
+            [[g.t_gpu] for g in grid_raw],
+            [g.t_ka_cpu for g in grid_raw]
+        )
+    end
 
     # 3. GPU-only large-scale scaling
     if gpu_name != "None"
