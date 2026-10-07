@@ -11,22 +11,44 @@ struct GPUGrid3D{T, B, V, A <: AbstractArray{V, 3}} <: AbstractFieldInterpolator
     dx::T
     inv_dx::T
     nx::Int32
+    xmax::T
     y0::T
     dy::T
     inv_dy::T
     ny::Int32
+    ymax::T
     z0::T
     dz::T
     inv_dz::T
     nz::Int32
+    zmax::T
     bc::B
+end
+
+function GPUGrid3D(
+        data::A,
+        x0::T, dx::T, inv_dx::T, nx::Integer,
+        y0::T, dy::T, inv_dy::T, ny::Integer,
+        z0::T, dz::T, inv_dz::T, nz::Integer,
+        bc::B
+    ) where {T, B, V, A <: AbstractArray{V, 3}}
+    xmax = x0 + T(nx - 1) * dx
+    ymax = y0 + T(ny - 1) * dy
+    zmax = z0 + T(nz - 1) * dz
+    return GPUGrid3D(
+        data,
+        x0, dx, inv_dx, Int32(nx), xmax,
+        y0, dy, inv_dy, Int32(ny), ymax,
+        z0, dz, inv_dz, Int32(nz), zmax,
+        bc
+    )
 end
 
 Adapt.adapt_structure(to, g::GPUGrid3D) = GPUGrid3D(
     Adapt.adapt(to, g.data),
-    g.x0, g.dx, g.inv_dx, g.nx,
-    g.y0, g.dy, g.inv_dy, g.ny,
-    g.z0, g.dz, g.inv_dz, g.nz,
+    g.x0, g.dx, g.inv_dx, g.nx, g.xmax,
+    g.y0, g.dy, g.inv_dy, g.ny, g.ymax,
+    g.z0, g.dz, g.inv_dz, g.nz, g.zmax,
     Adapt.adapt(to, g.bc),
 )
 
@@ -41,17 +63,35 @@ struct GPUGrid2D{T, B, V, A <: AbstractArray{V, 2}} <: AbstractFieldInterpolator
     dx::T
     inv_dx::T
     nx::Int32
+    xmax::T
     y0::T
     dy::T
     inv_dy::T
     ny::Int32
+    ymax::T
     bc::B
+end
+
+function GPUGrid2D(
+        data::A,
+        x0::T, dx::T, inv_dx::T, nx::Integer,
+        y0::T, dy::T, inv_dy::T, ny::Integer,
+        bc::B
+    ) where {T, B, V, A <: AbstractArray{V, 2}}
+    xmax = x0 + T(nx - 1) * dx
+    ymax = y0 + T(ny - 1) * dy
+    return GPUGrid2D(
+        data,
+        x0, dx, inv_dx, Int32(nx), xmax,
+        y0, dy, inv_dy, Int32(ny), ymax,
+        bc
+    )
 end
 
 Adapt.adapt_structure(to, g::GPUGrid2D) = GPUGrid2D(
     Adapt.adapt(to, g.data),
-    g.x0, g.dx, g.inv_dx, g.nx,
-    g.y0, g.dy, g.inv_dy, g.ny,
+    g.x0, g.dx, g.inv_dx, g.nx, g.xmax,
+    g.y0, g.dy, g.inv_dy, g.ny, g.ymax,
     Adapt.adapt(to, g.bc),
 )
 
@@ -66,13 +106,29 @@ struct GPUGrid1D{T, B, V, A <: AbstractArray{V, 1}} <: AbstractFieldInterpolator
     dx::T
     inv_dx::T
     nx::Int32
+    xmax::T
     dir::Int32
     bc::B
 end
 
+function GPUGrid1D(
+        data::A,
+        x0::T, dx::T, inv_dx::T, nx::Integer,
+        dir::Integer,
+        bc::B
+    ) where {T, B, V, A <: AbstractArray{V, 1}}
+    xmax = x0 + T(nx - 1) * dx
+    return GPUGrid1D(
+        data,
+        x0, dx, inv_dx, Int32(nx), xmax,
+        Int32(dir),
+        bc
+    )
+end
+
 Adapt.adapt_structure(to, g::GPUGrid1D) = GPUGrid1D(
     Adapt.adapt(to, g.data),
-    g.x0, g.dx, g.inv_dx, g.nx,
+    g.x0, g.dx, g.inv_dx, g.nx, g.xmax,
     g.dir,
     Adapt.adapt(to, g.bc),
 )
@@ -130,9 +186,9 @@ end
     bc_y = _get_bc_dim(g.bc, 2)
     bc_z = _get_bc_dim(g.bc, 3)
 
-    xmax = g.x0 + T(g.nx - Int32(1)) * g.dx
-    ymax = g.y0 + T(g.ny - Int32(1)) * g.dy
-    zmax = g.z0 + T(g.nz - Int32(1)) * g.dz
+    xmax = g.xmax
+    ymax = g.ymax
+    zmax = g.zmax
 
     x_adj, out_x = _apply_bc_1d(x, g.x0, xmax, bc_x)
     y_adj, out_y = _apply_bc_1d(y, g.y0, ymax, bc_y)
@@ -186,8 +242,8 @@ end
     bc_x = _get_bc_dim(g.bc, 1)
     bc_y = _get_bc_dim(g.bc, 2)
 
-    xmax = g.x0 + T(g.nx - Int32(1)) * g.dx
-    ymax = g.y0 + T(g.ny - Int32(1)) * g.dy
+    xmax = g.xmax
+    ymax = g.ymax
 
     x_adj, out_x = _apply_bc_1d(x, g.x0, xmax, bc_x)
     y_adj, out_y = _apply_bc_1d(y, g.y0, ymax, bc_y)
@@ -225,7 +281,7 @@ end
 
 @inline function (g::GPUGrid1D{T, B, V})(x::Real) where {T, B, V}
     bc_x = _get_bc_dim(g.bc, 1)
-    xmax = g.x0 + T(g.nx - Int32(1)) * g.dx
+    xmax = g.xmax
 
     x_adj, out_x = _apply_bc_1d(x, g.x0, xmax, bc_x)
     out_x && return _fill_value(g.bc, V)
