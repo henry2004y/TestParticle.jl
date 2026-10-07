@@ -25,6 +25,13 @@ const LARGE_COUNTS = [100_000, 500_000, 1_000_000, 5_000_000]
 # GPU-only. The sweep must reach where b*steps exceeds a, which is around 10^4 steps.
 const KERNEL_SWEEP_N = 1_000_000
 const KERNEL_SWEEP_STEPS = [100, 1_000, 10_000, 50_000, 200_000]
+# The grid field costs far more per step, so the same particle count needs fewer steps.
+const KERNEL_SWEEP_N_GRID = 1_000_000
+const KERNEL_SWEEP_STEPS_GRID = [10, 100, 1_000, 10_000]
+# Enough device work to leave the idle power state before a timed measurement.
+const WARMUP_PARTICLES = 100_000
+const WARMUP_STEPS = 10_000
+const WARMUP_SECONDS = 0.3
 
 """
     measure_time(f::Function, repeats::Int = N_REPEATS) -> Float64
@@ -87,10 +94,13 @@ end
 
 function run_benchmark_analytical(
         prob64, prob32, N, dt64, dt32;
-        saveat = (), save_everystep = false
+        raw::Bool = false, saveat = (), save_everystep = false
     )
-    # 1. CPU Serial (Float64)
-    t_serial = measure_time() do
+    # `EnsembleSerial` and `EnsembleThreads` have no raw path, so they are only timed
+    # for the default API.
+    timed(f) = raw ? nothing : measure_time(f)
+
+    t_serial = timed() do
         solve(
             prob64, Boris(), EnsembleSerial();
             trajectories = N, dt = dt64, saveat, save_everystep
@@ -98,8 +108,7 @@ function run_benchmark_analytical(
         return nothing
     end
 
-    # 2. CPU Threads (Float64)
-    t_threads = measure_time() do
+    t_threads = timed() do
         solve(
             prob64, Boris(), EnsembleThreads();
             trajectories = N, dt = dt64, saveat, save_everystep
@@ -107,26 +116,37 @@ function run_benchmark_analytical(
         return nothing
     end
 
-    # 3. KernelAbstractions CPU Batch (Float64)
+    kw64 = raw ? raw_kwargs(prob64, N) : (;)
+    kw32 = raw ? raw_kwargs(prob32, N) : (;)
+
+    # KernelAbstractions CPU Batch (Float64)
     t_ka_cpu = measure_time() do
-        solve(prob64, Boris(), CPU(); trajectories = N, dt = dt64, saveat, save_everystep)
+        solve(
+            prob64, Boris(), CPU();
+            trajectories = N, dt = dt64, saveat, save_everystep, kw64...
+        )
         KA.synchronize(CPU())
         return nothing
     end
 
-    # 4. GPU (Float64 and Float32)
+    # GPU (Float64 and Float32)
     _, gpu_backend = detect_gpu_backend()
     t_gpu64 = nothing
     t_gpu32 = nothing
     if gpu_backend !== nothing
+        warmup_gpu!(gpu_backend, prob64, dt64)
         try
             t_gpu64 = measure_time() do
-                solve_gpu(prob64, Boris(), gpu_backend, N, dt64; saveat, save_everystep)
+                solve_gpu(
+                    prob64, Boris(), gpu_backend, N, dt64; saveat, save_everystep, kw64...
+                )
                 return nothing
             end
 
             t_gpu32 = measure_time() do
-                solve_gpu(prob32, Boris(), gpu_backend, N, dt32; saveat, save_everystep)
+                solve_gpu(
+                    prob32, Boris(), gpu_backend, N, dt32; saveat, save_everystep, kw32...
+                )
                 return nothing
             end
         catch err
@@ -165,19 +185,30 @@ function setup_grid_problem(; grid_res = 32, dt = 1.0f-8, nsteps = NSTEPS_GRID)
     return prob32
 end
 
-function run_benchmark_grid(prob32, N, dt; saveat = (), save_everystep = false)
-    # 1. CPU multithreading grid (one ODESolution per particle)
-    t_cpu = measure_time() do
-        solve(
-            prob32, Boris(), EnsembleThreads();
-            trajectories = N, dt, saveat, save_everystep
-        )
-        return nothing
+function run_benchmark_grid(
+        prob32, N, dt;
+        raw::Bool = false, saveat = (), save_everystep = false
+    )
+    kw32 = raw ? raw_kwargs(prob32, N) : (;)
+
+    # `EnsembleThreads` has no raw path, so it is only timed for the default API.
+    t_cpu = if raw
+        nothing
+    else
+        measure_time() do
+            solve(
+                prob32, Boris(), EnsembleThreads();
+                trajectories = N, dt, saveat, save_everystep
+            )
+            return nothing
+        end
     end
 
-    # 2. KernelAbstractions CPU batch grid
     t_ka_cpu = measure_time() do
-        solve(prob32, Boris(), CPU(); trajectories = N, dt, saveat, save_everystep)
+        solve(
+            prob32, Boris(), CPU();
+            trajectories = N, dt, saveat, save_everystep, kw32...
+        )
         KA.synchronize(CPU())
         return nothing
     end
@@ -186,16 +217,19 @@ function run_benchmark_grid(prob32, N, dt; saveat = (), save_everystep = false)
     t_gpu = nothing
     t_gpu_sorted = nothing
     if gpu_backend !== nothing
+        warmup_gpu!(gpu_backend, prob32, dt)
         try
             t_gpu = measure_time() do
-                solve_gpu(prob32, Boris(), gpu_backend, N, dt; saveat, save_everystep)
+                solve_gpu(
+                    prob32, Boris(), gpu_backend, N, dt; saveat, save_everystep, kw32...
+                )
                 return nothing
             end
 
             t_gpu_sorted = measure_time() do
                 solve_gpu(
                     prob32, Boris(), gpu_backend, N, dt;
-                    saveat, save_everystep, sort_particles = true
+                    saveat, save_everystep, sort_particles = true, kw32...
                 )
                 return nothing
             end
@@ -234,6 +268,30 @@ raw_kwargs(prob, N) = (;
 )
 
 """
+    warmup_gpu!(backend, prob, dt; seconds = WARMUP_SECONDS)
+
+Burn `seconds` of device time on a throw-away ensemble. An idle accelerator sits in a low
+power state and needs a sustained load to ramp up, so a measurement shorter than the ramp
+runs several times slower than the steady state. That is what makes the first GPU column
+of section [1] an outlier after seconds of CPU-only work: three short runs are not enough
+to warm the device, but the column measured right after is fine. Call this immediately
+before each GPU measurement block.
+"""
+function warmup_gpu!(backend::KA.Backend, prob, dt; seconds::Real = WARMUP_SECONDS)
+    prob_long = remake(prob; tspan = (zero(dt), dt * WARMUP_STEPS))
+    kw = raw_kwargs(prob, WARMUP_PARTICLES)
+    t0 = time_ns()
+    while (time_ns() - t0) * 1.0e-9 < seconds
+        solve_gpu(
+            prob_long, Boris(), backend, WARMUP_PARTICLES, dt;
+            saveat = (), save_everystep = false, kw...
+        )
+    end
+    KA.synchronize(backend)
+    return nothing
+end
+
+"""
     run_benchmark_gpu_scaling(prob64, prob32, counts, dt64, dt32)
 
 Time the GPU backend alone over `counts` particles. `nothing` is returned when no GPU
@@ -247,6 +305,7 @@ function run_benchmark_gpu_scaling(
     )
     _, gpu_backend = detect_gpu_backend()
     gpu_backend === nothing && return nothing
+    warmup_gpu!(gpu_backend, prob32, dt32)
 
     Ns = Int[]
     times64 = Float64[]
@@ -282,64 +341,97 @@ function run_benchmark_gpu_scaling(
 end
 
 """
-    run_benchmark_kernel_sweep(prob64, prob32, N, dt64, dt32, steps)
+    run_benchmark_kernel_sweep(variants, N, steps; raw = false)
 
-Time the GPU backend at a fixed particle count while sweeping the number of Boris steps.
+Time the GPU backend at a fixed particle count `N` while sweeping the number of Boris
+steps. `variants` is a vector of `(name, prob, dt)`, one per field or precision, and the
+returned `series` holds one `baseline` and one `raw` time vector per variant.
+
 The host cost does not depend on the step count, so a fit of `t = a + b*steps` separates
-the host cost `a` from the kernel `b`.
+the host cost `a` from the kernel `b`. `b` must agree between the two variants, since the
+raw path only changes the host side.
 """
 function run_benchmark_kernel_sweep(
-        prob64, prob32, N, dt64, dt32, steps;
+        variants, N, steps;
         raw::Bool = false, saveat = (), save_everystep = false
     )
     _, gpu_backend = detect_gpu_backend()
     gpu_backend === nothing && return nothing
+    warmup_gpu!(gpu_backend, variants[1][2], variants[1][3])
 
-    kw64 = raw ? raw_kwargs(prob64, N) : (;)
-    kw32 = raw ? raw_kwargs(prob32, N) : (;)
+    kwargs = [raw ? raw_kwargs(prob, N) : (;) for (_, prob, _) in variants]
+    series = [
+        (; name = name, baseline = Float64[], raw = Float64[])
+            for (name, _, _) in variants
+    ]
 
     used = Int[]
-    times64 = Float64[]
-    times32 = Float64[]
-    times64raw = Float64[]
-    times32raw = Float64[]
     for nt in steps
         try
-            prob64_nt = remake(prob64; tspan = (zero(dt64), dt64 * nt))
-            prob32_nt = remake(prob32; tspan = (zero(dt32), dt32 * nt))
-            t64 = measure_time() do
-                solve_gpu(prob64_nt, Boris(), gpu_backend, N, dt64; saveat, save_everystep)
-                return nothing
-            end
-            t32 = measure_time() do
-                solve_gpu(prob32_nt, Boris(), gpu_backend, N, dt32; saveat, save_everystep)
-                return nothing
-            end
-            t64raw = measure_time() do
-                solve_gpu(
-                    prob64_nt, Boris(), gpu_backend, N, dt64;
-                    saveat, save_everystep, kw64...
+            for (k, (_, prob, dt)) in enumerate(variants)
+                prob_nt = remake(prob; tspan = (zero(dt), dt * nt))
+                push!(
+                    series[k].baseline,
+                    measure_time() do
+                        solve_gpu(
+                            prob_nt, Boris(), gpu_backend, N, dt; saveat, save_everystep
+                        )
+                        return nothing
+                    end
                 )
-                return nothing
-            end
-            t32raw = measure_time() do
-                solve_gpu(
-                    prob32_nt, Boris(), gpu_backend, N, dt32;
-                    saveat, save_everystep, kw32...
+                raw && push!(
+                    series[k].raw,
+                    measure_time() do
+                        solve_gpu(
+                            prob_nt, Boris(), gpu_backend, N, dt;
+                            saveat, save_everystep, kwargs[k]...
+                        )
+                        return nothing
+                    end
                 )
-                return nothing
             end
             push!(used, nt)
-            push!(times64, t64)
-            push!(times32, t32)
-            push!(times64raw, t64raw)
-            push!(times32raw, t32raw)
         catch err
             @warn "Kernel sweep stopped at $nt steps" exception = err
             break
         end
     end
-    return (; N, steps = used, times64, times32, times64raw, times32raw)
+    return (; N, steps = used, series)
+end
+
+"""
+    print_kernel_fit(sweep)
+
+Print the `t = a + b*steps` fit of every variant of a kernel sweep, both with the
+default API and with the raw output path.
+"""
+function print_kernel_fit(sweep)
+    length(sweep.steps) < 2 && return nothing
+
+    println("\n  Fit of t = a + b*steps at $(sweep.N) particles")
+    @printf(
+        "    %-16s %-9s | %-13s | %-17s | %s\n",
+        "case", "variant", "host cost a", "kernel per step b", "kernel M steps/s"
+    )
+    println("    " * "-"^76)
+    for s in sweep.series
+        for (label, times) in (("baseline", s.baseline), ("raw", s.raw))
+            length(times) < 2 && continue
+            fit = linear_fit(Float64.(sweep.steps), times)
+            @printf(
+                "    %-16s %-9s | %10.2f ms | %14.4f ms | %15.1f\n",
+                s.name, label, fit.intercept, fit.slope,
+                sweep.N / (fit.slope * 1.0e3)
+            )
+        end
+    end
+    println(
+        "    `a` is the host cost (initialization and ODESolution assembly);\n" *
+            "    `b` is the pusher kernel alone. A negative `a` means the model\n" *
+            "    does not hold and the fit cannot be trusted. `b` must agree\n" *
+            "    between variants, since the raw path changes the host side only."
+    )
+    return nothing
 end
 
 # Millions of particle-steps per second.
@@ -473,6 +565,34 @@ function main()
         [r.t_serial for r in analytical]
     )
 
+    # Same sweep through the raw path, which is the configuration the rest of the
+    # script reports. `EnsembleSerial` and `EnsembleThreads` have no raw path.
+    println("\n  Raw output (bulk `u0` matrix, no ODESolution per particle):")
+    @printf(
+        "%-9s | %-13s | %-13s | %-13s\n",
+        "Particles", "KA CPU", "GPU (FP64)", "GPU (FP32)"
+    )
+    println("-"^88)
+
+    analytical_raw = Vector{NamedTuple}(undef, length(ANALYTICAL_COUNTS))
+    for (k, N) in enumerate(ANALYTICAL_COUNTS)
+        res = run_benchmark_analytical(prob64, prob32, N, dt64, dt32; raw = true)
+        analytical_raw[k] = res
+        @printf(
+            "%-9d | %10.2f ms | %10.2f ms | %10.2f ms\n",
+            N, res.t_ka_cpu, res.t_gpu64, res.t_gpu32
+        )
+    end
+
+    println("\n  Speedup relative to KA CPU, raw output:")
+    print_speedup_table(
+        "Particles",
+        string.(ANALYTICAL_COUNTS),
+        ["GPU (FP64)", "GPU (FP32)"],
+        [[r.t_gpu64, r.t_gpu32] for r in analytical_raw],
+        [r.t_ka_cpu for r in analytical_raw]
+    )
+
     let res = analytical[end], N = res.N
         println("\n  Effective throughput at $N particles ($(NSTEPS_ANALYTICAL) steps):")
         @printf(
@@ -535,6 +655,32 @@ function main()
         [g.t_cpu for g in grid]
     )
 
+    println("\n  Raw output (bulk `u0` matrix, no ODESolution per particle):")
+    @printf(
+        "%-9s | %-15s | %-15s | %-15s\n",
+        "Particles", "KA CPU", "GPU Unsort", "GPU Morton"
+    )
+    println("-"^88)
+
+    grid_raw = Vector{NamedTuple}(undef, length(GRID_COUNTS))
+    for (k, N) in enumerate(GRID_COUNTS)
+        gres = run_benchmark_grid(grid_prob, N, dt_grid; raw = true)
+        grid_raw[k] = gres
+        @printf(
+            "%-9d | %12.2f ms | %12.2f ms | %12.2f ms\n",
+            N, gres.t_ka_cpu, gres.t_gpu, gres.t_gpu_sorted
+        )
+    end
+
+    println("\n  Speedup relative to KA CPU, raw output:")
+    print_speedup_table(
+        "Particles",
+        string.(GRID_COUNTS),
+        ["GPU Unsort", "GPU Morton"],
+        [[g.t_gpu, g.t_gpu_sorted] for g in grid_raw],
+        [g.t_ka_cpu for g in grid_raw]
+    )
+
     # 3. GPU-only large-scale scaling
     if gpu_name != "None"
         println("\n[3] GPU-only large-scale throughput (", NSTEPS_ANALYTICAL, " steps)")
@@ -568,60 +714,72 @@ function main()
                 "  ODESolution is built. It changes the host bookkeeping only."
         )
 
-        # 4. Kernel isolation: sweep the step count at fixed particle count.
+        # 4. Kernel isolation on the analytical field.
         println(
-            "\n[4] GPU-only kernel isolation ($KERNEL_SWEEP_N particles, step sweep)"
+            "\n[4] GPU kernel isolation, analytical field " *
+                "($KERNEL_SWEEP_N particles, step sweep)"
         )
         println("-"^88)
         @printf(
             "%-9s | %-13s | %-13s | %-13s | %-13s\n",
-            "Steps", "GPU (FP64)", "GPU (FP32)", "FP64 raw", "FP32 raw"
+            "Steps", "FP64", "FP32", "FP64 raw", "FP32 raw"
         )
         println("-"^88)
 
+        variants = [("analytical FP64", prob64, dt64), ("analytical FP32", prob32, dt32)]
         sweep = run_benchmark_kernel_sweep(
-            prob64, prob32, KERNEL_SWEEP_N, dt64, dt32, KERNEL_SWEEP_STEPS; raw = true
+            variants, KERNEL_SWEEP_N, KERNEL_SWEEP_STEPS; raw = true
         )
         for (i, nt) in enumerate(sweep.steps)
             @printf(
                 "%-9d | %10.2f ms | %10.2f ms | %10.2f ms | %10.2f ms\n",
-                nt, sweep.times64[i], sweep.times32[i],
-                sweep.times64raw[i], sweep.times32raw[i]
+                nt, sweep.series[1].baseline[i], sweep.series[2].baseline[i],
+                sweep.series[1].raw[i], sweep.series[2].raw[i]
             )
         end
 
-        println("\n  Speedup relative to GPU (FP64):")
+        println("\n  Speedup relative to analytical FP64:")
         print_speedup_table(
-            "Steps", string.(sweep.steps), ["GPU (FP32)", "FP32 raw"],
-            [[sweep.times32[i], sweep.times32raw[i]] for i in eachindex(sweep.steps)],
-            sweep.times64
+            "Steps", string.(sweep.steps), ["FP32", "FP32 raw"],
+            [
+                [sweep.series[2].baseline[i], sweep.series[2].raw[i]]
+                    for i in eachindex(sweep.steps)
+            ],
+            sweep.series[1].baseline
         )
+        print_kernel_fit(sweep)
 
-        if length(sweep.steps) >= 2
-            fits = (
-                ("baseline", "FP64", linear_fit(Float64.(sweep.steps), sweep.times64)),
-                ("baseline", "FP32", linear_fit(Float64.(sweep.steps), sweep.times32)),
-                ("raw", "FP64", linear_fit(Float64.(sweep.steps), sweep.times64raw)),
-                ("raw", "FP32", linear_fit(Float64.(sweep.steps), sweep.times32raw)),
-            )
-            println("\n  Fit of t = a + b*steps at $(sweep.N) particles")
+        # 5. Kernel isolation on a grid field, at a particle count that fills the GPU.
+        println(
+            "\n[5] GPU kernel isolation, 32³ grid field " *
+                "($KERNEL_SWEEP_N_GRID particles, step sweep)"
+        )
+        println("-"^88)
+        @printf("%-9s | %-13s | %-13s\n", "Steps", "grid FP32", "grid FP32 raw")
+        println("-"^88)
+
+        grid_variants = [("grid FP32", grid_prob, dt_grid)]
+        grid_sweep = run_benchmark_kernel_sweep(
+            grid_variants, KERNEL_SWEEP_N_GRID, KERNEL_SWEEP_STEPS_GRID; raw = true
+        )
+        for (i, nt) in enumerate(grid_sweep.steps)
             @printf(
-                "    %-10s %-5s | %-13s | %-17s | %s\n",
-                "variant", "prec", "host cost a", "kernel per step b", "kernel M steps/s"
+                "%-9d | %10.2f ms | %10.2f ms\n",
+                nt, grid_sweep.series[1].baseline[i], grid_sweep.series[1].raw[i]
             )
-            println("    " * "-"^70)
-            for (variant, prec, fit) in fits
-                @printf(
-                    "    %-10s %-5s | %10.2f ms | %14.4f ms | %15.1f\n",
-                    variant, prec, fit.intercept, fit.slope,
-                    sweep.N / (fit.slope * 1.0e3)
-                )
-            end
-            println(
-                "    `a` is the host cost (initialization and ODESolution assembly);\n" *
-                    "    `b` is the pusher kernel alone. A negative `a` means the model\n" *
-                    "    does not hold and the fit cannot be trusted. `b` must agree\n" *
-                    "    between variants, since the raw path changes the host side only."
+        end
+        print_kernel_fit(grid_sweep)
+
+        if length(grid_sweep.steps) >= 2 && length(sweep.series[2].raw) >= 2
+            k_grid = linear_fit(
+                Float64.(grid_sweep.steps), grid_sweep.series[1].raw
+            ).slope
+            k_analytical = linear_fit(
+                Float64.(sweep.steps), sweep.series[2].raw
+            ).slope
+            @printf(
+                "\n  Grid interpolation costs %.1fx the analytical field per step\n",
+                k_grid / k_analytical
             )
         end
     end
@@ -635,9 +793,10 @@ function main()
     )
     println(" - To run with multiple CPU threads:")
     println("     julia --project=test -t auto benchmark/compare_boris_backends.jl")
-    println(" - Sections [1] and [2] include host-side ODESolution assembly. Sections [3]")
-    println("   and [4] show what that costs by repeating the GPU runs with a bulk")
-    println("   `u0` matrix and `raw_output = true`.")
+    println(" - Sections [1] and [2] report the default API first, then repeat the")
+    println("   EnsembleKernel paths with a bulk `u0` matrix and `raw_output = true`.")
+    println(" - Thread scaling and multi-node scaling live in run_scaling_threads.jl and")
+    println("   run_scaling_multinode.jl.")
     return println("="^88)
 end
 
