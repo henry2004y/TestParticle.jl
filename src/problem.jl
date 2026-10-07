@@ -90,11 +90,11 @@ function solve(
         ensemblealg::BasicEnsembleAlgorithm;
         trajectories::Int = 1,
         seed::Union{Nothing, Integer} = nothing,
+        safetycopy::Bool = false,
         kwargs...
     )
     ensemble_prob = EnsembleProblem(
-        prob; prob_func = prob.prob_func,
-        safetycopy = prob.prob_func !== DEFAULT_PROB_FUNC
+        prob; prob_func = prob.prob_func, safetycopy
     )
 
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)

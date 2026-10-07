@@ -80,6 +80,7 @@ using SciMLBase
             prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
         )
         prob_tp = TraceProblem(stateinit_vec, tspan, param; prob_func = prob_func_test)
+        u0_orig = copy(prob_tp.u0)
 
         trajectories = 4
         sols_serial = solve(
@@ -93,12 +94,24 @@ using SciMLBase
         @test length(sols_threads.u) == trajectories
         for i in 1:trajectories
             @test sols_serial.u[i].u[end] ≈ sols_threads.u[i].u[end]
+            @test sols_threads.u[i].prob.u0[4] ≈ i * 1.0e4
         end
+        @test prob_tp.u0 == u0_orig
 
         sols_boris = solve(
             prob_tp, Boris(), EnsembleSerial(); dt, trajectories
         )
         @test length(sols_boris.u) == trajectories
+
+        sols_boris_threads = solve(
+            prob_tp, Boris(), EnsembleThreads(); dt, trajectories, safetycopy = false
+        )
+        @test length(sols_boris_threads.u) == trajectories
+        for i in 1:trajectories
+            @test sols_boris.u[i].u[end] ≈ sols_boris_threads.u[i].u[end]
+            @test sols_boris_threads.u[i].prob.u0[4] ≈ i * 1.0e4
+        end
+        @test prob_tp.u0 == u0_orig
     end
 
     @testset "Float32 tracing" begin
