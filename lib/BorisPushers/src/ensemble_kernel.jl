@@ -1,28 +1,41 @@
 # EnsembleKernel solver for hardware backends via KernelAbstractions.jl
 
 """
-    EnsembleKernel(backend=CPU(); workgroup_size=256, pin=false)
+    EnsembleKernel(backend=CPU(); workgroup_size=256, pin=nothing)
 
 Ensemble algorithm for running particle traces on hardware backends
 via KernelAbstractions.jl (such as CUDA, AMDGPU, oneAPI, Metal, or multi-threaded CPU).
 When `pin = true`, host staging buffers used for data transfers to and from GPU devices
-are pinned (page-locked) to maximize PCIe transfer bandwidth.
+are pinned (page-locked) to maximize PCIe transfer bandwidth. When `pin === nothing` (default),
+pinning is chosen automatically: enabled for GPU runs with `raw_output = true` and
+particle count >= 100,000 where transfer bandwidth exceeds pinning latency, and disabled otherwise.
+Explicitly passing `pin = true` or `pin = false` overrides the automatic heuristic.
 """
 struct EnsembleKernel{B <: Backend} <: SciMLBase.EnsembleAlgorithm
     backend::B
     workgroup_size::Int
-    pin::Bool
+    pin::Union{Nothing, Bool}
 end
 
 function EnsembleKernel(
         backend::Backend = CPU();
-        workgroup_size::Int = 256, pin::Bool = false
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing
     )
     return EnsembleKernel(backend, workgroup_size, pin)
 end
 
 function EnsembleKernel(backend::B, workgroup_size::Int) where {B <: Backend}
-    return EnsembleKernel(backend, workgroup_size, false)
+    return EnsembleKernel(backend, workgroup_size, nothing)
+end
+
+@inline function _should_pin(
+        backend::Backend, pin::Union{Nothing, Bool},
+        raw_output::Bool, trajectories::Int
+    )
+    if pin !== nothing
+        return pin
+    end
+    return !(backend isa CPU) && raw_output && trajectories >= 100_000
 end
 
 function _pin_array!(backend::Backend, a::AbstractArray)
@@ -571,7 +584,7 @@ function _execute_ensemble_kernel(
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false,
-        pin::Bool = ens.pin
+        pin::Union{Nothing, Bool} = nothing
     )
     if SciMLBase.isadaptive(alg)
         throw(
@@ -585,6 +598,9 @@ function _execute_ensemble_kernel(
 
     backend = ens.backend
     workgroup_size = ens.workgroup_size
+    effective_pin = _should_pin(
+        backend, pin !== nothing ? pin : ens.pin, raw_output, trajectories
+    )
     T = eltype(base_prob.u0)
     dt_T = T(dt)
     tspan_T = (T(base_prob.tspan[1]), T(base_prob.tspan[2]))
@@ -597,7 +613,7 @@ function _execute_ensemble_kernel(
     ) = _prepare_ensemble_solve(
         base_prob, prob_func, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters;
-        seed, u0, pin
+        seed, u0, pin = effective_pin
     )
 
     t0 = time_ns()
@@ -607,7 +623,7 @@ function _execute_ensemble_kernel(
             backend, xv_current, xv_init, 1:trajectories;
             dt = dt_T, tspan, plan, workgroup_size, p_gpu, p_host, alg,
             nout, nt, save_start, save_end, save_everystep, prob = base_prob,
-            pin
+            pin = effective_pin
         )
     elseif backend isa CPU && Threads.nthreads() > 1 && trajectories > 16
         saved_times = _build_saved_times(
@@ -624,7 +640,7 @@ function _execute_ensemble_kernel(
                 base_prob, backend, irange;
                 dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
                 xv_current, xv_init, is_cpu_accessible,
-                p_gpu, p_host, alg, nout, nt, pin
+                p_gpu, p_host, alg, nout, nt, pin = effective_pin
             )
             for (local_i, i) in enumerate(irange)
                 res_sols[i] = chunk_sols[local_i]
@@ -636,7 +652,7 @@ function _execute_ensemble_kernel(
             base_prob, backend, 1:trajectories;
             dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, alg, nout, nt, pin
+            p_gpu, p_host, alg, nout, nt, pin = effective_pin
         )
     end
 
@@ -665,7 +681,7 @@ function SciMLBase.__solve(
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false,
-        pin::Bool = ens.pin,
+        pin::Union{Nothing, Bool} = nothing,
         kwargs...
     )
     base_prob = eprob.prob
@@ -741,7 +757,7 @@ end
 function SciMLBase.solve(
         prob::AbstractODEProblem,
         alg::AbstractBoris, backend::Backend;
-        workgroup_size::Int = 256, pin::Bool = false, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
     return SciMLBase.solve(
         prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
@@ -751,7 +767,7 @@ end
 function SciMLBase.solve(
         prob::SciMLBase.EnsembleProblem,
         alg::AbstractBoris, backend::Backend;
-        workgroup_size::Int = 256, pin::Bool = false, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
     return SciMLBase.solve(
         prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
@@ -761,7 +777,7 @@ end
 function SciMLBase.solve(
         prob::AbstractODEProblem,
         alg::AbstractBoris, backend::Backend, ::BasicEnsembleAlgorithm;
-        workgroup_size::Int = 256, pin::Bool = false, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
     return SciMLBase.solve(
         prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
@@ -771,7 +787,7 @@ end
 function SciMLBase.solve(
         prob::SciMLBase.EnsembleProblem,
         alg::AbstractBoris, backend::Backend, ::BasicEnsembleAlgorithm;
-        workgroup_size::Int = 256, pin::Bool = false, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
     return SciMLBase.solve(
         prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
