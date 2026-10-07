@@ -22,6 +22,10 @@ using CairoMakie
 using DelimitedFiles
 
 const BENCH_DIR = @__DIR__
+const FIG_DIR = joinpath(BENCH_DIR, "..", "docs", "src", "figures")
+
+const COMBINED_FIG = joinpath(FIG_DIR, "scaling_combined.png")
+const MULTINODE_FIG = joinpath(BENCH_DIR, "multinode_scaling.png")
 
 const DEFAULT_PARTICLES = 16_384
 const DEFAULT_MACHINE = "Perlmutter"
@@ -68,10 +72,8 @@ single node run against each other.
 - `machine`: machine name shown in the title.
 """
 function plot_combined(;
-    out_path = joinpath(BENCH_DIR, "..", "docs", "src", "figures", "scaling_combined.png"),
-    particles = DEFAULT_PARTICLES,
-    machine = DEFAULT_MACHINE,
-)
+        out_path = COMBINED_FIG, particles = DEFAULT_PARTICLES, machine = DEFAULT_MACHINE
+    )
     t_counts, threads_speedup = read_scaling("threads_scaling.csv")
     d_counts, dist_speedup = read_scaling("distributed_scaling.csv")
     if t_counts != d_counts
@@ -121,10 +123,7 @@ Plot the speedup of each ensemble algorithm against the number of nodes.
 - `out_path`: file to save the figure to.
 - `file`: CSV table to read, relative to the benchmark directory.
 """
-function plot_multinode(;
-    out_path = joinpath(BENCH_DIR, "multinode_scaling.png"),
-    file = "multinode_scaling.csv",
-)
+function plot_multinode(; out_path = MULTINODE_FIG, file = "multinode_scaling.csv")
     data = read_multinode(file)
 
     fig = Figure(; size = (900, 520), fontsize = 20)
@@ -172,10 +171,8 @@ node sweep.
 """
 function plot_scaling(method::Symbol; kwargs...)
     plot = get(PLOT_METHODS, method) do
-        error(
-            "Unknown plot method $(method); choose one of " *
-            join(sort!(collect(keys(PLOT_METHODS)); by = string), ", "),
-        )
+        names = join(sort!(collect(keys(PLOT_METHODS)); by = string), ", ")
+        error("Unknown plot method $(method); choose one of $(names).")
     end
     return plot(; kwargs...)
 end
@@ -189,10 +186,7 @@ function parse_args(args)
         elseif startswith(arg, "--out=")
             options[:out_path] = split(arg, "="; limit = 2)[2]
         else
-            error(
-                "Unrecognized argument: $(arg). " *
-                "Choose from combined, multinode, all, --out=PATH."
-            )
+            error("Unrecognized argument: $(arg). See the header of this file.")
         end
     end
 
