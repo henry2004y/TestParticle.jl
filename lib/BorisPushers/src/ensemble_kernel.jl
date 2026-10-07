@@ -429,7 +429,7 @@ end
 function _prepare_ensemble_solve(
         prob, prob_func, backend::Backend, trajectories::Int, dt::Real,
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
-        sort_particles::Bool = false, seed = nothing, u0 = nothing
+        seed = nothing, u0 = nothing
     )
     (; tspan, p) = prob
     prob_u0 = prob.u0
@@ -482,7 +482,7 @@ function _prepare_ensemble_solve(
         size(u0) == (n_particles, 6) ||
             throw(ArgumentError("u0 must be a $n_particles x 6 matrix"))
         u0 isa Matrix{T} ? u0 : Matrix{T}(u0)
-    elseif is_cpu_accessible && (!sort_particles || n_particles <= 1)
+    elseif is_cpu_accessible
         xv_current
     else
         zeros(T, n_particles, 6)
@@ -490,23 +490,13 @@ function _prepare_ensemble_solve(
 
     u0 === nothing && _init_particles!(xv_init, prob, prob_func, n_particles, seed)
 
-    if sort_particles && n_particles > 1
-        perm = morton_sort_particles(xv_init)
-        xv_init_sorted = xv_init[perm, :]
-        copyto!(xv_current, xv_init_sorted)
-        return (;
-            nt, nout, xv_current, xv_init = xv_init_sorted, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T, perm,
-        )
-    else
-        if xv_current !== xv_init
-            copyto!(xv_current, xv_init)
-        end
-        return (;
-            nt, nout, xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T, perm = nothing,
-        )
+    if xv_current !== xv_init
+        copyto!(xv_current, xv_init)
     end
+    return (;
+        nt, nout, xv_current, xv_init, is_cpu_accessible,
+        p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T,
+    )
 end
 
 function _execute_ensemble_kernel(
@@ -515,7 +505,6 @@ function _execute_ensemble_kernel(
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         maxiters::Int = 1_000_000,
-        sort_particles::Bool = false,
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false
@@ -540,11 +529,11 @@ function _execute_ensemble_kernel(
 
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, perm,
+        p_gpu, p_host, tspan,
     ) = _prepare_ensemble_solve(
         base_prob, prob_func, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters;
-        sort_particles, seed, u0
+        seed, u0
     )
 
     t0 = time_ns()
@@ -588,14 +577,7 @@ function _execute_ensemble_kernel(
 
     elapsed_time = (time_ns() - t0) * 1.0e-9
 
-    sols_final = if perm === nothing
-        sols
-    elseif raw_output
-        (; u = sols.u[invperm(perm), :, :], t = sols.t)
-    else
-        sols[invperm(perm)]
-    end
-    return sols_final, elapsed_time
+    return sols, elapsed_time
 end
 
 """
@@ -615,7 +597,6 @@ function SciMLBase.__solve(
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         maxiters::Int = 1_000_000,
-        sort_particles::Bool = false,
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false,
@@ -629,7 +610,7 @@ function SciMLBase.__solve(
     sols, elapsed_time = _execute_ensemble_kernel(
         base_prob, prob_func, alg, ens;
         dt, trajectories, saveat, save_start, save_end,
-        save_everystep, maxiters, sort_particles, seed, u0, raw_output
+        save_everystep, maxiters, seed, u0, raw_output
     )
 
     raw_output && return sols

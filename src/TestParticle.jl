@@ -16,8 +16,7 @@ import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBori
     adapt_field_to_gpu, EnsembleKernel,
     get_q2m, get_EField, get_BField,
     update_velocity_boris, update_velocity_multistep, update_velocity,
-    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync,
-    morton3D, morton_sort_particles
+    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -63,7 +62,6 @@ export orbit, monitor
 export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export GPUGrid3D, GPUGrid2D, GPUGrid1D
-export morton3D, morton_sort_particles
 export TraceProblem, TraceGCProblem, TraceHybridProblem
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,

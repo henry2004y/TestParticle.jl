@@ -215,7 +215,6 @@ function run_benchmark_grid(
 
     _, gpu_backend = detect_gpu_backend()
     t_gpu = nothing
-    t_gpu_sorted = nothing
     if gpu_backend !== nothing
         warmup_gpu!(gpu_backend, prob32, dt)
         try
@@ -226,19 +225,12 @@ function run_benchmark_grid(
                 return nothing
             end
 
-            t_gpu_sorted = measure_time() do
-                solve_gpu(
-                    prob32, Boris(), gpu_backend, N, dt;
-                    saveat, save_everystep, sort_particles = true, kw32...
-                )
-                return nothing
-            end
         catch err
             @warn "GPU Grid execution failed: $err"
         end
     end
 
-    return (; N, t_cpu, t_ka_cpu, t_gpu, t_gpu_sorted)
+    return (; N, t_cpu, t_ka_cpu, t_gpu)
 end
 
 """
@@ -620,8 +612,8 @@ function main()
 
     if gpu_name != "None"
         @printf(
-            "%-9s | %-15s | %-15s | %-15s | %-15s\n",
-            "Particles", "CPU Thr", "KA CPU", "GPU Unsort", "GPU Morton"
+            "%-9s | %-15s | %-15s | %-15s\n",
+            "Particles", "CPU Thr", "KA CPU", "GPU"
         )
     else
         @printf("%-9s | %-15s | %-15s\n", "Particles", "CPU Threads", "KA CPU")
@@ -634,8 +626,8 @@ function main()
         grid[k] = gres
         if gres.t_gpu !== nothing
             @printf(
-                "%-9d | %12.2f ms | %12.2f ms | %12.2f ms | %12.2f ms\n",
-                N, gres.t_cpu, gres.t_ka_cpu, gres.t_gpu, gres.t_gpu_sorted
+                "%-9d | %12.2f ms | %12.2f ms | %12.2f ms\n",
+                N, gres.t_cpu, gres.t_ka_cpu, gres.t_gpu
             )
         else
             @printf("%-9d | %12.2f ms | %12.2f ms\n", N, gres.t_cpu, gres.t_ka_cpu)
@@ -650,34 +642,28 @@ function main()
     print_speedup_table(
         "Particles",
         string.(GRID_COUNTS),
-        ["KA CPU", "GPU Unsort", "GPU Morton"],
-        [[g.t_ka_cpu, g.t_gpu, g.t_gpu_sorted] for g in grid],
+        ["KA CPU", "GPU"],
+        [[g.t_ka_cpu, g.t_gpu] for g in grid],
         [g.t_cpu for g in grid]
     )
 
     println("\n  Raw output (bulk `u0` matrix, no ODESolution per particle):")
-    @printf(
-        "%-9s | %-15s | %-15s | %-15s\n",
-        "Particles", "KA CPU", "GPU Unsort", "GPU Morton"
-    )
+    @printf("%-9s | %-15s | %-15s\n", "Particles", "KA CPU", "GPU")
     println("-"^88)
 
     grid_raw = Vector{NamedTuple}(undef, length(GRID_COUNTS))
     for (k, N) in enumerate(GRID_COUNTS)
         gres = run_benchmark_grid(grid_prob, N, dt_grid; raw = true)
         grid_raw[k] = gres
-        @printf(
-            "%-9d | %12.2f ms | %12.2f ms | %12.2f ms\n",
-            N, gres.t_ka_cpu, gres.t_gpu, gres.t_gpu_sorted
-        )
+        @printf("%-9d | %12.2f ms | %12.2f ms\n", N, gres.t_ka_cpu, gres.t_gpu)
     end
 
     println("\n  Speedup relative to KA CPU, raw output:")
     print_speedup_table(
         "Particles",
         string.(GRID_COUNTS),
-        ["GPU Unsort", "GPU Morton"],
-        [[g.t_gpu, g.t_gpu_sorted] for g in grid_raw],
+        ["GPU"],
+        [[g.t_gpu] for g in grid_raw],
         [g.t_ka_cpu for g in grid_raw]
     )
 

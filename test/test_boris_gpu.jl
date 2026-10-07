@@ -90,37 +90,6 @@ end
         end
     end
 
-    @testset "Morton 3D particle sorting" begin
-        let N = 100,
-                xv = rand(N, 6)
-
-            perm = morton_sort_particles(xv)
-            @test length(perm) == N
-            @test sort(perm) == 1:N
-
-            u0s = [xv[i, :] for i in 1:N]
-            param = prepare(zero_E, uniform_B; species = Proton)
-            prob_func = (prob, ctx) -> remake(prob; u0 = u0s[ctx.sim_id])
-            base_prob = TraceProblem(u0s[1], (0.0, 1.0e-6), param; prob_func)
-
-            sol_unsorted = TP.solve(
-                base_prob, Boris(), CPU();
-                trajectories = N, dt = 1.0e-9, sort_particles = false,
-            )
-            sol_sorted = TP.solve(
-                base_prob, Boris(), CPU();
-                trajectories = N, dt = 1.0e-9, sort_particles = true,
-            )
-
-            for i in 1:N
-                @test isapprox(
-                    sol_unsorted.u[i].u[end], sol_sorted.u[i].u[end];
-                    rtol = 1.0e-5, atol = 1.0e-6,
-                )
-            end
-        end
-    end
-
     @testset "GPUGrid interpolators on CPU" begin
         x = 0.0:1.0:4.0
         y = 0.0:1.0:4.0
