@@ -123,6 +123,8 @@ end
     return bc
 end
 
+@inline _lerp(c0, c1, w) = muladd(w, c1 - c0, c0)
+
 @inline function (g::GPUGrid3D{T, B, V})(x::Real, y::Real, z::Real) where {T, B, V}
     bc_x = _get_bc_dim(g.bc, 1)
     bc_y = _get_bc_dim(g.bc, 2)
@@ -159,15 +161,15 @@ end
     c011 = g.data[ix, iy + 1, iz + 1]
     c111 = g.data[ix + 1, iy + 1, iz + 1]
 
-    c00 = c000 * (one(T) - wx) + c100 * wx
-    c10 = c010 * (one(T) - wx) + c110 * wx
-    c01 = c001 * (one(T) - wx) + c101 * wx
-    c11 = c011 * (one(T) - wx) + c111 * wx
+    c00 = _lerp(c000, c100, wx)
+    c10 = _lerp(c010, c110, wx)
+    c01 = _lerp(c001, c101, wx)
+    c11 = _lerp(c011, c111, wx)
 
-    c0 = c00 * (one(T) - wy) + c10 * wy
-    c1 = c01 * (one(T) - wy) + c11 * wy
+    c0 = _lerp(c00, c10, wy)
+    c1 = _lerp(c01, c11, wy)
 
-    return c0 * (one(T) - wz) + c1 * wz
+    return _lerp(c0, c1, wz)
 end
 
 @inline (g::GPUGrid3D)(coords::Tuple) = g(coords[1], coords[2], coords[3])
@@ -200,10 +202,10 @@ end
     c01 = g.data[ix, iy + 1]
     c11 = g.data[ix + 1, iy + 1]
 
-    c0 = c00 * (one(T) - wx) + c10 * wx
-    c1 = c01 * (one(T) - wx) + c11 * wx
+    c0 = _lerp(c00, c10, wx)
+    c1 = _lerp(c01, c11, wx)
 
-    return c0 * (one(T) - wy) + c1 * wy
+    return _lerp(c0, c1, wy)
 end
 
 @inline (g::GPUGrid2D)(coords::Tuple) = g(coords[1], coords[2])
@@ -224,7 +226,7 @@ end
     c0 = g.data[ix]
     c1 = g.data[ix + 1]
 
-    return c0 * (one(T) - wx) + c1 * wx
+    return _lerp(c0, c1, wx)
 end
 
 @inline (g::GPUGrid1D)(coords::Tuple) = g(coords[1])
