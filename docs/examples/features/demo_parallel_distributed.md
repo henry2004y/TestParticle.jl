@@ -107,7 +107,7 @@ The native Boris pusher accepts the identical `ensemblealg`; it only needs a
 fixed timestep `dt`.
 
 ```julia
-sol_boris = TP.solve(
+sol_boris = solve(
     prob_boris, Boris(), EnsembleDistributed();
     dt, trajectories, seed
 )

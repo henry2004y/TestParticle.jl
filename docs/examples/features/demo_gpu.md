@@ -116,7 +116,6 @@ backend-agnostic GPU execution. The solver uses method dispatch on `KA.Backend` 
 
 ```julia
 using TestParticle, KernelAbstractions, StaticArrays
-import TestParticle: solve
 
 # Define fields
 B(x) = SA[0.0, 0.0, 1.0e-8]  # Uniform B field

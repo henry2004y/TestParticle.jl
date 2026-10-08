@@ -46,7 +46,7 @@ using Distributed
         param = prepare(zero_E, uniform_B2, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        sol = TP.solve(prob, Boris(); dt, saveat = 10 * dt)
+        sol = solve(prob, Boris(); dt, saveat = 10 * dt)
 
         @test sol.u[end] ≈ [
             -0.00010199137926394769, 3.46340469171306e-5, 0.0,
@@ -63,7 +63,7 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 4
         saveat = 1000 * dt
-        sols = TP.solve(
+        sols = solve(
             prob, Boris(), EnsembleThreads();
             dt, saveat, trajectories
         )
@@ -72,7 +72,7 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
         trajectories = 2
         saveat = 1000 * dt
-        sols = TP.solve(
+        sols = solve(
             prob, Boris(), EnsembleSerial();
             dt, saveat, trajectories
         )
@@ -85,7 +85,7 @@ using Distributed
         dt = 1.0e-4
         param = prepare(zero_E, time_varying_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
-        sol = TP.solve(prob, Boris(); dt, saveat = 100 * dt)
+        sol = solve(prob, Boris(); dt, saveat = 100 * dt)
         @test sol[1, end] ≈ -512.8807214528281
 
         new_tspan = (0.0, 2.0e-8)
@@ -111,10 +111,10 @@ using Distributed
         prob = TP.TraceProblem(u0, tspan, param)
 
         # Solve with standard Boris (n=1 by default)
-        sol_std = TP.solve(prob, Boris(); dt)
+        sol_std = solve(prob, Boris(); dt)
 
         # 2-step
-        sol_multi_2 = TP.solve(
+        sol_multi_2 = solve(
             prob, MultistepBoris{2}(; n = 2); dt
         )
 
@@ -136,13 +136,13 @@ using Distributed
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
 
-        sol_1step_gyro = TP.solve(
+        sol_1step_gyro = solve(
             prob_gyro, Boris(); dt = 0.1
         )
-        sol_2step_gyro = TP.solve(
+        sol_2step_gyro = solve(
             prob_gyro, MultistepBoris{2}(; n = 2); dt = 0.1
         )
-        sol_4step_gyro = TP.solve(
+        sol_4step_gyro = solve(
             prob_gyro, MultistepBoris{2}(; n = 4); dt = 0.1
         )
 
@@ -170,13 +170,13 @@ using Distributed
         prob = TP.TraceProblem(u0, tspan, param)
 
         # 2-step Hyper Boris (N=4, N=6)
-        sol_hyper_4 = TP.solve(
+        sol_hyper_4 = solve(
             prob, MultistepBoris{4}(; n = 2); dt
         )
-        sol_hyper_6 = TP.solve(
+        sol_hyper_6 = solve(
             prob, MultistepBoris{6}(; n = 2); dt
         )
-        sol_hyper_single = TP.solve(
+        sol_hyper_single = solve(
             prob, MultistepBoris{4}(; n = 1); dt
         )
 
@@ -193,10 +193,10 @@ using Distributed
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
 
-        sol_hyper_4_gyro = TP.solve(
+        sol_hyper_4_gyro = solve(
             prob_gyro, MultistepBoris{4}(; n = 4); dt = 0.1
         )
-        sol_hyper_6_gyro = TP.solve(
+        sol_hyper_6_gyro = solve(
             prob_gyro, MultistepBoris{6}(; n = 4); dt = 0.1
         )
 
@@ -227,7 +227,7 @@ using Distributed
         param = prepare(constant_E, gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        sol = TP.solve(prob, alg_adaptive)
+        sol = solve(prob, alg_adaptive)
 
         dt_end = sol.t[end - 1] - sol.t[end - 2]
         dt_start = sol.t[11] - sol.t[10]
@@ -262,13 +262,13 @@ using Distributed
         prob = TraceProblem(u0, tspan, param)
 
         # Standard Boris
-        sol_boris = TP.solve(prob, Boris(); dt = dt)
+        sol_boris = solve(prob, Boris(); dt = dt)
         # If B was 0.01, vx should have changed significantly
         @test abs(sol_boris.u[end][4]) < 1.0e5 - 100
 
         # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = TP.solve(prob, alg_adaptive)
+        sol_adaptive = solve(prob, alg_adaptive)
         @test abs(sol_adaptive.u[end][4]) < 1.0e5 - 100
     end
 
@@ -286,13 +286,13 @@ using Distributed
 
         # Baseline: save_everystep=true (default), save_start=true (default implicit), save_end=true (default implicit)
         # nt = 1000, so nout = 1001 (0, 1, ..., 1000)
-        sol = TP.solve(prob, Boris(); dt = dt)
+        sol = solve(prob, Boris(); dt = dt)
         @test length(sol.u) == 1001
         @test sol.t[1] == tspan[1]
         @test sol.t[end] == tspan[2]
 
         # Scenario 2: Only final state
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt = dt,
             save_everystep = false, save_start = false,
             save_end = true
@@ -301,7 +301,7 @@ using Distributed
         @test sol.t[1] == tspan[2]
 
         # Scenario 3: Start and End
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt = dt,
             save_everystep = false, save_start = true,
             save_end = true
@@ -311,7 +311,7 @@ using Distributed
         @test sol.t[end] == tspan[2]
 
         # Scenario 4: Only start
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt = dt,
             save_everystep = false, save_start = true,
             save_end = false
@@ -320,7 +320,7 @@ using Distributed
         @test sol.t[1] == tspan[1]
 
         # Scenario 5: Every step but no start/end
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt = dt,
             save_everystep = true,
             save_start = false, save_end = false
@@ -332,7 +332,7 @@ using Distributed
 
         # Scenario 6: Requested times. Only the interior is taken from `saveat`,
         # since the two ends are reported separately.
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt = dt, saveat = 3 * dt,
             save_everystep = true, save_start = true,
             save_end = true
@@ -344,7 +344,7 @@ using Distributed
         @test sol.t[end] == tspan[2]
 
         # Multistep Boris test
-        sol_ms = TP.solve(
+        sol_ms = solve(
             prob, MultistepBoris{2}(; n = 2);
             dt = dt,
             save_everystep = false, save_start = true,
@@ -355,7 +355,7 @@ using Distributed
         @test sol_ms.t[end] == tspan[2]
 
         # Save fields test
-        sol_fields = TP.solve(
+        sol_fields = solve(
             prob, Boris();
             dt, saveat = 10 * dt, save_fields = true
         )
@@ -389,7 +389,7 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param)
 
         # Test save_work=true
-        sol = TP.solve(
+        sol = solve(
             prob, Boris();
             dt,
             save_work = true, save_everystep = true
@@ -423,7 +423,7 @@ using Distributed
         param_beta = prepare(zero_E, time_varying_B_linear, species = Electron)
         prob_beta = TraceProblem(stateinit, tspan, param_beta)
 
-        sol_beta = TP.solve(
+        sol_beta = solve(
             prob_beta, Boris();
             dt, save_work = true
         )
@@ -432,7 +432,7 @@ using Distributed
         @test work_beta[4] > 0.0 # P_betatron should be positive
 
         # Test with save_fields=true AND save_work=true
-        sol_both = TP.solve(
+        sol_both = solve(
             prob, Boris();
             dt,
             save_fields = true, save_work = true
@@ -444,7 +444,7 @@ using Distributed
         @test sol_both.u[1][13:16] == sol.u[1][7:10]
 
         # Test Multistep Boris with save_work
-        sol_ms = TP.solve(
+        sol_ms = solve(
             prob, MultistepBoris{2}(; n = 2);
             dt, save_work = true
         )
@@ -456,7 +456,7 @@ using Distributed
         # Test Adaptive Boris with save_work
         # Use simple AdaptiveBoris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = TP.solve(
+        sol_adaptive = solve(
             prob, alg_adaptive;
             save_work = true, save_everystep = true
         )
@@ -477,14 +477,14 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param)
 
         # Reference solution with saved data
-        sol_ref = TP.solve(
+        sol_ref = solve(
             prob, Boris();
             dt,
             save_fields = true, save_work = true
         )
 
         # Solution without saved data
-        sol = TP.solve(
+        sol = solve(
             prob, Boris(); dt
         )
 
@@ -514,13 +514,13 @@ using Distributed
         prob = TraceProblem(stateinit, tspan, param)
 
         # maxiters limit (nt = 100)
-        @test_throws ArgumentError TP.solve(
+        @test_throws ArgumentError solve(
             prob, Boris(); dt, maxiters = 50
         )
 
         # min_dt limit
         dt_too_small = eps(Float64)
-        @test_throws ArgumentError TP.solve(
+        @test_throws ArgumentError solve(
             prob, Boris(); dt = dt_too_small
         )
 
@@ -559,12 +559,12 @@ using Distributed
             trajectories = 4
             saveat = 1000 * dt
 
-            sols_serial = TP.solve(
+            sols_serial = solve(
                 prob_dist, Boris(), EnsembleSerial();
                 dt, saveat, trajectories
             )
             @testset "Boris" begin
-                sols_dist = TP.solve(
+                sols_dist = solve(
                     prob_dist, Boris(),
                     EnsembleDistributed();
                     dt, saveat, trajectories
@@ -576,7 +576,7 @@ using Distributed
                 end
             end
             @testset "SplitThreads" begin
-                sols_split = TP.solve(
+                sols_split = solve(
                     prob_dist, Boris(),
                     EnsembleSplitThreads();
                     dt, saveat, trajectories
@@ -592,12 +592,12 @@ using Distributed
                 tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
                 alg_adaptive = AdaptiveBoris(; safety = 0.1)
 
-                sols_serial = TP.solve(
+                sols_serial = solve(
                     prob_dist, alg_adaptive, EnsembleSerial(); trajectories
                 )
 
                 @testset "EnsembleDistributed" begin
-                    sols_dist = TP.solve(
+                    sols_dist = solve(
                         prob_dist, alg_adaptive, EnsembleDistributed(); trajectories
                     )
 
@@ -608,7 +608,7 @@ using Distributed
                 end
 
                 @testset "EnsembleSplitThreads" begin
-                    sols_split = TP.solve(
+                    sols_split = solve(
                         prob_dist, alg_adaptive, EnsembleSplitThreads(); trajectories
                     )
 
@@ -632,12 +632,12 @@ using Distributed
         param = prepare(zero_E, uniform_B2, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        sol_all = TP.solve(prob, Boris(); dt)
+        sol_all = solve(prob, Boris(); dt)
 
         # Requesting output at intermediate times must not change the
         # integration, only the saving.
         ts = collect(0.0:(3.0e-9):(3.0e-8))
-        sol_at = TP.solve(prob, Boris(); dt, saveat = ts)
+        sol_at = solve(prob, Boris(); dt, saveat = ts)
 
         @test sol_at.t ≈ ts
         for (k, t) in enumerate(sol_at.t)
@@ -645,7 +645,7 @@ using Distributed
         end
 
         # The field and work columns are appended on this path as well.
-        sol_fields = TP.solve(
+        sol_fields = solve(
             prob, Boris(); dt, saveat = ts, save_fields = true
         )
         @test length(sol_fields.u[1]) == 12

@@ -122,7 +122,7 @@ function run_test(
     ## Run native solvers
     _natives = natives === nothing ? native_solvers : natives
     for (name, alg) in _natives
-        sol = TestParticle.solve(prob_tp, alg; dt)
+        sol = solve(prob_tp, alg; dt)
         plot_energy_error!(sol, name, color_idx)
         color_idx += 1
     end
@@ -135,7 +135,7 @@ function run_test(
         state_gc, μ_gc = full_to_gc(SVector{6}(u0...), param)
         p_gc = (q2m * m_gc, q2m, μ_gc, Efunc, Bfunc)
         prob_gc = TraceGCProblem(state_gc, tspan, p_gc)
-        sol_gc = TestParticle.solve(prob_gc; dt, alg = :rk4).u[1]
+        sol_gc = solve(prob_gc; dt, alg = :rk4).u[1]
         q_gc = q2m * m_gc
         function gc_energy(u, t)
             e = 0.5 * m_gc * u[4]^2 + μ_gc * norm(Bfunc(u[1:3], t))
@@ -170,7 +170,7 @@ function run_test(
             threshold = 0.1, dtmax = T, dtmin = 1.0e-3 * T,
             check_interval = 20, save_adiabaticity = false
         )
-        sol_hy = TestParticle.solve(prob_hy, alg_hy; seed = 1234).u[1]
+        sol_hy = solve(prob_hy, alg_hy; seed = 1234).u[1]
         plot_energy_error!(sol_hy, "Hybrid", color_idx)
         color_idx += 1
     end

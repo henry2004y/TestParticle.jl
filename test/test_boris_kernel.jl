@@ -24,7 +24,7 @@ const KA = KernelAbstractions
     @testset "CPU Backend" begin
         backend = CPU()
 
-        sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 10 * dt)
+        sol_gpu = solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 10 * dt)
 
         @test length(sol_gpu.u) == 1
         @test length(sol_gpu.u[1].t) > 0
@@ -46,7 +46,7 @@ const KA = KernelAbstractions
         )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
-        sols_gpu = TP.solve(prob_multi, Boris(), backend; dt, trajectories = 5, saveat = 100 * dt)
+        sols_gpu = solve(prob_multi, Boris(), backend; dt, trajectories = 5, saveat = 100 * dt)
 
         @test length(sols_gpu.u) == 5
 
@@ -65,11 +65,11 @@ const KA = KernelAbstractions
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
         trajectories = 10
-        sols_serial = TP.solve(
+        sols_serial = solve(
             prob_multi, Boris(), backend, EnsembleSerial();
             dt, trajectories, saveat = 100 * dt
         )
-        sols_threads = TP.solve(
+        sols_threads = solve(
             prob_multi, Boris(), backend, EnsembleThreads();
             dt, trajectories, saveat = 100 * dt
         )
@@ -81,8 +81,8 @@ const KA = KernelAbstractions
     @testset "Kernel vs Native Solver Equivalence" begin
         backend = CPU()
 
-        sol_gpu = TP.solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 10 * dt)
-        sol_cpu = TP.solve(prob, Boris(); dt, saveat = 10 * dt)
+        sol_gpu = solve(prob, Boris(), backend; dt, trajectories = 1, saveat = 10 * dt)
+        sol_cpu = solve(prob, Boris(); dt, saveat = 10 * dt)
 
         @test length(sol_gpu.u[1].t) == length(sol_cpu.t)
 
@@ -105,7 +105,7 @@ const KA = KernelAbstractions
         dt_gyro = gyroperiod / 100
 
         prob_gyro = TraceProblem(stateinit, tspan_gyro, param)
-        sol_gyro = TP.solve(prob_gyro, Boris(), backend; dt = dt_gyro, saveat = 10 * dt_gyro)
+        sol_gyro = solve(prob_gyro, Boris(), backend; dt = dt_gyro, saveat = 10 * dt_gyro)
 
         # Check energy conservation at the final step to reduce test count
         vx = sol_gyro.u[1].u[end][4]
@@ -118,7 +118,7 @@ const KA = KernelAbstractions
     @testset "Saving Options" begin
         backend = CPU()
 
-        sol_start_end = TP.solve(
+        sol_start_end = solve(
             prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = true, save_end = true
         )
@@ -126,7 +126,7 @@ const KA = KernelAbstractions
         @test sol_start_end.u[1].t[1] == tspan[1]
         @test sol_start_end.u[1].t[end] == tspan[2]
 
-        sol_end_only = TP.solve(
+        sol_end_only = solve(
             prob, Boris(), backend; dt, trajectories = 1,
             save_everystep = false, save_start = false, save_end = true
         )
@@ -138,23 +138,23 @@ const KA = KernelAbstractions
         backend = CPU()
 
         # maxiters limit (nt = 1000)
-        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt, maxiters = 500)
+        @test_throws ArgumentError solve(prob, Boris(), backend; dt, maxiters = 500)
 
         # min_dt limit
         dt_too_small = eps(Float64)
-        @test_throws ArgumentError TP.solve(prob, Boris(), backend; dt = dt_too_small)
+        @test_throws ArgumentError solve(prob, Boris(), backend; dt = dt_too_small)
     end
 
     @testset "Saveat" begin
         backend = CPU()
 
-        sol_all = TP.solve(prob, Boris(), backend; dt, trajectories = 1).u[1]
+        sol_all = solve(prob, Boris(), backend; dt, trajectories = 1).u[1]
 
         # Requesting intermediate output must not change the integration, only
         # where the state is reported. The requested times land on step
         # boundaries here, so the interpolant has to reproduce them exactly.
         ts = collect(1.0e-7:1.0e-7:9.0e-7)
-        sol_at = TP.solve(
+        sol_at = solve(
             prob, Boris(), backend; dt, trajectories = 1, saveat = ts
         ).u[1]
 
@@ -165,7 +165,7 @@ const KA = KernelAbstractions
 
         # An interval is accepted too: only its interior is used, since the ends
         # of the span are reported separately.
-        sol_interval = TP.solve(
+        sol_interval = solve(
             prob, Boris(), backend; dt, trajectories = 1, saveat = 2.5e-7
         ).u[1]
         @test sol_interval.t ≈ collect(0.0:2.5e-7:1.0e-6)

@@ -47,12 +47,12 @@ for t in threads_to_test
     prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func)
 
     # Warmup
-    TestParticle.solve(
+    solve(
         prob_multi, Boris(), EnsembleThreads();
         trajectories = 10, dt = dt, saveat = 10000 * dt,
     )
 
-    bench_threads = @benchmark TestParticle.solve(
+    bench_threads = @benchmark solve(
         \$prob_multi, Boris(), EnsembleThreads();
         trajectories = \$n_particles, dt = \$dt, saveat = 10000 * \$dt,
     ) samples = 5 seconds = 30

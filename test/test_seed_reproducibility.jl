@@ -35,10 +35,10 @@ end
         seed = 1234
 
         # Test RK4
-        sols1_rk4 = TestParticle.solve(
+        sols1_rk4 = solve(
             prob; trajectories = 3, dt = 1.0e-5, alg = :rk4, seed
         )
-        sols2_rk4 = TestParticle.solve(
+        sols2_rk4 = solve(
             prob; trajectories = 3, dt = 1.0e-5, alg = :rk4, seed
         )
 
@@ -48,10 +48,10 @@ end
         end
 
         # Test RK45
-        sols1_rk45 = TestParticle.solve(
+        sols1_rk45 = solve(
             prob; trajectories = 3, dt = 1.0e-5, alg = :rk45, seed
         )
-        sols2_rk45 = TestParticle.solve(
+        sols2_rk45 = solve(
             prob; trajectories = 3, dt = 1.0e-5, alg = :rk45, seed
         )
 
@@ -103,8 +103,8 @@ end
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         seed = 5678
 
-        sols1 = TestParticle.solve(prob, alg; trajectories = 3, seed)
-        sols2 = TestParticle.solve(prob, alg; trajectories = 3, seed)
+        sols1 = solve(prob, alg; trajectories = 3, seed)
+        sols2 = solve(prob, alg; trajectories = 3, seed)
 
         @test length(sols1.u) == 3
         for i in 1:3
@@ -130,9 +130,9 @@ end
             SVector(sols.u[i].u[1][4], sols.u[i].u[1][5], sols.u[i].u[1][6])
                 for i in 1:length(sols.u)
         ]
-        v1 = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
-        v2 = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 2))
-        v1b = init_v(TestParticle.solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        v1 = init_v(solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
+        v2 = init_v(solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 2))
+        v1b = init_v(solve(prob, Boris(), EnsembleSerial(); trajectories = 6, dt = 1.0e-6, seed = 1))
         @test v1 == v1b
         @test !all(v2[i] == v1[i + 1] for i in 1:5)
     end
@@ -141,9 +141,9 @@ end
     let
         prob = TraceGCProblem(u0_gc, tspan, param; prob_func)
         init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
-        v1 = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
-        v2 = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 2))
-        v1b = init_v(TestParticle.solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
+        v1 = init_v(solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
+        v2 = init_v(solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 2))
+        v1b = init_v(solve(prob; trajectories = 6, dt = 1.0e-5, alg = :rk4, seed = 1))
         @test v1 == v1b
         @test !all(v2[i] == v1[i + 1] for i in 1:5)
     end
@@ -173,9 +173,9 @@ end
         prob = TraceHybridProblem(u0, tspan, p; prob_func = pf_h)
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
-        v1 = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 1))
-        v2 = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 2))
-        v1b = init_v(TestParticle.solve(prob, alg; trajectories = 6, seed = 1))
+        v1 = init_v(solve(prob, alg; trajectories = 6, seed = 1))
+        v2 = init_v(solve(prob, alg; trajectories = 6, seed = 2))
+        v1b = init_v(solve(prob, alg; trajectories = 6, seed = 1))
         @test v1 == v1b
         @test !all(v2[i] == v1[i + 1] for i in 1:5)
     end

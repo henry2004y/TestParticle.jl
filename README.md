@@ -29,9 +29,9 @@ For example, a proton in a static magnetic field can be traced in SI units via
 ```julia
 using TestParticle, OrdinaryDiffEq, StaticArrays
 # Magnetic field
-B(x) = SA[0, 0, 1e-8]
+B(x) = SA[0.0, 0.0, 1e-8]
 # Electric field
-E(x) = SA[0,0, 0.0, 0.0]
+E(x) = SA[0.0, 0.0, 0.0]
 # Initial conditions
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
    [x0..., v0...]
@@ -39,7 +39,7 @@ end
 # Time span
 tspan = (0, 20)
 # Assemble particle + fields
-param = prepare(E, B, species=Proton)
+param = prepare(E, B; species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 # Trace trajectory and save positions & velocities
 sol = solve(prob, Vern7())
@@ -48,10 +48,10 @@ sol = solve(prob, Vern7())
 Native Boris particle pusher also follows a similar interface:
 
 ```julia
-dt = 3e-11 # fixed time step
+dt = 1e-2 # fixed time step, about 1/650 of the gyroperiod (≈ 6.6 s)
 prob = TraceProblem(stateinit, tspan, param)
 # Standard Boris solver
-sol = TestParticle.solve(prob, Boris(); dt, saveat = 10 * dt)
+sol = solve(prob, Boris(); dt, saveat = 10 * dt)
 ```
 
 Besides the standard Boris method, we also support various advanced Boris solvers:
@@ -61,13 +61,13 @@ Besides the standard Boris method, we also support various advanced Boris solver
 
 ```julia
 # Adaptive Boris
-sol_adaptive = TestParticle.solve(prob, AdaptiveBoris(safety=0.1))
+sol_adaptive = solve(prob, AdaptiveBoris(safety=0.1))
 
 # 4th-order Multistep Boris with 2 substeps
-sol_multi = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
+sol_multi = solve(prob, MultistepBoris4(n=2); dt)
 
 # Adaptive 4th-order Multistep Boris
-sol_adaptive_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))
+sol_adaptive_multi = solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))
 ```
 
 For plotting with Makie,

@@ -24,7 +24,7 @@ using Test
         p = (q2m, m, E_field, B_field, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
-        sols = TP.solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
         @test sols.u[1].retcode == TP.ReturnCode.Success
     end
 
@@ -49,7 +49,7 @@ using Test
         p = (q2m, m, E_field, sheared_B, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
-        sols = TP.solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
         @test sols.u[1].retcode == TP.ReturnCode.Success
     end
 
@@ -88,7 +88,7 @@ using Test
             check_interval = 100,
         )
 
-        sols = TP.solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
 
         @test sols.u[1].retcode == TP.ReturnCode.Success
         # Check that we actually have a reasonable number of steps (hybrid should adapt)
@@ -139,10 +139,10 @@ using Test
             threshold = 0.0, dtmax = 10 * T_gyro, dtmin = 1.0e-6 * T_gyro,
             check_interval = 100
         )
-        sol_h = TP.solve(TraceHybridProblem(u0, tspan, p), alg_fo).u[1]
+        sol_h = solve(TraceHybridProblem(u0, tspan, p), alg_fo).u[1]
 
         dt_fo = 2π * alg_fo.safety_fo / (abs(q2m) * B0)
-        sol_b = TP.solve(TraceProblem(u0, tspan, p), Boris(); dt = dt_fo)
+        sol_b = solve(TraceProblem(u0, tspan, p), Boris(); dt = dt_fo)
 
         @test length(sol_h.t) == length(sol_b.t)
         for i in 1:length(sol_b.t)
@@ -200,7 +200,7 @@ using Test
             threshold_gc_to_fo = 0.2, threshold_fo_to_gc = 0.05,
             dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
         )
-        sol_buf = TP.solve(TraceHybridProblem(u0, tspan, p), alg_buf).u[1]
+        sol_buf = solve(TraceHybridProblem(u0, tspan, p), alg_buf).u[1]
         @test sol_buf.retcode == TP.ReturnCode.Success
         @test length(sol_buf.t) > 100
     end
@@ -215,12 +215,12 @@ using Test
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         prob = TraceHybridProblem(u0, tspan, p)
 
-        sol_all = TP.solve(prob, alg).u[1]
+        sol_all = solve(prob, alg).u[1]
 
         # Requesting intermediate output must not change the integration, only
         # where the state is reported.
         ts = collect(0.1e-4:0.1e-4:0.9e-4)
-        sol_at = TP.solve(prob, alg; saveat = ts).u[1]
+        sol_at = solve(prob, alg; saveat = ts).u[1]
 
         @test sol_at.t ≈ vcat(0.0, ts, 1.0e-4)
         @test sol_at.u[end] ≈ sol_all.u[end]
@@ -228,7 +228,7 @@ using Test
         # A shared time must give the same state whichever grid it arrives in,
         # which pins down that each one is interpolated inside its own step.
         ts_fine = sort!(vcat(ts, collect(0.05e-4:0.1e-4:0.95e-4)))
-        sol_fine = TP.solve(prob, alg; saveat = ts_fine).u[1]
+        sol_fine = solve(prob, alg; saveat = ts_fine).u[1]
 
         for t in ts
             j = findfirst(isequal(t), sol_fine.t)
@@ -240,7 +240,7 @@ using Test
 
         # A plain interval is accepted too: its interior is used, since the ends
         # of the span are reported separately.
-        sol_interval = TP.solve(prob, alg; saveat = 0.25e-4).u[1]
+        sol_interval = solve(prob, alg; saveat = 0.25e-4).u[1]
         @test sol_interval.t ≈ collect(0.0:0.25e-4:1.0e-4)
 
     end

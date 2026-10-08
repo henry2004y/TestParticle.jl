@@ -9,7 +9,6 @@
 using TestParticle
 using StaticArrays
 using Statistics: median
-import TestParticle: solve
 using Printf
 using KernelAbstractions: CPU
 import KernelAbstractions as KA

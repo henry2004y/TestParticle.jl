@@ -20,7 +20,7 @@ end
 
 sol_boris = let dt = 0.01
     prob = TraceProblem(stateinit, tspan, param)
-    TestParticle.solve(prob; dt)[1]
+    solve(prob; dt)[1]
 end
 
 @testset "orbit" begin

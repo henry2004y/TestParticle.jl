@@ -94,13 +94,13 @@ dt = tperiod / 4
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob, Boris(); dt);
-sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt);
-sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt);
-sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt);
+sol_boris = solve(prob, Boris(); dt);
+sol_boris_2 = solve(prob, MultistepBoris2(; n = 2); dt);
+sol_boris_4 = solve(prob, MultistepBoris2(; n = 4); dt);
+sol_boris_hyper = solve(prob, MultistepBoris4(; n = 2); dt);
 
 alg_adaptive = AdaptiveBoris(safety = 0.1)
-sol_boris_adaptive = TP.solve(prob, alg_adaptive);
+sol_boris_adaptive = solve(prob, alg_adaptive);
 
 # Let's compare against the default ODE solver `Tsit5` from DifferentialEquations.jl, in both fixed time step mode and adaptive mode:
 
@@ -120,10 +120,10 @@ dt = tperiod / 8
 
 prob = TraceProblem(stateinit, tspan, param)
 
-sol_boris = TP.solve(prob, Boris(); dt);
-sol_boris_2 = TP.solve(prob, MultistepBoris2(; n = 2); dt);
-sol_boris_4 = TP.solve(prob, MultistepBoris2(; n = 4); dt);
-sol_boris_hyper = TP.solve(prob, MultistepBoris4(; n = 2); dt);
+sol_boris = solve(prob, Boris(); dt);
+sol_boris_2 = solve(prob, MultistepBoris2(; n = 2); dt);
+sol_boris_4 = solve(prob, MultistepBoris2(; n = 4); dt);
+sol_boris_hyper = solve(prob, MultistepBoris4(; n = 2); dt);
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol1 = solve(prob, Tsit5(); adaptive = false, dt, dense = false, saveat = dt);
@@ -142,11 +142,11 @@ dt = tperiod / 12
 prob_boris = TraceProblem(stateinit, tspan, param)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 
-sol_boris = TP.solve(prob_boris, Boris(); dt, saveat = 36 * dt);
-sol_boris_2 = TP.solve(prob_boris, MultistepBoris2(; n = 2); dt, saveat = 36 * dt);
-sol_boris_4 = TP.solve(prob_boris, MultistepBoris2(; n = 4); dt, saveat = 36 * dt);
-sol_boris_hyper = TP.solve(prob_boris, MultistepBoris4(; n = 2); dt, saveat = 36 * dt);
-sol_boris_adaptive = TP.solve(
+sol_boris = solve(prob_boris, Boris(); dt, saveat = 36 * dt);
+sol_boris_2 = solve(prob_boris, MultistepBoris2(; n = 2); dt, saveat = 36 * dt);
+sol_boris_4 = solve(prob_boris, MultistepBoris2(; n = 4); dt, saveat = 36 * dt);
+sol_boris_hyper = solve(prob_boris, MultistepBoris4(; n = 2); dt, saveat = 36 * dt);
+sol_boris_adaptive = solve(
     prob_boris,
     AdaptiveBoris(safety = 0.1)
 )
@@ -240,7 +240,7 @@ dt = 0.1
 trajectories = 2
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-sols = TP.solve(prob, Boris(), EnsembleSerial(); dt, isoutside, trajectories)
+sols = solve(prob, Boris(), EnsembleSerial(); dt, isoutside, trajectories)
 
 f = Figure(fontsize = 20)
 ax = Axis(

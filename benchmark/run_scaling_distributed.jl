@@ -63,7 +63,7 @@ for nw in proc_counts
         prob = make_prob(param, stateinit, tspan)
 
         # Warmup
-        TestParticle.solve(
+        solve(
             prob, Boris(), EnsembleDistributed();
             trajectories = 10, dt, saveat, batch_size = 1
         )
@@ -71,7 +71,7 @@ for nw in proc_counts
         # Timed samples
         sample_times = Float64[]
         for _ in 1:N_SAMPLES
-            t = @elapsed TestParticle.solve(
+            t = @elapsed solve(
                 prob, Boris(), EnsembleDistributed();
                 trajectories = N_PARTICLES, dt, saveat,
                 batch_size = max(1, N_PARTICLES ÷ nw)

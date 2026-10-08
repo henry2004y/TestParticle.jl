@@ -27,8 +27,8 @@ end
                     Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),
                     MultistepBoris6(n = 4),
                 )
-                sol_loop = TestParticle.solve(prob, alg; dt, saveat)
-                sol_device = TP.solve(prob, alg, CPU(); dt, trajectories = 1, saveat).u[1]
+                sol_loop = solve(prob, alg; dt, saveat)
+                sol_device = solve(prob, alg, CPU(); dt, trajectories = 1, saveat).u[1]
 
                 @test length(sol_device.u) == length(sol_loop.u)
                 @test sol_device.t ≈ sol_loop.t rtol = 1.0e-10
@@ -45,7 +45,7 @@ end
                 prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
             for alg in (AdaptiveBoris(safety = 0.1), AdaptiveMultistepBoris{2}(n = 2))
-                @test_throws ArgumentError TP.solve(prob, alg, CPU(); dt, trajectories = 1)
+                @test_throws ArgumentError solve(prob, alg, CPU(); dt, trajectories = 1)
             end
         end
     end
@@ -55,8 +55,8 @@ end
                 param = prepare(zero_E, uniform_B; species = Proton),
                 prob = TraceProblem(Float32[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
-            sol_loop = TestParticle.solve(prob, Boris(); dt, saveat)
-            sol_device = TP.solve(prob, Boris(), CPU(); dt, trajectories = 1, saveat).u[1]
+            sol_loop = solve(prob, Boris(); dt, saveat)
+            sol_device = solve(prob, Boris(), CPU(); dt, trajectories = 1, saveat).u[1]
 
             @test eltype(sol_device.u[end]) === Float32
             @test eltype(sol_device.t) === Float32
@@ -72,8 +72,8 @@ end
             param = prepare(x, y, z, zeros(size(B_grid)), B_grid; species = Proton)
             prob = TraceProblem([5.0, 5.0, 5.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6), param)
 
-            sol_loop = TestParticle.solve(prob, Boris(); dt = 1.0e-9)
-            sol_device = TP.solve(prob, Boris(), CPU(); dt = 1.0e-9, trajectories = 1).u[1]
+            sol_loop = solve(prob, Boris(); dt = 1.0e-9)
+            sol_device = solve(prob, Boris(), CPU(); dt = 1.0e-9, trajectories = 1).u[1]
 
             @test length(sol_device.u) == length(sol_loop.u)
             @test max_rel_diff(sol_device.u, sol_loop.u) < 1.0e-12
@@ -81,7 +81,7 @@ end
             if isdefined(Main, :CUDA) && Main.CUDA.functional()
                 CUDA = Main.CUDA
                 backend = CUDA.CUDABackend()
-                sol_gpu = TP.solve(
+                sol_gpu = solve(
                     prob, Boris(), backend; dt = 1.0e-9, trajectories = 1
                 ).u[1]
                 @test length(sol_gpu.u) == length(sol_loop.u)
@@ -90,7 +90,7 @@ end
                 # Pinned host staging buffer
                 ens_pin = EnsembleKernel(backend; pin = true)
                 @test ens_pin.pin == true
-                sol_gpu_pin = TP.solve(
+                sol_gpu_pin = solve(
                     prob, Boris(), ens_pin;
                     dt = 1.0e-9, trajectories = 2, raw_output = true
                 )
@@ -119,8 +119,8 @@ end
             prob_sph_u = TraceProblem(
                 [2.0, 2.0, 2.0, 1.0, 0.0, 0.0], (0.0, 1.0e-3), param_sph_u
             )
-            sol_loop_u = TestParticle.solve(prob_sph_u, Boris(); dt = 1.0e-5)
-            sol_cpu_u = TP.solve(
+            sol_loop_u = solve(prob_sph_u, Boris(); dt = 1.0e-5)
+            sol_cpu_u = solve(
                 prob_sph_u, Boris(), CPU(); dt = 1.0e-5, trajectories = 1
             ).u[1]
 
@@ -142,8 +142,8 @@ end
             prob_sph_nu = TraceProblem(
                 [2.0, 2.0, 2.0, 1.0, 0.0, 0.0], (0.0, 1.0e-3), param_sph_nu
             )
-            sol_loop_nu = TestParticle.solve(prob_sph_nu, Boris(); dt = 1.0e-5)
-            sol_cpu_nu = TP.solve(
+            sol_loop_nu = solve(prob_sph_nu, Boris(); dt = 1.0e-5)
+            sol_cpu_nu = solve(
                 prob_sph_nu, Boris(), CPU(); dt = 1.0e-5, trajectories = 1
             ).u[1]
 
@@ -154,13 +154,13 @@ end
                 CUDA = Main.CUDA
                 backend = CUDA.CUDABackend()
 
-                sol_gpu_u = TP.solve(
+                sol_gpu_u = solve(
                     prob_sph_u, Boris(), backend; dt = 1.0e-5, trajectories = 2
                 ).u[1]
                 @test length(sol_gpu_u.u) == length(sol_loop_u.u)
                 @test max_rel_diff(sol_gpu_u.u, sol_loop_u.u) < 1.0e-5
 
-                sol_gpu_nu = TP.solve(
+                sol_gpu_nu = solve(
                     prob_sph_nu, Boris(), backend; dt = 1.0e-5, trajectories = 2
                 ).u[1]
                 @test length(sol_gpu_nu.u) == length(sol_loop_nu.u)
@@ -278,7 +278,7 @@ end
             [1.0, 1.0, 1.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6),
             (param3d[1], param3d[2], param3d[3], TP.Field(g3d))
         )
-        sol3d = TP.solve(prob3d, Boris(), CPU(); dt = 1.0e-9)
+        sol3d = solve(prob3d, Boris(), CPU(); dt = 1.0e-9)
         @test length(sol3d.u[1].u) == 1001
     end
 end

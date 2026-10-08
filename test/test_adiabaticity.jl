@@ -133,8 +133,8 @@ end
     # Default (no `adiabaticity`) must equal `:curvature` exactly, i.e. the
     # legacy V1 behaviour is preserved.
     let
-        sol_def = TP.solve(prob, TP.AdaptiveHybrid(; alg_args...); seed = 1234).u[1]
-        sol_curv = TP.solve(
+        sol_def = solve(prob, TP.AdaptiveHybrid(; alg_args...); seed = 1234).u[1]
+        sol_curv = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :curvature); seed = 1234
         ).u[1]
         @test sol_def.retcode == TP.ReturnCode.Success
@@ -147,16 +147,16 @@ end
     # OR logic, its full-orbit interval is the union of the curvature and grad-B
     # intervals, so it occupies at least as much full-orbit time as either alone.
     let
-        sol_curv = TP.solve(
+        sol_curv = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :curvature); seed = 1234
         ).u[1]
-        sol_grad = TP.solve(
+        sol_grad = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :gradB); seed = 1234
         ).u[1]
-        sol_both = TP.solve(
+        sol_both = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :both); seed = 1234
         ).u[1]
-        sol_jac = TP.solve(
+        sol_jac = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :jacobian); seed = 1234
         ).u[1]
         @test sol_curv.retcode == TP.ReturnCode.Success
@@ -227,15 +227,15 @@ end
             check_interval = 20,
         )
 
-        sol_curv = TP.solve(
+        sol_curv = solve(
             prob_rot, TP.AdaptiveHybrid(; args..., adiabaticity = :curvature);
             seed = 1234
         ).u[1]
-        sol_grad = TP.solve(
+        sol_grad = solve(
             prob_rot, TP.AdaptiveHybrid(; args..., adiabaticity = :gradB);
             seed = 1234
         ).u[1]
-        sol_jac = TP.solve(
+        sol_jac = solve(
             prob_rot, TP.AdaptiveHybrid(; args..., adiabaticity = :jacobian);
             seed = 1234
         ).u[1]
@@ -259,10 +259,10 @@ end
     # `save_adiabaticity = false` skips the diagnostic buffers entirely while
     # leaving the trajectory unchanged, so users can opt out of the overhead.
     let
-        sol_save = TP.solve(
+        sol_save = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., save_adiabaticity = true); seed = 1234
         ).u[1]
-        sol_no = TP.solve(
+        sol_no = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., save_adiabaticity = false); seed = 1234
         ).u[1]
         @test sol_no.retcode == TP.ReturnCode.Success
