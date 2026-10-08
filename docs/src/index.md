@@ -63,50 +63,118 @@ TestParticle.jl supports both multithreading and distributed computing for ensem
 
 ### GPU Performance and Multi-Backend Scaling
 
-TestParticle.jl provides vendor-agnostic GPU acceleration via [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl). Passing a GPU backend such as `CUDA.CUDABackend()`, `AMDGPU.ROCBackend()`, `Metal.MetalBackend()`, or `oneAPI.oneAPIBackend()` to `solve(prob, Boris(), backend)` executes the Boris pusher kernels directly on hardware accelerators.
+TestParticle.jl provides vendor-agnostic GPU acceleration via
+[KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl). Passing a GPU
+backend such as `CUDA.CUDABackend()`, `AMDGPU.ROCBackend()`, `Metal.MetalBackend()`, or
+`oneAPI.oneAPIBackend()` to `solve(prob, Boris(), backend)` executes the Boris pusher
+kernels directly on hardware accelerators.
 
-**Benchmark Configuration:**
-- CPU: Intel Core Ultra 7 265K (20 cores, 20 threads)
-- GPU: NVIDIA GeForce RTX 5070 (12 GB GDDR7)
+**Benchmark Environments:**
+- **Workstation (Consumer GPU):** Intel Core Ultra 7 265K (20 cores, 20 threads),
+  NVIDIA GeForce RTX 5070 (12 GB GDDR7)
+- **HPC Node (Datacenter GPU):** NERSC Perlmutter node, AMD EPYC 7763 (128 threads),
+  NVIDIA A100-SXM4-40GB
 
-Reproducible benchmark scripts are available in [benchmark/compare_boris_backends.jl](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/compare_boris_backends.jl).
+Reproducible benchmark scripts are available in
+[`benchmark/compare_boris_backends.jl`](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/compare_boris_backends.jl).
 
 #### 1. Analytical Uniform Field Tracing (1,000 steps)
 
-| Number of Particles $N$ | CPU Serial (FP64) | CPU 2 Threads (FP64) | CPU 4 Threads (FP64) | GPU (FP64) | GPU (FP32) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| 100 | 1.56 ms | 0.98 ms (1.6x) | 0.54 ms (2.9x) | 1.11 ms (1.4x) | 0.70 ms (2.2x) |
-| 1,000 | 14.55 ms | 7.68 ms (1.9x) | 4.09 ms (3.6x) | 2.15 ms (6.8x) | 0.70 ms (20.8x) |
-| 5,000 | 72.18 ms | 38.10 ms (1.9x) | 20.57 ms (3.5x) | 3.73 ms (19.4x) | 1.89 ms (38.2x) |
-| 10,000 | 147.43 ms | 75.88 ms (1.9x) | 39.56 ms (3.7x) | 6.76 ms (21.8x) | 3.67 ms (40.2x) |
+Times below report the median wall time for an ensemble of particles traced over 1,000
+steps on the RTX 5070 workstation. Speeds in parentheses are relative to CPU Serial:
 
-> [!NOTE]
-> The table above includes host Julia overhead (allocating and assembling `ODESolution` wrapper structures). At the pure GPU kernel level without host data unpacking, an ensemble of $200,000$ particles over $1,000$ steps completes in **0.58 ms** in `Float32` ($>3.4 \times 10^{11}$ particle-steps/s), compared to **30.36 ms** in `Float64` (~52x faster kernel execution due to consumer GPU FP32:FP64 ALU architecture).
+| Number of Particles $N$ | CPU Serial (FP64) | CPU Threads (20 Thr) | KA CPU (FP64) | GPU (FP64) | GPU (FP32) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1,000 | 14.15 ms | 1.62 ms (8.7x) | 0.79 ms (18.0x) | 2.27 ms (6.2x) | 0.52 ms (27.4x) |
+| 10,000 | 167.31 ms | 12.89 ms (13.0x) | 5.76 ms (29.1x) | 3.09 ms (54.2x) | 0.85 ms (196.9x) |
+| 100,000 | 1521.67 ms | 166.30 ms (9.2x) | 43.22 ms (35.2x) | 23.40 ms (65.0x) | 5.30 ms (286.9x) |
+
+When returning raw matrix output (`raw_output = true` with a bulk initial state matrix,
+omitting per-particle `ODESolution` wrapper assembly), host overhead is eliminated:
+at $N = 100,000$, KA CPU completes in **37.69 ms**, GPU (FP64) in **13.29 ms**, and
+GPU (FP32) in **1.22 ms** ($>8.1 \times 10^{10}$ particle-steps/s end-to-end). On the
+Perlmutter A100, the same 100,000-particle ensemble completes in **2.33 ms** (FP64) and
+**1.22 ms** (FP32).
 
 #### 2. 3D Grid Field Interpolation ($32^3$ Grid, 200 steps, Float32)
 
-For discrete electromagnetic grids, TestParticle.jl automatically converts grid interpolations into device-native [`GPUGrid3D`](https://github.com/henry2004y/TestParticle.jl/blob/master/src/utility/gpu_grid.jl) structures with hardware register trilinear evaluation. Furthermore, passing `sort_particles = true` spatially orders particles along a 3D Morton Z-order curve prior to tracing, maximizing GPU L1/L2 cache hit rates for adjacent threads in a warp.
+For discrete electromagnetic grids, TestParticle.jl automatically converts grid
+interpolations into device-native
+[`GPUGrid3D`](https://github.com/henry2004y/TestParticle.jl/blob/master/src/utility/gpu_grid.jl)
+structures with hardware register trilinear evaluation:
 
-| Number of Particles $N$ | CPU (4 Threads) | GPU Unsorted | GPU Morton Sorted |
-| :--- | :--- | :--- | :--- |
-| 500 | 2192.54 ms | 3.51 ms (624x) | 2.19 ms (1001x) |
-| 2,000 | 830.26 ms | 11.34 ms (73x) | 10.65 ms (78x) |
-| 10,000 | 3325.21 ms | 69.23 ms (48x) | 63.11 ms (53x) |
+| Number of Particles $N$ | CPU Threads (20 Thr) | KA CPU (Fair Baseline) | GPU (Default API) | GPU (Raw Output) |
+| :--- | :--- | :--- | :--- | :--- |
+| 2,000 | 3.39 ms | 1.67 ms (2.0x) | 0.95 ms (3.6x) | 0.75 ms (4.5x) |
+| 10,000 | 11.29 ms | 6.34 ms (1.8x) | 1.64 ms (6.9x) | 0.74 ms (15.3x) |
+| 50,000 | 79.71 ms | 23.99 ms (3.3x) | 4.40 ms (18.1x) | 1.26 ms (63.3x) |
+
+> [!NOTE]
+> `CPU Threads` allocates one `ODESolution` per particle, which dominates the runtime
+> for grid fields. `KA CPU` provides the fair parallel CPU baseline by batching particle
+> updates without per-particle object allocation overhead.
+
+#### 3. Kernel Isolation and Theoretical Peak Performance
+
+Because Boris integration holds particle coordinates and velocities entirely in
+GPU registers throughout the step loop, the kernel performs zero DRAM reads or writes
+between $t_0$ and $t_{\text{end}}$. A linear regression $t = a + b \cdot \text{steps}$
+isolates host initialization / wrapper overhead ($a$) from the pure hardware pusher
+throughput ($b$):
+
+- **NVIDIA A100 (Perlmutter):**
+  - **FP32:** $385.1 \times 10^9$ particle-steps/s ($b = 0.0026\text{ ms} / \text{step}$
+    per $10^6$ particles), achieving $\approx 20.0\text{ TFLOPS}$ (~100% of the A100
+    peak vector FP32 compute of 19.5 TFLOPS).
+  - **FP64:** $191.6 \times 10^9$ particle-steps/s ($b = 0.0052\text{ ms} / \text{step}$
+    per $10^6$ particles), achieving $\approx 10.0\text{ TFLOPS}$ (~100% of the A100
+    peak FP64 compute of 9.7 TFLOPS).
+  - The measured FP32:FP64 speedup ratio is **2.00x**, exactly matching the 2:1 ALU
+    hardware architecture of the A100.
+- **NVIDIA RTX 5070 (Workstation):**
+  - **FP32:** $625.4 \times 10^9$ particle-steps/s ($b = 0.0016\text{ ms} / \text{step}$
+    per $10^6$ particles), delivering $\approx 31.2\text{ TFLOPS}$ (>80% of peak compute).
+  - **FP64:** $9.4 \times 10^9$ particle-steps/s, demonstrating a **62.4x** FP32 speedup
+    that reflects the 1:64 FP64 ALU throttling inherent to consumer GeForce GPUs.
+- **$32^3$ Grid Interpolation:**
+  - Sustains $55.5 \times 10^9$ particle-steps/s on A100 and $48.2 \times 10^9$
+    particle-steps/s on RTX 5070, saturating GPU L1/L2 cache read bandwidth with
+    trilinear evaluations.
 
 ### Precision Considerations: Float64 vs Float32
 
-TestParticle.jl supports both double precision (`Float64`) and single precision (`Float32`) tracing. Supplying `Float32` coordinates, velocities, or time span automatically promotes the simulation parameters, physical constants, and equations to single precision.
+TestParticle.jl supports both double precision (`Float64`) and single precision
+(`Float32`) tracing. Supplying `Float32` coordinates, velocities, or time span
+automatically promotes the simulation parameters, physical constants, and equations
+to single precision.
 
 #### Advantages of Float32
-- **Massive GPU Speedups**: Consumer-grade GPUs (e.g., NVIDIA GeForce RTX 30/40/50 series) feature a 1:64 FP64 ALU throughput penalty. Switching to `Float32` unlocks the full FP32 compute power of the hardware, yielding up to **50x** faster pure kernel tracing.
-- **Lower Memory Footprint**: Halves the required VRAM and host memory for particle trajectory states, intermediate buffers, and large 3D electromagnetic grids. This reduces memory bandwidth pressure on both CPU and GPU.
+- **Massive Consumer GPU Speedups:** Consumer-grade GPUs (e.g., NVIDIA GeForce RTX
+  30/40/50 series) feature a 1:64 FP64 ALU throughput throttle. Switching to `Float32`
+  unlocks the full hardware compute rate, yielding over **60x** faster pure kernel
+  execution. On datacenter GPUs (e.g., NVIDIA A100), `Float32` yields the theoretical
+  **2x** speedup over full-rate FP64 ALUs.
+- **Lower Memory Footprint:** Halves VRAM and host memory consumption for trajectory
+  buffers and 3D electromagnetic grids, reducing memory bandwidth pressure.
+- **Reduced Host Overhead:** Memory allocations and data transfers across the PCIe bus
+  are halved in size.
 
 #### Trade-offs and Limitations of Float32
-- **Accumulated Numerical Drift**: With 24 bits of mantissa (~7 significant decimal digits), rounding errors accumulate over long integration periods ($>10^5$ gyro-orbits), potentially leading to phase errors or slight artificial energy drift in non-integrable fields.
-- **Dynamic Range / Catastrophic Cancellation**: In unnormalized SI units with large coordinate baselines (e.g. planetary magnetospheres where $r \sim 10^7$ m, but gyroradii or step increments are in centimeters or meters), `Float32` suffers from catastrophic cancellation in spatial increments.
-- **Recommendation**:
-  - Use **`Float64`** for high-precision single-particle tracing, long-duration orbital dynamics, and planetary-scale simulations using unnormalized SI units.
-  - Use **`Float32`** for large statistical ensembles ($N \ge 10^5$), kinetic/MHD test-particle distribution studies, normalized coordinate systems (e.g. lengths normalized to ion inertial length or gyroradius), and high-throughput GPU workloads.
+- **Accumulated Numerical Drift:** With 24 bits of mantissa (~7 significant decimal
+  digits), rounding errors accumulate over long integration periods ($>10^5$ gyro-orbits),
+  potentially leading to phase errors or slight artificial energy drift in non-integrable fields.
+- **Dynamic Range / Catastrophic Cancellation:** In unnormalized SI units with large
+  coordinate baselines (e.g. planetary magnetospheres where $r \sim 10^7$ m, but gyroradii
+  or step increments are in centimeters or meters), `Float32` suffers from catastrophic
+  cancellation in spatial increments.
+- **Recommendations:**
+  - Use **`Float64`** for high-precision single-particle tracing, long-duration orbital
+    dynamics, and planetary-scale simulations using unnormalized SI units.
+  - Use **`Float32`** for large statistical ensembles ($N \ge 10^5$), kinetic/MHD
+    distribution studies, normalized coordinate systems (e.g., lengths normalized to
+    ion inertial length or gyroradius), and high-throughput GPU workloads.
+  - For large ensembles ($N \ge 10^5$), set **`raw_output = true`** to bypass per-particle
+    `ODESolution` Julia object allocation and achieve near-pure kernel throughput.
 
 ## Presentations
 
