@@ -162,6 +162,7 @@ which is the form to use for anything it does not cover, such as an
 
 # Keywords
   - `trajectories::Int=1`: number of particles.
+  - `safetycopy::Bool=false`: whether to deepcopy `prob` per trajectory.
   - `seed`: master seed. SciML derives one reproducible generator per trajectory
     from it and hands it to `prob_func` as `ctx.rng`.
   - `batch_size`, `pmap_batch_size`: SciML's own ensemble keywords, controlling
@@ -174,13 +175,11 @@ function solve(
         ensemblealg::BasicEnsembleAlgorithm;
         trajectories::Int = 1,
         seed::Union{Nothing, Integer} = nothing,
+        safetycopy::Bool = false,
         kwargs...
     )
-    # Copy the problem per trajectory only when `prob_func` may mutate it, the
-    # rule SciML applies to an `EnsembleProblem` built from a custom `prob_func`.
     ensemble_prob = EnsembleProblem(
-        prob; prob_func = prob.prob_func,
-        safetycopy = prob.prob_func !== DEFAULT_PROB_FUNC
+        prob; prob_func = prob.prob_func, safetycopy
     )
 
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)

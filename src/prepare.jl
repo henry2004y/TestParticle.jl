@@ -110,11 +110,18 @@ function adapt_field_to_gpu(fi::FieldInterpolator1D, backend::Backend)
     return _to_gpu_grid(fi.itp, backend; dir = fi.dir)
 end
 
+function adapt_field_to_gpu(fi::SphericalFieldInterpolator, backend::Backend)
+    backend isa CPU && return fi
+    return _to_gpu_spherical_grid(fi.itp, backend)
+end
+
 adapt_field_to_gpu(g::GPUGrid3D, backend::Backend) =
     backend isa CPU ? g : Adapt.adapt(backend, g)
 adapt_field_to_gpu(g::GPUGrid2D, backend::Backend) =
     backend isa CPU ? g : Adapt.adapt(backend, g)
 adapt_field_to_gpu(g::GPUGrid1D, backend::Backend) =
+    backend isa CPU ? g : Adapt.adapt(backend, g)
+adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
     backend isa CPU ? g : Adapt.adapt(backend, g)
 
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)

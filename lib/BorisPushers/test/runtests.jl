@@ -292,8 +292,26 @@ BorisPushers.get_BField(p::CustomParam) = p.B
 
         # EnsembleKernel API
         ens = EnsembleKernel(backend)
+        @test ens.pin === nothing
         sol_ens = solve(prob, Boris(), ens; dt, trajectories = 1, saveat = 1.0).u[1]
         @test sol_ens.u[end] ≈ sol_loop.u[end] atol = 1.0e-10
+
+        ens_pin = EnsembleKernel(backend; pin = true)
+        @test ens_pin.pin == true
+        sol_pin_raw = solve(
+            prob, Boris(), ens_pin; dt, trajectories = 2, raw_output = true
+        )
+        @test size(sol_pin_raw.u, 1) == 2
+
+        # Automatic pin heuristic checks
+        @test BorisPushers._should_pin(CPU(), nothing, true, 200_000) == false
+        @test BorisPushers._should_pin(backend, nothing, false, 200_000) == false
+        @test BorisPushers._should_pin(backend, nothing, true, 10_000) == false
+        if !(backend isa CPU)
+            @test BorisPushers._should_pin(backend, nothing, true, 200_000) == true
+        end
+        @test BorisPushers._should_pin(backend, false, true, 200_000) == false
+        @test BorisPushers._should_pin(backend, true, false, 10) == true
 
         # Unaligned saveat and save_start = false
         sol_unaligned = solve(

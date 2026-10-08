@@ -1,18 +1,91 @@
 # EnsembleKernel solver for hardware backends via KernelAbstractions.jl
 
 """
-    EnsembleKernel(backend=CPU(); workgroup_size=256)
+    EnsembleKernel(backend=CPU(); workgroup_size=256, pin=nothing)
 
 Ensemble algorithm for running particle traces on hardware backends
 via KernelAbstractions.jl (such as CUDA, AMDGPU, oneAPI, Metal, or multi-threaded CPU).
+When `pin = true`, host staging buffers used for data transfers to and from GPU devices
+are pinned (page-locked) to maximize PCIe transfer bandwidth. When `pin === nothing` (default),
+pinning is chosen automatically: enabled for GPU runs with `raw_output = true` and
+particle count >= 100,000 where transfer bandwidth exceeds pinning latency, and disabled otherwise.
+Explicitly passing `pin = true` or `pin = false` overrides the automatic heuristic.
 """
 struct EnsembleKernel{B <: Backend} <: SciMLBase.EnsembleAlgorithm
     backend::B
     workgroup_size::Int
+    pin::Union{Nothing, Bool}
 end
 
-function EnsembleKernel(backend::Backend = CPU(); workgroup_size::Int = 256)
-    return EnsembleKernel(backend, workgroup_size)
+function EnsembleKernel(
+        backend::Backend = CPU();
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing
+    )
+    return EnsembleKernel(backend, workgroup_size, pin)
+end
+
+function EnsembleKernel(backend::B, workgroup_size::Int) where {B <: Backend}
+    return EnsembleKernel(backend, workgroup_size, nothing)
+end
+
+@inline function _should_pin(
+        backend::Backend, pin::Union{Nothing, Bool},
+        raw_output::Bool, trajectories::Int
+    )
+    if pin !== nothing
+        return pin
+    end
+    return !(backend isa CPU) && raw_output && trajectories >= 100_000
+end
+
+function _pin_array!(backend::Backend, a::AbstractArray)
+    backend isa CPU && return a
+    m = parentmodule(typeof(backend))
+    while true
+        if isdefined(m, :pin)
+            try
+                m.pin(a)
+                return a
+            catch
+            end
+        elseif isdefined(m, :Mem) && isdefined(getfield(m, :Mem), :pin)
+            try
+                getfield(m, :Mem).pin(a)
+                return a
+            catch
+            end
+        end
+        parent = parentmodule(m)
+        (parent === m || parent === Main || parent === Base || parent === Core) && break
+        m = parent
+    end
+    for pkg in (:CUDA, :AMDGPU, :Metal, :oneAPI)
+        if isdefined(Main, pkg)
+            mod = getfield(Main, pkg)
+            if isdefined(mod, :pin)
+                try
+                    mod.pin(a)
+                    return a
+                catch
+                end
+            elseif isdefined(mod, :Mem) && isdefined(getfield(mod, :Mem), :pin)
+                try
+                    getfield(mod, :Mem).pin(a)
+                    return a
+                catch
+                end
+            end
+        end
+    end
+    return a
+end
+
+function _staging_array(backend::Backend, ::Type{T}, dims; pin::Bool = false) where {T}
+    a = zeros(T, dims)
+    if pin
+        _pin_array!(backend, a)
+    end
+    return a
 end
 
 function _build_saved_times(
@@ -257,7 +330,7 @@ values, including `saveat` interpolation, are identical to the solution path.
 function _solve_raw!(
         backend::Backend, xv_current, xv_init, irange;
         dt, tspan, plan, workgroup_size, p_gpu, p_host, alg, nout, nt,
-        save_start, save_end, save_everystep, prob
+        save_start, save_end, save_everystep, prob, pin::Bool = false
     )
     T = eltype(xv_current)
     n_total = size(xv_current, 1)
@@ -297,18 +370,18 @@ function _solve_raw!(
         )
         synchronize(backend)
 
-        xv_host = zeros(T, n_total, 6)
+        xv_host = _staging_array(backend, T, (n_total, 6); pin)
         copyto!(xv_host, xv_current)
         if alias
             return (; u = reshape(xv_host, n_total, 6, 1), t = saved_times)
         end
-        u = zeros(T, n_total, 6, nout)
+        u = _staging_array(backend, T, (n_total, 6, nout); pin)
         save_start && _copy_column!(u, xv_init, irange, 1)
         save_end && _copy_column!(u, xv_host, irange, nout)
         return (; u, t = saved_times)
     end
 
-    u = zeros(T, n_total, 6, nout)
+    u = _staging_array(backend, T, (n_total, 6, nout); pin)
     saved_gpu = KA.zeros(backend, T, n_total, 6, nout)
     if use_saveat(plan)
         plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
@@ -347,7 +420,8 @@ function _solve_kernel_serial(
         dt, plan, save_start::Bool,
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_init, is_cpu_accessible::Bool,
-        p_gpu, p_host, alg, nout::Int, nt::Int
+        p_gpu, p_host, alg, nout::Int, nt::Int,
+        pin::Bool = false
     )
     (; tspan) = prob
     T = eltype(xv_current)
@@ -413,7 +487,7 @@ function _solve_kernel_serial(
         saved_data_buf = if is_cpu_accessible
             saved_data_gpu
         else
-            saved_cpu = zeros(T, n_total, 6, nout)
+            saved_cpu = _staging_array(backend, T, (n_total, 6, nout); pin)
             copyto!(saved_cpu, saved_data_gpu)
             saved_cpu
         end
@@ -429,7 +503,7 @@ end
 function _prepare_ensemble_solve(
         prob, prob_func, backend::Backend, trajectories::Int, dt::Real,
         plan, save_start::Bool, save_end::Bool, save_everystep::Bool, maxiters::Int;
-        sort_particles::Bool = false, seed = nothing, u0 = nothing
+        seed = nothing, u0 = nothing, pin::Bool = false
     )
     (; tspan, p) = prob
     prob_u0 = prob.u0
@@ -481,32 +555,24 @@ function _prepare_ensemble_solve(
         # One bulk copy instead of one `prob_func` (and one `remake`) per particle.
         size(u0) == (n_particles, 6) ||
             throw(ArgumentError("u0 must be a $n_particles x 6 matrix"))
-        u0 isa Matrix{T} ? u0 : Matrix{T}(u0)
-    elseif is_cpu_accessible && (!sort_particles || n_particles <= 1)
+        mat = u0 isa Matrix{T} ? u0 : Matrix{T}(u0)
+        pin && _pin_array!(backend, mat)
+        mat
+    elseif is_cpu_accessible
         xv_current
     else
-        zeros(T, n_particles, 6)
+        _staging_array(backend, T, (n_particles, 6); pin)
     end
 
     u0 === nothing && _init_particles!(xv_init, prob, prob_func, n_particles, seed)
 
-    if sort_particles && n_particles > 1
-        perm = morton_sort_particles(xv_init)
-        xv_init_sorted = xv_init[perm, :]
-        copyto!(xv_current, xv_init_sorted)
-        return (;
-            nt, nout, xv_current, xv_init = xv_init_sorted, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T, perm,
-        )
-    else
-        if xv_current !== xv_init
-            copyto!(xv_current, xv_init)
-        end
-        return (;
-            nt, nout, xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T, perm = nothing,
-        )
+    if xv_current !== xv_init
+        copyto!(xv_current, xv_init)
     end
+    return (;
+        nt, nout, xv_current, xv_init, is_cpu_accessible,
+        p_gpu, p_host, tspan = tspan_T, u0 = prob_u0, T, dt = dt_T,
+    )
 end
 
 function _execute_ensemble_kernel(
@@ -515,10 +581,10 @@ function _execute_ensemble_kernel(
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         maxiters::Int = 1_000_000,
-        sort_particles::Bool = false,
         seed = nothing,
         u0 = nothing,
-        raw_output::Bool = false
+        raw_output::Bool = false,
+        pin::Union{Nothing, Bool} = nothing
     )
     if SciMLBase.isadaptive(alg)
         throw(
@@ -532,6 +598,9 @@ function _execute_ensemble_kernel(
 
     backend = ens.backend
     workgroup_size = ens.workgroup_size
+    effective_pin = _should_pin(
+        backend, pin !== nothing ? pin : ens.pin, raw_output, trajectories
+    )
     T = eltype(base_prob.u0)
     dt_T = T(dt)
     tspan_T = (T(base_prob.tspan[1]), T(base_prob.tspan[2]))
@@ -540,11 +609,11 @@ function _execute_ensemble_kernel(
 
     (;
         nt, nout, xv_current, xv_init, is_cpu_accessible,
-        p_gpu, p_host, tspan, perm,
+        p_gpu, p_host, tspan,
     ) = _prepare_ensemble_solve(
         base_prob, prob_func, backend, trajectories, dt_T, plan,
         save_start, save_end, save_everystep, maxiters;
-        sort_particles, seed, u0
+        seed, u0, pin = effective_pin
     )
 
     t0 = time_ns()
@@ -553,7 +622,8 @@ function _execute_ensemble_kernel(
         _solve_raw!(
             backend, xv_current, xv_init, 1:trajectories;
             dt = dt_T, tspan, plan, workgroup_size, p_gpu, p_host, alg,
-            nout, nt, save_start, save_end, save_everystep, prob = base_prob
+            nout, nt, save_start, save_end, save_everystep, prob = base_prob,
+            pin = effective_pin
         )
     elseif backend isa CPU && Threads.nthreads() > 1 && trajectories > 16
         saved_times = _build_saved_times(
@@ -570,7 +640,7 @@ function _execute_ensemble_kernel(
                 base_prob, backend, irange;
                 dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
                 xv_current, xv_init, is_cpu_accessible,
-                p_gpu, p_host, alg, nout, nt
+                p_gpu, p_host, alg, nout, nt, pin = effective_pin
             )
             for (local_i, i) in enumerate(irange)
                 res_sols[i] = chunk_sols[local_i]
@@ -582,20 +652,13 @@ function _execute_ensemble_kernel(
             base_prob, backend, 1:trajectories;
             dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, alg, nout, nt
+            p_gpu, p_host, alg, nout, nt, pin = effective_pin
         )
     end
 
     elapsed_time = (time_ns() - t0) * 1.0e-9
 
-    sols_final = if perm === nothing
-        sols
-    elseif raw_output
-        (; u = sols.u[invperm(perm), :, :], t = sols.t)
-    else
-        sols[invperm(perm)]
-    end
-    return sols_final, elapsed_time
+    return sols, elapsed_time
 end
 
 """
@@ -615,10 +678,10 @@ function SciMLBase.__solve(
         saveat = (),
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
         maxiters::Int = 1_000_000,
-        sort_particles::Bool = false,
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false,
+        pin::Union{Nothing, Bool} = nothing,
         kwargs...
     )
     base_prob = eprob.prob
@@ -629,7 +692,7 @@ function SciMLBase.__solve(
     sols, elapsed_time = _execute_ensemble_kernel(
         base_prob, prob_func, alg, ens;
         dt, trajectories, saveat, save_start, save_end,
-        save_everystep, maxiters, sort_particles, seed, u0, raw_output
+        save_everystep, maxiters, seed, u0, raw_output, pin
     )
 
     raw_output && return sols
@@ -694,31 +757,39 @@ end
 function SciMLBase.solve(
         prob::AbstractODEProblem,
         alg::AbstractBoris, backend::Backend;
-        workgroup_size::Int = 256, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
-    return SciMLBase.solve(prob, alg, EnsembleKernel(backend; workgroup_size); kwargs...)
+    return SciMLBase.solve(
+        prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
+    )
 end
 
 function SciMLBase.solve(
         prob::SciMLBase.EnsembleProblem,
         alg::AbstractBoris, backend::Backend;
-        workgroup_size::Int = 256, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
-    return SciMLBase.solve(prob, alg, EnsembleKernel(backend; workgroup_size); kwargs...)
+    return SciMLBase.solve(
+        prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
+    )
 end
 
 function SciMLBase.solve(
         prob::AbstractODEProblem,
         alg::AbstractBoris, backend::Backend, ::BasicEnsembleAlgorithm;
-        workgroup_size::Int = 256, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
-    return SciMLBase.solve(prob, alg, EnsembleKernel(backend; workgroup_size); kwargs...)
+    return SciMLBase.solve(
+        prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
+    )
 end
 
 function SciMLBase.solve(
         prob::SciMLBase.EnsembleProblem,
         alg::AbstractBoris, backend::Backend, ::BasicEnsembleAlgorithm;
-        workgroup_size::Int = 256, kwargs...
+        workgroup_size::Int = 256, pin::Union{Nothing, Bool} = nothing, kwargs...
     )
-    return SciMLBase.solve(prob, alg, EnsembleKernel(backend; workgroup_size); kwargs...)
+    return SciMLBase.solve(
+        prob, alg, EnsembleKernel(backend; workgroup_size, pin); kwargs...
+    )
 end

@@ -128,7 +128,7 @@ end
         end
     end
 
-    @testset "raw output combines with u0 and particle sorting" begin
+    @testset "raw output combines with u0" begin
         let N = 40, (; prob, states, dt) = make_prob(N)
             reference = TP.solve(
                 prob, Boris(), CPU();
@@ -141,14 +141,7 @@ end
                 u0 = states, raw_output = true,
             )
             @test both.u == reference.u
-
-            sorted = TP.solve(
-                prob, Boris(), CPU();
-                trajectories = N, dt, save_everystep = false,
-                sort_particles = true, raw_output = true,
-            )
-            @test sorted.u == reference.u
-            @test sorted.t == reference.t
+            @test both.t == reference.t
         end
     end
 

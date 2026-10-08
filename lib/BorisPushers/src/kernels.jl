@@ -25,30 +25,38 @@ function adapt_params(p, backend::Backend)
 end
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
-    v_half = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
+    @inbounds begin
+        r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+        v_half = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
+    end
 
     r_new, v_half_new = advance_boris(v_half, r, dt, t, p, alg)
 
-    xv_out[i, 1] = r_new[1]
-    xv_out[i, 2] = r_new[2]
-    xv_out[i, 3] = r_new[3]
-    xv_out[i, 4] = v_half_new[1]
-    xv_out[i, 5] = v_half_new[2]
-    xv_out[i, 6] = v_half_new[3]
+    @inbounds begin
+        xv_out[i, 1] = r_new[1]
+        xv_out[i, 2] = r_new[2]
+        xv_out[i, 3] = r_new[3]
+        xv_out[i, 4] = v_half_new[1]
+        xv_out[i, 5] = v_half_new[2]
+        xv_out[i, 6] = v_half_new[3]
+    end
 
     return
 end
 
 @inline function boris_retard_v!(i, xv_in, xv_out, p, dt, t, alg)
-    r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
-    v = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
+    @inbounds begin
+        r = SVector(xv_in[i, 1], xv_in[i, 2], xv_in[i, 3])
+        v = SVector(xv_in[i, 4], xv_in[i, 5], xv_in[i, 6])
+    end
 
     v_half = update_velocity_half(v, r, dt, t, p, alg)
 
-    xv_out[i, 4] = v_half[1]
-    xv_out[i, 5] = v_half[2]
-    xv_out[i, 6] = v_half[3]
+    @inbounds begin
+        xv_out[i, 4] = v_half[1]
+        xv_out[i, 5] = v_half[2]
+        xv_out[i, 6] = v_half[3]
+    end
 
     return
 end
@@ -112,8 +120,10 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
-    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
 
@@ -125,12 +135,14 @@ end
     t_end = t0 + nt * dt
     v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
 
-    xv[i, 1] = r[1]
-    xv[i, 2] = r[2]
-    xv[i, 3] = r[3]
-    xv[i, 4] = v_end[1]
-    xv[i, 5] = v_end[2]
-    xv[i, 6] = v_end[3]
+    @inbounds begin
+        xv[i, 1] = r[1]
+        xv[i, 2] = r[2]
+        xv[i, 3] = r[3]
+        xv[i, 4] = v_end[1]
+        xv[i, 5] = v_end[2]
+        xv[i, 6] = v_end[3]
+    end
 end
 
 @kernel function boris_saveat_kernel!(
@@ -140,18 +152,22 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
-    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
 
     iout = 0
     if save_start
         iout += 1
-        saved_data[i, 1, iout] = r[1]
-        saved_data[i, 2, iout] = r[2]
-        saved_data[i, 3, iout] = r[3]
-        saved_data[i, 4, iout] = v[1]
-        saved_data[i, 5, iout] = v[2]
-        saved_data[i, 6, iout] = v[3]
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v[1]
+            saved_data[i, 5, iout] = v[2]
+            saved_data[i, 6, iout] = v[3]
+        end
     end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
@@ -164,7 +180,7 @@ end
         t_current = t0 + it * dt
         r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p, alg)
 
-        if isave <= nsave && saveat_reached(plan_times[isave], t_current, dir)
+        if isave <= nsave && @inbounds saveat_reached(plan_times[isave], t_current, dir)
             v_prev = update_velocity_node(v_half_prev, r_prev, dt, t_prev, p, alg)
             v_cur = update_velocity_node(v_half, r, dt, t_current, p, alg)
 
@@ -177,16 +193,19 @@ end
                 v_cur[1], v_cur[2], v_cur[3]
             )
 
-            while isave <= nsave && saveat_reached(plan_times[isave], t_current, dir)
-                t_target = plan_times[isave]
+            while isave <= nsave &&
+                    @inbounds saveat_reached(plan_times[isave], t_current, dir)
+                t_target = @inbounds plan_times[isave]
                 y_target = saveat_interpolate(t_prev, y_prev, t_current, y_cur, t_target)
                 iout += 1
-                saved_data[i, 1, iout] = y_target[1]
-                saved_data[i, 2, iout] = y_target[2]
-                saved_data[i, 3, iout] = y_target[3]
-                saved_data[i, 4, iout] = y_target[4]
-                saved_data[i, 5, iout] = y_target[5]
-                saved_data[i, 6, iout] = y_target[6]
+                @inbounds begin
+                    saved_data[i, 1, iout] = y_target[1]
+                    saved_data[i, 2, iout] = y_target[2]
+                    saved_data[i, 3, iout] = y_target[3]
+                    saved_data[i, 4, iout] = y_target[4]
+                    saved_data[i, 5, iout] = y_target[5]
+                    saved_data[i, 6, iout] = y_target[6]
+                end
                 isave += 1
             end
         end
@@ -200,12 +219,14 @@ end
         t_end = t0 + nt * dt
         v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
         iout += 1
-        saved_data[i, 1, iout] = r[1]
-        saved_data[i, 2, iout] = r[2]
-        saved_data[i, 3, iout] = r[3]
-        saved_data[i, 4, iout] = v_end[1]
-        saved_data[i, 5, iout] = v_end[2]
-        saved_data[i, 6, iout] = v_end[3]
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v_end[1]
+            saved_data[i, 5, iout] = v_end[2]
+            saved_data[i, 6, iout] = v_end[3]
+        end
     end
 end
 
@@ -216,18 +237,22 @@ end
     )
     idx = @index(Global)
     i = idx + offset
-    r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
-    v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
 
     iout = 0
     if save_start
         iout += 1
-        saved_data[i, 1, iout] = r[1]
-        saved_data[i, 2, iout] = r[2]
-        saved_data[i, 3, iout] = r[3]
-        saved_data[i, 4, iout] = v[1]
-        saved_data[i, 5, iout] = v[2]
-        saved_data[i, 6, iout] = v[3]
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v[1]
+            saved_data[i, 5, iout] = v[2]
+            saved_data[i, 6, iout] = v[3]
+        end
     end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
@@ -240,12 +265,14 @@ end
         if it < nt || save_end
             v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
             iout += 1
-            saved_data[i, 1, iout] = r[1]
-            saved_data[i, 2, iout] = r[2]
-            saved_data[i, 3, iout] = r[3]
-            saved_data[i, 4, iout] = v_node[1]
-            saved_data[i, 5, iout] = v_node[2]
-            saved_data[i, 6, iout] = v_node[3]
+            @inbounds begin
+                saved_data[i, 1, iout] = r[1]
+                saved_data[i, 2, iout] = r[2]
+                saved_data[i, 3, iout] = r[3]
+                saved_data[i, 4, iout] = v_node[1]
+                saved_data[i, 5, iout] = v_node[2]
+                saved_data[i, 6, iout] = v_node[3]
+            end
         end
     end
 end
