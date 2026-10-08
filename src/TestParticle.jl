@@ -68,7 +68,6 @@ export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
     PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
 
-# Public but unexported names, i.e. reachable as `TestParticle.name` without warnings.
 public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
