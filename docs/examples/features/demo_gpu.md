@@ -114,6 +114,13 @@ TestParticle provides a native GPU Boris solver implemented with
 [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl), which enables
 backend-agnostic GPU execution. The solver uses method dispatch on `KA.Backend` type.
 
+Each trajectory is given its own initial state by `prob_func`, which is called once per
+trajectory on the host before the kernel is launched. Being host code, it may run anything
+Julia can; only the states it produces reach the device. Its `ctx` carries `sim_id`, the
+index of the trajectory within the ensemble, which is all that is needed to place the
+particles deterministically. Here 1000 protons start from the origin with perpendicular
+speeds spanning a factor of ten, hence energies spanning a factor of a hundred:
+
 ```julia
 using TestParticle, KernelAbstractions, StaticArrays
 import TestParticle: solve
@@ -122,20 +129,35 @@ import TestParticle: solve
 B(x) = SA[0.0, 0.0, 1.0e-8]  # Uniform B field
 E(x) = SA[0.0, 0.0, 0.0]     # No E field
 
-# Initial conditions
-x0 = [0.0, 0.0, 0.0]
-v0 = [1.0e5, 0.0, 0.0]
-stateinit = [x0..., v0...]
+x0 = [0.0, 0.0, 0.0]         # initial position, [m]
+v0 = [1.0e5, 0.0, 0.0]       # initial velocity, [m/s]
+stateinit = [x0..., v0...]   # template state, overwritten per trajectory
 tspan = (0.0, 1.0e-6)
 
-# Prepare problem
 param = prepare(E, B; species = Proton)
-prob = TraceProblem(stateinit, tspan, param)
+
+# Give every particle a perpendicular speed of its own
+trajectories = 1000
+speeds = range(1.0e5, 1.0e6; length = trajectories)
+
+function prob_func(prob, ctx)
+    return remake(prob; u0 = SA[x0..., speeds[ctx.sim_id], 0.0, 0.0])
+end
+
+prob = TraceProblem(stateinit, tspan, param; prob_func)
 
 # Solve on CPU backend
 backend = CPU()
-sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories, saveat = 1.0e-8)
 ```
+
+`sols.u[i]` is the orbit of the particle started at `speeds[i]`, so the ensemble covers a
+band of gyroradii `r_L = m v_perp / |q| B` rather than retracing one orbit a thousand times.
+
+For very large ensembles, where one `remake` per trajectory starts to show, the same states
+can be handed over as a `trajectories × 6` matrix: `solve(prob, Boris(), backend; dt,
+trajectories, u0 = states, saveat)`. That skips `prob_func` entirely, copying the states to
+the device in one go.
 
 The native GPU Boris solver:
 - Uses `@kernel` macro from KernelAbstractions.jl for backend-agnostic execution
@@ -156,12 +178,62 @@ To use actual GPU acceleration, install the appropriate backend package and crea
 # For NVIDIA GPUs
 using CUDA
 backend = CUDABackend()
-sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories, saveat = 1.0e-8)
 
 # For AMD GPUs
 using AMDGPU
 backend = ROCBackend()
-sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories = 1000, saveat = 1.0e-8)
+sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories, saveat = 1.0e-8)
 ```
 
 > **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.
+
+## Spherical Grids on the Device
+
+Fields stored on a spherical grid are traced on a device without any extra step. Preparing
+them with `gridtype = StructuredGrid` builds a spherical interpolator, and handing the
+parameters to a device backend is what converts it into a [`GPUSphericalGrid`](@ref), a
+trilinear interpolator over `(r, θ, ϕ)` that carries its axes along in device memory. Uniform
+grid vectors and non-uniform ones, a logarithmic `r` for instance, are both supported; the
+interpolator itself is described in [Field Interpolation](@ref).
+
+```julia
+using TestParticle, KernelAbstractions, StaticArrays
+using CUDA
+import TestParticle as TP
+
+# A uniform 10 nT field along z, stored in spherical components
+r = logrange(1.0, 10.0, length = 32)   # non-uniform in r
+θ = range(0, π, length = 32)
+ϕ = range(0, 2π, length = 32)
+
+B = zeros(3, length(r), length(θ), length(ϕ))
+for (iθ, θv) in enumerate(θ)
+    sinθ, cosθ = sincos(θv)
+    B[1, :, iθ, :] .= 1.0e-8 * cosθ   # Br
+    B[2, :, iθ, :] .= -1.0e-8 * sinθ  # Bθ
+end
+
+stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]  # [m], [m/s]
+tspan = (0.0, 1.0)
+
+param = prepare(r, θ, ϕ, ZeroField(), B; species = Proton, gridtype = TP.StructuredGrid)
+prob = TraceProblem(stateinit, tspan, param)
+
+# Moving the parameters to the device converts the field into a GPUSphericalGrid
+backend = CUDABackend()
+sols = solve(prob, Boris(), backend; dt = 1.0e-4, trajectories = 1000, saveat = 1.0e-2)
+```
+
+Locations stay Cartesian: the grid converts them to `(r, θ, ϕ)`, interpolates the spherical
+components, and rotates a vector result back into the Cartesian basis, so a field stored as
+`(Br, Bθ, Bϕ)` comes back as `(Bx, By, Bz)`. Outside the grid the spherical interpolator fills
+with `NaN` in `r` and in `θ`, and wraps periodically in `ϕ`.
+
+One thing is worth keeping in mind when comparing a device run against the host: the device
+grid always interpolates linearly, whatever `order` the host interpolator was built with, so
+keep `order = 1`, the default, when the two are meant to agree.
+
+On the `CPU()` backend the host interpolator is used unchanged and no conversion happens; a
+`GPUSphericalGrid` therefore only appears for an actual device backend, or when one is built
+explicitly as shown in [Field Interpolation](@ref).

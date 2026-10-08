@@ -159,10 +159,13 @@ end
     return _fill_value(bc[1], V)
 end
 
-@inline function _apply_bc_1d(x, x0, xmax, bc)
+@inline function _apply_bc_1d(x, x0::T, xmax::T, bc) where {T}
     isnan(x) && return (x, true)
     if bc isa FillExtrap
-        (x < x0 || x > xmax) && return (x, true)
+        # Rounding in a coordinate transform, e.g. `cart2sph`, may place a point
+        # marginally outside the grid it was built from, so widen by a few ulps.
+        tol = 4 * eps(T) * max(abs(x0), abs(xmax))
+        (x < x0 - tol || x > xmax + tol) && return (x, true)
     elseif bc isa ClampExtrap
         x = clamp(x, x0, xmax)
     elseif bc isa WrapExtrap
