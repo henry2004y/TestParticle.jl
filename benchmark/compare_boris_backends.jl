@@ -3,9 +3,8 @@
 # Run locally with:
 #   julia --project=test -t auto benchmark/compare_boris_backends.jl
 #
-# If you have an NVIDIA/AMD/Apple GPU, install the backend package (CUDA, AMDGPU, Metal)
-# and run with that package loaded, e.g.:
-#   julia --project=test -t auto -e "using CUDA; include(\"benchmark/compare_boris_backends.jl\")"
+# If you have an NVIDIA/AMD/Apple GPU, pass the backend name (e.g. CUDA, AMDGPU, Metal):
+#   julia --project=test -t auto benchmark/compare_boris_backends.jl CUDA
 
 using TestParticle
 using StaticArrays
@@ -49,6 +48,46 @@ function measure_time(f::Function, repeats::Int = N_REPEATS)
     return median(samples) * 1000
 end
 
+function load_gpu_backend!()
+    backend_req = get(ENV, "GPU_BACKEND", "")
+    for arg in ARGS
+        if !startswith(arg, "-")
+            backend_req = arg
+            break
+        elseif startswith(arg, "--gpu=")
+            backend_req = split(arg, '=', limit = 2)[2]
+            break
+        end
+    end
+
+    if !isempty(backend_req)
+        b = uppercase(backend_req)
+        pkg = if b == "CUDA"
+            :CUDA
+        elseif b == "AMDGPU"
+            :AMDGPU
+        elseif b == "METAL"
+            :Metal
+        elseif b in ("ONEAPI", "ONE_API")
+            :oneAPI
+        elseif b in ("CPU", "NONE")
+            return nothing
+        else
+            @warn "Unknown GPU backend '$backend_req'; ignoring."
+            return nothing
+        end
+        if !isdefined(Main, pkg)
+            try
+                @eval Main using $pkg
+            catch e
+                @warn "Failed to load $pkg backend: $e"
+            end
+        end
+    end
+end
+
+load_gpu_backend!()
+
 function detect_gpu_backend()
     for (pkg, backend_expr) in [
             (:CUDA, "CUDA.CUDABackend()"),
@@ -82,6 +121,21 @@ function gpu_device_name()
         end
     end
     return "unknown"
+end
+
+function default_kernel_sweep_steps()
+    env_steps = get(ENV, "KERNEL_SWEEP_STEPS", "")
+    if !isempty(env_steps)
+        return parse.(Int, split(env_steps, ','))
+    end
+    # Datacenter GPUs (A100, H100, etc.) have full-rate FP64 ALUs, whereas
+    # consumer GPUs (GeForce, Radeon) throttle FP64 to 1:64 or 1:32 rate.
+    is_datacenter = occursin(
+        r"A100|H100|H200|B200|V100|A800|H800|MI\d+|Tesla"i, gpu_device_name()
+    )
+    return is_datacenter ?
+        [100, 1_000, 10_000, 50_000, 200_000] :
+        [100, 1_000, 10_000, 50_000]
 end
 
 # `solve` already synchronizes internally; the extra call guards against backends that
@@ -346,7 +400,8 @@ raw path only changes the host side.
 """
 function run_benchmark_kernel_sweep(
         variants, N, steps;
-        raw::Bool = false, saveat = (), save_everystep = false
+        raw::Bool = false, saveat = (), save_everystep = false,
+        on_step_done = nothing
     )
     _, gpu_backend = detect_gpu_backend()
     gpu_backend === nothing && return nothing
@@ -361,29 +416,40 @@ function run_benchmark_kernel_sweep(
     used = Int[]
     for nt in steps
         try
+            baseline_row = Float64[]
+            raw_row = Float64[]
             for (k, (_, prob, dt)) in enumerate(variants)
                 prob_nt = remake(prob; tspan = (zero(dt), dt * nt))
-                push!(
-                    series[k].baseline,
-                    measure_time() do
-                        solve_gpu(
-                            prob_nt, Boris(), gpu_backend, N, dt; saveat, save_everystep
-                        )
-                        return nothing
-                    end
-                )
-                raw && push!(
-                    series[k].raw,
-                    measure_time() do
+                t_base = measure_time() do
+                    solve_gpu(prob_nt, Boris(), gpu_backend, N, dt; saveat, save_everystep)
+                    return nothing
+                end
+                push!(series[k].baseline, t_base)
+                push!(baseline_row, t_base)
+                if raw
+                    t_raw = measure_time() do
                         solve_gpu(
                             prob_nt, Boris(), gpu_backend, N, dt;
                             saveat, save_everystep, kwargs[k]...
                         )
                         return nothing
                     end
-                )
+                    push!(series[k].raw, t_raw)
+                    push!(raw_row, t_raw)
+                end
             end
             push!(used, nt)
+            if on_step_done !== nothing
+                on_step_done(nt, baseline_row, raw_row)
+            end
+            max_t = max(
+                maximum(baseline_row),
+                isempty(raw_row) ? 0.0 : maximum(raw_row)
+            )
+            if max_t > 15_000.0 && nt != steps[end]
+                println("  (Stopping step sweep: single run exceeded 15s)")
+                break
+            end
         catch err
             @warn "Kernel sweep stopped at $nt steps" exception = err
             break
@@ -743,16 +809,14 @@ function main()
         println("-"^88)
 
         variants = [("analytical FP64", prob64, dt64), ("analytical FP32", prob32, dt32)]
-        sweep = run_benchmark_kernel_sweep(
-            variants, KERNEL_SWEEP_N, KERNEL_SWEEP_STEPS; raw = true
+        sweep_steps = default_kernel_sweep_steps()
+        on_step_done = (nt, base, raw) -> @printf(
+            "%-9d | %10.2f ms | %10.2f ms | %10.2f ms | %10.2f ms\n",
+            nt, base[1], base[2], raw[1], raw[2]
         )
-        for (i, nt) in enumerate(sweep.steps)
-            @printf(
-                "%-9d | %10.2f ms | %10.2f ms | %10.2f ms | %10.2f ms\n",
-                nt, sweep.series[1].baseline[i], sweep.series[2].baseline[i],
-                sweep.series[1].raw[i], sweep.series[2].raw[i]
-            )
-        end
+        sweep = run_benchmark_kernel_sweep(
+            variants, KERNEL_SWEEP_N, sweep_steps; raw = true, on_step_done
+        )
 
         println("\n  Speedup relative to analytical FP64:")
         print_speedup_table(
@@ -775,15 +839,14 @@ function main()
         println("-"^88)
 
         grid_variants = [("grid FP32", grid_prob, dt_grid)]
-        grid_sweep = run_benchmark_kernel_sweep(
-            grid_variants, KERNEL_SWEEP_N_GRID, KERNEL_SWEEP_STEPS_GRID; raw = true
+        on_step_done_grid = (nt, base, raw) -> @printf(
+            "%-9d | %10.2f ms | %10.2f ms\n",
+            nt, base[1], raw[1]
         )
-        for (i, nt) in enumerate(grid_sweep.steps)
-            @printf(
-                "%-9d | %10.2f ms | %10.2f ms\n",
-                nt, grid_sweep.series[1].baseline[i], grid_sweep.series[1].raw[i]
-            )
-        end
+        grid_sweep = run_benchmark_kernel_sweep(
+            grid_variants, KERNEL_SWEEP_N_GRID, KERNEL_SWEEP_STEPS_GRID;
+            raw = true, on_step_done = on_step_done_grid
+        )
         print_kernel_fit(grid_sweep)
 
         if length(grid_sweep.steps) >= 2 && length(sweep.series[2].raw) >= 2
@@ -802,11 +865,8 @@ function main()
 
     println("\n" * "="^88)
     println("Tips:")
-    println(" - To run on NVIDIA GPUs:")
-    println(
-        "     julia --project=test -t auto -e " *
-            "\"using CUDA; include(\\\"benchmark/compare_boris_backends.jl\\\")\""
-    )
+    println(" - To run on GPUs (e.g. CUDA, AMDGPU, Metal):")
+    println("     julia --project=test -t auto benchmark/compare_boris_backends.jl CUDA")
     println(" - To run with multiple CPU threads:")
     println("     julia --project=test -t auto benchmark/compare_boris_backends.jl")
     println(" - Sections [1] and [2] report the default API first, then repeat the")
