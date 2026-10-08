@@ -174,7 +174,9 @@ to single precision.
     distribution studies, normalized coordinate systems (e.g., lengths normalized to
     ion inertial length or gyroradius), and high-throughput GPU workloads.
   - For large ensembles ($N \ge 10^5$), set **`raw_output = true`** to bypass per-particle
-    `ODESolution` Julia object allocation and achieve near-pure kernel throughput.
+    `ODESolution` Julia object allocation and achieve near-pure kernel throughput, and pass
+    the initial states as one `u0` matrix to skip `prob_func` as well. Both are keywords of
+    the kernel backend only.
 
 ## Presentations
 

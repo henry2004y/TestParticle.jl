@@ -141,6 +141,33 @@ The ensemble algorithm is a required third argument in the shorter form, because
 default either: SciML calls exactly that two-argument form once per trajectory it
 builds, so a default would ask every trajectory to build an ensemble of its own.
 
+### Bulk Initial States and Raw Output
+
+On the kernel backend, `solve(prob, Boris(), backend; ...)` or
+`solve(prob, Boris(), EnsembleKernel(backend); ...)`, two further keywords are
+accepted:
+
+- `u0`: a `(trajectories, 6)` matrix of initial states, one row per particle. It is
+  copied in a single transfer and replaces `prob_func`, which then never runs, so it
+  works on a problem built without a `prob_func`; if both are given, `u0` wins. The
+  element type is converted to that of `prob.u0`, and a wrong number of rows is an
+  `ArgumentError`.
+- `raw_output = true`: return `(; u, t)` instead of an `EnsembleSolution`, where `u` is
+  a `(trajectories, 6, nout)` array of the saved states and `t` the matching times.
+  It applies to every problem, whether the initial states come from `prob_func` or from
+  `u0`, and it skips building one `ODESolution` per particle, which is what makes large
+  ensembles affordable.
+
+```julia
+states = Matrix{Float64}(undef, 100_000, 6)   # one initial state per row
+out = TestParticle.solve(prob, Boris(), CPU();
+    dt, trajectories = 100_000, u0 = states, raw_output = true)
+```
+
+Both keywords belong to the kernel path only. `EnsembleThreads()`, `EnsembleSerial()`
+and the other SciML ensemble algorithms accept neither; passing `u0` to them is an
+error. See [GPU Ensemble Tracing](@ref GPU-Ensemble-Tracing) for the backend setup.
+
 ### Saving the Output
 
 Every accepted step is saved by default. To choose the output times explicitly, pass `saveat`, either as a collection of times or as an interval:

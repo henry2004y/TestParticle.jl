@@ -9,6 +9,7 @@ using TestParticle
 using Meshes
 using StaticArrays
 using Chairmarks
+import TestParticle as TP
 
 function setup_spherical_field(ns = 16)
    r = logrange(0.1, 10.0, length = ns)
@@ -222,6 +223,57 @@ For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a
 ```@repl interp
 @be B_td($loc, 0.5)
 ```
+
+## GPU interpolation
+
+The interpolators above are built on FastInterpolations.jl and live on the host. Pushing a
+particle on a device asks for something different: a plain struct with `Int32` indices whose
+axes and data can be copied to device memory and evaluated inside a kernel. TestParticle
+provides `GPUSphericalGrid` for spherical grids, and `GPUGrid3D`, `GPUGrid2D` and `GPUGrid1D`
+for Cartesian ones.
+
+`prepare` performs the conversion by itself once the parameters are handed to a device
+backend, see [GPU Ensemble Tracing](@ref). The very same grids can be built on the `CPU()`
+backend, which is what the following does with `TP.CPU()`, so that the device interpolator can
+be inspected and benchmarked where no device is available:
+
+```@example interp
+B_gpu = TP._to_gpu_spherical_grid(B_sph.itp, TP.CPU());
+A_gpu = TP._to_gpu_spherical_grid(A_sph.itp, TP.CPU());
+B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu.itp, TP.CPU());
+```
+
+A uniform grid vector becomes a `GPUUniformAxis`, which locates a cell with a multiply, and a
+non-uniform one a `GPUNonUniformAxis`, which brackets it with a binary search:
+
+```@repl interp
+typeof(B_gpu)
+B_gpu.axis_r
+typeof(B_nu_gpu.axis_r)
+```
+
+Queries are unchanged, only the backend behind them differs. The location is still Cartesian,
+and a vector result is rotated back into the Cartesian basis:
+
+```@repl interp
+@be B_gpu($loc)
+@be B_sph($loc)
+B_gpu($loc)
+A_gpu($loc)
+```
+
+Outside the grid the boundary condition decides, filling with `NaN` in `r` and in `θ` and
+wrapping periodically in `ϕ`:
+
+```@repl interp
+B_gpu(0.01, 0.0, 0.0)
+B_gpu(20.0, 0.0, 0.0)
+```
+
+One caveat comes with the device grids: they always interpolate linearly, whatever `order`
+the host interpolator was built with. A field prepared with `order = 3` is therefore not
+reproduced on the device, and `order = 1`, the default, is the one to use when the host and
+the device are meant to agree.
 
 ## Related API
 
