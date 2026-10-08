@@ -499,8 +499,8 @@ Spherical grid interpolator compatible with GPU device execution.
 Supports both uniform and non-uniform grids in r, θ, and ϕ.
 """
 struct GPUSphericalGrid{
-    T, Ar, Aθ, Aϕ, V, A <: AbstractArray{V, 3}, B
-} <: AbstractFieldInterpolator
+        T, Ar, Aθ, Aϕ, V, A <: AbstractArray{V, 3}, B,
+    } <: AbstractFieldInterpolator
     data::A
     axis_r::Ar
     axis_θ::Aθ
@@ -627,4 +627,3 @@ function _to_gpu_spherical_grid(itp, backend::Backend)
         throw(ArgumentError("Expected interpolant with grids and data fields."))
     end
 end
-

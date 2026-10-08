@@ -60,7 +60,7 @@ function load_gpu_backend!()
         end
     end
 
-    if !isempty(backend_req)
+    return if !isempty(backend_req)
         b = uppercase(backend_req)
         pkg = if b == "CUDA"
             :CUDA
