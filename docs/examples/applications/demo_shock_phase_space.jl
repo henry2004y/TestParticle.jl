@@ -184,7 +184,7 @@ u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 
 println("Starting simulation with $nparticles particles...")
-t_mc = @elapsed sols = TP.solve(
+t_mc = @elapsed sols = solve(
     prob, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles, seed
 );
@@ -413,7 +413,7 @@ end
 prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
-t_liou = @elapsed sols_m2 = TP.solve(
+t_liou = @elapsed sols_m2 = solve(
     prob_m2, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles_m2, seed
 );

@@ -89,7 +89,7 @@ The native Boris pusher uses `TraceProblem` and accepts the identical
 ```julia
 const prob_boris = TraceProblem(stateinit, tspan, param; prob_func)
 
-run_boris(ealg) = TP.solve(
+run_boris(ealg) = solve(
     prob_boris, Boris(), ealg;
     dt, trajectories, seed
 )

@@ -34,7 +34,7 @@ using OrdinaryDiffEq
 
         @testset "Boris" begin
             prob = TraceProblem(u0, tspan, p)
-            sol = TP.solve(
+            sol = solve(
                 prob, Boris(), dt = 0.2;
                 isoutside
             )
@@ -46,7 +46,7 @@ using OrdinaryDiffEq
 
         @testset "Adaptive Boris" begin
             prob = TraceProblem(u0, tspan, p)
-            sol = TP.solve(
+            sol = solve(
                 prob, AdaptiveBoris(safety = 0.05);
                 isoutside
             )
@@ -60,7 +60,7 @@ using OrdinaryDiffEq
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.2, alg = :rk4; isoutside)
+            sol = solve(prob, dt = 0.2, alg = :rk4; isoutside)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -71,7 +71,7 @@ using OrdinaryDiffEq
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_field_nan, B_field_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = TP.solve(prob, dt = 0.01, alg = :rk45; isoutside)
+            sol = solve(prob, dt = 0.01, alg = :rk45; isoutside)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -91,7 +91,7 @@ using OrdinaryDiffEq
             prob = TraceProblem(u0, tspan, param)
 
             alg = AdaptiveBoris(safety = 0.1)
-            sol = TP.solve(prob, alg; isoutside)
+            sol = solve(prob, alg; isoutside)
             @test sol.u[end][1] <= 0.5
             @test sol.t[end] < tspan[2]
             @test sol.retcode == ReturnCode.Terminated
@@ -101,7 +101,7 @@ using OrdinaryDiffEq
             u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
             tspan = (0, 10)
             prob = TraceProblem(u0, tspan, param)
-            sol = TP.solve(prob, Boris(); dt = 1.0)
+            sol = solve(prob, Boris(); dt = 1.0)
             @test sol.t[end] == 10
             @test sol.retcode == ReturnCode.Success
         end
@@ -117,7 +117,7 @@ using OrdinaryDiffEq
             dt = 1.0e-4
 
             isoutside = (u, p, t) -> t > 0.5
-            sol_early = TP.solve(prob; dt, alg = :rk4, isoutside)
+            sol_early = solve(prob; dt, alg = :rk4, isoutside)
             @test sol_early.u[1].t[end] ≈ 0.5
             @test sol_early.u[1].retcode == ReturnCode.Terminated
         end

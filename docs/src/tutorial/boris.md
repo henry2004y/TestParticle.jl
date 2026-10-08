@@ -93,13 +93,13 @@ Fixed-step solvers are specified as the second argument to `solve` (after the pr
 
 ```julia
 # Standard Boris
-sol = TestParticle.solve(prob, Boris(); dt)
+sol = solve(prob, Boris(); dt)
 
 # Multistep Boris (n=2)
-sol = TestParticle.solve(prob, MultistepBoris2(n=2); dt)
+sol = solve(prob, MultistepBoris2(n=2); dt)
 
 # Hyper Boris (N=4, n=2)
-sol = TestParticle.solve(prob, MultistepBoris4(n=2); dt)
+sol = solve(prob, MultistepBoris4(n=2); dt)
 ```
 
 Combining both $n > 1$ and higher-order correction ($N > 2$) ensures ultra-high stability tracking over drastically varying gradient fields.
@@ -113,7 +113,7 @@ The adaptive solver adjusts the time step automatically based on the local gyrop
 ```julia
 # Adaptive Boris with safety factor 0.05 (20 steps per period)
 alg = AdaptiveBoris(safety=0.05)
-sol = TestParticle.solve(prob, alg)
+sol = solve(prob, alg)
 ```
 
 ### Ensembles
@@ -122,7 +122,7 @@ Multiple particles are traced through a SciML [`EnsembleProblem`](https://docs.s
 
 ```julia
 eprob = EnsembleProblem(prob; prob_func, safetycopy = false)
-sols = TestParticle.solve(eprob, Boris(), EnsembleThreads();
+sols = solve(eprob, Boris(), EnsembleThreads();
     dt, trajectories = 1000, seed = 1234)
 ```
 
@@ -130,7 +130,7 @@ sols = TestParticle.solve(eprob, Boris(), EnsembleThreads();
 
 ```julia
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TestParticle.solve(prob, Boris(), EnsembleThreads();
+sols = solve(prob, Boris(), EnsembleThreads();
     dt, trajectories = 1000)
 ```
 
@@ -147,10 +147,10 @@ Every accepted step is saved by default. To choose the output times explicitly, 
 
 ```julia
 # Save at the given times
-sol = TestParticle.solve(prob, Boris(); dt, saveat = 0.0:5.0e-10:3.0e-8)
+sol = solve(prob, Boris(); dt, saveat = 0.0:5.0e-10:3.0e-8)
 
 # Save every 5.0e-10 across the time span
-sol = TestParticle.solve(prob, Boris(); dt, saveat = 5.0e-10)
+sol = solve(prob, Boris(); dt, saveat = 5.0e-10)
 ```
 
 `saveat` does not shorten any step, so the trajectory is identical to a run without it and only the reporting changes. Inside a step the state is interpolated **linearly**, which is the dense output these methods admit: a Boris step advances the position linearly with the half-step velocity $\mathbf{v}_{n+1/2}$, so the interpolant reproduces the stored positions exactly, whereas the velocity is only as accurate as the method itself. Requesting a value inside a step is therefore consistent with the solver's own order, not better or worse than the step values around it.

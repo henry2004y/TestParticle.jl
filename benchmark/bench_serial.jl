@@ -36,10 +36,10 @@ println("\nSetting up TestParticle TraceProblem (Boris)...")
 prob_boris = TraceProblem(stateinit, tspan, param)
 
 # Precompile
-TestParticle.solve(prob_boris, Boris(); dt = dt, save_everystep, maxiters)
+solve(prob_boris, Boris(); dt = dt, save_everystep, maxiters)
 
 println("Running Boris Benchmark...")
-bench_boris = @benchmark TestParticle.solve(
+bench_boris = @benchmark solve(
     $prob_boris, Boris();
     dt = $dt, save_everystep = $save_everystep, maxiters = $maxiters
 )

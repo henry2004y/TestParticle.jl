@@ -109,7 +109,7 @@ alg = AdaptiveHybrid(;
 
 ## Set verbose = true to see the dynamic switching
 prob_hybrid = TraceHybridProblem(u0, tspan, p)
-sol = TP.solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
+sol = solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
 
 # ## Step 4: Compute Adiabaticity
 #
@@ -286,7 +286,7 @@ f = DisplayAs.PNG(f) #hide
 
 b_fo = @be solve(prob_fo, Vern6())
 b_gc = @be solve(prob_gc, Vern6())
-b_hy = @be TP.solve(prob_hybrid, alg; verbose = false)
+b_hy = @be solve(prob_hybrid, alg; verbose = false)
 
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Allocations |") #hide
@@ -330,9 +330,9 @@ alg_gradB = AdaptiveHybrid(; mode_common..., adiabaticity = :gradB)
 alg_both = AdaptiveHybrid(; mode_common..., adiabaticity = :both)
 
 prob_mode = TraceHybridProblem(u0, tspan, p)
-sol_curv = TP.solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
-sol_gradB = TP.solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
-sol_both = TP.solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1];
+sol_curv = solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
+sol_gradB = solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
+sol_both = solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1];
 
 # RMS position error vs the full-orbit reference, and the FO-mode fraction.
 function _adia_rms(sol)
@@ -480,9 +480,9 @@ f_comp = DisplayAs.PNG(f_comp) #hide
 # setup because they spend more time in the cheap Boris full-orbit integrator, at
 # the cost of higher memory (more saved points).
 
-b_curv = @be TP.solve($prob_mode, $alg_curv; verbose = false, seed = 1234)
-b_gradB = @be TP.solve($prob_mode, $alg_gradB; verbose = false, seed = 1234)
-b_both = @be TP.solve($prob_mode, $alg_both; verbose = false, seed = 1234)
+b_curv = @be solve($prob_mode, $alg_curv; verbose = false, seed = 1234)
+b_gradB = @be solve($prob_mode, $alg_gradB; verbose = false, seed = 1234)
+b_both = @be solve($prob_mode, $alg_both; verbose = false, seed = 1234)
 
 io3 = IOBuffer() #hide
 println(io3, "| Mode | Time | Allocations |") #hide

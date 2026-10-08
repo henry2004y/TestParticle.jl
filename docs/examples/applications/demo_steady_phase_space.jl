@@ -138,9 +138,9 @@ prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_maxwellian)
 ## Warm up the machinery shared by all three methods (ensemble solve, `prob_func`, crossing
 ## detection), otherwise the compilation cost lands on whichever method happens to run first
 ## and the per-trajectory costs below are not comparable.
-TP.solve(prob, Boris(), EnsembleThreads(); dt, trajectories = 100, seed)
+solve(prob, Boris(), EnsembleThreads(); dt, trajectories = 100, seed)
 
-t_mc = @elapsed sols = TP.solve(
+t_mc = @elapsed sols = solve(
     prob, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles, seed
 );
@@ -201,7 +201,7 @@ end
 prob_m2 = TraceProblem(
     SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func = prob_func_m2
 )
-t_liou = @elapsed sols_m2 = TP.solve(
+t_liou = @elapsed sols_m2 = solve(
     prob_m2, Boris(), EnsembleThreads(); dt,
     trajectories = nparticles_m2, seed
 );
@@ -434,7 +434,7 @@ function run_mc_N(N, rseed)
     end
     u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func)
-    sols = TP.solve(
+    sols = solve(
         prob, Boris(), EnsembleThreads(); dt,
         trajectories = N, seed = rseed
     )

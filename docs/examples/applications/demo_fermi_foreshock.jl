@@ -298,7 +298,7 @@ end
 dt = 2.0e-4 # [s]
 param = prepare(E, Bcase2; species = Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
-sols = TP.solve(
+sols = solve(
     prob, Boris(), EnsembleThreads();
     dt, trajectories, isoutside, saveat = 100 * dt, seed
 );

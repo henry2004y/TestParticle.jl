@@ -189,17 +189,17 @@ import TestParticle as TP
 
         @testset "Fixed RK4" begin
             dt = 1.0e-4
-            sol = TestParticle.solve(prob; dt, alg = :rk4)
+            sol = solve(prob; dt, alg = :rk4)
             @test length(sol.u) == 1
             @test length(sol.u[1].t) == 10001
             @test sol.u[1].retcode == ReturnCode.MaxIters
 
             # Test save_everystep=false
-            sol_no_save = TestParticle.solve(prob; dt, alg = :rk4, save_everystep = false)
+            sol_no_save = solve(prob; dt, alg = :rk4, save_everystep = false)
             @test length(sol_no_save.u[1].t) == 2 # start and end
 
             # Test early exit to cover resize!
-            sol_early = TestParticle.solve(
+            sol_early = solve(
                 prob; dt, alg = :rk4,
                 isoutside = (xv, p, t) -> t > 0.5
             )
@@ -208,19 +208,19 @@ import TestParticle as TP
 
         @testset "Adaptive RK45" begin
             # Default tolerances
-            sol_def = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk45)
+            sol_def = solve(prob; dt = 1.0e-4, alg = :rk45)
             @test length(sol_def.u[1].t) == 61
             @test sol_def.u[1].retcode == ReturnCode.Success
 
             # Tight tolerances
-            sol_tight = TestParticle.solve(
+            sol_tight = solve(
                 prob;
                 dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
             )
             @test length(sol_tight.u[1].t) > length(sol_def.u[1].t)
 
             # Accuracy check
-            sol_rk4 = TestParticle.solve(prob; dt = 1.0e-4, alg = :rk4)
+            sol_rk4 = solve(prob; dt = 1.0e-4, alg = :rk4)
             diff = norm(sol_tight.u[1].u[end] - sol_rk4.u[1].u[end])
             @test diff < 10.0
         end
@@ -233,7 +233,7 @@ import TestParticle as TP
 
             # Solve using Native RK4
             dt = 1.0e-4
-            sol_native = TestParticle.solve(prob; dt, alg = :rk4)
+            sol_native = solve(prob; dt, alg = :rk4)
             u_native = sol_native.u[1].u[end]
 
             # Position difference
@@ -245,7 +245,7 @@ import TestParticle as TP
 
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
-            sol_auto = TestParticle.solve(prob; alg = :rk45)
+            sol_auto = solve(prob; alg = :rk45)
             @test sol_auto.u[1].retcode == ReturnCode.Success
             @test length(sol_auto.u[1].t) == 58
         end
@@ -255,12 +255,12 @@ import TestParticle as TP
             prob_ens = TraceGCProblem(stateinit_gc, tspan, param_gc)
 
             # Serial
-            sol_serial = TestParticle.solve(prob_ens; trajectories, dt = 1.0e-4, alg = :rk45)
+            sol_serial = solve(prob_ens; trajectories, dt = 1.0e-4, alg = :rk45)
             @test length(sol_serial.u) == trajectories
             @test all(s.retcode == ReturnCode.Success for s in sol_serial.u)
 
             # Threads
-            sol_threads = TestParticle.solve(prob_ens, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45)
+            sol_threads = solve(prob_ens, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45)
             @test length(sol_threads.u) == trajectories
             @test all(s.retcode == ReturnCode.Success for s in sol_threads.u)
         end
@@ -280,7 +280,7 @@ import TestParticle as TP
             prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 
             # Solve with saving enabled
-            sol = TestParticle.solve(
+            sol = solve(
                 prob_saving; trajectories, dt = 1.0e-5, save_fields = true, save_work = true
             )
 
@@ -306,13 +306,13 @@ import TestParticle as TP
 
         @testset "saveat" begin
             dt = 1.0e-4
-            sol_all = TestParticle.solve(prob; dt, alg = :rk4).u[1]
+            sol_all = solve(prob; dt, alg = :rk4).u[1]
 
             # Asking for intermediate output must not change the integration,
             # only where the state is reported. `save_start` and `save_end` keep
             # adding the two ends of the span around the requested times.
             ts = collect(0.1:0.1:0.9)
-            sol_at = TestParticle.solve(prob; dt, alg = :rk4, saveat = ts).u[1]
+            sol_at = solve(prob; dt, alg = :rk4, saveat = ts).u[1]
 
             @test sol_at.t ≈ vcat(0.0, ts, 1.0)
             for (k, t) in enumerate(sol_at.t)
@@ -320,16 +320,16 @@ import TestParticle as TP
             end
 
             # The adaptive solver takes the same times.
-            sol_at45 = TestParticle.solve(prob; dt, alg = :rk45, saveat = ts).u[1]
+            sol_at45 = solve(prob; dt, alg = :rk45, saveat = ts).u[1]
             @test sol_at45.t ≈ vcat(0.0, ts, 1.0)
 
             # An interval is accepted as well, and only the interior is taken
             # from it since the ends are reported separately.
-            sol_interval = TestParticle.solve(prob; dt, alg = :rk4, saveat = 0.25).u[1]
+            sol_interval = solve(prob; dt, alg = :rk4, saveat = 0.25).u[1]
             @test sol_interval.t ≈ collect(0.0:0.25:1.0)
 
             # The field and work columns are appended on this path too.
-            sol_fields = TestParticle.solve(
+            sol_fields = solve(
                 prob; dt, alg = :rk4, saveat = ts, save_fields = true
             ).u[1]
             @test length(sol_fields.u[1]) == 10

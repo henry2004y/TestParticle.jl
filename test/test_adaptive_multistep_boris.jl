@@ -40,8 +40,8 @@ using StaticArrays
 
     @testset "Consistency with AdaptiveBoris" begin
         # AdaptiveMultistepBoris{2}(n=1) should be identical to AdaptiveBoris
-        sol_std = TestParticle.solve(prob, AdaptiveBoris(safety = 0.1))
-        sol_multi = TestParticle.solve(prob, AdaptiveMultistepBoris{2}(n = 1, safety = 0.1))
+        sol_std = solve(prob, AdaptiveBoris(safety = 0.1))
+        sol_multi = solve(prob, AdaptiveMultistepBoris{2}(n = 1, safety = 0.1))
 
         @test sol_std.t ≈ sol_multi.t
         @test sol_std.u ≈ sol_multi.u
@@ -51,7 +51,7 @@ using StaticArrays
         # Test N=4 and N=6
         trajectories = 2
         for N in [4, 6]
-            sols = TestParticle.solve(
+            sols = solve(
                 prob, AdaptiveMultistepBoris{N}(n = 2), EnsembleSerial(); trajectories
             )
             @test length(sols.u) == trajectories
@@ -64,7 +64,7 @@ using StaticArrays
         alg = AdaptiveMultistepBoris{4}(n = 1)
 
         @testset "EnsembleThreads" begin
-            sols = TestParticle.solve(
+            sols = solve(
                 prob, alg, EnsembleThreads(); trajectories
             )
             @test length(sols.u) == trajectories
@@ -73,7 +73,7 @@ using StaticArrays
 
         @testset "EnsembleDistributed" begin
             # Note: EnsembleDistributed might be slow in tests, but we should at least check if it dispatches
-            sols = TestParticle.solve(
+            sols = solve(
                 prob, alg, EnsembleDistributed(); trajectories
             )
             @test length(sols.u) == trajectories

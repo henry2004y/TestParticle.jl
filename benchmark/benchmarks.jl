@@ -150,41 +150,41 @@ SUITE["trace"]["numerical field"]["in place"] = @benchmarkable solve(
 SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
     $prob_oop_num, Tsit5(); save_idxs = [1, 2, 3]
 )
-SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable solve(
     $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7
 )
-SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable solve(
     $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, save_fields = true
 )
-SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable solve(
     $prob_boris, Boris(), EnsembleSerial(); dt = 1 / 7, saveat = 10 / 7, trajectories = 2
 )
-SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Multistep Boris"] = @benchmarkable solve(
     $prob_boris, MultistepBoris2(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
-SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=4)"] = @benchmarkable solve(
     $prob_boris, MultistepBoris4(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
-SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Hyper Boris (n=2, N=6)"] = @benchmarkable solve(
     $prob_boris, MultistepBoris6(; n = 2); dt = 1 / 7, saveat = 10 / 7
 )
 alg_adaptive = AdaptiveBoris(safety = 0.1)
-SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Adaptive Boris"] = @benchmarkable solve(
     $prob_boris, $alg_adaptive
 )
 alg_adaptive_multi2 = AdaptiveMultistepBoris{2}(n = 2, safety = 0.1)
-SUITE["trace"]["numerical field"]["Adaptive Multistep Boris (n=2, N=2)"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Adaptive Multistep Boris (n=2, N=2)"] = @benchmarkable solve(
     $prob_boris, $alg_adaptive_multi2
 )
 alg_adaptive_multi4 = AdaptiveMultistepBoris{4}(n = 2, safety = 0.1)
-SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=4)"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=4)"] = @benchmarkable solve(
     $prob_boris, $alg_adaptive_multi4
 )
 alg_adaptive_multi6 = AdaptiveMultistepBoris{6}(n = 2, safety = 0.1)
-SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=6)"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=6)"] = @benchmarkable solve(
     $prob_boris, $alg_adaptive_multi6
 )
-SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable TP.solve(
+SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable solve(
     $prob_boris, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7
 )
 
@@ -245,11 +245,11 @@ prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 
 prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable TP.solve(
+SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable solve(
     $prob_native_gc;
     dt = 2.0e-2, saveat = 2.0, alg = :rk4, maxiters = 10000
 )
-SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable TP.solve(
+SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable solve(
     $prob_native_gc;
     dt = 2.0e-2, saveat = 2.0, alg = :rk45, maxiters = 10000
 )
@@ -291,7 +291,7 @@ let
     )
     prob_hybrid = TraceHybridProblem(u0, tspan, p)
 
-    SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable TP.solve(
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable solve(
         $prob_hybrid, $alg; verbose = false, seed = 1234
     )
 end

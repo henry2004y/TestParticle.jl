@@ -33,7 +33,7 @@ using StaticArrays
 
     @testset "Solve Integration" begin
         @testset "Single trajectory" begin
-            sol = TestParticle.solve(
+            sol = solve(
                 prob, AdaptiveBoris()
             )
             @test sol.retcode ==
@@ -45,7 +45,7 @@ using StaticArrays
             # A TraceProblem goes into a SciML ensemble as it is; SciML calls
             # `solve` on each trajectory it builds.
             trajectories = 4
-            sols = TestParticle.solve(
+            sols = solve(
                 EnsembleProblem(prob), AdaptiveBoris(), EnsembleThreads();
                 trajectories
             )
@@ -55,7 +55,7 @@ using StaticArrays
 
         @testset "EnsembleThreads" begin
             trajectories = 4
-            sols = TestParticle.solve(
+            sols = solve(
                 prob, AdaptiveBoris(), EnsembleThreads();
                 trajectories = trajectories
             )

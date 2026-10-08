@@ -63,10 +63,18 @@ export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export GPUGrid3D, GPUGrid2D, GPUGrid1D
 export GPUSphericalGrid, GPUUniformAxis, GPUNonUniformAxis
-export TraceProblem, TraceGCProblem, TraceHybridProblem
+export TraceProblem, TraceGCProblem, TraceHybridProblem, solve
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
     PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
+
+# Public but unexported names, i.e. reachable as `TestParticle.name` without warnings.
+public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
+    CartesianGrid, RectilinearGrid, StructuredGrid,
+    qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
+    get_q2m, get_EField, get_BField, jacobian, derivative_t,
+    get_thermal_speed, get_cell_centers, get_magnetic_properties, get_work_rates_gc,
+    makegrid
 
 include("types.jl")
 include("utility/utility.jl")

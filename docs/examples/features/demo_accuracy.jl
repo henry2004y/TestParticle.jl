@@ -102,7 +102,7 @@ prob1_ode = ODEProblem(trace!, u0, tspan, param)
 
 for dt in dts1
     for (name, alg) in boris_solvers
-        sol = TestParticle.solve(prob1, alg; dt)
+        sol = solve(prob1, alg; dt)
         vx, vy = sol.u[end][4], sol.u[end][5]
         t_final = sol.t[end]
 
@@ -174,7 +174,7 @@ prob2_ode = ODEProblem(trace!, u0, tspan2, param2)
 
 for dt in dts2
     for (name, alg) in boris_solvers
-        sol = TestParticle.solve(prob2, alg; dt)
+        sol = solve(prob2, alg; dt)
 
         max_err = 0.0
         for i in eachindex(sol.u)
@@ -339,7 +339,7 @@ for (row, (name, type, config)) in enumerate(drift_solvers_all)
 
         ## Plot solver result
         if type == :boris
-            sol = TestParticle.solve(prob3, config; dt)
+            sol = solve(prob3, config; dt)
             t_eval = range(0.0, t_end3, step = dt)
             x_drifts = [sol(t)[1] - vD_magnitude * t for t in t_eval]
             scatterlines!(

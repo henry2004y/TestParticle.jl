@@ -183,7 +183,7 @@ end
     @testset "forward Monte Carlo" begin
         n = 50000
         prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_mc)
-        sols = TP.solve(
+        sols = solve(
             prob, Boris(), EnsembleThreads(); dt,
             trajectories = n, seed = 42
         )
@@ -206,7 +206,7 @@ end
     @testset "forward Liouville" begin
         n = 50000
         prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_liouville)
-        sols = TP.solve(
+        sols = solve(
             prob, Boris(), EnsembleThreads(); dt,
             trajectories = n, seed = 42
         )
@@ -235,7 +235,7 @@ end
         ## the multi-weight form has to agree with single-weight calls on them.
         n_small = 120
         prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_liouville)
-        sols_small = TP.solve(
+        sols_small = solve(
             prob, Boris(), EnsembleThreads(); dt,
             trajectories = n_small, seed = 42
         )
@@ -262,7 +262,7 @@ end
         v = -300.0e3:50.0e3:300.0e3
         dims = (length(v), length(v), length(v))
         prob = vdf_grid_problem(v, v, v, SA[x_detector, 0.0, 0.0], param, (0.0, -8.0))
-        sols = TP.solve(
+        sols = solve(
             prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = prod(dims),
             isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
                 u[1] > x_source[1] + 1.0e5

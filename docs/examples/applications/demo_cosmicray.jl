@@ -140,7 +140,7 @@ prob_rk = ODEProblem(trace_normalized!, stateinit, tspan0, param_uniform)
 sol_rk = solve(prob_rk, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b = TraceProblem(stateinit, tspan0, param_uniform)
-sol_b = TP.solve(
+sol_b = solve(
     prob_b, TP.MultistepBoris4(n = 4);
     dt = 2π / 40
 );
@@ -185,7 +185,7 @@ prob_rk_t = ODEProblem(trace_normalized!, stateinit_t, tspan_t, param)
 sol_rk_t = solve(prob_rk_t, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b_t = TraceProblem(stateinit_t, tspan_t, param)
-sol_b_t = TP.solve(
+sol_b_t = solve(
     prob_b_t, TP.MultistepBoris4(n = 4);
     dt = 2π / 80, trajectories = 1
 )
@@ -269,7 +269,7 @@ prob = TraceProblem(stateinit, tspan, param; prob_func)
 
 alg = TP.MultistepBoris4(n = 4)
 dt = 2π / 40
-sols = TP.solve(
+sols = solve(
     prob, alg, EnsembleThreads();
     dt, saveat = 15 * dt, trajectories = 32, seed = 1234
 );
@@ -348,7 +348,7 @@ for (j, rL) in enumerate(rL_list)
     pfunc = make_injection(L, L, L; rL)
     pscan = TraceProblem(stateinit, (0.0, 2π * 100), param; prob_func = pfunc)
     dt = 2π / 40
-    ssols = TP.solve(
+    ssols = solve(
         pscan, alg, EnsembleThreads();
         dt, saveat = 10 * dt, trajectories = 16, seed = 1234
     )

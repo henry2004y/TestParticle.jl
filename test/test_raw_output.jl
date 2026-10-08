@@ -51,17 +51,17 @@ end
 @testset "raw output" begin
     @testset "a u0 matrix replaces prob_func" begin
         let N = 40, (; prob, states, dt) = make_prob(N)
-            base = TP.solve(
+            base = solve(
                 prob, Boris(), CPU(); trajectories = N, dt, save_everystep = false
             )
-            same = TP.solve(
+            same = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, u0 = states,
             )
 
             @test length(same.u) == N
             @test all(i -> same.u[i].u[end] == base.u[i].u[end], 1:N)
-            @test_throws ArgumentError TP.solve(
+            @test_throws ArgumentError solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, u0 = states[1:(N - 1), :]
             )
@@ -69,10 +69,10 @@ end
 
         # Fewer particles than the thread chunking threshold takes the serial path.
         let N = 4, (; prob, states, dt) = make_prob(N)
-            base = TP.solve(
+            base = solve(
                 prob, Boris(), CPU(); trajectories = N, dt, save_everystep = false
             )
-            raw = TP.solve(
+            raw = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, raw_output = true,
             )
@@ -84,27 +84,27 @@ end
     @testset "raw output reproduces every saved state" begin
         let N = 40, (; prob, dt) = make_prob(N)
 
-            sols = TP.solve(prob, Boris(), CPU(); trajectories = N, dt)
-            raw = TP.solve(prob, Boris(), CPU(); trajectories = N, dt, raw_output = true)
+            sols = solve(prob, Boris(), CPU(); trajectories = N, dt)
+            raw = solve(prob, Boris(), CPU(); trajectories = N, dt, raw_output = true)
             @test size(raw.u) == (N, 6, NT + 1)
             @test raw.t == sols.u[1].t
             @test max_state_diff(sols, raw) == 0.0
 
             saveat = range(0.0, dt * NT, length = 11)
-            sols_saveat = TP.solve(
+            sols_saveat = solve(
                 prob, Boris(), CPU(); trajectories = N, dt, saveat, save_everystep = false
             )
-            raw_saveat = TP.solve(
+            raw_saveat = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, saveat, save_everystep = false, raw_output = true,
             )
             @test raw_saveat.t == sols_saveat.u[1].t
             @test max_state_diff(sols_saveat, raw_saveat) == 0.0
 
-            sols_end = TP.solve(
+            sols_end = solve(
                 prob, Boris(), CPU(); trajectories = N, dt, save_everystep = false
             )
-            raw_end = TP.solve(
+            raw_end = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, raw_output = true,
             )
@@ -112,11 +112,11 @@ end
             @test max_state_diff(sols_end, raw_end) == 0.0
 
             # With only the final state saved, the raw output aliases the state buffer.
-            sols_final = TP.solve(
+            sols_final = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, save_start = false,
             )
-            raw_final = TP.solve(
+            raw_final = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, save_start = false,
                 raw_output = true,
@@ -130,12 +130,12 @@ end
 
     @testset "raw output combines with u0" begin
         let N = 40, (; prob, states, dt) = make_prob(N)
-            reference = TP.solve(
+            reference = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, raw_output = true,
             )
 
-            both = TP.solve(
+            both = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false,
                 u0 = states, raw_output = true,
@@ -147,10 +147,10 @@ end
 
     @testset "raw output keeps the requested element type" begin
         let N = 40, (; prob, dt) = make_prob(N; T = Float32)
-            sols = TP.solve(
+            sols = solve(
                 prob, Boris(), CPU(); trajectories = N, dt, save_everystep = false
             )
-            raw = TP.solve(
+            raw = solve(
                 prob, Boris(), CPU();
                 trajectories = N, dt, save_everystep = false, raw_output = true,
             )

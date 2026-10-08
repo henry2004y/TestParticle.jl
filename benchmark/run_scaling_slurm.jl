@@ -94,13 +94,13 @@ Median wall time in seconds over `N_SAMPLES` runs, after one untimed warmup that
 compiles the solver on every worker.
 """
 function measure(ensemblealg, prob)
-    TestParticle.solve(
+    solve(
         prob, Boris(), ensemblealg; trajectories = N_WARMUP, dt = DT, saveat = SAVEAT
     )
     samples = Float64[]
     for _ in 1:N_SAMPLES
         @everywhere GC.gc()
-        t = @elapsed TestParticle.solve(
+        t = @elapsed solve(
             prob, Boris(), ensemblealg;
             trajectories = N_PARTICLES, dt = DT, saveat = SAVEAT
         )
