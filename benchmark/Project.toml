@@ -1,6 +1,5 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 SlurmClusterManager = "c82cd089-7bf7-41d7-976b-6b5d413cbe0a"
@@ -8,9 +7,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 
 [sources]
-## TODO: drop BorisPushers from both [deps] and [sources] once it is registered in
-## General. Until then it cannot be removed at all, because TestParticle depends on it and
-## the registry has no version of it, and it cannot be a path either, because this file is
-## copied into a temporary benchmark environment where a relative path points elsewhere.
-BorisPushers = {url = "https://github.com/henry2004y/TestParticle.jl.git", subdir = "lib/BorisPushers"}
 TestParticle = {path = ".."}
