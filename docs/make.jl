@@ -56,6 +56,7 @@ applications_order = [
     "demo_fermi_foreshock.jl",
     "demo_cosmicray.jl",
     "demo_radiation.jl",
+    "demo_gravitational_chaos.jl",
     "demo_batsrus_3dstructured.md",
 ]
 
