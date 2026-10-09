@@ -247,7 +247,7 @@ using Test
     # 9. Constructor and parameter validation
     let
         p_dummy = (
-            q2m, m, E_field, TP.Field((x, t) -> SA[0.0, 0.0, 0.01]), TP.ZeroField()
+            q2m, m, E_field, TP.Field((x, t) -> SA[0.0, 0.0, 0.01]), TP.ZeroField(),
         )
         u0_6 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         @test_throws ArgumentError AdaptiveHybrid(; threshold = 0.1, dtmax = -1.0)

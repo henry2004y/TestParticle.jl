@@ -69,10 +69,10 @@ function AdaptiveHybrid(;
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     threshold_gc_to_fo >= threshold_fo_to_gc ||
         throw(
-            ArgumentError(
-                "threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."
-            )
+        ArgumentError(
+            "threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."
         )
+    )
     adiabaticity in (:curvature, :gradB, :both, :jacobian) ||
         throw(
         ArgumentError(
