@@ -292,7 +292,7 @@ end
         # Initial Mode Determination
         X_gc, vpar, _, _, μ, phase = _get_gc_parameters(xv_fo, Efunc, Bfunc, q, m, t)
 
-        comps0 = adiabaticity_components(r, Bfunc, q, m, μ, t)
+        comps0 = adiabaticity_components(X_gc, Bfunc, q, m, μ, t)
         ϵ = _adia_select(comps0, alg)
         # Start in GC only when clearly adiabatic (ε < α); otherwise FO.
         is_adiabatic = ϵ < alg.threshold_gc_to_fo
@@ -357,7 +357,8 @@ end
                     comps = adiabaticity_components(
                         xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
                     )
-                    if alg.save_adiabaticity
+                    if alg.save_adiabaticity &&
+                       (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :GC)
                         push!(adia_t, t)
                         push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :GC)
@@ -401,13 +402,13 @@ end
                         break
                     end
 
+                    # Evolve phase using trapezoidal quadrature between start and
+                    # end of step guiding-center positions.
+                    Bmag_step = norm(Bfunc(get_x(xv_gc), t))
                     t += dt
                     xv_gc = y_next
-
-                    # Evolve phase using the (signed) gyrofrequency at the
-                    # start-of-step guiding-center position.
-                    Bmag_step = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - dt * (q2m * Bmag_step))
+                    Bmag_next = norm(Bfunc(get_x(xv_gc), t))
+                    phase = mod2pi(phase - 0.5 * dt * (q2m * (Bmag_step + Bmag_next)))
 
                     if use_saveat(plan) || save_everystep
                         y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
@@ -431,12 +432,13 @@ end
                 if it % alg.check_interval == 0
                     t_sync = is_td ? t : zero(T)
                     v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p, Boris())
-                    xv_sync = vcat(r, v_sync)
+                    xv_sync = SVector{6, T}(r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3])
                     X_gc, vpar, _, _, μ_fo, phase_fo = _get_gc_parameters(
                         xv_sync, Efunc, Bfunc, q, m, t
                     )
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
-                    if alg.save_adiabaticity
+                    if alg.save_adiabaticity &&
+                       (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :FO)
                         push!(adia_t, t)
                         push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :FO)
@@ -446,12 +448,12 @@ end
                         # Switch to GC (FO -> GC)
                         mode = :GC
                         verbose && @info "Switch FO → GC" ϵ t r = r
-                        xv_gc = vcat(X_gc, vpar)
+                        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                         p_gc = (q, q2m, μ_fo, Efunc, Bfunc)
                         μ = μ_fo
                         phase = phase_fo
 
-                        Bmag = norm(Bfunc(r, t))
+                        Bmag = norm(Bfunc(X_gc, t))
                         omega = abs(q2m * Bmag)
                         dt = 0.5 * 2π / omega
                         continue
