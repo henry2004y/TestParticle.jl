@@ -358,7 +358,7 @@ end
                         xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
                     )
                     if alg.save_adiabaticity &&
-                       (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :GC)
+                            (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :GC)
                         push!(adia_t, t)
                         push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :GC)
@@ -438,7 +438,7 @@ end
                     )
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     if alg.save_adiabaticity &&
-                       (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :FO)
+                            (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :FO)
                         push!(adia_t, t)
                         push!(adia_vals, _adia_select(comps, alg))
                         push!(adia_mode, :FO)
