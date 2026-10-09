@@ -57,9 +57,22 @@ function AdaptiveHybrid(;
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
         adiabaticity = :curvature, save_adiabaticity = true
     )
+    dtmax > 0 || throw(ArgumentError("dtmax must be positive."))
+    dtmin > 0 || throw(ArgumentError("dtmin must be positive."))
+    dtmin <= dtmax || throw(ArgumentError("dtmin must be <= dtmax."))
+    safety_fo > 0 || throw(ArgumentError("safety_fo must be positive."))
+    maxiters > 0 || throw(ArgumentError("maxiters must be positive."))
+    threshold_fo_to_gc >= 0 ||
+        throw(ArgumentError("threshold_fo_to_gc must be non-negative."))
+    abstol > 0 || throw(ArgumentError("abstol must be positive."))
+    reltol > 0 || throw(ArgumentError("reltol must be positive."))
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
     threshold_gc_to_fo >= threshold_fo_to_gc ||
-        throw(ArgumentError("threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."))
+        throw(
+        ArgumentError(
+            "threshold_gc_to_fo must be >= threshold_fo_to_gc for hysteresis."
+        )
+    )
     adiabaticity in (:curvature, :gradB, :both, :jacobian) ||
         throw(
         ArgumentError(
@@ -92,6 +105,11 @@ struct TraceHybridProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, 
 end
 
 function TraceHybridProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+    length(u0) == 6 ||
+        throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
+    tspan[2] > tspan[1] ||
+        throw(ArgumentError("tspan[2] must be greater than tspan[1]."))
+    tspan, p = _promote_trace_args(u0, tspan, p)
     _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
     return TraceHybridProblem{
         typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
@@ -297,14 +315,6 @@ end
         # Start in GC only when clearly adiabatic (ε < α); otherwise FO.
         is_adiabatic = ϵ < alg.threshold_gc_to_fo
 
-        # Per-check diagnostic buffers, aligned with the decision points.
-        # Allocated only when diagnostics are requested.
-        if alg.save_adiabaticity
-            adia_t = typeof(tspan[1])[]
-            adia_vals = T[]
-            adia_mode = Symbol[]
-        end
-
         if is_adiabatic
             mode = :GC
             xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
@@ -312,6 +322,7 @@ end
 
             B_vec = Bfunc(X_gc, t)
             Bmag = norm(B_vec)
+            Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = 0.5 * 2π / ω
             verbose && @info "Initial mode: GC" ϵ t
@@ -319,22 +330,36 @@ end
             mode = :FO
             dt = _fo_dt(alg, q2m, Bfunc, r, t)
             v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
+            Bmag_curr = zero(T)
             verbose && @info "Initial mode: FO" ϵ t
-        end
-        if alg.save_adiabaticity
-            push!(adia_t, t)
-            push!(adia_vals, _adia_select(comps0, alg))
-            push!(adia_mode, mode)
         end
 
         # Initialize solution containers with sizehint!
-        # Estimate initial capacity based on timespan and initial dt
         estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / dt)
-        initial_capacity = min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
+        initial_capacity = if use_saveat(plan)
+            length(plan.times) + 2
+        elseif !save_everystep
+            2
+        else
+            min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
+        end
         traj = Vector{SVector{6, T}}(undef, 0)
         tsave = Vector{typeof(tspan[1])}(undef, 0)
         sizehint!(traj, initial_capacity)
         sizehint!(tsave, initial_capacity)
+
+        if alg.save_adiabaticity
+            adia_cap = max(10, div(initial_capacity, alg.check_interval) + 2)
+            adia_t = Vector{typeof(tspan[1])}(undef, 0)
+            adia_vals = Vector{T}(undef, 0)
+            adia_mode = Vector{Symbol}(undef, 0)
+            sizehint!(adia_t, adia_cap)
+            sizehint!(adia_vals, adia_cap)
+            sizehint!(adia_mode, adia_cap)
+            push!(adia_t, t)
+            push!(adia_vals, _adia_select(comps0, alg))
+            push!(adia_mode, mode)
+        end
 
         if save_start
             push!(traj, SVector{6, T}(new_prob.u0))
@@ -350,34 +375,40 @@ end
 
         steps = 0
         it = 1
+        retcode = ReturnCode.Success
+        t_last_check = t
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
                 # Adiabaticity check
-                if it % alg.check_interval == 0
+                if it % alg.check_interval == 0 && t != t_last_check
+                    t_last_check = t
                     comps = adiabaticity_components(
                         xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
                     )
-                    if alg.save_adiabaticity &&
-                            (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :GC)
-                        push!(adia_t, t)
-                        push!(adia_vals, _adia_select(comps, alg))
-                        push!(adia_mode, :GC)
-                    end
                     ϵ = _adia_select(comps, alg)
                     if ϵ >= alg.threshold_gc_to_fo
                         # Switch to FO (GC -> FO)
                         mode = :FO
+                        it = 1
                         verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
-                        xv_fo_vec = _gc_to_full(
+                        if alg.save_adiabaticity
+                            push!(adia_t, t)
+                            push!(adia_vals, ϵ)
+                            push!(adia_mode, :FO)
+                        end
+                        xv_fo = _gc_to_full(
                             xv_gc, Efunc, Bfunc, q, m, μ, t, phase
                         )
-                        xv_fo = xv_fo_vec
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
 
                         dt = _fo_dt(alg, q2m, Bfunc, r, t)
                         v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
                         continue
+                    elseif alg.save_adiabaticity
+                        push!(adia_t, t)
+                        push!(adia_vals, ϵ)
+                        push!(adia_mode, :GC)
                     end
                 end
 
@@ -396,19 +427,16 @@ end
                 error_ratio = 0.5 * sqrt(sum_sq_error)
 
                 if error_ratio <= 1.0
-                    y_next = xv_gc + dx
-
                     if isoutside(y_next, p_gc, t + dt)
+                        retcode = ReturnCode.Terminated
                         break
                     end
 
-                    # Evolve phase using trapezoidal quadrature between start and
-                    # end of step guiding-center positions.
-                    Bmag_step = norm(Bfunc(get_x(xv_gc), t))
                     t += dt
                     xv_gc = y_next
                     Bmag_next = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - 0.5 * dt * (q2m * (Bmag_step + Bmag_next)))
+                    phase = mod2pi(phase - 0.5 * dt * (q2m * (Bmag_curr + Bmag_next)))
+                    Bmag_curr = Bmag_next
 
                     if use_saveat(plan) || save_everystep
                         y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
@@ -424,39 +452,52 @@ end
                     max_growth : safety_gc * (1.0 / error_ratio)^0.2
                 scale = max(min_growth, min(scale, max_growth))
                 dt *= scale
-                dt < MIN_DT && break
+                if t < tspan[2] && dt < MIN_DT
+                    retcode = ReturnCode.DtLessThanMin
+                    break
+                end
 
             else # Mode == :FO
-                # Adiabaticity check only at the chosen cadence, using the
-                # synchronized (position, velocity) pair at the integer time `t`.
-                if it % alg.check_interval == 0
+                if it % alg.check_interval == 0 && t != t_last_check
+                    t_last_check = t
                     t_sync = is_td ? t : zero(T)
                     v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p, Boris())
-                    xv_sync = SVector{6, T}(r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3])
+                    xv_sync = SVector{6, T}(
+                        r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
+                    )
                     X_gc, vpar, _, _, μ_fo, phase_fo = _get_gc_parameters(
                         xv_sync, Efunc, Bfunc, q, m, t
                     )
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
-                    if alg.save_adiabaticity &&
-                            (isempty(adia_t) || adia_t[end] != t || adia_mode[end] !== :FO)
-                        push!(adia_t, t)
-                        push!(adia_vals, _adia_select(comps, alg))
-                        push!(adia_mode, :FO)
-                    end
                     ϵ = _adia_select(comps, alg)
                     if ϵ < alg.threshold_fo_to_gc
                         # Switch to GC (FO -> GC)
                         mode = :GC
+                        it = 1
                         verbose && @info "Switch FO → GC" ϵ t r = r
+                        if alg.save_adiabaticity
+                            push!(adia_t, t)
+                            push!(adia_vals, ϵ)
+                            push!(adia_mode, :GC)
+                        end
+                        if use_saveat(plan) || save_everystep
+                            isave, t_last, y_last = _hybrid_save!(
+                                traj, tsave, plan, isave, t_last, y_last, t, xv_sync
+                            )
+                        end
                         xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                         p_gc = (q, q2m, μ_fo, Efunc, Bfunc)
                         μ = μ_fo
                         phase = phase_fo
 
-                        Bmag = norm(Bfunc(X_gc, t))
-                        omega = abs(q2m * Bmag)
+                        Bmag_curr = norm(Bfunc(X_gc, t))
+                        omega = abs(q2m * Bmag_curr)
                         dt = 0.5 * 2π / omega
                         continue
+                    elseif alg.save_adiabaticity
+                        push!(adia_t, t)
+                        push!(adia_vals, ϵ)
+                        push!(adia_mode, :FO)
                     end
                 end
 
@@ -472,6 +513,8 @@ end
                 r_next = r + v * dt
                 t_next = t + dt
                 if isoutside(vcat(r_next, v), p, t_next)
+                    retcode = ReturnCode.Terminated
+                    v = v_prev
                     break
                 end
 
@@ -503,7 +546,9 @@ end
 
         sol_alg = :hybrid
         interp = LinearInterpolation(tsave, traj)
-        retcode = steps >= alg.maxiters ? ReturnCode.MaxIters : ReturnCode.Success
+        if steps >= alg.maxiters && retcode == ReturnCode.Success
+            retcode = ReturnCode.MaxIters
+        end
         stats = alg.save_adiabaticity ?
             (adiabaticity = (t = adia_t, components = adia_vals, mode = adia_mode),) :
             nothing

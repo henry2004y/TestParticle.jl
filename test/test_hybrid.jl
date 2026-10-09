@@ -205,7 +205,7 @@ using Test
         @test length(sol_buf.t) > 100
     end
 
-    # 4. Saving at requested times, for a case that stays in the GC mode.
+    # 8. Saving at requested times, for a case that stays in the GC mode.
     let
         B_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.01])
 
@@ -242,6 +242,112 @@ using Test
         # of the span are reported separately.
         sol_interval = solve(prob, alg; saveat = 0.25e-4).u[1]
         @test sol_interval.t ≈ collect(0.0:0.25e-4:1.0e-4)
+    end
 
+    # 9. Constructor and parameter validation
+    let
+        p_dummy = (
+            q2m, m, E_field, TP.Field((x, t) -> SA[0.0, 0.0, 0.01]), TP.ZeroField(),
+        )
+        u0_6 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        @test_throws ArgumentError AdaptiveHybrid(; threshold = 0.1, dtmax = -1.0)
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, dtmin = -0.1
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, dtmin = 2.0
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, safety_fo = 0.0
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, maxiters = 0
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold_fo_to_gc = -0.1, threshold_gc_to_fo = 0.1, dtmax = 1.0
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, abstol = -1.0e-6
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, reltol = 0.0
+        )
+
+        @test_throws ArgumentError TraceHybridProblem(
+            SA[0.0, 0.0, 0.0], (0.0, 1.0), p_dummy
+        )
+        @test_throws ArgumentError TraceHybridProblem(u0_6, (1.0, 0.0), p_dummy)
+    end
+
+    # 10. Early termination with isoutside and maxiters
+    let
+        B_func(x, t) = SA[0.0, 0.0, 0.01]
+        B_field = TP.Field(B_func)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        tspan = (0.0, 1.0e-3)
+        p = (q2m, m, E_field, B_field, TP.ZeroField())
+
+        # Termination via isoutside in GC mode
+        alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-5)
+        prob = TraceHybridProblem(u0, tspan, p)
+        sol_out = solve(prob, alg; isoutside = (u, p, t) -> u[3] > 1.0e-2).u[1]
+        @test sol_out.retcode == TP.ReturnCode.Terminated
+        @test sol_out.t[end] < tspan[2]
+
+        # Termination via isoutside in FO mode (threshold = 0.0 forces FO)
+        alg_fo = AdaptiveHybrid(; threshold = 0.0, dtmax = 1.0e-5)
+        sol_out_fo = solve(prob, alg_fo; isoutside = (u, p, t) -> u[3] > 1.0e-2).u[1]
+        @test sol_out_fo.retcode == TP.ReturnCode.Terminated
+        @test sol_out_fo.t[end] < tspan[2]
+
+        # Termination via maxiters
+        alg_max = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6, maxiters = 3)
+        sol_max = solve(prob, alg_max).u[1]
+        @test sol_max.retcode == TP.ReturnCode.MaxIters
+    end
+
+    # 11. Minimal storage when save_everystep = false
+    let
+        B_func(x, t) = SA[0.0, 0.0, 0.01]
+        B_field = TP.Field(B_func)
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        tspan = (0.0, 1.0e-4)
+        p = (q2m, m, E_field, B_field, TP.ZeroField())
+        alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
+        prob = TraceHybridProblem(u0, tspan, p)
+
+        sol_ends = solve(prob, alg; save_everystep = false).u[1]
+        @test length(sol_ends.t) == 2
+        @test sol_ends.t[1] == tspan[1]
+        @test sol_ends.t[end] == tspan[2]
+    end
+
+    # 12. Monotonicity and transition preservation in hybrid switching
+    let
+        B0 = 1.0e-4
+        α = 1.0e-2
+        function bottle_B(x, t)
+            Bz = B0 * (1 + α * x[3]^2)
+            Bx = -B0 * α * x[1] * x[3]
+            By = -B0 * α * x[2] * x[3]
+            return SA[Bx, By, Bz]
+        end
+        B_bottle = TP.Field(bottle_B)
+        u0 = SA[0.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        Ω = abs(q2m) * B0
+        T_gyro = 2π / Ω
+        tspan = (0.0, 10 * T_gyro)
+        p = (q2m, m, E_field, B_bottle, TP.ZeroField())
+        alg = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 10,
+        )
+        sol = solve(TraceHybridProblem(u0, tspan, p), alg).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+
+        # Diagnostic timestamps must be strictly monotonic (no duplicates)
+        adia = sol.stats.adiabaticity
+        @test length(adia.t) > 1
+        @test all(diff(adia.t) .> 0)
     end
 end
