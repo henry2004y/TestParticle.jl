@@ -97,14 +97,17 @@ function setup_time_dependent_field(ns = 16)
    return B_field_t
 end
 
-function setup_mixed_precision_field(ns = 11, order = 1, bc = FillExtrap(NaN); coeffs = OnTheFly())
+function setup_mixed_precision_field(
+      ns = 11, order = 1, bc = FillExtrap(NaN);
+      coeffs = OnTheFly(), store = StorePolicy()
+   )
    x = range(0.0f0, 10.0f0, length = ns)
    y = range(0.0f0, 10.0f0, length = ns)
    z = range(0.0f0, 10.0f0, length = ns)
    B = fill(0.0f0, 3, ns, ns, ns)
    B[3, :, :, :] .= 1.0f-8
 
-   itp = build_interpolator(B, x, y, z, order, bc; coeffs)
+   itp = build_interpolator(B, x, y, z, order, bc; coeffs, store)
    return itp
 end
 
@@ -163,50 +166,64 @@ Numerical field data from files is often stored in `Float32`. TestParticle suppo
 
 ## Memory usage analysis
 
-Large numerical field arrays can consume significant amounts of memory. It's important that interpolators are memory-efficient during both construction and storage.
+Large numerical field arrays can consume significant amounts of memory during
+interpolator construction. `FastInterpolations.jl` uses `StorePolicy()` by default,
+which copies grids and field data so that the interpolator owns a stable snapshot.
+This protects it from later caller mutations, but constructing an interpolator for a
+45 GB field requires another approximately 45 GB allocation.
 
-For **linear interpolation (`order=1`)**, construction is near zero-allocation because it creates a wrapper around a reinterpreted view of your existing array.
-
-For **higher-order interpolation (`order = 3`)**, `FastInterpolations.jl` provides two modes: `OnTheFly()` and `PreCompute()`. By default, `OnTheFly()` is used, which calculates interpolation coefficients during each query. This approach is memory-efficient as it does not require additional storage beyond the input data. Alternatively, `PreCompute()` precalculates and stores coefficients in **an additional array of the same size**, enabling faster $O(1)$ lookup performance at the cost of higher memory usage.
-
-We can measure this difference using `@be`.
-
-```@repl interp
-# Order 1: Minimal allocations (Uses a view)
-@be setup_mixed_precision_field(11, 1)
-
-# Order 3: Minimal allocations (Uses a view)
-@be setup_mixed_precision_field(11, 3)
-```
-
-Comparing the ratios relative to the original array size illustrates the overhead:
+TestParticle forwards the `store` keyword to `FastInterpolations.jl`. Use
+`StorePolicy(copy = false)` to alias compatible grids and field data instead of
+copying them. This removes the field-sized construction allocation for linear
+interpolation and for cubic interpolation backed by dense scalar or `SVector` arrays.
 
 ```@repl interp
-B = fill(0.0f0, 3, 11, 11, 11);
-size_B = Base.summarysize(B) # Original 4D field array size
+x_memory = range(0.0f0, 1.0f0, length = 32);
+B_memory = rand(Float32, 3, 32, 32, 32);
+B_memory_svector = fill(SA[1.0f0, 1.0f0, 1.0f0], 32, 32, 32);
+copy_store = StorePolicy();
+zero_copy_store = StorePolicy(copy = false);
 
-size_itp1 = Base.summarysize(itp_f32) # Total size for order=1 (Essentially the input array size)
-itp_f32_q = setup_mixed_precision_field(11, 3) # Total size for order=3
-size_itp3 = Base.summarysize(itp_f32_q)
+# Default owned-copy construction
+@be build_interpolator($B_memory, $x_memory, $x_memory, $x_memory, 1; store = $copy_store)
+@be build_interpolator($B_memory_svector, $x_memory, $x_memory, $x_memory, 3; store = $copy_store)
 
-# Ratios relative to raw data
-size_itp1 / size_B
-size_itp3 / size_B
+# Zero-copy construction
+@be build_interpolator($B_memory, $x_memory, $x_memory, $x_memory, 1; store = $zero_copy_store)
+@be build_interpolator($B_memory_svector, $x_memory, $x_memory, $x_memory, 3; store = $zero_copy_store)
 ```
 
-As a rule of thumb, linear interpolation and cubic interpolation with `OnTheFly()` coefficients have nearly zero memory overhead (ratio ≈ 1.0), as they both operate directly on the input data. When supported, cubic interpolation with `PreCompute()` coefficients increases the memory footprint by $2^\mathrm{DIM}$ to store the extra coefficients, where $\mathrm{DIM}$ is the dimension of the field.
+With zero-copy storage, the interpolator may alias both the field and grid arrays.
+They must remain alive and must not be mutated or resized while the interpolator is
+in use. If only the large field should be aliased, use
+`StorePolicy(copy_values = false)` to retain owned grid storage. Inputs that require
+an element-type conversion may still be copied.
+
+Component-first vector fields with shape `(3, nx, ny, nz)` are exposed internally as
+a `ReinterpretArray`. FastInterpolations v0.4 currently cannot evaluate ND cardinal
+interpolation from that aliased wrapper, so TestParticle warns and falls back to
+owned storage for `order = 3`. Store the field directly as a dense 3D array of
+`SVector`s to use zero-copy cubic interpolation.
+
+`Base.summarysize` reports all objects reachable through an interpolator, including
+aliased inputs, so construction allocation measurements are a better way to verify
+that the copy was eliminated.
 
 ## On-the-fly vs Precomputed coefficients
 
-Cubic interpolation (`order = 3`) requires high-order coefficients. By default, TestParticle uses `OnTheFly()` coefficients, which are calculated at query time. This saves memory but increases evaluation time. For maximum performance, you can use `PreCompute()`, which stores the coefficients in an additional array.
+Cubic interpolation (`order = 3`) requires high-order coefficients. TestParticle uses
+`OnTheFly()` coefficients, which are calculated during each query. Zero-copy storage
+reduces construction time and memory but does not change interpolation throughput.
+`PreCompute()` could trade additional memory for faster queries, but it is not yet
+supported for TestParticle's ND cardinal interpolation.
 
-!!! note "Status in FastInterpolations v0.4.15"
-    `PreCompute()` is now available for the global natural cubic spline (`CubicInterp`) in ND as of `FastInterpolations.jl` v0.4.15. However, it is **not yet supported** for the local Hermite cubic spline (`CardinalInterp`, i.e. `order = 3` in TestParticle) in ND — constructing such an interpolator with `coeffs = PreCompute()` raises an `ArgumentError`. `OnTheFly()` therefore remains the only option for cubic interpolation in TestParticle.
+!!! note "Status in FastInterpolations v0.4.19"
+    `PreCompute()` is available for the global natural cubic spline (`CubicInterp`) in ND. However, it is **not yet supported** for the local Hermite cubic spline (`CardinalInterp`, i.e. `order = 3` in TestParticle) in ND. Constructing such an interpolator with `coeffs = PreCompute()` raises an `ArgumentError`, so `OnTheFly()` remains the only option for cubic interpolation in TestParticle.
 
 ```@repl interp
 # Benchmark evaluation time
 itp_fly = setup_mixed_precision_field(11, 3; coeffs = OnTheFly());
-# itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute()); # unsupported for ND cardinal cubic in v0.4.15
+# itp_pre = setup_mixed_precision_field(11, 3; coeffs = PreCompute()); # unsupported for ND cardinal cubic
 
 @be itp_fly($loc_f64)
 

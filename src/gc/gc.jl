@@ -40,7 +40,8 @@ end
 
 """
     prepare_gc(xv, xrange, yrange, zrange, E, B;
-        species = Proton, q = nothing, m = nothing, order::Int = 1, bc = FillExtrap(NaN))
+        species = Proton, q = nothing, m = nothing, order::Int = 1,
+        bc = FillExtrap(NaN), store = StorePolicy())
     prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
 
 Prepare the guiding center parameters for a particle.
@@ -49,16 +50,21 @@ Prepare the guiding center parameters for a particle.
 function prepare_gc(
         xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
         species = Proton, q = nothing, m = nothing, t = 0,
-        order::Int = 1, bc = FillExtrap(NaN)
+        order::Int = 1, bc = FillExtrap(NaN),
+        store::StorePolicy = StorePolicy()
     ) where {T <: AbstractRange, TE, TB}
     q = @something q species.q
     m = @something m species.m
 
     E = TE <: AbstractArray ?
-        build_interpolator(CartesianGrid, E, xrange, yrange, zrange, order, bc) :
+        build_interpolator(
+            CartesianGrid, E, xrange, yrange, zrange, order, bc; store
+        ) :
         E
     B = TB <: AbstractArray ?
-        build_interpolator(CartesianGrid, B, xrange, yrange, zrange, order, bc) :
+        build_interpolator(
+            CartesianGrid, B, xrange, yrange, zrange, order, bc; store
+        ) :
         B
     fE = Field(E)
     fB = Field(B)

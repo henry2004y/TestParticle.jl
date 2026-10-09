@@ -116,7 +116,25 @@ end
 
 Adapt.adapt_structure(to, fi::SphericalFieldInterpolator) = SphericalFieldInterpolator(Adapt.adapt(to, fi.itp))
 
-function _fastinterp(grids, A, order, bc_or_extrap, coeffs = OnTheFly())
+function _cardinal_interp(grids::Tuple, A, coeffs, bc, extrap, store)
+    itp = cardinal_interp(grids, A; coeffs, bc, extrap, store)
+    itp.data isa Array && return itp
+
+    @warn "FastInterpolations cannot evaluate ND cardinal interpolation with " *
+        "aliased non-Array data; falling back to owned storage." maxlog = 1
+    return cardinal_interp(
+        grids, A; coeffs, bc, extrap, store = StorePolicy()
+    )
+end
+
+@inline function _cardinal_interp(grid, A, coeffs, bc, extrap, store)
+    return cardinal_interp(grid, A; coeffs, bc, extrap, store)
+end
+
+function _fastinterp(
+        grids, A, order, bc_or_extrap, coeffs = OnTheFly();
+        store::StorePolicy = StorePolicy()
+    )
     # Ensure FillExtrap value matches eltype(A) for SVector types
     if bc_or_extrap isa FillExtrap && bc_or_extrap.fill_value isa Number &&
             isnan(bc_or_extrap.fill_value)
@@ -137,28 +155,33 @@ function _fastinterp(grids, A, order, bc_or_extrap, coeffs = OnTheFly())
     end
 
     if order == 1
-        return linear_interp(grids, A; bc = bc_val, extrap = extrap_val)
+        return linear_interp(grids, A; bc = bc_val, extrap = extrap_val, store)
     elseif order == 3
-        return cardinal_interp(grids, A; coeffs, bc = bc_val, extrap = extrap_val)
+        return _cardinal_interp(
+            grids, A, coeffs, bc_val, extrap_val, store
+        )
     elseif order == 0
-        return constant_interp(grids, A; bc = bc_val, extrap = extrap_val)
+        return constant_interp(grids, A; bc = bc_val, extrap = extrap_val, store)
     else
         throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
 end
 
-function _fastinterp_spherical(grids, A, order, coeffs = PreCompute())
+function _fastinterp_spherical(
+        grids, A, order, coeffs = PreCompute();
+        store::StorePolicy = StorePolicy()
+    )
     # r and θ always extrapolate with NaN, ϕ is always periodic.
     T = eltype(A)
     fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
     extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), NoExtrap())
     bc = (NoBC(), NoBC(), PeriodicBC(check = false))
     if order == 1
-        return linear_interp(grids, A; bc, extrap)
+        return linear_interp(grids, A; bc, extrap, store)
     elseif order == 3
-        return cardinal_interp(grids, A; coeffs, bc, extrap)
+        return _cardinal_interp(grids, A, coeffs, bc, extrap, store)
     elseif order == 0
-        return constant_interp(grids, A; bc, extrap)
+        return constant_interp(grids, A; bc, extrap, store)
     else
         throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
@@ -190,85 +213,113 @@ function _check_interpolation_consistency(A, grids, order)
 end
 
 @doc raw"""
-    build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN))
-    build_interpolator(A, grids..., order::Int=1, bc=FillExtrap(NaN))
+    build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN);
+        coeffs=OnTheFly(), store=StorePolicy())
+    build_interpolator(A, grids..., order::Int=1, bc=FillExtrap(NaN);
+        coeffs=OnTheFly(), store=StorePolicy())
 
 Return a function for interpolating field array `A` on the given grids.
 
 # Arguments
 
-  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually determined by the number of grids.
-  - `A`: field array. For vector field, the first dimension should be 3 if it's not an SVector wrapper.
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually
+    determined by the number of grids.
+  - `A`: field array. For vector fields, the first dimension should be 3 unless
+    the array contains `SVector`s.
   - `order::Int=1`: order of interpolation in [0,1,3].
   - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
     - `FillExtrap(NaN)`: Fill with NaN (default).
     - `ClampExtrap()`: Clamp (flat extrapolation).
     - `WrapExtrap()`: Exclusive periodic wrapping ($L = N \Delta x$).
-  - `coeffs=OnTheFly()`: coefficient strategy for cubic interpolation (order=3). Default is `OnTheFly()`.
+  - `coeffs=OnTheFly()`: coefficient strategy for cubic interpolation (order=3).
+  - `store=StorePolicy()`: storage policy forwarded to `FastInterpolations.jl`.
+    The default copies the grid and field data. Use `StorePolicy(copy=false)` to
+    alias compatible inputs and avoid the construction-time data copy.
 
 # Notes
-- The input array `A` may be modified in-place for memory optimization.
+
+With `StorePolicy(copy=false)`, the interpolator may alias `A` and the grid arrays.
+Do not mutate or resize aliased inputs while the interpolator is in use. When input
+conversion is required, `FastInterpolations.jl` may still copy the data.
 """ build_interpolator
 
 function build_interpolator end
 
-@inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) = build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
+@inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) =
+    build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN);
+        coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(CartesianGrid, As, gridx, gridy, gridz, order, bc; coeffs)
+    return build_interpolator(
+        CartesianGrid, As, gridx, gridy, gridz, order, bc; coeffs, store
+    )
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN);
+        coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     _check_interpolation_consistency(A, (gridx, gridy, gridz), order)
-    itp = _fastinterp((gridx, gridy, gridz), A, order, bc, coeffs)
+    itp = _fastinterp((gridx, gridy, gridz), A, order, bc, coeffs; store)
     return FieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 4},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc = FillExtrap(NaN)
+        order::Int = 1, bc = FillExtrap(NaN);
+        store::StorePolicy = StorePolicy()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(RectilinearGrid, As, gridx, gridy, gridz, order, bc)
+    return build_interpolator(
+        RectilinearGrid, As, gridx, gridy, gridz, order, bc; store
+    )
 end
 
 function build_interpolator(
         ::Type{<:RectilinearGrid}, A::AbstractArray{T, 3},
         gridx::AbstractVector, gridy::AbstractVector, gridz::AbstractVector,
-        order::Int = 1, bc = FillExtrap(NaN)
+        order::Int = 1, bc = FillExtrap(NaN);
+        store::StorePolicy = StorePolicy()
     ) where {T}
     if order != 1
-        throw(ArgumentError("RectilinearGrid (CartesianNonUniform) only supports order=1 (Linear) interpolation."))
+        throw(
+            ArgumentError(
+                "RectilinearGrid (CartesianNonUniform) only supports " *
+                    "order=1 (Linear) interpolation."
+            )
+        )
     end
 
-    itp = _fastinterp((gridx, gridy, gridz), A, order, bc)
+    itp = _fastinterp((gridx, gridy, gridz), A, order, bc; store)
     return FieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
-        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
+        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN);
+        coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
     As = reinterpret(reshape, SVector{3, T}, A)
-    return build_interpolator(StructuredGrid, As, gridr, gridθ, gridϕ, order, bc; coeffs)
+    return build_interpolator(
+        StructuredGrid, As, gridr, gridθ, gridϕ, order, bc; coeffs, store
+    )
 end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
-        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN); coeffs = OnTheFly()
+        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN);
+        coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     r_min = minimum(gridr)
     θ_min, θ_max = extrema(gridθ)
@@ -279,17 +330,21 @@ function build_interpolator(
     @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
 
     _check_interpolation_consistency(A, (gridr, gridθ, gridϕ), order)
-    itp = _fastinterp_spherical((gridr, gridθ, gridϕ), A, order, coeffs)
+    itp = _fastinterp_spherical(
+        (gridr, gridθ, gridϕ), A, order, coeffs; store
+    )
     return SphericalFieldInterpolator(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A,
-        gridx::AbstractVector, gridy::AbstractVector, order::Int = 1, bc = FillExtrap(NaN);
-        coeffs = OnTheFly()
+        gridx::AbstractVector, gridy::AbstractVector,
+        order::Int = 1, bc = FillExtrap(NaN);
+        coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     )
     if eltype(A) <: SVector
-        @assert ndims(A) == 2 "Incompatible 2D force field and grid! Expected 2D array of SVectors."
+        @assert ndims(A) == 2 "Incompatible 2D force field and grid! " *
+            "Expected 2D array of SVectors."
         As = A
     else
         @assert size(A, 1) == 3 && ndims(A) == 3 "Incompatible 2D force field and grid!"
@@ -297,16 +352,18 @@ function build_interpolator(
     end
 
     _check_interpolation_consistency(As, (gridx, gridy), order)
-    itp = _fastinterp((gridx, gridy), As, order, bc, coeffs)
+    itp = _fastinterp((gridx, gridy), As, order, bc, coeffs; store)
     return FieldInterpolator2D(itp)
 end
 
 function build_interpolator(
         ::Type{<:CartesianGrid}, A, gridx::AbstractVector,
-        order::Int = 1, bc = FillExtrap(NaN); dir = 1, coeffs = OnTheFly()
+        order::Int = 1, bc = FillExtrap(NaN);
+        dir = 1, coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     )
     if eltype(A) <: SVector
-        @assert ndims(A) == 1 "Incompatible 1D force field and grid! Expected 1D array of SVectors."
+        @assert ndims(A) == 1 "Incompatible 1D force field and grid! " *
+            "Expected 1D array of SVectors."
         As = A
     else
         @assert size(A, 1) == 3 && ndims(A) == 2 "Incompatible 1D force field and grid!"
@@ -314,7 +371,7 @@ function build_interpolator(
     end
 
     _check_interpolation_consistency(As, (gridx,), order)
-    itp = _fastinterp(gridx, As, order, bc, coeffs)
+    itp = _fastinterp(gridx, As, order, bc, coeffs; store)
 
     return FieldInterpolator1D(itp, dir)
 end
