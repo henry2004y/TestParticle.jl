@@ -79,6 +79,9 @@ z_fo = [u[3] for u in sol_fo.u]
 # ## Step 2: Guiding Center Reference Trace
 #
 # For comparison, we also trace with the guiding center equations.
+# Note that [`trace_gc!`](@ref) traces the guiding-center position ``\mathbf{X}``
+# (a smooth curve) under the assumption that the magnetic moment ``\mu`` is strictly
+# conserved, whereas full-orbit tracing resolves the fast gyration of the particle.
 
 bottle_B_static(x) = bottle_B(x, 0.0)
 bottle_E_static(x) = SA[0.0, 0.0, 0.0]
@@ -104,7 +107,7 @@ alg = AdaptiveHybrid(;
     dtmax = T_gyro,
     dtmin = 1.0e-4 * T_gyro,
     maxiters = 500_000,
-    check_interval = 100,
+    check_interval = 10,
 )
 
 ## Set verbose = true to see the dynamic switching
@@ -165,19 +168,6 @@ function plot_trajectory!(ax, sol, ε_vals; npts = nothing)
     )
 end
 
-## Create a standalone figure with a 3D trajectory colored by ε
-function plot_trajectory(sol, ε_vals, title_str; figsize = (700, 500), npts = nothing)
-    f = Figure(; size = figsize, fontsize = 20)
-    ax = Axis3(
-        f[1, 1],
-        xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
-        title = title_str, aspect = :data,
-    )
-    plot_trajectory!(ax, sol, ε_vals; npts)
-    Colorbar(f[1, 2]; colormap = :turbo, limits = clims, label = L"\log_{10}(\epsilon)")
-    return f
-end
-
 f = Figure(; size = (1400, 900), fontsize = 20)
 
 ## Compute shared axis limits from all three trajectories
@@ -199,7 +189,7 @@ end
 ax_fo = Axis3(
     f[1, 1],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
-    title = "Full Orbit", aspect = :data,
+    title = "Full Orbit (Particle)", aspect = :data,
     limits = lims,
 )
 plot_trajectory!(ax_fo, sol_fo, ε_fo; npts = 5000)
@@ -207,7 +197,7 @@ plot_trajectory!(ax_fo, sol_fo, ε_fo; npts = 5000)
 ax_gc = Axis3(
     f[1, 2],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
-    title = "Guiding Center", aspect = :data,
+    title = "Guiding Center (GC Position)", aspect = :data,
     limits = lims,
 )
 plot_trajectory!(ax_gc, sol_gc, ε_gc; npts = 5000)
@@ -215,7 +205,7 @@ plot_trajectory!(ax_gc, sol_gc, ε_gc; npts = 5000)
 ax_hyb = Axis3(
     f[1, 3],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
-    title = "Hybrid Mode", aspect = :data,
+    title = "Hybrid Mode (Particle)", aspect = :data,
     limits = lims,
 )
 plot_trajectory!(ax_hyb, sol, ε_hybrid)
@@ -237,22 +227,21 @@ ax_ts = Axis(
     ),
 )
 
-## Shade FO and GC regions
-is_fo = ε_hybrid .>= threshold
-let i_region = 1
-    while i_region <= length(t_norm)
-        mode_fo = is_fo[i_region]
+## Shade FO and GC regions using the solver's recorded modes
+let
+    t_adia = sol.stats.adiabaticity.t ./ T_gyro
+    mode_adia = sol.stats.adiabaticity.mode
+    i_region = 1
+    while i_region <= length(t_adia)
+        mode_fo = mode_adia[i_region] === :FO
         j_region = i_region
-        while j_region < length(t_norm) && is_fo[j_region + 1] == mode_fo
+        while j_region < length(t_adia) && (mode_adia[j_region + 1] === :FO) == mode_fo
             j_region += 1
         end
-        t_lo = t_norm[i_region]
-        t_hi = t_norm[j_region]
-        if mode_fo
-            vspan!(ax_ts, t_lo, t_hi; color = (:red, 0.2))
-        else
-            vspan!(ax_ts, t_lo, t_hi; color = (:blue, 0.2))
-        end
+        t_lo = t_adia[i_region]
+        t_hi = j_region < length(t_adia) ? t_adia[j_region + 1] : t_norm[end]
+        c = mode_fo ? (:red, 0.2) : (:blue, 0.2)
+        vspan!(ax_ts, t_lo, t_hi; color = c)
         i_region = j_region + 1
     end
 end
@@ -323,7 +312,7 @@ Markdown.parse(String(take!(io))) #hide
 mode_threshold = 0.1
 mode_common = (;
     threshold = mode_threshold, dtmax = T_gyro,
-    dtmin = 1.0e-4 * T_gyro, maxiters = 500_000, check_interval = 100,
+    dtmin = 1.0e-4 * T_gyro, maxiters = 500_000, check_interval = 10,
 )
 alg_curv = AdaptiveHybrid(; mode_common..., adiabaticity = :curvature)
 alg_gradB = AdaptiveHybrid(; mode_common..., adiabaticity = :gradB)
