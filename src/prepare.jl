@@ -178,6 +178,9 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
 
   - `order::Int=1`: order of interpolation in [0,1,3].
   - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
+  - `store=StorePolicy()`: interpolation storage policy. Use
+    `StorePolicy(copy=false)` for zero-copy construction when field and grid inputs
+    will remain unchanged for the interpolator's lifetime.
   - `species=Proton`: particle species.
   - `q=nothing`: particle charge.
   - `m=nothing`: particle mass.

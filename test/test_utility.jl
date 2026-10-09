@@ -24,6 +24,12 @@ end
     return s.u[i] .+ f .* (s.u[i + 1] .- s.u[i])
 end
 
+function interpolation_construction_allocations(B, x, order, store)
+    build_interpolator(B, x, x, x, order; store)
+    GC.gc()
+    return @allocated build_interpolator(B, x, x, x, order; store)
+end
+
 @testset "Utility" begin
     @testset "Basic Utility" begin
         V, B = 440.0e3, 5.0e-9
@@ -204,6 +210,48 @@ end
 
             # Should throw ArgumentError for order=2 (unsupported order)
             @test_throws ArgumentError build_interpolator(B32, x64, x64, x64, 2, FillExtrap(NaN))
+        end
+
+        @testset "Storage policy" begin
+            n = 32
+            x = range(0.0f0, 1.0f0, length = n)
+            B = ones(Float32, 3, n, n, n)
+            B_svector = fill(SA[1.0f0, 1.0f0, 1.0f0], n, n, n)
+            copy_store = StorePolicy()
+            reference_store = StorePolicy(copy = false)
+            location = SA[0.5f0, 0.5f0, 0.5f0]
+
+            for (field, order) in ((B, 1), (B_svector, 3))
+                copy_bytes = interpolation_construction_allocations(
+                    field, x, order, copy_store
+                )
+                reference_bytes = interpolation_construction_allocations(
+                    field, x, order, reference_store
+                )
+                @test copy_bytes >= sizeof(field)
+                @test reference_bytes < sizeof(field) ÷ 100
+
+                copied = build_interpolator(
+                    field, x, x, x, order; store = copy_store
+                )
+                referenced = build_interpolator(
+                    field, x, x, x, order; store = reference_store
+                )
+                @test copied(location) ≈ referenced(location)
+            end
+
+            fallback = @test_logs (:warn, r"falling back to owned storage") begin
+                build_interpolator(B, x, x, x, 3; store = reference_store)
+            end
+            @test fallback(location) == SA[1.0f0, 1.0f0, 1.0f0]
+
+            copied = build_interpolator(B, x, x, x)
+            referenced = build_interpolator(
+                B, x, x, x; store = reference_store
+            )
+            fill!(B, 2.0f0)
+            @test copied(location) == SA[1.0f0, 1.0f0, 1.0f0]
+            @test referenced(location) == SA[2.0f0, 2.0f0, 2.0f0]
         end
     end
 

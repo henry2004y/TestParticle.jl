@@ -4,7 +4,7 @@ using LinearAlgebra: norm, ×, ⋅, diag, normalize
 using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
     interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
     OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap,
-    NoBC, NoExtrap
+    NoBC, NoExtrap, StorePolicy
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
@@ -66,7 +66,8 @@ export GPUSphericalGrid, GPUUniformAxis, GPUNonUniformAxis
 export TraceProblem, TraceGCProblem, TraceHybridProblem, solve
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
-    PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, DiscreteCallback, TerminateOutside
+    PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, StorePolicy,
+    DiscreteCallback, TerminateOutside
 
 public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
