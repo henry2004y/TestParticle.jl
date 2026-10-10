@@ -1,15 +1,20 @@
 module test_reproducibility
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
 using Test
 using TestParticle
 using OrdinaryDiffEq
 using Random
 using StaticArrays
 using VelocityDistributionFunctions
+using ..test_common: uniform_B, zero_field
 
 @testset "Reproducibility" begin
-    B_uniform(x) = SA[0, 0, 1.0e-8]
-    E_zero = TestParticle.ZeroField()
-    param = prepare(E_zero, B_uniform, species = Proton)
+    param = prepare(zero_field, uniform_B, species = Proton)
     tspan = (0.0, 1.0)
     stateinit = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     prob = ODEProblem(trace!, stateinit, tspan, param)

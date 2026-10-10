@@ -1,13 +1,18 @@
 module test_raw_output
 
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 import TestParticle as TP
 using StaticArrays
 using KernelAbstractions
+using ..test_common: uniform_B, zero_E
 
-uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-zero_E(x) = SA[0.0, 0.0, 0.0]
 uniform_B32(x) = SA[0.0f0, 0.0f0, 1.0f-8]
 zero_E32(x) = SA[0.0f0, 0.0f0, 0.0f0]
 

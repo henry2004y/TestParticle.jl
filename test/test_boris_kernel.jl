@@ -1,24 +1,33 @@
 module test_boris_kernel
 
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 import TestParticle as TP
 using StaticArrays
 using KernelAbstractions
 using OrdinaryDiffEq
+using ..test_common: uniform_B, zero_E
 const KA = KernelAbstractions
 
-@testset "Boris Kernel Solver" begin
-    uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-    uniform_E(x) = SA[0.0, 0.0, 0.0]
+"A distinct initial speed per particle, so reordering would be visible."
+prob_func_gpu(prob, ctx) = remake(
+    prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
+)
 
+@testset "Boris Kernel Solver" begin
     x0 = [0.0, 0.0, 0.0]
     v0 = [1.0e5, 0.0, 0.0]
     stateinit = [x0..., v0...]
     tspan = (0.0, 1.0e-6)
     dt = 1.0e-9
 
-    param = prepare(uniform_E, uniform_B; species = Proton)
+    param = prepare(zero_E, uniform_B; species = Proton)
     prob = TraceProblem(stateinit, tspan, param)
 
     @testset "CPU Backend" begin
@@ -41,9 +50,6 @@ const KA = KernelAbstractions
     @testset "Multi-particle Kernel" begin
         backend = CPU()
 
-        prob_func_gpu(prob, ctx) = remake(
-            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
-        )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
         sols_gpu = solve(prob_multi, Boris(), backend; dt, trajectories = 5, saveat = 100 * dt)
@@ -59,9 +65,6 @@ const KA = KernelAbstractions
     @testset "EnsembleThreads" begin
         backend = CPU()
 
-        prob_func_gpu(prob, ctx) = remake(
-            prob; u0 = [prob.u0[1:3]..., ctx.sim_id * 1.0e4, 0.0, 0.0]
-        )
         prob_multi = TraceProblem(stateinit, tspan, param; prob_func = prob_func_gpu)
 
         trajectories = 10

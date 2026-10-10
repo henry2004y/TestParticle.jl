@@ -1,79 +1,88 @@
+module test_adiabaticity
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using TestParticle
 import TestParticle as TP
 using StaticArrays
 using LinearAlgebra
 using Test
+using ..test_common: bottle_B, bottle_B0, curved_B_t
+
+const m = TP.mᵢ
+const q = TP.qᵢ
+const q2m = q / m
+const μ = 1.0e-20
+
+const E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
+const B_bottle = TP.Field(bottle_B)
+
+"Uniform field: straight field lines, no gradient."
+B_uniform(x, t) = SA[0.0, 0.0, 1.0e-8]
+
+"Straight but non-uniform field, so κ = 0 while ∇B ≠ 0."
+const GRAD_LENGTH = 2.0
+B_gradient(x, t) = SA[0.0, 0.0, 1.0e-8 * (1.0 + x[1] / GRAD_LENGTH)]
+
+"Zero field."
+B_zero(x, t) = SA[0.0, 0.0, 0.0]
+
+"Field rotating in z with constant magnitude B0 and wavenumber k."
+rotating_B(B0, k) = (x, t) -> SA[B0 * cos(k * x[3]), B0 * sin(k * x[3]), 0.0]
+
+"Fraction of the recorded diagnostics that spent in the full-orbit mode."
+fo_frac(sol) = count(==(:FO), sol.stats.adiabaticity.mode) /
+    length(sol.stats.adiabaticity.mode)
 
 @testset "Adiabaticity components" begin
-    m = TP.mᵢ
-    q = TP.qᵢ
-    μ = 1.0e-20
-
-    # Uniform field: straight field lines, no gradient -> all zero.
-    let
-        B(x, t) = SA[0.0, 0.0, 1.0e-8]
-        comps = TP.adiabaticity_components(SA[0.0, 0.0, 0.0], B, q, m, μ)
+    @testset "uniform field" begin
+        comps = TP.adiabaticity_components(SA[0.0, 0.0, 0.0], B_uniform, q, m, μ)
         @test comps[1] == 0.0  # ε_curv
         @test comps[2] == 0.0  # ε_gradB
         @test comps[3] == 0.0  # ε_jac (uniform field → zero Jacobian)
     end
 
-    # Straight but non-uniform field (grad-B only, no curvature):
     # B = B0 (1 + x1/L) z-hat  ->  κ = 0, ∇B ≠ 0.
-    let
-        L = 2.0
-        B(x, t) = SA[0.0, 0.0, 1.0e-8 * (1.0 + x[1] / L)]
+    @testset "gradient only" begin
         x = SA[0.5, 0.0, 0.0]
-        comps = TP.adiabaticity_components(x, B, q, m, μ)
+        comps = TP.adiabaticity_components(x, B_gradient, q, m, μ)
         @test comps[1] == 0.0              # straight field lines -> no curvature
         @test comps[2] > 0.0               # finite grad-B length scale
         @test comps[3] ≈ comps[2]          # ε_jac == ε_gradB (κ = 0 → ‖JB‖_F = |∇B|)
     end
 
     # Curved field: both components generally nonzero.
-    let
-        function B(x, t)
-            θ = atan(x[3] / (x[1] + 3))
-            r = sqrt((x[1] + 3)^2 + x[3]^2)
-            return SA[-1.0e-6 * sin(θ) / r, 0.0, 1.0e-6 * cos(θ) / r]
-        end
+    @testset "curved field" begin
         x = SA[0.0, 0.0, 1.0]
-        comps = TP.adiabaticity_components(x, B, q, m, μ)
+        comps = TP.adiabaticity_components(x, curved_B_t, q, m, μ)
         @test comps[2] > 0.0               # grad-B present
         @test comps[3] >= max(comps[1], comps[2])  # ε_jac ≥ max(ε_curv, ε_gradB)
     end
 
     # :curvature selection equals the legacy get_adiabaticity.
-    let
-        function B(x, t)
-            θ = atan(x[3] / (x[1] + 3))
-            r = sqrt((x[1] + 3)^2 + x[3]^2)
-            return SA[-1.0e-6 * sin(θ) / r, 0.0, 1.0e-6 * cos(θ) / r]
-        end
+    @testset "curvature matches legacy" begin
         for x in (SA[0.0, 0.0, 1.0], SA[1.0, 0.5, 0.0], SA[-0.5, 0.0, 2.0])
-            ε_legacy = TP.get_adiabaticity(x, B, q, m, μ)
-            comps = TP.adiabaticity_components(x, B, q, m, μ)
+            ε_legacy = TP.get_adiabaticity(x, curved_B_t, q, m, μ)
+            comps = TP.adiabaticity_components(x, curved_B_t, q, m, μ)
             @test comps[1] ≈ ε_legacy
         end
     end
 
     # Zero field -> Inf components.
-    let
-        B(x, t) = SA[0.0, 0.0, 0.0]
-        comps = TP.adiabaticity_components(SA[0.0, 0.0, 0.0], B, q, m, μ)
+    @testset "zero field" begin
+        comps = TP.adiabaticity_components(SA[0.0, 0.0, 0.0], B_zero, q, m, μ)
         @test all(isinf, comps)
     end
 
     # species convenience method matches explicit q, m.
-    let
-        function B(x, t)
-            θ = atan(x[3] / (x[1] + 3))
-            r = sqrt((x[1] + 3)^2 + x[3]^2)
-            return SA[-1.0e-6 * sin(θ) / r, 0.0, 1.0e-6 * cos(θ) / r]
-        end
+    @testset "species dispatch" begin
         x = SA[0.0, 0.0, 1.0]
-        sp = TP.adiabaticity_components(x, B, μ; species = TP.Proton)
-        ex = TP.adiabaticity_components(x, B, TP.Proton.q, TP.Proton.m, μ)
+        sp = TP.adiabaticity_components(x, curved_B_t, μ; species = TP.Proton)
+        ex = TP.adiabaticity_components(x, curved_B_t, TP.Proton.q, TP.Proton.m, μ)
         @test sp == ex
     end
 
@@ -82,12 +91,11 @@ using Test
     # (∇B = 0), so ε_curv = ε_gradB = 0, yet the B-Jacobian Frobenius norm is
     # finite, giving ε_jac = ρ · k > 0 — exactly the shear/torsion case only
     # CHIMP's criterion captures.
-    let
+    @testset "rotating field" begin
         B0 = 1.0e-4
         k = 0.5
-        B(x, t) = SA[B0 * cos(k * x[3]), B0 * sin(k * x[3]), 0.0]
         x = SA[0.0, 0.0, 0.3]
-        comps = TP.adiabaticity_components(x, B, q, m, μ)
+        comps = TP.adiabaticity_components(x, rotating_B(B0, k), q, m, μ)
         @test comps[1] ≈ 0.0 atol = 1.0e-9  # ε_curv: straight field lines
         @test comps[2] ≈ 0.0 atol = 1.0e-9  # ε_gradB: uniform |B|
         ρ = sqrt(2 * μ * m / B0) / abs(q)
@@ -97,27 +105,10 @@ using Test
 end
 
 @testset "AdaptiveHybrid adiabaticity selection" begin
-    m = TP.mᵢ
-    q = TP.qᵢ
-    q2m = q / m
-    E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-
-    # Bottle field with both curvature and grad-B.
-    B0 = 1.0e-4
-    α = 1.0e-2
-    function bottle_B(x, t)
-        Bz = B0 * (1 + α * x[3]^2)
-        Bx = -B0 * α * x[1] * x[3]
-        By = -B0 * α * x[2] * x[3]
-        return SA[Bx, By, Bz]
-    end
-    B_bottle = TP.Field(bottle_B)
-
     x0 = SA[0.0, 0.0, 0.0]
     v0 = SA[5.0e4, 0.0, 1.0e5]
     u0 = vcat(x0, v0)
-    Ω = abs(q2m) * B0
-    T_gyro = 2π / Ω
+    T_gyro = 2π / abs(q2m * bottle_B0)
     tspan = (0.0, 30 * T_gyro)
     p = (q2m, m, E_field, B_bottle, TP.ZeroField())
 
@@ -126,13 +117,9 @@ end
     )
     prob = TraceHybridProblem(u0, tspan, p)
 
-    # Helper: FO-mode fraction recorded in the diagnostics.
-    fo_frac(sol) = count(==(:FO), sol.stats.adiabaticity.mode) /
-        length(sol.stats.adiabaticity.mode)
-
     # Default (no `adiabaticity`) must equal `:curvature` exactly, i.e. the
     # legacy V1 behaviour is preserved.
-    let
+    @testset "default is curvature" begin
         sol_def = solve(prob, TP.AdaptiveHybrid(; alg_args...); seed = 1234).u[1]
         sol_curv = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :curvature); seed = 1234
@@ -146,7 +133,7 @@ end
     # All three criteria run and stay accurate/deterministic. With `:both` using
     # OR logic, its full-orbit interval is the union of the curvature and grad-B
     # intervals, so it occupies at least as much full-orbit time as either alone.
-    let
+    @testset "criteria ordering" begin
         sol_curv = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., adiabaticity = :curvature); seed = 1234
         ).u[1]
@@ -207,18 +194,14 @@ end
     # A field that rotates in space with constant magnitude: κ = 0 and ∇B = 0,
     # so :curvature and :gradB stay in guiding center, but CHIMP's :jacobian
     # criterion is nonzero and switches to the full orbit.
-    let
-        μ = 1.0e-20
+    @testset "rotating field switches" begin
         B0 = 1.0e-6
         k = 10.0
-        B_rot(x, t) = SA[B0 * cos(k * x[3]), B0 * sin(k * x[3]), 0.0]
-        B_rot_f = TP.Field(B_rot)
+        B_rot_f = TP.Field(rotating_B(B0, k))
         vperp = sqrt(2 * μ * B0 / m)
         x0 = SA[0.0, 0.0, 0.0]
-        v0 = SA[0.0, 0.0, vperp]
-        u0 = vcat(x0, v0)
-        Ω = abs(q / m) * B0
-        T_gyro = 2π / Ω
+        u0 = vcat(x0, SA[0.0, 0.0, vperp])
+        T_gyro = 2π / abs(q / m * B0)
         tspan = (0.0, 30 * T_gyro)
         p = (q / m, m, E_field, B_rot_f, TP.ZeroField())
         prob_rot = TraceHybridProblem(u0, tspan, p)
@@ -254,11 +237,13 @@ end
     end
 
     # Invalid adiabaticity symbol is rejected.
-    @test_throws ArgumentError TP.AdaptiveHybrid(; alg_args..., adiabaticity = :bogus)
+    @testset "invalid criterion" begin
+        @test_throws ArgumentError TP.AdaptiveHybrid(; alg_args..., adiabaticity = :bogus)
+    end
 
     # `save_adiabaticity = false` skips the diagnostic buffers entirely while
     # leaving the trajectory unchanged, so users can opt out of the overhead.
-    let
+    @testset "diagnostics opt out" begin
         sol_save = solve(
             prob, TP.AdaptiveHybrid(; alg_args..., save_adiabaticity = true); seed = 1234
         ).u[1]
@@ -271,3 +256,5 @@ end
         @test sol_no.stats === nothing
     end
 end
+
+end # module test_adiabaticity

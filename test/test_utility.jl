@@ -1,3 +1,11 @@
+module test_utility
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 using StaticArrays
@@ -8,7 +16,14 @@ using Unitful
 import TestParticle as TP
 using Meshes: Vec, Plane, Disk, Point, Sphere, CartesianGrid, RectilinearGrid, StructuredGrid
 using SciMLBase
+using ..test_common: uniform_grid, cartesian_grid
 
+"""
+    MockSol(t, u)
+
+Linear interpolant over `(t, u)` standing in for an `ODESolution`, which is all
+the detector and flux helpers read from a solution.
+"""
 struct MockSol{T, U}
     t::T
     u::U
@@ -23,6 +38,14 @@ end
     f = (t - s.t[i]) / (s.t[i + 1] - s.t[i])
     return s.u[i] .+ f .* (s.u[i + 1] .- s.u[i])
 end
+
+"A minimal `AbstractArray`, to exercise the generic `setindex!` fallback."
+struct MockArray{T, N} <: AbstractArray{T, N}
+    data::Array{T, N}
+end
+Base.size(M::MockArray) = size(M.data)
+Base.getindex(M::MockArray, I...) = getindex(M.data, I...)
+Base.setindex!(M::MockArray, v::Number, I...) = setindex!(M.data, v, I...)
 
 function interpolation_construction_allocations(B, x, order, store)
     build_interpolator(B, x, x, x, order; store)
@@ -679,7 +702,6 @@ end
             q = 1.0
             m = 2.0
             μ = 0.5
-            B_circular_local(x, t) = B_circular(x, t) # Explicit capture?
 
             val = get_adiabaticity(r, B_circular, q, m, μ, 0.0)
             ρ_expected = sqrt(2 * μ * m / R) / q
@@ -802,14 +824,6 @@ end
         @test A_float[1] == 0.0
 
         # 3. Custom AbstractArray (AbstractArray fallback line 22)
-        # Define a minimal AbstractArray
-        struct MockArray{T, N} <: AbstractArray{T, N}
-            data::Array{T, N}
-        end
-        Base.size(M::MockArray) = size(M.data)
-        Base.getindex(M::MockArray, I...) = getindex(M.data, I...)
-        Base.setindex!(M::MockArray, v::Number, I...) = setindex!(M.data, v, I...)
-
         A_mock = MockArray(zeros(3))
         # This calls setindex!(::AbstractArray, ::ZeroVector, I...)
         A_mock[1] = zv
@@ -1014,15 +1028,10 @@ end
     end
 
     @testset "Meshes Grid Helpers" begin
-        x = range(-10, 10, length = 5)
-        y = range(-10, 10, length = 6)
-        z = range(-10, 10, length = 7)
+        x, y, z = uniform_grid(5, 6, 7)
 
         # Test CartesianGrid
-        cart_grid = CartesianGrid(
-            (first(x), first(y), first(z)), (last(x), last(y), last(z));
-            dims = (length(x) - 1, length(y) - 1, length(z) - 1)
-        )
+        cart_grid = cartesian_grid(x, y, z)
 
         grid_coords = TP.makegrid(cart_grid)
         @test grid_coords[1] ≈ x
@@ -1048,6 +1057,8 @@ end
         B[3, :, :, :] .= 1.0e-8
 
         param = prepare(rect_grid, E, B)
-        @test param[1] ≈ qᵢ / mᵢ
+        @test param[1] ≈ TP.qᵢ / TP.mᵢ
     end
 end
+
+end # module test_utility

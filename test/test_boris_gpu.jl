@@ -1,21 +1,18 @@
 module test_boris_gpu
 
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 import TestParticle as TP
 using StaticArrays
 using KernelAbstractions
 using LinearAlgebra
-
-uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-zero_E(x) = SA[0.0, 0.0, 0.0]
-
-"The largest difference between two sets of states, relative to the state itself."
-function max_rel_diff(a, b)
-    return maximum(zip(a, b)) do (u, v)
-        return norm(collect(u) - collect(v)) / max(norm(collect(v)), one(eltype(v)))
-    end
-end
+using ..test_common: uniform_B, zero_E, max_rel_diff
 
 @testset "Boris on a backend" begin
     @testset "the device walks the same trajectory as the SciML loop" begin

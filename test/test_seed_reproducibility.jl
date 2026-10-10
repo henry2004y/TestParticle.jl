@@ -1,5 +1,11 @@
 module test_seed_reproducibility
 
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 using StaticArrays
@@ -7,10 +13,12 @@ using OrdinaryDiffEq
 using Random
 using LinearAlgebra
 using VelocityDistributionFunctions
+using ..test_common: uniform_B, zero_E, sheared_B
 
 # Set up simple fields that support ForwardDiff seamlessly
-B_uniform(x) = SA[0.0, 0.0, 1.0e-8]
-E_uniform(x) = SA[0.0, 0.0, 0.0]
+const E_zero = TestParticle.Field((x, t) -> SA[0.0, 0.0, 0.0])
+const B_sheared = TestParticle.Field(sheared_B)
+
 tspan = (0.0, 1.0e-4)
 
 # Create guiding center parameters and initial state
@@ -18,7 +26,7 @@ x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[1.0e4, 0.0, 1.0e4]
 u0_full = vcat(x0, v0)
 u0_gc, param = TestParticle.prepare_gc(
-    u0_full, E_uniform, B_uniform; species = Proton
+    u0_full, zero_E, uniform_B; species = Proton
 )
 
 function prob_func(prob, ctx)
@@ -67,25 +75,13 @@ end
         m = TestParticle.mᵢ
         q = TestParticle.qᵢ
         q2m = q / m
-        E_zero = TestParticle.Field((x, t) -> SA[0.0, 0.0, 0.0])
-
-        # Highly curved field to force switching which calls rand(rng)
-        function sheared_B_func(x, t)
-            B0 = 0.01
-            k = 100.0
-            return SA[
-                B0 * cos(k * x[1]),
-                B0 * sin(k * x[1]),
-                0.0,
-            ]
-        end
-        sheared_B = TestParticle.Field(sheared_B_func)
 
         x0 = SA[0.0, 0.0, 0.0]
         v0 = SA[1.0e4, 0.0, 1.0e3]
         u0 = vcat(x0, v0)
 
-        p = (q2m, m, E_zero, sheared_B, TestParticle.ZeroField())
+        # Highly curved field to force switching, which calls rand(rng)
+        p = (q2m, m, E_zero, B_sheared, TestParticle.ZeroField())
 
         # Setup prob_func that samples initial conditions randomly
         function hybrid_prob_func(prob, ctx)
@@ -120,7 +116,7 @@ end
 
     # --- Boris (full 6D) ---
     let
-        param_b = prepare(E_uniform, B_uniform; species = Proton)
+        param_b = prepare(zero_E, uniform_B; species = Proton)
         function pf_b(prob, ctx)
             v = SA[1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng)]
             return remake(prob; u0 = SA[0.0, 0.0, 0.0, v...])
@@ -153,15 +149,8 @@ end
         m = TestParticle.mᵢ
         q = TestParticle.qᵢ
         q2m = q / m
-        E_zero = TestParticle.ZeroField()
-        function sheared_B_func(x, t)
-            B0 = 0.01
-            k = 100.0
-            return SA[B0 * cos(k * x[1]), B0 * sin(k * x[1]), 0.0]
-        end
-        sheared_B = TestParticle.Field(sheared_B_func)
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
-        p = (q2m, m, E_zero, sheared_B, TestParticle.ZeroField())
+        p = (q2m, m, E_zero, B_sheared, TestParticle.ZeroField())
         function pf_h(prob, ctx)
             v = SA[1.0e4 + 1.0e2 * rand(ctx.rng), 0.0, 1.0e3]
             return remake(

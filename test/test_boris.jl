@@ -1,3 +1,11 @@
+module test_boris
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle
 import TestParticle as TP
@@ -5,45 +13,38 @@ using StaticArrays
 using OrdinaryDiffEq
 using LinearAlgebra
 using Distributed
+using ..test_common:
+    uniform_B_strong, zero_field, unit_Ey, unit_Bz, constant_E, gradient_B,
+    time_varying_B, prob_func_vy_by_id
+
+"B field that only exists for t > 5, to pin down that absolute time is used."
+B_after_five(r, t) = t > 5 ? SA[0.0, 0.0, 0.01] : SA[0.0, 0.0, 0.0]
+
+E_zero(r, t) = SA[0.0, 0.0, 0.0]
+
+"Uniform B that grows linearly in time, so the betatron term is nonzero."
+B_growing(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + 1.0e7 * t)]
+
+"Per-trajectory initial state; `ctx.sim_id` keeps the draws thread-safe."
+function prob_func_boris_immutable(prob, ctx)
+    return remake(prob; u0 = [prob.u0[1:4]..., ctx.sim_id * 1.0e5, prob.u0[6]])
+end
+
+"Total energy of a full-orbit state in the constant E and gradient B field."
+function total_energy(u)
+    K = 0.5 * TP.mₑ * norm(u[4:6])^2 # Kinetic Energy
+    U = TP.qₑ * (-1.0e5 * u[2])      # Potential Energy
+    return K + U
+end
 
 @testset "Boris Solvers" begin
-    # Definitions
-    uniform_B2(x) = SA[0.0, 0.0, 0.01]
-    function time_varying_B(x, t)
-        Bz = if x[1] > 100t
-            1.0e-8
-        elseif x[1] < -10.0
-            1.0e-8
-        else
-            0.0
-        end
-        return SA[0.0, 0.0, Bz]
-    end
-    # Gradient B field: B = [0, 0, 0.01 * (1 + x)]
-    # Strong gradient to test adaptive stepping
-    gradient_B(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + x[1])]
-
-    # Constant E field for ExB drift
-    # E = [0, 1e5, 0]
-    constant_E(x, t) = SA[0.0, 1.0e5, 0.0]
-
-    zero_E = ZeroField()
-
-    constant_Ey(x, t) = SA[0.0, 1.0, 0.0]
-    constant_Bz(x, t) = SA[0.0, 0.0, 1.0]
-
-    function prob_func_boris_immutable(prob, ctx)
-        # Note: prob.u0[5] = ctx.sim_id*1e5 is not thread-safe!
-        return prob = @views remake(prob; u0 = [prob.u0[1:4]..., ctx.sim_id * 1.0e5, prob.u0[6]])
-    end
-
     @testset "Basic Boris" begin
         x0 = [0.0, 0.0, 0.0]
         v0 = [0.0, 1.0e5, 0.0]
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        param = prepare(zero_E, uniform_B2, species = Electron)
+        param = prepare(zero_field, uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol = solve(prob, Boris(); dt, saveat = 10 * dt)
@@ -60,21 +61,20 @@ using Distributed
             -94689.58829601014, 32154.033469101283, 0.0,
         ]
 
-        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
-        trajectories = 4
+        ensemble_prob = TraceProblem(
+            stateinit, tspan, param; prob_func = prob_func_boris_immutable
+        )
         saveat = 1000 * dt
+
         sols = solve(
-            prob, Boris(), EnsembleThreads();
-            dt, saveat, trajectories
+            ensemble_prob, Boris(), EnsembleThreads();
+            dt, saveat, trajectories = 4
         )
         @test sum(s -> sum(s.u[end][4]), sols.u) ≈ -608930.4382490724
 
-        prob = TraceProblem(stateinit, tspan, param; prob_func = prob_func_boris_immutable)
-        trajectories = 2
-        saveat = 1000 * dt
         sols = solve(
-            prob, Boris(), EnsembleSerial();
-            dt, saveat, trajectories
+            ensemble_prob, Boris(), EnsembleSerial();
+            dt, saveat, trajectories = 2
         )
         @test sum(s -> sum(s.u[end]), sols.u) ≈ -420646.2195768674
 
@@ -83,7 +83,7 @@ using Distributed
         stateinit = [x0..., v0...]
         tspan = (0.0, 0.01)
         dt = 1.0e-4
-        param = prepare(zero_E, time_varying_B, species = Electron)
+        param = prepare(zero_field, time_varying_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
         sol = solve(prob, Boris(); dt, saveat = 100 * dt)
         @test sol[1, end] ≈ -512.8807214528281
@@ -100,10 +100,9 @@ using Distributed
         # Position at t=10 should be (10, 0, 0)
         # q = 1, m = 1
         # The solver expects param to be (q2m, m, E, B, F)
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (1.0, 1.0, unit_Ey, unit_Bz, ZeroField())
 
-        # Initial condition
-        # Start at origin with drift velocity
+        # Initial condition: start at origin with the drift velocity
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         dt = 0.1
@@ -126,12 +125,9 @@ using Distributed
         @test sol_multi_2.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Test Gyrating particle
-        # B = (0, 0, 1), E = 0
-        # v = (1, 0, 0)
-        # Gyroradius r = mv/qB = 1*1/1*1 = 1
-        # Gyroperiod T = 2*pi*m/qB = 2*pi
-
-        param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        # B = (0, 0, 1), E = 0, v = (1, 0, 0)
+        # Gyroradius r = mv/qB = 1, gyroperiod T = 2πm/qB = 2π
+        param_gyro = (1.0, 1.0, ZeroField(), unit_Bz, ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
@@ -162,7 +158,7 @@ using Distributed
 
     @testset "Hyper Boris" begin
         # E cross B drift tests
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (1.0, 1.0, unit_Ey, unit_Bz, ZeroField())
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         dt = 0.1
@@ -189,7 +185,7 @@ using Distributed
         @test sol_hyper_single.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Gyrating particle test
-        param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        param_gyro = (1.0, 1.0, ZeroField(), unit_Bz, ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
 
@@ -234,28 +230,13 @@ using Distributed
 
         @test dt_end < 0.8 * dt_start
 
-        function total_energy(u)
-            v = u[4:6]
-            y = u[2]
-            K = 0.5 * TP.mₑ * norm(v)^2 # Kinetic Energy
-            U = TP.qₑ * (-1.0e5 * y) # Potential Energy
-            return K + U
-        end
-
-        E_start = total_energy(sol.u[1])
-        E_end = total_energy(sol.u[end])
-
-        @test isapprox(E_end, E_start, rtol = 1.0e-3)
+        @test isapprox(total_energy(sol.u[end]), total_energy(sol.u[1]), rtol = 1.0e-3)
     end
 
     @testset "Nonzero tspan[1]" begin
-        # B field that is only present when t > 5
-        B_field(r, t) = t > 5 ? SA[0.0, 0.0, 0.01] : SA[0.0, 0.0, 0.0]
-        E_field(r, t) = SA[0.0, 0.0, 0.0]
-
-        param = prepare(E_field, B_field)
-
         # Start at t=10. If absolute time is used, B should be 0.01.
+        param = prepare(E_zero, B_after_five)
+
         tspan = (10.0, 10.1)
         dt = 0.001
         u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
@@ -273,18 +254,15 @@ using Distributed
     end
 
     @testset "Output saving flags" begin
-        # Setup
         x0 = [0.0, 0.0, 0.0]
         v0 = [0.0, 1.0e5, 0.0]
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        zero_E = ZeroField()
-        # uniform_B2(x) = SA[0.0, 0.0, 0.01] # Use global definition
-        param = prepare(zero_E, uniform_B2, species = Electron)
+        param = prepare(zero_field, uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        # Baseline: save_everystep=true (default), save_start=true (default implicit), save_end=true (default implicit)
+        # Baseline: save_everystep=true (default), save_start=true, save_end=true
         # nt = 1000, so nout = 1001 (0, 1, ..., 1000)
         sol = solve(prob, Boris(); dt = dt)
         @test length(sol.u) == 1001
@@ -415,12 +393,7 @@ using Distributed
         # E = 0
         # dB/dt = 0.01 * 1e7 = 1e5
         # P_betatron = mu * dB/dt
-
-        function time_varying_B_linear(x, t)
-            return SA[0.0, 0.0, 0.01 * (1.0 + 1.0e7 * t)]
-        end
-
-        param_beta = prepare(zero_E, time_varying_B_linear, species = Electron)
+        param_beta = prepare(zero_field, B_growing, species = Electron)
         prob_beta = TraceProblem(stateinit, tspan, param_beta)
 
         sol_beta = solve(
@@ -454,7 +427,6 @@ using Distributed
         @test abs(work_ms[3]) > 0.0
 
         # Test Adaptive Boris with save_work
-        # Use simple AdaptiveBoris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
         sol_adaptive = solve(
             prob, alg_adaptive;
@@ -534,27 +506,19 @@ using Distributed
         try
             @everywhere pids using TestParticle
             @everywhere pids using StaticArrays
+            # The fields live in the shared fixture module, which the workers
+            # have to load as well to deserialize the problem.
+            @everywhere pids include(joinpath(@__DIR__, "test_common.jl"))
 
             x0 = [0.0, 0.0, 0.0]
             v0 = [0.0, 1.0e5, 0.0]
             stateinit = [x0..., v0...]
             tspan = (0.0, 3.0e-8)
             dt = 3.0e-11
-            zero_E_dist = ZeroField()
-            uniform_B2_dist(x) = SA[0.0, 0.0, 0.01]
-            param_dist = prepare(zero_E_dist, uniform_B2_dist; species = Electron)
-
-            function dist_prob_func(prob, ctx)
-                return remake(
-                    prob; u0 = SA[
-                        prob.u0[1], prob.u0[2], prob.u0[3],
-                        prob.u0[4], ctx.sim_id * 1.0e5, prob.u0[6],
-                    ]
-                )
-            end
+            param_dist = prepare(zero_field, uniform_B_strong; species = Electron)
 
             prob_dist = TraceProblem(
-                stateinit, tspan, param_dist; prob_func = dist_prob_func
+                stateinit, tspan, param_dist; prob_func = prob_func_vy_by_id
             )
             trajectories = 4
             saveat = 1000 * dt
@@ -589,7 +553,6 @@ using Distributed
             end
 
             @testset "AdaptiveBoris" begin
-                tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
                 alg_adaptive = AdaptiveBoris(; safety = 0.1)
 
                 sols_serial = solve(
@@ -629,7 +592,7 @@ using Distributed
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        param = prepare(zero_E, uniform_B2, species = Electron)
+        param = prepare(zero_field, uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol_all = solve(prob, Boris(); dt)
@@ -651,7 +614,7 @@ using Distributed
         @test length(sol_fields.u[1]) == 12
         @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
         @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
-
     end
-
 end
+
+end # module test_boris

@@ -1,9 +1,16 @@
 module test_spherical_gpu
 
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using Test
 using TestParticle, KernelAbstractions, StaticArrays
 import TestParticle as TP
 using LinearAlgebra: norm
+using ..test_common: max_rel_diff
 
 """
     uniform_z_field(r, θ, ϕ; B₀ = 1.0e-8) -> B
@@ -54,18 +61,11 @@ function quad_points(r, θ, ϕ)
 end
 
 "Largest deviation of the device grid from the host interpolator, relative to the field."
-function max_rel_diff(g, fi, pts)
+function max_field_rel_diff(g, fi, pts)
     return maximum(pts) do x
         a = g(x[1], x[2], x[3])
         b = fi(x)
         return norm(a - b) / max(norm(b), 1.0e-30)
-    end
-end
-
-"Largest deviation between two sets of states, relative to the state itself."
-function max_state_diff(u, v)
-    return maximum(zip(u, v)) do (a, b)
-        return norm(a - b) / max(norm(b), 1.0)
     end
 end
 
@@ -92,7 +92,7 @@ end
             @test gB.axis_r.x0 == first(r) && gB.axis_r.xmax == last(r)
 
             pts = quad_points(r, θ, ϕ)
-            @test max_rel_diff(gB, fiB, pts) < 1.0e-12
+            @test max_field_rel_diff(gB, fiB, pts) < 1.0e-12
             @test maximum(pts) do x
                 return abs(gA(x[1], x[2], x[3]) - fiA(x)) / fiA(x)
             end < 1.0e-12
@@ -120,7 +120,7 @@ end
             @test gB.axis_r.x0 == first(r) && gB.axis_r.xmax == last(r)
 
             pts = quad_points(collect(r), θ, ϕ)
-            @test max_rel_diff(gB, fiB, pts) < 1.0e-12
+            @test max_field_rel_diff(gB, fiB, pts) < 1.0e-12
             @test maximum(pts) do x
                 return abs(gA(x[1], x[2], x[3]) - fiA(x)) / fiA(x)
             end < 1.0e-12
@@ -138,7 +138,7 @@ end
             gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
 
             @test gB.axis_r isa TP.GPUNonUniformAxis
-            @test max_rel_diff(gB, fiB, quad_points(r, θ, ϕ)) < 1.0e-12
+            @test max_field_rel_diff(gB, fiB, quad_points(r, θ, ϕ)) < 1.0e-12
         end
 
         # A non-uniform r combined with a uniform θ and ϕ keeps both axis kinds
@@ -151,7 +151,7 @@ end
             @test gB.axis_r isa TP.GPUNonUniformAxis
             @test gB.axis_θ isa TP.GPUUniformAxis
             @test gB.axis_ϕ isa TP.GPUUniformAxis
-            @test max_rel_diff(gB, fiB, quad_points(collect(r), θ, ϕ)) < 1.0e-12
+            @test max_field_rel_diff(gB, fiB, quad_points(collect(r), θ, ϕ)) < 1.0e-12
         end
     end
 
@@ -299,7 +299,7 @@ end
             sol_device = TP.solve(prob_device, Boris(), CPU(); dt, trajectories = 1).u[1]
 
             @test length(sol_device.u) == length(sol_host.u)
-            @test max_state_diff(sol_device.u, sol_host.u) < 1.0e-10
+            @test max_rel_diff(sol_device.u, sol_host.u) < 1.0e-10
         end
     end
 
@@ -327,7 +327,7 @@ end
             sol_device = TP.solve(prob_device, Boris(), CPU(); dt, trajectories = 1).u[1]
 
             @test length(sol_device.u) == length(sol_host.u)
-            @test max_state_diff(sol_device.u, sol_host.u) < 1.0e-10
+            @test max_rel_diff(sol_device.u, sol_host.u) < 1.0e-10
             # The electric field does work, so the run is not a pure gyration
             @test norm(sol_device.u[end][4:6]) > norm(sol_device.u[1][4:6])
         end

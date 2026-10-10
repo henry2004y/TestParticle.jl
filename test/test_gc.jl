@@ -1,11 +1,30 @@
+module test_gc
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
+
 using TestParticle
+import TestParticle as TP
 using StaticArrays
 using Test
 using LinearAlgebra
 using SciMLBase
 using OrdinaryDiffEq
 import Magnetostatics as MS
-import TestParticle as TP
+using ..test_common: uniform_Ex, curved_B
+
+const Ek = 5.0e7 # [eV], for the dipole test case
+
+"Earth's dipole field, the workhorse for the native GC solvers."
+const dipole = MS.Dipole(TP.BMoment_Earth)
+
+dipole_field(r) = dipole(r)
+
+"Constant electric field with the time-dependent signature."
+E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
 @testset "GC" begin
 
@@ -23,7 +42,6 @@ import TestParticle as TP
         # rho = B x v / (q2m * B^2)
         # q2m approx 1e8 for proton.
         # This is just to check that t is read correctly.
-
         xu_7 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]
         gc_7 = get_gc(xu_7, param_t)
 
@@ -33,28 +51,10 @@ import TestParticle as TP
         xu_6 = [0.0, 0.0, 0.0, 1.0, 0.0, 2.0]
         gc_6 = get_gc(xu_6, param_t)
 
-        # For gc_7 (t=1.0): B=2.0
-        # For gc_6 (t=0.0): B=1.0. If bug, t=2.0 -> B=3.0.
-
-        # We can check the Larmor radius or the shift.
-        # rho ~ 1/B.
-        # shift_7 = |gc - x| ~ 1/2
-        # shift_6 = |gc - x| ~ 1/1
-
-        # Let's check B field value indirectly by checking the shift magnitude (which is Larmor radius).
-        # We don't have direct access to B inside get_gc return.
-
-        # shift = gc - x
-        # x is (0,0,0)
-        shift_7 = gc_7[1:3]
-        shift_6 = gc_6[1:3]
-
-        # Expected ratio of shifts: rho_6 / rho_7 = (1/B_6) / (1/B_7) = (1/1) / (1/2) = 2.
-        # If bug (t=2.0 for gc_6): rho_6_bug ~ 1/3.
-        # Ratio would be (1/3) / (1/2) = 2/3.
-
-        norm_shift_7 = sqrt(sum(shift_7 .^ 2))
-        norm_shift_6 = sqrt(sum(shift_6 .^ 2))
+        # The shift of the guiding center is the Larmor radius, which goes as
+        # 1/B, so the two cases have to differ by B_7 / B_6 = 2.
+        norm_shift_7 = norm(gc_7[1:3])
+        norm_shift_6 = norm(gc_6[1:3])
 
         @test isapprox(norm_shift_6 / norm_shift_7, 2.0, rtol = 0.01)
     end
@@ -67,32 +67,20 @@ import TestParticle as TP
         param = prepare(E_field, B_field; species = Proton)
 
         @testset "Reversibility GC -> Full -> GC" begin
-            # Define GC state
-            # R = [1.0, 0.0, 0.0]
-            # vpar = 1.0e5
-            # mu = 1.0e-5 # some value
-
             R = SA[1.0, 0.0, 0.0]
             vpar = 1.0e5
             gc_state = [R..., vpar]
-            mu = 1.0e-15
-
-            # Random phase
+            μ = 1.0e-15
             phase = π / 3
 
-            # Convert to full
-            xu = gc_to_full(gc_state, param, mu, phase)
-
-            # Check dimensions
+            xu = gc_to_full(gc_state, param, μ, phase)
             @test length(xu) == 6
 
-            # Convert back to GC
-            gc_new, mu_new = full_to_gc(xu, param)
+            gc_new, μ_new = full_to_gc(xu, param)
 
-            # Check consistency
             @test gc_new[1:3] ≈ R rtol = 1.0e-5
             @test gc_new[4] ≈ vpar rtol = 1.0e-5
-            @test mu_new ≈ mu rtol = 1.0e-5
+            @test μ_new ≈ μ rtol = 1.0e-5
         end
 
         @testset "With E-field (ExB drift)" begin
@@ -103,73 +91,45 @@ import TestParticle as TP
             E_field2(r) = SA[0, E0, 0] # E in y
             param2 = prepare(E_field2, B_field2; species = Proton)
 
-            # ExB drift: v_E = (E x B) / B^2
-            # (0, E0, 0) x (0, 0, B0) = (E0*B0, 0, 0) -> direction x
-            # magnitude E0*B0 / B0^2 = E0/B0 = 1000.
+            # v_E = (E x B) / B² = (E0/B0, 0, 0) = (1000, 0, 0)
+            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
+            μ = 0.0 # No gyromotion, only drift
 
-            R = SA[0.0, 0.0, 0.0]
-            vpar = 0.0
-            gc_state = [R..., vpar]
-            mu = 0.0 # No gyromotion, only drift
-
-            xu = gc_to_full(gc_state, param2, mu)
-
-            # v should be just drift velocity + vpar(0)
+            xu = gc_to_full(gc_state, param2, μ)
             v = xu[4:6]
             @test v[1] ≈ 1000.0 atol = 1.0e-5
             @test v[2] ≈ 0.0 atol = 1.0e-5
             @test v[3] ≈ 0.0 atol = 1.0e-5
 
-            # Reverse check
-            gc_new, mu_new = full_to_gc(xu, param2)
-            @test gc_new[1:3] ≈ R atol = 1.0e-5 # Position should match GC
-            @test gc_new[4] ≈ vpar atol = 1.0e-5
-            @test mu_new ≈ 0.0 atol = 1.0e-10
+            gc_new, μ_new = full_to_gc(xu, param2)
+            @test gc_new[1:3] ≈ SA[0.0, 0.0, 0.0] atol = 1.0e-5
+            @test gc_new[4] ≈ 0.0 atol = 1.0e-5
+            @test μ_new ≈ 0.0 atol = 1.0e-10
         end
 
         @testset "Phase check" begin
-            # Check that phase argument changes velocity direction
             B_field3(r) = SA[0, 0, 1.0]
             param3 = prepare(E_field, B_field3; species = Proton)
 
-            R = SA[0, 0, 0]
-            vpar = 0.0
-            gc_state = [R..., vpar]
-            mu = 1.0e-15
+            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
+            μ = 1.0e-15
 
-            # Phase 0
-            xu0 = gc_to_full(gc_state, param3, mu, 0.0)
-            v0 = xu0[4:6]
+            # For B in Z the perpendicular plane is XY, so phase 0 points along
+            # +x and phase π/2 along +y.
+            v0 = gc_to_full(gc_state, param3, μ, 0.0)[4:6]
+            v90 = gc_to_full(gc_state, param3, μ, π / 2)[4:6]
 
-            # Phase pi/2
-            xu90 = gc_to_full(gc_state, param3, mu, π / 2)
-            v90 = xu90[4:6]
-
-            # For B in Z, perp plane is XY.
-            # e1, e2 from get_perp_vector([0,0,1]):
-            # v = [0,1,0], e1 = v x b = [1,0,0], e2 = b x e1 = [0,1,0].
-            # So phase 0 -> x direction. Phase 90 -> y direction.
-
-            # Check orthogonality
-            # Normalize to avoid scaling issues with large w
             @test dot(normalize(v0), normalize(v90)) ≈ 0.0 atol = 1.0e-5
-
-            # Verify e1 aligned with x (since b=z, v_arbitrary=y -> e1=x)
             @test isapprox(normalize(v0), SA[1.0, 0.0, 0.0], atol = 1.0e-5)
-
-            # v90 should be in y direction
             @test isapprox(normalize(v90), SA[0.0, 1.0, 0.0], atol = 1.0e-5)
         end
     end
 
-
     @testset "Native Solvers" begin
         # Setup simple dipole field
-        Ek = 5.0e7 # [eV]
-        m = TestParticle.mᵢ
-        q = TestParticle.qᵢ
-        c = TestParticle.c
-        Rₑ = TestParticle.Rₑ
+        m = TP.mᵢ
+        q = TP.qᵢ
+        Rₑ = TP.Rₑ
 
         # Initial condition
         v₀ = sph2cart(energy2velocity(Ek; q, m), π / 4, 0.0)
@@ -177,11 +137,8 @@ import TestParticle as TP
         stateinit = [r₀..., v₀...]
         tspan = (0.0, 1.0)
 
-        dipole = MS.Dipole(TP.BMoment_Earth)
-        getB_dipole(r) = dipole(r)
-
-        stateinit_gc, param_gc = TestParticle.prepare_gc(
-            stateinit, TestParticle.ZeroField(), getB_dipole;
+        stateinit_gc, param_gc = prepare_gc(
+            stateinit, TP.ZeroField(), dipole_field;
             species = Proton
         )
 
@@ -252,30 +209,27 @@ import TestParticle as TP
 
         @testset "Ensemble" begin
             trajectories = 10
-            prob_ens = TraceGCProblem(stateinit_gc, tspan, param_gc)
 
             # Serial
-            sol_serial = solve(prob_ens; trajectories, dt = 1.0e-4, alg = :rk45)
+            sol_serial = solve(prob; trajectories, dt = 1.0e-4, alg = :rk45)
             @test length(sol_serial.u) == trajectories
-            @test all(s.retcode == ReturnCode.Success for s in sol_serial.u)
+            @test all(s -> s.retcode == ReturnCode.Success, sol_serial.u)
 
             # Threads
-            sol_threads = solve(prob_ens, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45)
+            sol_threads = solve(
+                prob, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45
+            )
             @test length(sol_threads.u) == trajectories
-            @test all(s.retcode == ReturnCode.Success for s in sol_threads.u)
+            @test all(s -> s.retcode == ReturnCode.Success, sol_threads.u)
         end
 
         @testset "GC Extra Saving" begin
             trajectories = 2
-            # Use simple dipole and protons
-            param_gc_saving = TestParticle.prepare(getB_dipole; species = Proton)
             tspan_saving = (0.0, 1.0e-4)
-            # Simple initial condition
-            r0 = [1.5 * TestParticle.Rₑ, 0.0, 0.0]
+            r0 = [1.5 * TP.Rₑ, 0.0, 0.0]
             v0 = [0.0, 1.0e5, 1.0e5] # Arbitrary
-            # Conversion to GC not strictly needed for the test mechanics, but good for consistency
-            state_gc_0, param_gc_ready = TestParticle.prepare_gc(
-                vcat(r0, v0), TestParticle.ZeroField(), getB_dipole; species = Proton
+            state_gc_0, param_gc_ready = prepare_gc(
+                vcat(r0, v0), TP.ZeroField(), dipole_field; species = Proton
             )
             prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 
@@ -334,7 +288,51 @@ import TestParticle as TP
             ).u[1]
             @test length(sol_fields.u[1]) == 10
             @test get_fields(sol_fields) isa Tuple
-
         end
     end
 end
+
+@testset "GC drifts" begin
+    stateinit = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1]
+    tspan = (0, 10)
+
+    param = prepare(uniform_Ex, curved_B, species = Proton)
+    prob = ODEProblem(trace!, stateinit, tspan, param)
+    sol = solve(prob, Vern9())
+
+    @views begin
+        x, y, z = sol[1, :], sol[2, :], sol[3, :]
+        vx, vy, vz = sol[4, :], sol[5, :], sol[6, :]
+    end
+    b = [curved_B(SA[xi, yi, zi]) for (xi, yi, zi) in zip(x, y, z)]
+    bx = [bi[1] for bi in b]
+    by = [bi[2] for bi in b]
+    bz = [bi[3] for bi in b]
+    X = get_gc(x, y, z, vx, vy, vz, bx, by, bz, param[1])
+    @test sum(X[end]) ≈ 1.5380318687643348 rtol = 1.0e-6
+
+    stateinit_gc,
+        param_gc = prepare_gc(
+        stateinit, uniform_Ex, curved_B,
+        species = Proton
+    )
+
+    prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+    sol_gc = solve(prob_gc, Vern9())
+
+    # analytical drifts
+    gc = param |> get_gc_func
+    gc_x0 = gc(stateinit) |> Vector # needs mutation
+    prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+    sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
+    @test sol_gc[1, end] ≈ 0.9896197928850492
+    @test sol_gc_analytic[1, end] ≈ 0.9906923500002904 rtol = 1.0e-5
+
+    # Test get_E_parameters with constant E field (not used currently)
+    x_test, t_test = SA[1.0, 0.0, 0.0], 0.0
+    E_expected = E_const(x_test, t_test)
+    E, JE = TP.get_E_parameters(x_test, t_test, E_const)
+    @test E == E_expected && JE == zeros(3, 3)
+end
+
+end # module test_gc
