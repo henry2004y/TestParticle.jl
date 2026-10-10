@@ -1,8 +1,10 @@
-if !isdefined(Main, :test_common)
-    include("test_common.jl")
-end
-
 module test_normalized_fields
+
+# Load the shared fixtures into Main so that `using ..test_common` resolves even
+# when this file is run on its own.
+if !isdefined(Main, :test_common)
+    Base.include(Main, joinpath(@__DIR__, "test_common.jl"))
+end
 
 using Test
 using TestParticle
