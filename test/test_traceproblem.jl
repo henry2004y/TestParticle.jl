@@ -1,3 +1,7 @@
+if !isdefined(Main, :test_common)
+    include("test_common.jl")
+end
+
 module test_traceproblem
 
 using Test
@@ -5,11 +9,9 @@ using TestParticle
 using OrdinaryDiffEq
 using StaticArrays
 using SciMLBase
+using ..test_common: uniform_B, uniform_Ex
 
 @testset "TraceProblem Unified Interface" begin
-    uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-    uniform_E(x) = SA[1.0e-9, 0.0, 0.0]
-
     x0 = [0.0, 0.0, 0.0]
     v0 = [1.0e5, 0.0, 0.0]
     stateinit_vec = [x0..., v0...]
@@ -17,7 +19,7 @@ using SciMLBase
     tspan = (0.0, 1.0e-6)
     dt = 1.0e-9
 
-    param = prepare(uniform_E, uniform_B; species = Proton)
+    param = prepare(uniform_Ex, uniform_B; species = Proton)
 
     @testset "In-place solving (Vector)" begin
         prob_tp = TraceProblem(stateinit_vec, tspan, param)
@@ -144,7 +146,7 @@ using SciMLBase
         @test prob_switched.p[1] isa Float32
 
         # prepare with type = Float32
-        param_f32 = prepare(uniform_E, uniform_B; species = Proton, type = Float32)
+        param_f32 = prepare(uniform_Ex, uniform_B; species = Proton, type = Float32)
         @test param_f32[1] isa Float32
         @test param_f32[2] isa Float32
         prob_direct_f32 = TraceProblem(u0_f32, tspan_f32, param_f32)

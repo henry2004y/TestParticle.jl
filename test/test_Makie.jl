@@ -1,6 +1,6 @@
 # test Makie recipes
 
-module TestModule
+module test_Makie
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using CairoMakie
 using Test

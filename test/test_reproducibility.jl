@@ -1,3 +1,7 @@
+if !isdefined(Main, :test_common)
+    include("test_common.jl")
+end
+
 module test_reproducibility
 using Test
 using TestParticle
@@ -5,11 +9,10 @@ using OrdinaryDiffEq
 using Random
 using StaticArrays
 using VelocityDistributionFunctions
+using ..test_common: uniform_B, zero_field
 
 @testset "Reproducibility" begin
-    B_uniform(x) = SA[0, 0, 1.0e-8]
-    E_zero = TestParticle.ZeroField()
-    param = prepare(E_zero, B_uniform, species = Proton)
+    param = prepare(zero_field, uniform_B, species = Proton)
     tspan = (0.0, 1.0)
     stateinit = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     prob = ODEProblem(trace!, stateinit, tspan, param)
