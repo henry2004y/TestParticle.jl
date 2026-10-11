@@ -82,6 +82,19 @@ This ensures that the velocity is always correctly centered relative to the curr
 
 ## 5. Using the Solvers
 
+!!! tip "Recommended default"
+    If you are unsure which member of the family to pick, start with
+    **`MultistepBoris6(; n = 4)`**, the sixth-order Hyper-Boris scheme with four
+    sub-cycles. Over 300 gyroperiods at $\Delta t = T_\mathrm{gyro}/20$ its
+    gyrophase error stays at $3.7\times10^{-7}$ rad, where the standard
+    `Boris()` has already saturated at $2.7$ rad, for about $2.8\times$ the cost
+    of a standard step and with the energy error still at round-off. The extra
+    sub-cycles are nearly free: the fields are evaluated only once per step, so
+    raising $n$ tightens the absolute phase error without added field work.
+    Reach for plain `Boris()` only when the cheapest possible step is the
+    priority, and see `AdaptiveBoris` below when the local gyroperiod varies
+    strongly along the trajectory.
+
 ### Fixed-step Solvers
 
 Fixed-step solvers are specified as the second argument to `solve` (after the problem) and require a `dt` keyword:
