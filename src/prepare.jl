@@ -293,4 +293,3 @@ prepare_canonical(phi, A; grad_phi = nothing, grad_A = nothing, kw...) =
 
 prepare_canonical(A; phi = ZeroField(), grad_phi = nothing, grad_A = nothing, kw...) =
     prepare(PotentialField(phi, A; grad_phi, grad_A); kw...)
-

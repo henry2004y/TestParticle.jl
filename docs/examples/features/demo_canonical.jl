@@ -96,8 +96,8 @@ ax1 = Axis(
     yscale = log10,
     title = "Conservation of Cyclic Momentum (p_y) in Landau Gauge"
 )
-lines!(ax1, ts_xv, max.(py_xv_err, 1e-16), label = "Boris (x, v)", color = :crimson)
-lines!(ax1, ts_can, max.(py_can_err, 1e-16), label = "ImplicitMidpoint (x, p)", color = :teal)
+lines!(ax1, ts_xv, max.(py_xv_err, 1.0e-16), label = "Boris (x, v)", color = :crimson)
+lines!(ax1, ts_can, max.(py_can_err, 1.0e-16), label = "ImplicitMidpoint (x, p)", color = :teal)
 axislegend(ax1, position = :rt)
 fig1
 
@@ -120,7 +120,7 @@ sol_can_rel = solve(prob_can_rel, ImplicitMidpoint(); dt = dt, adaptive = false)
 H0_rel = canonical_hamiltonian(sol_can_rel.u[1], param_can_rel; relativistic = true)
 H_rel_err = [
     abs(canonical_hamiltonian(u, param_can_rel; relativistic = true) - H0_rel) / H0_rel
-    for u in sol_can_rel.u
+        for u in sol_can_rel.u
 ]
 
 fig2 = Figure(size = (800, 450))
@@ -131,7 +131,7 @@ ax2 = Axis(
     yscale = log10,
     title = "Relativistic Canonical Tracing: Bounded Symplectic Energy Error"
 )
-lines!(ax2, sol_can_rel.t ./ T_period, max.(H_rel_err, 1e-16), color = :midnightblue)
+lines!(ax2, sol_can_rel.t ./ T_period, max.(H_rel_err, 1.0e-16), color = :midnightblue)
 fig2
 
 # The Hamiltonian energy oscillates within a strictly bounded envelope without secular drift,

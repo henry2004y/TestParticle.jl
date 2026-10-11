@@ -50,7 +50,7 @@ using LinearAlgebra: norm
             u0 = velocity_to_canonical(x0, v0, param; relativistic = false)
 
             # In Landau gauge, p_y = m vy + q A_y = 0 initially
-            @test u0[5] ≈ 0.0 atol = 1e-15
+            @test u0[5] ≈ 0.0 atol = 1.0e-15
 
             tspan = (0.0, 5 * T_period)
             dt = T_period / 40
@@ -61,22 +61,22 @@ using LinearAlgebra: norm
             # 1. Exact conservation of cyclic momentum py to machine precision
             py_start = sol.u[1][5]
             py_end = sol.u[end][5]
-            @test py_start ≈ py_end atol = 1e-14
+            @test py_start ≈ py_end atol = 1.0e-14
 
             # 2. Energy conservation to machine precision with ImplicitMidpoint
             H_start = canonical_hamiltonian(sol.u[1], param; relativistic = false)
             H_end = canonical_hamiltonian(sol.u[end], param; relativistic = false)
-            @test H_start ≈ H_end rtol = 1e-12
+            @test H_start ≈ H_end rtol = 1.0e-12
 
             # 3. Trajectory and velocity conversion
             v_end = canonical_to_velocity(sol.u[end], param; relativistic = false)
-            @test norm(v_end) ≈ norm(v0) rtol = 1e-12
+            @test norm(v_end) ≈ norm(v0) rtol = 1.0e-12
 
             # In-place mutable vector support
             u0_mut = [x0..., (u0[4:6])...]
             prob_mut = TraceCanonicalProblem(u0_mut, tspan, param; relativistic = false)
             sol_mut = solve(prob_mut, ImplicitMidpoint(); dt = dt, adaptive = false)
-            @test sol_mut.u[end][5] ≈ py_start atol = 1e-14
+            @test sol_mut.u[end][5] ≈ py_start atol = 1.0e-14
         end
     end
 
@@ -104,16 +104,16 @@ using LinearAlgebra: norm
             sol = solve(prob, ImplicitMidpoint(); dt = dt, adaptive = false)
 
             # Cyclic momentum py must be conserved to machine precision
-            @test sol.u[1][5] ≈ sol.u[end][5] atol = 1e-14
+            @test sol.u[1][5] ≈ sol.u[end][5] atol = 1.0e-14
 
             # Symplectic energy error is bounded
             H_start = canonical_hamiltonian(sol.u[1], param; relativistic = true)
             H_end = canonical_hamiltonian(sol.u[end], param; relativistic = true)
-            @test (abs(H_end - H_start) / H_start) < 1e-3
+            @test (abs(H_end - H_start) / H_start) < 1.0e-3
 
             # Velocity recovery
             v_end = canonical_to_velocity(sol.u[end], param; relativistic = true)
-            @test norm(v_end) ≈ norm(v0) rtol = 1e-3
+            @test norm(v_end) ≈ norm(v0) rtol = 1.0e-3
         end
     end
 
@@ -141,10 +141,10 @@ using LinearAlgebra: norm
             # Energy should be conserved
             H_start = canonical_hamiltonian(sol.u[1], param; relativistic = false)
             H_end = canonical_hamiltonian(sol.u[end], param; relativistic = false)
-            @test H_start ≈ H_end rtol = 1e-12
+            @test H_start ≈ H_end rtol = 1.0e-12
 
             # After integer periods, particle returns to x0
-            @test sol.u[end][1:3] ≈ x0 rtol = 1e-3
+            @test sol.u[end][1:3] ≈ x0 rtol = 1.0e-3
         end
     end
 end

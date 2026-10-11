@@ -156,9 +156,9 @@ function SciMLBase.remake(
     tspan, p = _promote_trace_args(u0, tspan, p)
     isinplace = !(u0 isa StaticArray)
     _f = if f === prob.f && (
-        prob.f.f === trace_canonical! || prob.f.f === trace_canonical ||
-        prob.f.f === trace_canonical_relativistic! || prob.f.f === trace_canonical_relativistic
-    )
+            prob.f.f === trace_canonical! || prob.f.f === trace_canonical ||
+                prob.f.f === trace_canonical_relativistic! || prob.f.f === trace_canonical_relativistic
+        )
         is_rel = prob.f.f === trace_canonical_relativistic! ||
             prob.f.f === trace_canonical_relativistic
         if is_rel
@@ -190,4 +190,3 @@ function solve(
 
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end
-

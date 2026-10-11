@@ -641,4 +641,3 @@ function canonical_hamiltonian(u::AbstractVector, p, t = 0.0; relativistic::Bool
         return sum(p_kin .^ 2) / (2 * m) + q * phi
     end
 end
-
