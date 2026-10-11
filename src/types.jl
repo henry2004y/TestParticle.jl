@@ -45,6 +45,44 @@ function Base.getproperty(prob::TraceProblem, sym::Symbol)
     return getfield(prob, sym)
 end
 
+"""
+    PotentialField{TP, TA, TGP, TGA}
+
+A representation of scalar potential `phi` and vector potential `A`,
+along with optional spatial gradient functions `grad_phi` and `grad_A`.
+"""
+struct PotentialField{TP, TA, TGP, TGA}
+    phi::TP
+    A::TA
+    grad_phi::TGP
+    grad_A::TGA
+end
+
+"""
+    TraceCanonicalProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF}
+
+Problem specification for particle tracing in canonical coordinates (x, p).
+"""
+struct TraceCanonicalProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
+    AbstractODEProblem{uType, tType, isinplace}
+    f::F
+    "initial condition (x, p)"
+    u0::uType
+    "time span"
+    tspan::tType
+    "(q, m, c, pf)"
+    p::P
+    "function for setting initial conditions"
+    prob_func::PF
+end
+
+Base.propertynames(::TraceCanonicalProblem) = (:f, :u0, :tspan, :p, :prob_func, :kwargs)
+
+function Base.getproperty(prob::TraceCanonicalProblem, sym::Symbol)
+    sym === :kwargs && return (;)
+    return getfield(prob, sym)
+end
+
 # Meshes.jl grid types dummy stubs used at API boundary
 abstract type CartesianGrid end
 abstract type RectilinearGrid end

@@ -221,3 +221,76 @@ function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = Clamp
 end
 prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
 prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)
+
+"""
+    PotentialField(phi, A; grad_phi = nothing, grad_A = nothing)
+    PotentialField(A; phi = ZeroField(), grad_phi = nothing, grad_A = nothing)
+
+Construct a `PotentialField` for canonical tracing. When `grad_phi` or `grad_A` are omitted,
+they are computed automatically via `ForwardDiff`.
+"""
+function PotentialField(
+        phi, A;
+        grad_phi = nothing, grad_A = nothing
+    )
+    f_phi = phi isa ZeroField ? phi : Field(phi)
+    f_A = A isa ZeroField ? A : Field(A)
+
+    g_phi = if grad_phi !== nothing
+        applicable(grad_phi, zeros(3), 0.0) ? grad_phi : ((x, t) -> grad_phi(x))
+    elseif f_phi isa ZeroField
+        ZeroField()
+    else
+        (x, t) -> SVector{3}(ForwardDiff.gradient(r -> f_phi(r, t), x))
+    end
+
+    g_A = if grad_A !== nothing
+        applicable(grad_A, zeros(3), 0.0) ? grad_A : ((x, t) -> grad_A(x))
+    elseif f_A isa ZeroField
+        (x, t) -> zero(SMatrix{3, 3, eltype(x), 9})
+    else
+        (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> f_A(r, t), x)')
+    end
+
+    return PotentialField(f_phi, f_A, g_phi, g_A)
+end
+
+PotentialField(A; phi = ZeroField(), grad_phi = nothing, grad_A = nothing) =
+    PotentialField(phi, A; grad_phi, grad_A)
+
+"""
+    prepare(pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c, type = nothing)
+
+Return parameters `(q, m, c, pf)` for `TraceCanonicalProblem`.
+"""
+function prepare(
+        pf::PotentialField;
+        species = Proton, q = nothing, m = nothing, c = c, type = nothing, kw...
+    )
+    if type !== nothing
+        T = type
+        sp = species isa Species ? Species{T}(species) : species
+        q_val = isnothing(q) ? sp.q : T(q)
+        m_val = isnothing(m) ? sp.m : T(m)
+        c_val = T(c)
+        return q_val, m_val, c_val, pf
+    else
+        q_val = @something q species.q
+        m_val = @something m species.m
+        c_val = c
+        return q_val, m_val, c_val, pf
+    end
+end
+
+"""
+    prepare_canonical(phi, A; kwargs...)
+    prepare_canonical(A; phi = ZeroField(), kwargs...)
+
+Convenience wrapper to construct a `PotentialField` and prepare parameters for `TraceCanonicalProblem`.
+"""
+prepare_canonical(phi, A; grad_phi = nothing, grad_A = nothing, kw...) =
+    prepare(PotentialField(phi, A; grad_phi, grad_A); kw...)
+
+prepare_canonical(A; phi = ZeroField(), grad_phi = nothing, grad_A = nothing, kw...) =
+    prepare(PotentialField(phi, A; grad_phi, grad_A); kw...)
+
