@@ -13,7 +13,8 @@ reduced without editing code:
 - `TP_N_PARTICLES`: trajectories per timed run (default 16384).
 - `TP_N_STEPS`: Boris steps per trajectory (default 250000).
 - `TP_N_SAMPLES`: timed repetitions, median is reported (default 3).
-- `TP_N_WARMUP`: untimed warmup trajectories (default 16).
+- `TP_N_WARMUP`: trajectories in the small compile warmup (default 16). Every point then
+  runs one full-size untimed warmup, see `measure`.
 """
 module ScalingCommon
 
@@ -101,13 +102,22 @@ end
 """
     measure(ensemblealg, prob) -> Float64
 
-Median wall time in seconds over `N_SAMPLES` runs, after an untimed warmup with
-`N_WARMUP` trajectories that also compiles the solver on every worker. Every sample is
-reported as it finishes, since one sample of the default problem takes minutes.
+Median wall time in seconds over `N_SAMPLES` runs. Two untimed runs come first: a small
+one with `N_WARMUP` trajectories that compiles the solver on every worker, then one at the
+full `N_PARTICLES` size. Without the second, the first timed sample is also the first time
+the process handles the whole ensemble, and it can come out twice as slow as the rest,
+which biases the median. Every sample is reported as it finishes, since one sample of the
+default problem takes minutes.
 """
 function measure(ensemblealg, prob)
-    progress(@sprintf("  warmup: %d trajectories", N_WARMUP))
+    progress(@sprintf("  warmup: %d trajectories (compile)", N_WARMUP))
     solve(prob, Boris(), ensemblealg; trajectories = N_WARMUP, dt = DT, saveat = SAVEAT)
+    warmup_s = @elapsed solve(
+        prob, Boris(), ensemblealg; trajectories = N_PARTICLES, dt = DT, saveat = SAVEAT
+    )
+    progress(
+        @sprintf("  warmup: %d trajectories, %.3f s, discarded", N_PARTICLES, warmup_s)
+    )
     samples = Vector{Float64}(undef, N_SAMPLES)
     for i in eachindex(samples)
         GC.gc()
