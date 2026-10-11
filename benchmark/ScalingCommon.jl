@@ -27,7 +27,8 @@ using DelimitedFiles
 export ScalingPoint, CSV_HEADER, N_PARTICLES, N_STEPS, N_SAMPLES, throughput,
     make_problem, measure, speedups, write_points, read_points, progress
 
-env_int(name, default) = parse(Int, get(ENV, name, string(default)))
+# An exported-but-empty variable counts as unset rather than as a parse error.
+env_int(name, default) = (v = strip(get(ENV, name, "")); isempty(v) ? default : parse(Int, v))
 
 const N_PARTICLES = env_int("TP_N_PARTICLES", 16_384)
 # Sized so that the 128-thread point lands near 3 s and the 1-thread baseline near

@@ -33,7 +33,8 @@
 # sbatch the jobs with `--nodes=N` and then run `collect` to merge the per-job CSVs.
 #
 # Counts default to 1, 2, 4, 8 for `multinode` and to the powers of two up to the node's
-# logical core count for the other modes. Problem size and repetition come from the
+# physical core count for the other modes, so a sweep stops before hyperthreading.
+# TP_MAX_THREADS overrides that bound. Problem size and repetition come from the
 # environment, see ScalingCommon.jl. Extra sbatch flags go in TP_SBATCH_ARGS, e.g.
 #   TP_SBATCH_ARGS="--account=m1234 --qos=regular" julia ... run_scaling.jl multinode
 
@@ -63,13 +64,59 @@ const ACTIVE_STATES = Set(
 )
 
 """
+    physical_cpu_count(path = "/proc/cpuinfo") -> Int
+
+Physical cores on this host, the sensible upper bound for a threaded sweep.
+`Sys.CPU_THREADS` counts logical CPUs, so on a node with simultaneous multithreading it is
+twice the core count and the extra points only measure hyperthreading. The count comes from
+the `physical id` and `core id` fields of `/proc/cpuinfo`, falling back to the logical
+count when the file or those fields are unavailable.
+"""
+function physical_cpu_count(path::AbstractString = "/proc/cpuinfo")
+    isfile(path) || return Sys.CPU_THREADS
+    cores = Set{Tuple{String, String}}()
+    block = Dict{String, String}()
+    for line in eachline(path)
+        if isempty(strip(line))
+            record_core!(cores, block)
+            empty!(block)
+            continue
+        end
+        parts = split(line, ':', limit = 2)
+        length(parts) == 2 && (block[strip(parts[1])] = strip(parts[2]))
+    end
+    record_core!(cores, block)
+    return isempty(cores) ? Sys.CPU_THREADS : length(cores)
+end
+
+function record_core!(cores, block)
+    socket = get(block, "physical id", nothing)
+    core = get(block, "core id", nothing)
+    if socket !== nothing && core !== nothing
+        push!(cores, (socket, core))
+    end
+    return nothing
+end
+
+"""
+    max_threads() -> Int
+
+Upper bound for the thread and worker sweeps: `TP_MAX_THREADS` when set, otherwise the
+physical core count.
+"""
+function max_threads()
+    override = strip(get(ENV, "TP_MAX_THREADS", ""))
+    return isempty(override) ? physical_cpu_count() : parse(Int, override)
+end
+
+"""
     default_local_counts() -> Vector{Int}
 
-Powers of two up to the node's logical core count, with that count appended when it is
-not itself a power of two.
+Powers of two up to `max_threads()`, with that bound appended when it is not itself a power
+of two.
 """
 function default_local_counts()
-    max_count = Sys.CPU_THREADS
+    max_count = max(1, max_threads())
     counts = [2^i for i in 0:floor(Int, log2(max_count))]
     max_count in counts || push!(counts, max_count)
     return counts
@@ -203,6 +250,9 @@ function run_local_sweep(mode, counts)
     out_path = joinpath(BENCH_DIR, LOCAL_OUTPUTS[mode])
     progress("="^72)
     progress("$(uppercasefirst(mode)) sweep over counts $counts")
+    progress(
+        "Host: $(Sys.CPU_THREADS) logical CPUs, $(physical_cpu_count()) physical cores"
+    )
     progress("$N_PARTICLES particles, $N_STEPS steps, $N_SAMPLES sample(s) per point")
     progress("Each point runs in its own process; the smallest count is the slowest.")
     progress("Output: $out_path")

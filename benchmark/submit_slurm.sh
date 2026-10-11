@@ -35,8 +35,10 @@
 # directory, `sbatch /somewhere/else/submit_slurm.sh multinode` needs TP_BENCH_DIR to point
 # at the directory holding run_scaling.jl and ScalingCommon.jl.
 #
-# Pass explicit counts. The default sweep goes up to the node's logical CPU count, which
-# is not always limited by the allocation, so it can reach past the physical cores.
+# Pass explicit counts when you want a specific set. Otherwise the sweep goes up to the
+# physical core count of the node it lands on, detected from /proc/cpuinfo, so it stops
+# before hyperthreading. That detection follows the node rather than the allocation, and
+# TP_MAX_THREADS overrides it.
 
 # One Julia worker per node, each running EnsembleThreads over the cores of that node.
 # The master process stays single-threaded: SciMLBase partitions the trajectories over
