@@ -42,7 +42,7 @@ using LinearAlgebra: norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-# ## Part 1: PotentialField & Non-Relativistic Landau Gauge
+# ## PotentialField & Non-Relativistic Landau Gauge
 #
 # In a uniform magnetic field $\mathbf{B} = (0, 0, B_0)$, we choose the Landau gauge
 # $\mathbf{A} = (0, B_0 x, 0)$. Because the Hamiltonian does not depend on $y$ ($\partial_y H = 0$),
@@ -75,7 +75,7 @@ sol_can = solve(prob_can, ImplicitMidpoint(); dt = dt, adaptive = false)
 ## Trace in velocity form using Boris
 param_xv = prepare(ZeroField(), (x, t) -> SA[0.0, 0.0, B0]; q = q, m = m)
 prob_xv = TraceProblem([x0..., v0...], tspan, param_xv)
-sol_xv = TestParticle.solve(prob_xv, Boris(); dt = dt)
+sol_xv = TestParticle.solve(prob_xv, Boris(); dt);
 
 # ## Comparing Cyclic Momentum Conservation
 #
@@ -104,7 +104,7 @@ fig1
 # While Boris exhibits staggering phase oscillations of order $\sim 10^{-3}$, the canonical
 # solver preserves $p_y$ to exact machine zero across the entire simulation.
 
-# ## Part 2: Relativistic Canonical Tracing
+# ## Relativistic Canonical Tracing
 #
 # For relativistic dynamics ($v_0 = 0.6c$), we compare energy conservation and momentum
 # tracking between the canonical formulation and velocity-space formulations.
