@@ -59,7 +59,7 @@ prob = TraceProblem(stateinit, tspan, param)
 sol = solve(prob, Boris(); dt, saveat = 10 * dt)
 ```
 
-For the full family of Boris solvers (Multistep, Hyper, and Adaptive), see [Boris Pusher](@ref Boris-Pusher).
+For the full family of Boris solvers (Multistep, Hyper, and Adaptive), see [Boris Pusher](@ref Boris-Pusher). When you want the accuracy of that family without tuning it yourself, `MultistepBoris6(; n = 4)` is the recommended default.
 
 ## Boundary check
 

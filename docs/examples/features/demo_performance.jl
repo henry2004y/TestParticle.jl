@@ -282,5 +282,8 @@ ylims!(ax, minimum(results_mem_norm) * 0.5, maximum(results_mem_norm) * 1.5)
 f2 = DisplayAs.PNG(f2) #hide
 
 # In practice, it is pretty hard to find an optimal algorithm. The native Boris method is good if you want a fixed time step.
+# Within the native Boris family, `MultistepBoris6(n=4)` is the recommended
+# default: sixth-order gyrophase accuracy at about 2.8x the cost of `Boris()`,
+# without the numerical heating of the adaptive SciML solvers.
 # When calling OrdinaryDiffEq.jl, we recommend using `Vern9()` as a starting point instead of `Tsit5()`, especially combined with adaptive timestepping. Further fine-grained control includes setting `dtmax`, `reltol`, and `abstol` in the `solve` method.
 # Note: Geometric integrators from GeometricIntegratorsDiffEq were previously included but removed due to poor performance and compatibility issues compared to the optimized SciML solvers.
