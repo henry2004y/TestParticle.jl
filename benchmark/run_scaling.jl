@@ -44,6 +44,13 @@ using TestParticle
 include(joinpath(@__DIR__, "ScalingCommon.jl"))
 using .ScalingCommon
 
+# `SlurmManager` is only needed inside an allocation. Load it here rather than lazily
+# inside the measurement, because a binding introduced by `using` in a running function
+# lands in a newer world than the call that wants it, which fails with UndefVarError.
+if haskey(ENV, "SLURM_JOB_ID")
+    @eval using SlurmClusterManager
+end
+
 const BENCH_DIR = @__DIR__
 const SCRIPT_PATH = @__FILE__
 const DEFAULT_NODES = [1, 2, 4, 8]
@@ -144,7 +151,6 @@ function point_multinode(count)
     n_nodes = parse(Int, ENV["SLURM_JOB_NUM_NODES"])
     n_nodes == count || @warn "Allocation has $n_nodes node(s)" requested = count
 
-    isdefined(Main, :SlurmClusterManager) || @eval using SlurmClusterManager
     cpus_per_task = get(ENV, "SLURM_CPUS_PER_TASK", "1")
     pids = addprocs(
         SlurmManager();
