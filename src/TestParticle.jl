@@ -20,7 +20,7 @@ import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBori
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
-using StaticArrays: SVector, MVector, SA, StaticArray
+using StaticArrays: SVector, MVector, SA, StaticArray, SMatrix, StaticVector
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
@@ -34,9 +34,13 @@ import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
 
-export prepare, prepare_gc, get_gc, get_gc_func, ZeroField
+export prepare, prepare_gc, prepare_canonical, get_gc, get_gc_func, ZeroField,
+    PotentialField
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_normalized, trace_relativistic_normalized,
+    trace_canonical!, trace_canonical, trace_canonical_relativistic!,
+    trace_canonical_relativistic,
+    velocity_to_canonical, canonical_to_velocity, canonical_hamiltonian,
     get_dx!, get_dv!,
     trace_gc!,
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!,
@@ -63,7 +67,7 @@ export get_fields, get_work
 export LazyTimeInterpolator, build_interpolator
 export GPUGrid3D, GPUGrid2D, GPUGrid1D
 export GPUSphericalGrid, GPUUniformAxis, GPUNonUniformAxis
-export TraceProblem, TraceGCProblem, TraceHybridProblem, solve
+export TraceProblem, TraceCanonicalProblem, TraceGCProblem, TraceHybridProblem, solve
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
     PeriodicBC, ZeroCurvBC, OnTheFly, PreCompute, StorePolicy,
