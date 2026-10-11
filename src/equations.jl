@@ -597,11 +597,7 @@ function velocity_to_canonical(
         m * v_vec + q * A
     end
 
-    if x0 isa StaticVector && v0 isa StaticVector
-        return vcat(x_vec, p_can)
-    else
-        return [x_vec..., p_can...]
-    end
+    return vcat(x_vec, p_can)
 end
 
 function canonical_to_velocity(
