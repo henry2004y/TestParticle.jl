@@ -1,13 +1,25 @@
 # Scaling plots
 #
-# Reads the CSV files produced by the run_scaling_*.jl drivers and renders the
-# corresponding strong scaling speedup figures. Every figure has its own plotting
-# function; select which one to draw with a keyword (or the matching CLI flag):
+# Reads the CSV files produced by run_scaling.jl and renders the corresponding strong
+# scaling speedup figures. All three benchmark modes share one CSV schema, so every
+# figure is drawn from the same reader. Select figures by name, or use `all`:
 #
-#   julia --project=benchmark benchmark/plot_scaling.jl                # combined
-#   julia --project=benchmark benchmark/plot_scaling.jl multinode
-#   julia --project=benchmark benchmark/plot_scaling.jl all
-#   julia --project=benchmark benchmark/plot_scaling.jl --out=/tmp/scaling.png
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl             # combined
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl threads
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl distributed
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl multinode
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl all
+#
+# Options:
+#   --out=<path>      output figure (combined, threads and distributed only)
+#   --file=<csv>      input CSV, relative to the benchmark directory (single figure only)
+#   --machine=<name>  machine name shown in the title
+#
+# Figures:
+#   combined     multithreading against distributed on a single node
+#   threads      EnsembleThreads alone
+#   distributed  EnsembleDistributed alone
+#   multinode    EnsembleSplitThreads against EnsembleDistributed across nodes
 #
 # From Julia, the same figures are available as
 #
@@ -15,49 +27,153 @@
 #   plot_scaling(:multinode)
 #   plot_combined(; out_path = "figures/combined.png", particles = 65_536)
 #
-# CairoMakie is not part of the benchmark project, so run this with an environment
-# that provides it.
+# Measurement scripts do not depend on CairoMakie, so run this with an environment that
+# provides it.
 
 using CairoMakie
 using DelimitedFiles
 
 const BENCH_DIR = @__DIR__
-const FIG_DIR = joinpath(BENCH_DIR, "..", "docs", "src", "figures")
+# The combined figure belongs to the docs in the repository; a standalone copy of these
+# scripts keeps it next to the measurements instead.
+const FIG_DIR = isdir(joinpath(BENCH_DIR, "..", "docs")) ?
+    joinpath(BENCH_DIR, "..", "docs", "src", "figures") : BENCH_DIR
 
-const COMBINED_FIG = joinpath(FIG_DIR, "scaling_combined.png")
-const MULTINODE_FIG = joinpath(BENCH_DIR, "multinode_scaling.png")
-
-const DEFAULT_PARTICLES = 16_384
 const DEFAULT_MACHINE = "Perlmutter"
 
-"""
-    read_scaling(file)
+# Mirrors ScalingCommon.CSV_HEADER. Checked on read so that a CSV from an older
+# run_scaling.jl fails loudly instead of being silently misread.
+const CSV_COLUMNS = [
+    "mode", "units", "count", "workers", "threads_per_worker", "ensemble_alg",
+    "particles", "steps", "median_s", "msteps_per_s",
+]
 
-Read a two-column `counts,times` CSV and return the processor counts together with
-the speedup relative to the first entry.
+const INPUT_FILES = Dict(
+    :threads => "threads_scaling.csv",
+    :distributed => "distributed_scaling.csv",
+    :multinode => "multinode_scaling.csv",
+)
+
+const OUTPUT_FILES = Dict(
+    :combined => joinpath(FIG_DIR, "scaling_combined.png"),
+    :threads => joinpath(BENCH_DIR, "threads_scaling.png"),
+    :distributed => joinpath(BENCH_DIR, "distributed_scaling.png"),
+    :multinode => joinpath(BENCH_DIR, "multinode_scaling.png"),
+)
+
 """
-function read_scaling(file::AbstractString)
+    read_points(file) -> NamedTuple
+
+Read a scaling CSV written by run_scaling.jl, with `file` relative to the benchmark
+directory. Rows are returned in file order, which run_scaling.jl already sorts by the
+swept count. An input that holds only a header yields empty vectors.
+"""
+function read_points(file::AbstractString)
     data = readdlm(joinpath(BENCH_DIR, file), ',')
-    counts = Int.(Float64.(data[:, 1]))
-    times = Float64.(data[:, 2])
-    return counts, times[1] ./ times
+    size(data, 1) < 2 && return empty_points()
+    names = String.(data[1, :])
+    names == CSV_COLUMNS || error(
+        "$file was written by an older run_scaling.jl; columns $(names), " *
+            "expected $(CSV_COLUMNS). Regenerate the measurements."
+    )
+    rows = data[2:end, :]
+    return (
+        mode = String.(rows[:, 1]),
+        units = String.(rows[:, 2]),
+        count = Int.(Float64.(rows[:, 3])),
+        workers = Int.(Float64.(rows[:, 4])),
+        threads_per_worker = Int.(Float64.(rows[:, 5])),
+        ensemble_alg = String.(rows[:, 6]),
+        particles = Int(Float64(rows[1, 7])),
+        steps = Int(Float64(rows[1, 8])),
+        median_s = Float64.(rows[:, 9]),
+    )
+end
+
+empty_points() = (
+    mode = String[],
+    units = String[],
+    count = Int[],
+    workers = Int[],
+    threads_per_worker = Int[],
+    ensemble_alg = String[],
+    particles = 0,
+    steps = 0,
+    median_s = Float64[],
+)
+
+# Speedup of a curve against its own first point.
+speedup(median_s) = median_s[1] ./ median_s
+
+function ideal_line!(ax, counts)
+    x = [minimum(counts), maximum(counts)]
+    lines!(
+        ax, x, Float64.(x);
+        color = :black, linestyle = :dash, linewidth = 2, label = "Ideal Scaling"
+    )
+    return nothing
+end
+
+function mode_xlabel(mode::Symbol, data)
+    mode == :threads && return "Number of Threads"
+    mode == :distributed && return "Number of Workers"
+    return "Number of Nodes ($(data.threads_per_worker[1]) threads per node)"
+end
+
+function mode_title(mode::Symbol)
+    mode == :threads && return "Thread Strong Scaling"
+    mode == :distributed && return "Distributed Strong Scaling"
+    return "Multi-node Strong Scaling"
 end
 
 """
-    read_multinode(file)
+    plot_mode(mode::Symbol; kwargs...)
 
-Read a `multinode_scaling.csv` table (with a header row) and return the node counts,
-ensemble algorithms, per-algorithm speedups, and the run configuration.
+Plot the speedup of every ensemble algorithm in one mode's CSV against the swept count.
+`mode` selects the default input and output files. The thread and worker sweeps use a
+log2 x-axis, the node sweep stays linear.
+
+# Keywords
+- `file`: CSV table to read, relative to the benchmark directory.
+- `out_path`: file to save the figure to.
+- `machine`: machine name shown in the title.
 """
-function read_multinode(file::AbstractString)
-    rows = readdlm(joinpath(BENCH_DIR, file), ',')[2:end, :]
-    return (
-        nodes = Int.(Float64.(rows[:, 1])),
-        algs = String.(rows[:, 4]),
-        speedups = Float64.(rows[:, 8]),
-        threads_per_worker = Int(Float64(rows[1, 3])),
-        particles = Int(Float64(rows[1, 5])),
+function plot_mode(mode::Symbol;
+        file = INPUT_FILES[mode], out_path = OUTPUT_FILES[mode], machine = DEFAULT_MACHINE
     )
+    data = read_points(file)
+    isempty(data.count) && error("$file holds no measurements.")
+    title = mode_title(mode)
+    log_x = mode != :multinode
+
+    fig = Figure(; size = (900, 520), fontsize = 20)
+    ax = Axis(
+        fig[1, 1];
+        xscale = log_x ? log2 : identity,
+        yscale = log2,
+        xlabel = mode_xlabel(mode, data),
+        ylabel = "Speedup",
+        title = "$(title) ($(data.particles) Particles, $(data.steps) Steps on $(machine))",
+        xticks = log_x ? data.count : sort(unique(data.count)),
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+    )
+
+    for alg in unique(data.ensemble_alg)
+        sel = data.ensemble_alg .== alg
+        scatterlines!(
+            ax, data.count[sel], speedup(data.median_s[sel]);
+            label = alg, linewidth = 3, markersize = 14
+        )
+    end
+    ideal_line!(ax, data.count)
+
+    axislegend(ax; position = :lt)
+
+    mkpath(dirname(out_path))
+    save(out_path, fig)
+    println("$(title) plot saved to: ", out_path)
+    return out_path
 end
 
 """
@@ -68,18 +184,23 @@ single node run against each other.
 
 # Keywords
 - `out_path`: file to save the figure to.
-- `particles`: particle count shown in the title.
+- `particles`: particle count shown in the title; defaults to the value recorded in the
+  CSV.
 - `machine`: machine name shown in the title.
 """
 function plot_combined(;
-        out_path = COMBINED_FIG, particles = DEFAULT_PARTICLES, machine = DEFAULT_MACHINE
+        out_path = OUTPUT_FILES[:combined], particles = nothing, machine = DEFAULT_MACHINE
     )
-    t_counts, threads_speedup = read_scaling("threads_scaling.csv")
-    d_counts, dist_speedup = read_scaling("distributed_scaling.csv")
-    if t_counts != d_counts
+    threads = read_points(INPUT_FILES[:threads])
+    dist = read_points(INPUT_FILES[:distributed])
+    isempty(threads.count) && error("threads_scaling.csv holds no measurements.")
+    isempty(dist.count) && error("distributed_scaling.csv holds no measurements.")
+    if threads.count != dist.count
         error("threads_scaling.csv and distributed_scaling.csv cover different counts.")
     end
-    counts = t_counts
+    counts = threads.count
+    n = particles === nothing ? threads.particles : particles
+    nsteps = threads.steps
 
     fig = Figure(; size = (1000, 500), fontsize = 20)
     ax = Axis(
@@ -88,7 +209,7 @@ function plot_combined(;
         yscale = log2,
         xlabel = "Number of Threads / Workers",
         ylabel = "Speedup",
-        title = "Strong Scaling ($(particles) Particles on $(machine))",
+        title = "Strong Scaling ($(n) Particles, $(nsteps) Steps on $(machine))",
         xticks = counts,
         yticks = counts,
         xminorticksvisible = true,
@@ -96,15 +217,10 @@ function plot_combined(;
     )
 
     scatterlines!(
-        ax, counts, threads_speedup; label = "Multithreading", linewidth = 3
+        ax, counts, speedup(threads.median_s); label = "Multithreading", linewidth = 3
     )
-    scatterlines!(
-        ax, counts, dist_speedup; label = "Distributed", linewidth = 3
-    )
-    lines!(
-        ax, counts, Float64.(counts);
-        color = :black, linestyle = :dash, label = "Ideal Scaling", linewidth = 2
-    )
+    scatterlines!(ax, counts, speedup(dist.median_s); label = "Distributed", linewidth = 3)
+    ideal_line!(ax, counts)
 
     axislegend(ax; position = :lt)
 
@@ -114,65 +230,31 @@ function plot_combined(;
     return out_path
 end
 
-"""
-    plot_multinode(; kwargs...)
+plot_threads(; kwargs...) = plot_mode(:threads; kwargs...)
 
-Plot the speedup of each ensemble algorithm against the number of nodes.
+plot_distributed(; kwargs...) = plot_mode(:distributed; kwargs...)
 
-# Keywords
-- `out_path`: file to save the figure to.
-- `file`: CSV table to read, relative to the benchmark directory.
-"""
-function plot_multinode(; out_path = MULTINODE_FIG, file = "multinode_scaling.csv")
-    data = read_multinode(file)
+plot_multinode(; kwargs...) = plot_mode(:multinode; kwargs...)
 
-    fig = Figure(; size = (900, 520), fontsize = 20)
-    ax = Axis(
-        fig[1, 1];
-        xlabel = "Number of Nodes ($(data.threads_per_worker) threads per node)",
-        ylabel = "Speedup",
-        title = "Multi-node Strong Scaling ($(data.particles) Particles)",
-        xticks = sort(unique(data.nodes)),
-        xminorticksvisible = true,
-        yminorticksvisible = true,
-        yminorticks = IntervalsBetween(5),
-    )
+const PLOT_METHODS = Dict(
+    :combined => plot_combined,
+    :threads => plot_threads,
+    :distributed => plot_distributed,
+    :multinode => plot_multinode,
+)
 
-    for alg in unique(data.algs)
-        sel = data.algs .== alg
-        scatterlines!(
-            ax, data.nodes[sel], data.speedups[sel];
-            label = alg, linewidth = 3, markersize = 14
-        )
-    end
-
-    nmax = maximum(data.nodes)
-    lines!(
-        ax, [1, nmax], [1, nmax];
-        color = :black, linestyle = :dash, linewidth = 2, label = "Ideal Scaling"
-    )
-
-    axislegend(ax; position = :lt)
-
-    mkpath(dirname(out_path))
-    save(out_path, fig)
-    println("Multi-node scaling plot saved to: ", out_path)
-    return out_path
-end
-
-const PLOT_METHODS = Dict(:combined => plot_combined, :multinode => plot_multinode)
+const METHOD_NAMES = ["combined", "threads", "distributed", "multinode"]
 
 """
     plot_scaling(method::Symbol; kwargs...)
 
-Draw one of the scaling figures, forwarding keyword arguments to its plotting
-function. Use `:combined` for the single node comparison and `:multinode` for the
-node sweep.
+Draw one of the scaling figures, forwarding keyword arguments to its plotting function.
+Use `:combined` for the single node comparison, `:threads` or `:distributed` for one
+backend alone, and `:multinode` for the node sweep.
 """
 function plot_scaling(method::Symbol; kwargs...)
     plot = get(PLOT_METHODS, method) do
-        names = join(sort!(collect(keys(PLOT_METHODS)); by = string), ", ")
-        error("Unknown plot method $(method); choose one of $(names).")
+        error("Unknown plot method $(method); choose one of $(join(METHOD_NAMES, ", ")).")
     end
     return plot(; kwargs...)
 end
@@ -181,20 +263,29 @@ function parse_args(args)
     methods = Symbol[]
     options = Dict{Symbol, String}()
     for arg in args
-        if arg in ("combined", "multinode", "all")
+        if arg in METHOD_NAMES
             push!(methods, Symbol(arg))
+        elseif arg == "all"
+            push!(methods, :all)
         elseif startswith(arg, "--out=")
             options[:out_path] = split(arg, "="; limit = 2)[2]
+        elseif startswith(arg, "--file=")
+            options[:file] = split(arg, "="; limit = 2)[2]
+        elseif startswith(arg, "--machine=")
+            options[:machine] = split(arg, "="; limit = 2)[2]
         else
             error("Unrecognized argument: $(arg). See the header of this file.")
         end
     end
 
-    isempty(methods) && push!(methods, :combined)
-    if :all in methods
+    if isempty(methods)
+        push!(methods, :combined)
+    elseif :all in methods
         haskey(options, :out_path) &&
             error("--out is ambiguous for `all`; plot one method at a time.")
-        methods = [:combined, :multinode]
+        haskey(options, :file) &&
+            error("--file is ambiguous for `all`; plot one method at a time.")
+        methods = Symbol.(METHOD_NAMES)
     end
     return methods, options
 end

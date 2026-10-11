@@ -870,8 +870,8 @@ function main()
     println("     julia --project=test -t auto benchmark/compare_boris_backends.jl")
     println(" - Sections [1] and [2] report the default API first, then repeat the")
     println("   EnsembleKernel paths with a bulk `u0` matrix and `raw_output = true`.")
-    println(" - Thread scaling and multi-node scaling live in run_scaling_threads.jl and")
-    println("   run_scaling_multinode.jl.")
+    println(" - Thread, distributed and multi-node scaling live in run_scaling.jl")
+    println("   (threads | distributed | multinode); plot with plot_scaling.jl.")
     return println("="^88)
 end
 
