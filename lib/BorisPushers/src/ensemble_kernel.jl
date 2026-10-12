@@ -323,28 +323,15 @@ end
     return idx + 1
 end
 
-"""
-    _solve_cpu_chunk!(sols, irange, xv_current, plan, dt, tspan, p_host, alg, nout, nt,
-        save_start, save_end, save_everystep, saved_times, prob, T; raw_out = nothing,
-        isoutside = ODE_DEFAULT_ISOUTOFDOMAIN, term_out = nothing, nout_out = nothing)
+@inline _has_isoutside(::typeof(ODE_DEFAULT_ISOUTOFDOMAIN)) = false
+@inline _has_isoutside(::Nothing) = false
+@inline _has_isoutside(::Any) = true
 
-Advance every particle in `irange` on the host. With `raw_out = nothing` an
-`ODESolution` is built per particle. Otherwise the saved states are written straight into
-the `(N, 6, nout)` array `raw_out` and `sols` is unused, so it may be `nothing`.
-
-`isoutside` is the boundary check `(u, p, t)`; a step that ends outside the domain is
-rolled back and the trace stops at the last state inside it, with `ReturnCode.Terminated`.
-When given, `term_out[i]` receives the index of the rejected step and `nout_out[i]` the
-number of states saved for that particle, both zero otherwise.
-"""
-function _solve_cpu_chunk!(
+function _solve_cpu_chunk_unchecked!(
         sols, irange, xv_current, plan, dt, tspan,
         p_host, alg, nout, nt, save_start, save_end, save_everystep,
-        saved_times, prob, ::Type{T};
-        raw_out = nothing, isoutside = ODE_DEFAULT_ISOUTOFDOMAIN,
-        term_out = nothing, nout_out = nothing
+        saved_times, prob, ::Type{T}; raw_out = nothing
     ) where {T}
-    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
     nsave = length(plan.times)
     for (local_i, i) in enumerate(irange)
         traj = raw_out === nothing ? Vector{SVector{6, T}}(undef, nout) : nothing
@@ -361,20 +348,10 @@ function _solve_cpu_chunk!(
         r_prev = r
         v_half_prev = v_half
         t_prev = tspan[1]
-        rejected = 0
 
         for it in 1:nt
             t_current = tspan[1] + it * dt
             r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p_host, alg)
-
-            if check
-                v_node = update_velocity_node(v_half, r, dt, t_current, p_host, alg)
-                if isoutside(vcat(r, v_node), p_host, t_current)
-                    r, v_half = r_prev, v_half_prev
-                    rejected = it
-                    break
-                end
-            end
 
             if use_saveat(plan)
                 if isave <= nsave && saveat_reached(plan.times[isave], t_current, plan.dir)
@@ -409,14 +386,94 @@ function _solve_cpu_chunk!(
             t_prev = t_current
         end
 
-        if rejected > 0
-            term_out !== nothing && (@inbounds term_out[i] = rejected)
+        if save_end && (!use_saveat(plan) && !save_everystep)
+            v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+            idx = _store_state!(raw_out, traj, i, idx, vcat(r, v_node))
+        elseif save_end && use_saveat(plan) && idx < nout
+            v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+            idx = _store_state!(raw_out, traj, i, idx, vcat(r, v_node))
         end
 
-        # A rejected trace ends at the start of the rejected step, where the state
-        # was rolled back to; otherwise the span ends where it always did. The
-        # duplicate guard only matters for a rejected trace, whose end can
-        # coincide with a `saveat` time or with the start.
+        if raw_out === nothing
+            interp = LinearInterpolation(saved_times, traj)
+            sols[local_i] = build_solution(
+                prob, alg, saved_times, traj;
+                interp, retcode = ReturnCode.Success, stats = nothing
+            )
+        end
+    end
+    return raw_out === nothing ? sols : raw_out
+end
+
+function _solve_cpu_chunk_checked!(
+        sols, irange, xv_current, plan, dt, tspan,
+        p_host, alg, nout, nt, save_start, save_end, save_everystep,
+        saved_times, prob, ::Type{T};
+        raw_out = nothing, isoutside, term_out = nothing, nout_out = nothing
+    ) where {T}
+    nsave = length(plan.times)
+    for (local_i, i) in enumerate(irange)
+        traj = raw_out === nothing ? Vector{SVector{6, T}}(undef, nout) : nothing
+        idx = 0
+        r = SVector{3, T}(xv_current[i, 1], xv_current[i, 2], xv_current[i, 3])
+        v = SVector{3, T}(xv_current[i, 4], xv_current[i, 5], xv_current[i, 6])
+
+        if save_start
+            idx = _store_state!(raw_out, traj, i, idx, vcat(r, v))
+        end
+
+        v_half = update_velocity_half(v, r, dt, tspan[1], p_host, alg)
+        isave = 1
+        r_prev = r
+        v_half_prev = v_half
+        t_prev = tspan[1]
+        rejected = 0
+
+        for it in 1:nt
+            t_current = tspan[1] + it * dt
+            r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p_host, alg)
+
+            v_node = update_velocity_node(v_half, r, dt, t_current, p_host, alg)
+            if isoutside(vcat(r, v_node), p_host, t_current)
+                r, v_half = r_prev, v_half_prev
+                rejected = it
+                break
+            end
+
+            if use_saveat(plan)
+                if isave <= nsave && saveat_reached(plan.times[isave], t_current, plan.dir)
+                    v_prev = update_velocity_node(
+                        v_half_prev, r_prev, dt, t_prev, p_host, alg
+                    )
+                    v_cur = update_velocity_node(v_half, r, dt, t_current, p_host, alg)
+                    y_prev = vcat(r_prev, v_prev)
+                    y_cur = vcat(r, v_cur)
+
+                    while isave <= nsave &&
+                            saveat_reached(plan.times[isave], t_current, plan.dir)
+                        t_target = plan.times[isave]
+                        idx = _store_state!(
+                            raw_out, traj, i, idx,
+                            saveat_interpolate(t_prev, y_prev, t_current, y_cur, t_target)
+                        )
+                        isave += 1
+                    end
+                end
+            elseif save_everystep
+                if it < nt || save_end
+                    idx = _store_state!(raw_out, traj, i, idx, vcat(r, v_node))
+                end
+            end
+
+            r_prev = r
+            v_half_prev = v_half
+            t_prev = t_current
+        end
+
+        if rejected > 0 && term_out !== nothing
+            @inbounds term_out[i] = rejected
+        end
+
         t_end = rejected > 0 ? t_prev : tspan[2]
         fresh_end = rejected == 0 ||
             idx == 0 || plan.dir * (t_end - saved_times[idx]) > 0
@@ -441,8 +498,6 @@ function _solve_cpu_chunk!(
                 retcode = ReturnCode.Terminated
                 t_vec = saved_times[1:idx]
                 traj_vec = traj[1:idx]
-                # The last state of a trace that stopped early sits at the last
-                # node inside the domain, not at the nominal end of the span.
                 if save_end && !isempty(t_vec)
                     t_vec[end] = t_end
                 end
@@ -454,6 +509,36 @@ function _solve_cpu_chunk!(
         end
     end
     return raw_out === nothing ? sols : raw_out
+end
+
+"""
+    _solve_cpu_chunk!(sols, irange, xv_current, plan, dt, tspan, p_host, alg, nout, nt,
+        save_start, save_end, save_everystep, saved_times, prob, T; raw_out = nothing,
+        isoutside = ODE_DEFAULT_ISOUTOFDOMAIN, term_out = nothing, nout_out = nothing)
+
+Advance every particle in `irange` on the host. When no out-of-domain callback is provided,
+the fast unchecked path runs without any boundary overhead.
+"""
+function _solve_cpu_chunk!(
+        sols, irange, xv_current, plan, dt, tspan,
+        p_host, alg, nout, nt, save_start, save_end, save_everystep,
+        saved_times, prob, ::Type{T};
+        raw_out = nothing, isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        term_out = nothing, nout_out = nothing
+    ) where {T, F}
+    if _has_isoutside(isoutside)
+        return _solve_cpu_chunk_checked!(
+            sols, irange, xv_current, plan, dt, tspan,
+            p_host, alg, nout, nt, save_start, save_end, save_everystep,
+            saved_times, prob, T; raw_out, isoutside, term_out, nout_out
+        )
+    else
+        return _solve_cpu_chunk_unchecked!(
+            sols, irange, xv_current, plan, dt, tspan,
+            p_host, alg, nout, nt, save_start, save_end, save_everystep,
+            saved_times, prob, T; raw_out
+        )
+    end
 end
 
 """
@@ -474,14 +559,14 @@ function _solve_raw!(
         backend::Backend, xv_current, xv_init, irange;
         dt, tspan, plan, workgroup_size, p_gpu, p_host, alg, nout, nt,
         save_start, save_end, save_everystep, prob, pin::Bool = false,
-        isoutside = ODE_DEFAULT_ISOUTOFDOMAIN
-    )
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN
+    ) where {F}
     T = eltype(xv_current)
     n_total = size(xv_current, 1)
     offset = irange.start - 1
     n_particles = length(irange)
-    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
-    isoutside_gpu = adapt_field_to_gpu(isoutside, backend)
+    check = _has_isoutside(isoutside)
+    isoutside_gpu = check ? adapt_field_to_gpu(isoutside, backend) : nothing
     time_type = typeof(tspan[1] + dt)
     saved_times = _build_saved_times(
         tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
@@ -513,17 +598,26 @@ function _solve_raw!(
     end
 
     if !dense
-        status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
-        kernel! = boris_trajectory_kernel!(backend, workgroup_size)
-        kernel!(
-            xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
-            isoutside_gpu, check, status; ndrange = n_particles
-        )
+        if check
+            status = KA.zeros(backend, Int, n_particles)
+            kernel! = boris_trajectory_checked_kernel!(backend, workgroup_size)
+            kernel!(
+                xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
+                isoutside_gpu, status; ndrange = n_particles
+            )
+        else
+            status = nothing
+            kernel! = boris_trajectory_kernel!(backend, workgroup_size)
+            kernel!(
+                xv_current, p_gpu, dt, tspan[1], nt, offset, alg;
+                ndrange = n_particles
+            )
+        end
         synchronize(backend)
 
         xv_host = _staging_array(backend, T, (n_total, 6); pin)
         copyto!(xv_host, xv_current)
-        status_host = _copy_to_host(status, n_particles, check)
+        status_host = _copy_to_host(status, n_particles)
         if alias
             return (;
                 u = reshape(xv_host, n_total, 6, 1), t = saved_times,
@@ -540,45 +634,69 @@ function _solve_raw!(
 
     u = _staging_array(backend, T, (n_total, 6, nout); pin)
     saved_gpu = KA.zeros(backend, T, n_total, 6, nout)
-    status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
-    nout_out = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
-    if use_saveat(plan)
-        plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
-        nsave = length(plan.times)
-        kernel! = boris_saveat_kernel!(backend, workgroup_size)
-        kernel!(
-            saved_gpu, xv_current, plan_times_gpu, p_gpu, dt,
-            tspan[1], nt, nsave, plan.dir, save_start, save_end,
-            offset, alg, isoutside_gpu, check, status, nout_out;
-            ndrange = n_particles
-        )
+    if check
+        status = KA.zeros(backend, Int, n_particles)
+        nout_out = KA.zeros(backend, Int, n_particles)
+        if use_saveat(plan)
+            plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
+            nsave = length(plan.times)
+            kernel! = boris_saveat_checked_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_gpu, xv_current, plan_times_gpu, p_gpu, dt,
+                tspan[1], nt, nsave, plan.dir, save_start, save_end,
+                offset, alg, isoutside_gpu, status, nout_out;
+                ndrange = n_particles
+            )
+        else
+            kernel! = boris_everystep_checked_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_gpu, xv_current, p_gpu, dt,
+                tspan[1], nt, save_start, save_end,
+                offset, alg, isoutside_gpu, status, nout_out;
+                ndrange = n_particles
+            )
+        end
     else
-        kernel! = boris_everystep_kernel!(backend, workgroup_size)
-        kernel!(
-            saved_gpu, xv_current, p_gpu, dt,
-            tspan[1], nt, save_start, save_end,
-            offset, alg, isoutside_gpu, check, status, nout_out;
-            ndrange = n_particles
-        )
+        status = nothing
+        nout_out = nothing
+        if use_saveat(plan)
+            plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
+            nsave = length(plan.times)
+            kernel! = boris_saveat_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_gpu, xv_current, plan_times_gpu, p_gpu, dt,
+                tspan[1], nt, nsave, plan.dir, save_start, save_end,
+                offset, alg; ndrange = n_particles
+            )
+        else
+            kernel! = boris_everystep_kernel!(backend, workgroup_size)
+            kernel!(
+                saved_gpu, xv_current, p_gpu, dt,
+                tspan[1], nt, save_start, save_end,
+                offset, alg; ndrange = n_particles
+            )
+        end
     end
     synchronize(backend)
     copyto!(u, saved_gpu)
 
-    status_host = _copy_to_host(status, n_particles, check)
-    nout_out_host = _copy_to_host(nout_out, n_particles, check)
+    status_host = _copy_to_host(status, n_particles)
+    nout_out_host = _copy_to_host(nout_out, n_particles)
     _freeze_trailing!(u, status_host, nout_out_host, nout)
 
     return (; u, t = saved_times, terminated = _terminated_flags(status_host, n_total))
 end
 
 """
-    _copy_to_host(status, n, check) -> Union{Nothing, Vector{Int}}
+    _copy_to_host(status, n) -> Union{Nothing, Vector{Int}}
 
 Bring a device-side status array back to the host, or `nothing` when no boundary
-check is active and it was never written.
+check was active.
 """
-function _copy_to_host(status, n::Int, check::Bool)
-    check || return nothing
+_copy_to_host(::Nothing, ::Int) = nothing
+_copy_to_host(status, n::Int, check::Bool) = check ? _copy_to_host(status, n) : nothing
+
+function _copy_to_host(status::AbstractArray, n::Int)
     host = Vector{Int}(undef, n)
     copyto!(host, status)
     return host
@@ -599,14 +717,14 @@ function _solve_kernel_serial(
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_init, is_cpu_accessible::Bool,
         p_gpu, p_host, alg, nout::Int, nt::Int,
-        pin::Bool = false, isoutside = ODE_DEFAULT_ISOUTOFDOMAIN
-    )
+        pin::Bool = false, isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN
+    ) where {F}
     (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
     offset = irange.start - 1
-    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
-    isoutside_gpu = adapt_field_to_gpu(isoutside, backend)
+    check = _has_isoutside(isoutside)
+    isoutside_gpu = check ? adapt_field_to_gpu(isoutside, backend) : nothing
     time_type = typeof(tspan[1] + dt)
     saved_times = _build_saved_times(
         tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
@@ -624,15 +742,22 @@ function _solve_kernel_serial(
         )
     end
 
-    status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
-    nout_out = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
-
     if !use_saveat(plan) && !save_everystep
-        traj_kernel! = boris_trajectory_kernel!(backend, workgroup_size)
-        traj_kernel!(
-            xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
-            isoutside_gpu, check, status; ndrange = n_particles
-        )
+        if check
+            status = KA.zeros(backend, Int, n_particles)
+            traj_kernel! = boris_trajectory_checked_kernel!(backend, workgroup_size)
+            traj_kernel!(
+                xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
+                isoutside_gpu, status; ndrange = n_particles
+            )
+        else
+            status = nothing
+            traj_kernel! = boris_trajectory_kernel!(backend, workgroup_size)
+            traj_kernel!(
+                xv_current, p_gpu, dt, tspan[1], nt, offset, alg;
+                ndrange = n_particles
+            )
+        end
         synchronize(backend)
 
         xv_cpu_end = is_cpu_accessible ? xv_current : zeros(T, size(xv_current, 1), 6)
@@ -643,31 +768,55 @@ function _solve_kernel_serial(
         _unpack_endpoint_solutions!(
             sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start,
             save_end, prob, alg, T;
-            status = _copy_to_host(status, n_particles, check),
+            status = _copy_to_host(status, n_particles),
             t0 = tspan[1], dt
         )
     else
         n_total = size(xv_current, 1)
         saved_data_gpu = KA.zeros(backend, T, n_total, 6, nout)
 
-        if use_saveat(plan)
-            plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
-            nsave = length(plan.times)
-            kernel! = boris_saveat_kernel!(backend, workgroup_size)
-            kernel!(
-                saved_data_gpu, xv_current, plan_times_gpu, p_gpu, dt,
-                tspan[1], nt, nsave, plan.dir, save_start, save_end,
-                offset, alg, isoutside_gpu, check, status, nout_out;
-                ndrange = n_particles
-            )
+        if check
+            status = KA.zeros(backend, Int, n_particles)
+            nout_out = KA.zeros(backend, Int, n_particles)
+            if use_saveat(plan)
+                plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
+                nsave = length(plan.times)
+                kernel! = boris_saveat_checked_kernel!(backend, workgroup_size)
+                kernel!(
+                    saved_data_gpu, xv_current, plan_times_gpu, p_gpu, dt,
+                    tspan[1], nt, nsave, plan.dir, save_start, save_end,
+                    offset, alg, isoutside_gpu, status, nout_out;
+                    ndrange = n_particles
+                )
+            else
+                kernel! = boris_everystep_checked_kernel!(backend, workgroup_size)
+                kernel!(
+                    saved_data_gpu, xv_current, p_gpu, dt,
+                    tspan[1], nt, save_start, save_end,
+                    offset, alg, isoutside_gpu, status, nout_out;
+                    ndrange = n_particles
+                )
+            end
         else
-            kernel! = boris_everystep_kernel!(backend, workgroup_size)
-            kernel!(
-                saved_data_gpu, xv_current, p_gpu, dt,
-                tspan[1], nt, save_start, save_end,
-                offset, alg, isoutside_gpu, check, status, nout_out;
-                ndrange = n_particles
-            )
+            status = nothing
+            nout_out = nothing
+            if use_saveat(plan)
+                plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
+                nsave = length(plan.times)
+                kernel! = boris_saveat_kernel!(backend, workgroup_size)
+                kernel!(
+                    saved_data_gpu, xv_current, plan_times_gpu, p_gpu, dt,
+                    tspan[1], nt, nsave, plan.dir, save_start, save_end,
+                    offset, alg; ndrange = n_particles
+                )
+            else
+                kernel! = boris_everystep_kernel!(backend, workgroup_size)
+                kernel!(
+                    saved_data_gpu, xv_current, p_gpu, dt,
+                    tspan[1], nt, save_start, save_end,
+                    offset, alg; ndrange = n_particles
+                )
+            end
         end
         synchronize(backend)
 
@@ -681,8 +830,8 @@ function _solve_kernel_serial(
 
         _unpack_dense_solutions!(
             sols, irange, saved_data_buf, saved_times, nout, prob, alg, T;
-            status = _copy_to_host(status, n_particles, check),
-            nout_out = _copy_to_host(nout_out, n_particles, check),
+            status = _copy_to_host(status, n_particles),
+            nout_out = _copy_to_host(nout_out, n_particles),
             t0 = tspan[1], dt, save_end
         )
     end

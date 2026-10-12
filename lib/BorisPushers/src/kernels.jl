@@ -118,12 +118,9 @@ end
     return
 end
 
-# The trajectory kernels below take an optional out-of-domain check. `isoutside`
-# follows the `(u, p, t)` convention of the `isoutside` solve keyword and `check`
-# says whether it is active, so a solve without one pays nothing for it. When a
-# step ends outside the domain it is rolled back, exactly as the native CPU
-# solvers do: the trace stops at the last state inside the domain and nothing
-# out of it is ever saved.
+# The trajectory kernels below provide both unchecked and checked paths.
+# Unchecked kernels retain maximum occupancy and zero register or branching
+# overhead when no out-of-domain callback is requested.
 #
 # `status[i]` reports how a trace ended: `0` when it ran the full time span, and
 # otherwise the 1-based index of the rejected step, which is `1` when the very
@@ -133,8 +130,38 @@ end
 # `nout` of them, so it is left unwritten there.
 
 @kernel function boris_trajectory_kernel!(
+        xv, p, @Const(dt), @Const(t0), @Const(nt), @Const(offset), @Const(alg)
+    )
+    idx = @index(Global)
+    i = idx + offset
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
+
+    for it in 1:nt
+        t = t0 + (it - 1) * dt
+        r, v_half = advance_boris(v_half, r, dt, t, p, alg)
+    end
+
+    t_end = t0 + nt * dt
+    v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
+
+    @inbounds begin
+        xv[i, 1] = r[1]
+        xv[i, 2] = r[2]
+        xv[i, 3] = r[3]
+        xv[i, 4] = v_end[1]
+        xv[i, 5] = v_end[2]
+        xv[i, 6] = v_end[3]
+    end
+end
+
+@kernel function boris_trajectory_checked_kernel!(
         xv, p, @Const(dt), @Const(t0), @Const(nt), @Const(offset), @Const(alg),
-        @Const(isoutside), @Const(check), status
+        @Const(isoutside), status
     )
     idx = @index(Global)
     i = idx + offset
@@ -152,13 +179,11 @@ end
         t = t0 + (it - 1) * dt
         r_new, v_half_new = advance_boris(v_half, r, dt, t, p, alg)
 
-        if check
-            t_current = t0 + it * dt
-            v_node = update_velocity_node(v_half_new, r_new, dt, t_current, p, alg)
-            if isoutside(vcat(r_new, v_node), p, t_current)
-                rejected = it
-                break
-            end
+        t_current = t0 + it * dt
+        v_node = update_velocity_node(v_half_new, r_new, dt, t_current, p, alg)
+        if isoutside(vcat(r_new, v_node), p, t_current)
+            rejected = it
+            break
         end
 
         r, v_half = r_new, v_half_new
@@ -184,8 +209,7 @@ end
 @kernel function boris_saveat_kernel!(
         saved_data, @Const(xv), @Const(plan_times), p, @Const(dt),
         @Const(t0), @Const(nt), @Const(nsave), @Const(dir),
-        @Const(save_start), @Const(save_end), @Const(offset), @Const(alg),
-        @Const(isoutside), @Const(check), status, nout_out
+        @Const(save_start), @Const(save_end), @Const(offset), @Const(alg)
     )
     idx = @index(Global)
     i = idx + offset
@@ -213,7 +237,92 @@ end
     v_half_prev = v_half
     t_prev = t0
 
-    # The time of the last state written, for the duplicate check below.
+    for it in 1:nt
+        t_current = t0 + it * dt
+        r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p, alg)
+
+        if isave <= nsave && @inbounds saveat_reached(plan_times[isave], t_current, dir)
+            v_prev = update_velocity_node(v_half_prev, r_prev, dt, t_prev, p, alg)
+            v_cur = update_velocity_node(v_half, r, dt, t_current, p, alg)
+
+            y_prev = SVector(
+                r_prev[1], r_prev[2], r_prev[3],
+                v_prev[1], v_prev[2], v_prev[3]
+            )
+            y_cur = SVector(
+                r[1], r[2], r[3],
+                v_cur[1], v_cur[2], v_cur[3]
+            )
+
+            while isave <= nsave &&
+                    @inbounds saveat_reached(plan_times[isave], t_current, dir)
+                t_target = @inbounds plan_times[isave]
+                y_target = saveat_interpolate(t_prev, y_prev, t_current, y_cur, t_target)
+                iout += 1
+                @inbounds begin
+                    saved_data[i, 1, iout] = y_target[1]
+                    saved_data[i, 2, iout] = y_target[2]
+                    saved_data[i, 3, iout] = y_target[3]
+                    saved_data[i, 4, iout] = y_target[4]
+                    saved_data[i, 5, iout] = y_target[5]
+                    saved_data[i, 6, iout] = y_target[6]
+                end
+                isave += 1
+            end
+        end
+
+        r_prev = r
+        v_half_prev = v_half
+        t_prev = t_current
+    end
+
+    if save_end
+        t_end = t0 + nt * dt
+        v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
+        iout += 1
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v_end[1]
+            saved_data[i, 5, iout] = v_end[2]
+            saved_data[i, 6, iout] = v_end[3]
+        end
+    end
+end
+
+@kernel function boris_saveat_checked_kernel!(
+        saved_data, @Const(xv), @Const(plan_times), p, @Const(dt),
+        @Const(t0), @Const(nt), @Const(nsave), @Const(dir),
+        @Const(save_start), @Const(save_end), @Const(offset), @Const(alg),
+        @Const(isoutside), status, nout_out
+    )
+    idx = @index(Global)
+    i = idx + offset
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
+
+    iout = 0
+    if save_start
+        iout += 1
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v[1]
+            saved_data[i, 5, iout] = v[2]
+            saved_data[i, 6, iout] = v[3]
+        end
+    end
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
+    isave = 1
+    r_prev = r
+    v_half_prev = v_half
+    t_prev = t0
+
     t_out_last = t0
     has_out = save_start
     rejected = 0
@@ -222,13 +331,11 @@ end
         t_current = t0 + it * dt
         r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p, alg)
 
-        if check
-            v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
-            if isoutside(vcat(r, v_node), p, t_current)
-                r, v_half = r_prev, v_half_prev
-                rejected = it
-                break
-            end
+        v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
+        if isoutside(vcat(r, v_node), p, t_current)
+            r, v_half = r_prev, v_half_prev
+            rejected = it
+            break
         end
 
         if isave <= nsave && @inbounds saveat_reached(plan_times[isave], t_current, dir)
@@ -268,13 +375,8 @@ end
         t_prev = t_current
     end
 
-    # A rejected trace ends at the start of the rejected step, which is where
-    # the state was rolled back to; otherwise the span ends where it always did.
     t_end = rejected > 0 ? t_prev : (t0 + nt * dt)
 
-    # The duplicate guard only matters for a rejected trace, whose end can
-    # coincide with a `saveat` time or with the start; a trace that ran to
-    # completion always ends beyond every saved time.
     if save_end && (rejected == 0 || !has_out || dir * (t_end - t_out_last) > 0)
         v_end = update_velocity_node(v_half, r, dt, t_end, p, alg)
         iout += 1
@@ -297,8 +399,7 @@ end
 @kernel function boris_everystep_kernel!(
         saved_data, @Const(xv), p, @Const(dt),
         @Const(t0), @Const(nt), @Const(save_start), @Const(save_end),
-        @Const(offset), @Const(alg),
-        @Const(isoutside), @Const(check), status, nout_out
+        @Const(offset), @Const(alg)
     )
     idx = @index(Global)
     i = idx + offset
@@ -322,34 +423,78 @@ end
 
     v_half = update_velocity_half(v, r, dt, t0, p, alg)
 
+    for it in 1:nt
+        t_prev = t0 + (it - 1) * dt
+        r, v_half = advance_boris(v_half, r, dt, t_prev, p, alg)
+        t_current = t0 + it * dt
+
+        if it < nt || save_end
+            v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
+            iout += 1
+            @inbounds begin
+                saved_data[i, 1, iout] = r[1]
+                saved_data[i, 2, iout] = r[2]
+                saved_data[i, 3, iout] = r[3]
+                saved_data[i, 4, iout] = v_node[1]
+                saved_data[i, 5, iout] = v_node[2]
+                saved_data[i, 6, iout] = v_node[3]
+            end
+        end
+    end
+end
+
+@kernel function boris_everystep_checked_kernel!(
+        saved_data, @Const(xv), p, @Const(dt),
+        @Const(t0), @Const(nt), @Const(save_start), @Const(save_end),
+        @Const(offset), @Const(alg),
+        @Const(isoutside), status, nout_out
+    )
+    idx = @index(Global)
+    i = idx + offset
+    @inbounds begin
+        r = SVector(xv[i, 1], xv[i, 2], xv[i, 3])
+        v = SVector(xv[i, 4], xv[i, 5], xv[i, 6])
+    end
+
+    iout = 0
+    if save_start
+        iout += 1
+        @inbounds begin
+            saved_data[i, 1, iout] = r[1]
+            saved_data[i, 2, iout] = r[2]
+            saved_data[i, 3, iout] = r[3]
+            saved_data[i, 4, iout] = v[1]
+            saved_data[i, 5, iout] = v[2]
+            saved_data[i, 6, iout] = v[3]
+        end
+    end
+
+    v_half = update_velocity_half(v, r, dt, t0, p, alg)
     rejected = 0
 
     for it in 1:nt
         t_prev = t0 + (it - 1) * dt
-        if check
-            r_prev = r
-            v_half_prev = v_half
-        end
+        r_prev = r
+        v_half_prev = v_half
         r, v_half = advance_boris(v_half, r, dt, t_prev, p, alg)
         t_current = t0 + it * dt
 
-        if check || it < nt || save_end
-            v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
-            if check && isoutside(vcat(r, v_node), p, t_current)
-                r, v_half = r_prev, v_half_prev
-                rejected = it
-                break
-            end
-            if it < nt || save_end
-                iout += 1
-                @inbounds begin
-                    saved_data[i, 1, iout] = r[1]
-                    saved_data[i, 2, iout] = r[2]
-                    saved_data[i, 3, iout] = r[3]
-                    saved_data[i, 4, iout] = v_node[1]
-                    saved_data[i, 5, iout] = v_node[2]
-                    saved_data[i, 6, iout] = v_node[3]
-                end
+        v_node = update_velocity_node(v_half, r, dt, t_current, p, alg)
+        if isoutside(vcat(r, v_node), p, t_current)
+            r, v_half = r_prev, v_half_prev
+            rejected = it
+            break
+        end
+
+        if it < nt || save_end
+            iout += 1
+            @inbounds begin
+                saved_data[i, 1, iout] = r[1]
+                saved_data[i, 2, iout] = r[2]
+                saved_data[i, 3, iout] = r[3]
+                saved_data[i, 4, iout] = v_node[1]
+                saved_data[i, 5, iout] = v_node[2]
+                saved_data[i, 6, iout] = v_node[3]
             end
         end
     end
