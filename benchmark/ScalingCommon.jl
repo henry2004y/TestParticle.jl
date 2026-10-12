@@ -93,6 +93,16 @@ const CSV_HEADER = [
     "particles", "steps", "median_s", "msteps_per_s",
 ]
 
+"""
+    throughput(p::ScalingPoint) -> Float64
+
+Millions of particle-steps per second for a recorded point, taken from the workload that
+the point carries. Use this for stored data: `throughput(t_s)` uses the configured
+`N_PARTICLES` and `N_STEPS`, so it is only right for a point measured in this session, and
+a collected sweep from a run at a different size would report the wrong rate.
+"""
+throughput(p::ScalingPoint) = p.particles * p.steps / (p.median_s * 1.0e6)
+
 # Progress lines should appear promptly even when SLURM redirects stdout to a file.
 function progress(msg::AbstractString)
     println(msg)
@@ -166,7 +176,7 @@ function write_points(path::AbstractString, points)
                 p.mode, p.units, string(p.count), string(p.workers),
                 string(p.threads_per_worker), p.ensemble_alg, string(p.particles),
                 string(p.steps), @sprintf("%.6f", p.median_s),
-                @sprintf("%.3f", throughput(p.median_s)),
+                @sprintf("%.3f", throughput(p)),
             )
             println(io, join(row, ','))
         end

@@ -139,7 +139,7 @@ function print_points(points)
     for (p, s) in zip(points, speedup)
         @printf(
             "%-12s | %-13s | %-9d | %10.3f | %12.2f | %7.2fx\n",
-            p.mode, p.ensemble_alg, p.count, p.median_s, throughput(p.median_s), s
+            p.mode, p.ensemble_alg, p.count, p.median_s, throughput(p), s
         )
     end
     return nothing
