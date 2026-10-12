@@ -1,0 +1,4 @@
+mode,units,count,workers,threads_per_worker,ensemble_alg,particles,steps,median_s,msteps_per_s
+multinode,nodes,1,1,128,SplitThreads,65536,250000,23.221897,705.541
+multinode,nodes,2,2,128,SplitThreads,65536,250000,12.319106,1329.967
+multinode,nodes,4,4,128,SplitThreads,65536,250000,8.167541,2005.989

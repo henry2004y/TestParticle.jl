@@ -57,9 +57,15 @@ The following table compares the performance of TestParticle's Boris solver agai
 
 ### Parallel Scaling
 
-TestParticle.jl supports both multithreading and distributed computing for ensemble simulations on CPUs. The following results were obtained on a Perlmutter 1 CPU node (2x AMD EPYC 7763). The multithreading performance is measured using `EnsembleThreads()`, while the distributed performance is measured using `EnsembleDistributed()`.
+TestParticle.jl supports multithreading, distributed computing, and multi-node parallelism for ensemble simulations on CPUs. The following aggregate throughput was obtained on a Perlmutter CPU node (2x AMD EPYC 7763, 128 physical cores). Each ensemble traces a uniform magnetic field with the Boris solver and saves 100 points per trajectory; the single-node sweeps trace 16384 particles, and the multi-node sweep 65536.
 
-![Strong Scaling](./figures/scaling_combined.png)
+- *Multithreading*: `EnsembleThreads()` over 1 to 128 threads in one process.
+- *Distributed*: `EnsembleDistributed()` over 1 to 128 worker processes on one node.
+- *Multi-node*: `EnsembleSplitThreads()` with one worker per node, each worker running 128 threads, over 1 to 4 nodes.
+
+![CPU Scaling Throughput](./figures/scaling_cpu.png)
+
+Reproducible scripts and the recorded measurements live in [benchmark](https://github.com/henry2004y/TestParticle.jl/tree/master/benchmark); render the figure with `benchmark/plot_scaling.jl cpu`.
 
 ### GPU Performance and Multi-Backend Scaling
 

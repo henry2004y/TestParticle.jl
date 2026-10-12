@@ -1,9 +1,9 @@
 mode,units,count,workers,threads_per_worker,ensemble_alg,particles,steps,median_s,msteps_per_s
-distributed,workers,1,1,1,Distributed,16384,250000,285.061,14.369
-distributed,workers,2,2,1,Distributed,16384,250000,142.613,28.721
-distributed,workers,4,4,1,Distributed,16384,250000,71.785,57.059
-distributed,workers,8,8,1,Distributed,16384,250000,36.779,111.368
-distributed,workers,16,16,1,Distributed,16384,250000,19.914,205.684
-distributed,workers,32,32,1,Distributed,16384,250000,12.620,324.564
-distributed,workers,64,64,1,Distributed,16384,250000,6.192,661.499
-distributed,workers,128,128,1,Distributed,16384,250000,3.737,1096.066
+distributed,workers,1,1,1,Distributed,16384,250000,287.003996,14.272
+distributed,workers,2,2,1,Distributed,16384,250000,141.594338,28.928
+distributed,workers,4,4,1,Distributed,16384,250000,71.386852,57.378
+distributed,workers,8,8,1,Distributed,16384,250000,36.608412,111.887
+distributed,workers,16,16,1,Distributed,16384,250000,20.192756,202.845
+distributed,workers,32,32,1,Distributed,16384,250000,12.442849,329.185
+distributed,workers,64,64,1,Distributed,16384,250000,6.164446,664.455
+distributed,workers,128,128,1,Distributed,16384,250000,3.646648,1123.223

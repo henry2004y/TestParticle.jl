@@ -8,6 +8,7 @@
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl threads
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl distributed
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl multinode
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl cpu
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl all
 #
 # Options:
@@ -20,6 +21,9 @@
 #   threads      EnsembleThreads alone
 #   distributed  EnsembleDistributed alone
 #   multinode    EnsembleSplitThreads against EnsembleDistributed across nodes
+#   cpu          every CPU sweep on one axis: throughput against the cores used, which
+#                is the only axis the three sweeps can share, since throughput is a rate
+#                and the sweeps use different ensemble sizes
 #
 # From Julia, the same figures are available as
 #
@@ -59,6 +63,7 @@ const OUTPUT_FILES = Dict(
     :threads => joinpath(BENCH_DIR, "threads_scaling.png"),
     :distributed => joinpath(BENCH_DIR, "distributed_scaling.png"),
     :multinode => joinpath(BENCH_DIR, "multinode_scaling.png"),
+    :cpu => joinpath(FIG_DIR, "scaling_cpu.png"),
 )
 
 """
@@ -230,6 +235,74 @@ function plot_combined(;
     return out_path
 end
 
+"""
+    plot_cpu(; kwargs...)
+
+Plot every CPU sweep on one axis: aggregate throughput against the number of cores used.
+The single node sweeps and the multi-node sweep trace different ensemble sizes, but
+throughput is a rate, so they share an axis; the particle count is part of each label so
+the difference stays visible. Each multi-node point contributes `threads_per_worker` cores
+per node, so that series extends the axis past a single node.
+
+A dashed line shows ideal scaling at the measured single-core rate for comparison.
+
+# Keywords
+- `out_path`: file to save the figure to.
+- `machine`: machine name shown in the title.
+"""
+function plot_cpu(; out_path = OUTPUT_FILES[:cpu], machine = DEFAULT_MACHINE)
+    for (key, f) in INPUT_FILES
+        isfile(joinpath(BENCH_DIR, f)) ||
+            error("$(f) is missing; run `run_scaling.jl $(key)` first.")
+    end
+    threads = read_points(INPUT_FILES[:threads])
+    dist = read_points(INPUT_FILES[:distributed])
+    multi = read_points(INPUT_FILES[:multinode])
+    isempty(threads.count) && error("threads_scaling.csv holds no measurements.")
+    isempty(dist.count) && error("distributed_scaling.csv holds no measurements.")
+    isempty(multi.count) && error("multinode_scaling.csv holds no measurements.")
+
+    rate(data) = (data.particles * data.steps) ./ (data.median_s .* 1.0e6)
+    multi_cores = multi.count .* multi.threads_per_worker[1]
+    series = [
+        ("Multithreading, $(threads.particles) particles", threads.count, rate(threads)),
+        ("Distributed, $(dist.particles) particles", dist.count, rate(dist)),
+        ("Multi-node SplitThreads, $(multi.particles) particles", multi_cores, rate(multi)),
+    ]
+    xticks = sort(unique(vcat([s[2] for s in series]...)))
+
+    fig = Figure(; size = (1000, 620), fontsize = 19)
+    ax = Axis(
+        fig[1, 1];
+        xscale = log2,
+        yscale = log2,
+        xlabel = "CPU Cores Used",
+        ylabel = "Particle-steps per Second (millions)",
+        title = "CPU Scaling Throughput on $(machine)",
+        xticks = xticks,
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+    )
+
+    for (label, x, y) in series
+        scatterlines!(ax, x, y; label = label, linewidth = 3, markersize = 12)
+    end
+
+    base = rate(threads)[1]
+    ideal_x = [minimum(xticks), maximum(xticks)]
+    lines!(
+        ax, ideal_x, base .* Float64.(ideal_x);
+        color = :black, linestyle = :dash, linewidth = 2, label = "Ideal (from 1 core)"
+    )
+
+    axislegend(ax; position = :lt)
+
+    mkpath(dirname(out_path))
+    save(out_path, fig)
+    println("CPU throughput plot saved to: ", out_path)
+    return out_path
+end
+
 plot_threads(; kwargs...) = plot_mode(:threads; kwargs...)
 
 plot_distributed(; kwargs...) = plot_mode(:distributed; kwargs...)
@@ -241,9 +314,10 @@ const PLOT_METHODS = Dict(
     :threads => plot_threads,
     :distributed => plot_distributed,
     :multinode => plot_multinode,
+    :cpu => plot_cpu,
 )
 
-const METHOD_NAMES = ["combined", "threads", "distributed", "multinode"]
+const METHOD_NAMES = ["combined", "threads", "distributed", "multinode", "cpu"]
 
 """
     plot_scaling(method::Symbol; kwargs...)
