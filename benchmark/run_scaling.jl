@@ -38,6 +38,9 @@
 # environment, see ScalingCommon.jl. Extra sbatch flags go in TP_SBATCH_ARGS, e.g.
 #   TP_SBATCH_ARGS="--account=m1234 --qos=regular" julia ... run_scaling.jl multinode
 #
+# Sweeping a subset of counts updates those rows in place instead of replacing the table,
+# so one doubtful point can be re-measured without repeating the whole sweep.
+#
 # `multinode` times `TP_MULTINODE_ALGS`, a comma-separated list defaulting to
 # SplitThreads,Distributed. Raise `TP_N_PARTICLES` for the node sweep: at 16384 particles
 # eight nodes leaves only 16 trajectories per thread, so overhead dominates the top of the
@@ -173,10 +176,11 @@ end
 function point_threads(count)
     actual = Threads.nthreads()
     actual == count || @warn "Julia started with $actual threads" requested = count
-    t = measure(EnsembleThreads(), make_problem())
+    timing = measure(EnsembleThreads(), make_problem())
     return [
         ScalingPoint(
-            "threads", "threads", actual, 1, actual, "Threads", N_PARTICLES, N_STEPS, t,
+            "threads", "threads", actual, 1, actual, "Threads", N_PARTICLES, N_STEPS,
+            timing.median, timing.min, timing.max,
         ),
     ]
 end
@@ -185,11 +189,11 @@ function point_distributed(count)
     pids = addprocs(count; exeflags = ["--project=$(Base.active_project())"])
     try
         setup_workers(pids)
-        t = measure(EnsembleDistributed(), make_problem())
+        timing = measure(EnsembleDistributed(), make_problem())
         return [
             ScalingPoint(
                 "distributed", "workers", nworkers(), nworkers(), 1, "Distributed",
-                N_PARTICLES, N_STEPS, t,
+                N_PARTICLES, N_STEPS, timing.median, timing.min, timing.max,
             ),
         ]
     finally
@@ -243,7 +247,7 @@ function point_multinode(count)
         return [
             ScalingPoint(
                 "multinode", "nodes", n_nodes, length(pids), threads_per_worker,
-                name, N_PARTICLES, N_STEPS, t,
+                name, N_PARTICLES, N_STEPS, t.median, t.min, t.max,
             ) for (name, t) in results
         ]
     finally
@@ -284,7 +288,7 @@ function run_local_sweep(mode, counts)
     )
     progress("$N_PARTICLES particles, $N_STEPS steps, $N_SAMPLES sample(s) per point")
     progress("Each point runs in its own process; the smallest count is the slowest.")
-    progress("Output: $out_path")
+    progress("Output: $out_path (re-measured counts replace stored rows)")
     progress("="^72)
     tmp = mktempdir(BENCH_DIR)
     points = ScalingPoint[]
@@ -301,10 +305,12 @@ function run_local_sweep(mode, counts)
     finally
         rm(tmp; recursive = true, force = true)
     end
-    sort!(points; by = p -> (p.count, p.ensemble_alg))
-    write_points(out_path, points)
-    print_points(points)
-    println("\nSaved $out_path")
+    stored = isfile(out_path) ? read_points(out_path) : ScalingPoint[]
+    merged = merge_points(stored, points)
+    sort!(merged; by = p -> (p.count, p.ensemble_alg))
+    write_points(out_path, merged)
+    print_points(merged)
+    println("\nSaved $(length(merged)) row(s) to $out_path")
     return out_path
 end
 

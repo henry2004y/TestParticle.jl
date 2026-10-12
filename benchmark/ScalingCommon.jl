@@ -15,6 +15,9 @@ reduced without editing code:
 - `TP_N_SAMPLES`: timed repetitions, median is reported (default 3).
 - `TP_N_WARMUP`: trajectories in the small compile warmup (default 16). Every point then
   runs one full-size untimed warmup, see `measure`.
+
+Each point records the median of its repetitions together with the fastest and slowest one,
+so a figure can show how much the repetitions disagreed.
 """
 module ScalingCommon
 
@@ -25,7 +28,7 @@ using Printf
 using DelimitedFiles
 
 export ScalingPoint, CSV_HEADER, N_PARTICLES, N_STEPS, N_SAMPLES, throughput,
-    make_problem, measure, speedups, write_points, read_points, progress
+    make_problem, measure, speedups, write_points, read_points, merge_points, progress
 
 # An exported-but-empty variable counts as unset rather than as a parse error.
 env_int(name, default) = (v = strip(get(ENV, name, "")); isempty(v) ? default : parse(Int, v))
@@ -74,7 +77,8 @@ One measured point of a scaling curve. `count` is the swept axis and `units` nam
 (`"threads"`, `"workers"` or `"nodes"`); `workers` and `threads_per_worker` record how
 the point was provisioned, and `ensemble_alg` is the algorithm that was timed.
 `particles` and `steps` describe the workload, so measurements taken at different
-problem sizes stay distinguishable.
+problem sizes stay distinguishable. `min_s` and `max_s` are the fastest and slowest
+repetition behind `median_s`.
 """
 struct ScalingPoint
     mode::String
@@ -86,9 +90,19 @@ struct ScalingPoint
     particles::Int
     steps::Int
     median_s::Float64
+    min_s::Float64
+    max_s::Float64
 end
 
 const CSV_HEADER = [
+    "mode", "units", "count", "workers", "threads_per_worker", "ensemble_alg",
+    "particles", "steps", "median_s", "min_s", "max_s", "msteps_per_s",
+]
+
+# Written before the sample range was recorded. Still accepted on read, with `min_s` and
+# `max_s` set to the median, so a figure drawn from older measurements carries no bars
+# rather than refusing to draw.
+const LEGACY_CSV_HEADER = [
     "mode", "units", "count", "workers", "threads_per_worker", "ensemble_alg",
     "particles", "steps", "median_s", "msteps_per_s",
 ]
@@ -111,9 +125,10 @@ function progress(msg::AbstractString)
 end
 
 """
-    measure(ensemblealg, prob) -> Float64
+    measure(ensemblealg, prob) -> (; median, min, max)
 
-Median wall time in seconds over `N_SAMPLES` runs. Two untimed runs come first: a small
+Timing over `N_SAMPLES` runs: the median wall time in seconds plus the fastest and slowest
+repetition. Two untimed runs come first: a small
 one with `N_WARMUP` trajectories that compiles the solver on every worker, then one at the
 full `N_PARTICLES` size. Without the second, the first timed sample is also the first time
 the process handles the whole ensemble, and it can come out twice as slow as the rest,
@@ -144,8 +159,13 @@ function measure(ensemblealg, prob)
         )
     end
     t = median(samples)
-    progress(@sprintf("  median: %.3f s", t))
-    return t
+    progress(
+        @sprintf(
+            "  median: %.3f s (range %.3f to %.3f)",
+            t, minimum(samples), maximum(samples)
+        )
+    )
+    return (; median = t, min = minimum(samples), max = maximum(samples))
 end
 
 """
@@ -176,6 +196,7 @@ function write_points(path::AbstractString, points)
                 p.mode, p.units, string(p.count), string(p.workers),
                 string(p.threads_per_worker), p.ensemble_alg, string(p.particles),
                 string(p.steps), @sprintf("%.6f", p.median_s),
+                @sprintf("%.6f", p.min_s), @sprintf("%.6f", p.max_s),
                 @sprintf("%.3f", throughput(p)),
             )
             println(io, join(row, ','))
@@ -188,22 +209,54 @@ end
     read_points(path) -> Vector{ScalingPoint}
 
 Parse a CSV written by [`write_points`](@ref). A file that holds only a header yields an
-empty vector.
+empty vector. A file written before the sample range was recorded is still accepted, with
+`min_s` and `max_s` set to the median, so it draws without error bars.
 """
 function read_points(path::AbstractString)
     data = readdlm(path, ',')
     size(data, 1) < 1 && return ScalingPoint[]
     header = String.(data[1, :])
-    header == CSV_HEADER || error(
+    legacy = header == LEGACY_CSV_HEADER
+    header == CSV_HEADER || legacy || error(
         "$path has columns $(join(header, ',')); expected $(join(CSV_HEADER, ','))"
     )
-    return [parse_point(data[i, :]) for i in 2:size(data, 1)]
+    return [parse_point(data[i, :], legacy) for i in 2:size(data, 1)]
 end
 
-parse_point(row) = ScalingPoint(
-    String(row[1]), String(row[2]), Int(Float64(row[3])), Int(Float64(row[4])),
-    Int(Float64(row[5])), String(row[6]), Int(Float64(row[7])), Int(Float64(row[8])),
-    Float64(row[9]),
-)
+function parse_point(row, legacy)
+    median_s = Float64(row[9])
+    min_s = legacy ? median_s : Float64(row[10])
+    max_s = legacy ? median_s : Float64(row[11])
+    return ScalingPoint(
+        String(row[1]), String(row[2]), Int(Float64(row[3])), Int(Float64(row[4])),
+        Int(Float64(row[5])), String(row[6]), Int(Float64(row[7])), Int(Float64(row[8])),
+        median_s, min_s, max_s,
+    )
+end
+
+"""
+    merge_points(existing, fresh) -> Vector{ScalingPoint}
+
+Fold freshly measured points into the table already on disk. A stored point whose mode,
+count and ensemble algorithm match a fresh point is replaced and the rest are kept, so
+re-measuring one suspicious count refreshes that row instead of discarding the sweep.
+Points stored at a different workload are dropped, since one table describes one problem
+size.
+"""
+function merge_points(existing, fresh)
+    isempty(existing) && return fresh
+    workload = (first(fresh).particles, first(fresh).steps)
+    key(p) = (p.mode, p.count, p.ensemble_alg)
+    fresh_keys = Set(key(p) for p in fresh)
+    kept = filter(existing) do p
+        (p.particles, p.steps) == workload && key(p) ∉ fresh_keys
+    end
+    dropped = count(p -> (p.particles, p.steps) != workload, existing)
+    dropped > 0 && progress(
+        "Dropped $dropped stored point(s) measured at a different workload; " *
+            "the table now holds $(workload[1]) particles, $(workload[2]) steps."
+    )
+    return vcat(kept, fresh)
+end
 
 end # module ScalingCommon

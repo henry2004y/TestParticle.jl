@@ -49,6 +49,13 @@ const DEFAULT_MACHINE = "Perlmutter"
 # run_scaling.jl fails loudly instead of being silently misread.
 const CSV_COLUMNS = [
     "mode", "units", "count", "workers", "threads_per_worker", "ensemble_alg",
+    "particles", "steps", "median_s", "min_s", "max_s", "msteps_per_s",
+]
+
+# Written before the sample range was recorded; still accepted, with `min_s` and `max_s`
+# equal to the median, so older measurements draw without error bars.
+const LEGACY_CSV_COLUMNS = [
+    "mode", "units", "count", "workers", "threads_per_worker", "ensemble_alg",
     "particles", "steps", "median_s", "msteps_per_s",
 ]
 
@@ -71,17 +78,23 @@ const OUTPUT_FILES = Dict(
 
 Read a scaling CSV written by run_scaling.jl, with `file` relative to the benchmark
 directory. Rows are returned in file order, which run_scaling.jl already sorts by the
-swept count. An input that holds only a header yields empty vectors.
+swept count. An input that holds only a header yields empty vectors. A file written before
+the sample range was recorded is accepted with `min_s` and `max_s` equal to `median_s`, so
+it draws without error bars.
 """
 function read_points(file::AbstractString)
     data = readdlm(joinpath(BENCH_DIR, file), ',')
     size(data, 1) < 2 && return empty_points()
     names = String.(data[1, :])
-    names == CSV_COLUMNS || error(
+    legacy = names == LEGACY_CSV_COLUMNS
+    names == CSV_COLUMNS || legacy || error(
         "$file was written by an older run_scaling.jl; columns $(names), " *
             "expected $(CSV_COLUMNS). Regenerate the measurements."
     )
     rows = data[2:end, :]
+    median_s = Float64.(rows[:, 9])
+    min_s = legacy ? median_s : Float64.(rows[:, 10])
+    max_s = legacy ? median_s : Float64.(rows[:, 11])
     return (
         mode = String.(rows[:, 1]),
         units = String.(rows[:, 2]),
@@ -91,7 +104,9 @@ function read_points(file::AbstractString)
         ensemble_alg = String.(rows[:, 6]),
         particles = Int(Float64(rows[1, 7])),
         steps = Int(Float64(rows[1, 8])),
-        median_s = Float64.(rows[:, 9]),
+        median_s = median_s,
+        min_s = min_s,
+        max_s = max_s,
     )
 end
 
@@ -105,6 +120,8 @@ empty_points() = (
     particles = 0,
     steps = 0,
     median_s = Float64[],
+    min_s = Float64[],
+    max_s = Float64[],
 )
 
 # Speedup of a curve against its own first point.
@@ -115,6 +132,22 @@ function ideal_line!(ax, counts)
     lines!(
         ax, x, Float64.(x);
         color = :black, linestyle = :dash, linewidth = 2, label = "Ideal Scaling"
+    )
+    return nothing
+end
+
+"""
+    with_errorbars!(ax, x, y, y_low, y_high)
+
+Draw asymmetric error bars spanning `y_low` to `y_high` at `x`. Nothing is drawn when both
+bounds coincide with `y`, which is what a CSV measured before the sample range was recorded
+produces, so those figures look exactly as they did.
+"""
+function with_errorbars!(ax, x, y, y_low, y_high)
+    all(y_low .== y) && all(y_high .== y) && return nothing
+    errorbars!(
+        ax, x, y, y .- y_low, y_high .- y;
+        color = :black, whiskerwidth = 10, linewidth = 1.5
     )
     return nothing
 end
@@ -166,9 +199,11 @@ function plot_mode(mode::Symbol;
 
     for alg in unique(data.ensemble_alg)
         sel = data.ensemble_alg .== alg
-        scatterlines!(
-            ax, data.count[sel], speedup(data.median_s[sel]);
-            label = alg, linewidth = 3, markersize = 14
+        base = data.median_s[sel][1]
+        y = base ./ data.median_s[sel]
+        scatterlines!(ax, data.count[sel], y; label = alg, linewidth = 3, markersize = 14)
+        with_errorbars!(
+            ax, data.count[sel], y, base ./ data.max_s[sel], base ./ data.min_s[sel]
         )
     end
     ideal_line!(ax, data.count)
@@ -224,7 +259,15 @@ function plot_combined(;
     scatterlines!(
         ax, counts, speedup(threads.median_s); label = "Multithreading", linewidth = 3
     )
+    with_errorbars!(
+        ax, counts, speedup(threads.median_s),
+        threads.median_s[1] ./ threads.max_s, threads.median_s[1] ./ threads.min_s,
+    )
     scatterlines!(ax, counts, speedup(dist.median_s); label = "Distributed", linewidth = 3)
+    with_errorbars!(
+        ax, counts, speedup(dist.median_s),
+        dist.median_s[1] ./ dist.max_s, dist.median_s[1] ./ dist.min_s,
+    )
     ideal_line!(ax, counts)
 
     axislegend(ax; position = :lt)
@@ -262,13 +305,12 @@ function plot_cpu(; out_path = OUTPUT_FILES[:cpu], machine = DEFAULT_MACHINE)
     isempty(dist.count) && error("distributed_scaling.csv holds no measurements.")
     isempty(multi.count) && error("multinode_scaling.csv holds no measurements.")
 
-    rate(data) = (data.particles * data.steps) ./ (data.median_s .* 1.0e6)
     multi_cores = multi.count .* multi.threads_per_worker[1]
-    series = [
-        ("Multithreading, $(threads.particles) particles", threads.count, rate(threads)),
-        ("Distributed, $(dist.particles) particles", dist.count, rate(dist)),
-        ("Multi-node SplitThreads, $(multi.particles) particles", multi_cores, rate(multi)),
-    ]
+    series = (
+        ("Multithreading, $(threads.particles) particles", threads.count, threads),
+        ("Distributed, $(dist.particles) particles", dist.count, dist),
+        ("Multi-node SplitThreads, $(multi.particles) particles", multi_cores, multi),
+    )
     xticks = sort(unique(vcat([s[2] for s in series]...)))
 
     fig = Figure(; size = (1000, 620), fontsize = 19)
@@ -284,11 +326,16 @@ function plot_cpu(; out_path = OUTPUT_FILES[:cpu], machine = DEFAULT_MACHINE)
         yminorticksvisible = true,
     )
 
-    for (label, x, y) in series
+    for (label, x, data) in series
+        total = data.particles * data.steps
+        y = total ./ (data.median_s .* 1.0e6)
         scatterlines!(ax, x, y; label = label, linewidth = 3, markersize = 12)
+        with_errorbars!(
+            ax, x, y, total ./ (data.max_s .* 1.0e6), total ./ (data.min_s .* 1.0e6)
+        )
     end
 
-    base = rate(threads)[1]
+    base = threads.particles * threads.steps / (threads.median_s[1] * 1.0e6)
     ideal_x = [minimum(xticks), maximum(xticks)]
     lines!(
         ax, ideal_x, base .* Float64.(ideal_x);
