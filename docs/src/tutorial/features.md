@@ -11,8 +11,8 @@ The table below summarizes the key features and tracing capabilities in `TestPar
 | **Solvers & Dynamics** | [Boris Pusher](@ref Boris-Pusher) | Symplectic energy-conserving pushers (Standard, Multistep, Hyper, Adaptive) | [Tutorial](@ref Boris-Pusher), [Demo](@ref Boris-Method) |
 | | SciML Solvers | High-order adaptive and symplectic ODE solvers from `OrdinaryDiffEq.jl` | [Numerical Methods](@ref) |
 | | Guiding Center (GC) | Reduced-order drift dynamics averaging over gyromotion | [Guiding Center](@ref), [Guiding Center Approximation](@ref) |
-| | [Hybrid Solver](@ref) | Adaptive runtime switching between full orbit and guiding center | [Hybrid GC-FO Solver](@ref) |
-| | [Canonical Form](@ref Canonical-Formulation) | Relativistic/non-relativistic canonical $(x, p)$ phase space with auto-diff | [Canonical Tracing Form](@ref) |
+| | Hybrid Solver | Adaptive runtime switching between full orbit and guiding center | [Hybrid GC-FO Solver](@ref) |
+| | Canonical Form | Relativistic/non-relativistic canonical $(x, p)$ phase space with auto-diff | [Canonical Tracing Form](@ref) |
 | | Fieldline Tracing | Traces magnetic field lines in 3D fields | [Tracing Magnetic Field Lines](@ref) |
 | | Relativistic Dynamics | Relativistic equations of motion for high-energy particles | [Relativistic vs Non-relativistic Tracing](@ref) |
 | | Backward Tracing | Reverse-time integration for source identification | [Backwards in Time](#tracing-backwards-in-time) |
