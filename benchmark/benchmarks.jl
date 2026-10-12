@@ -187,6 +187,10 @@ SUITE["trace"]["numerical field"]["Adaptive Hyper Boris (n=2, N=6)"] = @benchmar
 SUITE["trace"]["numerical field"]["Boris kernel"] = @benchmarkable solve(
     $prob_boris, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7
 )
+isoutside(u, p, t) = hypot(u[1], u[2], u[3]) > 2.0
+SUITE["trace"]["numerical field"]["Boris kernel with isoutside"] = @benchmarkable solve(
+    $prob_boris, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7, isoutside = $isoutside
+)
 
 # Time-Dependent Field
 param_td = prepare(E_td, B_td, F_td)
