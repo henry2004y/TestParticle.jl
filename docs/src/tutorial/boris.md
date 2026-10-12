@@ -165,11 +165,12 @@ accepted:
   works on a problem built without a `prob_func`; if both are given, `u0` wins. The
   element type is converted to that of `prob.u0`, and a wrong number of rows is an
   `ArgumentError`.
-- `raw_output = true`: return `(; u, t)` instead of an `EnsembleSolution`, where `u` is
-  a `(trajectories, 6, nout)` array of the saved states and `t` the matching times.
-  It applies to every problem, whether the initial states come from `prob_func` or from
-  `u0`, and it skips building one `ODESolution` per particle, which is what makes large
-  ensembles affordable.
+- `raw_output = true`: return `(; u, t, terminated)` instead of an `EnsembleSolution`,
+  where `u` is a `(trajectories, 6, nout)` array of the saved states, `t` the matching
+  times, and `terminated` a flag per trajectory marking the ones that stopped early
+  because they left the domain. It applies to every problem, whether the initial states
+  come from `prob_func` or from `u0`, and it skips building one `ODESolution` per
+  particle, which is what makes large ensembles affordable.
 
 ```julia
 states = Matrix{Float64}(undef, 100_000, 6)   # one initial state per row
@@ -278,6 +279,32 @@ TestParticle.jl routes execution based on the chosen solver interface and backen
   the native KernelAbstractions driver. The device kernels call the exact same
   stateless `advance_boris` and `update_velocity_half` functions from
   `BorisPushers`, ensuring identical numerical behavior between CPU and GPU.
+
+### Boundary Checks on Device
+
+The `isoutside` keyword is honored on the device path as well. A step whose end state
+leaves the domain is rolled back and the trace stops at the last state inside it, the
+same convention the native CPU solvers follow, and the solution is reported with
+`ReturnCode.Terminated`. Since `t` is shared by the whole ensemble, `raw_output = true`
+cannot shorten it per trajectory: a terminated trace instead repeats its last state in
+the slots it did not reach, and the returned `terminated` flags mark which trajectories
+stopped early.
+
+SciML callbacks cannot run inside a device kernel, so they remain a CPU-only feature:
+`solve(prob, alg)` and the host ensemble algorithms route through the integrator loop,
+which handles them.
+
+The check is free when the state is reported at every step, because the node velocity it
+tests is then built anyway. With sparse output it costs one extra node reconstruction,
+hence one extra field evaluation, per step: measured at about 8% of a
+100,000-particle ensemble over 20 steps of an interpolated field. The check itself is
+skipped entirely when no `isoutside` is given, so a solve that does not use it pays
+nothing for the possibility.
+
+On a device the predicate is passed to the kernel as an argument, so it has to be
+isbits, like every other kernel argument. A check written over the state alone, or over
+numbers it closes over, is fine; one that closes over an interpolated field or an array
+held on the device is not, and belongs on the host path instead.
 
 ### Algorithm and Field Portability
 

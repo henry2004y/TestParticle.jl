@@ -12,6 +12,7 @@ import TestParticle as TP
 using StaticArrays
 using KernelAbstractions
 using OrdinaryDiffEq
+using SciMLBase: ReturnCode
 using ..test_common: uniform_B, zero_E
 const KA = KernelAbstractions
 
@@ -173,6 +174,174 @@ prob_func_gpu(prob, ctx) = remake(
         ).u[1]
         @test sol_interval.t ≈ collect(0.0:2.5e-7:1.0e-6)
 
+    end
+
+    @testset "Out-of-domain Termination" begin
+        backend = CPU()
+
+        # With both fields zero the state moves in a straight line, so x = v t.
+        # The boundary x = 0.505 falls between the steps ending at 5.0e-6 and
+        # 5.1e-6, so the step ending at 5.1e-6 is the one that leaves the domain.
+        stateinit = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+        tspan = (0.0, 1.0e-5)
+        dt = 1.0e-7
+
+        param = prepare(zero_E, zero_E; species = Proton)
+        prob = TraceProblem(stateinit, tspan, param)
+
+        "Stop once the particle has passed x = 0.505."
+        past_half_x(u, p, t) = u[1] > 0.505
+
+        @testset "every step" begin
+            sol = solve(prob, Boris(), backend; dt, isoutside = past_half_x).u[1]
+
+            @test sol.retcode == ReturnCode.Terminated
+            # The step that left the domain is rolled back, so the trace ends at
+            # the last state inside it.
+            @test sol.t[end] ≈ 5.0e-6
+            @test sol.t[end] < tspan[2]
+            @test sol.u[end][1] ≈ 0.5
+            @test all(u -> u[1] <= 0.505, sol.u)
+        end
+
+        @testset "saveat" begin
+            sol = solve(
+                prob, Boris(), backend; dt, isoutside = past_half_x, saveat = 3.0e-7
+            ).u[1]
+
+            @test sol.retcode == ReturnCode.Terminated
+            @test sol.t ≈ vcat(0.0, 3.0e-7:3.0e-7:4.8e-6, 5.0e-6)
+            @test sol.u[end][1] ≈ 0.5
+            @test all(u -> u[1] <= 0.505, sol.u)
+        end
+
+        @testset "end states only" begin
+            sol = solve(
+                prob, Boris(), backend; dt, isoutside = past_half_x,
+                save_everystep = false
+            ).u[1]
+
+            @test sol.retcode == ReturnCode.Terminated
+            @test sol.t ≈ [0.0, 5.0e-6]
+            @test sol.u[end][1] ≈ 0.5
+        end
+
+        @testset "a trace that stays inside runs to completion" begin
+            sol = solve(
+                prob, Boris(), backend; dt, isoutside = (u, p, t) -> false
+            ).u[1]
+
+            @test sol.retcode == ReturnCode.Success
+            @test sol.t[end] ≈ tspan[2]
+            @test sol.u[end][1] ≈ 1.0
+        end
+
+        @testset "the check does not change a trace that stays inside" begin
+            sol_plain = solve(prob, Boris(), backend; dt).u[1]
+            sol_checked = solve(
+                prob, Boris(), backend; dt, isoutside = (u, p, t) -> false
+            ).u[1]
+
+            @test sol_checked.t ≈ sol_plain.t
+            @test sol_checked.u[end] ≈ sol_plain.u[end]
+        end
+
+        @testset "raw output" begin
+            raw = solve(
+                prob, Boris(), backend; dt, isoutside = past_half_x, raw_output = true
+            )
+
+            @test raw.terminated == [true]
+            # 51 states are saved, the start plus the 50 steps that stayed inside.
+            @test raw.u[1, 1, 51] ≈ 0.5
+            # The slots the trace never reached hold its last state.
+            @test raw.u[1, 1, 52] ≈ 0.5
+            @test raw.u[1, 1, end] ≈ 0.5
+
+            raw_ok = solve(prob, Boris(), backend; dt, raw_output = true)
+            @test raw_ok.terminated == [false]
+            @test raw_ok.u[1, 1, end] ≈ 1.0
+        end
+
+        @testset "ensemble with mixed outcomes" begin
+            # The speed grows with the trajectory index, so only the faster ones
+            # reach the boundary within the time span.
+            prob_func = (p, ctx) -> remake(
+                p; u0 = [0.0, 0.0, 0.0, ctx.sim_id * 1.0e4, 0.0, 0.0]
+            )
+            prob_multi = TraceProblem(stateinit, tspan, param; prob_func)
+
+            sols = solve(
+                prob_multi, Boris(), backend; dt, isoutside = past_half_x, trajectories = 8
+            )
+
+            @test [s.retcode for s in sols.u] == [
+                ReturnCode.Success, ReturnCode.Success, ReturnCode.Success,
+                ReturnCode.Success, ReturnCode.Success, ReturnCode.Terminated,
+                ReturnCode.Terminated, ReturnCode.Terminated,
+            ]
+            for s in sols.u
+                if s.retcode == ReturnCode.Terminated
+                    @test s.t[end] < tspan[2]
+                    @test s.u[end][1] <= 0.505
+                end
+            end
+
+            raw = solve(
+                prob_multi, Boris(), backend; dt, isoutside = past_half_x,
+                trajectories = 8, raw_output = true
+            )
+            @test raw.terminated ==
+                [false, false, false, false, false, true, true, true]
+            for i in 6:8
+                @test raw.u[i, 1, end] <= 0.505
+                @test raw.u[i, 1, end] == raw.u[i, 1, end - 1]
+            end
+        end
+
+        @testset "a trace that starts outside stops at once" begin
+            prob_out = TraceProblem([2.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
+            sol = solve(
+                prob_out, Boris(), backend; dt, isoutside = past_half_x,
+                save_everystep = false
+            ).u[1]
+
+            @test sol.retcode == ReturnCode.Terminated
+            @test sol.u[end][1] == 2.0
+            # The start state is the only one inside the domain, so the end slot
+            # would repeat it and is dropped instead.
+            @test length(sol.t) == 1
+            @test sol.t == [tspan[1]]
+        end
+
+        @testset "agreement with the native solver" begin
+            sol_kernel = solve(prob, Boris(), backend; dt, isoutside = past_half_x).u[1]
+            sol_native = solve(prob, Boris(); dt, isoutside = past_half_x)
+
+            # Both stop at the last state inside the domain. The native loop also
+            # saves the step that left it before rolling that step back, so it
+            # reports two more states, the last of them the same one.
+            @test sol_kernel.u[end] ≈ sol_native.u[end]
+            @test length(sol_native.t) == length(sol_kernel.t) + 2
+            @test sol_native.retcode == ReturnCode.Terminated
+        end
+
+        @testset "backward time span" begin
+            # The state moves toward +x as t runs backward, so the boundary is
+            # crossed at t = -5.0e-6.
+            prob_bw = TraceProblem(
+                [0.0, 0.0, 0.0, -1.0e5, 0.0, 0.0], (0.0, -1.0e-5), param
+            )
+            sol = solve(
+                prob_bw, Boris(), backend; dt = -1.0e-7, isoutside = past_half_x
+            ).u[1]
+
+            @test sol.retcode == ReturnCode.Terminated
+            @test sol.t[end] ≈ -5.0e-6
+            @test sol.t[end] > -1.0e-5
+            @test sol.u[end][1] ≈ 0.5
+            @test all(u -> u[1] <= 0.505, sol.u)
+        end
     end
 end
 

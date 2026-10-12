@@ -132,15 +132,78 @@ function _foreach_chunked(f, n::Int)
     return nothing
 end
 
+"""
+    _term_info(status, nout_out, i, nout) -> (terminated, n_completed, emitted)
+
+Read how the trace of particle `i` ended from the `status` array a kernel
+filled: `terminated`, the number of steps that stayed inside the domain, and
+how many states were saved for it. A trace that ran the full time span saves
+`nout` states and leaves `status` at zero.
+"""
+@inline function _term_info(
+        status::AbstractVector{Int}, nout_out, i::Int, nout::Int
+    )
+    k = @inbounds status[i]
+    k > 0 || return (false, 0, nout)
+    emitted = nout_out === nothing ? nout : @inbounds(nout_out[i])
+    return (true, k - 1, emitted)
+end
+
+"""
+    _freeze_trailing!(u, status, nout_out, nout)
+
+Repeat the last saved state of every trace that stopped early into the slots
+it did not reach, so raw output never holds zeros for a terminated particle.
+"""
+function _freeze_trailing!(
+        u, status::AbstractVector{Int}, nout_out::AbstractVector{Int}, nout::Int
+    )
+    @inbounds for i in eachindex(status)
+        k = status[i]
+        k > 0 || continue
+        emitted = nout_out[i]
+        emitted == 0 && continue
+        emitted >= nout && continue
+        for j in (emitted + 1):nout, c in 1:6
+            u[i, c, j] = u[i, c, emitted]
+        end
+    end
+    return u
+end
+
+_freeze_trailing!(u, ::Nothing, ::Nothing, nout::Int) = u
+
+"""
+    _terminated_flags(status, n) -> BitVector
+
+Whether each trace stopped early because it left the domain. Without a boundary
+check no trace did.
+"""
+function _terminated_flags(status, n::Int)
+    flags = falses(n)
+    status === nothing && return flags
+    @inbounds for i in 1:n
+        flags[i] = status[i] > 0
+    end
+    return flags
+end
+
 function _unpack_endpoint_solutions!(
         sols, irange, xv_init, xv_cpu_end, saved_times, nout,
-        save_start::Bool, save_end::Bool, prob, alg, ::Type{T}
+        save_start::Bool, save_end::Bool, prob, alg, ::Type{T};
+        status = nothing, t0 = nothing, dt = nothing
     ) where {T}
     n_particles = length(irange)
     _foreach_chunked(n_particles) do local_i
         i = irange[local_i]
+        terminated, n_completed, _ = status === nothing ?
+            (false, 0, 0) : _term_info(status, nothing, i, nout)
+
         traj = Vector{SVector{6, T}}(undef, nout)
         idx = 0
+        # A trace rejected on its first step has no in-domain state beyond the
+        # start one, so its end slot is dropped instead of repeating the start.
+        drop_end = terminated && n_completed == 0 && save_start
         if save_start
             idx += 1
             traj[idx] = SVector{6, T}(
@@ -148,30 +211,47 @@ function _unpack_endpoint_solutions!(
                 xv_init[i, 4], xv_init[i, 5], xv_init[i, 6]
             )
         end
-        if save_end
+        if save_end && !drop_end
             idx += 1
             traj[idx] = SVector{6, T}(
                 xv_cpu_end[i, 1], xv_cpu_end[i, 2], xv_cpu_end[i, 3],
                 xv_cpu_end[i, 4], xv_cpu_end[i, 5], xv_cpu_end[i, 6]
             )
         end
-        interp = LinearInterpolation(saved_times, traj)
+        t_vec = saved_times
+        retcode = ReturnCode.Success
+        if terminated
+            retcode = ReturnCode.Terminated
+            t_vec = saved_times[1:idx]
+            traj = traj[1:idx]
+            save_end && !drop_end && (t_vec[end] = t0 + n_completed * dt)
+        end
+        interp = LinearInterpolation(t_vec, traj)
         sols[local_i] = build_solution(
-            prob, alg, saved_times, traj;
-            interp, retcode = ReturnCode.Success, stats = nothing
+            prob, alg, t_vec, traj;
+            interp, retcode, stats = nothing
         )
     end
     return sols
 end
 
 function _unpack_dense_solutions!(
-        sols, irange, saved_data_buf, saved_times, nout, prob, alg, ::Type{T}
+        sols, irange, saved_data_buf, saved_times, nout, prob, alg, ::Type{T};
+        status = nothing, nout_out = nothing, t0 = nothing, dt = nothing,
+        save_end::Bool = false
     ) where {T}
     n_particles = length(irange)
     _foreach_chunked(n_particles) do local_i
         i = irange[local_i]
-        traj = Vector{SVector{6, T}}(undef, nout)
-        for j in 1:nout
+        emitted = nout
+        terminated = false
+        n_completed = 0
+        if status !== nothing
+            terminated, n_completed, emitted = _term_info(status, nout_out, i, nout)
+        end
+
+        traj = Vector{SVector{6, T}}(undef, emitted)
+        for j in 1:emitted
             traj[j] = SVector{6, T}(
                 saved_data_buf[i, 1, j],
                 saved_data_buf[i, 2, j],
@@ -181,10 +261,21 @@ function _unpack_dense_solutions!(
                 saved_data_buf[i, 6, j]
             )
         end
-        interp = LinearInterpolation(saved_times, traj)
+        t_vec = saved_times
+        retcode = ReturnCode.Success
+        if terminated
+            retcode = ReturnCode.Terminated
+            t_vec = saved_times[1:emitted]
+            # The last state of a trace that stopped early sits at the last node
+            # inside the domain, not at the nominal end of the time span.
+            if save_end && !isempty(t_vec)
+                t_vec[end] = t0 + n_completed * dt
+            end
+        end
+        interp = LinearInterpolation(t_vec, traj)
         sols[local_i] = build_solution(
-            prob, alg, saved_times, traj;
-            interp, retcode = ReturnCode.Success, stats = nothing
+            prob, alg, t_vec, traj;
+            interp, retcode, stats = nothing
         )
     end
     return sols
@@ -234,17 +325,26 @@ end
 
 """
     _solve_cpu_chunk!(sols, irange, xv_current, plan, dt, tspan, p_host, alg, nout, nt,
-        save_start, save_end, save_everystep, saved_times, prob, T; raw_out = nothing)
+        save_start, save_end, save_everystep, saved_times, prob, T; raw_out = nothing,
+        isoutside = ODE_DEFAULT_ISOUTOFDOMAIN, term_out = nothing, nout_out = nothing)
 
 Advance every particle in `irange` on the host. With `raw_out = nothing` an
 `ODESolution` is built per particle. Otherwise the saved states are written straight into
 the `(N, 6, nout)` array `raw_out` and `sols` is unused, so it may be `nothing`.
+
+`isoutside` is the boundary check `(u, p, t)`; a step that ends outside the domain is
+rolled back and the trace stops at the last state inside it, with `ReturnCode.Terminated`.
+When given, `term_out[i]` receives the index of the rejected step and `nout_out[i]` the
+number of states saved for that particle, both zero otherwise.
 """
 function _solve_cpu_chunk!(
         sols, irange, xv_current, plan, dt, tspan,
         p_host, alg, nout, nt, save_start, save_end, save_everystep,
-        saved_times, prob, ::Type{T}; raw_out = nothing
+        saved_times, prob, ::Type{T};
+        raw_out = nothing, isoutside = ODE_DEFAULT_ISOUTOFDOMAIN,
+        term_out = nothing, nout_out = nothing
     ) where {T}
+    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
     nsave = length(plan.times)
     for (local_i, i) in enumerate(irange)
         traj = raw_out === nothing ? Vector{SVector{6, T}}(undef, nout) : nothing
@@ -261,10 +361,20 @@ function _solve_cpu_chunk!(
         r_prev = r
         v_half_prev = v_half
         t_prev = tspan[1]
+        rejected = 0
 
         for it in 1:nt
             t_current = tspan[1] + it * dt
             r, v_half = advance_boris(v_half_prev, r_prev, dt, t_prev, p_host, alg)
+
+            if check
+                v_node = update_velocity_node(v_half, r, dt, t_current, p_host, alg)
+                if isoutside(vcat(r, v_node), p_host, t_current)
+                    r, v_half = r_prev, v_half_prev
+                    rejected = it
+                    break
+                end
+            end
 
             if use_saveat(plan)
                 if isave <= nsave && saveat_reached(plan.times[isave], t_current, plan.dir)
@@ -299,19 +409,47 @@ function _solve_cpu_chunk!(
             t_prev = t_current
         end
 
-        if save_end && (!use_saveat(plan) && !save_everystep)
-            v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+        if rejected > 0
+            term_out !== nothing && (@inbounds term_out[i] = rejected)
+        end
+
+        # A rejected trace ends at the start of the rejected step, where the state
+        # was rolled back to; otherwise the span ends where it always did. The
+        # duplicate guard only matters for a rejected trace, whose end can
+        # coincide with a `saveat` time or with the start.
+        t_end = rejected > 0 ? t_prev : tspan[2]
+        fresh_end = rejected == 0 ||
+            idx == 0 || plan.dir * (t_end - saved_times[idx]) > 0
+
+        if save_end && (!use_saveat(plan) && !save_everystep) && fresh_end
+            v_node = update_velocity_node(v_half, r, dt, t_end, p_host, alg)
             idx = _store_state!(raw_out, traj, i, idx, vcat(r, v_node))
-        elseif save_end && use_saveat(plan) && idx < nout
-            v_node = update_velocity_node(v_half, r, dt, tspan[2], p_host, alg)
+        elseif save_end && use_saveat(plan) && idx < nout && fresh_end
+            v_node = update_velocity_node(v_half, r, dt, t_end, p_host, alg)
             idx = _store_state!(raw_out, traj, i, idx, vcat(r, v_node))
         end
 
+        if rejected > 0 && nout_out !== nothing
+            @inbounds nout_out[i] = idx
+        end
+
         if raw_out === nothing
-            interp = LinearInterpolation(saved_times, traj)
+            t_vec = saved_times
+            traj_vec = traj
+            retcode = ReturnCode.Success
+            if rejected > 0
+                retcode = ReturnCode.Terminated
+                t_vec = saved_times[1:idx]
+                traj_vec = traj[1:idx]
+                # The last state of a trace that stopped early sits at the last
+                # node inside the domain, not at the nominal end of the span.
+                if save_end && !isempty(t_vec)
+                    t_vec[end] = t_end
+                end
+            end
+            interp = LinearInterpolation(t_vec, traj_vec)
             sols[local_i] = build_solution(
-                prob, alg, saved_times, traj;
-                interp, retcode = ReturnCode.Success, stats = nothing
+                prob, alg, t_vec, traj_vec; interp, retcode, stats = nothing
             )
         end
     end
@@ -322,20 +460,28 @@ end
     _solve_raw!(backend, xv_current, xv_init, irange; dt, tspan, plan, workgroup_size,
         p_gpu, p_host, alg, nout, nt, save_start, save_end, save_everystep, prob)
 
-Advance the ensemble and return `(; u, t)`, where `u` is a `(N, 6, nout)` array of saved
-states and `t` the matching times. This is the path `raw_output = true` takes: building
-one `ODESolution` per particle dominates the host cost of large ensembles, and the saved
-values, including `saveat` interpolation, are identical to the solution path.
+Advance the ensemble and return `(; u, t, terminated)`, where `u` is a `(N, 6, nout)`
+array of saved states and `t` the matching times. This is the path `raw_output = true`
+takes: building one `ODESolution` per particle dominates the host cost of large
+ensembles, and the saved values, including `saveat` interpolation, are identical to
+the solution path.
+
+The returned `terminated` flags which traces stopped early because they left the domain.
+Their trailing slots hold the last state inside the domain, since `t` is shared by the
+whole ensemble and cannot be shortened per particle.
 """
 function _solve_raw!(
         backend::Backend, xv_current, xv_init, irange;
         dt, tspan, plan, workgroup_size, p_gpu, p_host, alg, nout, nt,
-        save_start, save_end, save_everystep, prob, pin::Bool = false
+        save_start, save_end, save_everystep, prob, pin::Bool = false,
+        isoutside = ODE_DEFAULT_ISOUTOFDOMAIN
     )
     T = eltype(xv_current)
     n_total = size(xv_current, 1)
     offset = irange.start - 1
     n_particles = length(irange)
+    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
+    isoutside_gpu = adapt_field_to_gpu(isoutside, backend)
     time_type = typeof(tspan[1] + dt)
     saved_times = _build_saved_times(
         tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
@@ -347,6 +493,8 @@ function _solve_raw!(
 
     if backend isa CPU
         u = alias ? reshape(xv_current, n_total, 6, 1) : zeros(T, n_total, 6, nout)
+        status = check ? zeros(Int, n_total) : nothing
+        nout_out = check ? zeros(Int, n_total) : nothing
         chunks = if Threads.nthreads() > 1 && n_particles > 16
             index_chunks(irange; n = Threads.nthreads())
         else
@@ -356,33 +504,44 @@ function _solve_raw!(
             _solve_cpu_chunk!(
                 nothing, chunk, xv_current, plan, dt, tspan,
                 p_host, alg, nout, nt, save_start, save_end, save_everystep,
-                saved_times, prob, T; raw_out = u
+                saved_times, prob, T; raw_out = u, isoutside,
+                term_out = status, nout_out
             )
         end
-        return (; u, t = saved_times)
+        _freeze_trailing!(u, status, nout_out, nout)
+        return (; u, t = saved_times, terminated = _terminated_flags(status, n_total))
     end
 
     if !dense
+        status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
         kernel! = boris_trajectory_kernel!(backend, workgroup_size)
         kernel!(
-            xv_current, p_gpu, dt, tspan[1], nt, offset, alg;
-            ndrange = n_particles
+            xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
+            isoutside_gpu, check, status; ndrange = n_particles
         )
         synchronize(backend)
 
         xv_host = _staging_array(backend, T, (n_total, 6); pin)
         copyto!(xv_host, xv_current)
+        status_host = _copy_to_host(status, n_particles, check)
         if alias
-            return (; u = reshape(xv_host, n_total, 6, 1), t = saved_times)
+            return (;
+                u = reshape(xv_host, n_total, 6, 1), t = saved_times,
+                terminated = _terminated_flags(status_host, n_total)
+            )
         end
         u = _staging_array(backend, T, (n_total, 6, nout); pin)
         save_start && _copy_column!(u, xv_init, irange, 1)
         save_end && _copy_column!(u, xv_host, irange, nout)
-        return (; u, t = saved_times)
+        return (;
+            u, t = saved_times, terminated = _terminated_flags(status_host, n_total)
+        )
     end
 
     u = _staging_array(backend, T, (n_total, 6, nout); pin)
     saved_gpu = KA.zeros(backend, T, n_total, 6, nout)
+    status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
+    nout_out = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
     if use_saveat(plan)
         plan_times_gpu = adapt_field_to_gpu(plan.times, backend)
         nsave = length(plan.times)
@@ -390,20 +549,39 @@ function _solve_raw!(
         kernel!(
             saved_gpu, xv_current, plan_times_gpu, p_gpu, dt,
             tspan[1], nt, nsave, plan.dir, save_start, save_end,
-            offset, alg; ndrange = n_particles
+            offset, alg, isoutside_gpu, check, status, nout_out;
+            ndrange = n_particles
         )
     else
         kernel! = boris_everystep_kernel!(backend, workgroup_size)
         kernel!(
             saved_gpu, xv_current, p_gpu, dt,
             tspan[1], nt, save_start, save_end,
-            offset, alg; ndrange = n_particles
+            offset, alg, isoutside_gpu, check, status, nout_out;
+            ndrange = n_particles
         )
     end
     synchronize(backend)
     copyto!(u, saved_gpu)
 
-    return (; u, t = saved_times)
+    status_host = _copy_to_host(status, n_particles, check)
+    nout_out_host = _copy_to_host(nout_out, n_particles, check)
+    _freeze_trailing!(u, status_host, nout_out_host, nout)
+
+    return (; u, t = saved_times, terminated = _terminated_flags(status_host, n_total))
+end
+
+"""
+    _copy_to_host(status, n, check) -> Union{Nothing, Vector{Int}}
+
+Bring a device-side status array back to the host, or `nothing` when no boundary
+check is active and it was never written.
+"""
+function _copy_to_host(status, n::Int, check::Bool)
+    check || return nothing
+    host = Vector{Int}(undef, n)
+    copyto!(host, status)
+    return host
 end
 
 @inline function _copy_column!(out, src, irange, j)
@@ -421,12 +599,14 @@ function _solve_kernel_serial(
         save_end::Bool, save_everystep::Bool, workgroup_size::Int,
         xv_current, xv_init, is_cpu_accessible::Bool,
         p_gpu, p_host, alg, nout::Int, nt::Int,
-        pin::Bool = false
+        pin::Bool = false, isoutside = ODE_DEFAULT_ISOUTOFDOMAIN
     )
     (; tspan) = prob
     T = eltype(xv_current)
     n_particles = length(irange)
     offset = irange.start - 1
+    check = isoutside !== ODE_DEFAULT_ISOUTOFDOMAIN
+    isoutside_gpu = adapt_field_to_gpu(isoutside, backend)
     time_type = typeof(tspan[1] + dt)
     saved_times = _build_saved_times(
         tspan, dt, nt, plan, save_start, save_end, save_everystep, time_type
@@ -440,15 +620,18 @@ function _solve_kernel_serial(
         return _solve_cpu_chunk!(
             sols, irange, xv_current, plan, dt, tspan,
             p_host, alg, nout, nt, save_start, save_end, save_everystep,
-            saved_times, prob, T
+            saved_times, prob, T; isoutside
         )
     end
+
+    status = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
+    nout_out = check ? KA.zeros(backend, Int, n_particles) : KA.zeros(backend, Int, 1)
 
     if !use_saveat(plan) && !save_everystep
         traj_kernel! = boris_trajectory_kernel!(backend, workgroup_size)
         traj_kernel!(
-            xv_current, p_gpu, dt, tspan[1], nt, offset, alg;
-            ndrange = n_particles
+            xv_current, p_gpu, dt, tspan[1], nt, offset, alg,
+            isoutside_gpu, check, status; ndrange = n_particles
         )
         synchronize(backend)
 
@@ -459,7 +642,9 @@ function _solve_kernel_serial(
 
         _unpack_endpoint_solutions!(
             sols, irange, xv_init, xv_cpu_end, saved_times, nout, save_start,
-            save_end, prob, alg, T
+            save_end, prob, alg, T;
+            status = _copy_to_host(status, n_particles, check),
+            t0 = tspan[1], dt
         )
     else
         n_total = size(xv_current, 1)
@@ -472,14 +657,16 @@ function _solve_kernel_serial(
             kernel!(
                 saved_data_gpu, xv_current, plan_times_gpu, p_gpu, dt,
                 tspan[1], nt, nsave, plan.dir, save_start, save_end,
-                offset, alg; ndrange = n_particles
+                offset, alg, isoutside_gpu, check, status, nout_out;
+                ndrange = n_particles
             )
         else
             kernel! = boris_everystep_kernel!(backend, workgroup_size)
             kernel!(
                 saved_data_gpu, xv_current, p_gpu, dt,
                 tspan[1], nt, save_start, save_end,
-                offset, alg; ndrange = n_particles
+                offset, alg, isoutside_gpu, check, status, nout_out;
+                ndrange = n_particles
             )
         end
         synchronize(backend)
@@ -493,7 +680,10 @@ function _solve_kernel_serial(
         end
 
         _unpack_dense_solutions!(
-            sols, irange, saved_data_buf, saved_times, nout, prob, alg, T
+            sols, irange, saved_data_buf, saved_times, nout, prob, alg, T;
+            status = _copy_to_host(status, n_particles, check),
+            nout_out = _copy_to_host(nout_out, n_particles, check),
+            t0 = tspan[1], dt, save_end
         )
     end
 
@@ -584,8 +774,9 @@ function _execute_ensemble_kernel(
         seed = nothing,
         u0 = nothing,
         raw_output::Bool = false,
-        pin::Union{Nothing, Bool} = nothing
-    )
+        pin::Union{Nothing, Bool} = nothing,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN
+    ) where {F}
     if SciMLBase.isadaptive(alg)
         throw(
             ArgumentError(
@@ -623,7 +814,7 @@ function _execute_ensemble_kernel(
             backend, xv_current, xv_init, 1:trajectories;
             dt = dt_T, tspan, plan, workgroup_size, p_gpu, p_host, alg,
             nout, nt, save_start, save_end, save_everystep, prob = base_prob,
-            pin = effective_pin
+            pin = effective_pin, isoutside
         )
     elseif backend isa CPU && Threads.nthreads() > 1 && trajectories > 16
         saved_times = _build_saved_times(
@@ -640,7 +831,7 @@ function _execute_ensemble_kernel(
                 base_prob, backend, irange;
                 dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
                 xv_current, xv_init, is_cpu_accessible,
-                p_gpu, p_host, alg, nout, nt, pin = effective_pin
+                p_gpu, p_host, alg, nout, nt, pin = effective_pin, isoutside
             )
             for (local_i, i) in enumerate(irange)
                 res_sols[i] = chunk_sols[local_i]
@@ -652,7 +843,7 @@ function _execute_ensemble_kernel(
             base_prob, backend, 1:trajectories;
             dt = dt_T, plan, save_start, save_end, save_everystep, workgroup_size,
             xv_current, xv_init, is_cpu_accessible,
-            p_gpu, p_host, alg, nout, nt, pin = effective_pin
+            p_gpu, p_host, alg, nout, nt, pin = effective_pin, isoutside
         )
     end
 
@@ -668,9 +859,15 @@ Trace an ensemble on a hardware backend.
 
   - `u0`: a `(trajectories, 6)` matrix of initial states. When given, `prob_func` is
     skipped entirely, which avoids one problem copy per particle.
-  - `raw_output`: return a NamedTuple `(; u, t)` instead of an `EnsembleSolution`, where
-    `u` is a `(trajectories, 6, nout)` array of the saved states and `t` the matching
-    times. No `ODESolution` is built, which is what makes large ensembles affordable.
+  - `raw_output`: return a NamedTuple `(; u, t, terminated)` instead of an
+    `EnsembleSolution`, where `u` is a `(trajectories, 6, nout)` array of the saved
+    states and `t` the matching times. No `ODESolution` is built, which is what makes
+    large ensembles affordable. `terminated` flags the traces that stopped early
+    because they left the domain, whose trailing states are the last inside it.
+  - `isoutside`: boundary check `(u, p, t)`. A step that ends outside the domain is
+    rolled back and the trace stops at the last state inside it, reported with
+    `ReturnCode.Terminated`. On a device the check runs inside the kernel, with the
+    parameter container the device fields use.
 """
 function SciMLBase.__solve(
         eprob::SciMLBase.AbstractEnsembleProblem, alg::AbstractBoris, ens::EnsembleKernel;
@@ -682,8 +879,9 @@ function SciMLBase.__solve(
         u0 = nothing,
         raw_output::Bool = false,
         pin::Union{Nothing, Bool} = nothing,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         kwargs...
-    )
+    ) where {F}
     base_prob = eprob.prob
     prob_func = eprob.prob_func
     output_func = eprob.output_func
@@ -692,7 +890,7 @@ function SciMLBase.__solve(
     sols, elapsed_time = _execute_ensemble_kernel(
         base_prob, prob_func, alg, ens;
         dt, trajectories, saveat, save_start, save_end,
-        save_everystep, maxiters, seed, u0, raw_output, pin
+        save_everystep, maxiters, seed, u0, raw_output, pin, isoutside
     )
 
     raw_output && return sols

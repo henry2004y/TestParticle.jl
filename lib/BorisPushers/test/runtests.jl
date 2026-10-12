@@ -341,6 +341,51 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         sol_custom = solve(prob_custom, Boris(), backend; dt = 0.1, trajectories = 1).u[1]
         @test sol_custom.u[end][1] ≈ 1.0 atol = 1.0e-6
 
+        # Out-of-domain termination on the backend path. A step of 0.125 is exact
+        # in binary, so x = 0.5 lands on the fourth step and the fifth is the one
+        # that leaves the domain.
+        ballistic = (x, t) -> SA[0.0, 0.0, 0.0]
+        param_ball = (1.0, 1.0, ballistic, ballistic, ZeroField())
+        prob_ball = ODEProblem(
+            dummy_f, SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0], (0.0, 10.0), param_ball
+        )
+        outside(u, p, t) = u[1] > 0.5
+
+        sol_out = solve(
+            prob_ball, Boris(), backend; dt = 0.125, isoutside = outside, trajectories = 1
+        ).u[1]
+        # The step that left the domain is rolled back, so the trace ends at the
+        # last state inside it.
+        @test sol_out.retcode == SciMLBase.ReturnCode.Terminated
+        @test sol_out.t[end] ≈ 0.5
+        @test sol_out.u[end][1] ≈ 0.5
+        @test all(u -> u[1] <= 0.5, sol_out.u)
+
+        # A trace that stays inside is untouched by the check.
+        sol_in = solve(
+            prob_ball, Boris(), backend;
+            dt = 0.125, isoutside = (u, p, t) -> false, trajectories = 1
+        ).u[1]
+        @test sol_in.retcode == SciMLBase.ReturnCode.Success
+        @test sol_in.t[end] ≈ 10.0
+        @test sol_in.u[end] ≈ solve(prob_ball, Boris(); dt = 0.125).u[end]
+
+        # Raw output flags the terminated traces and freezes their last state.
+        raw_out = solve(
+            prob_ball, Boris(), backend; dt = 0.125, isoutside = outside,
+            trajectories = 1, raw_output = true
+        )
+        @test raw_out.terminated == [true]
+        @test raw_out.u[1, 1, 5] ≈ 0.5
+        @test raw_out.u[1, 1, end] ≈ 0.5
+
+        raw_in = solve(
+            prob_ball, Boris(), backend;
+            dt = 0.125, isoutside = (u, p, t) -> false, trajectories = 1, raw_output = true
+        )
+        @test raw_in.terminated == [false]
+        @test raw_in.u[1, 1, end] ≈ 10.0
+
         # Adaptive solvers have no GPU path
         @test_throws ArgumentError solve(prob, AdaptiveBoris(), backend; dt, trajectories = 1)
         @test_throws ArgumentError solve(prob, AdaptiveMultistepBoris{4}(), backend; dt, trajectories = 1)
