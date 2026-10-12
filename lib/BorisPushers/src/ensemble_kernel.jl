@@ -621,14 +621,14 @@ function _solve_raw!(
         if alias
             return (;
                 u = reshape(xv_host, n_total, 6, 1), t = saved_times,
-                terminated = _terminated_flags(status_host, n_total)
+                terminated = _terminated_flags(status_host, n_total),
             )
         end
         u = _staging_array(backend, T, (n_total, 6, nout); pin)
         save_start && _copy_column!(u, xv_init, irange, 1)
         save_end && _copy_column!(u, xv_host, irange, nout)
         return (;
-            u, t = saved_times, terminated = _terminated_flags(status_host, n_total)
+            u, t = saved_times, terminated = _terminated_flags(status_host, n_total),
         )
     end
 
