@@ -168,7 +168,8 @@ log2 x-axis, the node sweep stays linear.
 - `out_path`: file to save the figure to.
 - `machine`: machine name shown in the title.
 """
-function plot_mode(mode::Symbol;
+function plot_mode(
+        mode::Symbol;
         file = INPUT_FILES[mode], out_path = OUTPUT_FILES[mode], machine = DEFAULT_MACHINE
     )
     data = read_points(file)
