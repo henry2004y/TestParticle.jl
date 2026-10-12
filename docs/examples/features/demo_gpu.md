@@ -187,6 +187,69 @@ sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories, saveat = 1.0e-8)
 
 > **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.
 
+## Boundary Checks with isoutside
+
+The Boris kernel solver supports early termination through the `isoutside` keyword
+argument on both CPU and device backends. The boundary predicate `isoutside(u, p, t)`
+accepts the current state vector `u`, parameters `p`, and time `t`, returning `true`
+when the particle has left the computational domain.
+
+When `isoutside` returns `true`, the solver rolls back the step that exited the domain,
+terminates the trace at the last state inside it, and marks the solution with
+`ReturnCode.Terminated`.
+
+Because the check executes inside the device kernel, the predicate must be an `isbits`
+function with no heap allocations:
+
+```julia
+using TestParticle, KernelAbstractions, StaticArrays
+using CUDA
+using SciMLBase: ReturnCode
+
+# Uniform magnetic field
+B(x) = SA[0.0, 0.0, 1.0e-8]
+E(x) = SA[0.0, 0.0, 0.0]
+
+x0 = SA[0.0, 0.0, 0.0]
+v0 = SA[1.0e5, 0.0, 0.0]
+stateinit = SA[x0..., v0...]
+tspan = (0.0, 1.0e-5)
+dt = 1.0e-7
+
+param = prepare(E, B; species = Proton)
+
+# Ensemble with varying initial velocities along x
+trajectories = 8
+prob_func(prob, ctx) = remake(
+    prob; u0 = SA[0.0, 0.0, 0.0, ctx.sim_id * 2.0e4, 0.0, 0.0]
+)
+prob = TraceProblem(stateinit, tspan, param; prob_func)
+
+# Terminate when the particle passes x = 0.5 m
+isoutside(u, p, t) = u[1] > 0.5
+
+backend = CUDABackend() # or CPU()
+sols = solve(prob, Boris(), backend; dt, trajectories, isoutside)
+
+for (i, sol) in enumerate(sols.u)
+    println(
+        "Trajectory ", i, ": retcode = ", sol.retcode,
+        ", final x = ", sol.u[end][1]
+    )
+end
+```
+
+The check is compatible with all output modes, including `saveat`,
+`save_everystep = false`, and `raw_output = true`. When `raw_output = true` is used,
+early-terminated trajectories repeat their final inside state across any remaining
+output slots, and the `terminated` boolean vector indicates which trajectories
+stopped early:
+
+```julia
+raw = solve(prob, Boris(), backend; dt, trajectories, isoutside, raw_output = true)
+# raw.terminated is a Vector{Bool} indicating which trajectories left the domain
+```
+
 ## Spherical Grids on the Device
 
 Fields stored on a spherical grid are traced on a device without any extra step. Preparing
