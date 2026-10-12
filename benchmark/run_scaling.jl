@@ -37,6 +37,11 @@
 # TP_MAX_THREADS overrides that bound. Problem size and repetition come from the
 # environment, see ScalingCommon.jl. Extra sbatch flags go in TP_SBATCH_ARGS, e.g.
 #   TP_SBATCH_ARGS="--account=m1234 --qos=regular" julia ... run_scaling.jl multinode
+#
+# `multinode` times `TP_MULTINODE_ALGS`, a comma-separated list defaulting to
+# SplitThreads,Distributed. Raise `TP_N_PARTICLES` for the node sweep: at 16384 particles
+# eight nodes leaves only 16 trajectories per thread, so overhead dominates the top of the
+# curve. 65536 keeps 64 per thread at eight nodes and 512 at one.
 
 using Distributed
 using Printf
@@ -192,6 +197,33 @@ function point_distributed(count)
     end
 end
 
+"""
+    ensemble_alg(name)
+
+Resolve an ensemble algorithm by name, for the configurable multinode list.
+"""
+function ensemble_alg(name)
+    name == "SplitThreads" && return EnsembleSplitThreads()
+    name == "Distributed" && return EnsembleDistributed()
+    return error("Unknown ensemble algorithm `$name`; choose SplitThreads or Distributed")
+end
+
+"""
+    multinode_algs() -> Vector{String}
+
+Ensemble algorithms timed in a multinode measurement, from `TP_MULTINODE_ALGS`, a
+comma-separated list. `EnsembleSplitThreads` hands each worker a chunk and runs threaded
+batches inside it, so it uses every core on every node. `EnsembleDistributed` dispatches
+whole trajectories to workers, so each worker integrates single-threaded and only one core
+per node is used, which measured about 35 times slower here. It is the expensive half of a
+measurement, so drop it from the list when the problem is large.
+"""
+function multinode_algs()
+    override = strip(get(ENV, "TP_MULTINODE_ALGS", ""))
+    isempty(override) && return ["SplitThreads", "Distributed"]
+    return strip.(split(override, ','))
+end
+
 function point_multinode(count)
     haskey(ENV, "SLURM_JOB_NUM_NODES") ||
         error("multinode measurement must run inside a SLURM allocation")
@@ -207,10 +239,7 @@ function point_multinode(count)
         setup_workers(pids)
         threads_per_worker = maximum(fetch(@spawnat w Threads.nthreads()) for w in pids)
         prob = make_problem()
-        results = [
-            ("SplitThreads", measure(EnsembleSplitThreads(), prob)),
-            ("Distributed", measure(EnsembleDistributed(), prob)),
-        ]
+        results = [(name, measure(ensemble_alg(name), prob)) for name in multinode_algs()]
         return [
             ScalingPoint(
                 "multinode", "nodes", n_nodes, length(pids), threads_per_worker,
