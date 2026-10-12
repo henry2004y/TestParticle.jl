@@ -1,35 +1,31 @@
 # Scaling plots
 #
-# Reads the CSV files produced by run_scaling.jl and renders the corresponding strong
-# scaling speedup figures. All three benchmark modes share one CSV schema, so every
-# figure is drawn from the same reader. Select figures by name, or use `all`:
+# Reads the CSV files produced by run_scaling.jl and renders the corresponding figures.
+# All three benchmark modes share one CSV schema, so every figure is drawn from the same
+# reader. Select figures by name, or use `all`:
 #
-#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl             # combined
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl             # cpu
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl threads
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl distributed
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl multinode
-#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl cpu
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl all
 #
 # Options:
-#   --out=<path>      output figure (combined, threads and distributed only)
+#   --out=<path>      output figure (threads and distributed only)
 #   --file=<csv>      input CSV, relative to the benchmark directory (single figure only)
 #   --machine=<name>  machine name shown in the title
 #
 # Figures:
-#   combined     multithreading against distributed on a single node
+#   cpu          every CPU sweep on one axis: aggregate throughput against the cores used,
+#                which is the only axis all three sweeps share
 #   threads      EnsembleThreads alone
 #   distributed  EnsembleDistributed alone
 #   multinode    EnsembleSplitThreads against EnsembleDistributed across nodes
-#   cpu          every CPU sweep on one axis: throughput against the cores used, which
-#                is the only axis the three sweeps can share, since throughput is a rate
-#                and the sweeps use different ensemble sizes
 #
 # From Julia, the same figures are available as
 #
 #   include("benchmark/plot_scaling.jl")
-#   plot_scaling(:multinode)
-#   plot_combined(; out_path = "figures/combined.png", particles = 65_536)
+#   plot_scaling(:cpu)
 #
 # Measurement scripts do not depend on CairoMakie, so run this with an environment that
 # provides it.
@@ -38,7 +34,7 @@ using CairoMakie
 using DelimitedFiles
 
 const BENCH_DIR = @__DIR__
-# The combined figure belongs to the docs in the repository; a standalone copy of these
+# The docs figure belongs to the docs in the repository; a standalone copy of these
 # scripts keeps it next to the measurements instead.
 const FIG_DIR = isdir(joinpath(BENCH_DIR, "..", "docs")) ?
     joinpath(BENCH_DIR, "..", "docs", "src", "figures") : BENCH_DIR
@@ -66,7 +62,6 @@ const INPUT_FILES = Dict(
 )
 
 const OUTPUT_FILES = Dict(
-    :combined => joinpath(FIG_DIR, "scaling_combined.png"),
     :threads => joinpath(BENCH_DIR, "threads_scaling.png"),
     :distributed => joinpath(BENCH_DIR, "distributed_scaling.png"),
     :multinode => joinpath(BENCH_DIR, "multinode_scaling.png"),
@@ -123,9 +118,6 @@ empty_points() = (
     min_s = Float64[],
     max_s = Float64[],
 )
-
-# Speedup of a curve against its own first point.
-speedup(median_s) = median_s[1] ./ median_s
 
 function ideal_line!(ax, counts)
     x = [minimum(counts), maximum(counts)]
@@ -217,75 +209,12 @@ function plot_mode(mode::Symbol;
 end
 
 """
-    plot_combined(; kwargs...)
-
-Plot the strong scaling speedup of the multithreading and distributed backends of a
-single node run against each other.
-
-# Keywords
-- `out_path`: file to save the figure to.
-- `particles`: particle count shown in the title; defaults to the value recorded in the
-  CSV.
-- `machine`: machine name shown in the title.
-"""
-function plot_combined(;
-        out_path = OUTPUT_FILES[:combined], particles = nothing, machine = DEFAULT_MACHINE
-    )
-    threads = read_points(INPUT_FILES[:threads])
-    dist = read_points(INPUT_FILES[:distributed])
-    isempty(threads.count) && error("threads_scaling.csv holds no measurements.")
-    isempty(dist.count) && error("distributed_scaling.csv holds no measurements.")
-    if threads.count != dist.count
-        error("threads_scaling.csv and distributed_scaling.csv cover different counts.")
-    end
-    counts = threads.count
-    n = particles === nothing ? threads.particles : particles
-    nsteps = threads.steps
-
-    fig = Figure(; size = (1000, 500), fontsize = 20)
-    ax = Axis(
-        fig[1, 1];
-        xscale = log2,
-        yscale = log2,
-        xlabel = "Number of Threads / Workers",
-        ylabel = "Speedup",
-        title = "Strong Scaling ($(n) Particles, $(nsteps) Steps on $(machine))",
-        xticks = counts,
-        yticks = counts,
-        xminorticksvisible = true,
-        yminorticksvisible = true,
-    )
-
-    scatterlines!(
-        ax, counts, speedup(threads.median_s); label = "Multithreading", linewidth = 3
-    )
-    with_errorbars!(
-        ax, counts, speedup(threads.median_s),
-        threads.median_s[1] ./ threads.max_s, threads.median_s[1] ./ threads.min_s,
-    )
-    scatterlines!(ax, counts, speedup(dist.median_s); label = "Distributed", linewidth = 3)
-    with_errorbars!(
-        ax, counts, speedup(dist.median_s),
-        dist.median_s[1] ./ dist.max_s, dist.median_s[1] ./ dist.min_s,
-    )
-    ideal_line!(ax, counts)
-
-    axislegend(ax; position = :lt)
-
-    mkpath(dirname(out_path))
-    save(out_path, fig)
-    println("Combined scaling plot saved to: ", out_path)
-    return out_path
-end
-
-"""
     plot_cpu(; kwargs...)
 
 Plot every CPU sweep on one axis: aggregate throughput against the number of cores used.
-The single node sweeps and the multi-node sweep trace different ensemble sizes, but
-throughput is a rate, so they share an axis; the particle count is part of each label so
-the difference stays visible. Each multi-node point contributes `threads_per_worker` cores
-per node, so that series extends the axis past a single node.
+Throughput is a rate, so the single node sweeps and the multi-node sweep share an axis even
+though they were measured separately. Each multi-node point contributes `threads_per_worker`
+cores per node, so that series extends the axis past a single node.
 
 A dashed line shows ideal scaling at the measured single-core rate for comparison.
 
@@ -357,21 +286,20 @@ plot_distributed(; kwargs...) = plot_mode(:distributed; kwargs...)
 plot_multinode(; kwargs...) = plot_mode(:multinode; kwargs...)
 
 const PLOT_METHODS = Dict(
-    :combined => plot_combined,
     :threads => plot_threads,
     :distributed => plot_distributed,
     :multinode => plot_multinode,
     :cpu => plot_cpu,
 )
 
-const METHOD_NAMES = ["combined", "threads", "distributed", "multinode", "cpu"]
+const METHOD_NAMES = ["cpu", "threads", "distributed", "multinode"]
 
 """
     plot_scaling(method::Symbol; kwargs...)
 
 Draw one of the scaling figures, forwarding keyword arguments to its plotting function.
-Use `:combined` for the single node comparison, `:threads` or `:distributed` for one
-backend alone, and `:multinode` for the node sweep.
+Use `:cpu` for all three sweeps on one axis, or `:threads`, `:distributed` and
+`:multinode` for a single mode.
 """
 function plot_scaling(method::Symbol; kwargs...)
     plot = get(PLOT_METHODS, method) do
@@ -400,7 +328,7 @@ function parse_args(args)
     end
 
     if isempty(methods)
-        push!(methods, :combined)
+        push!(methods, :cpu)
     elseif :all in methods
         haskey(options, :out_path) &&
             error("--out is ambiguous for `all`; plot one method at a time.")
