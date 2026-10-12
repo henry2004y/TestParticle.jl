@@ -57,13 +57,15 @@ The following table compares the performance of TestParticle's Boris solver agai
 
 ### Parallel Scaling
 
-TestParticle.jl supports multithreading, distributed computing, and multi-node parallelism for ensemble simulations on CPUs. The following aggregate throughput was obtained on a Perlmutter CPU node (2x AMD EPYC 7763, 128 physical cores). Each ensemble traces a uniform magnetic field with the Boris solver and saves 100 points per trajectory; the single-node sweeps trace 16384 particles, and the multi-node sweep 65536.
+TestParticle.jl supports multithreading, distributed computing, and multi-node parallelism for ensemble simulations on CPUs. The following aggregate throughput was obtained on Perlmutter CPU nodes (2x AMD EPYC 7763, 128 physical cores per node). Each ensemble traces 16384 particles for 250000 Boris steps in a uniform magnetic field, saving 100 points per trajectory. Every point is the median of repeated runs, and the error bars span the fastest and slowest repetition.
 
 - *Multithreading*: `EnsembleThreads()` over 1 to 128 threads in one process.
 - *Distributed*: `EnsembleDistributed()` over 1 to 128 worker processes on one node.
-- *Multi-node*: `EnsembleSplitThreads()` with one worker per node, each worker running 128 threads, over 1 to 4 nodes.
+- *Multi-node*: `EnsembleSplitThreads()` with one worker per node, each worker running 128 threads, over 1 to 8 nodes.
 
 ![CPU Scaling Throughput](./figures/scaling_cpu.png)
+
+The two single-node strategies track each other within a few percent and reach about 1.1 billion particle-steps per second on 128 cores, close to 60 percent of the single-core rate extrapolated linearly; the rest goes to the lower clock an all-core load draws. Multi-node carries on past one node and reaches 2.7 billion particle-steps per second across 8 nodes, but its one-node point sits well below the single-process runs, since `EnsembleSplitThreads` gathers every trajectory back to the master process, a cost the shared-memory path does not pay.
 
 Reproducible scripts and the recorded measurements live in [benchmark](https://github.com/henry2004y/TestParticle.jl/tree/master/benchmark); render the figure with `benchmark/plot_scaling.jl cpu`.
 
