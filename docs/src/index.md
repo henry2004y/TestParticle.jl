@@ -86,7 +86,18 @@ kernels directly on hardware accelerators.
 Reproducible benchmark scripts are available in
 [`benchmark/compare_boris_backends.jl`](https://github.com/henry2004y/TestParticle.jl/blob/master/benchmark/compare_boris_backends.jl).
 
-#### 1. Analytical Uniform Field Tracing (1,000 steps)
+The aggregate throughput scaling across ensemble sizes on Perlmutter (NVIDIA A100-SXM4-40GB and 128-thread AMD EPYC 7763) is shown below, contrasting an analytical field with a numerical 3D discrete grid field:
+
+![GPU Throughput](./figures/scaling_gpu.png)
+
+Render the figure with `benchmark/plot_scaling.jl gpu`.
+
+Key observations from the scaling throughput:
+- **CPU Multithreading Contention ($N \ge 100,000$):** In the analytical field, `CPU Threads` throughput drops from ~1,000 M steps/s at $N = 10,000$ to ~380 M steps/s at $N = 100,000$. This slowdown is driven by host memory management: assembling 100,000 separate `ODESolution` wrapper objects across 128 threads creates heavy heap allocation contention and garbage collection (GC) pressure. By contrast, `KA CPU` batches particle states and maintains ~4,100 M steps/s.
+- **GPU Default API Bottleneck ($N > 200,000$):** The default GPU API curves for FP32 and FP64 peak near 100,000–500,000 particles and then decline. While the GPU integrates millions of particles in a few milliseconds, the CPU host spends hundreds of milliseconds packaging up to 5,000,000 individual `ODESolution` Julia objects.
+- **Unlocking Full Hardware Throughput with Raw Output:** Switching to `raw_output = true` and a bulk initial state matrix (`u0`) eliminates all per-particle host object allocations. Particle states remain in contiguous matrix buffers, allowing GPU FP32 throughput to scale continuously to over **$1.3 \times 10^{11}$ particle-steps/s** at 5 million particles.
+
+#### 1. Analytical Field Tracing (1,000 steps)
 
 Times below report the median wall time for an ensemble of particles traced over 1,000
 steps on the RTX 5070 workstation. Speeds in parentheses are relative to CPU Serial:
@@ -104,7 +115,7 @@ GPU (FP32) in **1.22 ms** ($>8.1 \times 10^{10}$ particle-steps/s end-to-end). O
 Perlmutter A100, the same 100,000-particle ensemble completes in **2.33 ms** (FP64) and
 **1.22 ms** (FP32).
 
-#### 2. 3D Grid Field Interpolation ($32^3$ Grid, 200 steps, Float32)
+#### 2. Numerical Grid Field Interpolation ($32^3$ Grid, 200 steps, Float32)
 
 For discrete electromagnetic grids, TestParticle.jl automatically converts grid
 interpolations into device-native
@@ -126,28 +137,29 @@ structures with hardware register trilinear evaluation:
 
 Because Boris integration holds particle coordinates and velocities entirely in
 GPU registers throughout the step loop, the kernel performs zero DRAM reads or writes
-between $t_0$ and $t_{\text{end}}$. A linear regression $t = a + b \cdot \text{steps}$
-isolates host initialization / wrapper overhead ($a$) from the pure hardware pusher
-throughput ($b$):
+between $t_0$ and $t_{\text{end}}$. Each Boris step performs approximately 52 floating-point
+operations (FLOPs). A linear regression $t = a + b \cdot \text{steps}$ isolates host
+wrapper overhead ($a$) from the pure hardware pusher throughput ($b$).
 
-- **NVIDIA A100 (Perlmutter):**
-  - **FP32:** $385.1 \times 10^9$ particle-steps/s ($b = 0.0026\text{ ms} / \text{step}$
-    per $10^6$ particles), achieving $\approx 20.0\text{ TFLOPS}$ (~100% of the A100
-    peak vector FP32 compute of 19.5 TFLOPS).
-  - **FP64:** $191.6 \times 10^9$ particle-steps/s ($b = 0.0052\text{ ms} / \text{step}$
-    per $10^6$ particles), achieving $\approx 10.0\text{ TFLOPS}$ (~100% of the A100
-    peak FP64 compute of 9.7 TFLOPS).
-  - The measured FP32:FP64 speedup ratio is **2.00x**, exactly matching the 2:1 ALU
-    hardware architecture of the A100.
-- **NVIDIA RTX 5070 (Workstation):**
-  - **FP32:** $625.4 \times 10^9$ particle-steps/s ($b = 0.0016\text{ ms} / \text{step}$
-    per $10^6$ particles), delivering $\approx 31.2\text{ TFLOPS}$ (>80% of peak compute).
-  - **FP64:** $9.4 \times 10^9$ particle-steps/s, demonstrating a **62.4x** FP32 speedup
-    that reflects the 1:64 FP64 ALU throttling inherent to consumer GeForce GPUs.
-- **$32^3$ Grid Interpolation:**
-  - Sustains $55.5 \times 10^9$ particle-steps/s on A100 and $48.2 \times 10^9$
-    particle-steps/s on RTX 5070, saturating GPU L1/L2 cache read bandwidth with
-    trilinear evaluations.
+Comparing the measured kernel compute against theoretical peak hardware limits reveals
+the architectural trade-offs between datacenter and consumer GPUs:
+
+| Accelerator | Precision | Kernel Throughput | Measured Compute | Peak Hardware Vector Compute | % of Peak Compute |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **NVIDIA A100**<br>(Datacenter) | FP32 | 385.1 G steps/s | 20.0 TFLOPS | 19.5 TFLOPS | ~100% |
+| | FP64 | 191.6 G steps/s | 10.0 TFLOPS | 9.7 TFLOPS | ~100% |
+| **NVIDIA RTX 5070**<br>(Consumer) | FP32 | 625.4 G steps/s | 31.2 TFLOPS | 38.8 TFLOPS | >80% |
+| | FP64 | 9.4 G steps/s | 0.49 TFLOPS | 0.61 TFLOPS | ~80% |
+
+- **Datacenter GPU (A100):** Hardware ALUs are engineered with a full-rate 2:1 FP32:FP64
+  ratio. The Boris pusher achieves ~100% of the peak theoretical vector compute in both
+  precisions, yielding an exact **2.00x speedup** for FP32 over FP64.
+- **Consumer GPU (RTX 5070):** Consumer GeForce architectures feature a 1:64 hardware ALU
+  rate for FP64. While FP32 delivers exceptional compute (31.2 TFLOPS, >80% of peak), FP64
+  suffers a **62.4x slowdown** due to this hardware throttle.
+- **Numerical Grid Interpolation:** Evaluating discrete grids ($32^3$ grid) transitions
+  the bottleneck from pure ALU compute to GPU L1/L2 cache read bandwidth during trilinear
+  interpolations, sustaining **55.5 G steps/s** on the A100 and **48.2 G steps/s** on the RTX 5070.
 
 ### Precision Considerations: Float64 vs Float32
 
@@ -157,11 +169,11 @@ automatically promotes the simulation parameters, physical constants, and equati
 to single precision.
 
 #### Advantages of Float32
-- **Massive Consumer GPU Speedups:** Consumer-grade GPUs (e.g., NVIDIA GeForce RTX
-  30/40/50 series) feature a 1:64 FP64 ALU throughput throttle. Switching to `Float32`
-  unlocks the full hardware compute rate, yielding over **60x** faster pure kernel
-  execution. On datacenter GPUs (e.g., NVIDIA A100), `Float32` yields the theoretical
-  **2x** speedup over full-rate FP64 ALUs.
+- **Consumer GPU Throughput:** Consumer-grade GPUs (e.g., NVIDIA GeForce RTX
+  30/40/50 series) feature a 1:64 FP64 ALU throughput throttle. Where single precision
+  is physically acceptable, switching to `Float32` unlocks the full hardware compute rate,
+  yielding over **60x** faster pure kernel execution. On datacenter GPUs (e.g., NVIDIA A100),
+  `Float32` yields the theoretical **2x** speedup over full-rate FP64 ALUs.
 - **Lower Memory Footprint:** Halves VRAM and host memory consumption for trajectory
   buffers and 3D electromagnetic grids, reducing memory bandwidth pressure.
 - **Reduced Host Overhead:** Memory allocations and data transfers across the PCIe bus
@@ -175,16 +187,24 @@ to single precision.
   coordinate baselines (e.g. planetary magnetospheres where $r \sim 10^7$ m, but gyroradii
   or step increments are in centimeters or meters), `Float32` suffers from catastrophic
   cancellation in spatial increments.
-- **Recommendations:**
-  - Use **`Float64`** for high-precision single-particle tracing, long-duration orbital
-    dynamics, and planetary-scale simulations using unnormalized SI units.
-  - Use **`Float32`** for large statistical ensembles ($N \ge 10^5$), kinetic/MHD
-    distribution studies, normalized coordinate systems (e.g., lengths normalized to
-    ion inertial length or gyroradius), and high-throughput GPU workloads.
-  - For large ensembles ($N \ge 10^5$), set **`raw_output = true`** to bypass per-particle
-    `ODESolution` Julia object allocation and achieve near-pure kernel throughput, and pass
-    the initial states as one `u0` matrix to skip `prob_func` as well. Both are keywords of
-    the kernel backend only.
+
+### Computing Resource and Scaling Guidelines
+
+Based on our CPU and GPU scaling benchmarks across problem sizes, architectures, and precisions:
+
+| Problem Scale | Recommended Backend & Configuration | Rationale |
+| :--- | :--- | :--- |
+| **Small Ensembles**($N < 1,000$) | CPU Serial or `EnsembleThreads()` | Low particle counts cannot saturate GPUs; GPU initialization and kernel launch latency dominate runtime. |
+| **Medium Ensembles**($1,000 \le N \le 50,000$) | `EnsembleThreads()`, `KA.CPU()`, or GPU (default API) | Both multi-threaded CPU and GPU scale efficiently. Standard `ODESolution` wrapper objects allow full SciML ecosystem integration without noticeable allocation bottlenecks. |
+| **Large Ensembles**($N \ge 100,000$) | **GPU Backend with `raw_output = true`** and bulk `u0` matrix | **Avoid default per-particle `ODESolution` wrappers.** Allocating $>10^5$ heap objects on the host creates severe garbage collection contention. Raw matrix output bypasses host overhead, allowing GPUs to sustain $>10^{11}$ particle-steps/s. |
+
+- **Precision Guidelines (Accuracy First):**
+  - **Prioritize Numerical Accuracy:** Never sacrifice necessary physical precision for execution speed. Use **`Float64`** by default for single-particle orbits, long integrations ($>10^5$ gyro-orbits), and planetary-scale coordinate baselines ($r \sim 10^7$ m with small step increments) to avoid catastrophic cancellation and numerical drift.
+  - **When to Use `Float32`:** Single precision should only be used when physical error tolerances allow, such as large statistical ensembles using normalized dimensionless units (e.g., coordinates scaled by gyroradius or ion inertial length).
+  - **Hardware Implications:**
+    - When `Float64` is required, **datacenter GPUs (A100/H100)** or **CPU clusters** are the ideal targets, as datacenter GPUs maintain full-rate FP64 ALUs (incurring only an expected ~2x compute difference relative to FP32).
+    - **Consumer GPUs (GeForce RTX series)** throttle FP64 ALUs to a 1:64 rate. While they execute `Float64` with full mathematical correctness, hardware throughput is restricted. When FP64 is needed, choose datacenter GPUs or multi-core CPUs rather than downgrading precision to `Float32`.
+- **Electromagnetic Field Grids:** For discrete numerical grids, use `prepare` to generate device-native `GPUGrid3D` structures. This leverages hardware registers and L1/L2 cache for trilinear interpolation and avoids host-side interpolation overhead.
 
 ## Presentations
 

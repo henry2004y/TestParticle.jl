@@ -8,6 +8,7 @@
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl threads
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl distributed
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl multinode
+#   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl gpu
 #   julia --project=<env-with-CairoMakie> benchmark/plot_scaling.jl all
 #
 # Options:
@@ -21,11 +22,13 @@
 #   threads      EnsembleThreads alone
 #   distributed  EnsembleDistributed alone
 #   multinode    EnsembleSplitThreads against EnsembleDistributed across nodes
+#   gpu          GPU pusher throughput on uniform and 3D grid fields
 #
 # From Julia, the same figures are available as
 #
 #   include("benchmark/plot_scaling.jl")
 #   plot_scaling(:cpu)
+#   plot_scaling(:gpu)
 #
 # Measurement scripts do not depend on CairoMakie, so run this with an environment that
 # provides it.
@@ -59,6 +62,7 @@ const INPUT_FILES = Dict(
     :threads => "threads_scaling.csv",
     :distributed => "distributed_scaling.csv",
     :multinode => "multinode_scaling.csv",
+    :gpu => "perlmutter-benchmark-result-gpu.md",
 )
 
 const OUTPUT_FILES = Dict(
@@ -66,6 +70,7 @@ const OUTPUT_FILES = Dict(
     :distributed => joinpath(BENCH_DIR, "distributed_scaling.png"),
     :multinode => joinpath(BENCH_DIR, "multinode_scaling.png"),
     :cpu => joinpath(FIG_DIR, "scaling_cpu.png"),
+    :gpu => joinpath(FIG_DIR, "scaling_gpu.png"),
 )
 
 """
@@ -243,7 +248,7 @@ function plot_cpu(; out_path = OUTPUT_FILES[:cpu], machine = DEFAULT_MACHINE)
     )
     xticks = sort(unique(vcat([s[2] for s in series]...)))
 
-    fig = Figure(; size = (1000, 620), fontsize = 19)
+    fig = Figure(; size = (1000, 450), fontsize = 19)
     ax = Axis(
         fig[1, 1];
         xscale = log2,
@@ -286,21 +291,282 @@ plot_distributed(; kwargs...) = plot_mode(:distributed; kwargs...)
 
 plot_multinode(; kwargs...) = plot_mode(:multinode; kwargs...)
 
+function parse_gpu_number(s::AbstractString)
+    m = match(r"([0-9]+(?:\.[0-9]+)?)", s)
+    return m === nothing ? NaN : parse(Float64, m.match)
+end
+
+function read_gpu_benchmark(file::AbstractString)
+    filepath = isabspath(file) ? file : joinpath(BENCH_DIR, file)
+    lines = readlines(filepath)
+
+    gpu_device = "NVIDIA A100-SXM4-40GB"
+    cpu_threads = "128"
+    for line in lines[1:min(10, length(lines))]
+        if occursin("GPU Device:", line)
+            gpu_device = strip(split(line, ":"; limit = 2)[2])
+        elseif occursin("CPU Threads:", line)
+            cpu_threads = strip(split(line, ":"; limit = 2)[2])
+        end
+    end
+
+    analytical_n = Float64[]
+    cpu_ser = Float64[]
+    cpu_thr = Float64[]
+    ka_cpu = Float64[]
+    gpu_fp64 = Float64[]
+    gpu_fp32 = Float64[]
+    ka_cpu_raw = Float64[]
+    gpu_fp64_raw = Float64[]
+    gpu_fp32_raw = Float64[]
+
+    grid_n = Float64[]
+    grid_cpu_thr = Float64[]
+    grid_ka_cpu = Float64[]
+    grid_gpu = Float64[]
+    grid_ka_cpu_raw = Float64[]
+    grid_gpu_raw = Float64[]
+
+    large_n = Float64[]
+    large_gpu_fp64 = Float64[]
+    large_gpu_fp32 = Float64[]
+    large_gpu_fp32_raw = Float64[]
+
+    mode = :none
+    for line in lines
+        s = strip(line)
+        if occursin("[1] Analytical", s)
+            mode = :s1_base
+        elseif occursin("[2] 3D Grid", s)
+            mode = :s2_base
+        elseif occursin("[3] GPU-only large-scale", s)
+            mode = :s3
+        elseif occursin("[4] GPU kernel isolation", s)
+            mode = :s4
+        elseif occursin("Raw output", s)
+            if mode in (:s1_base, :s1_other)
+                mode = :s1_raw
+            elseif mode in (:s2_base, :s2_other)
+                mode = :s2_raw
+            end
+        elseif occursin("Speedup relative to", s) || occursin("Effective throughput", s)
+            if mode in (:s1_base, :s1_raw)
+                mode = :s1_other
+            elseif mode in (:s2_base, :s2_raw)
+                mode = :s2_other
+            elseif mode == :s3
+                mode = :s3_other
+            end
+        elseif occursin("|", s) && !occursin("Particles", s) && !occursin("Steps", s) &&
+                !occursin("---", s)
+            parts = strip.(split(s, "|"))
+            if mode == :s1_base && length(parts) >= 6
+                push!(analytical_n, parse_gpu_number(parts[1]))
+                push!(cpu_ser, parse_gpu_number(parts[2]))
+                push!(cpu_thr, parse_gpu_number(parts[3]))
+                push!(ka_cpu, parse_gpu_number(parts[4]))
+                push!(gpu_fp64, parse_gpu_number(parts[5]))
+                push!(gpu_fp32, parse_gpu_number(parts[6]))
+            elseif mode == :s1_raw && length(parts) >= 4
+                push!(ka_cpu_raw, parse_gpu_number(parts[2]))
+                push!(gpu_fp64_raw, parse_gpu_number(parts[3]))
+                push!(gpu_fp32_raw, parse_gpu_number(parts[4]))
+            elseif mode == :s2_base && length(parts) >= 4
+                push!(grid_n, parse_gpu_number(parts[1]))
+                push!(grid_cpu_thr, parse_gpu_number(parts[2]))
+                push!(grid_ka_cpu, parse_gpu_number(parts[3]))
+                push!(grid_gpu, parse_gpu_number(parts[4]))
+            elseif mode == :s2_raw && length(parts) >= 3
+                push!(grid_ka_cpu_raw, parse_gpu_number(parts[2]))
+                push!(grid_gpu_raw, parse_gpu_number(parts[3]))
+            elseif mode == :s3 && length(parts) >= 4
+                push!(large_n, parse_gpu_number(parts[1]))
+                push!(large_gpu_fp64, parse_gpu_number(parts[2]))
+                push!(large_gpu_fp32, parse_gpu_number(parts[3]))
+                push!(large_gpu_fp32_raw, parse_gpu_number(parts[4]))
+            end
+        end
+    end
+
+    return (
+        gpu_device = gpu_device,
+        cpu_threads = cpu_threads,
+        analytical = (
+            n = analytical_n, steps = 1000,
+            cpu_ser = cpu_ser, cpu_thr = cpu_thr,
+            ka_cpu = ka_cpu, ka_cpu_raw = ka_cpu_raw,
+            gpu_fp64 = gpu_fp64, gpu_fp64_raw = gpu_fp64_raw,
+            gpu_fp32 = gpu_fp32, gpu_fp32_raw = gpu_fp32_raw,
+        ),
+        grid = (
+            n = grid_n, steps = 200,
+            cpu_thr = grid_cpu_thr,
+            ka_cpu = grid_ka_cpu, ka_cpu_raw = grid_ka_cpu_raw,
+            gpu = grid_gpu, gpu_raw = grid_gpu_raw,
+        ),
+        large = (
+            n = large_n, steps = 1000,
+            gpu_fp64 = large_gpu_fp64,
+            gpu_fp32 = large_gpu_fp32,
+            gpu_fp32_raw = large_gpu_fp32_raw,
+        ),
+    )
+end
+
+"""
+    plot_gpu(; kwargs...)
+
+Plot GPU pusher throughput on uniform and 3D grid fields against particle count.
+
+# Keywords
+- `file`: markdown file holding benchmark output, relative to the benchmark directory.
+- `out_path`: file to save the figure to.
+- `machine`: machine name shown in the title.
+"""
+function plot_gpu(;
+        file = INPUT_FILES[:gpu], out_path = OUTPUT_FILES[:gpu], machine = DEFAULT_MACHINE
+    )
+    data = read_gpu_benchmark(file)
+    fig = Figure(; size = (1000, 450), fontsize = 18)
+
+    a = data.analytical
+    lg = data.large
+    tp(n, t_ms, steps) = (n .* steps) ./ (t_ms .* 1000.0)
+
+    ax1 = Axis(
+        fig[1, 1];
+        xscale = log10,
+        yscale = log10,
+        xlabel = "Number of Particles",
+        ylabel = "Throughput (M particle-steps/s)",
+        title = "Analytical Field (1,000 Steps)",
+        xticks = ([1e3, 1e4, 1e5, 1e6, 5e6], ["1k", "10k", "100k", "1M", "5M"]),
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+    )
+
+    scatterlines!(
+        ax1, a.n, tp(a.n, a.cpu_ser, a.steps);
+        label = "CPU Serial (FP64)", color = :gray50, linestyle = :dot,
+        linewidth = 2, markersize = 8
+    )
+    scatterlines!(
+        ax1, a.n, tp(a.n, a.cpu_thr, a.steps);
+        label = "CPU Threads ($(data.cpu_threads) thr)", color = :darkorange,
+        linewidth = 2.5, markersize = 10
+    )
+    scatterlines!(
+        ax1, a.n, tp(a.n, a.ka_cpu_raw, a.steps);
+        label = "KA CPU ($(data.cpu_threads) thr, Raw)", color = :chocolate3,
+        linestyle = :dash, linewidth = 2.5, markersize = 10
+    )
+
+    if !isempty(lg.n)
+        fp64_n = vcat(a.n[1:2], lg.n)
+        fp64_t = vcat(a.gpu_fp64[1:2], lg.gpu_fp64)
+        scatterlines!(
+            ax1, fp64_n, tp(fp64_n, fp64_t, 1000);
+            label = "GPU FP64", color = :steelblue, linewidth = 2.5, markersize = 10
+        )
+
+        fp32_n = vcat(a.n[1:2], lg.n)
+        fp32_t = vcat(a.gpu_fp32[1:2], lg.gpu_fp32)
+        scatterlines!(
+            ax1, fp32_n, tp(fp32_n, fp32_t, 1000);
+            label = "GPU FP32", color = :teal, linewidth = 2.5, markersize = 10
+        )
+
+        fp32_raw_n = vcat(a.n[1:2], lg.n)
+        fp32_raw_t = vcat(a.gpu_fp32_raw[1:2], lg.gpu_fp32_raw)
+        scatterlines!(
+            ax1, fp32_raw_n, tp(fp32_raw_n, fp32_raw_t, 1000);
+            label = "GPU FP32 (Raw)", color = :forestgreen, linewidth = 3, markersize = 11
+        )
+    else
+        scatterlines!(
+            ax1, a.n, tp(a.n, a.gpu_fp64, a.steps);
+            label = "GPU FP64", color = :steelblue, linewidth = 2.5, markersize = 10
+        )
+        scatterlines!(
+            ax1, a.n, tp(a.n, a.gpu_fp32, a.steps);
+            label = "GPU FP32", color = :teal, linewidth = 2.5, markersize = 10
+        )
+        scatterlines!(
+            ax1, a.n, tp(a.n, a.gpu_fp32_raw, a.steps);
+            label = "GPU FP32 (Raw)", color = :forestgreen, linewidth = 3, markersize = 11
+        )
+    end
+
+    axislegend(ax1; position = :rb, labelsize = 12, backgroundcolor = (:white, 0.85))
+
+    ax2 = Axis(
+        fig[1, 2];
+        xscale = log10,
+        yscale = log10,
+        xlabel = "Number of Particles",
+        ylabel = "Throughput (M particle-steps/s)",
+        title = "Numerical Field (32³ Grid, 200 Steps)",
+        xticks = ([2e3, 1e4, 5e4], ["2k", "10k", "50k"]),
+        yticks = [1e2, 1e3, 1e4],
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+    )
+
+    g = data.grid
+    scatterlines!(
+        ax2, g.n, tp(g.n, g.cpu_thr, g.steps);
+        label = "CPU Threads ($(data.cpu_threads) thr)", color = :darkorange,
+        linewidth = 2.5, markersize = 10
+    )
+    scatterlines!(
+        ax2, g.n, tp(g.n, g.ka_cpu, g.steps);
+        label = "KA CPU ($(data.cpu_threads) thr)", color = :chocolate3,
+        linewidth = 2.5, markersize = 10
+    )
+    scatterlines!(
+        ax2, g.n, tp(g.n, g.ka_cpu_raw, g.steps);
+        label = "KA CPU ($(data.cpu_threads) thr, Raw)", color = :chocolate3,
+        linestyle = :dash, linewidth = 2.5, markersize = 10
+    )
+    scatterlines!(
+        ax2, g.n, tp(g.n, g.gpu, g.steps);
+        label = "GPU (FP32)", color = :teal, linewidth = 2.5, markersize = 10
+    )
+    scatterlines!(
+        ax2, g.n, tp(g.n, g.gpu_raw, g.steps);
+        label = "GPU (FP32 Raw)", color = :forestgreen, linewidth = 3, markersize = 11
+    )
+
+    ylims!(ax2, 70, 25000)
+    axislegend(ax2; position = :lt, labelsize = 12, backgroundcolor = (:white, 0.85))
+
+    Label(
+        fig[0, :], "GPU Throughput on $(machine) ($(data.gpu_device))";
+        fontsize = 20, font = :bold
+    )
+
+    mkpath(dirname(out_path))
+    save(out_path, fig)
+    println("GPU throughput plot saved to: ", out_path)
+    return out_path
+end
+
 const PLOT_METHODS = Dict(
     :threads => plot_threads,
     :distributed => plot_distributed,
     :multinode => plot_multinode,
     :cpu => plot_cpu,
+    :gpu => plot_gpu,
 )
 
-const METHOD_NAMES = ["cpu", "threads", "distributed", "multinode"]
+const METHOD_NAMES = ["cpu", "threads", "distributed", "multinode", "gpu"]
 
 """
     plot_scaling(method::Symbol; kwargs...)
 
 Draw one of the scaling figures, forwarding keyword arguments to its plotting function.
-Use `:cpu` for all three sweeps on one axis, or `:threads`, `:distributed` and
-`:multinode` for a single mode.
+Use `:cpu` for CPU core scaling, `:gpu` for GPU pusher scaling, or `:threads`,
+`:distributed` and `:multinode` for a single ensemble mode.
 """
 function plot_scaling(method::Symbol; kwargs...)
     plot = get(PLOT_METHODS, method) do
