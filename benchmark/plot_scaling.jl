@@ -440,7 +440,7 @@ function plot_gpu(;
         xlabel = "Number of Particles",
         ylabel = "Throughput (M particle-steps/s)",
         title = "Analytical Field (1,000 Steps)",
-        xticks = ([1e3, 1e4, 1e5, 1e6, 5e6], ["1k", "10k", "100k", "1M", "5M"]),
+        xticks = ([1.0e3, 1.0e4, 1.0e5, 1.0e6, 5.0e6], ["1k", "10k", "100k", "1M", "5M"]),
         xminorticksvisible = true,
         yminorticksvisible = true,
     )
@@ -506,8 +506,8 @@ function plot_gpu(;
         xlabel = "Number of Particles",
         ylabel = "Throughput (M particle-steps/s)",
         title = "Numerical Field (32³ Grid, 200 Steps)",
-        xticks = ([2e3, 1e4, 5e4], ["2k", "10k", "50k"]),
-        yticks = [1e2, 1e3, 1e4],
+        xticks = ([2.0e3, 1.0e4, 5.0e4], ["2k", "10k", "50k"]),
+        yticks = [1.0e2, 1.0e3, 1.0e4],
         xminorticksvisible = true,
         yminorticksvisible = true,
     )
