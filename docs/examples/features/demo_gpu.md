@@ -112,7 +112,8 @@ f
 
 TestParticle provides a native GPU Boris solver implemented with
 [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl), which enables
-backend-agnostic GPU execution. The solver uses method dispatch on `KA.Backend` type.
+backend-agnostic GPU execution. Each `EnsembleKernel` solve runs on one selected
+backend, including one GPU, using method dispatch on the `KA.Backend` type.
 
 Each trajectory is given its own initial state by `prob_func`, which is called once per
 trajectory on the host before the kernel is launched. Being host code, it may run anything
@@ -186,6 +187,80 @@ sols = solve(prob, Boris(), backend; dt = 1.0e-9, trajectories, saveat = 1.0e-8)
 ```
 
 > **Note**: The native GPU solver supports both analytic and numerical (interpolated) fields. Numerical fields see a particularly large performance benefit from GPU acceleration.
+
+### Using multiple GPUs today
+
+The native solver does not yet distribute one ensemble across multiple GPUs
+automatically. For independent particle trajectories, launch one Julia worker per
+GPU, select a device in each worker, split the initial-state matrix into chunks,
+and collect the chunk solutions in order. This example is for multiple GPUs on a
+single machine; each worker must use the same Julia project and have CUDA available.
+
+```julia
+using Distributed
+using TestParticle, CUDA, StaticArrays
+
+trajectories = 1000
+gpu_count = length(CUDA.devices())
+gpu_count > 0 || error("No CUDA GPUs are available")
+trajectories >= gpu_count || error("Use at least one trajectory per GPU")
+
+project = Base.active_project()
+isnothing(project) && error("Activate the project used to run this example")
+pids = addprocs(gpu_count; exeflags = "--project=$(dirname(project))")
+
+@everywhere using TestParticle, CUDA, StaticArrays
+
+@everywhere begin
+    B(x) = SA[0.0, 0.0, 1.0e-8]
+    E(x) = SA[0.0, 0.0, 0.0]
+
+    function solve_gpu_chunk(prob, alg, u0_chunk, device_index, dt)
+        CUDA.device!(CUDA.devices()[device_index])
+        return solve(
+            prob, alg, CUDA.CUDABackend();
+            dt, trajectories = size(u0_chunk, 1), u0 = u0_chunk
+        )
+    end
+end
+
+stateinit = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+tspan = (0.0, 1.0e-6)
+dt = 1.0e-9
+
+param = prepare(E, B; species = Proton)
+prob = TraceProblem(stateinit, tspan, param)
+u0 = repeat(reshape(stateinit, 1, 6), trajectories, 1)
+for i in 1:trajectories
+    u0[i, 4] = 1.0e5 * i / trajectories
+end
+
+# Use contiguous, balanced ranges so concatenating results restores input order.
+ranges = [
+    ((i - 1) * trajectories ÷ gpu_count + 1):(i * trajectories ÷ gpu_count)
+    for i in 1:gpu_count
+]
+
+try
+    futures = [
+        remotecall(
+            solve_gpu_chunk, pids[i], prob, Boris(), u0[r, :], i, dt
+        )
+        for (i, r) in enumerate(ranges)
+    ]
+    solutions = reduce(vcat, (fetch(f).u for f in futures))
+finally
+    rmprocs(pids)
+end
+```
+
+Each worker runs the existing single-backend `EnsembleKernel` solve for its
+chunk, and the caller concatenates the returned solutions in trajectory order.
+This is explicit orchestration rather than a built-in multi-GPU scheduler; it
+assumes all workers can see the same GPU list and that there are at least as many
+trajectories as GPUs. A future multi-GPU API should manage device assignment and
+chunking, retain stable trajectory IDs and seeded results regardless of scheduling,
+and gather results consistently for both solution and raw-output modes.
 
 ## Boundary Checks with isoutside
 
