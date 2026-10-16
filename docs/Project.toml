@@ -39,6 +39,7 @@ TestParticle = {path = ".."}
 [compat]
 DiffEqCallbacks = "4"
 DocumenterVitepress = "0.3"
+FieldTracer = "0.2.4"
 ForwardDiff = "1"
 OrdinaryDiffEq = "6, 7"
 Tensors = "1.17"

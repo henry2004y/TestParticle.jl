@@ -11,6 +11,7 @@
 import DisplayAs #hide
 import TestParticle as TP
 import Magnetostatics as MS
+using FieldTracer
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
@@ -22,18 +23,20 @@ CairoMakie.activate!(type = "png") #hide
 # We use the predefined dipole field functions that returns the Earth's magnetic field in SI units (Tesla).
 dipole = MS.Dipole(TP.BMoment_Earth)
 getB = r -> dipole(r)
+fieldline_B(x, s) = getB(x)
 
 # ## Trace Field Lines
 #
 # We choose a set of starting points (seeds) for the field lines.
 # For a dipole, starting on the equatorial plane (z=0) at different radii (L-shells) is a good choice.
 # We scale the L-shells by the Earth's radius $R_E$.
-# Note that since `trace_fieldline` uses in-place operations, we need to provide mutable initial conditions (e.g., `MVector`).
+# `TraceFieldlineProblem` uses in-place operations, so the initial conditions
+# must be mutable (e.g., `MVector`).
 
 L_shells = 3.0:1.0:6.0
 seeds = [MVector(L * TP.Rₑ, 0.0, 0.0) for L in L_shells];
 
-# We trace each field line using `TraceFieldlineProblem`.
+# We trace each field line using `FieldTracer.TraceFieldlineProblem`.
 # The `mode=:both` argument traces in both forward (along B) and backward (against B) directions.
 # `tspan` here represents the arc length to trace.
 
@@ -48,7 +51,7 @@ callback = TP.TerminateOutside((u, p, t) -> norm(u) < TP.Rₑ)
 
 for (i, u0) in enumerate(seeds)
     ## Returns a vector of two ODEProblems (forward and backward)
-    probs = TP.TraceFieldlineProblem(u0, getB, s_span; mode = :both)
+    probs = FieldTracer.TraceFieldlineProblem(u0, fieldline_B, s_span; mode = :both)
 
     ## Solve each problem
     for (j, prob) in enumerate(probs)

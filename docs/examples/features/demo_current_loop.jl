@@ -9,6 +9,7 @@
 import DisplayAs #hide
 import TestParticle as TP
 import Magnetostatics as MS
+using FieldTracer
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra
@@ -50,7 +51,7 @@ function get_B_total(loop1, loop2)
 end
 
 B_total = get_B_total(loop1, loop2)
-param = TP.prepare(TP.ZeroField(), B_total);
+fieldline_B(x, s) = B_total(x)
 
 # ## Trace Field Lines
 #
@@ -73,7 +74,7 @@ callback = TP.TerminateOutside((u, p, t) -> norm(u) > 10.0)
 
 for u0 in seeds
     ## Trace in both directions
-    probs = TP.TraceFieldlineProblem(u0, param, s_span; mode = :both)
+    probs = FieldTracer.TraceFieldlineProblem(u0, fieldline_B, s_span; mode = :both)
 
     for prob in probs
         sol = solve(prob, Vern9(); callback, reltol = 1.0e-6, abstol = 1.0e-6)
