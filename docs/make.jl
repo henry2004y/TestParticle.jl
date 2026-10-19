@@ -1,7 +1,9 @@
 using Documenter, DocumenterVitepress
 using TestParticle
+using SHA: sha256, bytes2hex
 
 using Literate
+
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
 const OUTPUT_DIR = joinpath(@__DIR__, "src")
@@ -87,19 +89,40 @@ features_order = [
     "demo_store_ensemble.jl",
 ]
 
-function process_examples(subdir, order)
+const FORCE_REBUILD = get(ENV, "DOCS_FORCE_REBUILD", "false") == "true"
+
+function process_examples(
+        subdir::String, order::Vector{String};
+        force_rebuild::Bool = FORCE_REBUILD
+    )
     pages = String[]
     for filename in order
         src_path = joinpath(EXAMPLES_DIR, subdir, filename)
         out_dir = joinpath(OUTPUT_DIR, subdir)
 
         if endswith(filename, ".jl")
-            # Compile to markdown
-            Literate.markdown(src_path, out_dir; documenter = true, credit = false)
             name = replace(filename, ".jl" => ".md")
+            md_path = joinpath(out_dir, name)
+            hash_path = joinpath(out_dir, filename * ".sha256")
+            current_hash = bytes2hex(sha256(read(src_path)))
+
+            is_cached = !force_rebuild &&
+                isfile(md_path) &&
+                isfile(hash_path) &&
+                read(hash_path, String) == current_hash
+
+            if !is_cached
+                @info "Generating $subdir/$filename"
+                Literate.markdown(
+                    src_path, out_dir;
+                    flavor = Literate.DocumenterFlavor(),
+                    execute = true,
+                    credit = false
+                )
+                write(hash_path, current_hash)
+            end
             push!(pages, joinpath(subdir, name))
         elseif endswith(filename, ".md")
-            # Copy file
             cp(src_path, joinpath(out_dir, filename); force = true)
             push!(pages, joinpath(subdir, filename))
         end
