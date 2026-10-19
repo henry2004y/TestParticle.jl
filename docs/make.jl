@@ -92,9 +92,9 @@ features_order = [
 const FORCE_REBUILD = get(ENV, "DOCS_FORCE_REBUILD", "false") == "true"
 
 function process_examples(
-    subdir::String, order::Vector{String};
-    force_rebuild::Bool = FORCE_REBUILD
-)
+        subdir::String, order::Vector{String};
+        force_rebuild::Bool = FORCE_REBUILD
+    )
     pages = String[]
     for filename in order
         src_path = joinpath(EXAMPLES_DIR, subdir, filename)
