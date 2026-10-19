@@ -7,12 +7,28 @@ on:
       - 'README.md'
       - 'AGENTS.md'
       - 'CONTRIBUTING.md'
+      - 'test/**'
+      - 'benchmark/**'
+      - '.github/workflows/CI.yml'
+      - '.github/workflows/Format.yml'
+      - '.github/workflows/TagBot.yml'
+      - '.github/workflows/benchmark.yml'
+      - '.github/workflows/publish-python.yml'
+      - '.github/workflows/python-wrapper.yml'
   pull_request:
     branches: [master]
     paths-ignore:
       - 'README.md'
       - 'AGENTS.md'
       - 'CONTRIBUTING.md'
+      - 'test/**'
+      - 'benchmark/**'
+      - '.github/workflows/CI.yml'
+      - '.github/workflows/Format.yml'
+      - '.github/workflows/TagBot.yml'
+      - '.github/workflows/benchmark.yml'
+      - '.github/workflows/publish-python.yml'
+      - '.github/workflows/python-wrapper.yml'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -24,15 +40,15 @@ permissions:
   id-token: write
   statuses: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      JULIA_NUM_THREADS: auto
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -41,6 +57,24 @@ jobs:
       - name: Load Julia packages from cache
         id: julia-cache
         uses: julia-actions/cache@v3
+      - name: Cache Node dependencies
+        uses: actions/cache@v4
+        with:
+          path: docs/node_modules
+          key: ${{ runner.os }}-docs-node-modules-${{ hashFiles('docs/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-node-modules-
+      - name: Cache generated examples
+        uses: actions/cache@v4
+        with:
+          path: |
+            docs/src/drifts
+            docs/src/analytic
+            docs/src/applications
+            docs/src/features
+          key: ${{ runner.os }}-doc-examples-${{ hashFiles('docs/examples/**', 'docs/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-doc-examples-
       - name: Build and deploy docs
         uses: julia-actions/julia-docdeploy@v1
         env:
