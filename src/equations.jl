@@ -171,9 +171,15 @@ function trace_gc_flr!(dx, x, p, t)
     # dx = EB(x) + r^2/4 * ∇²(EB) + v_par
     # EB(x) is redundant, use E and B directly
     @inbounds dx[1:3] =
-        (E × B) / (B ⋅ B) + r4 * Tensors.laplace.(EB, Tensors.Vec(x...)) + v_par
+        (E × B) / (B ⋅ B) + r4 * vector_laplacian(EB, SVector{3}(x)) + v_par
 
     return
+end
+
+# Row 3(j - 1) + i, column k of the nested Jacobian is ∂²fᵢ/∂xⱼ∂xₖ.
+function vector_laplacian(f, x::SVector{3})
+    H = ForwardDiff.jacobian(y -> vec(ForwardDiff.jacobian(f, y)), x)
+    return SVector(ntuple(i -> H[i, 1] + H[3 + i, 2] + H[6 + i, 3], 3))
 end
 
 """
