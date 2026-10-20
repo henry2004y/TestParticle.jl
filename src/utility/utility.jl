@@ -478,19 +478,6 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
 end
 
 """
-    get_curvature(x, t, Bfunc)
-
-Calculate the curvature vector `κ` of the magnetic field at position `x` and time `t`.
-"""
-@inline function get_curvature(x, t, Bfunc)
-    B, JB = _get_B_jacobian(x, t, Bfunc)
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
-
-    return B, ∇B, κ, b̂, Bmag
-end
-
-"""
     get_curvature_radius(x, t, Bfunc)
 
 Calculate the radius of curvature of the magnetic field at position `x` and time `t`.
