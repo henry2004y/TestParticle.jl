@@ -136,7 +136,7 @@ vpar = [u[4] for u in sol_gc.u]
 nbounce = count(i -> vpar[i] * vpar[i - 1] < 0, 2:length(vpar))
 ε = [
     TP.adiabaticity_components(SA[u[1], u[2], u[3]], Bfunc, μ, t; species)
-    for (u, t) in zip(sol_gc.u, sol_gc.t)
+        for (u, t) in zip(sol_gc.u, sol_gc.t)
 ]
 εmax = ntuple(i -> maximum(e[i] for e in ε), 3)
 
