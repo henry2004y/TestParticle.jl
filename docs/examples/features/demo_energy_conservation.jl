@@ -72,7 +72,7 @@ function run_test(
     end
 
     color_idx = 1
-    m_ = param[2]
+    m_ = param.m
     fo_energy(u, t) = 0.5 * m_ * norm(u[4:6])^2
 
     function plot_energy_error!(
@@ -163,9 +163,7 @@ function run_test(
     ## Run adaptive hybrid (GC <-> full-orbit) solver. Its output is the full
     ## orbit state, so its energy is the ordinary kinetic energy.
     if hybrid
-        q2m, m_hy, Efunc, Bfunc, _ = param
-        p_hy = (q2m, m_hy, Efunc, Bfunc, ZeroField())
-        prob_hy = TraceHybridProblem(SVector{6}(u0...), tspan, p_hy)
+        prob_hy = TraceHybridProblem(SVector{6}(u0...), tspan, param)
         alg_hy = AdaptiveHybrid(;
             threshold = 0.1, dtmax = T, dtmin = 1.0e-3 * T,
             check_interval = 20, save_adiabaticity = false

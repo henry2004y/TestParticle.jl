@@ -75,7 +75,7 @@ sol_gc_numericBfield = solve(prob_gc_num, Vern9())
 ## 3. Analytic Guiding Center Drift
 gc = param |> get_gc_func
 gc_x0 = gc(stateinit) |> Vector
-prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
 ## 4. GC Simulation with Velocity Saving
@@ -223,7 +223,7 @@ function run_grad_B_sim(B_func, tspan)
     ## GC (Analytic)
     gc = param |> get_gc_func
     gc_x0 = gc(stateinit) |> Vector
-    prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+    prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
     sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
 
     ## GC from Particle

@@ -108,7 +108,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         _, ∇B, _, b̂, Bmag = TP.get_magnetic_properties(x, t, Bf)
         E = Ef(x, t)
         μ = 1.0e-15
-        p = (TP.qᵢ, TP.qᵢ / TP.mᵢ, μ, Ef, Bf)
+        p = (; q = TP.qᵢ, q2m = TP.qᵢ / TP.mᵢ, μ, E = Ef, B = Bf)
         y = SA[x[1], x[2], x[3], 1.0e4]
 
         wr = TP.get_work_rates_gc(y, p, t)
@@ -124,7 +124,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         state_gc, p = TP.prepare_gc(
             [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton
         )
-        μ = p[3]
+        μ = p.μ
         @test μ > 0
 
         states = (
@@ -170,7 +170,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # A full-orbit parameter tuple carries the E field in slot 3, which selects
         # the full-orbit flavor.
         state_fo = SA[x[1], x[2], x[3], 4.0e4, -2.0e4, 3.0e4]
-        p_fo = (TP.qᵢ / TP.mᵢ, TP.mᵢ, Ef, Bf, nothing)
+        p_fo = (; q2m = TP.qᵢ / TP.mᵢ, m = TP.mᵢ, E = Ef, B = Bf, F = nothing)
         @test sum(TP.get_work_channels(state_fo, p_fo, t)) ≈
             sum(TP.get_work_rates(state_fo, p_fo, t))
     end

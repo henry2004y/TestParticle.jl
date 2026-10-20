@@ -44,7 +44,7 @@ evaluated on the workers live inside `@everywhere` so every process sees them.
     zero_E = ZeroField()
 
     param = prepare(zero_E, uniform_B; species = Electron)
-    q2m = TP.get_q2m(param)
+    q2m = param.q2m
 
     const tperiod = 2π / (abs(q2m) * Bmag)
     const vth = 1.0e5

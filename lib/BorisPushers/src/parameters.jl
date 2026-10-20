@@ -5,11 +5,12 @@ Return the charge-to-mass ratio `q/m` from the parameter container `p`.
 
 The Boris solvers place no constraint on the type of `p`; they only require
 `get_q2m`, `get_EField` and `get_BField` to be defined for it. The default
-methods below assume the layout `(q2m, m, E, B, ...)`, so any other package
-carrying the fields in a different type can support the solvers by adding
-methods to these three functions.
+methods read the fields `q2m`, `E` and `B` of a `NamedTuple`, and otherwise
+assume the positional layout `(q2m, m, E, B, ...)`; any other type can support the
+solvers by adding methods to these three functions.
 """
 get_q2m(p) = p[1]
+get_q2m(p::NamedTuple) = p.q2m
 
 """
     get_EField(p)
@@ -17,6 +18,7 @@ get_q2m(p) = p[1]
 Return the electric field function `E(x, t)` from the parameter container `p`.
 """
 get_EField(p) = p[3]
+get_EField(p::NamedTuple) = p.E
 
 """
     get_BField(p)
@@ -24,6 +26,7 @@ get_EField(p) = p[3]
 Return the magnetic field function `B(x, t)` from the parameter container `p`.
 """
 get_BField(p) = p[4]
+get_BField(p::NamedTuple) = p.B
 
 """
     CachedFields(p, E, B, r, t)

@@ -4,22 +4,14 @@ get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
 function get_dv(v::AbstractVector{T}, x, p, t) where {T <: AbstractFloat}
-    q2m, m, Efunc, Bfunc, Ffunc = p
-    E = SVector{3, T}(Efunc(x, t))
-    B = SVector{3, T}(Bfunc(x, t))
-    F = SVector{3, T}(Ffunc(x, t))
+    E = SVector{3, T}(p.E(x, t))
+    B = SVector{3, T}(p.B(x, t))
+    F = SVector{3, T}(p.F(x, t))
 
-    return T(q2m) * (v × B + E) + F / T(m)
+    return T(p.q2m) * (v × B + E) + F / T(p.m)
 end
 
-function get_dv(v, x, p, t)
-    q2m, m, Efunc, Bfunc, Ffunc = p
-    E = Efunc(x, t)
-    B = Bfunc(x, t)
-    F = Ffunc(x, t)
-
-    return q2m * (v × B + E) + F / m
-end
+get_dv(v, x, p, t) = p.q2m * (v × p.B(x, t) + p.E(x, t)) + p.F(x, t) / p.m
 
 """
     get_dx!(dx, v, x, p, t)
@@ -39,12 +31,7 @@ end
 In-place solver components for `DynamicalODEProblem` (velocity).
 """
 function get_dv!(dv, v, x, p, t)
-    q2m, m, Efunc, Bfunc, Ffunc = p
-    E = Efunc(x, t)
-    B = Bfunc(x, t)
-    F = Ffunc(x, t)
-
-    val = q2m * (v × B + E) + F / m
+    val = get_dv(v, x, p, t)
     @inbounds for i in eachindex(dv, val)
         dv[i] = val[i]
     end
@@ -123,7 +110,8 @@ Equations for tracing the guiding center using the ExB drift and parallel veloci
 """
 function trace_gc_exb!(dx, x, p, t)
     # TODO: support external forces
-    q2m, _, Efunc, Bfunc, _, sol = p
+    (; q2m, sol) = p
+    Efunc, Bfunc = p.E, p.B
     xu = sol(t)
     v = get_v(xu)
     E = Efunc(x, t)
@@ -145,7 +133,8 @@ Equations for tracing the guiding center using the ExB drift with FLR correction
 """
 function trace_gc_flr!(dx, x, p, t)
     # TODO: support external forces
-    q2m, _, Efunc, Bfunc, _, sol = p
+    (; q2m, sol) = p
+    Efunc, Bfunc = p.E, p.B
     xu = sol(t)
     xp = get_x(xu)
     v = get_v(xu)
@@ -198,8 +187,8 @@ the extrapolation function.
 """
 function trace_normalized!(dy, y, p, t)
     v = get_v(y)
-    E = get_EField(p)(y, t)
-    B = get_BField(p)(y, t)
+    E = p.E(y, t)
+    B = p.B(y, t)
 
     @inbounds dy[1:3] = v
     @inbounds dy[4:6] = v × B + E
@@ -214,8 +203,8 @@ Normalized ODE equations for charged particle moving in EM field with out-of-pla
 """
 function trace_normalized(y, p, t)
     v = get_v(y)
-    E = get_EField(p)(y, t)
-    B = get_BField(p)(y, t)
+    E = p.E(y, t)
+    B = p.B(y, t)
     dv = v × B + E
 
     return vcat(v, dv)
@@ -227,8 +216,8 @@ end
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 """
 function trace_relativistic_normalized!(dy, y, p, t)
-    E = get_EField(p)(y, t)
-    B = get_BField(p)(y, t)
+    E = p.E(y, t)
+    B = p.B(y, t)
     γv = get_v(y)
 
     v = get_relativistic_v(γv; c = 1)
@@ -244,8 +233,8 @@ end
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
 function trace_relativistic_normalized(y, p, t)
-    E = get_EField(p)(y, t)
-    B = get_BField(p)(y, t)
+    E = p.E(y, t)
+    B = p.B(y, t)
     γv = get_v(y)
 
     v = get_relativistic_v(γv; c = 1)
@@ -286,7 +275,8 @@ Parallel velocity is also added. This expression requires the full particle traj
 """
 function trace_gc_drifts!(dx, x, p, t)
     # TODO: support external forces
-    q2m, _, Efunc, Bfunc, _, sol = p
+    (; q2m, sol) = p
+    Efunc, Bfunc = p.E, p.B
     xu = sol(t)
     v = get_v(xu)
     E = Efunc(x, t)
@@ -353,11 +343,11 @@ end
 
 function get_gc_derivatives(y, p, t)
     # TODO: support external forces
-    q, q2m, μ, Efunc, Bfunc = p
+    (; q, q2m, μ) = p
     X = get_x(y)
 
-    E = Efunc(X, t)
-    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, Bfunc)
+    E = p.E(X, t)
+    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, p.B)
 
     # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
     # ∇ × B from JB (Jacobian of B)
@@ -460,7 +450,8 @@ therefore best compared against the energy change accumulated over many gyroperi
 All four terms are zero in a magnetic null.
 """
 @inline function get_work_rates(xu, p, t, magnetic_properties = nothing, E_field = nothing)
-    q2m, m, Efunc, Bfunc, _ = p
+    (; q2m, m) = p
+    Efunc, Bfunc = p.E, p.B
     r = get_x(xu)
     q = q2m * m
 
@@ -504,8 +495,8 @@ invariance alone do not imply this condition. When it holds, any remaining misma
 is numerical (e.g. time-integration or quadrature error).
 """
 @inline function get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
-    # p = (q, q2m, μ, Efunc, Bfunc)
-    q, q2m, μ, Efunc, Bfunc = p
+    (; q, q2m, μ) = p
+    Efunc, Bfunc = p.E, p.B
     r = get_x(xv)
     v_par = xv[4]
 
@@ -543,22 +534,21 @@ channels is:
   `(μ/B)(b̂×∇B)⋅E = μ v_E⋅∇B`, it is the convective (spatial) part of the betatron
   channel, while `μ ∂B/∂t` is its local (temporal) part.
 
-Both a full-orbit and a guiding-center state are accepted. The two flavors are told
-apart from the parameter layout rather than from the state length: a guiding-center
-tuple has the magnetic moment in slot 3 (`p[3] isa Number`), a full-orbit one has the
-electric field there. Saved guiding-center states can carry diagnostics appended by
-`save_fields`/`save_work`, so their length is not a reliable discriminator.
+Both a full-orbit and a guiding-center state are accepted, told apart by whether `p`
+carries a magnetic moment `μ`. Saved guiding-center states can carry diagnostics
+appended by `save_fields`/`save_work`, so their length is not a reliable discriminator.
 """
-function get_work_channels(xv, p::Tuple, t)
-    rates = p[3] isa Number ?
-        get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
-    P_par, P_fermi, P_grad, P_betatron = rates
+function get_work_channels(xv, p, t)
+    P_par, P_fermi, P_grad, P_betatron = _get_work_rates(xv, p, t)
 
     return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
 end
 
+_get_work_rates(xv, p, t) =
+    hasproperty(p, :μ) ? get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
+
 function trace_canonical!(dy, y, p, t)
-    q, m, _, pf = p
+    (; q, m, pf) = p
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
@@ -580,7 +570,7 @@ function trace_canonical!(dy, y, p, t)
 end
 
 function trace_canonical(y, p, t)
-    q, m, _, pf = p
+    (; q, m, pf) = p
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
@@ -595,13 +585,13 @@ function trace_canonical(y, p, t)
 end
 
 function trace_canonical_relativistic!(dy, y, p, t)
-    q, m, c_val, pf = p
+    (; q, m, c, pf) = p
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
     A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
     p_kin = p_can - q * A
-    γ = √(1 + sum(p_kin .^ 2) / (m^2 * c_val^2))
+    γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
     grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
@@ -619,13 +609,13 @@ function trace_canonical_relativistic!(dy, y, p, t)
 end
 
 function trace_canonical_relativistic(y, p, t)
-    q, m, c_val, pf = p
+    (; q, m, c, pf) = p
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
     A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
     p_kin = p_can - q * A
-    γ = √(1 + sum(p_kin .^ 2) / (m^2 * c_val^2))
+    γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
     grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
@@ -639,14 +629,14 @@ function velocity_to_canonical(
         x0::AbstractVector, v0::AbstractVector, p;
         relativistic::Bool = false, t = 0.0
     )
-    q, m, c_val, pf = p
+    (; q, m, c, pf) = p
     x_vec = SA[x0[1], x0[2], x0[3]]
     v_vec = SA[v0[1], v0[2], v0[3]]
     A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
 
     p_can = if relativistic
         v2 = sum(v_vec .^ 2)
-        γ = 1 / √(1 - v2 / c_val^2)
+        γ = 1 / √(1 - v2 / c^2)
         γ * m * v_vec + q * A
     else
         m * v_vec + q * A
@@ -659,14 +649,14 @@ function canonical_to_velocity(
         x::AbstractVector, p_can::AbstractVector, p;
         relativistic::Bool = false, t = 0.0
     )
-    q, m, c_val, pf = p
+    (; q, m, c, pf) = p
     x_vec = SA[x[1], x[2], x[3]]
     p_vec = SA[p_can[1], p_can[2], p_can[3]]
     A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
     p_kin = p_vec - q * A
 
     if relativistic
-        γ = √(1 + sum(p_kin .^ 2) / (m^2 * c_val^2))
+        γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
         return p_kin / (γ * m)
     else
         return p_kin / m
@@ -678,7 +668,7 @@ function canonical_to_velocity(u::AbstractVector, p; relativistic::Bool = false,
 end
 
 function canonical_hamiltonian(u::AbstractVector, p, t = 0.0; relativistic::Bool = false)
-    q, m, c_val, pf = p
+    (; q, m, c, pf) = p
     x = SA[u[1], u[2], u[3]]
     p_can = SA[u[4], u[5], u[6]]
 
@@ -687,7 +677,7 @@ function canonical_hamiltonian(u::AbstractVector, p, t = 0.0; relativistic::Bool
     p_kin = p_can - q * A
 
     if relativistic
-        return √(m^2 * c_val^4 + c_val^2 * sum(p_kin .^ 2)) + q * phi
+        return √(m^2 * c^4 + c^2 * sum(p_kin .^ 2)) + q * phi
     else
         return sum(p_kin .^ 2) / (2 * m) + q * phi
     end

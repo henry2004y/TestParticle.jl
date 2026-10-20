@@ -100,7 +100,7 @@ struct TraceHybridProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, 
     f::F
     u0::uType
     tspan::tType
-    p::P # (q2m, m, E, B, F)
+    p::P
     prob_func::PF
 end
 
@@ -109,7 +109,7 @@ function TraceHybridProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
         throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
     tspan[2] > tspan[1] ||
         throw(ArgumentError("tspan[2] must be greater than tspan[1]."))
-    tspan, p = _promote_trace_args(u0, tspan, p)
+    tspan, p = _promote_trace_args(u0, tspan, p, FO_PARAMS)
     _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
     return TraceHybridProblem{
         typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
@@ -125,6 +125,7 @@ end
 
 # For remake
 function TraceHybridProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
+    p = _named_params(p, FO_PARAMS)
     return TraceHybridProblem{
         typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
         typeof(prob_func),
@@ -288,7 +289,7 @@ end
         save_start, save_end, save_everystep, verbose, seed
     ) where {F}
     (; tspan, p, u0) = prob
-    q2m, m, Efunc, Bfunc, _ = p
+    q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
     q = q2m * m
     T = eltype(u0)
 
@@ -318,7 +319,7 @@ end
         if is_adiabatic
             mode = :GC
             xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-            p_gc = (q, q2m, μ, Efunc, Bfunc)
+            p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
 
             B_vec = Bfunc(X_gc, t)
             Bmag = norm(B_vec)
@@ -486,7 +487,7 @@ end
                             )
                         end
                         xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-                        p_gc = (q, q2m, μ_fo, Efunc, Bfunc)
+                        p_gc = (; q, q2m, μ = μ_fo, E = Efunc, B = Bfunc)
                         μ = μ_fo
                         phase = phase_fo
 

@@ -323,7 +323,7 @@ end
     # analytical drifts
     gc = param |> get_gc_func
     gc_x0 = gc(stateinit) |> Vector # needs mutation
-    prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (param..., sol))
+    prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
     sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
     @test sol_gc[1, end] ≈ 0.9896197928850492
     @test sol_gc_analytic[1, end] ≈ 0.9906923500002904 rtol = 1.0e-5

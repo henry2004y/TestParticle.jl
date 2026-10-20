@@ -277,15 +277,10 @@ function get_gyroradius(sol::AbstractODESolution, t)
     x = get_x(xu)
     u = get_v(xu)
 
-    # Extract parameters
     p = sol.prob.p
-    q2m = p[1]
-    Efunc = p[3]
-    Bfunc = p[4]
-
-    # Calculate fields at position x
-    E = Efunc(x, t)
-    B = Bfunc(x, t)
+    q2m = p.q2m
+    E = p.E(x, t)
+    B = p.B(x, t)
     Bmag = norm(B)
     if Bmag == 0
         return Inf
@@ -516,11 +511,13 @@ function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
     return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
 end
 
-function get_adiabaticity(xv, p::Tuple, t)
-    state_len = length(xv)
-
-    if state_len == 6 # FO or Hybrid
-        q2m, m, Efunc, Bfunc, _ = p
+function get_adiabaticity(xv, p::NamedTuple, t)
+    if hasproperty(p, :μ)
+        (; q, q2m, μ) = p
+        return get_adiabaticity(xv[SA[1, 2, 3]], p.B, q, q / q2m, μ, t)
+    else
+        (; q2m, m) = p
+        Bfunc = p.B
         q = q2m * m
 
         x = xv[SA[1, 2, 3]]
@@ -534,14 +531,6 @@ function get_adiabaticity(xv, p::Tuple, t)
         μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
 
         return get_adiabaticity(x, Bfunc, q, m, μ, t)
-    elseif state_len == 4 # GC
-        q, q2m, μ, Efunc, Bfunc = p
-        m = q / q2m
-
-        x = xv[SA[1, 2, 3]]
-        return get_adiabaticity(x, Bfunc, q, m, μ, t)
-    else
-        error("Unsupported solution state dimension: $state_len")
     end
 end
 

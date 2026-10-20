@@ -205,8 +205,8 @@ SUITE["trace"]["time-dependent field"]["out of place"] = @benchmarkable solve(
 )
 
 # Interpolation
-B_field_car_linear = TP.get_BField(param_numeric)
-B_field_car_cubic = TP.get_BField(param_numeric_cubic)
+B_field_car_linear = param_numeric.B
+B_field_car_cubic = param_numeric_cubic.B
 B_field_sph = setup_spherical_field()
 loc = SA[1.0, 1.0, 1.0]
 SUITE["interpolation"]["cartesian"] = BenchmarkGroup()

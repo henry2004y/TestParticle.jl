@@ -24,7 +24,7 @@ function adapt_params(p, backend::Backend)
     E = adapt_field_to_gpu(get_EField(p), backend)
     B = adapt_field_to_gpu(get_BField(p), backend)
     q2m = get_q2m(p)
-    return (q2m, nothing, E, B)
+    return (; q2m, E, B)
 end
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)

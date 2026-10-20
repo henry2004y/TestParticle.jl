@@ -39,54 +39,20 @@ function _get_gc_parameters(xv, E, B, q, m, t)
 end
 
 """
-    prepare_gc(xv, xrange, yrange, zrange, E, B;
-        species = Proton, q = nothing, m = nothing, order::Int = 1,
-        bc = FillExtrap(NaN), store = StorePolicy())
-    prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing)
+    prepare_gc(xv, args...; species = Proton, q = nothing, m = nothing, t = 0, kw...)
 
-Prepare the guiding center parameters for a particle.
+Return the guiding-center initial state `[X..., vpar]` of the full-orbit state `xv`
+and the parameters `(; q, q2m, μ, E, B)` for tracing it. `args` and `kw` describe the
+fields as in [`prepare`](@ref).
 # TODO: support external forces
 """
-function prepare_gc(
-        xv, xrange::T, yrange::T, zrange::T, E::TE, B::TB;
-        species = Proton, q = nothing, m = nothing, t = 0,
-        order::Int = 1, bc = FillExtrap(NaN),
-        store::StorePolicy = StorePolicy()
-    ) where {T <: AbstractRange, TE, TB}
+function prepare_gc(xv, args...; species = Proton, q = nothing, m = nothing, t = 0, kw...)
     q = @something q species.q
     m = @something m species.m
+    (; E, B) = prepare(args...; q, m, kw...)
+    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, E, B, q, m, t)
 
-    E = TE <: AbstractArray ?
-        build_interpolator(
-            CartesianGrid, E, xrange, yrange, zrange, order, bc; store
-        ) :
-        E
-    B = TB <: AbstractArray ?
-        build_interpolator(
-            CartesianGrid, B, xrange, yrange, zrange, order, bc; store
-        ) :
-        B
-    fE = Field(E)
-    fB = Field(B)
-
-    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, fE, fB, q, m, t)
-
-    stateinit_gc = [X..., vpar]
-
-    return stateinit_gc, (q, q2m, μ, fE, fB)
-end
-
-function prepare_gc(xv, E, B; species = Proton, q = nothing, m = nothing, t = 0)
-    q = @something q species.q
-    m = @something m species.m
-    fE = Field(E)
-    fB = Field(B)
-
-    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, fE, fB, q, m, t)
-
-    stateinit_gc = [X..., vpar]
-
-    return stateinit_gc, (q, q2m, μ, fE, fB)
+    return [X..., vpar], (; q, q2m, μ, E, B)
 end
 
 """
@@ -96,13 +62,8 @@ Convert full particle state `xu` to guiding center state `state_gc` and magnetic
 Returns `(state_gc, μ)`, where `state_gc = [R..., vpar]`.
 """
 function full_to_gc(xu, param, t = 0)
-    q2m = get_q2m(param)
-    m = param[2]
-    q = q2m * m
-    E = get_EField(param)
-    B = get_BField(param)
-
-    X, vpar, _, _, μ, _ = _get_gc_parameters(xu, E, B, q, m, t)
+    (; q2m, m, E, B) = param
+    X, vpar, _, _, μ, _ = _get_gc_parameters(xu, E, B, q2m * m, m, t)
     state_gc = SVector{4}(X[1], X[2], X[3], vpar)
 
     return state_gc, μ
@@ -115,12 +76,8 @@ Convert guiding center state `state_gc` to full particle state `xu`.
 Returns `xu = [x, y, z, vx, vy, vz]`.
 """
 function gc_to_full(state_gc, param, μ, phase = 0; t = 0)
-    q2m = get_q2m(param)
-    m = param[2]
-    q = q2m * m
-    E_field = get_EField(param)
-    B_field = get_BField(param)
-    return Vector(_gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase))
+    (; q2m, m, E, B) = param
+    return Vector(_gc_to_full(state_gc, E, B, q2m * m, m, μ, t, phase))
 end
 
 """
@@ -184,15 +141,15 @@ which is essential for correctly identifying the polarization drift in time-vary
 """
 function get_gc(xu, param; use_vE::Bool = false)
     # TODO: support external forces
-    q2m = get_q2m(param)
-    B_field = get_BField(param)
+    q2m = param.q2m
+    B_field = param.B
     t = length(xu) == 7 ? xu[end] : zero(eltype(xu))
     v = xu[SA[4:6...]]
     B = B_field(xu, t)
     B² = B[1]^2 + B[2]^2 + B[3]^2
 
     if use_vE
-        E_field = get_EField(param)
+        E_field = param.E
         E = E_field(xu, t)
         v = v - (E × B) / B²
     end

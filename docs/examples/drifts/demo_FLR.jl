@@ -37,12 +37,12 @@ sol_e = solve(prob_e, Vern9())
 ## trace_gc_exb! calculates the guiding center drift without FLR corrections.
 gc_p = param_p |> get_gc_func
 gc_x0_p = gc_p(stateinit) |> Vector
-prob_exb = ODEProblem(trace_gc_exb!, gc_x0_p, tspan, (param_p..., sol_p))
+prob_exb = ODEProblem(trace_gc_exb!, gc_x0_p, tspan, (; param_p..., sol = sol_p))
 sol_exb = solve(prob_exb, Vern7())
 
 ## Analytic Drift with FLR
 ## Using Proton parameters and solution to calculate Larmor radius for FLR correction.
-prob_flr = ODEProblem(trace_gc_flr!, gc_x0_p, tspan, (param_p..., sol_p))
+prob_flr = ODEProblem(trace_gc_flr!, gc_x0_p, tspan, (; param_p..., sol = sol_p))
 sol_flr = solve(prob_flr, Vern7(); save_idxs = [1, 2, 3])
 
 ## numeric result and analytic result

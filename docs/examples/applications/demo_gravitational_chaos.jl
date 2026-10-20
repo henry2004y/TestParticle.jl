@@ -94,7 +94,7 @@ Markdown.parse(String(take!(io))) #hide
 
 # ## Gravity as an external force
 #
-# `prepare` returns `(q2m, m, E, B, F)`, and the equation of motion it defines is
+# `prepare` returns `(; q2m, m, E, B, F)`, and the equation of motion it defines is
 #
 # ```math
 # \frac{\mathrm{d}\mathbf{v}}{\mathrm{d}t} = \frac{q}{m}(\mathbf{E} + \mathbf{v}\times

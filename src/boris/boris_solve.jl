@@ -13,10 +13,10 @@ function _boris_problem(prob::TraceProblem)
 end
 
 function _boris_initial_dt(prob::TraceProblem, alg)
-    q2m = get_q2m(prob.p)
+    q2m = prob.p.q2m
     u0 = prob.u0
     r0 = SVector{3}(u0[1], u0[2], u0[3])
-    Bmag = norm(get_BField(prob.p)(r0, prob.tspan[1]))
+    Bmag = norm(prob.p.B(r0, prob.tspan[1]))
     tdir = sign(prob.tspan[2] - prob.tspan[1])
 
     return tdir * (2π * alg.safety) / (abs(q2m) * Bmag)

@@ -132,29 +132,17 @@ function _prepare(
         E, B, F, args...; species = Proton, q = nothing,
         m = nothing, gridtype = CartesianGrid, type = nothing, kw...
     )
-    if type !== nothing
-        T = type
-        sp = species isa Species ? Species{T}(species) : species
-        q_val = isnothing(q) ? sp.q : T(q)
-        m_val = isnothing(m) ? sp.m : T(m)
-        q2m = q_val / m_val
-        fE = prepare_field(E, args...; gridtype, kw...)
-        fB = prepare_field(B, args...; gridtype, kw...)
-        fF = prepare_field(F, args...; gridtype, kw...)
-        return q2m, m_val, fE, fB, fF
-    else
-        q = @something q species.q
-        m = @something m species.m
-        q2m = q / m
-        fE = prepare_field(E, args...; gridtype, kw...)
-        fB = prepare_field(B, args...; gridtype, kw...)
-        fF = prepare_field(F, args...; gridtype, kw...)
-        return q2m, m, fE, fB, fF
+    q = @something q species.q
+    m = @something m species.m
+    if !isnothing(type)
+        q, m = type(q), type(m)
     end
+    E, B, F = map(f -> prepare_field(f, args...; gridtype, kw...), (E, B, F))
+    return (; q2m = q / m, m, E, B, F)
 end
 
 """
-    prepare(args...; kwargs...) -> (q2m, m, E, B, F)
+    prepare(args...; kwargs...) -> (; q2m, m, E, B, F)
     prepare(E, B, F = ZeroField(); kwargs...)
     prepare(grid::CartesianGrid, E, B, F = ZeroField(); kwargs...)
     prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
@@ -261,25 +249,16 @@ PotentialField(A; phi = ZeroField(), grad_phi = nothing, grad_A = nothing) =
 """
     prepare(pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c, type = nothing)
 
-Return parameters `(q, m, c, pf)` for `TraceCanonicalProblem`.
+Return parameters `(; q, m, c, pf)` for `TraceCanonicalProblem`.
 """
 function prepare(
         pf::PotentialField;
         species = Proton, q = nothing, m = nothing, c = c, type = nothing, kw...
     )
-    if type !== nothing
-        T = type
-        sp = species isa Species ? Species{T}(species) : species
-        q_val = isnothing(q) ? sp.q : T(q)
-        m_val = isnothing(m) ? sp.m : T(m)
-        c_val = T(c)
-        return q_val, m_val, c_val, pf
-    else
-        q_val = @something q species.q
-        m_val = @something m species.m
-        c_val = c
-        return q_val, m_val, c_val, pf
-    end
+    q = @something q species.q
+    m = @something m species.m
+    p = (; q, m, c, pf)
+    return isnothing(type) ? p : _promote_p(type, p)
 end
 
 """
