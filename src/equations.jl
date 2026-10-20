@@ -547,7 +547,8 @@ Both a full-orbit state (`length(xv) == 6`) and a guiding-center state
 (`length(xv) == 4`) are accepted; the parameter tuple `p` is dispatched accordingly.
 """
 function get_work_channels(xv, p::Tuple, t)
-    rates = length(xv) == 4 ? get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
+    rates = p[3] isa Number ?
+        get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
     P_par, P_fermi, P_grad, P_betatron = rates
 
     return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
