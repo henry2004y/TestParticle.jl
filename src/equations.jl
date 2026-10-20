@@ -497,11 +497,11 @@ physical acceleration channels.
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`.
 
 For the guiding-center equations solved by [`trace_gc!`](@ref), the four terms sum to
-`dK/dt` with `K = ½ m v∥² + μB` up to `O(ε)` corrections. The sum is *exact* whenever
-`b̂⋅(∇×b̂) = 0`, i.e. when the field lines are planar curves, which covers
-translation-invariant fields and axisymmetric fields without a `B_φ` component: there
-`B*_∥ = |B|` and the residual torsion term vanishes. Any mismatch left in such a case
-is a time-integration artifact rather than an adiabatic truncation error.
+`dK/dt` with `K = ½ m v∥² + μB` up to `O(ε)` corrections. The sum is *exact* when
+`b̂⋅(∇×b̂) = 0`, as in axisymmetric fields without a `B_φ` component. In this case
+`B*_∥ = |B|` and the residual twist term vanishes. Planar field lines or translation
+invariance alone do not imply this condition. When it holds, any remaining mismatch
+is numerical (e.g. time-integration or quadrature error).
 """
 @inline function get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
     # p = (q, q2m, μ, Efunc, Bfunc)
