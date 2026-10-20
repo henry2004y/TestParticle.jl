@@ -411,26 +411,65 @@ function trace_fieldline(x, p, s)
 end
 
 """
-    get_work_rates(xu, p, t)
+    _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt) -> SVector{4}
 
-Calculate the work rates done by the electric field and the betatron acceleration.
-Returns a tuple `(P_par, P_fermi, P_grad, P_betatron)`.
+Leading-order guiding-center work rates [W] shared by the full-orbit and the
+guiding-center flavors. Returns `(P_par, P_fermi, P_grad, P_betatron)`:
+
+| Term | Formula | Physics |
+|:---|:---|:---|
+| `P_par` | `q v∥ (E⋅b̂)` | direct acceleration by `E∥` |
+| `P_fermi` | `(m v∥²/B) (b̂×κ)⋅E` | work by `E` on the curvature drift |
+| `P_grad` | `(μ/B) (b̂×∇B)⋅E` | convective part of the betatron channel, `μ v_E⋅∇B` |
+| `P_betatron` | `μ ∂B/∂t` | local part of the betatron channel |
+
+Here `v_E = (E×b̂)/B` is the ExB drift, so `P_grad` is the perpendicular heating a
+particle picks up by being convected across `∇B` at fixed `μ`, while `P_betatron` is
+the heating from the local change of `|B|`. Together they are `μ (∂_t + v_E⋅∇) B`.
+
+Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
+"""
+@inline function _work_rate_terms(q, m, v_par::Number, μ, E, ∇B, κ, b̂, Bmag, dBdt)
+    # 1. Parallel work: q v∥ (E ⋅ b̂)
+    P_par = q * v_par * (E ⋅ b̂)
+    # 2. Fermi work: m v∥² / B (b̂ × κ) ⋅ E
+    P_fermi = (m * v_par^2 / Bmag) * ((b̂ × κ) ⋅ E)
+    # 3. Gradient drift work: μ / B (b̂ × ∇B) ⋅ E = μ v_E ⋅ ∇B
+    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
+    # 4. Betatron work: μ ∂B/∂t
+    P_betatron = μ * dBdt
+
+    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
+end
+
+"""
+    get_work_rates(xu, p, t[, magnetic_properties, E_field]) -> SVector{4}
+
+Calculate the work rates [W] acting on a full-orbit particle. Returns the four
+leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)` documented in
+[`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the grouping into
+physical acceleration channels.
+
+`magnetic_properties` and `E_field` are optional precomputed values of
+[`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xu), t)`, used
+to avoid recomputing the field Jacobian when the caller already has them.
+
+Note that these are gyro-averaged quantities: they do not reproduce the instantaneous
+`q v⋅E` of a full-orbit state, which oscillates at the gyrofrequency. They are
+therefore best compared against the energy change accumulated over many gyroperiods.
+All four terms are zero in a magnetic null.
 """
 @inline function get_work_rates(xu, p, t, magnetic_properties = nothing, E_field = nothing)
     q2m, m, Efunc, Bfunc, _ = p
     r = get_x(xu)
     q = q2m * m
 
-    if E_field === nothing
-        E = Efunc(r, t)
-    else
-        E = E_field
-    end
+    E = E_field === nothing ? Efunc(r, t) : E_field
 
     if magnetic_properties === nothing
-        B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+        _, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
     else
-        B, ∇B, κ, b̂, Bmag = magnetic_properties
+        _, ∇B, κ, b̂, Bmag = magnetic_properties
     end
 
     if Bmag == 0
@@ -438,68 +477,80 @@ Returns a tuple `(P_par, P_fermi, P_grad, P_betatron)`.
     end
 
     v = get_v(xu)
+    v_par = v ⋅ b̂
+    v_perp = _get_v_perp(v, b̂)
+    μ = m * (v_perp ⋅ v_perp) / (2 * Bmag)
+    dBdt = derivative_t(Bfunc, r, t) ⋅ b̂
 
-    # Parallel velocity
-    v_par_val = v ⋅ b̂
-    v_par = v_par_val .* b̂
-    v_perp = v - v_par
-
-    # Magnetic moment
-    w_sq = v_perp ⋅ v_perp
-    μ = m * w_sq / (2 * Bmag)
-
-    # 1. Parallel Work: q v_par (E ⋅ b)
-    P_par = q * v_par_val * (E ⋅ b̂)
-
-    # 2. Fermi Work: m v_par^2 / B (b × κ) ⋅ E
-    P_fermi = (m * v_par_val^2 / Bmag) * ((b̂ × κ) ⋅ E)
-
-    # 3. Gradient Drift Work: μ / B (b × ∇B) ⋅ E
-    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
-
-    # 4. Betatron Work: μ ∂B/∂t
-    dBdt_val = derivative_t(Bfunc, r, t) ⋅ b̂
-
-    P_betatron = μ * dBdt_val
-
-    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
+    return _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt)
 end
 
 """
-    get_work_rates_gc(xv, p, t)
+    get_work_rates_gc(xv, p, t[, magnetic_properties, E_field]) -> SVector{4}
 
-Calculate the work rates done by the electric field and the betatron acceleration for guiding center.
+Calculate the work rates [W] acting on a guiding center. Returns the four
+leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)` documented in
+[`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the grouping into
+physical acceleration channels.
+
+`magnetic_properties` and `E_field` are optional precomputed values of
+[`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`.
+
+For the guiding-center equations solved by [`trace_gc!`](@ref), the four terms sum to
+`dK/dt` with `K = ½ m v∥² + μB` up to `O(ε)` corrections. The sum is *exact* whenever
+`b̂⋅(∇×b̂) = 0`, i.e. when the field lines are planar curves, which covers
+translation-invariant fields and axisymmetric fields without a `B_φ` component: there
+`B*_∥ = |B|` and the residual torsion term vanishes. Any mismatch left in such a case
+is a time-integration artifact rather than an adiabatic truncation error.
 """
-function get_work_rates_gc(xv, p, t)
+@inline function get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
     # p = (q, q2m, μ, Efunc, Bfunc)
     q, q2m, μ, Efunc, Bfunc = p
     r = get_x(xv)
     v_par = xv[4]
-    E = Efunc(r, t)
 
-    B, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    E = E_field === nothing ? Efunc(r, t) : E_field
+
+    if magnetic_properties === nothing
+        _, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
+    else
+        _, ∇B, κ, b̂, Bmag = magnetic_properties
+    end
 
     if Bmag == 0
         return SVector{4, eltype(xv)}(0, 0, 0, 0)
     end
 
     m = q / q2m
+    dBdt = derivative_t(Bfunc, r, t) ⋅ b̂
 
-    # 1. Parallel Work: q v_par (E ⋅ b)
-    P_par = q * v_par * (E ⋅ b̂)
+    return _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt)
+end
 
-    # 2. Fermi Work: m v_par^2 / B (b × κ) ⋅ E
-    P_fermi = (m * v_par^2 / Bmag) * ((b̂ × κ) ⋅ E)
+"""
+    get_work_channels(xv, p, t) -> SVector{3}
 
-    # 3. Gradient Drift Work: μ / B (b × ∇B) ⋅ E
-    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
+Group the work rates into the three physical acceleration channels
+`(P_parallel, P_fermi, P_betatron)` [W].
 
-    # 4. Betatron Work: μ ∂B/∂t
-    dBdt_val = derivative_t(Bfunc, r, t) ⋅ b̂
+The mapping between the four leading-order terms of [`get_work_rates`](@ref) and the
+channels is:
 
-    P_betatron = μ * dBdt_val
+- `P_parallel = P_par`: direct acceleration by `E∥`;
+- `P_fermi = P_fermi`: work by `E` on the curvature drift;
+- `P_betatron = P_betatron + P_grad`: perpendicular heating under conservation of `μ`.
+  Grad-B drift work is *not* a separate mechanism; since
+  `(μ/B)(b̂×∇B)⋅E = μ v_E⋅∇B`, it is the convective (spatial) part of the betatron
+  channel, while `μ ∂B/∂t` is its local (temporal) part.
 
-    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
+Both a full-orbit state (`length(xv) == 6`) and a guiding-center state
+(`length(xv) == 4`) are accepted; the parameter tuple `p` is dispatched accordingly.
+"""
+function get_work_channels(xv, p::Tuple, t)
+    rates = length(xv) == 4 ? get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
+    P_par, P_fermi, P_grad, P_betatron = rates
+
+    return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
 end
 
 function trace_canonical!(dy, y, p, t)

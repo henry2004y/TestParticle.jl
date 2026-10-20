@@ -103,6 +103,12 @@ saved_values
 #   - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
 # Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
 #
+# Note that $P_{\text{Grad}} = \frac{\mu}{B}(\hat{b} \times \nabla B) \cdot \mathbf{E} = \mu \mathbf{v}_E \cdot \nabla B$,
+# where $\mathbf{v}_E = (\mathbf{E} \times \hat{b})/B$ is the ExB drift. It is therefore the
+# convective part of the betatron channel rather than a fourth mechanism, and
+# [`get_work_channels`](@ref) groups the four terms into the three physical channels
+# $(P_\parallel, P_{\text{Fermi}}, P_{\text{Betatron}})$.
+#
 # Here, we use a constant electric field and design a magnetic field that has gradient, time dependence, and curvature.
 # - y dependence creates gradients (gradient drift work)
 # - Time dependence creates Betatron work

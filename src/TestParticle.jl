@@ -77,7 +77,8 @@ public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
     get_q2m, get_EField, get_BField, jacobian, derivative_t,
-    get_thermal_speed, get_cell_centers, get_magnetic_properties, get_work_rates_gc,
+    get_thermal_speed, get_cell_centers, get_magnetic_properties,
+    get_work_rates, get_work_rates_gc, get_work_channels,
     makegrid
 
 include("types.jl")
