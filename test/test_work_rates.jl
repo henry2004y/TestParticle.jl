@@ -167,11 +167,36 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         @test ch[3] ≈ wr[3] + wr[4]
         @test sum(ch) ≈ sum(wr)
 
-        # The full-orbit flavor is dispatched off the state length.
+        # A full-orbit parameter tuple carries the E field in slot 3, which selects
+        # the full-orbit flavor.
         state_fo = SA[x[1], x[2], x[3], 4.0e4, -2.0e4, 3.0e4]
         p_fo = (TP.qᵢ / TP.mᵢ, TP.mᵢ, Ef, Bf, nothing)
         @test sum(TP.get_work_channels(state_fo, p_fo, t)) ≈
             sum(TP.get_work_rates(state_fo, p_fo, t))
+    end
+
+    @testset "channels of a diagnostic-enabled guiding-center state" begin
+        # `save_fields`/`save_work` append 6 + 4 diagnostics to every saved state, so
+        # the flavor must come from the parameter layout, not from `length(xv)`.
+        Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
+        state_gc, p = TP.prepare_gc(
+            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton
+        )
+        sol = solve(
+            TraceGCProblem(state_gc, (0.0, 1.0e-6), p);
+            dt = 1.0e-8, save_fields = true, save_work = true
+        )
+        traj = sol.u[1]
+        y = traj.u[end]
+        @test length(y) == 14
+
+        t = traj.t[end]
+        y4 = SA[y[1], y[2], y[3], y[4]]
+        @test TP.get_work_channels(y, p, t) == TP.get_work_channels(y4, p, t)
+
+        wr = TP.get_work_rates_gc(y4, p, t)
+        @test SA[y[11], y[12], y[13], y[14]] ≈ wr rtol = 1.0e-12
+        @test TP.get_work_channels(y, p, t) == SA[wr[1], wr[2], wr[3] + wr[4]]
     end
 
     @testset "static field with E = 0 does no work" begin

@@ -326,16 +326,25 @@ f2 = DisplayAs.PNG(f2) #hide
 
 # ## Why the parallel channel stays bounded
 #
-# The purple curve oscillates and returns to zero instead of accumulating. This is
-# not a numerical artifact. In a two-dimensional (planar or axisymmetric) field the
-# vector potential can be chosen perpendicular to the field, so the induced part
-# ``-\partial\mathbf{A}/\partial t`` is everywhere perpendicular to
-# ``\hat{\mathbf{b}}`` and carries no ``E_\parallel`` at all. What is left comes from
-# ``-\nabla\Phi``, which is conservative: over a bounce that returns to the same flux
-# surface, ``\oint\mathbf{E}\cdot d\mathbf{l} = 0``. A trapped particle therefore
-# cannot be energized by ``E_\parallel`` here, however ``\Phi`` is shaped.
+# The purple curve oscillates and returns to zero instead of accumulating. Part of
+# this is structural: the mirror is axisymmetric and ``\mathbf{A}`` is purely
+# azimuthal, so the induced field ``-\partial\mathbf{A}/\partial t`` is azimuthal as
+# well and therefore perpendicular to the meridional ``\hat{\mathbf{b}}``. It carries
+# no ``E_\parallel`` at all, and the whole parallel channel comes from
+# ``-\nabla\Phi``. For the parameters used here the bounce motion together with the
+# slow azimuthal drift keeps the guiding center close to where it started, so this
+# conservative contribution is predominantly oscillatory: the energy taken from
+# ``\Phi`` on the way up a bounce is handed back on the way down, and the net
+# ``E_\parallel`` work stays near zero.
 #
-# Net parallel acceleration needs an orbit that does not return. Launching the same
+# That is a statement about these parameters, not a theorem. The parallel channel
+# integrates ``q\,E_\parallel\,v_\parallel`` along the path the guiding center
+# actually samples, and the azimuthal ``\mathbf{E}\times\mathbf{B}`` drift does move
+# the particle across equipotential surfaces of ``\Phi``. A steeper or less symmetric
+# potential, or a drift that moves systematically in one direction, does let a
+# trapped particle gain energy from ``E_\parallel``.
+#
+# Net parallel acceleration is easiest to see on an orbit that does not return. Launching the same
 # particle at the throat with a small pitch angle makes it stream through the mirror
 # instead of bouncing, and the channel switches on:
 
@@ -361,12 +370,16 @@ axislegend(ax_tr; position = :lt)
 f3 = DisplayAs.PNG(f3) #hide
 
 # Over a single transit the compression has barely acted (``\beta t = 0.002``), so
-# betatron is negligible and the parallel channel dominates. It is still a one-shot
-# conversion of ``\Phi``: let the particle bounce and it hands the energy back.
+# betatron is negligible and the parallel channel dominates: the particle slides
+# monotonically down ``\Phi`` and converts ``q\,\Delta\Phi`` into kinetic energy once.
+# Reversing the motion would hand that energy back, which is approximately what the
+# trapped orbit does over each of its bounces.
 
 # ## Validation
 #
-# The field lines of this mirror are planar curves, so
+# The mirror is axisymmetric with no azimuthal field component, so
+# ``\hat{\mathbf{b}}`` stays in the meridional plane while
+# ``\nabla\times\hat{\mathbf{b}}`` is purely azimuthal and
 # ``\hat{\mathbf{b}}\cdot(\nabla\times\hat{\mathbf{b}}) = 0``, hence
 # ``B^*_\parallel = |\mathbf{B}|`` and the four work rates sum to ``dK/dt``
 # *exactly*, with no ``\mathcal{O}(\epsilon)`` remainder. The residual below must

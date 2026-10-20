@@ -543,8 +543,11 @@ channels is:
   `(μ/B)(b̂×∇B)⋅E = μ v_E⋅∇B`, it is the convective (spatial) part of the betatron
   channel, while `μ ∂B/∂t` is its local (temporal) part.
 
-Both a full-orbit state (`length(xv) == 6`) and a guiding-center state
-(`length(xv) == 4`) are accepted; the parameter tuple `p` is dispatched accordingly.
+Both a full-orbit and a guiding-center state are accepted. The two flavors are told
+apart from the parameter layout rather than from the state length: a guiding-center
+tuple has the magnetic moment in slot 3 (`p[3] isa Number`), a full-orbit one has the
+electric field there. Saved guiding-center states can carry diagnostics appended by
+`save_fields`/`save_work`, so their length is not a reliable discriminator.
 """
 function get_work_channels(xv, p::Tuple, t)
     rates = p[3] isa Number ?
