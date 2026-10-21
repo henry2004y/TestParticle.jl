@@ -36,6 +36,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: canonical_hamiltonian, velocity_to_canonical
 using OrdinaryDiffEq, OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: norm

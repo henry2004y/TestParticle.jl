@@ -3,6 +3,7 @@
 module test_phasespace
 
 using TestParticle
+using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
     project_vdf, refine_vdf_window, relative_l2, sample_velocity_ball, vdf_backward,
     vdf_grid_problem, velocity_moments

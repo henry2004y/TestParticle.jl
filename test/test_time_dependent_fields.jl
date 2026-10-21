@@ -8,6 +8,7 @@ end
 
 using Test
 using TestParticle
+using TestParticle: get_gc
 import TestParticle as TP
 using OrdinaryDiffEq
 using StaticArrays

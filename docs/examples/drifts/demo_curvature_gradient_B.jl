@@ -29,6 +29,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_gc_func
 using LinearAlgebra: ×, ⋅, normalize, norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

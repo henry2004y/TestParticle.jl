@@ -23,6 +23,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: ClampExtrap
 import TestParticle as TP
 using VelocityDistributionFunctions
 using TestParticle: mₑ, Rₑ, qₑ

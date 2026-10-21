@@ -33,50 +33,48 @@ import Adapt
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
 
-export prepare, prepare_gc, prepare_canonical, get_gc, get_gc_func, ZeroField,
-    PotentialField
+export prepare, prepare_gc, prepare_canonical, ZeroField, PotentialField
+export Proton, Electron, Ion
+export TraceProblem, TraceCanonicalProblem, TraceGCProblem, TraceHybridProblem, solve
 export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normalized!,
     trace, trace_relativistic, trace_normalized, trace_relativistic_normalized,
-    velocity_to_canonical, canonical_to_velocity, canonical_hamiltonian,
-    trace_gc!,
-    trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!,
-    full_to_gc, gc_to_full
-export Proton, Electron, Ion
-export Maxwellian, BiMaxwellian, Kappa, BiKappa
+    trace_canonical!, trace_canonical,
+    trace_canonical_relativistic!, trace_canonical_relativistic,
+    trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
 export AdaptiveBoris, AdaptiveMultistepBoris, AdaptiveHybrid,
     Boris, MultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6
-export get_gyrofrequency,
-    get_gyroperiod, get_gyroradius, get_velocity, get_energy, get_mean_magnitude,
-    energy2velocity, get_curvature_radius, get_adiabaticity, adiabaticity_components,
-    sample_unit_sphere, generate_sphere, sample_maxwellian,
-    get_particle_flux, get_particle_fluxes, get_particle_crossings, get_first_crossing
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor
 export get_fields, get_work
-export LazyTimeInterpolator, build_interpolator
-export TraceProblem, TraceCanonicalProblem, TraceGCProblem, TraceHybridProblem, solve
+export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
-    EnsembleSplitThreads, EnsembleKernel, remake, FillExtrap, ClampExtrap, WrapExtrap,
-    DiscreteCallback, TerminateOutside
+    EnsembleSplitThreads, EnsembleKernel, remake, DiscreteCallback, TerminateOutside
 
 public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
+    get_gc, get_gc_func, get_gc_velocity,
+    full_to_gc, gc_to_full, velocity_to_canonical, canonical_to_velocity,
+    canonical_hamiltonian,
+    get_gyrofrequency, get_gyroperiod, get_gyroradius, get_velocity, get_energy,
+    get_mean_magnitude, energy2velocity, get_curvature_radius, get_adiabaticity,
+    adiabaticity_components,
+    get_particle_flux, get_particle_fluxes, get_particle_crossings, get_first_crossing,
+    Maxwellian, BiMaxwellian, Kappa, BiKappa,
+    sample_unit_sphere, sample_maxwellian, sample_velocity_ball, generate_sphere,
     get_q2m, get_EField, get_BField, jacobian, derivative_t,
     get_thermal_speed, get_cell_centers, get_magnetic_properties,
     get_work_rates, get_work_rates_gc, get_work_channels,
-    makegrid,
-    trace_canonical!, trace_canonical, trace_canonical_relativistic!,
-    trace_canonical_relativistic, get_dx!, get_dv!, get_B_parameters,
-    get_E_parameters, get_gc_velocity,
+    makegrid, get_dx!, get_dv!, get_B_parameters, get_E_parameters,
+    LazyTimeInterpolator,
     GPUGrid1D, GPUGrid2D, GPUGrid3D, GPUSphericalGrid, GPUUniformAxis,
     GPUNonUniformAxis,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec,
     bin_centers, bin_velocity_space, project_vdf, analytic_projection, relative_l2,
     velocity_moments, vdf_grid_problem, vdf_backward, refine_vdf_window,
-    embed_vdf, sample_velocity_ball,
-    PeriodicBC, OnTheFly, PreCompute, StorePolicy
+    embed_vdf,
+    FillExtrap, ClampExtrap, WrapExtrap, PeriodicBC, OnTheFly, PreCompute, StorePolicy
 
 include("types.jl")
 include("utility/utility.jl")

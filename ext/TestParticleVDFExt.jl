@@ -1,6 +1,7 @@
 module TestParticleVDFExt
 
 using TestParticle
+using TestParticle: BiKappa, BiMaxwellian, Kappa, Maxwellian
 import VelocityDistributionFunctions as VDF
 using LinearAlgebra: norm
 using StaticArrays: SA

@@ -6,6 +6,7 @@ If the field is analytic, you can directly pass the generated function to [`prep
 
 ```@example interp
 using TestParticle
+using TestParticle: FillExtrap, LazyTimeInterpolator
 using TestParticle: OnTheFly, PreCompute, StorePolicy
 using Meshes
 using StaticArrays
@@ -236,7 +237,7 @@ As shown, `OnTheFly()` preserves memory efficiency while providing higher-order 
 
 ## Time-dependent field interpolation
 
-For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref). It takes a list of time points and a loader function that returns a spatial interpolator for a given time index. The interpolator will linearly interpolate between the two nearest time points.
+For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref TestParticle.LazyTimeInterpolator). It takes a list of time points and a loader function that returns a spatial interpolator for a given time index. The interpolator will linearly interpolate between the two nearest time points.
 
 ```@repl interp
 @be B_td($loc, 0.5)

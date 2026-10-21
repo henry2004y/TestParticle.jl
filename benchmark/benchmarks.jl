@@ -2,6 +2,7 @@
 
 using BenchmarkTools
 using TestParticle
+using TestParticle: LazyTimeInterpolator, get_particle_fluxes
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
 using TestParticle: CPU

@@ -34,6 +34,27 @@ julia --project=test test/runtests.jl
 
 We use [Runic.jl](https://github.com/fredrikekre/Runic.jl), with the recommended line character limit of 92.
 
+## API Visibility
+
+Choose visibility by role, consistently across related API families:
+
+- **Export** tracing setup and execution: preparation functions, problem constructors,
+  tracing right-hand sides (including canonical and guiding-center variants), solver
+  algorithms, particle species constructors, field constructors, and `build_interpolator`.
+  Also export end-to-end VDF tracing, the main `get_fields`/`get_work` result
+  accessors, `orbit`/`monitor`, and the SciML ensemble/callback interfaces used
+  in the tracing workflow.
+- **Public but not exported** diagnostics, state and coordinate conversions, sampling
+  functions and distribution types, physical constants, interpolation policies and storage
+  types, and lower-level field/reconstruction building blocks. Use qualified names or
+  explicit imports for these APIs.
+- **Internal** implementation details that are not intended as supported user interfaces.
+  Do not declare these `public` merely because tests or other package code use them.
+
+Both exported and public-only names are supported API and carry compatibility commitments.
+Moving an exported name to public-only can break code that relied on `using TestParticle`;
+update examples and callers with explicit imports, and qualify documentation cross-references.
+
 ## Building Documentation
 
 To build the documentation locally:

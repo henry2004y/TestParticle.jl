@@ -9,6 +9,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: Maxwellian
 import TestParticle as TP
 using VelocityDistributionFunctions
 using OrdinaryDiffEq

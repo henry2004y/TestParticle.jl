@@ -54,6 +54,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: WrapExtrap
 using TestParticle: qᵢ, mᵢ, c
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide

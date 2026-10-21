@@ -2,6 +2,7 @@ module test_canonical
 
 using Test
 using TestParticle
+using TestParticle: canonical_hamiltonian, canonical_to_velocity, velocity_to_canonical
 using TestParticle: trace_canonical, trace_canonical!, trace_canonical_relativistic,
     trace_canonical_relativistic!
 using OrdinaryDiffEq

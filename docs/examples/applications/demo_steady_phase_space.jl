@@ -30,6 +30,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, project_vdf,
     relative_l2, sample_velocity_ball
 import TestParticle as TP

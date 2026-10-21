@@ -5,6 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_gc_func
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
