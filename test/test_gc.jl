@@ -344,7 +344,7 @@ end
     xp, v = SA[1.5, -0.5, 0.0], SA[0.3, 1.0, 0.1]
     x = [1.0, 2.0, 3.0]
     dx = similar(x)
-    trace_gc_flr!(dx, x, (param..., t -> vcat(xp, v)), 0.0)
+    trace_gc_flr!(dx, x, (; param..., sol = t -> vcat(xp, v)), 0.0)
 
     Ex, Ey = E(x)
     # E × B / B² = (Ey, -Ex, 0) / Bz
