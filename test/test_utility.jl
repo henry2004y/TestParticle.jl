@@ -8,6 +8,7 @@ end
 
 using Test
 using TestParticle
+using TestParticle: cart2sph, cart2sphvec, PeriodicBC, sph2cartvec, StorePolicy
 using StaticArrays
 using LinearAlgebra
 using OrdinaryDiffEq

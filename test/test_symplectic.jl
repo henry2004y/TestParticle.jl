@@ -2,6 +2,7 @@ module test_symplectic
 
 using Test
 using TestParticle
+using TestParticle: get_dv!, get_dx!
 using OrdinaryDiffEq
 using OrdinaryDiffEqSymplecticRK
 using OrdinaryDiffEqSDIRK
@@ -25,7 +26,7 @@ kinetic_energy(v; m) = 0.5 * m * norm(v)^2
         spatial_linear_E(x, t) = SA[0.0, E_y * x[2], 0.0]
         param = prepare(spatial_linear_E, ZeroField(); q, m)
 
-        # get_dv! and get_dx! are exported from TestParticle
+        # The ODE problem uses TestParticle's public, non-exported RHS functions.
         prob = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
         # McAte2 is an explicit symplectic integrator. For this separable system,
         # it should conserve energy well with O(dt^2) error.

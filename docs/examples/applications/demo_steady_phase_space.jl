@@ -30,6 +30,8 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: analytic_projection, bin_centers, bin_velocity_space, project_vdf,
+    relative_l2, sample_velocity_ball
 import TestParticle as TP
 using LinearAlgebra: norm
 using StaticArrays

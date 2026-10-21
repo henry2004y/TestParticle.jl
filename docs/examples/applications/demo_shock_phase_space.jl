@@ -7,6 +7,8 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
+    project_vdf, relative_l2, sample_velocity_ball, velocity_moments
 import TestParticle as TP
 using StaticArrays
 using Random

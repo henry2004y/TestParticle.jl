@@ -7,6 +7,7 @@ if !isdefined(Main, :test_common)
 end
 
 using TestParticle
+using TestParticle: sph2cart
 import TestParticle as TP
 using StaticArrays
 using Test

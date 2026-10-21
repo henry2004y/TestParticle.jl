@@ -2,6 +2,8 @@ module test_canonical
 
 using Test
 using TestParticle
+using TestParticle: trace_canonical, trace_canonical!, trace_canonical_relativistic,
+    trace_canonical_relativistic!
 using OrdinaryDiffEq
 using OrdinaryDiffEqSDIRK
 using StaticArrays

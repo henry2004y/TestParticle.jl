@@ -5,6 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_gc_velocity
 using FieldTracer
 import TestParticle as TP
 using Statistics: median, norm

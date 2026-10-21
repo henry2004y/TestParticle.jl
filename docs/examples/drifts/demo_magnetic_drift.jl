@@ -13,6 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_B_parameters
 using LinearAlgebra: norm, ×, ⋅, normalize
 using ForwardDiff: jacobian
 using CairoMakie
