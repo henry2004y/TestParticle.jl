@@ -7,6 +7,7 @@ if !isdefined(Main, :test_common)
 end
 
 using TestParticle
+using TestParticle: get_adiabaticity
 import TestParticle as TP
 using StaticArrays
 using LinearAlgebra

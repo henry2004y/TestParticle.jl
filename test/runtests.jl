@@ -18,6 +18,7 @@ end
 
 include("test_boris.jl")
 include("test_utility.jl")
+include("test_api_surface.jl")
 include("test_phasespace.jl")
 include("test_gc.jl")
 include("test_work_rates.jl")

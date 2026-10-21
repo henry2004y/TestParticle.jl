@@ -4,6 +4,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
+using TestParticle: ClampExtrap
 using TestParticle: mᵢ, kB
 import TestParticle as TP
 using VelocityDistributionFunctions

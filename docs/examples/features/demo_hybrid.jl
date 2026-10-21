@@ -10,6 +10,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_adiabaticity
 import TestParticle as TP
 using LinearAlgebra, Random, Printf, Markdown
 using Chairmarks, Statistics

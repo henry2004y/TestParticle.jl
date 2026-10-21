@@ -5,6 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: get_gc_func
 using LinearAlgebra: ×, ⋅, norm, normalize
 using Tensors: laplace
 import Tensors: Vec as Vec3

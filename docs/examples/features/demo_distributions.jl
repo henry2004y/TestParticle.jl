@@ -5,6 +5,7 @@
 # We compare the sampled distributions with their theoretical probability density functions (PDFs).
 
 using TestParticle
+using TestParticle: Kappa, Maxwellian
 import TestParticle as TP
 using VelocityDistributionFunctions
 using Gamma: gamma

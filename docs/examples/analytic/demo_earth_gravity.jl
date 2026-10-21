@@ -4,6 +4,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: generate_sphere
 using OrdinaryDiffEq
 using StaticArrays
 using LinearAlgebra

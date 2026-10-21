@@ -2,6 +2,7 @@ module test_sampling
 
 using Test
 using TestParticle
+using TestParticle: sample_maxwellian
 import TestParticle as TP
 using StaticArrays
 using Random

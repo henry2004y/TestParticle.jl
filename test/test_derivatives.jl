@@ -2,6 +2,7 @@ module test_derivatives
 
 using Test
 using TestParticle
+using TestParticle: FillExtrap, LazyTimeInterpolator
 import TestParticle as TP
 using StaticArrays
 using Meshes: CartesianGrid

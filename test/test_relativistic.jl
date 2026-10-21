@@ -8,6 +8,7 @@ end
 
 using Test
 using TestParticle
+using TestParticle: get_energy, get_velocity
 import TestParticle as TP
 using OrdinaryDiffEq
 using StaticArrays

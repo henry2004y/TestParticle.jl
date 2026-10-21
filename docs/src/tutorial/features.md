@@ -68,6 +68,7 @@ Used by the **Boris family** (both host CPU and native GPU `KernelAbstractions` 
 
 ```julia
 using TestParticle, StaticArrays
+using TestParticle: Kappa, Maxwellian
 
 # Stop once the particle exits the region |x| <= 10 m
 isoutside(u, p, t) = abs(u[1]) > 10.0
@@ -92,6 +93,7 @@ Used by standard **SciML ODE solvers** (`OrdinaryDiffEq.jl`, e.g., `Tsit5()`, `V
 
 ```julia
 using TestParticle, OrdinaryDiffEq
+using TestParticle: Kappa, Maxwellian
 
 # Domain termination for SciML ODE solvers
 isoutside(u, p, t) = hypot(u[1], u[2], u[3]) > 10.0

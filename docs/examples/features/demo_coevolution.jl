@@ -9,6 +9,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: LazyTimeInterpolator
 using Meshes
 using StaticArrays
 using OrdinaryDiffEq

@@ -7,6 +7,8 @@ if !isdefined(Main, :test_common)
 end
 
 using TestParticle
+using TestParticle: energy2velocity, full_to_gc, gc_to_full, get_gc, get_gc_func
+using TestParticle: sph2cart
 import TestParticle as TP
 using StaticArrays
 using Test

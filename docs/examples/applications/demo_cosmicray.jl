@@ -23,6 +23,7 @@
 
 import DisplayAs #hide
 using TestParticle, StaticArrays, LinearAlgebra, Random, Statistics
+using TestParticle: get_gc_func
 import TestParticle as TP
 using OrdinaryDiffEq
 using CairoMakie

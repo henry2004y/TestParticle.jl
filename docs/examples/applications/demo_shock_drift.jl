@@ -40,6 +40,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using TestParticle: ClampExtrap
 using TestParticle: mᵢ, qᵢ
 using OrdinaryDiffEq
 using LinearAlgebra

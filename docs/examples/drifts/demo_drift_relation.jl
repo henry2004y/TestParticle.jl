@@ -27,6 +27,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: Maxwellian, get_gc_func
 using LinearAlgebra: norm, ×, ⋅, normalize
 using Statistics: mean
 using Random: MersenneTwister

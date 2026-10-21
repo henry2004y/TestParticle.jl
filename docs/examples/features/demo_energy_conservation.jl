@@ -26,6 +26,7 @@ import DisplayAs #hide
 using Markdown #hide
 using Printf
 using TestParticle
+using TestParticle: full_to_gc, get_dv!, get_dx!
 using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: ×, norm

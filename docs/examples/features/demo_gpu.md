@@ -329,7 +329,8 @@ raw = solve(prob, Boris(), backend; dt, trajectories, isoutside, raw_output = tr
 
 Fields stored on a spherical grid are traced on a device without any extra step. Preparing
 them with `gridtype = StructuredGrid` builds a spherical interpolator, and handing the
-parameters to a device backend is what converts it into a [`GPUSphericalGrid`](@ref), a
+parameters to a device backend converts it into a
+[`GPUSphericalGrid`](@ref TestParticle.GPUSphericalGrid), a
 trilinear interpolator over `(r, θ, ϕ)` that carries its axes along in device memory. Uniform
 grid vectors and non-uniform ones, a logarithmic `r` for instance, are both supported; the
 interpolator itself is described in [Field Interpolation](@ref).

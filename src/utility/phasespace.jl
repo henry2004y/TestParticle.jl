@@ -402,19 +402,6 @@ function embed_vdf(
     return full_M
 end
 
-"""
-    vdf_forward_trace(
-        param, source, detector, vdf, n0;
-        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt,
-        center = SA[0.0, 0.0, 0.0], dv_km = 20.0,
-        v_edges = -1000.0:dv_km:1000.0,
-        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
-        seed = 42
-    ) -> (f_3d, (f_xy, f_xz, f_yz))
-
-Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` using forward
-Liouville tracking from a uniformly sampled velocity ball at `source`.
-"""
 _eval_f_src(f::Function, v) = f(v)
 _eval_f_src(f, v) = f(v)
 
