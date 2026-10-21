@@ -83,10 +83,6 @@ gc = tp.trace_gc(x0, v0, (0.0, 1e-7), 5e-10, get_B, species="proton")
 R = gc.R         # guiding-center position, shape (n, 3)
 vpar = gc.vpar   # parallel velocity, shape (n,)
 
-# Magnetic field-line tracing (arc-length parameter).
-fl = tp.trace_fieldline([1.0, 0.0, 0.0], get_B, (0.0, 1.0), mode="both")
-t_fwd, x_fwd = fl["forward"]
-t_bwd, x_bwd = fl["backward"]
 ```
 
 Field functions may be either time-independent `f(x)` or time-dependent
@@ -103,8 +99,6 @@ The high-level helpers are:
   alg=None, init_func=None, q=None, m=None)` - Boris pusher.
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
   saveat=None, alg="rk4")` - guiding-center RK4/RK45 solver.
-- `trace_fieldline(x0, B, tspan, *, mode="both", alg="Tsit5",
-  abstol=1e-8, reltol=1e-8)` - magnetic field lines.
 
 Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `Proton`, `get_gyrofrequency`,
 ...) are re-exported under their Julia names; functions ending with `!` in Julia

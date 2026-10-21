@@ -2,8 +2,8 @@
 
 This wrapper exposes the most useful objects of the Julia package
 ``TestParticle`` and provides a small set of high-level helpers
-(``trace``, ``trace_gc``, ``trace_fieldline``) that accept and return
-``numpy`` arrays so that the Boris / guiding-center / field-line solvers
+(``trace``, ``trace_gc``) that accept and return ``numpy`` arrays so that
+the Boris / guiding-center solvers
 can be driven from Python without touching Julia types directly.
 
 The underlying Julia runtime is managed by ``juliacall``. Functions ending
@@ -56,16 +56,13 @@ jl.seval(
         return (ts, us)
     end
 
-    function _tp_extract_fieldline(sol)
-        _tp_extract((sol,))[1][1], _tp_extract((sol,))[2][1]
-    end
     """
 )
 
 # ---------------------------------------------------------------------------
 # Curated re-exports of the raw Julia API for advanced usage.
 #
-# The high-level ``trace`` / ``trace_gc`` / ``trace_fieldline`` helpers call
+# The high-level ``trace`` / ``trace_gc`` helpers call
 # the Julia runtime directly (e.g. ``TP.prepare``, ``TP.solve``), so none of
 # the names below are required for the wrapper itself to function. They are
 # convenience exports, including the ``Species`` types and the ``Proton`` /
@@ -90,7 +87,6 @@ _REEXPORTS = [
     ("TraceProblem", "TraceProblem"),
     ("TraceGCProblem", "TraceGCProblem"),
     ("TraceHybridProblem", "TraceHybridProblem"),
-    ("TraceFieldlineProblem", "TraceFieldlineProblem"),
     ("ZeroField", "ZeroField"),
     ("Maxwellian", "Maxwellian"),
     ("BiMaxwellian", "BiMaxwellian"),
@@ -136,7 +132,6 @@ _REEXPORTS = [
     ("trace_gc_drifts_b", "trace_gc_drifts!"),
     ("trace_gc_flr_b", "trace_gc_flr!"),
     ("trace_gc_exb_b", "trace_gc_exb!"),
-    ("trace_fieldline_b", "trace_fieldline!"),
 ]
 
 _BOUND = []
@@ -510,65 +505,12 @@ def trace_gc(
     return [GCTraceResult(t, u, save_fields, save_work) for t, u in zip(ts_py, us_py)]
 
 
-def trace_fieldline(x0, B, tspan, *, mode="both", alg="Tsit5", abstol=1e-8, reltol=1e-8):
-    """Trace magnetic field lines.
-
-    Parameters
-    ----------
-    x0 : array_like
-        Initial position of length 3.
-    B : callable or Julia object
-        Magnetic field as ``f(x)`` returning a length-3 sequence, or a Julia
-        field object.
-    tspan : tuple
-        Arc-length span ``(s0, s1)``.
-    mode : str, optional
-        ``"forward"``, ``"backward"`` or ``"both"`` (default).
-    alg : str or Julia object, optional
-        OrdinaryDiffEq integrator name (e.g. ``"Tsit5"``) or a Julia alg.
-
-    Returns
-    -------
-    dict
-        Dictionary with ``"forward"`` and/or ``"backward"`` entries, each a
-        ``(t, x)`` tuple of numpy arrays (``x`` has shape ``(n_steps, 3)``).
-    """
-    x0 = np.asarray(x0, dtype=float).ravel()
-    if x0.shape != (3,):
-        raise ValueError("x0 must have length 3")
-
-    B_jl = _wrap_field_or_none(B)
-    # Use a mutable Vector for the initial state
-    u0 = jl.seval(f"Float64[{', '.join(repr(float(v)) for v in x0)}]")
-    probs = TP.TraceFieldlineProblem(u0, B_jl, tuple(tspan), mode=jl.Symbol(mode))
-
-    jl.seval("using OrdinaryDiffEq")
-    if _is_julia(alg):
-        alg_jl = alg
-    else:
-        alg_jl = getattr(jl, alg)()
-
-    def _solve_one(prob):
-        sol = jl.solve(prob, alg_jl, abstol=float(abstol), reltol=float(reltol))
-        t, u = jl._tp_extract_fieldline(sol)
-        return np.asarray(t), np.asarray(u)
-
-    out = {}
-    if mode == "both":
-        probs_py = list(probs)
-        out["forward"] = _solve_one(probs_py[0])
-        out["backward"] = _solve_one(probs_py[1])
-    else:
-        out[mode] = _solve_one(probs)
-    return out
-
-
 __version__ = "0.1.0"
 
 __all__ = [
     "jl",
     *_BOUND,
-    "trace", "trace_gc", "trace_fieldline",
+    "trace", "trace_gc",
     "TraceResult", "GCTraceResult",
     "__version__",
 ]

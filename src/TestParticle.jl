@@ -43,7 +43,6 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     get_dx!, get_dv!,
     trace_gc!,
     trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!,
-    trace_fieldline!, trace_fieldline, TraceFieldlineProblem,
     get_gc_velocity, full_to_gc, gc_to_full,
     get_B_parameters, get_E_parameters
 export Proton, Electron, Ion
@@ -96,7 +95,6 @@ include("problem.jl")
 include("boris/boris.jl")
 include("boris/boris_solve.jl")
 include("hybrid.jl")
-include("fieldline.jl")
 
 function orbit end
 

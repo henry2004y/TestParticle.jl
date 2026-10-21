@@ -7,7 +7,6 @@ def test_import():
 
     assert hasattr(tp, "trace")
     assert hasattr(tp, "trace_gc")
-    assert hasattr(tp, "trace_fieldline")
     assert hasattr(tp, "Proton")
     assert hasattr(tp, "Electron")
 
@@ -155,20 +154,3 @@ def test_field_time_dependence_detected():
     # parameter is actually honoured.
     assert len(times) > 0
     assert any(t != 0.0 for t in times)
-
-
-def test_trace_fieldline():
-    import testparticle as tp
-
-    # Uniform field along z: the field line is a straight line parallel to z.
-    # Requires OrdinaryDiffEq to be available in the Julia environment.
-    def get_B(x):
-        return [0.0, 0.0, 1.0]
-
-    out = tp.trace_fieldline([0.0, 0.0, 0.0], get_B, (-1.0, 1.0), mode="forward")
-    t, x = out["forward"]
-    assert x.shape[1] == 3
-    assert np.allclose(x[:, 0], 0.0, atol=1e-9)
-    assert np.allclose(x[:, 1], 0.0, atol=1e-9)
-    # Forward integration: z runs from 0 (at s = -1) up to 2 (at s = 1).
-    assert np.isclose(x[-1, 2], 2.0, atol=1e-6)
