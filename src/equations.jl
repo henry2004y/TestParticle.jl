@@ -381,32 +381,6 @@ function get_gc_derivatives(y, p, t)
 end
 
 """
-    trace_fieldline!(dx, x, p, s)
-
-Equation for tracing magnetic field lines with in-place form.
-The parameter `p` is the magnetic field function.
-Note that the independent variable `s` represents the arc length.
-"""
-function trace_fieldline!(dx, x, p, s)
-    B = p(x, s)
-    val = normalize(B)
-    @inbounds for i in eachindex(dx, val)
-        dx[i] = val[i]
-    end
-    return
-end
-
-"""
-    trace_fieldline(x, p, s)
-
-Equation for tracing magnetic field lines with out-of-place form.
-"""
-function trace_fieldline(x, p, s)
-    B = p(x, s)
-    return normalize(B)
-end
-
-"""
     _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt) -> SVector{4}
 
 Leading-order guiding-center work rates [W] shared by the full-orbit and the

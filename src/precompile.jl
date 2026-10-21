@@ -65,7 +65,7 @@
 
         # explicit trace functions
         t = 0.0
-        out6, out4, out3 = zeros(6), zeros(4), zeros(3)
+        out6, out4 = zeros(6), zeros(4)
         # non-relativistic
         trace(stateinit, param, t)
         trace!(out6, stateinit, param, t)
@@ -81,8 +81,5 @@
         # guiding center
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
-        # field line
-        trace_fieldline(stateinit[1:3], param.B, t)
-        trace_fieldline!(out3, stateinit[1:3], param.B, t)
     end
 end
