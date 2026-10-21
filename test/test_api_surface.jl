@@ -4,7 +4,7 @@ using Test
 import TestParticle as TP
 
 module default_imports
-using TestParticle
+    using TestParticle
 end
 
 @testset "Exported and public API" begin
@@ -83,10 +83,12 @@ end
             @test Base.ispublic(TP, name)
             @test isdefined(default_imports, name)
         end
-        actual = Set(filter(
-            name -> Base.isexported(TP, name) && name !== :TestParticle,
-            names(TP),
-        ))
+        actual = Set(
+            filter(
+                name -> Base.isexported(TP, name) && name !== :TestParticle,
+                names(TP),
+            )
+        )
         @test actual == Set(exported)
     end
 
