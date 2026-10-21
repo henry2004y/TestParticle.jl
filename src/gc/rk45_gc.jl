@@ -81,11 +81,8 @@ function _rk45!(
 
         if isnothing(dt_initial)
             # Estimate initial step size based on gyroperiod
-            # p = (q, q2m, μ, E, B)
-            q2m = p[2]
-            B_field = p[5]
-            R = get_x(xv)
-            B_vec = B_field(R, t)
+            q2m = p.q2m
+            B_vec = p.B(get_x(xv), t)
             Bmag = norm(B_vec)
 
             if Bmag == 0 || q2m == 0

@@ -12,13 +12,14 @@ struct TraceGCProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} 
     u0::uType
     "time span"
     tspan::tType
-    "(q2m, E, B)"
+    "(; q, q2m, μ, E, B)"
     p::P
     "function for setting initial conditions"
     prob_func::PF
 end
 
 function TraceGCProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+    p = _named_params(p, GC_PARAMS)
     _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
     return TraceGCProblem{
         typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
@@ -34,6 +35,7 @@ end
 
 # For remake
 function TraceGCProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
+    p = _named_params(p, GC_PARAMS)
     return TraceGCProblem{
         typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
         typeof(prob_func),
@@ -256,11 +258,9 @@ end
 @inline function _prepare_saved_data_gc(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
     if SaveFields
-        # p = (q, q2m, μ, Efunc, Bfunc)
         r = get_x(xv)
-        T = eltype(xv)
-        E = p[4](r, t)
-        B = p[5](r, t)
+        E = p.E(r, t)
+        B = p.B(r, t)
         data = vcat(data, E, B)
     end
     if SaveWork

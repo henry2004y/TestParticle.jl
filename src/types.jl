@@ -32,7 +32,7 @@ struct TraceProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     u0::uType
     "time span"
     tspan::tType
-    "(q2m, m, E, B, F)"
+    "(; q2m, m, E, B, F)"
     p::P
     "function for setting initial conditions"
     prob_func::PF
@@ -70,7 +70,7 @@ struct TraceCanonicalProblem{uType, tType, isinplace, P, F <: AbstractODEFunctio
     u0::uType
     "time span"
     tspan::tType
-    "(q, m, c, pf)"
+    "(; q, m, c, pf)"
     p::P
     "function for setting initial conditions"
     prob_func::PF

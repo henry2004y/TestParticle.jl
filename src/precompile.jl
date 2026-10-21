@@ -82,7 +82,7 @@
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
         # field line
-        trace_fieldline(stateinit[1:3], param[4], t)
-        trace_fieldline!(out3, stateinit[1:3], param[4], t)
+        trace_fieldline(stateinit[1:3], param.B, t)
+        trace_fieldline!(out3, stateinit[1:3], param.B, t)
     end
 end

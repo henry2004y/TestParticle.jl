@@ -230,7 +230,7 @@ function make_injection(Lx, Ly, Lz; rL = 1.0)
         z = Lz * (0.1 + 0.8 * r[3])
         loc = SA[x, y, z]
 
-        Bvec = prob.p[4](loc)
+        Bvec = prob.p.B(loc)
         Bmag = norm(Bvec)
         b0 = Bvec ./ Bmag
 

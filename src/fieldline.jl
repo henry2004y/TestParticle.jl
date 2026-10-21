@@ -16,12 +16,7 @@ Helper function to create `ODEProblem`s for tracing magnetic field lines.
   - If `mode` is `:both`, returns a `Tuple` of two `ODEProblem`s (forward and backward).
 """
 function TraceFieldlineProblem(u0, p, tspan::Tuple; mode::Symbol = :both)
-    field =
-    if p isa Function
-        Field(p)
-    elseif p isa Tuple
-        get_BField(p)
-    end
+    field = p isa Function ? Field(p) : get_BField(p)
 
     if mode == :forward
         return ODEProblem(trace_fieldline!, u0, tspan, field)

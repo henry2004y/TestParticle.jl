@@ -67,7 +67,7 @@ function plot_exb_case(sol, sol_gc, title; layout = :three_columns)
     lines!(ax_2d, sol, idxs = (2, 1), color = :black, alpha = 0.5, label = "Particle")
     lines!(ax_2d, sol_gc, idxs = (2, 1), color = :red, linewidth = 2, label = "GC")
 
-    q2m = sol.prob.p[1]
+    q2m = sol.prob.p.q2m
     energy_func(x, y, z, vx, vy, vz) = 0.5 * (vx^2 + vy^2 + vz^2) / q2m
     t_sampled = range(sol.t[1], sol.t[end], length = 200)
     sol_sampled = sol(t_sampled)
@@ -101,7 +101,7 @@ sol_small = solve(prob_small, Vern9())
 ## Tracing guiding center
 gc_small = param_small |> get_gc_func
 gc_x0_small = gc_small(stateinit_small) |> Vector
-prob_gc_small = ODEProblem(trace_gc_exb!, gc_x0_small, tspan, (param_small..., sol_small))
+prob_gc_small = ODEProblem(trace_gc_exb!, gc_x0_small, tspan, (; param_small..., sol = sol_small))
 sol_gc_small = solve(prob_gc_small, Vern9(); save_idxs = [1, 2, 3])
 
 fig_small = plot_exb_case(
@@ -123,7 +123,7 @@ sol_large = solve(prob_large, Vern9())
 
 gc_large = param_large |> get_gc_func
 gc_x0_large = gc_large(stateinit_large) |> Vector
-prob_gc_large = ODEProblem(trace_gc_exb!, gc_x0_large, tspan, (param_large..., sol_large))
+prob_gc_large = ODEProblem(trace_gc_exb!, gc_x0_large, tspan, (; param_large..., sol = sol_large))
 sol_gc_large = solve(prob_gc_large, Vern9(); save_idxs = [1, 2, 3])
 
 fig_large = plot_exb_case(

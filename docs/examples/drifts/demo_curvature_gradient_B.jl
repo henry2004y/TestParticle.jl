@@ -110,7 +110,7 @@ gc_curv = param_curv |> get_gc_func
 gc_x0_curv = gc_curv(stateinit_curv) |> Vector
 prob_gc_curv = ODEProblem(
     trace_gc_drifts!, gc_x0_curv, tspan_curv,
-    (param_curv..., sol_curv)
+    (; param_curv..., sol = sol_curv)
 )
 sol_gc_curv = solve(prob_gc_curv, Vern7(); save_idxs = [1, 2, 3]);
 
@@ -143,7 +143,7 @@ gc_grad = param_grad |> get_gc_func
 gc_x0_grad = gc_grad(stateinit_grad) |> Vector
 prob_gc_grad = ODEProblem(
     trace_gc_drifts!, gc_x0_grad, tspan_grad,
-    (param_grad..., sol_grad)
+    (; param_grad..., sol = sol_grad)
 )
 sol_gc_grad = solve(prob_gc_grad, Vern7(); save_idxs = [1, 2, 3]);
 

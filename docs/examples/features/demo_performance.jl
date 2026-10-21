@@ -25,9 +25,8 @@ zero_E = ZeroField()
 x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[0.0, 1.0e5, 0.0]
 stateinit = SA[x0..., v0...]
-## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
-q2m = TP.get_q2m(param)
+q2m = param.q2m
 
 ## Reference parameters
 const tperiod = 2π / (abs(q2m) * Bmag)

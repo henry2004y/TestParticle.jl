@@ -73,14 +73,13 @@ zero_E = ZeroField()
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1.0e5, 0.0]
 stateinit = [x0..., v0...]
-## (q2m, m, E, B, F)
 param = prepare(zero_E, uniform_B, species = Electron)
-q2m = TP.get_q2m(param)
+q2m = param.q2m
 
 ## Reference parameters
 const tperiod = 2π / (
     abs(q2m) *
-        sqrt(sum(x -> x^2, TP.get_BField(param)([0.0, 0.0, 0.0], 0.0)))
+        sqrt(sum(x -> x^2, param.B([0.0, 0.0, 0.0], 0.0)))
 )
 const rL = sqrt(v0[1]^2 + v0[2]^2 + v0[3]^2) / (abs(q2m) * Bmag)
 const invrL = 1 / rL;

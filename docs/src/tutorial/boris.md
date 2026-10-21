@@ -215,8 +215,9 @@ particle tracing: the `TraceProblem` container, the boundary callback, and the
 field and work columns.
 
 Used directly, the solvers only need a parameter container that answers three
-questions, `get_q2m`, `get_EField` and `get_BField`. The default methods assume
-the layout `(q2m, m, E, B, ...)` that `prepare` produces, and any other type can
+questions, `get_q2m`, `get_EField` and `get_BField`. The default methods read the
+fields `q2m`, `E` and `B` of the `NamedTuple` that `prepare` produces, or the
+positional layout `(q2m, m, E, B, ...)` of a plain tuple, and any other type can
 support the solvers by adding methods to those three functions:
 
 ```julia
