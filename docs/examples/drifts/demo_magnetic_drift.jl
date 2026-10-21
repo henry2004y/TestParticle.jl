@@ -47,7 +47,8 @@ zero_E(x) = SA[0.0, 0.0, 0.0];
 
 # Analytic guiding-center drift evaluated directly from the field function, using
 # exactly the same quantities (`∇B` from the B-Jacobian, `κ` from `JB·b`) as the
-# package's [`get_B_parameters`](@ref) / `trace_gc_drifts!`. This is the "code
+# package's [`get_B_parameters`](@ref TestParticle.get_B_parameters) /
+# `trace_gc_drifts!`. This is the "code
 # tracing" reference against which we compare the Boris-traced orbit.
 function analytic_drift(x, v, q, m)
     B = curve_B(x)
