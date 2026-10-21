@@ -335,4 +335,23 @@ end
     @test E == E_expected && JE == zeros(3, 3)
 end
 
+@testset "GC FLR" begin
+    # E varies along all three axes so a Laplacian that misses or mixes components fails.
+    a, kx, ky, kz, Bz = 1.0e-9, 0.3, 0.2, 0.1, 1.0e-8
+    E(x) = SA[a * cos(kx * x[1]) * cos(ky * x[2]), a * sin(kz * x[3]), 0.0]
+    B(x) = SA[0.0, 0.0, Bz]
+    param = prepare(E, B, species = Proton)
+    xp, v = SA[1.5, -0.5, 0.0], SA[0.3, 1.0, 0.1]
+    x = [1.0, 2.0, 3.0]
+    dx = similar(x)
+    trace_gc_flr!(dx, x, (param..., t -> vcat(xp, v)), 0.0)
+
+    Ex, Ey = E(x)
+    # E × B / B² = (Ey, -Ex, 0) / Bz
+    drift = SA[Ey, -Ex, 0.0] / Bz
+    ∇²drift = SA[-kz^2 * Ey, (kx^2 + ky^2) * Ex, 0.0] / Bz
+    r4 = (v[1]^2 + v[2]^2) / (4 * (param[1] * Bz)^2)
+    @test dx ≈ drift + r4 * ∇²drift + SA[0.0, 0.0, v[3]] rtol = 1.0e-12
+end
+
 end # module test_gc

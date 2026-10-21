@@ -30,7 +30,6 @@ using KernelAbstractions: @kernel, @index, @Const, synchronize, Backend, CPU
 
 import KernelAbstractions as KA
 import Adapt
-import Tensors
 import Base: +, -, *, /, setindex!, getindex
 import LinearAlgebra: ×
 
