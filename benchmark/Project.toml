@@ -8,7 +8,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 
 [sources]
-BorisPushers = {path = "../lib/BorisPushers"}
 TestParticle = {path = ".."}
 
 [compat]
