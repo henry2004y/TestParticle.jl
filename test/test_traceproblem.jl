@@ -8,6 +8,7 @@ end
 
 using Test
 using TestParticle
+using BorisPushers
 using OrdinaryDiffEq
 using StaticArrays
 using SciMLBase

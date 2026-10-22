@@ -4,6 +4,8 @@ const FO_PARAMS = (:q2m, :m, :E, :B, :F)
 const GC_PARAMS = (:q, :q2m, :μ, :E, :B)
 const CANONICAL_PARAMS = (:q, :m, :c, :pf)
 
+@inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
+
 """
     _named_params(p, names)
 

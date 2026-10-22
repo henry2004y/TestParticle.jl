@@ -1,4 +1,5 @@
 [deps]
+BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -17,7 +18,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]
+BorisPushers = {path = "../lib/BorisPushers"}
 TestParticle = {path = ".."}
 
 [compat]
+BorisPushers = "0.1.2"
 OrdinaryDiffEq = "6, 7"
