@@ -23,7 +23,7 @@
 
 import DisplayAs #hide
 using TestParticle, StaticArrays, LinearAlgebra, Random, Statistics
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 import TestParticle as TP
 using OrdinaryDiffEq
 using CairoMakie
@@ -280,11 +280,11 @@ sols = solve(
 # ### 6.1 Trajectories, guiding center, and phase-space evolution
 #
 # We plot a few trajectories together with their guiding centers (computed with
-# `get_gc_func`), and for one trajectory show how the gyroradius and pitch-angle
+# `get_gc`), and for one trajectory show how the gyroradius and pitch-angle
 # cosine evolve. The gyroradius starts at ``r_{L0}`` and then drifts as the
 # particle samples regions of different ``|B|`` and is scattered.
 
-gc = param |> get_gc_func
+gc = xu -> get_gc(xu, param)
 
 f = Figure(fontsize = 16, size = (700, 500))
 ax = Axis3(f[1, 1], title = "Sample trajectories and guiding centers", aspect = :data)

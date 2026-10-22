@@ -29,7 +29,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using LinearAlgebra: ×, ⋅, normalize, norm
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -70,7 +70,7 @@ function plot_drift_case(sol, sol_gc, title)
         ylabel = "y", zlabel = "z", aspect = :data
     )
 
-    gc = get_gc_func(sol_gc.prob.p)
+    gc = xu -> get_gc(xu, sol_gc.prob.p)
     gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 
     lines!(
@@ -107,7 +107,7 @@ tspan_curv = (0, 40)
 param_curv = prepare(zero_E, curved_B, species = Proton)
 prob_curv = ODEProblem(trace!, stateinit_curv, tspan_curv, param_curv)
 sol_curv = solve(prob_curv, Vern9())
-gc_curv = param_curv |> get_gc_func
+gc_curv = xu -> get_gc(xu, param_curv)
 gc_x0_curv = gc_curv(stateinit_curv) |> Vector
 prob_gc_curv = ODEProblem(
     trace_gc_drifts!, gc_x0_curv, tspan_curv,
@@ -140,7 +140,7 @@ tspan_grad = (0, 20)
 param_grad = prepare(uniform_E, grad_B, species = Proton)
 prob_grad = ODEProblem(trace!, stateinit_grad, tspan_grad, param_grad)
 sol_grad = solve(prob_grad, Vern9())
-gc_grad = param_grad |> get_gc_func
+gc_grad = xu -> get_gc(xu, param_grad)
 gc_x0_grad = gc_grad(stateinit_grad) |> Vector
 prob_gc_grad = ODEProblem(
     trace_gc_drifts!, gc_x0_grad, tspan_grad,

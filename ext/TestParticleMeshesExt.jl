@@ -2,7 +2,7 @@ module TestParticleMeshesExt
 
 using TestParticle
 import TestParticle: makegrid, get_cell_centers, prepare, build_interpolator,
-    get_particle_crossings, get_first_crossing, get_particle_flux, get_particle_fluxes
+    get_particle_crossings, get_first_crossing, get_particle_flux
 using Meshes: coords, spacing, paramdim, CartesianGrid, RectilinearGrid, StructuredGrid,
     Plane, Disk, Point, normal, Sphere, area, Vec
 using StaticArrays: SVector
@@ -185,25 +185,25 @@ function get_particle_flux(sol, surface::Union{Disk, Sphere}, weight = 1.0)
     return number_flux_density, velocity_flux_density
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Sphere},
         weights::Number = 1.0
     )
-    return get_particle_fluxes(sols, surface, Base.Iterators.repeated(weights))
+    return get_particle_flux(sols, surface, Base.Iterators.repeated(weights))
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::EnsembleSolution, surface::Union{Disk, Sphere},
         weights::Number = 1.0
     )
-    return get_particle_fluxes(sols.u, surface, weights)
+    return get_particle_flux(sols.u, surface, weights)
 end
 
-function get_particle_fluxes(sols::EnsembleSolution, surface::Union{Disk, Sphere}, weights)
-    return get_particle_fluxes(sols.u, surface, weights)
+function get_particle_flux(sols::EnsembleSolution, surface::Union{Disk, Sphere}, weights)
+    return get_particle_flux(sols.u, surface, weights)
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::Union{AbstractVector, Tuple}, surface::Union{Disk, Sphere}, weights
     )
     T = float(eltype(first(sols).u[1]))
@@ -254,27 +254,27 @@ function _get_particle_flux_single_sum!(total_n_flux, total_v_flux, sol, surface
     return total_n_flux, total_v_flux
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector{T},
         weights::Number = 1.0
     ) where {T <: Union{Disk, Sphere}}
-    return get_particle_fluxes(sols, surfaces, Base.Iterators.repeated(weights))
+    return get_particle_flux(sols, surfaces, Base.Iterators.repeated(weights))
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Sphere}},
         weights::Number = 1.0
     )
-    return get_particle_fluxes(sols.u, surfaces, weights)
+    return get_particle_flux(sols.u, surfaces, weights)
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::EnsembleSolution, surfaces::AbstractVector{<:Union{Disk, Sphere}}, weights
     )
-    return get_particle_fluxes(sols.u, surfaces, weights)
+    return get_particle_flux(sols.u, surfaces, weights)
 end
 
-function get_particle_fluxes(
+function get_particle_flux(
         sols::Union{AbstractVector, Tuple}, surfaces::AbstractVector{D}, weights
     ) where {D <: Union{Disk, Sphere}}
     nsurfaces = length(surfaces)
@@ -638,8 +638,8 @@ end
         sol = PrecompileMockSol(t_array, u_array)
 
         det = Disk(Plane(Point(0.0, 0.0, 0.0), Vec(1.0, 0.0, 0.0)), 1.0)
-        get_particle_fluxes([sol], det)
-        get_particle_fluxes([sol], [det])
+        get_particle_flux([sol], det)
+        get_particle_flux([sol], [det])
     end
 end
 

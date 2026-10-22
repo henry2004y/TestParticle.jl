@@ -13,7 +13,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using TestParticle: get_B_parameters
 using LinearAlgebra: norm, ×, ⋅, normalize
 using ForwardDiff: jacobian
@@ -83,7 +83,7 @@ n = 9
 q, m = Proton.q, Proton.m
 
 param = prepare(zero_E, curve_B, species = Proton)
-gc = get_gc_func(param)
+gc = xu -> get_gc(xu, param)
 
 function scan_magnetic_drift(αs, v0, x0, b0, eperp, q, m, param, gc, tspan)
     n = length(αs)

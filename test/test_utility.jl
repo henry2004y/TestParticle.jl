@@ -11,7 +11,7 @@ using TestParticle
 using TestParticle: ClampExtrap, FillExtrap, LazyTimeInterpolator, WrapExtrap,
     generate_sphere, get_adiabaticity, get_curvature_radius, get_first_crossing,
     get_gyroperiod, get_gyroradius, get_mean_magnitude, get_particle_crossings,
-    get_particle_flux, get_particle_fluxes
+    get_particle_flux
 using TestParticle: cart2sph, cart2sphvec, PeriodicBC, sph2cartvec, StorePolicy
 using StaticArrays
 using LinearAlgebra
@@ -873,18 +873,18 @@ end
 
         # Test Ensemble
         sols = [sol1, sol2, sol3]
-        n_flux_all, v_flux_all = get_particle_fluxes(sols, detector, 1.0)
+        n_flux_all, v_flux_all = get_particle_flux(sols, detector, 1.0)
         @test n_flux_all ≈ 1.0 / area && v_flux_all ≈ SA[1.0, 0.0, 0.0] / area
 
         # Test Ensemble with vector weights
         weights = [1.0, 2.0, 3.0]
-        n_flux_vw, v_flux_vw = get_particle_fluxes(sols, detector, weights)
+        n_flux_vw, v_flux_vw = get_particle_flux(sols, detector, weights)
         @test n_flux_vw ≈ 1.0 / area # sol1 crosses (1.0), others miss
 
         # Test Ensemble where multiple cross
         sols2 = [sol1, sol1, sol2]
         weights2 = [1.0, 2.0, 3.0]
-        n_flux_vw2, v_flux_vw2 = get_particle_fluxes(sols2, detector, weights2)
+        n_flux_vw2, v_flux_vw2 = get_particle_flux(sols2, detector, weights2)
         @test n_flux_vw2 ≈ 3.0 / area &&
             v_flux_vw2 ≈ SA[1 * 1.0 + 1 * 2.0 + 0 * 3.0, 0.0, 0.0] / area
 
@@ -938,7 +938,7 @@ end
         area = pi * 5.0^2
 
         # Test multiple detectors flux (Disk/Sphere only)
-        n_fluxes, v_fluxes = get_particle_fluxes(sols, detectors, 1.0)
+        n_fluxes, v_fluxes = get_particle_flux(sols, detectors, 1.0)
         @test length(n_fluxes) == 2 && n_fluxes[1] ≈ 1.0 / area && n_fluxes[2] ≈ 1.0 / area
         @test v_fluxes[1] ≈ v_fluxes[2] ≈ SA[1.0, 0.0, 0.0] / area
     end
@@ -1004,18 +1004,18 @@ end
         vs_p, ws_p = get_particle_crossings(sim, [detector, detector], 2.0)
         @test length(vs_p) == 2 && length(vs_p[1]) == 2
 
-        # get_particle_fluxes
-        n_flux, v_flux = get_particle_fluxes(sim, detector, 1.0)
+        # get_particle_flux
+        n_flux, v_flux = get_particle_flux(sim, detector, 1.0)
         area = pi * radius^2
         @test n_flux ≈ 2.0 / area
         @test v_flux ≈ SA[2.0, 0.0, 0.0] / area
 
-        # get_particle_fluxes (multiple surfaces, scalar weight)
-        n_fluxes, v_fluxes = get_particle_fluxes(sim, [detector, detector], 1.0)
+        # get_particle_flux (multiple surfaces, scalar weight)
+        n_fluxes, v_fluxes = get_particle_flux(sim, [detector, detector], 1.0)
         @test length(n_fluxes) == 2 && n_fluxes[1] ≈ 2.0 / area
 
-        # get_particle_fluxes (multiple surfaces, vector weight)
-        n_fluxes_v, v_fluxes_v = get_particle_fluxes(sim, [detector, detector], [1.0, 2.0])
+        # get_particle_flux (multiple surfaces, vector weight)
+        n_fluxes_v, v_fluxes_v = get_particle_flux(sim, [detector, detector], [1.0, 2.0])
         @test n_fluxes_v[1] ≈ 3.0 / area
 
         # get_particle_crossings (non-scalar weights)

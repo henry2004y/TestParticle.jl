@@ -8,7 +8,7 @@
 # For the native Boris solvers, we also support `save_fields` and `save_work` keywords to save the fields and work done by the fields. These options are more efficient than using `SavingCallback` and are compatible with ensemble problems.
 
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: WrapExtrap, get_mean_magnitude
+using TestParticle: WrapExtrap
 using TestParticle: qᵢ, mᵢ
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
@@ -29,7 +29,7 @@ B[2, :, :, :] .= 0.0
 B[3, :, :, :] .= 2.0
 
 ## Reference values for unit conversions between the customized and dimensionless units
-const B₀ = get_mean_magnitude(B)
+const B₀ = sqrt(sum(abs2, B) / (nx * ny * nz)) # RMS magnitude
 const U₀ = 1.0
 const l₀ = 4 * nx
 const t₀ = l₀ / U₀

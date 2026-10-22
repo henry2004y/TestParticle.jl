@@ -50,22 +50,15 @@ function get_first_crossing end
 
 """
     get_particle_flux(sol, surface, weight = 1.0) -> (number_flux, velocity_flux)
+    get_particle_flux(sols, surface, weights = 1.0) -> (number_flux, velocity_flux)
+    get_particle_flux(sols, surfaces, weights = 1.0) -> (number_fluxes, velocity_fluxes)
 
-Number flux density and velocity flux density through `surface`, obtained by summing the
-crossing weights of a single trajectory and dividing by the surface area. Requires Meshes.jl
-to be loaded.
+Number flux density and velocity flux density through `surface`, or through each of
+`surfaces`, obtained by summing the crossing weights of a single trajectory or of an
+ensemble of trajectories `sols` and dividing by the surface area. Requires Meshes.jl to be
+loaded.
 """
 function get_particle_flux end
-
-"""
-    get_particle_fluxes(sols, surface, weights = 1.0) -> (number_flux, velocity_flux)
-    get_particle_fluxes(sols, surfaces, weights = 1.0) -> (number_fluxes, velocity_fluxes)
-
-Number flux densities and velocity flux densities through one `surface` or through each of
-`surfaces`, summed over an ensemble of trajectories and divided by the surface area.
-Requires Meshes.jl to be loaded.
-"""
-function get_particle_fluxes end
 
 """
     _rng_seed(seed::Integer, i::Integer)
@@ -450,7 +443,7 @@ end
     get_magnetic_properties(x, t, Bfunc)
 
 Calculate magnetic field properties at position `x` and time `t`.
-Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
+Returns the NamedTuple `(; B, ∇B, κ, b̂, Bmag)`:
 - `B`: Magnetic field vector
 - `∇B`: Gradient of magnetic field magnitude
 - `κ`: Curvature vector
@@ -463,13 +456,13 @@ Returns tuple `(B, ∇B, κ, b̂, Bmag)`:
     Bmag = norm(B)
     if Bmag == 0
         vzero = zero(x)
-        return vzero, vzero, vzero, vzero, Bmag
+        return (; B = vzero, ∇B = vzero, κ = vzero, b̂ = vzero, Bmag)
     end
     b̂ = B / Bmag
 
     κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
 
-    return B, ∇B, κ, b̂, Bmag
+    return (; B, ∇B, κ, b̂, Bmag)
 end
 
 """
@@ -479,7 +472,7 @@ Calculate the radius of curvature of the magnetic field at position `x` and time
 Returns `Inf` if the field is zero or the field lines are straight.
 """
 @inline function get_curvature_radius(x, t, Bfunc)
-    _, _, κ, _, _ = get_magnetic_properties(x, t, Bfunc)
+    (; κ) = get_magnetic_properties(x, t, Bfunc)
 
     k_mag = norm(κ)
     return iszero(k_mag) ? Inf : inv(k_mag)

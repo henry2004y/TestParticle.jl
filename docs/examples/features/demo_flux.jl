@@ -18,7 +18,7 @@
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
 using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes
-using TestParticle: Maxwellian, get_particle_crossings, get_particle_fluxes,
+using TestParticle: Maxwellian, get_particle_crossings, get_particle_flux,
     sample_unit_sphere
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
@@ -92,7 +92,7 @@ sols_iso = solve(
 
 r0 = 100.0 # [m]
 detector_iso = Sphere(Point(0.0, 0.0, 0.0), r0)
-flux, _ = get_particle_fluxes(sols_iso, detector_iso, weights)
+flux, _ = get_particle_flux(sols_iso, detector_iso, weights)
 
 r = 100.0 # [m]
 println("Example 2:")

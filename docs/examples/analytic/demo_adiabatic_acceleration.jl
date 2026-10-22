@@ -146,7 +146,7 @@ println("Adiabaticity max over the orbit = ", round.(εmax, sigdigits = 2))
 
 # ## Energy Decomposition
 #
-# `get_work_rates_gc` returns the four leading-order terms
+# `get_work_rates` returns the four leading-order terms
 # ``(P_\parallel, P_\mathrm{Fermi}, P_{\nabla B}, P_{\partial B/\partial t})``.
 # Since ``\mathbf{v}_E = (\mathbf{E}\times\hat{\mathbf{b}})/B``,
 #
@@ -179,7 +179,7 @@ function accumulate_work(sol, p)
         X = SA[u[1], u[2], u[3]]
         Bmag[i] = norm(Bf(X, t))
         K[i] = 0.5 * mass * u[4]^2 + μ * Bmag[i]
-        P[i, :] .= TP.get_work_rates_gc(u, p, t)
+        P[i, :] .= TP.get_work_rates(u, p, t)
     end
 
     W = similar(P)

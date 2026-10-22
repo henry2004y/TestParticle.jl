@@ -27,7 +27,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: Maxwellian, get_gc_func
+using TestParticle: Maxwellian, get_gc
 using LinearAlgebra: norm, ×, ⋅, normalize
 using Statistics: mean
 using Random: MersenneTwister
@@ -135,7 +135,7 @@ end
 function ensemble_drift(vs)
     drifts = Float64[]
     param = prepare(zero_E, curve_B, species = Proton)
-    gc = get_gc_func(param)
+    gc = xu -> get_gc(xu, param)
     ts = range(0.0, 30.0; length = 250)
     A = hcat(ones(length(ts)), ts)
     for v in vs
