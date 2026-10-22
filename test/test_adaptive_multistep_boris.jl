@@ -2,6 +2,7 @@ module test_adaptive_multistep_boris
 
 using Test
 using TestParticle
+using BorisPushers
 using StaticArrays
 
 @testset "Adaptive Multistep Boris" begin

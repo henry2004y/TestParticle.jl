@@ -9,6 +9,7 @@ end
 using Test
 using TestParticle
 import TestParticle as TP
+using BorisPushers
 using StaticArrays
 using LinearAlgebra: norm
 using OrdinaryDiffEq

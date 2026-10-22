@@ -394,9 +394,18 @@ end
         retcode = ReturnCode.Success
         t_last_check = t
 
-        adia_t = Vector{T}(undef, 0)
+        adia_t = Vector{typeof(tspan[1])}(undef, 0)
         adia_vals = Vector{T}(undef, 0)
         adia_mode = Vector{Symbol}(undef, 0)
+        if alg.save_adiabaticity
+            adia_cap = max(10, div(initial_capacity, alg.check_interval) + 2)
+            sizehint!(adia_t, adia_cap)
+            sizehint!(adia_vals, adia_cap)
+            sizehint!(adia_mode, adia_cap)
+            push!(adia_t, t)
+            push!(adia_vals, _adia_select(comps0, alg))
+            push!(adia_mode, mode)
+        end
 
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC

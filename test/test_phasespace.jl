@@ -9,6 +9,7 @@ using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_
     vdf_grid_problem, velocity_moments
 import TestParticle as TP
 using Meshes
+using BorisPushers
 using StaticArrays
 using Random
 using LinearAlgebra: norm
