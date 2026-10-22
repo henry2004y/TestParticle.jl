@@ -112,9 +112,9 @@ end
 
 function _solve(
         ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, plan,
-        isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        isoutside::F, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed
-    ) where {SaveFields, SaveWork}
+    ) where {F, SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, plan,
         save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
@@ -140,9 +140,9 @@ end
 
 function _solve(
         ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, plan,
-        isoutside, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
+        isoutside::F, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed
-    ) where {SaveFields, SaveWork}
+    ) where {F, SaveFields, SaveWork}
     sols, nt,
         nout = _prepare_gc(
         prob, trajectories, dt, plan,
