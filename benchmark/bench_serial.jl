@@ -2,6 +2,7 @@
 
 using BenchmarkTools
 using TestParticle
+using BorisPushers
 using OrdinaryDiffEq
 using StaticArrays
 using Printf

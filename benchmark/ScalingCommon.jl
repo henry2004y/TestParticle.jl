@@ -22,6 +22,7 @@ so a figure can show how much the repetitions disagreed.
 module ScalingCommon
 
 using TestParticle
+using BorisPushers
 using StaticArrays
 using Statistics
 using Printf

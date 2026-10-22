@@ -7,6 +7,7 @@
 #   julia --project=test -t auto benchmark/compare_boris_backends.jl CUDA
 
 using TestParticle
+using BorisPushers
 using StaticArrays
 using Statistics: median
 using Printf

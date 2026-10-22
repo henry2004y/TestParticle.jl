@@ -2,6 +2,7 @@
 
 using BenchmarkTools
 using TestParticle
+using BorisPushers
 using TestParticle: LazyTimeInterpolator, get_particle_flux
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
