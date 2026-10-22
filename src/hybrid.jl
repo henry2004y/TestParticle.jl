@@ -137,5 +137,3 @@ function TraceHybridProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
         prob_func
     )
 end
-
-

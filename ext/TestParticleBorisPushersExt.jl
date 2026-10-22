@@ -242,8 +242,8 @@ end
 
     nchunks = Threads.nthreads()
     elapsed_time = @elapsed Threads.@threads for irange in index_chunks(
-        1:trajectories; n = nchunks
-    )
+            1:trajectories; n = nchunks
+        )
         _hybrid_adaptive!(
             sols, prob, irange, alg, plan,
             isoutside, save_start, save_end,
