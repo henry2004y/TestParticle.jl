@@ -89,6 +89,16 @@ E_zero(r, t = 0.0) = SA[0.0, 0.0, 0.0]
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
             @test sol.u[1].retcode == ReturnCode.Terminated
         end
+
+        @testset "GC RK45 without domain check" begin
+            u0_gc = [0.9, 0.0, 0.0, 1.0]
+            p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
+            prob = TraceGCProblem(u0_gc, tspan, p_gc)
+            sol = solve(prob, dt = 0.01, alg = :rk45)
+
+            @test !any(isnan, sol.u[1].u[end])
+            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+        end
     end
 
     @testset "Spatial and Time Boundaries (Native Solvers)" begin

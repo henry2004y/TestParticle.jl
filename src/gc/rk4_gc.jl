@@ -41,7 +41,7 @@ function _rk4!(
         vars_dim += 4
     end
 
-    @fastmath @inbounds for i in irange
+    @inbounds for i in irange
         traj = Vector{SVector{vars_dim, T}}(undef, nout)
         tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 

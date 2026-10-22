@@ -69,7 +69,7 @@ function _rk45!(
         vars_dim += 4
     end
 
-    @fastmath @inbounds for i in irange
+    @inbounds for i in irange
         traj = SVector{vars_dim, T}[]
         tsave = typeof(tspan[1] + one(T))[]
 
@@ -120,6 +120,16 @@ function _rk45!(
                 sum_sq_error += (E[k] / sc)^2
             end
             error_ratio = 0.5 * sqrt(sum_sq_error)
+
+            # A non-finite error estimate means the trial step hit invalid fields;
+            # either stop on the domain check or reject the step and shrink `dt`.
+            if !isfinite(error_ratio)
+                if isoutside(y_next, p, t + dt)
+                    retcode = ReturnCode.Terminated
+                    break
+                end
+                error_ratio = Inf
+            end
 
             if error_ratio <= 1.0
                 y_next = xv + dx
