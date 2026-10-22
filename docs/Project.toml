@@ -39,7 +39,7 @@ BorisPushers = {path = "../lib/BorisPushers"}
 TestParticle = {path = ".."}
 
 [compat]
-BorisPushers = "0.1.2"
+BorisPushers = "0.2"
 DiffEqCallbacks = "4"
 DocumenterVitepress = "0.3.8"
 FieldTracer = "0.2.4"

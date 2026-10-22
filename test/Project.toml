@@ -22,5 +22,5 @@ BorisPushers = {path = "../lib/BorisPushers"}
 TestParticle = {path = ".."}
 
 [compat]
-BorisPushers = "0.1.2"
+BorisPushers = "0.2"
 OrdinaryDiffEq = "6, 7"
