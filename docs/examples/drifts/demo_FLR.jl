@@ -5,7 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using LinearAlgebra: ×, ⋅, norm, normalize
 using Tensors: laplace
 import Tensors: Vec as Vec3
@@ -36,7 +36,7 @@ sol_e = solve(prob_e, Vern9())
 ## Analytic Drift (ExB + v_par)
 ## We use sol_p to provide v_par, but since B is uniform, ExB drift is independent of species/velocity.
 ## trace_gc_exb! calculates the guiding center drift without FLR corrections.
-gc_p = param_p |> get_gc_func
+gc_p = xu -> get_gc(xu, param_p)
 gc_x0_p = gc_p(stateinit) |> Vector
 prob_exb = ODEProblem(trace_gc_exb!, gc_x0_p, tspan, (; param_p..., sol = sol_p))
 sol_exb = solve(prob_exb, Vern7())
@@ -66,7 +66,7 @@ lines!(
 )
 
 ## Plot Electron Guiding Center
-gc_e = param_e |> get_gc_func
+gc_e = xu -> get_gc(xu, param_e)
 gc_plot_e(x, y, z, vx, vy, vz) = (gc_e(SA[x, y, z, vx, vy, vz])...,)
 lines!(
     ax, sol_e, idxs = (gc_plot_e, 1, 2, 3, 4, 5, 6),

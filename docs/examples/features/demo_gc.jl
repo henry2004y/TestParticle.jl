@@ -5,7 +5,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using TestParticle: get_gc_velocity
 using FieldTracer
 import TestParticle as TP
@@ -75,7 +75,7 @@ prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
 sol_gc_numericBfield = solve(prob_gc_num, Vern9())
 
 ## 3. Analytic Guiding Center Drift
-gc = param |> get_gc_func
+gc = xu -> get_gc(xu, param)
 gc_x0 = gc(stateinit) |> Vector
 prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
 sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
@@ -223,7 +223,7 @@ function run_grad_B_sim(B_func, tspan)
     sol_gc = solve(prob_gc, Vern9())
 
     ## GC (Analytic)
-    gc = param |> get_gc_func
+    gc = xu -> get_gc(xu, param)
     gc_x0 = gc(stateinit) |> Vector
     prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
     sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])

@@ -264,7 +264,7 @@ end
         data = vcat(data, E, B)
     end
     if SaveWork
-        work = get_work_rates_gc(xv, p, t)
+        work = _get_work_rates_gc(xv, p, t)
         data = vcat(data, work)
     end
     return data

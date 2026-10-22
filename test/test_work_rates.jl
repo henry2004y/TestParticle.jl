@@ -111,7 +111,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         p = (; q = TP.qᵢ, q2m = TP.qᵢ / TP.mᵢ, μ, E = Ef, B = Bf)
         y = SA[x[1], x[2], x[3], 1.0e4]
 
-        wr = TP.get_work_rates_gc(y, p, t)
+        wr = TP.get_work_rates(y, p, t)
         v_E = (E × b̂) / Bmag
 
         @test wr[3] ≈ μ * (v_E ⋅ ∇B) rtol = 1.0e-12
@@ -135,7 +135,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         )
         for t in (0.0, 0.4, 1.2), y in states
             dKdt = gc_energy_derivative(y, p, t)
-            @test sum(TP.get_work_rates_gc(y, p, t)) ≈ dKdt rtol = 1.0e-8
+            @test sum(TP.get_work_rates(y, p, t)) ≈ dKdt rtol = 1.0e-8
         end
     end
 
@@ -147,9 +147,9 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         y = SA[x[1], x[2], x[3], 2.0e4]
 
         mp = TP.get_magnetic_properties(x, t, Bf)
-        ref = TP.get_work_rates_gc(y, p, t)
-        @test TP.get_work_rates_gc(y, p, t, mp) == ref
-        @test TP.get_work_rates_gc(y, p, t, mp, Ef(x, t)) == ref
+        ref = TP.get_work_rates(y, p, t)
+        @test TP.get_work_rates(y, p, t, mp) == ref
+        @test TP.get_work_rates(y, p, t, mp, Ef(x, t)) == ref
     end
 
     @testset "channel grouping merges grad-B into betatron" begin
@@ -159,7 +159,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton)
         y = SA[x[1], x[2], x[3], 2.0e4]
 
-        wr = TP.get_work_rates_gc(y, p, t)
+        wr = TP.get_work_rates(y, p, t)
         ch = TP.get_work_channels(y, p, t)
 
         @test ch[1] == wr[1]
@@ -194,7 +194,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         y4 = SA[y[1], y[2], y[3], y[4]]
         @test TP.get_work_channels(y, p, t) == TP.get_work_channels(y4, p, t)
 
-        wr = TP.get_work_rates_gc(y4, p, t)
+        wr = TP.get_work_rates(y4, p, t)
         @test SA[y[11], y[12], y[13], y[14]] ≈ wr rtol = 1.0e-12
         @test TP.get_work_channels(y, p, t) == SA[wr[1], wr[2], wr[3] + wr[4]]
     end
@@ -207,7 +207,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         y = SA[state_gc[1], state_gc[2], state_gc[3], state_gc[4]]
 
         for t in (0.0, 0.7)
-            @test all(abs.(TP.get_work_rates_gc(y, p, t)) .< 1.0e-30)
+            @test all(abs.(TP.get_work_rates(y, p, t)) .< 1.0e-30)
             @test abs(gc_energy_derivative(y, p, t)) < 1.0e-30
         end
     end
@@ -222,7 +222,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         y = SA[state_gc[1], state_gc[2], state_gc[3], state_gc[4]]
 
         # κ = 0 and ∇B = 0 kill Fermi and grad-B; E ⟂ b̂ kills the parallel term.
-        wr = TP.get_work_rates_gc(y, p, 0.0)
+        wr = TP.get_work_rates(y, p, 0.0)
         @test abs(wr[1]) < 1.0e-30
         @test abs(wr[2]) < 1.0e-30
         @test abs(wr[3]) < 1.0e-30

@@ -413,23 +413,41 @@ Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 end
 
 """
-    get_work_rates(xu, p, t[, magnetic_properties, E_field]) -> SVector{4}
+    get_work_rates(xv, p, t[, magnetic_properties, E_field]) -> SVector{4}
 
-Calculate the work rates [W] acting on a full-orbit particle. Returns the four
-leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)` documented in
-[`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the grouping into
-physical acceleration channels.
+Calculate the work rates [W] acting on a full-orbit particle or a guiding center.
+Returns the four leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)`
+documented in [`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the
+grouping into physical acceleration channels.
+
+The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Saved
+guiding-center states can carry diagnostics appended by `save_fields`/`save_work`, so
+their length is not a reliable discriminator.
 
 `magnetic_properties` and `E_field` are optional precomputed values of
-[`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xu), t)`, used
+[`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
 to avoid recomputing the field Jacobian when the caller already has them.
 
-Note that these are gyro-averaged quantities: they do not reproduce the instantaneous
-`q v⋅E` of a full-orbit state, which oscillates at the gyrofrequency. They are
-therefore best compared against the energy change accumulated over many gyroperiods.
+For a full-orbit state these are gyro-averaged quantities: they do not reproduce the
+instantaneous `q v⋅E`, which oscillates at the gyrofrequency. They are therefore best
+compared against the energy change accumulated over many gyroperiods.
+
+For the guiding-center equations solved by [`trace_gc!`](@ref), the four terms sum to
+`dK/dt` with `K = ½ m v∥² + μB` up to `O(ε)` corrections. The sum is *exact* when
+`b̂⋅(∇×b̂) = 0`, as in axisymmetric fields without a `B_φ` component. In this case
+`B*_∥ = |B|` and the residual twist term vanishes. Planar field lines or translation
+invariance alone do not imply this condition. When it holds, any remaining mismatch
+is numerical (e.g. time-integration or quadrature error).
+
 All four terms are zero in a magnetic null.
 """
-@inline function get_work_rates(xu, p, t, magnetic_properties = nothing, E_field = nothing)
+@inline function get_work_rates(xv, p, t, magnetic_properties = nothing, E_field = nothing)
+    return hasproperty(p, :μ) ?
+        _get_work_rates_gc(xv, p, t, magnetic_properties, E_field) :
+        _get_work_rates_fo(xv, p, t, magnetic_properties, E_field)
+end
+
+@inline function _get_work_rates_fo(xu, p, t, magnetic_properties = nothing, E_field = nothing)
     (; q2m, m) = p
     Efunc, Bfunc = p.E, p.B
     r = get_x(xu)
@@ -456,25 +474,7 @@ All four terms are zero in a magnetic null.
     return _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt)
 end
 
-"""
-    get_work_rates_gc(xv, p, t[, magnetic_properties, E_field]) -> SVector{4}
-
-Calculate the work rates [W] acting on a guiding center. Returns the four
-leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)` documented in
-[`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the grouping into
-physical acceleration channels.
-
-`magnetic_properties` and `E_field` are optional precomputed values of
-[`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`.
-
-For the guiding-center equations solved by [`trace_gc!`](@ref), the four terms sum to
-`dK/dt` with `K = ½ m v∥² + μB` up to `O(ε)` corrections. The sum is *exact* when
-`b̂⋅(∇×b̂) = 0`, as in axisymmetric fields without a `B_φ` component. In this case
-`B*_∥ = |B|` and the residual twist term vanishes. Planar field lines or translation
-invariance alone do not imply this condition. When it holds, any remaining mismatch
-is numerical (e.g. time-integration or quadrature error).
-"""
-@inline function get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
+@inline function _get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
     (; q, q2m, μ) = p
     Efunc, Bfunc = p.E, p.B
     r = get_x(xv)
@@ -514,18 +514,13 @@ channels is:
   `(μ/B)(b̂×∇B)⋅E = μ v_E⋅∇B`, it is the convective (spatial) part of the betatron
   channel, while `μ ∂B/∂t` is its local (temporal) part.
 
-Both a full-orbit and a guiding-center state are accepted, told apart by whether `p`
-carries a magnetic moment `μ`. Saved guiding-center states can carry diagnostics
-appended by `save_fields`/`save_work`, so their length is not a reliable discriminator.
+Both a full-orbit and a guiding-center state are accepted, as in `get_work_rates`.
 """
 function get_work_channels(xv, p, t)
-    P_par, P_fermi, P_grad, P_betatron = _get_work_rates(xv, p, t)
+    P_par, P_fermi, P_grad, P_betatron = get_work_rates(xv, p, t)
 
     return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
 end
-
-_get_work_rates(xv, p, t) =
-    hasproperty(p, :μ) ? get_work_rates_gc(xv, p, t) : get_work_rates(xv, p, t)
 
 function trace_canonical!(dy, y, p, t)
     (; q, m, pf) = p

@@ -7,7 +7,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -100,7 +100,7 @@ prob_small = ODEProblem(trace!, stateinit_small, tspan, param_small)
 sol_small = solve(prob_small, Vern9())
 
 ## Tracing guiding center
-gc_small = param_small |> get_gc_func
+gc_small = xu -> get_gc(xu, param_small)
 gc_x0_small = gc_small(stateinit_small) |> Vector
 prob_gc_small = ODEProblem(trace_gc_exb!, gc_x0_small, tspan, (; param_small..., sol = sol_small))
 sol_gc_small = solve(prob_gc_small, Vern9(); save_idxs = [1, 2, 3])
@@ -122,7 +122,7 @@ param_large = prepare(uniform_E_large, uniform_B, species = Proton)
 prob_large = ODEProblem(trace!, stateinit_large, tspan, param_large)
 sol_large = solve(prob_large, Vern9())
 
-gc_large = param_large |> get_gc_func
+gc_large = xu -> get_gc(xu, param_large)
 gc_x0_large = gc_large(stateinit_large) |> Vector
 prob_gc_large = ODEProblem(trace_gc_exb!, gc_x0_large, tspan, (; param_large..., sol = sol_large))
 sol_gc_large = solve(prob_gc_large, Vern9(); save_idxs = [1, 2, 3])

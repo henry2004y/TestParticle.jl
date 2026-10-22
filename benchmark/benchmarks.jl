@@ -2,7 +2,7 @@
 
 using BenchmarkTools
 using TestParticle
-using TestParticle: LazyTimeInterpolator, get_particle_fluxes
+using TestParticle: LazyTimeInterpolator, get_particle_flux
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
 using TestParticle: CPU
@@ -331,6 +331,6 @@ let (sols, weights, disk, sphere) = setup_flux_benchmarks()
     # Explicitly type the surface vector to match the function signature
     surfaces = [disk, disk]
 
-    SUITE["flux"]["single detector"] = @benchmarkable get_particle_fluxes($sols, $disk, $weights)
-    SUITE["flux"]["multi detector"] = @benchmarkable get_particle_fluxes($sols, $surfaces, $weights)
+    SUITE["flux"]["single detector"] = @benchmarkable get_particle_flux($sols, $disk, $weights)
+    SUITE["flux"]["multi detector"] = @benchmarkable get_particle_flux($sols, $surfaces, $weights)
 end

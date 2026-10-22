@@ -62,5 +62,5 @@ Return the work done by the electric field from the solution `sol`.
 """
 function get_work(sol::AbstractODESolution)
     p = sol.prob.p
-    return map((u, t) -> _get_work_rates(u, p, t), sol.u, sol.t)
+    return map((u, t) -> get_work_rates(u, p, t), sol.u, sol.t)
 end

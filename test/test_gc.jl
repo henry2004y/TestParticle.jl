@@ -7,7 +7,7 @@ if !isdefined(Main, :test_common)
 end
 
 using TestParticle
-using TestParticle: energy2velocity, full_to_gc, gc_to_full, get_gc, get_gc_func
+using TestParticle: energy2velocity, full_to_gc, gc_to_full, get_gc
 using TestParticle: sph2cart
 import TestParticle as TP
 using StaticArrays
@@ -310,7 +310,7 @@ end
     bx = [bi[1] for bi in b]
     by = [bi[2] for bi in b]
     bz = [bi[3] for bi in b]
-    X = get_gc(x, y, z, vx, vy, vz, bx, by, bz, param[1])
+    X = get_gc.(x, y, z, vx, vy, vz, bx, by, bz, param.q2m)
     @test sum(X[end]) ≈ 1.5380318687643348 rtol = 1.0e-6
 
     stateinit_gc,
@@ -323,8 +323,7 @@ end
     sol_gc = solve(prob_gc, Vern9())
 
     # analytical drifts
-    gc = param |> get_gc_func
-    gc_x0 = gc(stateinit) |> Vector # needs mutation
+    gc_x0 = get_gc(stateinit, param) |> Vector # needs mutation
     prob_gc_analytic = ODEProblem(trace_gc_drifts!, gc_x0, tspan, (; param..., sol))
     sol_gc_analytic = solve(prob_gc_analytic, Vern9(); save_idxs = [1, 2, 3])
     @test sol_gc[1, end] ≈ 0.9896197928850492

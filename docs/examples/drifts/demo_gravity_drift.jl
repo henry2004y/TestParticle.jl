@@ -4,7 +4,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: get_gc_func
+using TestParticle: get_gc
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -38,7 +38,7 @@ function plot_drift_case(sol, title)
         title = "3D Trajectory", xlabel = "x", ylabel = "y", zlabel = "z", aspect = :data
     )
 
-    gc = get_gc_func(sol.prob.p)
+    gc = xu -> get_gc(xu, sol.prob.p)
     gc_plot(x, y, z, vx, vy, vz) = (gc(SA[x, y, z, vx, vy, vz])...,)
 
     lines!(
