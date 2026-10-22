@@ -40,7 +40,7 @@ end
         :get_first_crossing,
         :Maxwellian, :BiMaxwellian, :Kappa, :BiKappa,
         :sample_unit_sphere, :sample_maxwellian, :generate_sphere,
-        :get_q2m, :get_EField, :get_BField, :jacobian, :derivative_t,
+        :jacobian, :derivative_t,
         :get_thermal_speed, :get_cell_centers, :get_magnetic_properties,
         :get_work_rates, :get_work_rates_gc, :get_work_channels, :makegrid,
         :LazyTimeInterpolator,

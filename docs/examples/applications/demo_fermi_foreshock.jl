@@ -27,7 +27,6 @@ using TestParticle: ClampExtrap
 import TestParticle as TP
 using VelocityDistributionFunctions
 using TestParticle: mₑ, Rₑ, qₑ
-using TestParticle: get_EField, get_BField
 using Random
 using FHist
 using CairoMakie, Printf
@@ -112,8 +111,8 @@ function plot_multiple(sol)
     energy = map(x -> get_kinetic_energy(x[4:6]...), sol.u) .* mₑ ./ abs(qₑ)
     ## Obtain the EM fields along the particle trajectory
     ## [mV/m]
-    Efield = get_EField(sol)
-    Bfield = get_BField(sol)
+    Efield = sol.prob.p.E
+    Bfield = sol.prob.p.B
     E = [Efield(sol.u[i], sol.t[i]) .* 1.0e3 for i in eachindex(sol.t)]
     ## [nT]
     B = [Bfield(sol.u[i], sol.t[i]) .* 1.0e9 for i in eachindex(sol.t)]

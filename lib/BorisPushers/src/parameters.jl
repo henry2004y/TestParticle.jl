@@ -1,63 +1,28 @@
 """
-    get_q2m(p)
+    CachedFields(q2m, E, B, r, t)
 
-Return the charge-to-mass ratio `q/m` from the parameter container `p`.
-
-The Boris solvers place no constraint on the type of `p`; they only require
-`get_q2m`, `get_EField` and `get_BField` to be defined for it. The default
-methods read the fields `q2m`, `E` and `B` of a `NamedTuple`, and otherwise
-assume the positional layout `(q2m, m, E, B, ...)`; any other type can support the
-solvers by adding methods to these three functions.
-"""
-get_q2m(p) = p[1]
-get_q2m(p::NamedTuple) = p.q2m
-
-"""
-    get_EField(p)
-
-Return the electric field function `E(x, t)` from the parameter container `p`.
-"""
-get_EField(p) = p[3]
-get_EField(p::NamedTuple) = p.E
-
-"""
-    get_BField(p)
-
-Return the magnetic field function `B(x, t)` from the parameter container `p`.
-"""
-get_BField(p) = p[4]
-get_BField(p::NamedTuple) = p.B
-
-"""
-    CachedFields(p, E, B, r, t)
-
-A parameter container that answers `get_q2m`, `get_EField` and `get_BField` with
-the values already taken at `(r, t)`, delegating everything else to the container
-`p` it wraps.
+A parameter container whose field functions return the values already taken at
+`(r, t)`.
 
 A step needs the fields at one point only, but a solver asks for that point
 twice: once to synchronise the state at the end of a step, and once to advance
 the next one from the same node. Carrying the values across the step boundary
 saves the second evaluation, and it does so without the step functions having to
-know where the fields came from, since they ask for them in the same way.
+know where the fields came from, since they read them in the same way.
 """
-struct CachedFields{P, E, B, R, T}
-    p::P
-    E::E
-    B::B
+struct CachedFields{Q, E, B, R, T}
+    q2m::Q
+    E::Returns{E}
+    B::Returns{B}
     r::R
     t::T
 end
 
-get_q2m(f::CachedFields) = get_q2m(f.p)
-get_EField(f::CachedFields) = Base.Returns(f.E)
-get_BField(f::CachedFields) = Base.Returns(f.B)
-
 @inline function _node_fields(p, r, t)
     T = eltype(r)
-    E = SVector{3, T}(get_EField(p)(r, t))
-    B = SVector{3, T}(get_BField(p)(r, t))
-    return CachedFields(p, E, B, r, t)
+    E = SVector{3, T}(p.E(r, t))
+    B = SVector{3, T}(p.B(r, t))
+    return CachedFields(p.q2m, Returns(E), Returns(B), r, t)
 end
 
 """

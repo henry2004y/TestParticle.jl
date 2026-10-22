@@ -214,16 +214,13 @@ their own. TestParticle.jl depends on it and adds the parts that are specific to
 particle tracing: the `TraceProblem` container, the boundary callback, and the
 field and work columns.
 
-Used directly, the solvers only need a parameter container that answers three
-questions, `get_q2m`, `get_EField` and `get_BField`. The default methods read the
-fields `q2m`, `E` and `B` of the `NamedTuple` that `prepare` produces, or the
-positional layout `(q2m, m, E, B, ...)` of a plain tuple, and any other type can
-support the solvers by adding methods to those three functions:
+Used directly, the solvers only need a parameter container with the properties
+`q2m`, `E(x, t)` and `B(x, t)`, such as the `NamedTuple` that `prepare` produces:
 
 ```julia
 using BorisPushers, StaticArrays
 
-param = (q2m, m, Efunc, Bfunc)   # or any type with the three accessors
+param = (; q2m, E = Efunc, B = Bfunc)
 prob = ODEProblem((u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 sol = solve(prob, AdaptiveBoris(safety = 0.1); dt)
 ```

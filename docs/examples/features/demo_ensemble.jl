@@ -116,7 +116,7 @@ end
 
 ## Define output_func to save specific data
 function output_func_custom(sol, i)
-    getB = TP.get_BField(sol)
+    getB = sol.prob.p.B
     b = getB.(sol.u)
 
     ## Calculate cosine of pitch angle

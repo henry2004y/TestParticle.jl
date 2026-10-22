@@ -15,7 +15,7 @@ end
 
 @muladd function update_velocity_multistep(v, r, dt, t, n::Int, ::Val{N}, param) where {N}
     T = eltype(v)
-    q2m, Efunc, Bfunc = get_q2m(param), get_EField(param), get_BField(param)
+    q2m, Efunc, Bfunc = param.q2m, param.E, param.B
 
     E = SVector{3, T}(Efunc(r, t))
     B = SVector{3, T}(Bfunc(r, t))
@@ -88,9 +88,9 @@ Advance the velocity `v` by `dt`, evaluating the fields at `(r, t)`.
 """
 @inline @muladd function update_velocity(v, r, dt, t, p, ::Union{Boris, AdaptiveBoris})
     T = eltype(v)
-    qdt2m = T(get_q2m(p)) * (T(0.5) * T(dt))
-    E = SVector{3, T}(get_EField(p)(r, t))
-    B = SVector{3, T}(get_BField(p)(r, t))
+    qdt2m = T(p.q2m) * (T(0.5) * T(dt))
+    E = SVector{3, T}(p.E(r, t))
+    B = SVector{3, T}(p.B(r, t))
     return update_velocity_boris(v, E, B, qdt2m)
 end
 

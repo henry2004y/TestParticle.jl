@@ -38,8 +38,8 @@ Return `safety * 2π / |q B / m|` evaluated at the position and time the last
 step landed on, or `nothing` when the magnetic field vanishes there.
 """
 function gyroperiod_dt(integrator, safety)
-    q2m = get_q2m(integrator.p)
-    Bfunc = get_BField(integrator.p)
+    q2m = integrator.p.q2m
+    Bfunc = integrator.p.B
     u = integrator.u
     Bmag = norm(Bfunc(SVector(u[1], u[2], u[3]), integrator.t + integrator.dt))
     iszero(Bmag) && return nothing
