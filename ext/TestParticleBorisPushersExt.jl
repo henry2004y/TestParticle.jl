@@ -18,7 +18,7 @@ import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
-    LinearInterpolation, ODEProblem, ReturnCode,
+    FullSpecialize, LinearInterpolation, ODEProblem, ReturnCode,
     build_solution, isadaptive, terminate!, EnsembleSerial, EnsembleThreads
 import SciMLBase: solve
 
@@ -37,7 +37,9 @@ function _boris_problem(prob::TraceProblem)
     T = eltype(prob.u0)
     tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
     p = _promote_p(T, prob.p)
-    return ODEProblem(_boris_rhs, SVector{6, T}(prob.u0), tspan, p)
+    return ODEProblem{false, FullSpecialize}(
+        _boris_rhs, SVector{6, T}(prob.u0), tspan, p
+    )
 end
 
 function _boris_initial_dt(prob::TraceProblem, alg)
@@ -171,7 +173,13 @@ function SciMLBase.solve(
         )
     end
 
-    return _boris_finalize(sol, prob.p, Val(save_fields), Val(save_work))
+    return if save_fields
+        save_work ? _boris_finalize(sol, prob.p, Val(true), Val(true)) :
+            _boris_finalize(sol, prob.p, Val(true), Val(false))
+    else
+        save_work ? _boris_finalize(sol, prob.p, Val(false), Val(true)) :
+            _boris_finalize(sol, prob.p, Val(false), Val(false))
+    end
 end
 
 function SciMLBase.solve(
