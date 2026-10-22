@@ -2,9 +2,6 @@
 
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
-# The Boris velocity update itself lives in BorisPushers, which owns the
-# physics; `update_velocity_boris` and `update_velocity` are imported from there.
-
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
     data = xv
 
