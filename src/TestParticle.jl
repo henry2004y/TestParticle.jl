@@ -1,15 +1,15 @@
 module TestParticle
 
-using LinearAlgebra: norm, ×, ⋅, diag, normalize
+using LinearAlgebra: norm, ×, ⋅, normalize
 using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
-    interp, Extrap, PeriodicBC, ZeroCurvBC, gradient, deriv1,
+    Extrap, PeriodicBC, gradient, deriv1,
     OnTheFly, PreCompute, FillExtrap, ClampExtrap, WrapExtrap, AbstractExtrap,
     NoBC, NoExtrap, StorePolicy
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
-    LinearInterpolation, build_solution, ODESolution, EnsembleSolution,
+    LinearInterpolation, build_solution, EnsembleSolution,
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
@@ -19,17 +19,16 @@ import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBori
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
-using StaticArrays: SVector, MVector, SA, StaticArray, SMatrix, StaticVector
+using StaticArrays: SVector, MVector, SA, StaticArray, SMatrix
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
-using KernelAbstractions: @kernel, @index, @Const, synchronize, Backend, CPU
+using KernelAbstractions: Backend, CPU
 
-import KernelAbstractions as KA
 import Adapt
-import Base: +, -, *, /, setindex!, getindex
+import Base: +, -, *, /
 import LinearAlgebra: ×
 
 export prepare, prepare_gc, prepare_canonical, ZeroField, PotentialField
