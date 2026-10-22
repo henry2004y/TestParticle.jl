@@ -16,14 +16,13 @@ adapt_field_to_gpu(field::Function, ::CPU) = field
     adapt_params(p, backend::Backend)
 
 Adapt parameter container `p` for device execution.
-Default implementation adapts electric and magnetic fields through `get_EField`
-and `get_BField`.
+Default implementation adapts the field functions `p.E` and `p.B`.
 """
 adapt_params(p, ::CPU) = p
 function adapt_params(p, backend::Backend)
-    E = adapt_field_to_gpu(get_EField(p), backend)
-    B = adapt_field_to_gpu(get_BField(p), backend)
-    q2m = get_q2m(p)
+    E = adapt_field_to_gpu(p.E, backend)
+    B = adapt_field_to_gpu(p.B, backend)
+    q2m = p.q2m
     return (; q2m, E, B)
 end
 

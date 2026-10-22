@@ -41,7 +41,6 @@ export EnsembleKernel
 export advance_boris, update_velocity, update_velocity_half, update_velocity_node
 
 public AbstractBoris
-public get_q2m, get_EField, get_BField
 public adapt_field_to_gpu, adapt_params
 public SavingPlan, use_saveat, saveat_reached, saveat_interpolate
 public update_velocity_boris, update_velocity_multistep, update_velocity_resync

@@ -14,8 +14,8 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
 import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
     MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
     adapt_field_to_gpu, EnsembleKernel,
-    get_q2m, get_EField, get_BField,
-    update_velocity
+    update_velocity_boris, update_velocity_multistep, update_velocity,
+    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -61,7 +61,7 @@ public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     get_particle_flux, get_particle_fluxes, get_particle_crossings, get_first_crossing,
     Maxwellian, BiMaxwellian, Kappa, BiKappa,
     sample_unit_sphere, sample_maxwellian, sample_velocity_ball, generate_sphere,
-    get_q2m, get_EField, get_BField, jacobian, derivative_t,
+    jacobian, derivative_t,
     get_thermal_speed, get_cell_centers, get_magnetic_properties,
     get_work_rates, get_work_rates_gc, get_work_channels,
     makegrid, get_dx!, get_dv!, get_B_parameters, get_E_parameters,

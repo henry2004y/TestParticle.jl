@@ -37,7 +37,7 @@ end
     @testset "the step functions reproduce the solve loop" begin
         # Driving the step functions by hand has to walk the same trajectory the
         # SciML loop walks, since that is what any other driver gets.
-        let param = (-1.75882001076e11, 9.1093837015e-31, zero_E, uniform_B),
+        let param = (; q2m = -1.75882001076e11, E = zero_E, B = uniform_B),
                 u0 = SA[0.0, 0.0, 0.0, 1.0e7, 0.0, 0.0], tspan = (0.0, 1.0e-8), dt = 1.0e-11
 
             for alg in (Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2))
@@ -62,7 +62,7 @@ end
         # A change of step size goes through the node velocity. Every leg of the
         # round trip is a rotation, so in a magnetic field alone the speed has to
         # survive it, which is what keeps the scheme time-reversible.
-        let param = (1.0, 1.0, zero_E, uniform_B),
+        let param = (; q2m = 1.0, E = zero_E, B = uniform_B),
                 r = SA[0.0, 0.0, 0.0], v = SA[1.0e5, 2.0e5, -3.0e5], t = 0.0, dt = 1.0e-9
 
             for alg in (Boris(), MultistepBoris6(n = 3))
@@ -87,7 +87,7 @@ end
         # them at t + dt/2 instead, the end of that interval, is the rectangle
         # rule in place of the midpoint rule and costs an order, which only shows
         # up once the fields move in time.
-        let T = 1.0, param = (1.0, 1.0, oscillating_E, uniform_B),
+        let T = 1.0, param = (; q2m = 1.0, E = oscillating_E, B = uniform_B),
                 u0 = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
             final_state(dt) = solve(
@@ -107,7 +107,7 @@ end
         # A solver asks for the fields at a node twice, once to synchronise the
         # state at the end of a step and once to advance the next one from that
         # same node, so the pair is carried across the step boundary.
-        let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
+        let nsteps = 500, dt = 1.0e-3, param = (; q2m = 1.0, E = counting_E, B = uniform_B),
                 prob = ODEProblem(
                 (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
                 (0.0, nsteps * dt), param
@@ -125,7 +125,7 @@ end
     @testset "the fields are taken again when the state is moved" begin
         # A callback can move the particle between steps, and fields carried
         # across such a move would belong to where it used to be.
-        let nsteps = 500, dt = 1.0e-3, param = (1.0, 1.0, counting_E, uniform_B),
+        let nsteps = 500, dt = 1.0e-3, param = (; q2m = 1.0, E = counting_E, B = uniform_B),
                 prob = ODEProblem(
                 (u, p, t) -> nothing, SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0],
                 (0.0, nsteps * dt), param
@@ -149,7 +149,7 @@ end
     @testset "a step is free of allocation" begin
         # Nothing here may allocate if the same functions are to run inside a
         # kernel, where an allocation is not merely slow but impossible.
-        let param = (1.0, 1.0, zero_E, uniform_B), dt = 1.0e-9
+        let param = (; q2m = 1.0, E = zero_E, B = uniform_B), dt = 1.0e-9
 
             for alg in (
                     Boris(), MultistepBoris2(n = 2), MultistepBoris4(n = 2),

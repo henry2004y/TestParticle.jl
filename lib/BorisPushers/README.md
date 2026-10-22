@@ -33,7 +33,7 @@ container, boundary callbacks, and field/work output columns.
 
 The package can be used independently of `TestParticle.jl` for any problem that
 can be expressed as an `ODEProblem` or `EnsembleProblem`. The parameter container
-only needs to satisfy three accessor functions: `get_q2m`, `get_EField`, and `get_BField`.
+only needs the properties `q2m`, `E(x, t)` and `B(x, t)`, e.g. a `NamedTuple`.
 
 ```julia
 using BorisPushers, StaticArrays
@@ -42,7 +42,7 @@ q2m, m = 1.0, 1.0
 Efunc(x, t) = SA[0.0, 0.0, 0.0]
 Bfunc(x, t) = SA[0.0, 0.0, 1.0]
 
-param = (q2m, m, Efunc, Bfunc)
+param = (; q2m, E = Efunc, B = Bfunc)
 u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 tspan = (0.0, 10.0)
 

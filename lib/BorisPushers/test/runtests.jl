@@ -11,10 +11,6 @@ struct CustomParam{E, B}
     B::B
 end
 
-BorisPushers.get_q2m(p::CustomParam) = p.q2m
-BorisPushers.get_EField(p::CustomParam) = p.E
-BorisPushers.get_BField(p::CustomParam) = p.B
-
 @testset "step API" include("test_step_api.jl")
 
 @testset "BorisPushers.jl" begin
@@ -28,7 +24,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     @testset "E cross B drift - Standard Boris" begin
         # E = (0, 1, 0), B = (0, 0, 1)
         # Analytic solution: particle moves at constant velocity v_drift = (1, 0, 0)
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = constant_Ey, B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         prob = ODEProblem(dummy_f, u0, tspan, param)
@@ -41,7 +37,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "E cross B drift - Multistep Boris" begin
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = constant_Ey, B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         prob = ODEProblem(dummy_f, u0, tspan, param)
@@ -57,7 +53,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "Gyrating particle" begin
-        param_gyro = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        param_gyro = (; q2m = 1.0, E = ZeroField(), B = constant_Bz)
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob_gyro = ODEProblem(dummy_f, u0_gyro, (0.0, 2π), param_gyro)
 
@@ -78,7 +74,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         m = 9.1093837015e-31
         constant_E(x, t) = SA[0.0, 1.0e5, 0.0]
         gradient_B(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + x[1])]
-        param = (q2m, m, constant_E, gradient_B, ZeroField())
+        param = (; q2m, E = constant_E, B = gradient_B)
 
         u0 = SA[0.0, 0.0, 0.0, 1.0e7, 0.0, 0.0]
         safety = 0.1
@@ -108,8 +104,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         B_field(r, t) = t > 5 ? SA[0.0, 0.0, 0.01] : SA[0.0, 0.0, 0.0]
         E_field(r, t) = SA[0.0, 0.0, 0.0]
 
-        # param = (q2m, m, E, B, F)
-        param = (-1.0e11, 1.0e-30, E_field, B_field, ZeroField())
+        param = (; q2m = -1.0e11, E = E_field, B = B_field)
 
         # Start at t=10. If absolute time is used, B should be 0.01.
         tspan = (10.0, 10.0 + 1.0e-7)
@@ -137,7 +132,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
 
         zero_E(x, t) = SA[0.0, 0.0, 0.0]
         uniform_B(x, t) = SA[0.0, 0.0, 0.01]
-        param = (-1.0e11, 1.0e-30, zero_E, uniform_B, zero_E)
+        param = (; q2m = -1.0e11, E = zero_E, B = uniform_B)
         prob = ODEProblem(dummy_f, stateinit, tspan, param)
 
         # Baseline: save_everystep=true (default)
@@ -163,7 +158,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "Custom parameter container" begin
-        # The solvers must not depend on the layout of `p`, only on the accessors.
+        # The solvers must not depend on the type of `p`, only on its properties.
         param = CustomParam(1.0, 1.0, constant_Ey, constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
@@ -179,7 +174,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     @testset "In-place problem" begin
         # A mutable initial condition runs on the mutable cache instead of the
         # constant one; both have to reach the same trajectory.
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = constant_Ey, B = constant_Bz)
         u0 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(
             ODEFunction{true}((du, u, p, t) -> nothing), u0, (0.0, 10.0), param
@@ -199,7 +194,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     @testset "adaptive keyword" begin
         # `adaptive` is the switch between fixed and adaptive stepping, as it is
         # for any other SciML solver.
-        param = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = ZeroField(), B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(dummy_f, u0, (0.0, 2π), param)
 
@@ -219,7 +214,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "saveat" begin
-        param = (1.0, 1.0, ZeroField(), constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = ZeroField(), B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(dummy_f, u0, (0.0, 2π), param)
         dt = 0.1
@@ -251,7 +246,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "save_everystep=false lazy node velocity" begin
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = constant_Ey, B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
         dt = 0.1
@@ -277,7 +272,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
     end
 
     @testset "Backend execution (GPU kernel)" begin
-        param = (1.0, 1.0, constant_Ey, constant_Bz, ZeroField())
+        param = (; q2m = 1.0, E = constant_Ey, B = constant_Bz)
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob = ODEProblem(dummy_f, u0, (0.0, 10.0), param)
         dt = 0.1
@@ -345,7 +340,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
         # in binary, so x = 0.5 lands on the fourth step and the fifth is the one
         # that leaves the domain.
         ballistic = (x, t) -> SA[0.0, 0.0, 0.0]
-        param_ball = (1.0, 1.0, ballistic, ballistic, ZeroField())
+        param_ball = (; q2m = 1.0, E = ballistic, B = ballistic)
         prob_ball = ODEProblem(
             dummy_f, SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0], (0.0, 10.0), param_ball
         )
@@ -404,7 +399,7 @@ BorisPushers.get_BField(p::CustomParam) = p.B
 
     @testset "Float32 preservation across algorithms" begin
         u0_f32 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0]
-        p_f32 = (1.0f0, 1.0f0, constant_Ey, constant_Bz, ZeroField())
+        p_f32 = (; q2m = 1.0f0, E = constant_Ey, B = constant_Bz)
         prob_f32 = ODEProblem(dummy_f, u0_f32, (0.0f0, 1.0f0), p_f32)
         dt_f32 = 0.1f0
 

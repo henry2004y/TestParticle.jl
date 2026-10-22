@@ -17,9 +17,6 @@ abstract type AbstractBoris <: OrdinaryDiffEqAlgorithm end
 
 The standard Boris method for particle pushing in electric and magnetic fields.
 
-The charge-to-mass ratio and the field functions are read from the problem
-parameter `p` through `get_q2m`, `get_EField` and `get_BField`.
-
 The time step is fixed and must be supplied with the `dt` keyword.
 """
 struct Boris <: AbstractBoris end

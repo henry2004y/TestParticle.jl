@@ -1,11 +1,5 @@
 # Boris particle pusher
 
-get_EField(p::AbstractODEProblem) = get_EField(p.p)
-get_BField(p::AbstractODEProblem) = get_BField(p.p)
-
-get_BField(sol::AbstractODESolution) = get_BField(sol.prob)
-get_EField(sol::AbstractODESolution) = get_EField(sol.prob)
-
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
 
 @inline function _prepare_saved_data(xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}) where {SaveFields, SaveWork}
