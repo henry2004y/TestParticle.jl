@@ -4,6 +4,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqSDIRK
+using BorisPushers
 using TestParticle: get_adiabaticity
 import TestParticle as TP
 using TestParticle: mᵢ, qᵢ, c, Rₑ

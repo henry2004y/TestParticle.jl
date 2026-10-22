@@ -17,6 +17,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using BorisPushers
 using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK
 using StaticArrays
 using LinearAlgebra

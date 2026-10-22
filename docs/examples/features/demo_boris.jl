@@ -6,6 +6,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
+using BorisPushers
 using TestParticle: FillExtrap
 using TestParticle: qᵢ, mᵢ
 import TestParticle as TP

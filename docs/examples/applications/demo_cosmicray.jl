@@ -23,6 +23,7 @@
 
 import DisplayAs #hide
 using TestParticle, StaticArrays, LinearAlgebra, Random, Statistics
+using BorisPushers
 using TestParticle: get_gc
 import TestParticle as TP
 using OrdinaryDiffEq
