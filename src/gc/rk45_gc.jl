@@ -75,7 +75,7 @@ function _rk45!(
 
         rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
-        xv = new_prob.u0
+        xv = SVector{4, T}(new_prob.u0)
 
         t = tspan[1]
 
