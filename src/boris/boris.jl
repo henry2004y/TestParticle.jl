@@ -36,28 +36,3 @@
 
     return data
 end
-
-"""
-    get_fields(sol::AbstractODESolution)
-
-Return the electric and magnetic fields from the solution `sol`.
-"""
-function get_fields(sol::AbstractODESolution)
-    p = sol.prob.p
-    Efunc, Bfunc = p.E, p.B
-
-    E = map((u, t) -> Efunc(get_x(u), t), sol.u, sol.t)
-    B = map((u, t) -> Bfunc(get_x(u), t), sol.u, sol.t)
-
-    return E, B
-end
-
-"""
-    get_work(sol::AbstractODESolution)
-
-Return the work done by the electric field from the solution `sol`.
-"""
-function get_work(sol::AbstractODESolution)
-    p = sol.prob.p
-    return map((u, t) -> get_work_rates(u, p, t), sol.u, sol.t)
-end

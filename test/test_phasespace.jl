@@ -286,7 +286,7 @@ end
         f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
             param, x_detector, source_plane, f_src;
             v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
-            isoutside = isoutside_bw
+            isoutside = isoutside_bw, alg = Boris()
         )
         ## The coarse pass only locates the support: the second pass retraces that
         ## region on the requested spacing, snapped onto the full grid lattice.
@@ -307,7 +307,7 @@ end
             param, x_detector, source_plane, f_src;
             v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
             bounds = ((first(full), last(full)), yz_bounds, yz_bounds),
-            isoutside = isoutside_bw
+            isoutside = isoutside_bw, alg = Boris()
         )
         @test step(vz_cl) == dv_bw
         @test first(vy_cl) ≥ yz_bounds[1] && last(vy_cl) ≤ yz_bounds[2]
@@ -330,7 +330,8 @@ end
             v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0),
             adaptive = false,
             isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
-                u[1] > x_source[1] + 1.0e5
+                u[1] > x_source[1] + 1.0e5,
+            alg = Boris()
         )
         ref = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
         @test relative_l2(f3d_bw, ref) < 0.05
@@ -338,7 +339,7 @@ end
         f3d_fw, proj_fw = vdf_forward_trace(
             param, x_source[1], detector, vdf, n0;
             nparticles = 50000, vradius, tspan, dt, dv_km,
-            center = SA[V_drift, 0.0, 0.0]
+            center = SA[V_drift, 0.0, 0.0], alg = Boris()
         )
         for i in 1:3
             @test relative_l2(proj_fw[i], ana[i]) < 0.15

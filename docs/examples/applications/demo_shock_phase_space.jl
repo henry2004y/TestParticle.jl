@@ -468,7 +468,8 @@ function reconstruct_backward_projections(
             adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
             relthresh = 1.0e-6, bounds,
             isoutside = (u, p, t) -> u[1] > x_source[1] + 100.0e3 ||
-                u[1] < detector_x - 600.0e3
+                u[1] < detector_x - 600.0e3,
+            alg = Boris()
         )
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
