@@ -1,6 +1,7 @@
 module test_adaptive_boris
 using Test
 using TestParticle
+using BorisPushers
 using StaticArrays
 
 @testset "AdaptiveBoris Compatibility" begin

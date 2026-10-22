@@ -10,6 +10,7 @@ module test_common
 
 using TestParticle
 import TestParticle as TP
+using BorisPushers
 using StaticArrays
 using Meshes: CartesianGrid
 using LinearAlgebra: norm

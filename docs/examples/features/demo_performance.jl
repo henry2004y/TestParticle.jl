@@ -5,6 +5,7 @@
 
 using Chairmarks
 using TestParticle
+using BorisPushers
 using OrdinaryDiffEq, OrdinaryDiffEqRosenbrock, OrdinaryDiffEqSDIRK
 using StaticArrays
 using CairoMakie

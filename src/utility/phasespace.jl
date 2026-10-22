@@ -323,10 +323,10 @@ end
     vdf_backward_trace(
         param, detector, source, f_src;
         v_range = 1000.0e3, vy_range = v_range, vz_range = v_range,
-        dv = 20.0e3, dt, tspan = (0.0, -20.0),
+        dv = 20.0e3, dt, alg, tspan = (0.0, -20.0),
         adaptive = true, dv_coarse = 3 * dv, margin = 3 * dv,
         relthresh = 1.0e-5, bounds = nothing, isoutside = nothing,
-        alg = Boris(), ensemblealg = EnsembleThreads()
+        ensemblealg = EnsembleThreads()
     ) -> (f_3d, (vx_grid, vy_grid, vz_grid))
 
 Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` by tracing a velocity
@@ -338,7 +338,7 @@ function vdf_backward_trace(
         dv::Real = 20.0e3, dt::Real, tspan = (0.0, -20.0),
         adaptive::Bool = true, dv_coarse::Real = 3 * dv, margin::Real = 3 * dv,
         relthresh::Real = 1.0e-5, bounds = nothing, isoutside = nothing,
-        alg = Boris(), ensemblealg = EnsembleThreads()
+        alg, ensemblealg = EnsembleThreads()
     )
     x0 = _detector_point(detector)
     v0x = -v_range + dv / 2
@@ -402,16 +402,15 @@ function embed_vdf(
     return full_M
 end
 
-_eval_f_src(f::Function, v) = f(v)
 _eval_f_src(f, v) = f(v)
 
 """
     vdf_forward_trace(
         param, source, detector, f_src;
-        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt,
+        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt, alg,
         center = SA[0.0, 0.0, 0.0], dv_km = 20.0,
         v_edges = -1000.0:dv_km:1000.0,
-        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
+        isoutside = nothing, ensemblealg = EnsembleThreads(),
         seed = 42
     ) -> (f_3d, (f_xy, f_xz, f_yz))
 
@@ -423,7 +422,7 @@ function vdf_forward_trace(
         nparticles::Int = 50000, vradius::Real, tspan = (0.0, 20.0), dt::Real,
         center = SA[0.0, 0.0, 0.0], dv_km::Real = 20.0,
         v_edges::AbstractRange = -1000.0:dv_km:1000.0,
-        isoutside = nothing, alg = Boris(), ensemblealg = EnsembleThreads(),
+        isoutside = nothing, alg, ensemblealg = EnsembleThreads(),
         seed = 42
     )
     x_source = _detector_point(source)

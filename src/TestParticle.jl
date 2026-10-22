@@ -11,11 +11,6 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, EnsembleSolution,
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
-import BorisPushers: Boris, AdaptiveBoris, MultistepBoris, AdaptiveMultistepBoris,
-    MultistepBoris2, MultistepBoris4, MultistepBoris6, AbstractBoris,
-    adapt_field_to_gpu, EnsembleKernel,
-    update_velocity_boris, update_velocity_multistep, update_velocity,
-    advance_boris, update_velocity_node, update_velocity_half, update_velocity_resync
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -39,15 +34,13 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
     trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
-export AdaptiveBoris, AdaptiveMultistepBoris, AdaptiveHybrid,
-    Boris, MultistepBoris,
-    MultistepBoris2, MultistepBoris4, MultistepBoris6
+export AdaptiveHybrid
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor
 export get_fields, get_work
 export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
-    EnsembleSplitThreads, EnsembleKernel, remake, DiscreteCallback, TerminateOutside
+    EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
 
 public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
@@ -86,8 +79,6 @@ include("gc/rk4_gc.jl")
 include("gc/rk45_gc.jl")
 include("equations.jl")
 include("problem.jl")
-include("boris/boris.jl")
-include("boris/boris_solve.jl")
 include("hybrid.jl")
 
 function orbit end

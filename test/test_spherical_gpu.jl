@@ -7,7 +7,7 @@ if !isdefined(Main, :test_common)
 end
 
 using Test
-using TestParticle, KernelAbstractions, StaticArrays
+using TestParticle, BorisPushers, KernelAbstractions, StaticArrays
 import TestParticle as TP
 using LinearAlgebra: norm
 using ..test_common: max_rel_diff

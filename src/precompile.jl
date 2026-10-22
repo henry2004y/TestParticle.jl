@@ -17,38 +17,12 @@
         # analytical field
         B_analytic(r) = SA[0.0, 0.0, 1.0e-9]
         param = prepare(B_analytic)
-        # Boris pusher
         stateinit = let x0 = [0.0, 0.0, 0.0], v0 = [0.0, 1.0e5, 0.0]
             [x0..., v0...]
         end
         tspan = (0.0, 1.0)
-        dt = 0.5
         prob = TraceProblem(stateinit, tspan, param)
-        sol = solve(prob, Boris(); dt, saveat = 100 * dt)
-        sol = solve(
-            prob, Boris(), EnsembleThreads();
-            dt, saveat = 100 * dt
-        )
 
-        # Kernel Boris (CPU)
-        sol_kernel = solve(prob, Boris(), CPU(); dt, saveat = 100 * dt)
-
-        # Adaptive Boris
-        alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = solve(prob, alg_adaptive)
-
-        sol_adaptive_sf = solve(prob, alg_adaptive; save_fields = true, save_work = true)
-        E_trace, B_trace = get_fields(sol_adaptive)
-        work = get_work(sol_adaptive)
-
-        # Multistep Boris
-        sol_multistep = solve(
-            prob, MultistepBoris2(; n = 2); dt
-        )
-        sol_multistep_sf = solve(
-            prob, MultistepBoris2(; n = 2);
-            dt, save_fields = true
-        )
         # guiding center
         gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         stateinit_gc, param_gc = prepare_gc(gc_init, ZeroField(), B_analytic)
@@ -57,11 +31,6 @@
         prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
         sol_native_rk4 = solve(prob_native; dt = 0.1, alg = :rk4)
         sol_native_rk45 = solve(prob_native; alg = :rk45)
-
-        # hybrid solver
-        prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
-        alg_hybrid = AdaptiveHybrid(threshold = 0.1, dtmax = 1.0)
-        sol_hybrid = solve(prob_hybrid, alg_hybrid)
 
         # explicit trace functions
         t = 0.0

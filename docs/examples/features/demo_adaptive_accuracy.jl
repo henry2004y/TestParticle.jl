@@ -18,6 +18,7 @@ import DisplayAs #hide
 using Markdown #hide
 using Printf
 using TestParticle
+using BorisPushers
 import TestParticle as TP
 using OrdinaryDiffEq
 using StaticArrays

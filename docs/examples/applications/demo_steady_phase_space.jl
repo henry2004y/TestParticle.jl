@@ -30,6 +30,7 @@
 
 import DisplayAs #hide
 using TestParticle
+using BorisPushers
 using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, project_vdf,
     relative_l2, sample_velocity_ball
@@ -232,7 +233,8 @@ function reconstruct_backward_projections(
             adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
             relthresh = 1.0e-5, bounds,
             isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
-                u[1] > x_source[1] + 100.0e3
+                u[1] > x_source[1] + 100.0e3,
+            alg = Boris()
         )
     end
     nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)

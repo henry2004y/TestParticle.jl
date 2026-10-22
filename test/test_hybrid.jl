@@ -10,6 +10,7 @@ using TestParticle
 import TestParticle as TP
 using StaticArrays
 using LinearAlgebra
+using BorisPushers
 using Test
 using ..test_common: bottle_B, bottle_B0, sheared_B
 

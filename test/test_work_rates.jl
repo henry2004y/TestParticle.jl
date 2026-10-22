@@ -8,6 +8,7 @@ end
 
 using TestParticle
 import TestParticle as TP
+using BorisPushers
 using StaticArrays
 using OrdinaryDiffEq
 using LinearAlgebra: norm, ×, ⋅, tr
@@ -249,7 +250,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         dt = gyroperiod / 200
 
         prob = TP.TraceProblem(stateinit, (0.0, 15 * gyroperiod), param)
-        sol = solve(prob, TP.Boris(); dt, save_everystep = true)
+        sol = solve(prob, Boris(); dt, save_everystep = true)
 
         rates = reduce(hcat, TP.get_work(sol))
         P_par, P_fermi, P_grad, P_betatron = eachrow(rates)

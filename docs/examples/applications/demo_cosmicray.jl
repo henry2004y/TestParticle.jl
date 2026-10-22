@@ -23,6 +23,7 @@
 
 import DisplayAs #hide
 using TestParticle, StaticArrays, LinearAlgebra, Random, Statistics
+using BorisPushers
 using TestParticle: get_gc
 import TestParticle as TP
 using OrdinaryDiffEq
@@ -142,7 +143,7 @@ sol_rk = solve(prob_rk, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b = TraceProblem(stateinit, tspan0, param_uniform)
 sol_b = solve(
-    prob_b, TP.MultistepBoris4(n = 4);
+    prob_b, MultistepBoris4(n = 4);
     dt = 2π / 40
 );
 
@@ -187,7 +188,7 @@ sol_rk_t = solve(prob_rk_t, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b_t = TraceProblem(stateinit_t, tspan_t, param)
 sol_b_t = solve(
-    prob_b_t, TP.MultistepBoris4(n = 4);
+    prob_b_t, MultistepBoris4(n = 4);
     dt = 2π / 80, trajectories = 1
 )
 
@@ -268,7 +269,7 @@ tspan = (0.0, 2π * 150)
 prob_func = make_injection(L, L, L; rL = rL0)
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 
-alg = TP.MultistepBoris4(n = 4)
+alg = MultistepBoris4(n = 4)
 dt = 2π / 40
 sols = solve(
     prob, alg, EnsembleThreads();

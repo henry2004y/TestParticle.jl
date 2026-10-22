@@ -19,12 +19,11 @@ end
         :trace_canonical, :trace_canonical!,
         :trace_canonical_relativistic, :trace_canonical_relativistic!,
         :trace_gc!, :trace_gc_drifts!, :trace_gc_flr!, :trace_gc_exb!,
-        :Boris, :AdaptiveBoris, :MultistepBoris, :AdaptiveMultistepBoris,
-        :MultistepBoris2, :MultistepBoris4, :MultistepBoris6, :AdaptiveHybrid,
+        :AdaptiveHybrid,
         :vdf_forward_trace, :vdf_backward_trace,
         :get_fields, :get_work, :orbit, :monitor, :build_interpolator,
         :EnsembleProblem, :EnsembleSerial, :EnsembleThreads, :EnsembleDistributed,
-        :EnsembleSplitThreads, :EnsembleKernel, :DiscreteCallback, :TerminateOutside,
+        :EnsembleSplitThreads, :DiscreteCallback, :TerminateOutside,
     )
     public_only = (
         :ReturnCode, :Field, :Species, :SpeciesDict, :ZeroVector,

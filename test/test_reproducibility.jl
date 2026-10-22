@@ -7,6 +7,7 @@ if !isdefined(Main, :test_common)
 end
 using Test
 using TestParticle
+using BorisPushers
 using TestParticle: sample_maxwellian, sample_unit_sphere
 using OrdinaryDiffEq
 using Random
