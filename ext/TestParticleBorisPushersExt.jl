@@ -28,6 +28,7 @@ import TestParticle: index_chunks
 import Adapt
 using KernelAbstractions: Backend, CPU
 using Random: default_rng, Xoshiro
+using PrecompileTools: @setup_workload, @compile_workload
 
 # --- Boris ODE Problem Adaptation ---
 
@@ -636,5 +637,44 @@ BorisPushers.adapt_field_to_gpu(g::GPUGrid1D, backend::Backend) =
     backend isa CPU ? g : Adapt.adapt(backend, g)
 BorisPushers.adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
     backend isa CPU ? g : Adapt.adapt(backend, g)
+
+@setup_workload begin
+    @compile_workload begin
+        x = range(-10, 10, length = 4)
+        y = range(-10, 10, length = 6)
+        z = range(-10, 10, length = 8)
+        B = fill(0.0, 3, length(x), length(y), length(z))
+        E = fill(0.0, 3, length(x), length(y), length(z))
+        B[3, :, :, :] .= 10.0e-9
+        E[3, :, :, :] .= 5.0e-10
+        B_analytic(r) = SA[0.0, 0.0, 1.0e-9]
+
+        tspan = (0.0, 1.0)
+        dt = 0.5
+        # The slow particle stays inside the grid, where the interpolated field is finite.
+        for (stateinit, param) in (
+                ([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(x, y, z, E, B)),
+                ([0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0], prepare(B_analytic)),
+            )
+            prob = TraceProblem(stateinit, tspan, param)
+
+            solve(prob, Boris(); dt, saveat = 100 * dt)
+            solve(prob, Boris(), EnsembleThreads(); dt, saveat = 100 * dt)
+            solve(prob, Boris(), CPU(); dt, saveat = 100 * dt)
+
+            alg_adaptive = AdaptiveBoris(safety = 0.1)
+            sol = solve(prob, alg_adaptive)
+            solve(prob, alg_adaptive; save_fields = true, save_work = true)
+            get_fields(sol)
+            get_work(sol)
+
+            solve(prob, MultistepBoris2(; n = 2); dt)
+            solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)
+
+            prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
+            solve(prob_hybrid, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
+        end
+    end
+end
 
 end # module TestParticleBorisPushersExt
