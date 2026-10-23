@@ -16,8 +16,6 @@ struct FieldInterpolator{T} <: AbstractFieldInterpolator
     itp::T
 end
 
-const FieldInterpolator3D = FieldInterpolator
-
 @inline @inbounds function (fi::FieldInterpolator)(xu)
     return fi.itp((xu[1], xu[2], xu[3]))
 end
