@@ -5,12 +5,16 @@ on:
       - master
     paths:
       - 'bindings/python/**'
+      - 'lib/BorisPushers/**'
+      - 'Project.toml'
       - '.github/workflows/python-wrapper.yml'
   push:
     branches:
       - master
     paths:
       - 'bindings/python/**'
+      - 'lib/BorisPushers/**'
+      - 'Project.toml'
       - '.github/workflows/python-wrapper.yml'
 env:
   JULIA_NUM_THREADS: 2
@@ -46,14 +50,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
           python -m pip install pytest
-      - name: Develop against local TestParticle.jl
-        # The published wrapper resolves TestParticle from the Julia registry.
-        # In this monorepo we instead point it at the local checkout so the
-        # wrapper is tested against the in-repo source. This writes an
-        # environment-local override and leaves the packaged juliapkg.json clean.
-        run: >-
-          python -c "from juliapkg import add; add('TestParticle',
-          uuid='953b605b-f162-4481-8f7f-a191c2bb40e3', dev=True,
-          path=r'${{ github.workspace }}')"
+      - name: Develop against the local Julia packages
+        # The published wrapper resolves TestParticle and BorisPushers from the
+        # Julia registry. In this monorepo we instead point both at the local
+        # checkout, so the wrapper is tested against the in-repo source and the
+        # TestParticleBorisPushersExt extension is built from the local pair.
+        # This writes an environment-local override and leaves the packaged
+        # juliapkg.json clean.
+        run: |
+          python -c "from juliapkg import add; add('TestParticle', uuid='953b605b-f162-4481-8f7f-a191c2bb40e3', dev=True, path=r'${{ github.workspace }}')"
+          python -c "from juliapkg import add; add('BorisPushers', uuid='1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197', dev=True, path=r'${{ github.workspace }}/lib/BorisPushers')"
       - name: Run wrapper tests
         run: python -m pytest tests -v
