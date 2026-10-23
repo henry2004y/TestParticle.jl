@@ -73,9 +73,8 @@ function solve(
         save_fields::Bool = false, save_work::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {F}
-    if alg != :rk4 && alg != :rk45
-        @warn "Only :rk4 and :rk45 are supported for native TraceGCProblem currently. Using :rk4."
-    end
+    alg in (:rk4, :rk45) ||
+        throw(ArgumentError("alg must be :rk4 or :rk45 for TraceGCProblem; got $(repr(alg))."))
 
     plan = SavingPlan(saveat, prob.tspan, _gc_direction(prob), _gc_time_type(prob, dt))
 
@@ -111,46 +110,16 @@ function solve(
 end
 
 function _solve(
-        ::EnsembleSerial, prob::TraceGCProblem, trajectories, dt, plan,
-        isoutside::F, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}, seed
+        ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceGCProblem,
+        trajectories, dt, plan, isoutside::F, save_start, save_end, save_everystep, alg,
+        abstol, reltol, maxiters, ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {F, SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, plan,
         save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
     )
-    irange = 1:trajectories
 
-    elapsed_time = @elapsed if alg == :rk45
-        _rk45!(
-            sols, prob, irange, plan, dt, isoutside,
-            save_start, save_end, save_everystep, abstol, reltol, maxiters,
-            Val(SaveFields), Val(SaveWork), seed
-        )
-    else
-        _rk4!(
-            sols, prob, irange, plan, dt, nt, nout, isoutside,
-            save_start, save_end, save_everystep, maxiters,
-            Val(SaveFields), Val(SaveWork), seed
-        )
-    end
-
-    return EnsembleSolution(sols, elapsed_time, true)
-end
-
-function _solve(
-        ::EnsembleThreads, prob::TraceGCProblem, trajectories, dt, plan,
-        isoutside::F, save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}, seed
-    ) where {F, SaveFields, SaveWork}
-    sols, nt,
-        nout = _prepare_gc(
-        prob, trajectories, dt, plan,
-        save_start, save_end, save_everystep, alg, maxiters, Val(SaveFields), Val(SaveWork)
-    )
-
-    nchunks = Threads.nthreads()
-    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(1:trajectories; n = nchunks)
+    elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
         if alg == :rk45
             _rk45!(
                 sols, prob, irange, plan, dt, isoutside,

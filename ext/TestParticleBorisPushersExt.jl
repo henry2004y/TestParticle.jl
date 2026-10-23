@@ -9,7 +9,7 @@ import TestParticle: TraceProblem, TraceHybridProblem, AdaptiveHybrid,
     _to_gpu_grid, _to_gpu_spherical_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
     _gc_to_full, _get_gc_parameters, update_dp5,
-    adiabaticity_components, _rng_seed, is_time_dependent,
+    adiabaticity_components, _rng_seed, is_time_dependent, _foreach_chunk,
     ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
@@ -24,7 +24,6 @@ import SciMLBase: solve
 
 using LinearAlgebra: norm
 using StaticArrays: SVector, SA
-import TestParticle: index_chunks
 import Adapt
 using KernelAbstractions: Backend, CPU
 using Random: default_rng, Xoshiro
@@ -221,26 +220,7 @@ end
 end
 
 @inline function _solve(
-        ::EnsembleSerial, prob::TraceHybridProblem,
-        trajectories, alg::AdaptiveHybrid,
-        plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, seed
-    ) where {F}
-    sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
-    sols = Vector{sol_type}(undef, trajectories)
-    irange = 1:trajectories
-
-    elapsed_time = @elapsed _hybrid_adaptive!(
-        sols, prob, irange, alg, plan,
-        isoutside, save_start, save_end, save_everystep, verbose, seed
-    )
-
-    return EnsembleSolution(sols, elapsed_time, true)
-end
-
-@inline function _solve(
-        ::EnsembleThreads, prob::TraceHybridProblem,
+        ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
         plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed
@@ -249,14 +229,10 @@ end
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
 
-    nchunks = Threads.nthreads()
-    elapsed_time = @elapsed Threads.@threads for irange in index_chunks(
-            1:trajectories; n = nchunks
-        )
+    elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
         _hybrid_adaptive!(
             sols, prob, irange, alg, plan,
-            isoutside, save_start, save_end,
-            save_everystep, verbose, seed
+            isoutside, save_start, save_end, save_everystep, verbose, seed
         )
     end
 
