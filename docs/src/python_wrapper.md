@@ -2,11 +2,15 @@
 
 TestParticle.jl ships with a Python package, `testparticle`, that lets you trace
 charged particles in electromagnetic fields directly from Python. It drives the
-Julia package through [JuliaCall](https://juliacall.readthedocs.io/) and
+Julia packages through [JuliaCall](https://juliacall.readthedocs.io/) and
 [juliapkg](https://github.com/JuliaPy/juliapkg), so you do **not** need to
 install `TestParticle.jl` yourself: the Julia environment (including
-`TestParticle` and its dependencies) is resolved and precompiled automatically
-on first use.
+`TestParticle`, its companion package `BorisPushers`, and their dependencies) is
+resolved and precompiled automatically on first use.
+
+The wrapper loads both packages, so the whole Boris family (standard,
+multistep/Hyper, and adaptive) and the adaptive hybrid solver are available
+without writing any Julia code; see [`alg`](#solver-selection) below.
 
 The source lives in [`bindings/python`](https://github.com/henry2004y/TestParticle.jl/tree/master/bindings/python).
 
@@ -30,14 +34,16 @@ cd bindings/python
 python -m pip install -e .
 ```
 
-By default the wrapper resolves `TestParticle.jl` from the Julia General
-registry. To develop and test the wrapper against the **local** checkout of this
-repository, register it as a development dependency (this writes an
-environment-local override and does not modify the packaged `juliapkg.json`):
+By default the wrapper resolves `TestParticle.jl` and `BorisPushers.jl` from the
+Julia General registry. To develop and test the wrapper against the **local**
+checkout of this repository, register both as development dependencies (this
+writes an environment-local override and does not modify the packaged
+`juliapkg.json`):
 
 ```bash
 # from bindings/python
 python -m juliapkg add TestParticle --dev --path ..
+python -m juliapkg add BorisPushers --dev --path ../../lib/BorisPushers
 # if the CLI is unavailable: pip install "juliapkg[cli]"
 ```
 
@@ -90,12 +96,42 @@ Julia field object directly.
 - `trace(x0, v0, tspan, dt, B, E=None, *, species="proton", trajectories=1,
   saveat=None, save_fields=False, save_work=False, parallel=False,
   alg=None, init_func=None, q=None, m=None)` — full-orbit Boris pusher. Returns a
-  `TraceResult` (or a list of them when tracing multiple trajectories).
+  `TraceResult` (or a list of them when tracing multiple trajectories). The
+  `alg` keyword selects the pusher, see [Solver selection](#solver-selection).
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
   saveat=None, alg="rk4")` — guiding-center RK4/RK45 solver. Returns a `GCTraceResult`.
 
 The `species` argument accepts the strings `"proton"`, `"electron"`, or `"ion"`,
 a `tp.Ion(m, q)`, or any Julia `Species` object.
+
+### Solver selection
+
+`trace` takes an `alg` keyword that chooses the full-orbit pusher and defaults to
+the standard Boris method. Either give the name of a solver from
+`BorisPushers.jl`, or pass a constructed algorithm object:
+
+```python
+# By name.
+res = tp.trace(x0, v0, tspan, dt, get_B, alg="MultistepBoris6")
+
+# As a Julia algorithm object.
+res = tp.trace(x0, v0, tspan, dt, get_B, alg=tp.MultistepBoris6(n=4))
+```
+
+The names that resolve directly are `"Boris"`, `"AdaptiveBoris"`,
+`"MultistepBoris2"`, `"MultistepBoris4"`, and `"MultistepBoris6"`. Algorithms
+whose order is a type parameter without an alias, namely `MultistepBoris{N}` for
+other `N` and `AdaptiveMultistepBoris{N}`, are built on the Julia side and then
+passed as objects:
+
+```python
+alg = tp.jl.seval("AdaptiveMultistepBoris{6}(n=4, safety=0.1)")
+res = tp.trace(x0, v0, tspan, dt, get_B, alg=alg)
+```
+
+The adaptive hybrid solver needs a `TraceHybridProblem` rather than a
+`TraceProblem`, so it is not reachable through `trace`; build it with the raw
+Julia API instead, as in the hybrid [examples](@ref).
 
 ### Result objects
 
@@ -107,9 +143,12 @@ position), `vpar` (parallel velocity), and the same optional `E`, `B`, `work`.
 ## Raw Julia API
 
 Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `get_gyrofrequency`, ...)
-are re-exported under their Julia names. Functions ending with `!` in Julia are
-available with the `_b` suffix (e.g. `trace!` → `trace_b`). The active Julia
-runtime is accessible as `tp.jl` for advanced use.
+are re-exported under their Julia names. A name is looked up in `TestParticle`
+first and in `BorisPushers` second, so the pusher algorithms (`tp.Boris`,
+`tp.MultistepBoris6`, `tp.AdaptiveHybrid`, ...) are available even though they
+live in the companion package. Functions ending with `!` in Julia are available
+with the `_b` suffix (e.g. `trace!` → `trace_b`). The active Julia runtime is
+accessible as `tp.jl` for advanced use.
 
 See the rest of this documentation for a full description of the underlying
 Julia functions.

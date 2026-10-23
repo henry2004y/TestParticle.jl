@@ -1,9 +1,9 @@
 """Python wrapper for TestParticle.jl.
 
-This wrapper exposes the most useful objects of the Julia package
-``TestParticle`` and provides a small set of high-level helpers
-(``trace``, ``trace_gc``) that accept and return ``numpy`` arrays so that
-the Boris / guiding-center solvers
+This wrapper exposes the most useful objects of the Julia packages
+``TestParticle`` and ``BorisPushers`` and provides a small set of high-level
+helpers (``trace``, ``trace_gc``) that accept and return ``numpy`` arrays so
+that the Boris / guiding-center solvers
 can be driven from Python without touching Julia types directly.
 
 The underlying Julia runtime is managed by ``juliacall``. Functions ending
@@ -18,21 +18,38 @@ import warnings
 from dataclasses import dataclass
 
 import numpy as np
-from juliacall import Main as jl
+from juliacall import AnyValue, Main as jl
 
-# Load the Julia package. The Julia environment (including TestParticle itself)
+# Load the Julia packages. The Julia environment (including TestParticle itself)
 # is resolved from ``juliapkg.json`` next to this package.
+#
+# Since TestParticle.jl v0.25.0 the Boris pusher family lives in the companion
+# package BorisPushers.jl, and TestParticle only gains its ``solve`` methods for
+# those algorithms (and for the adaptive hybrid solver) once BorisPushers is
+# loaded. Both packages are therefore loaded unconditionally here.
 try:
     jl.seval("using TestParticle")
+    jl.seval("using BorisPushers")
     jl.seval("using PythonCall")  # exposes `pyconvert` for wrapping Python callables
 except Exception as exc:  # pragma: no cover - depends on the user environment
     raise RuntimeError(
-        "Failed to `using TestParticle` from Julia. Make sure the Julia "
-        "dependencies declared in juliapkg.json are instantiated (this happens "
-        "automatically on first `import testparticle`)."
+        "Failed to load TestParticle and BorisPushers from Julia. Make sure the "
+        "Julia dependencies declared in juliapkg.json are instantiated (this "
+        "happens automatically on first `import testparticle`)."
     ) from exc
 
 TP = jl.TestParticle
+BP = jl.BorisPushers
+
+
+def _jl_symbol(name):
+    """Resolve a Julia symbol in TestParticle, then in BorisPushers."""
+    for module in (TP, BP):
+        try:
+            return getattr(module, name)
+        except AttributeError:
+            continue
+    raise AttributeError(name)
 
 
 # Helper that converts a list of TestParticle solutions into Python-friendly
@@ -134,12 +151,12 @@ _REEXPORTS = [
 _BOUND = []
 for _py_name, _jl_name in _REEXPORTS:
     try:
-        globals()[_py_name] = getattr(TP, _jl_name)
+        globals()[_py_name] = _jl_symbol(_jl_name)
         _BOUND.append(_py_name)
     except AttributeError:
         warnings.warn(
-            f"TestParticle.{_jl_name} is not available in the loaded Julia "
-            f"package; '{_py_name}' was not re-exported.",
+            f"{_jl_name} is not available in the loaded Julia packages "
+            f"(TestParticle, BorisPushers); '{_py_name}' was not re-exported.",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -154,7 +171,12 @@ _field_counter = 0
 
 
 def _is_julia(obj):
-    return getattr(obj, "__julia__", None) is not None
+    """True for values that juliacall wraps as Julia objects.
+
+    Attribute probing does not work here: ``getattr`` on a Julia value is
+    forwarded to Julia and raises for names that are not properties of it.
+    """
+    return isinstance(obj, AnyValue)
 
 
 def _as_species(species):
@@ -368,8 +390,9 @@ def trace(
     parallel : bool, optional
         Use ``EnsembleThreads`` when ``True``.
     alg : str or Julia object, optional
-        Boris solver variant, e.g. ``"Boris"``, ``"MultistepBoris"`` passed
-        to the Julia ``solve`` (defaults to the standard Boris method).
+        Boris solver variant from BorisPushers.jl, e.g. ``"Boris"``,
+        ``"MultistepBoris6"``, passed to the Julia ``solve`` (defaults to the
+        standard Boris method).
     init_func : callable, optional
         ``init_func(i) -> [x, y, z, vx, vy, vz]`` returning the initial state
         of trajectory ``i`` (1-based).
@@ -417,11 +440,11 @@ def trace(
     if saveat is not None:
         solve_kw["saveat"] = saveat
     if alg is None:
-        alg_jl = TP.Boris()
+        alg_jl = BP.Boris()
     elif _is_julia(alg):
         alg_jl = alg
     else:
-        alg_jl = getattr(TP, alg)()
+        alg_jl = _jl_symbol(alg)()
     if parallel:
         sols = TP.solve(prob, alg_jl, TP.EnsembleThreads(), **solve_kw)
     else:
