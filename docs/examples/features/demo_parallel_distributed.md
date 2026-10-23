@@ -26,6 +26,7 @@ end
 @everywhere begin
     using TestParticle
     import TestParticle as TP
+    using BorisPushers
     using OrdinaryDiffEq
     using StaticArrays
 end

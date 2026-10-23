@@ -35,7 +35,7 @@ Familiarity with the [DifferentialEquations.jl](https://github.com/SciML/Differe
 
 The primary role of this package is to automate the construction of the ODE system based on Newton's second law. This allows users to focus on defining the field configurations and particle initial conditions. For practical demonstrations, please refer to the examples.
 
-In addition to standard integrators, TestParticle.jl includes a native implementation of the Boris solver. It exposes an interface similar to DifferentialEquations.jl for ease of adoption. Further details are provided in the subsequent sections. Check more in [examples](@ref).
+In addition to standard integrators, TestParticle.jl works with a native implementation of the Boris solver from [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers), loaded with `using BorisPushers`. It exposes an interface similar to DifferentialEquations.jl for ease of adoption. Further details are provided in the subsequent sections. Check more in [examples](@ref).
 
 ## Performance and Scaling
 

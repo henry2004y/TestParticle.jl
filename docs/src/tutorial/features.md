@@ -67,7 +67,7 @@ Used by the **Boris family** (both host CPU and native GPU `KernelAbstractions` 
   marks which particles exited early, and unused time slots repeat the final inside state.
 
 ```julia
-using TestParticle, StaticArrays
+using TestParticle, BorisPushers, StaticArrays
 using TestParticle: Kappa, Maxwellian
 
 # Stop once the particle exits the region |x| <= 10 m
@@ -166,7 +166,7 @@ For GPU-based massively parallel tracing, see the [GPU Ensemble Tracing](@ref) e
 
 ## [Boris Pusher](@id features-boris-pusher)
 
-The native Boris pusher is optimized for performance and energy conservation in magnetic fields. `TestParticle.jl` provides a whole family of Boris solvers — standard, Multistep, Hyper, and Adaptive — described in [Boris Pusher](@ref Boris-Pusher). `MultistepBoris6(; n = 4)` is the recommended default for most work.
+The native Boris pusher is optimized for performance and energy conservation in magnetic fields. [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers) provides a whole family of Boris solvers — standard, Multistep, Hyper, and Adaptive — described in [Boris Pusher](@ref Boris-Pusher); load it with `using BorisPushers` to use them with `TraceProblem`. `MultistepBoris6(; n = 4)` is the recommended default for most work.
 
 - **Tutorial**: [Boris Pusher](@ref Boris-Pusher)
 - **Example**: [Boris Method](@ref)
