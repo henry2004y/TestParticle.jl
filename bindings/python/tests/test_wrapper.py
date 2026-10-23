@@ -133,6 +133,40 @@ def test_trace_ensemble_init_func():
     assert np.isclose(results[1].x[0, 0], 2.0, atol=1e-9)
 
 
+def test_trace_alg_as_julia_object():
+    import testparticle as tp
+
+    # `alg` accepts a BorisPushers algorithm object and not only its name, and
+    # both must select the same solver. A Julia value used to fall through to
+    # the string branch and raise TypeError.
+    def get_B(x):
+        return [0.0, 0.0, 1.0e-8]
+
+    args = ([0.0, 0.0, 0.0], [1.0e5, 0.0, 0.0], (0.0, 1.0e-7), 5.0e-10, get_B)
+    by_name = tp.trace(*args, species="proton", alg="MultistepBoris6")
+    by_object = tp.trace(*args, species="proton", alg=tp.MultistepBoris6(n=4))
+    assert by_name.t.size == by_object.t.size
+    assert np.allclose(by_name.x, by_object.x)
+
+
+def test_trace_julia_field_object():
+    import testparticle as tp
+
+    # A field given as a Julia callable is passed through instead of being
+    # treated as a Python callable.
+    jl_B = tp.jl.seval("x -> TestParticle.SVector{3, Float64}(0.0, 0.0, 1.0e-8)")
+    res = tp.trace(
+        [0.0, 0.0, 0.0],
+        [1.0e5, 0.0, 0.0],
+        (0.0, 1.0e-7),
+        5.0e-10,
+        jl_B,
+        species="proton",
+    )
+    assert res.x.shape[0] > 1
+    assert np.allclose(res.v[0], [1.0e5, 0.0, 0.0], rtol=1.0e-6, atol=1.0)
+
+
 def test_field_time_dependence_detected():
     import testparticle as tp
 

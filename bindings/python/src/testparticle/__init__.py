@@ -18,7 +18,7 @@ import warnings
 from dataclasses import dataclass
 
 import numpy as np
-from juliacall import Main as jl
+from juliacall import AnyValue, Main as jl
 
 # Load the Julia packages. The Julia environment (including TestParticle itself)
 # is resolved from ``juliapkg.json`` next to this package.
@@ -171,7 +171,12 @@ _field_counter = 0
 
 
 def _is_julia(obj):
-    return getattr(obj, "__julia__", None) is not None
+    """True for values that juliacall wraps as Julia objects.
+
+    Attribute probing does not work here: ``getattr`` on a Julia value is
+    forwarded to Julia and raises for names that are not properties of it.
+    """
+    return isinstance(obj, AnyValue)
 
 
 def _as_species(species):
