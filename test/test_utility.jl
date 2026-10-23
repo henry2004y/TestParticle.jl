@@ -547,6 +547,23 @@ end
 
             r_calc = get_gyroradius(sol, 0.5e-9)
             @test r_calc ≈ r_expected rtol = 1.0e-3
+
+            # The drift frame is taken from the true velocity whether the
+            # equations are solved in place, where the solver wraps them, or not.
+            E_drift(x, t) = SA[0.0, 0.1 * c * B0, 0.0]
+            param_E = prepare(E_drift, B_func; species = Electron)
+            r_iip = get_gyroradius(
+                solve(ODEProblem(trace_relativistic!, stateinit, tspan, param_E), Vern6()),
+                0.0
+            )
+            r_oop = get_gyroradius(
+                solve(
+                    ODEProblem(trace_relativistic, SVector{6}(stateinit), tspan, param_E),
+                    Vern6()
+                ),
+                0.0
+            )
+            @test r_iip ≈ r_oop
         end
 
         @testset "Normalized Relativistic" begin

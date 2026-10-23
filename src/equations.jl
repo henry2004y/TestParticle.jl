@@ -217,6 +217,16 @@ function trace_normalized(y, p, t)
 end
 
 """
+    _lorentz_factor(u, f)
+
+Lorentz factor of the velocity part `u` of a state traced with the equations `f`,
+which store `γv` in place of `v` for the relativistic equations.
+"""
+_lorentz_factor(u, f) = one(eltype(u))
+_lorentz_factor(γv, ::Union{typeof(trace_relativistic!), typeof(trace_relativistic)}) =
+    sqrt(1 + (γv ⋅ γv) / c^2)
+
+"""
     trace_relativistic_normalized!(dy, y, p, t)
 
 Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
@@ -248,6 +258,11 @@ function trace_relativistic_normalized(y, p, t)
 
     return vcat(v, dv)
 end
+
+_lorentz_factor(
+    γv,
+    ::Union{typeof(trace_relativistic_normalized!), typeof(trace_relativistic_normalized)}
+) = sqrt(1 + γv ⋅ γv)
 
 """
     get_B_parameters(x, t, Bfunc)
