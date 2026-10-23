@@ -1,7 +1,5 @@
 # Adaptive hybrid GC-FO solver
 
-const MIN_DT = 1.0e-14
-
 """
     AdaptiveHybrid{T}
 
