@@ -11,6 +11,7 @@ using TestParticle: OnTheFly, PreCompute, StorePolicy
 using Meshes
 using StaticArrays
 using Chairmarks
+using KernelAbstractions: CPU
 import TestParticle as TP
 
 function setup_spherical_field(ns = 16)
@@ -253,13 +254,13 @@ for Cartesian ones.
 
 `prepare` performs the conversion by itself once the parameters are handed to a device
 backend, see [GPU Ensemble Tracing](@ref). The very same grids can be built on the `CPU()`
-backend, which is what the following does with `TP.CPU()`, so that the device interpolator can
+backend, which is what the following does, so that the device interpolator can
 be inspected and benchmarked where no device is available:
 
 ```@example interp
-B_gpu = TP._to_gpu_spherical_grid(B_sph.itp, TP.CPU());
-A_gpu = TP._to_gpu_spherical_grid(A_sph.itp, TP.CPU());
-B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu.itp, TP.CPU());
+B_gpu = TP._to_gpu_spherical_grid(B_sph.itp, CPU());
+A_gpu = TP._to_gpu_spherical_grid(A_sph.itp, CPU());
+B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu.itp, CPU());
 ```
 
 A uniform grid vector becomes a `GPUUniformAxis`, which locates a cell with a multiply, and a
