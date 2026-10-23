@@ -110,7 +110,7 @@ f
 
 ## Native GPU Boris Solver
 
-TestParticle provides a native GPU Boris solver implemented with
+BorisPushers.jl provides a native GPU Boris solver implemented with
 [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl), which enables
 backend-agnostic GPU execution. Each `EnsembleKernel` solve runs on one selected
 backend, including one GPU, using method dispatch on the `KA.Backend` type.
@@ -123,7 +123,7 @@ particles deterministically. Here 1000 protons start from the origin with perpen
 speeds spanning a factor of ten, hence energies spanning a factor of a hundred:
 
 ```julia
-using TestParticle, KernelAbstractions, StaticArrays
+using TestParticle, BorisPushers, KernelAbstractions, StaticArrays
 
 # Define fields
 B(x) = SA[0.0, 0.0, 1.0e-8]  # Uniform B field
@@ -198,7 +198,7 @@ single machine; each worker must use the same Julia project and have CUDA availa
 
 ```julia
 using Distributed
-using TestParticle, CUDA, StaticArrays
+using TestParticle, BorisPushers, CUDA, StaticArrays
 
 trajectories = 1000
 gpu_count = length(CUDA.devices())
@@ -209,7 +209,7 @@ project = Base.active_project()
 isnothing(project) && error("Activate the project used to run this example")
 pids = addprocs(gpu_count; exeflags = "--project=$(dirname(project))")
 
-@everywhere using TestParticle, CUDA, StaticArrays
+@everywhere using TestParticle, BorisPushers, CUDA, StaticArrays
 
 @everywhere begin
     B(x) = SA[0.0, 0.0, 1.0e-8]
@@ -277,7 +277,7 @@ Because the check executes inside the device kernel, the predicate must be an `i
 function with no heap allocations:
 
 ```julia
-using TestParticle, KernelAbstractions, StaticArrays
+using TestParticle, BorisPushers, KernelAbstractions, StaticArrays
 using CUDA
 using SciMLBase: ReturnCode
 

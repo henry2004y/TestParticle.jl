@@ -45,9 +45,11 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7())
 ```
 
-Native Boris particle pusher also follows a similar interface:
+The native Boris particle pushers are provided by [BorisPushers.jl](lib/BorisPushers)
+and follow a similar interface once it is loaded:
 
 ```julia
+using BorisPushers
 dt = 1e-2 # fixed time step, about 1/650 of the gyroperiod (≈ 6.6 s)
 prob = TraceProblem(stateinit, tspan, param)
 # Standard Boris solver

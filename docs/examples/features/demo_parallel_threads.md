@@ -14,6 +14,7 @@ that the *same* `ensemblealg` argument drives both.
 using TestParticle
 using TestParticle: Maxwellian
 import TestParticle as TP
+using BorisPushers
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics

@@ -51,9 +51,10 @@ Currently we recommend `Vern9` as a starting point for adaptive timestepping, wi
 
 ## Native Boris solver
 
-You can also try out the native implementation of the Boris method in `TestParticle.jl`. The Boris pusher is specifically designed for particle tracing in magnetic fields and has the property of exactly conserving energy in a static, uniform magnetic field. It follows a similar interface for ease of adoption:
+You can also try out the native implementation of the Boris method, provided by [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers). The Boris pusher is specifically designed for particle tracing in magnetic fields and has the property of exactly conserving energy in a static, uniform magnetic field. Once `BorisPushers` is loaded, it follows a similar interface for ease of adoption:
 
 ```julia
+using BorisPushers
 dt = 1e-2 # fixed time step, about 1/650 of the gyroperiod (≈ 6.6 s)
 prob = TraceProblem(stateinit, tspan, param)
 sol = solve(prob, Boris(); dt, saveat = 10 * dt)
