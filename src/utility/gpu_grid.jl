@@ -327,7 +327,7 @@ end
     end
 end
 
-function _to_gpu_grid(itp, backend::Backend; dir = 1)
+function _to_gpu_grid(itp, backend; dir = 1)
     if isdefined(itp, :grids) && isdefined(itp, :data)
         N = length(itp.grids)
         if N == 3
@@ -579,7 +579,7 @@ end
 @inline (g::GPUSphericalGrid)(xu::AbstractVector, t) = g(xu[1], xu[2], xu[3])
 @inline (g::GPUSphericalGrid)(x::Real, y::Real, z::Real, t) = g(x, y, z)
 
-function _to_gpu_axis(g, backend::Backend, bc)
+function _to_gpu_axis(g, backend, bc)
     if hasproperty(g, :lo) && g.h isa Number
         T = typeof(g.lo)
         x0 = T(g.lo)
@@ -612,7 +612,7 @@ function _to_gpu_axis(g, backend::Backend, bc)
     end
 end
 
-function _to_gpu_spherical_grid(itp, backend::Backend)
+function _to_gpu_spherical_grid(itp, backend)
     if isdefined(itp, :grids) && isdefined(itp, :data)
         gr, gθ, gϕ = itp.grids
         bc = itp.extraps

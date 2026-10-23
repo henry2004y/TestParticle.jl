@@ -6,7 +6,7 @@ using BorisPushers
 using TestParticle: LazyTimeInterpolator, get_particle_flux
 import TestParticle as TP
 using OrdinaryDiffEq, StaticArrays
-using TestParticle: CPU
+using BorisPushers: CPU
 using Meshes: Vec, Plane, Disk, Point, Sphere, CartesianGrid, StructuredGrid
 
 const SUITE = BenchmarkGroup()

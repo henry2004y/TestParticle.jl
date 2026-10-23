@@ -8,9 +8,9 @@ using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
-    DEFAULT_SPECIALIZATION, ODEFunction, ODEProblem, remake,
+    DEFAULT_SPECIALIZATION, ODEFunction, remake,
     LinearInterpolation, build_solution, EnsembleSolution,
-    DiscreteCallback, terminate!, EnsembleContext, isadaptive
+    DiscreteCallback, terminate!, EnsembleContext
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -20,7 +20,6 @@ import DiffResults
 using ChunkSplitters: index_chunks
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
-using KernelAbstractions: Backend, CPU
 
 import Adapt
 import Base: +, -, *, /

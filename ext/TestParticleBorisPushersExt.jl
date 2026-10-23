@@ -26,7 +26,7 @@ using LinearAlgebra: norm
 using StaticArrays: SVector, SA
 import TestParticle: index_chunks
 import Adapt
-using KernelAbstractions: Backend, CPU
+using BorisPushers: Backend, CPU
 using Random: default_rng, Xoshiro
 using PrecompileTools: @setup_workload, @compile_workload
 
