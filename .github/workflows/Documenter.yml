@@ -58,14 +58,14 @@ jobs:
         id: julia-cache
         uses: julia-actions/cache@v3
       - name: Cache Node dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: docs/node_modules
           key: ${{ runner.os }}-docs-node-modules-${{ hashFiles('docs/package.json') }}
           restore-keys: |
             ${{ runner.os }}-docs-node-modules-
       - name: Cache generated examples
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             docs/src/drifts
