@@ -212,27 +212,27 @@ end
     plan = SavingPlan(
         saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
     )
-    return _solve(
+    args = (
         ensemblealg, prob, trajectories, alg,
-        plan, isoutside,
-        save_start, save_end, save_everystep, verbose, seed
+        plan, isoutside, save_start, save_end, save_everystep, verbose, seed,
     )
+    return alg.save_adiabaticity ? _solve(args..., Val(true)) : _solve(args..., Val(false))
 end
 
 @inline function _solve(
         ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,
         plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, seed
-    ) where {F}
-    sample_stats = _adia_sample_stats(prob, alg.save_adiabaticity)
+        save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
+    ) where {F, SaveAdia}
+    sample_stats = _adia_sample_stats(prob, SaveAdia)
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
         _hybrid_adaptive!(
             sols, prob, irange, alg, plan,
-            isoutside, save_start, save_end, save_everystep, verbose, seed
+            isoutside, save_start, save_end, save_everystep, verbose, seed, Val(SaveAdia)
         )
     end
 
@@ -303,11 +303,16 @@ end
     return isave, t_out, y_out
 end
 
+# Out of line: inlined `@info` expansions in the hot loop slow it down whenever
+# `verbose` is not a compile-time constant.
+@noinline _log_mode(msg, ϵ, t) = @info msg ϵ t
+@noinline _log_mode(msg, ϵ, t, r) = @info msg ϵ t r
+
 @inline function _hybrid_adaptive!(
         sols, prob::TraceHybridProblem, irange, alg,
         plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, seed
-    ) where {F}
+        save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
+    ) where {F, SaveAdia}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
     q = q2m * m
@@ -343,13 +348,13 @@ end
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = 0.5 * 2π / ω
-            verbose && @info "Initial mode: GC" ϵ t
+            verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
             mode = :FO
             dt = _fo_dt(alg, q2m, Bfunc, r, t)
             v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
             Bmag_curr = zero(T)
-            verbose && @info "Initial mode: FO" ϵ t
+            verbose && _log_mode("Initial mode: FO", ϵ, t)
         end
 
         estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / dt)
@@ -382,7 +387,7 @@ end
         adia_t = Vector{typeof(tspan[1])}(undef, 0)
         adia_vals = Vector{T}(undef, 0)
         adia_mode = Vector{Symbol}(undef, 0)
-        if alg.save_adiabaticity
+        if SaveAdia
             adia_cap = max(10, div(initial_capacity, alg.check_interval) + 2)
             sizehint!(adia_t, adia_cap)
             sizehint!(adia_vals, adia_cap)
@@ -403,8 +408,8 @@ end
                     if ϵ ≥ alg.threshold_gc_to_fo
                         mode = :FO
                         it = 1
-                        verbose && @info "Switch GC → FO" ϵ t r = xv_gc[SVector(1, 2, 3)]
-                        if alg.save_adiabaticity
+                        verbose && _log_mode("Switch GC → FO", ϵ, t, xv_gc[SVector(1, 2, 3)])
+                        if SaveAdia
                             push!(adia_t, t)
                             push!(adia_vals, ϵ)
                             push!(adia_mode, :FO)
@@ -418,7 +423,7 @@ end
                         dt = _fo_dt(alg, q2m, Bfunc, r, t)
                         v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
                         continue
-                    elseif alg.save_adiabaticity
+                    elseif SaveAdia
                         push!(adia_t, t)
                         push!(adia_vals, ϵ)
                         push!(adia_mode, :GC)
@@ -486,8 +491,8 @@ end
                     if ϵ < alg.threshold_fo_to_gc
                         mode = :GC
                         it = 1
-                        verbose && @info "Switch FO → GC" ϵ t r = r
-                        if alg.save_adiabaticity
+                        verbose && _log_mode("Switch FO → GC", ϵ, t, r)
+                        if SaveAdia
                             push!(adia_t, t)
                             push!(adia_vals, ϵ)
                             push!(adia_mode, :GC)
@@ -506,7 +511,7 @@ end
                         omega = abs(q2m * Bmag_curr)
                         dt = 0.5 * 2π / omega
                         continue
-                    elseif alg.save_adiabaticity
+                    elseif SaveAdia
                         push!(adia_t, t)
                         push!(adia_vals, ϵ)
                         push!(adia_mode, :FO)
@@ -557,7 +562,7 @@ end
         if steps >= alg.maxiters && retcode == ReturnCode.Success
             retcode = ReturnCode.MaxIters
         end
-        stats = alg.save_adiabaticity ?
+        stats = SaveAdia ?
             (adiabaticity = (t = adia_t, components = adia_vals, mode = adia_mode),) :
             nothing
 
