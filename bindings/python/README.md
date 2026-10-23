@@ -2,22 +2,23 @@
 
 Python wrapper for [TestParticle.jl](https://github.com/henry2004y/TestParticle.jl) - trace charged particles in electromagnetic fields via Julia.
 
-The Julia package and its dependencies are installed automatically on first
+The Julia packages and their dependencies are installed automatically on first
 use through [JuliaCall](https://juliacall.readthedocs.io/) (see `juliapkg.json`).
 
 ## Installation
 
-The wrapper drives the Julia package `TestParticle.jl` through
+The wrapper drives the Julia packages `TestParticle.jl` and its companion
+package `BorisPushers.jl` (which provides the Boris pusher family) through
 [JuliaCall](https://juliacall.readthedocs.io/) and
 [juliapkg](https://github.com/JuliaPy/juliapkg). You do **not** need to install
-`TestParticle.jl` yourself: the Julia environment (including `TestParticle` and
-its dependencies) is resolved from `juliapkg.json` and downloaded/precompiled
+them yourself: the Julia environment (including both packages and their
+dependencies) is resolved from `juliapkg.json` and downloaded/precompiled
 automatically on first use.
 
 ### Requirements
 
 - Python 3.10 or later
-- Julia 1.10 or later, installed and available on your `PATH`
+- Julia 1.11 or later, installed and available on your `PATH`
 
 ### From PyPI
 
@@ -32,17 +33,20 @@ cd bindings/python
 python -m pip install -e .
 ```
 
-By default the wrapper resolves `TestParticle.jl` from the Julia General
-registry. To develop and test the wrapper against the **local** checkout of
-this repository, register it as a development dependency (this writes an
-environment-local override and does not modify the packaged `juliapkg.json`):
+By default the wrapper resolves `TestParticle.jl` and `BorisPushers.jl` from the
+Julia General registry. To develop and test the wrapper against the **local**
+checkout of this repository, register both as development dependencies (this
+writes an environment-local override and does not modify the packaged
+`juliapkg.json`):
 
 ```bash
 # from bindings/python
 python -m juliapkg add TestParticle --dev --path ..
+python -m juliapkg add BorisPushers --dev --path ../../lib/BorisPushers
 # if the CLI is unavailable: pip install "juliapkg[cli]"
 # or equivalently, without the CLI extra:
 python -c "from juliapkg import add; add('TestParticle', uuid='953b605b-f162-4481-8f7f-a191c2bb40e3', dev=True, path='..')"
+python -c "from juliapkg import add; add('BorisPushers', uuid='1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197', dev=True, path='../../lib/BorisPushers')"
 ```
 
 The first time you `import testparticle` (or run the tests) juliapkg downloads
@@ -102,7 +106,10 @@ The high-level helpers are:
 
 Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `Proton`, `get_gyrofrequency`,
 ...) are re-exported under their Julia names; functions ending with `!` in Julia
-are available with the `_b` suffix (e.g. `trace!` -> `trace_b`).
+are available with the `_b` suffix (e.g. `trace!` -> `trace_b`). The Boris
+algorithm objects (`Boris`, `MultistepBoris6`, `AdaptiveBoris`, ...) come from
+`BorisPushers.jl` and are re-exported the same way, so
+`tp.trace(..., alg="MultistepBoris6")` works out of the box.
 
 See the [TestParticle.jl documentation](https://henry2004y.github.io/TestParticle.jl/dev/)
 for the full description of the underlying Julia functions.

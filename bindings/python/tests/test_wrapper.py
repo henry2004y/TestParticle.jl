@@ -9,6 +9,10 @@ def test_import():
     assert hasattr(tp, "trace_gc")
     assert hasattr(tp, "Proton")
     assert hasattr(tp, "Electron")
+    # The Boris family lives in the companion package BorisPushers.jl.
+    assert hasattr(tp, "Boris")
+    assert hasattr(tp, "MultistepBoris6")
+    assert hasattr(tp, "AdaptiveHybrid")
 
 
 def test_basic_types():
