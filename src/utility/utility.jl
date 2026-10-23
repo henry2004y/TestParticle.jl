@@ -90,6 +90,20 @@ function _rng_seed(seed::Integer, i::Integer)
     return z
 end
 
+"""
+    _foreach_chunk(f, ensemblealg, n)
+
+Call `f(irange)` on chunks of the trajectory indices `1:n`, all at once for
+`EnsembleSerial` and one chunk per thread for `EnsembleThreads`.
+"""
+_foreach_chunk(f, ::EnsembleSerial, n) = f(1:n)
+
+function _foreach_chunk(f, ::EnsembleThreads, n)
+    Threads.@threads for irange in index_chunks(1:n; n = Threads.nthreads())
+        f(irange)
+    end
+    return
+end
 
 """
     sph2cart(r, θ, ϕ)

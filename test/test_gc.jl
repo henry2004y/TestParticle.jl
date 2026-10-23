@@ -202,6 +202,10 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
         end
 
+        @testset "Unknown algorithm" begin
+            @test_throws ArgumentError solve(prob; dt = 1.0e-4, alg = :rk5)
+        end
+
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
             sol_auto = solve(prob; alg = :rk45)
