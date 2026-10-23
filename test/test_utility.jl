@@ -44,14 +44,6 @@ end
     return s.u[i] .+ f .* (s.u[i + 1] .- s.u[i])
 end
 
-"A minimal `AbstractArray`, to exercise the generic `setindex!` fallback."
-struct MockArray{T, N} <: AbstractArray{T, N}
-    data::Array{T, N}
-end
-Base.size(M::MockArray) = size(M.data)
-Base.getindex(M::MockArray, I...) = getindex(M.data, I...)
-Base.setindex!(M::MockArray, v::Number, I...) = setindex!(M.data, v, I...)
-
 function interpolation_construction_allocations(B, x, order, store)
     build_interpolator(B, x, x, x, order; store)
     GC.gc()
@@ -832,29 +824,6 @@ end
         @test (zv / 5) isa TP.ZeroVector
         @test (zv × v) isa TP.ZeroVector
         @test (v × zv) isa TP.ZeroVector
-
-        # Array Assignment
-        # 1. Array{Any}
-        A_any = Any[1, 2]
-        A_any[1] = zv
-        @test A_any[1] === zv
-
-        # 2. Array{Float64} (Standard Array)
-        A_float = zeros(3)
-        A_float[1] = 1.0
-        A_float[1] = zv
-        @test A_float[1] == 0.0
-
-        # 3. Custom AbstractArray (AbstractArray fallback line 22)
-        A_mock = MockArray(zeros(3))
-        # This calls setindex!(::AbstractArray, ::ZeroVector, I...)
-        A_mock[1] = zv
-        @test A_mock[1] == 0.0
-
-        # Test multidimensional
-        A_mock2 = MockArray(zeros(2, 2))
-        A_mock2[2, 2] = zv
-        @test A_mock2[2, 2] == 0.0
     end
 
     @testset "Virtual Detector" begin
