@@ -88,9 +88,9 @@ function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
 end
 
 function _prepare(
-        E, B, F, args...; species = Proton, q = nothing,
-        m = nothing, gridtype = CartesianGrid, type = nothing, kw...
-    )
+        E::TE, B::TB, F::TF, args...; species = Proton, q = nothing,
+        m = nothing, gridtype::Type{G} = CartesianGrid, type = nothing, kw...
+    ) where {TE, TB, TF, G}
     q = @something q species.q
     m = @something m species.m
     if !isnothing(type)
