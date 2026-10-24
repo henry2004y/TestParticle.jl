@@ -212,7 +212,7 @@ const native_solvers = [
 
 uniform_B(x) = SA[0, 0, B₀]
 
-param1 = prepare(ZeroField(), uniform_B; q = q, m = m)
+param1 = prepare(; B = uniform_B, q = q, m = m)
 x0_1 = [0.0, 0.0, 0.0]
 v0_1 = [1.0, 0.0, 0.0]
 tspan1 = (0.0, 50.0)
@@ -243,7 +243,7 @@ plot_table(results) #hide
 # ```
 linear_E(x, t) = SA[E₀ * t, 0.0, 0.0]
 
-param2a = prepare(linear_E, ZeroField(); q = q, m = m)
+param2a = prepare(; E = linear_E, q = q, m = m)
 x0_2a = [0.0, 0.0, 0.0]
 v0_2a = [0.0, 0.0, 0.0] # Start from rest
 tspan2a = (0.0, 40.0)
@@ -274,7 +274,7 @@ plot_table(results) #hide
 
 spatial_linear_E(x, t) = SA[E₀ * x[1], 0.0, 0.0]
 
-param2b = prepare(spatial_linear_E, ZeroField(); q = q, m = m)
+param2b = prepare(; E = spatial_linear_E, q = q, m = m)
 ## Set an initial position away from origin to have non-zero force
 const x0_2b = [1.0, 0.0, 0.0]
 const v0_2b = [0.0, 0.0, 0.0]
@@ -320,7 +320,7 @@ function mirror_B(x)
     return SA[Bx, By, Bz]
 end
 
-param3 = prepare(ZeroField(), mirror_B; q = q, m = m)
+param3 = prepare(; B = mirror_B, q = q, m = m)
 x0_3 = [0.1, 0.0, 0.0]
 v0_3 = [0.5, 0.5, 1.0]
 tspan3 = (0.0, 200.0)

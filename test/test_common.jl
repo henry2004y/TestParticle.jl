@@ -39,8 +39,8 @@ paths inside `Field`.
 """
 zero_E(x) = SA[0.0, 0.0, 0.0]
 
-"Zero field object."
-const zero_field = ZeroField()
+"Absent field for `prepare`."
+const zero_field = nothing
 
 "Unit magnetic field along +z, with the time-dependent `(x, t)` signature."
 unit_Bz(x, t) = SA[0.0, 0.0, 1.0]

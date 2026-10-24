@@ -18,7 +18,6 @@ const I_current = 1.0e6 # Current [A]
 const a_wire = 0.1 # Radius of the wire [m]
 
 getB(xu) = MS.getB_zpinch(xu[1], xu[2], xu[3], I_current, a_wire)
-getE = ZeroField()
 
 ### Initialize Particles
 
@@ -39,7 +38,7 @@ v0_out = [0.0, 1.0e6, 1.0e5] # Drift
 stateinit_in = [r0_in..., v0_in...]
 stateinit_out = [r0_out..., v0_out...]
 
-param = prepare(getE, getB; species = Proton)
+param = prepare(; B = getB, species = Proton)
 tspan = (0.0, 1.0e-5)
 
 prob_in = ODEProblem(trace!, stateinit_in, tspan, param)

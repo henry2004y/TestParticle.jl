@@ -140,8 +140,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         tspan = (0.0, 1.0)
 
         stateinit_gc, param_gc = prepare_gc(
-            stateinit, TP.ZeroField(), dipole_field;
-            species = Proton
+            stateinit; B = dipole_field, species = Proton
         )
 
         prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
@@ -235,7 +234,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             r0 = [1.5 * TP.Rₑ, 0.0, 0.0]
             v0 = [0.0, 1.0e5, 1.0e5] # Arbitrary
             state_gc_0, param_gc_ready = prepare_gc(
-                vcat(r0, v0), TP.ZeroField(), dipole_field; species = Proton
+                vcat(r0, v0); B = dipole_field, species = Proton
             )
             prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 

@@ -28,8 +28,7 @@ CairoMakie.activate!(type = "png") #hide
 
 ## Simulation parameters
 B_analytic(x) = SA[0, 0, 1.0e-9]
-E_analytic = ZeroField()
-param = prepare(E_analytic, B_analytic, species = Electron)
+param = prepare(; B = B_analytic, species = Electron)
 tspan = (0.0, 10.0)
 stateinit = SA[0.0, 0.0, 0.0, 1.0, 0.0, 1.0]
 prob = ODEProblem(trace, stateinit, tspan, param)
@@ -104,8 +103,7 @@ f = DisplayAs.PNG(f) #hide
 
 ## Simulation parameters for custom output
 B_analytic(x) = SA[0, 0, 2.5e-6]
-E_analytic = ZeroField()
-param_custom = prepare(E_analytic, B_analytic, species = Proton)
+param_custom = prepare(; B = B_analytic, species = Proton)
 tspan_custom = (0.0, 0.6)
 stateinit_custom = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 prob_custom = ODEProblem(trace, stateinit_custom, tspan_custom, param_custom)

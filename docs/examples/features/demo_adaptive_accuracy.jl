@@ -80,7 +80,7 @@ function mirror_B(x)
     return SA[Bx, By, Bz]
 end
 
-param1 = prepare(ZeroField(), mirror_B; q, m)
+param1 = prepare(; B = mirror_B, q, m)
 x0_1 = [0.1, 0.0, 0.0]
 v0_1 = [0.5, 0.5, 1.0]
 u0_1 = [x0_1..., v0_1...]

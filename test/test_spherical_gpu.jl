@@ -284,7 +284,7 @@ end
 
             B = uniform_z_field(r, θ, ϕ)
             param = prepare(
-                r, θ, ϕ, TP.ZeroField(), B; species = Proton, gridtype = TP.StructuredGrid
+                r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid
             )
             gB = TP._to_gpu_spherical_grid(param[4].field_function.itp, CPU())
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]

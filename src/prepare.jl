@@ -81,6 +81,7 @@ end
 
 prepare_field(f, args...; kwargs...) = Field(f)
 prepare_field(f::ZeroField, args...; kwargs...) = f
+prepare_field(::Nothing, args...; kwargs...) = ZeroField()
 
 
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
@@ -103,42 +104,44 @@ function _prepare(
 end
 
 """
-    prepare(args...; kwargs...) -> (; q2m, m, E, B, F[, c])
-    prepare(E, B, F = ZeroField(); kwargs...)
-    prepare(grid::CartesianGrid, E, B, F = ZeroField(); kwargs...)
-    prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
-    prepare(x, y, E, B, F = ZeroField(); kwargs...)
-    prepare(x, y, z, E, B, F = ZeroField(); kwargs...)
-    prepare(B; E = ZeroField(), F = ZeroField(), kwargs...)
+    prepare([grid...;] E = nothing, B = nothing, F = nothing, kwargs...) -> (; q2m, m, E, B, F[, c])
+    prepare([grid...,] E, B, F = nothing; kwargs...)
+    prepare(B; E = nothing, F = nothing, kwargs...)
 
-Return a tuple consists of particle charge-mass ratio for a prescribed `species` of charge `q` and mass `m`,
-mass `m` for a prescribed `species`, analytic/interpolated EM field functions, and external force `F`.
+Tracing parameters for a particle in the electric field `E`, the magnetic field `B` and
+the external force `F`. Omitted fields are zero. Prefer the keyword form, which names each
+field; the positional form takes **`E` before `B`**, and a single positional field is `B`.
 
-Prescribed `species` are `Electron` and `Proton`;
-other species can be manually specified with `m` and `q` keywords or `species = Ion(m̄, q̄)`,
-where `m̄` and `q̄` are the mass and charge numbers respectively.
+```julia
+prepare(; B)              # magnetic field only
+prepare(; E, B)           # analytic fields
+prepare(x, y, z; E, B)    # arrays interpolated on a 3D grid
+prepare(grid; B, F)       # Meshes.jl grid, with an external force
+```
 
-Direct range input for uniform grid in 1/2/3D is supported. The grid vectors must be sorted.
-For 1D grid, an additional keyword `dir` is used for specifying the spatial direction, 1 -> x, 2 -> y, 3 -> z.
-For 3D grid, the default grid type is `CartesianGrid`. To use `StructuredGrid` (spherical) grid, an additional keyword `gridtype` is needed.
-For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br, Bθ, Bϕ)`.
+Each field is either a function `f(x)` or `f(x, t)` returning a 3-vector, or an array of
+size `(3, size(grid)...)`, interpolated on the grid. The grid is given as
+  - `x` (1D, along the axis `dir = 1, 2, 3`), `x, y` (2D) or `x, y, z` (3D): sorted vectors,
+    or `r, θ, ϕ` for a spherical grid (`gridtype = StructuredGrid`, implied by a `LogRange`
+    `r`), with field components `(Br, Bθ, Bϕ)`;
+  - a `CartesianGrid` or `RectilinearGrid` from Meshes.jl.
 
 # Keywords
 
-  - `order::Int=1`: order of interpolation in [0,1,3].
-  - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
-  - `store=StorePolicy()`: interpolation storage policy. Use
-    `StorePolicy(copy=false)` for zero-copy construction when field and grid inputs
-    will remain unchanged for the interpolator's lifetime.
-  - `species=Proton`: particle species.
-  - `q=nothing`: particle charge.
-  - `m=nothing`: particle mass.
-  - `c=nothing`: speed of light for the relativistic equations, e.g. `c = 1` in
-    normalized units; `c` in SI when omitted.
-  - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
+  - `species = Proton`: `Proton`, `Electron` or `Ion(m̄, q̄)` with mass and charge numbers.
+  - `q`, `m`: particle charge and mass, overriding `species`.
+  - `c`: speed of light for the relativistic equations, e.g. `c = 1` in normalized units;
+    `c` in SI when omitted.
+  - `type`: number type to convert `q2m`, `m` (and `c`) to, e.g. `Float32`.
+  - `order = 1`: interpolation order, 0, 1 or 3.
+  - `bc`: boundary condition from `FastInterpolations.jl`; `FillExtrap(NaN)` by default,
+    `ClampExtrap()` in 1D and `WrapExtrap()` on spherical grids.
+  - `store = StorePolicy()`: interpolation storage policy; `StorePolicy(copy = false)` skips
+    copying field and grid arrays that stay unchanged for the interpolator's lifetime.
+  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
 """
 function prepare(
-        x::AbstractVector, y::AbstractVector, E, B, F = ZeroField(); order = 1,
+        x::AbstractVector, y::AbstractVector, E, B, F = nothing; order = 1,
         bc = FillExtrap(NaN), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
@@ -147,7 +150,7 @@ function prepare(
 end
 
 function prepare(
-        x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField(); order = 1,
+        x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = nothing; order = 1,
         bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
@@ -157,7 +160,7 @@ function prepare(
 end
 
 function prepare(
-        x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = ZeroField();
+        x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = nothing;
         order = 1, bc = WrapExtrap(), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
@@ -166,12 +169,25 @@ function prepare(
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
 
-function prepare(x::AbstractVector, E, B, F = ZeroField(); order = 1, bc = ClampExtrap(), dir = 1, kw...)
+function prepare(x::AbstractVector, E, B, F = nothing; order = 1, bc = ClampExtrap(), dir = 1, kw...)
     @assert issorted(x) "Grid vector `x` must be sorted."
     return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
 end
-prepare(E, B, F = ZeroField(); kw...) = _prepare(E, B, F; kw...)
-prepare(B; E = ZeroField(), F = ZeroField(), kw...) = _prepare(E, B, F; kw...)
+prepare(E, B, F = nothing; kw...) = _prepare(E, B, F; kw...)
+prepare(B; E = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
+
+# Keyword forms: the field roles are named, so they cannot be swapped.
+prepare(; E = nothing, B = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
+prepare(x::AbstractVector{<:Real}; E = nothing, B = nothing, F = nothing, kw...) =
+    prepare(x, E, B, F; kw...)
+prepare(
+    x::AbstractVector{<:Real}, y::AbstractVector{<:Real};
+    E = nothing, B = nothing, F = nothing, kw...
+) = prepare(x, y, E, B, F; kw...)
+prepare(
+    x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+    E = nothing, B = nothing, F = nothing, kw...
+) = prepare(x, y, z, E, B, F; kw...)
 
 """
     PotentialField(phi, A; grad_phi = nothing, grad_A = nothing)

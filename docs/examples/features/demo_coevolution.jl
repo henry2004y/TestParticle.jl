@@ -42,14 +42,11 @@ end
 ## Create the time-dependent interpolator
 itp_B = LazyTimeInterpolator(times, loader)
 
-## Define a zero Electric field
-E_zero = ZeroField();
-
 # ## Prepare Particle Tracing Parameters
 # We trace a dimensionless particle. We set `q=1.0` and `m=1.0`.
 # The `prepare` function sets up the equation of motion parameters.
 
-param = prepare(gx, gy, gz, E_zero, itp_B; q = 1.0, m = 1.0);
+param = prepare(gx, gy, gz; B = itp_B, q = 1.0, m = 1.0);
 
 # ## Initial Conditions
 # We launch the particle with velocity purely perpendicular to the B field (in the x-direction).
