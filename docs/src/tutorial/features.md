@@ -53,7 +53,7 @@ boundary checks and callbacks:
 ### 1. The `isoutside` Predicate
 
 Used by the **Boris family** (both host CPU and native GPU `KernelAbstractions` backends),
-**Guiding Center** (`TraceGCProblem`), and **Hybrid** (`TraceHybridProblem`) solvers.
+**Guiding Center** (`TraceGCProblem`), and **Hybrid** (`AdaptiveHybrid`) solvers.
 
 - **Signature**: `isoutside(u, p, t) -> Bool`, where `u` is the phase-space state vector,
   `p` is the parameter container, and `t` is current time.
