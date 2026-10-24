@@ -2,16 +2,10 @@
 #
 # This example shows how to trace charged particles in dimensionless units.
 #
-# Tracing in dimensionless units is beneficial for many scenarios. For example, MHD simulations do not have intrinsic scales. Therefore, we can do dimensionless particle tracing in MHD fields, and then convert to any scale we would like.
-#
-# It also combines one type of normalization using a reference velocity `U₀`, a reference magnetic field `B₀`, and a reference time `1/Ω`, where `Ω` is the gyrofrequency.
-# This indicates that in the dimensionless units, a proton with initial perpendicular velocity 1 under magnetic field magnitude 1 will possess a gyro-radius of 1.
-# In the dimensionless spatial coordinates, we can zoom in/out the EM field to control the number of discrete points encountered in a gyroperiod.
-# For example, if `dx=dy=dz=1`, it means that a particle with perpendicular velocity 1 will "see" one discrete point along a certain direction oriented from the gyro-center within the gyro-radius;
-# if `dx=dy=dz=0.5`, then the particle will "see" two discrete points.
-# MHD models, for instance, are dimensionless by nature. There will be customized (dimensionless) units for (x,y,z,E,B) that we need to convert for computation.
-# If we simulate a turbulence field with MHD, we want to include more discrete points within a gyro-radius for the effect of small scale perturbations to take place. (Otherwise within one gyro-period all you will see is a nice-looking helix!)
-# However, we cannot simply shrink the spatial coordinates as we wish, otherwise we will quickly encounter the boundary of our simulation.
+# Fields from scale-free models such as MHD come in dimensionless units, so we can trace
+# in those units and convert to any physical scale afterwards. Normalizing by the
+# gyrofrequency also makes the grid spacing directly comparable to the gyroradius, which
+# sets how many grid points a particle samples per gyration.
 #
 # For the cosmic-ray-specific form of this normalization — the pitch angle,
 # energy-conserving tracing, and the ``r_{L0}/L`` resolution argument — see the
@@ -21,7 +15,7 @@
 #
 # After normalization, ``q=1, B=1, m=1`` so that the gyroradius ``r_L = mv_\perp/qB = v_\perp``.
 # All the quantities are given in dimensionless units: if the magnetic field is homogeneous and the initial perpendicular velocity ``v_{\perp 0}^\prime`` is 4, then the gyroradius is 4.
-# To convert them to the original units, ``v_\perp = v_{\perp}^\prime * U_0`` and ``r_L = r_L^\prime * l_0 = 4*l_0``.
+# To convert them to the original units, ``v_\perp = v_{\perp}^\prime U_0`` and ``r_L = r_L^\prime l_0 = 4 l_0``.
 #
 # The Lorentz equation in SI units is written as
 #
@@ -39,130 +33,28 @@
 #
 # ```math
 # \begin{aligned}
-# \mathbf{v} &= \mathbf{v}^\prime V_0 \\
+# \mathbf{v} &= \mathbf{v}^\prime U_0 \\
 # t &= t^\prime t_0 = t^\prime \Omega^{-1} = t^\prime \frac{m}{qB_0} \\
+# \mathbf{x} &= \mathbf{x}^\prime l_0 = \mathbf{x}^\prime U_0 t_0 \\
 # \mathbf{B} &= \mathbf{B}^\prime B_0 \\
-# \mathbf{E} &= \mathbf{E}^\prime E_0 = \mathbf{E}^\prime V_0 B_0
+# \mathbf{E} &= \mathbf{E}^\prime E_0 = \mathbf{E}^\prime U_0 B_0
 # \end{aligned}
 # ```
 #
 # where all the coefficients with subscript 0 are expressed in SI units. All the variables with a prime are written in the dimensionless units.
 #
-# ## Basic Tracing
+# The normalized equation is the general one with ``q = m = 1``, so tracing in
+# dimensionless units only needs `prepare(E, B; q = 1, m = 1)`.
 #
-# Now let's demonstrate this with `trace_normalized!`.
-
-import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: WrapExtrap
-using TestParticle: qᵢ, mᵢ, c
-using CairoMakie
-CairoMakie.activate!(type = "png") #hide
-
-## Number of cells for the field along each dimension
-nx, ny, nz = 4, 6, 8
-## Unit conversion factors between SI and dimensionless units
-B₀ = 10.0e-9            # [T]
-Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
-t₀ = 1 / Ω            # [s]
-U₀ = 1.0              # [m/s]
-l₀ = U₀ * t₀          # [m]
-E₀ = U₀ * B₀            # [V/m]
-## All quantities are in dimensionless units
-x = range(-10, 10, length = nx) # [l₀]
-y = range(-10, 10, length = ny) # [l₀]
-z = range(-10, 10, length = nz) # [l₀]
-
-B = fill(0.0, 3, nx, ny, nz) # [B₀]
-B[3, :, :, :] .= 1.0
-E = fill(0.0, 3, nx, ny, nz) # [E₀]
-
-param = prepare(x, y, z, E, B; m = 1, q = 1)
-
-## Initial condition
-stateinit = let
-    x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-    u0 = [4.0, 0.0, 0.0] # initial velocity [v₀]
-    [x0..., u0...]
-end
-## Time span
-tspan = (0.0, π) # half gyroperiod
-
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
-
-### Visualization
-f = Figure(fontsize = 18)
-ax = Axis(
-    f[1, 1],
-    title = "Proton trajectory",
-    xlabel = "X",
-    ylabel = "Y",
-    limits = (-4.1, 4.1, -8.1, 0.1),
-    aspect = DataAspect()
-)
-
-lines!(ax, sol, idxs = (1, 2))
-
-f = DisplayAs.PNG(f) #hide
-
-# ## Relativistic Tracing
-#
-# In the relativistic case,
-# * Velocity is normalized by speed of light c, $V = V^\prime c$;
-# * Magnetic field is normalized by the characteristic magnetic field, $B = B^\prime B_0$;
-# * Electric field is normalized by $E_0 = c\,B_0$, $E = E^\prime E_0$;
-# * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
-# * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
-#
-# In the small velocity scenario, it should behave similar to the non-relativistic case:
-
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
-tspan = (0.0, π) # half period
-stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
-prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
-
-### Visualization
-f = Figure(fontsize = 18)
-ax = Axis(
-    f[1, 1],
-    title = "Relativistic particle trajectory",
-    xlabel = "X",
-    ylabel = "Y",
-    ##limits = (-0.6, 0.6, -1.1, 0.1),
-    aspect = DataAspect()
-)
-
-lines!(ax, sol, idxs = (1, 2))
-
-f = DisplayAs.PNG(f) #hide
-
-# In the large velocity scenario, relativistic effect takes place:
-
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
-tspan = (0.0, π) # half period
-stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
-prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
-
-### Visualization
-f = Figure(fontsize = 18)
-ax = Axis(
-    f[1, 1],
-    title = "Relativistic particle trajectory",
-    xlabel = "X",
-    ylabel = "Y",
-    aspect = DataAspect()
-)
-
-lines!(ax, sol, idxs = (1, 2))
-
-f = DisplayAs.PNG(f) #hide
-
 # ## Dimensionless and Dimensional Tracing
 #
 # We first solve the Lorentz equation in SI units, and then convert the quantities to normalized units and solve it again in dimensionless units.
+
+import DisplayAs #hide
+using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle: qᵢ, mᵢ, c
+using CairoMakie
+CairoMakie.activate!(type = "png") #hide
 
 ## Unit conversion factors between SI and dimensionless units
 B_dim = 1.0e-8             # [T]
@@ -198,7 +90,7 @@ v0_norm = v0_dim ./ U_dim
 tspan2 = (0, 2π)
 stateinit2 = [x0_norm..., v0_norm...]
 
-prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
+prob2 = ODEProblem(trace!, stateinit2, tspan2, param2)
 sol2 = solve(prob2, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 
 ### Visualization
@@ -223,56 +115,34 @@ f = DisplayAs.PNG(f) #hide
 
 # We see that the results are almost identical, with only floating point numerical errors. Tracing in dimensionless units usually allows larger timesteps, which leads to faster computation.
 
-# ## Tracing with Periodic Boundary
+# ## Relativistic Tracing
 #
-# This example shows how to trace charged particles in dimensionless units and EM fields with periodic boundaries in a 2D spatial domain.
+# In the relativistic case,
+# * Velocity is normalized by speed of light c, $V = V^\prime c$;
+# * Magnetic field is normalized by the characteristic magnetic field, $B = B^\prime B_0$;
+# * Electric field is normalized by $E_0 = c\,B_0$, $E = E^\prime E_0$;
+# * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
+# * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
 #
-# Now let's demonstrate this with `trace_normalized!`.
+# Hence `c = 1` in `prepare`; `relativistic = true` makes the state `(x, γv)`.
+# At ``v = 0.9`` the orbit closes after ``2\pi\gamma`` with gyroradius ``\gamma v \approx 2.06``,
+# instead of after ``2\pi`` with radius 0.9 as in the non-relativistic case.
 
-## Number of cells for the field along each dimension
-nx, ny = 4, 6
-## Unit conversion factors between SI and dimensionless units
-B₀ = 10.0e-9            # [T]
-Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
-t₀ = 1 / Ω            # [s]
-U₀ = 1.0              # [m/s]
-l₀ = U₀ * t₀          # [m]
-E₀ = U₀ * B₀            # [V/m]
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1, c = 1)
+v = 0.9
+γ = 1 / sqrt(1 - v^2)
+stateinit = [0.0, 0.0, 0.0, γ * v, 0.0, 0.0]
+tspan = (0.0, 2π * γ) # one gyroperiod
+prob = TraceProblem(stateinit, tspan, param; relativistic = true)
+sol = solve(prob, Vern9())
 
-x = range(-10, 10, length = nx) # [l₀]
-y = range(-10, 10, length = ny) # [l₀]
-
-B = fill(0.0, 3, nx, ny) # [B₀]
-B[3, :, :] .= 1.0
-
-E_zero(x) = SA[0.0, 0.0, 0.0] # [E₀]
-
-## If bc == 1, we set a NaN value outside the domain (default);
-## If bc == 2, we set periodic boundary conditions.
-param = prepare(x, y, E_zero, B; m = 1, q = 1, bc = WrapExtrap());
-
-# Note that we set a radius of 10, so the trajectory extent from -20 to 0 in y, which is beyond the original y range.
-
-## Initial conditions
-stateinit = let
-    x0 = [0.0, 0.0, 0.0] # initial position [l₀]
-    u0 = [10.0, 0.0, 0.0] # initial velocity [v₀]
-    [x0..., u0...]
-end
-## Time span
-tspan = (0.0, 1.5π) # 3/4 gyroperiod
-
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
-sol = solve(prob, Vern9());
-
-# Visualization
+### Visualization
 f = Figure(fontsize = 18)
 ax = Axis(
     f[1, 1],
-    title = "Proton trajectory",
+    title = "Relativistic particle trajectory",
     xlabel = "X",
     ylabel = "Y",
-    limits = (-10.1, 10.1, -20.1, 0.1),
     aspect = DataAspect()
 )
 

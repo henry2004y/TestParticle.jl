@@ -36,18 +36,29 @@ _named_params(p, names) = p
     end
 end
 
+_fo_equations(isinplace, relativistic) = relativistic ?
+    (isinplace ? trace_relativistic! : trace_relativistic) :
+    (isinplace ? trace! : trace)
+
 """
-    TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+    TraceProblem(u0, tspan, p; relativistic = false, prob_func = DEFAULT_PROB_FUNC)
     TraceProblem(f, u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
 
 Problem specification for particle tracing. Supports both Boris solvers and standard ODE
 solvers (e.g. Tsit5, Vern7). When `f` is not provided, defaults to `trace!` (in-place)
-for mutable arrays or `trace` (out-of-place) for `StaticArray`s.
+for mutable arrays or `trace` (out-of-place) for `StaticArray`s, and to
+`trace_relativistic!`/`trace_relativistic` with `relativistic = true`, in which case `u0`
+holds `γv` in place of `v`. Boris solvers are non-relativistic.
+
+Normalized units need no separate equations: prepare `p` with `q = 1, m = 1`, and
+`c = 1` for the relativistic case.
 """
-function TraceProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
+function TraceProblem(
+        u0, tspan, p; relativistic::Bool = false, prob_func = DEFAULT_PROB_FUNC
+    )
     tspan, p = _promote_trace_args(u0, tspan, p, FO_PARAMS)
     isinplace = !(u0 isa StaticArray)
-    _func = isinplace ? trace! : trace
+    _func = _fo_equations(isinplace, relativistic)
     _f = ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(_func)
     return TraceProblem{
         typeof(u0), typeof(tspan), isinplace, typeof(p), typeof(_f), typeof(prob_func),
@@ -91,9 +102,11 @@ function SciMLBase.remake(
     )
     tspan, p = _promote_trace_args(u0, tspan, p, FO_PARAMS)
     isinplace = !(u0 isa StaticArray)
-    _f = if f === prob.f && (prob.f.f === trace! || prob.f.f === trace)
-        isinplace ? ODEFunction{true, DEFAULT_SPECIALIZATION}(trace!) :
-            ODEFunction{false, DEFAULT_SPECIALIZATION}(trace)
+    relativistic = prob.f.f in (trace_relativistic!, trace_relativistic)
+    _f = if f === prob.f && (relativistic || prob.f.f in (trace!, trace))
+        ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(
+            _fo_equations(isinplace, relativistic)
+        )
     else
         f
     end
