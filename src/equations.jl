@@ -490,6 +490,10 @@ function get_work_channels(xv, p, t)
     return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
 end
 
+# ∇(A ⋅ v) at fixed v; dropped by dispatch for an absent `A`, as `_eval_field` does.
+@inline _grad_A_v(grad_A, x, t, v) = grad_A(x, t) * v
+_grad_A_v(::ZeroField, x, t, v) = ZeroVector()
+
 function trace_canonical!(dy, y, p, t)
     (; q, m, pf) = p
     x = @inbounds SA[y[1], y[2], y[3]]
@@ -499,9 +503,7 @@ function trace_canonical!(dy, y, p, t)
     v = (p_can - q * A) / m
 
     grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
-    grad_A = pf.grad_A(x, t)
-
-    dp = q * (grad_A * v) - q * grad_phi
+    dp = SVector{3}(q * _grad_A_v(pf.grad_A, x, t, v) - q * grad_phi)
 
     @inbounds dy[1] = v[1]
     @inbounds dy[2] = v[2]
@@ -521,9 +523,7 @@ function trace_canonical(y, p, t)
     v = (p_can - q * A) / m
 
     grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
-    grad_A = pf.grad_A(x, t)
-
-    dp = q * (grad_A * v) - q * grad_phi
+    dp = SVector{3}(q * _grad_A_v(pf.grad_A, x, t, v) - q * grad_phi)
     return vcat(v, dp)
 end
 
@@ -538,9 +538,7 @@ function trace_canonical_relativistic!(dy, y, p, t)
     v = p_kin / (γ * m)
 
     grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
-    grad_A = pf.grad_A(x, t)
-
-    dp = q * (grad_A * v) - q * grad_phi
+    dp = SVector{3}(q * _grad_A_v(pf.grad_A, x, t, v) - q * grad_phi)
 
     @inbounds dy[1] = v[1]
     @inbounds dy[2] = v[2]
@@ -562,9 +560,7 @@ function trace_canonical_relativistic(y, p, t)
     v = p_kin / (γ * m)
 
     grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
-    grad_A = pf.grad_A(x, t)
-
-    dp = q * (grad_A * v) - q * grad_phi
+    dp = SVector{3}(q * _grad_A_v(pf.grad_A, x, t, v) - q * grad_phi)
     return vcat(v, dp)
 end
 

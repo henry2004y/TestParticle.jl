@@ -58,7 +58,7 @@ T_period = 2π / Ω
 
 ## Define the vector potential; ForwardDiff automatically computes ∇A
 A_landau(x) = SA[0.0, B0 * x[1], 0.0]
-pf = PotentialField(A_landau)
+pf = PotentialField(; A = A_landau)
 param_can = prepare(pf; q = q, m = m)
 
 ## Initial condition: particle starting at origin moving in x direction
