@@ -80,7 +80,7 @@ function mirror_B(x)
     return SA[Bx, By, Bz]
 end
 
-param1 = prepare(ZeroField(), mirror_B; q, m)
+param1 = prepare(; B = mirror_B, q, m)
 x0_1 = [0.1, 0.0, 0.0]
 v0_1 = [0.5, 0.5, 1.0]
 u0_1 = [x0_1..., v0_1...]
@@ -88,7 +88,7 @@ tspan1 = (0.0, 200.0)
 E_init = 0.5 * m * norm(v0_1)^2
 
 prob_tp1 = TraceProblem(u0_1, tspan1, param1)
-prob_ode1 = ODEProblem(trace_normalized!, u0_1, tspan1, param1)
+prob_ode1 = ODEProblem(trace!, u0_1, tspan1, param1)
 
 adaptive_solvers_1 = [
     (
@@ -227,7 +227,7 @@ tspan2 = (0.0, t_end2)
 u0_2 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 param2 = prepare(E_func2, B_func2; q, m)
 prob_tp2 = TraceProblem(u0_2, tspan2, param2)
-prob_ode2 = ODEProblem(trace_normalized!, u0_2, tspan2, param2)
+prob_ode2 = ODEProblem(trace!, u0_2, tspan2, param2)
 
 function max_velocity_error(sol)
     max_err = 0.0
@@ -332,7 +332,7 @@ t_end3 = 200 * T_gyro
 tspan3 = (0.0, t_end3)
 param3 = prepare(E_func2, B_func2; q, m)
 prob_tp3 = TraceProblem(u0_2, tspan3, param3)
-prob_ode3 = ODEProblem(trace_normalized!, u0_2, tspan3, param3)
+prob_ode3 = ODEProblem(trace!, u0_2, tspan3, param3)
 
 adaptive_solvers_3 = [
     (

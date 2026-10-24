@@ -39,7 +39,7 @@ stateinit = [x0..., (gamma .* v0)...]
 ```
 
 !!! note "Relativistic velocity"
-    When using `trace_relativistic!`, the solver expects the last three elements of the state to be $\gamma \mathbf{v}$.
+    With `TraceProblem(stateinit, tspan, param; relativistic = true)` (or `trace_relativistic!`), the solver expects the last three elements of the state to be $\gamma \mathbf{v}$.
 
 ## Choice of numerical algorithms
 

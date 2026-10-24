@@ -24,14 +24,13 @@ seed = 1234
 # First, we set up a simple ensemble problem: protons in a uniform magnetic field.
 
 B_uniform(x) = SA[0, 0, 1.0e-8]
-E_zero = TestParticle.ZeroField()
 
 ## Initialize a proton with some perpendicular velocity
 x0 = SA[0.0, 0.0, 0.0]
 u0 = SA[1.0, 0.0, 0.0]
 stateinit = vcat(x0, u0)
 
-param = prepare(E_zero, B_uniform, species = Proton)
+param = prepare(; B = B_uniform, species = Proton)
 tspan = (0.0, 10.0)
 
 ## Define the problem

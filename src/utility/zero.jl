@@ -22,16 +22,8 @@ Base.getindex(::ZeroVector, I...) = 0
 Base.length(::ZeroVector) = 3
 Base.iterate(::ZeroVector, state = 1) = state > 3 ? nothing : (0, state + 1)
 
-# Field interface
-function (::ZeroField)(y, t)
-    T = eltype(y)
-    if T <: AbstractFloat || T <: Complex{<:AbstractFloat}
-        return zero(SVector{3, T})
-    else
-        return ZeroVector()
-    end
-end
-
+# Field interface. Field values are also stored, differentiated and combined with
+# `⋅`/`×`/`vcat`, so floats get a real zero vector.
 function (::ZeroField)(y)
     T = eltype(y)
     if T <: AbstractFloat || T <: Complex{<:AbstractFloat}
@@ -40,3 +32,10 @@ function (::ZeroField)(y)
         return ZeroVector()
     end
 end
+
+(z::ZeroField)(y, t) = z(y)
+
+# Field value as `SVector{3, T}`, for the equations that add up field terms. A `ZeroField`
+# term becomes a `ZeroVector`, which the arithmetic drops by dispatch.
+@inline _eval_field(::Type{T}, f, x, t) where {T} = SVector{3, T}(f(x, t))
+_eval_field(::Type, ::ZeroField, x, t) = ZeroVector()

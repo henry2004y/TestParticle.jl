@@ -126,7 +126,7 @@ function prob_func_cloud(prob, ctx)
 end
 
 ## Define a single problem template
-param_cloud = prepare(TestParticle.ZeroField(), TestParticle.ZeroField(); q, m)
+param_cloud = prepare(; q, m)
 tspan_cloud = (0.0, t_end_cloud)
 prob_template = ODEProblem(
     trace, vcat(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 0.0]), tspan_cloud,

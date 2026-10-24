@@ -42,9 +42,8 @@ evaluated on the workers live inside `@everywhere` so every process sees them.
 @everywhere begin
     const Bmag = 0.01
     uniform_B(x) = SA[0.0, 0.0, Bmag]
-    zero_E = ZeroField()
 
-    param = prepare(zero_E, uniform_B; species = Electron)
+    param = prepare(; B = uniform_B, species = Electron)
     q2m = param.q2m
 
     const tperiod = 2π / (abs(q2m) * Bmag)

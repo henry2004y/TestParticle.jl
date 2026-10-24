@@ -21,12 +21,11 @@ CairoMakie.activate!(type = "png") #hide
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = ZeroField()
 
 x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[0.0, 1.0e5, 0.0]
 stateinit = SA[x0..., v0...]
-param = prepare(zero_E, uniform_B, species = Electron)
+param = prepare(; B = uniform_B, species = Electron)
 q2m = param.q2m
 
 ## Reference parameters

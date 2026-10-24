@@ -75,7 +75,7 @@ prob_can = TraceCanonicalProblem(u0_can, tspan, param_can; relativistic = false)
 sol_can = solve(prob_can, ImplicitMidpoint(); dt = dt, adaptive = false)
 
 ## Trace in velocity form using Boris
-param_xv = prepare(ZeroField(), (x, t) -> SA[0.0, 0.0, B0]; q = q, m = m)
+param_xv = prepare(; B = (x, t) -> SA[0.0, 0.0, B0], q = q, m = m)
 prob_xv = TraceProblem([x0..., v0...], tspan, param_xv)
 sol_xv = TestParticle.solve(prob_xv, Boris(); dt);
 

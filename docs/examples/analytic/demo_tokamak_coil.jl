@@ -24,7 +24,6 @@ const b = 0.8 # radius of central region
 
 getB(xu) = MS.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil * N, IPlasma)
 
-getE = ZeroField()
 
 ### Initialize particles
 m = TP.mᵢ
@@ -37,7 +36,7 @@ v₀ = [-0.1, -0.15, 0.0] .* c
 r₀ = [2.3, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(getE, getB; species = Proton)
+param = prepare(; B = getB, species = Proton)
 tspan = (0.0, 1.0e-6)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)

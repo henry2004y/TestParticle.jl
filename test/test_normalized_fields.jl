@@ -37,7 +37,7 @@ zero_normalized(sz...) = zeros(3, sz...)
     B[3, :, :, :] .= 1.0
 
     param = prepare(x, y, z, E, B; m = 1, q = 1)
-    prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+    prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9(); save_idxs = [1])
     @test length(sol.u) == 7 && isapprox(sol[1, end], 1.0, rtol = 1.0e-2)
 
@@ -52,17 +52,17 @@ zero_normalized(sz...) = zeros(3, sz...)
     param = prepare(grid, E, B; species = Proton, bc = WrapExtrap())
     @test param[3] isa TP.Field
     @test startswith(repr(param[3]), "Field with")
-    param = prepare(x, y, E, B; species = Proton, bc = WrapExtrap())
-    prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+    param = prepare(x, y, E, B; m = 1, q = 1, bc = WrapExtrap())
+    prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
 
-    prob = ODEProblem(trace_normalized, SA[stateinit...], tspan, param)
+    prob = ODEProblem(trace, SA[stateinit...], tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
 
     # Because the field is uniform, the order of interpolation does not matter.
-    param = prepare(grid, E, B; order = 3)
+    param = prepare(grid, E, B; m = 1, q = 1, order = 3)
     prob = remake(prob; p = param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
@@ -73,8 +73,8 @@ zero_normalized(sz...) = zeros(3, sz...)
     B = zero_normalized(length(x))
     B[3, :] .= 1.0
 
-    param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
-    prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+    param = prepare(x, E, B; m = 1, q = 1, bc = ClampExtrap())
+    prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
 end
