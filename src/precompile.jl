@@ -41,12 +41,6 @@
         # relativistic
         trace_relativistic(stateinit, param, t)
         trace_relativistic!(out6, stateinit, param, t)
-        # normalized
-        trace_normalized(stateinit, param, t)
-        trace_normalized!(out6, stateinit, param, t)
-        # relativistic normalized
-        trace_relativistic_normalized(stateinit, param, t)
-        trace_relativistic_normalized!(out6, stateinit, param, t)
         # guiding center
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
