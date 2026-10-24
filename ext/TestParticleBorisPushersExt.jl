@@ -219,6 +219,14 @@ end
     return alg.save_adiabaticity ? _solve(args..., Val(true)) : _solve(args..., Val(false))
 end
 
+function SciMLBase.solve(
+        prob::TraceProblem, alg::AdaptiveHybrid,
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial(); kwargs...
+    )
+    prob_hybrid = TraceHybridProblem(prob.u0, prob.tspan, prob.p; prob.prob_func)
+    return solve(prob_hybrid, alg, ensemblealg; kwargs...)
+end
+
 @inline function _solve(
         ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceHybridProblem,
         trajectories, alg::AdaptiveHybrid,

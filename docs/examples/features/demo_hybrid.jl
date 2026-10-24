@@ -113,7 +113,7 @@ alg = AdaptiveHybrid(;
 )
 
 ## Set verbose = true to see the dynamic switching
-prob_hybrid = TraceHybridProblem(u0, tspan, p)
+prob_hybrid = TraceProblem(u0, tspan, p)
 sol = solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
 
 # ## Step 4: Compute Adiabaticity
@@ -320,7 +320,7 @@ alg_curv = AdaptiveHybrid(; mode_common..., adiabaticity = :curvature)
 alg_gradB = AdaptiveHybrid(; mode_common..., adiabaticity = :gradB)
 alg_both = AdaptiveHybrid(; mode_common..., adiabaticity = :both)
 
-prob_mode = TraceHybridProblem(u0, tspan, p)
+prob_mode = TraceProblem(u0, tspan, p)
 sol_curv = solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
 sol_gradB = solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
 sol_both = solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1];

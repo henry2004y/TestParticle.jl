@@ -165,7 +165,7 @@ function run_test(
     ## Run adaptive hybrid (GC <-> full-orbit) solver. Its output is the full
     ## orbit state, so its energy is the ordinary kinetic energy.
     if hybrid
-        prob_hy = TraceHybridProblem(SVector{6}(u0...), tspan, param)
+        prob_hy = TraceProblem(SVector{6}(u0...), tspan, param)
         alg_hy = AdaptiveHybrid(;
             threshold = 0.1, dtmax = T, dtmin = 1.0e-3 * T,
             check_interval = 20, save_adiabaticity = false
