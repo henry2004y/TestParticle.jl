@@ -43,8 +43,8 @@ stateinit = [r₀..., v₀...]
 param = prepare(ZeroField(), getB; species = Electron)
 tspan = (0.0, 1.0e-5)
 
-prob_rel = ODEProblem(trace_relativistic!, stateinit, tspan, param)
-prob_non = ODEProblem(trace!, stateinit, tspan, param)
+prob_rel = TraceProblem(stateinit, tspan, param; relativistic = true)
+prob_non = TraceProblem(stateinit, tspan, param)
 
 vratio = √(v₀[1]^2 + v₀[2]^2 + v₀[3]^2) / c
 E = (1 / √(1 - vratio^2) - 1) * m * c^2 / abs(q) / 1.0e6

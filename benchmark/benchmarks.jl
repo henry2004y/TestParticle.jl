@@ -131,7 +131,7 @@ SUITE["trace"]["analytic field"]["in place relativistic"] = @benchmarkable solve
 
 # Normalized Field
 param_norm, stateinit_norm, tspan_norm = setup_normalized_field(x0, u0, tspan)
-prob_norm_oop = ODEProblem(trace_normalized, SA[stateinit_norm...], tspan_norm, param_norm)
+prob_norm_oop = ODEProblem(trace, SA[stateinit_norm...], tspan_norm, param_norm)
 
 SUITE["trace"]["normalized"]["out of place"] = @benchmarkable solve(
     $prob_norm_oop, Tsit5(); save_idxs = [1, 2, 3]

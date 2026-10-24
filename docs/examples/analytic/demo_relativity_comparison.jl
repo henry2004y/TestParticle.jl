@@ -1,7 +1,7 @@
 # # Relativistic vs Non-relativistic Tracing
 #
 # This example compares the particle trajectories of `trace!` (non-relativistic)
-# and `trace_relativistic!` (relativistic) solvers.
+# and relativistic (`relativistic = true`) equations.
 # We demonstrate two cases:
 # 1. Uniform magnetic field (Cyclotron motion)
 # 2. Uniform ExB field (ExB drift)
@@ -64,13 +64,13 @@ for (i, v_mag) in enumerate(v_ratios)
 
     ## Non-relativistic initial state: [r, v]
     u0_non = [r0..., v0...]
-    prob_non = ODEProblem(trace!, u0_non, tspan, param)
+    prob_non = TraceProblem(u0_non, tspan, param)
     sol_non = solve(prob_non, Vern7())
 
     ## Relativistic initial state: [r, γv]
     γ = 1 / sqrt(1 - (v_mag / c)^2)
     u0_rel = [r0..., (γ * v0)...]
-    prob_rel = ODEProblem(trace_relativistic!, u0_rel, tspan, param)
+    prob_rel = TraceProblem(u0_rel, tspan, param; relativistic = true)
     sol_rel = solve(prob_rel, Vern7())
 
     ## Plot
@@ -121,13 +121,13 @@ v0 = [0.0, v_init_mag, 0.0];
 
 # Non-relativistic
 u0_non = [r0..., v0...]
-prob_non_drift = ODEProblem(trace!, u0_non, tspan, param2)
+prob_non_drift = TraceProblem(u0_non, tspan, param2)
 sol_non_drift = solve(prob_non_drift, Vern7());
 
 # Relativistic
 # if v=0, γ=1
 u0_rel = [r0..., v0...]
-prob_rel_drift = ODEProblem(trace_relativistic!, u0_rel, tspan, param2)
+prob_rel_drift = TraceProblem(u0_rel, tspan, param2; relativistic = true)
 sol_rel_drift = solve(prob_rel_drift, Vern7());
 
 # Trajectory comparison

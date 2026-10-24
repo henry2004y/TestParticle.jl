@@ -89,7 +89,7 @@ end
 
 function _prepare(
         E::TE, B::TB, F::TF, args...; species = Proton, q = nothing,
-        m = nothing, gridtype::Type{G} = CartesianGrid, type = nothing, kw...
+        m = nothing, c = nothing, gridtype::Type{G} = CartesianGrid, type = nothing, kw...
     ) where {TE, TB, TF, G}
     q = @something q species.q
     m = @something m species.m
@@ -97,11 +97,13 @@ function _prepare(
         q, m = type(q), type(m)
     end
     E, B, F = map(f -> prepare_field(f, args...; gridtype, kw...), (E, B, F))
-    return (; q2m = q / m, m, E, B, F)
+    p = (; q2m = q / m, m, E, B, F)
+    isnothing(c) && return p
+    return (; p..., c = isnothing(type) ? c : type(c))
 end
 
 """
-    prepare(args...; kwargs...) -> (; q2m, m, E, B, F)
+    prepare(args...; kwargs...) -> (; q2m, m, E, B, F[, c])
     prepare(E, B, F = ZeroField(); kwargs...)
     prepare(grid::CartesianGrid, E, B, F = ZeroField(); kwargs...)
     prepare(x, E, B, F = ZeroField(); dir = 1, kwargs...)
@@ -131,6 +133,8 @@ For `StructuredGrid` (spherical) grid, dimensions of field arrays should be `(Br
   - `species=Proton`: particle species.
   - `q=nothing`: particle charge.
   - `m=nothing`: particle mass.
+  - `c=nothing`: speed of light for the relativistic equations, e.g. `c = 1` in
+    normalized units; `c` in SI when omitted.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid`, `StructuredGrid`.
 """
 function prepare(

@@ -274,7 +274,7 @@ function get_gyroradius(sol::AbstractODESolution, t)
     v_E = _get_exb_drift(E, B, Bmag)
 
     # Solvers may wrap the equations, e.g. in a `FunctionWrappersWrapper`.
-    γ = _lorentz_factor(u, SciMLBase.unwrapped_f(sol.prob.f.f))
+    γ = _lorentz_factor(u, SciMLBase.unwrapped_f(sol.prob.f.f), p)
 
     v_gyro = u / γ - v_E # Subtract drift velocity
 

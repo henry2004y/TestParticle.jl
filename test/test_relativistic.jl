@@ -54,24 +54,17 @@ end
     @test isapprox(KE_end / Δx, 1.0e5, rtol = 1.0e-2)
 
     # Tracing relativistic particles in dimensionless units
-    param = prepare(zero_E, B_unit; m = 1, q = 1)
+    param = prepare(zero_E, B_unit; m = 1, q = 1, c = 1)
     tspan = (0.0, 1.0) # 1/2π period
     stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
-    prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+    prob = TraceProblem(SVector{6}(stateinit), tspan, param; relativistic = true)
     sol = solve(prob, Vern6())
-    @test isapprox(sol.u[end][1], 0.38992532495827226, rtol = 1.0e-2)
-    stateinit = zeros(6)
-    prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-    sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
-    @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
+    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
+    # `remake` to another array kind keeps the relativistic equations.
+    sol = solve(remake(prob; u0 = stateinit), Vern6())
+    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
 
-    stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
-    prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-    sol = solve(prob, Vern6())
-    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-2)
-
-    stateinit = @SVector zeros(6)
-    prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
+    prob = TraceProblem(zeros(6), tspan, param; relativistic = true)
     sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
     @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
 end
