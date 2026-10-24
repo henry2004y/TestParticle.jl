@@ -54,26 +54,33 @@ end
     @test isapprox(KE_end / Δx, 1.0e5, rtol = 1.0e-2)
 
     # Tracing relativistic particles in dimensionless units
-    param = prepare(zero_E, B_unit; m = 1, q = 1)
+    param = prepare(zero_E, B_unit; m = 1, q = 1, c = 1)
     tspan = (0.0, 1.0) # 1/2π period
     stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
-    prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+    prob = TraceProblem(SVector{6}(stateinit), tspan, param; relativistic = true)
     sol = solve(prob, Vern6())
-    @test isapprox(sol.u[end][1], 0.38992532495827226, rtol = 1.0e-2)
-    stateinit = zeros(6)
-    prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
+    # `remake` to another array kind keeps the relativistic equations.
+    sol = solve(remake(prob; u0 = stateinit), Vern6())
+    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
+
+    prob = TraceProblem(zeros(6), tspan, param; relativistic = true)
     sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
     @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
+end
 
-    stateinit = SA[0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
-    prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-    sol = solve(prob, Vern6())
-    @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-2)
-
-    stateinit = @SVector zeros(6)
-    prob = ODEProblem(trace_relativistic_normalized, stateinit, tspan, param)
-    sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
-    @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
+@testset "trace_relativistic_normalized compatibility" begin
+    E(x) = SA[0.0, 0.1, 0.0]
+    param = prepare(E, B_unit; m = 1, q = 1)
+    param_c = prepare(E, B_unit; m = 1, q = 1, c = 1)
+    stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
+    tspan = (0.0, 1.0)
+    ref = solve(TraceProblem(stateinit, tspan, param_c; relativistic = true), Vern9())
+    sol = solve(ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param), Vern9())
+    @test sol.u[end] ≈ ref.u[end]
+    @test TP.get_gyroradius(sol, 0.5) ≈ TP.get_gyroradius(ref, 0.5)
+    prob = ODEProblem(trace_relativistic_normalized, SVector{6}(stateinit), tspan, param)
+    @test solve(prob, Vern9()).u[end] ≈ ref.u[end]
 end
 
 end # module test_relativistic

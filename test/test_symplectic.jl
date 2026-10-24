@@ -64,7 +64,7 @@ kinetic_energy(v; m) = 0.5 * m * norm(v)^2
 
         # ImplicitMidpoint is symplectic for all Hamiltonian systems, including
         # non-separable ones.
-        prob_ode = ODEProblem(trace_normalized!, [x0..., v0...], tspan, param)
+        prob_ode = ODEProblem(trace!, [x0..., v0...], tspan, param)
         sol_im = solve(prob_ode, ImplicitMidpoint(), dt = 0.01, adaptive = false)
         @test K0 ≈ kinetic_energy(sol_im.u[end][4:6]; m) rtol = 1.0e-12
     end

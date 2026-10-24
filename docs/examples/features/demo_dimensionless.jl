@@ -50,7 +50,8 @@
 #
 # ## Basic Tracing
 #
-# Now let's demonstrate this with `trace_normalized!`.
+# Normalized units need no separate equations: `trace!` with `q = 1, m = 1` is the
+# dimensionless equation of motion.
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
@@ -88,7 +89,7 @@ end
 ## Time span
 tspan = (0.0, π) # half gyroperiod
 
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ### Visualization
@@ -115,12 +116,14 @@ f = DisplayAs.PNG(f) #hide
 # * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
 # * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
 #
+# Hence `c = 1` in `prepare`; `relativistic = true` makes the state `(x, γv)`.
+#
 # In the small velocity scenario, it should behave similar to the non-relativistic case:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1, c = 1)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.01, 0.0, 0.0]
-prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+prob = TraceProblem(stateinit, tspan, param; relativistic = true)
 sol = solve(prob, Vern9())
 
 ### Visualization
@@ -140,10 +143,10 @@ f = DisplayAs.PNG(f) #hide
 
 # In the large velocity scenario, relativistic effect takes place:
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1)
+param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1, c = 1)
 tspan = (0.0, π) # half period
 stateinit = [0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
-prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
+prob = TraceProblem(stateinit, tspan, param; relativistic = true)
 sol = solve(prob, Vern9())
 
 ### Visualization
@@ -198,7 +201,7 @@ v0_norm = v0_dim ./ U_dim
 tspan2 = (0, 2π)
 stateinit2 = [x0_norm..., v0_norm...]
 
-prob2 = ODEProblem(trace_normalized!, stateinit2, tspan2, param2)
+prob2 = ODEProblem(trace!, stateinit2, tspan2, param2)
 sol2 = solve(prob2, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 
 ### Visualization
@@ -227,7 +230,7 @@ f = DisplayAs.PNG(f) #hide
 #
 # This example shows how to trace charged particles in dimensionless units and EM fields with periodic boundaries in a 2D spatial domain.
 #
-# Now let's demonstrate this with `trace_normalized!`.
+# Again we trace with `trace!` and `q = 1, m = 1`.
 
 ## Number of cells for the field along each dimension
 nx, ny = 4, 6
@@ -262,7 +265,7 @@ end
 ## Time span
 tspan = (0.0, 1.5π) # 3/4 gyroperiod
 
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9());
 
 # Visualization

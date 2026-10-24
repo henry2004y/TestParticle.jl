@@ -62,9 +62,9 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 10.0);
 
 # ## Run the Simulation
-# We use `trace_normalized!` which is suitable for dimensionless or normalized tracing.
+# With `q = 1, m = 1`, `trace!` traces in normalized units.
 
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7());
 
 # ## Visualization
