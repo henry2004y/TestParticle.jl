@@ -35,9 +35,8 @@ modes and both solvers.
 ```julia
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-const zero_E = ZeroField()
 
-const param = prepare(zero_E, uniform_B; species = Electron)
+const param = prepare(; B = uniform_B, species = Electron)
 const q2m = param.q2m
 
 const tperiod = 2π / (abs(q2m) * Bmag)

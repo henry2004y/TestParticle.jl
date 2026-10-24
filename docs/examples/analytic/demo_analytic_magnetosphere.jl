@@ -6,7 +6,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ, ZeroField
+using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ
 import Magnetostatics as MS
 using FieldTracer
 using CairoMakie
@@ -71,7 +71,7 @@ function prob_func_tail(prob, ctx)
 end
 
 
-param = prepare(ZeroField(), getB)
+param = prepare(; B = getB)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 2000.0)
 trajectories = 2
@@ -88,7 +88,7 @@ sols = solve(
 )
 
 ## Look at particles in the magnetotail region of the same model.
-param = prepare(ZeroField(), getB)
+param = prepare(; B = getB)
 stateinit = zeros(6) # particle position and velocity to be modified
 tspan = (0.0, 8000.0)
 trajectories = 1

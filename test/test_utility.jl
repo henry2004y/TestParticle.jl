@@ -559,16 +559,8 @@ end
         end
 
         @testset "Normalized Relativistic" begin
-            # Uniform B field
             B0 = 1.0
             B_func(x, t) = SA[0.0, 0.0, B0]
-            E_func(x, t) = SA[0.0, 0.0, 0.0]
-
-            # In normalized relativistic case, c = 1
-            # Initial state: relativistic velocity
-            # Let v = 0.5
-            # γ = 1/sqrt(1-0.5^2) = 1/sqrt(0.75) ≈ 1.1547
-            # u = γv
             v_mag = 0.5
             gamma = 1.0 / sqrt(1 - v_mag^2)
             u_perp = gamma * v_mag
@@ -578,17 +570,11 @@ end
             stateinit = [x0..., u0...]
             tspan = (0.0, 1.0)
 
-            # q2m = 1.0, m = 1.0, etc.
-            param = prepare(E_func, B_func; species = Ion(1, 1), q = 1.0, m = 1.0)
-            prob = ODEProblem(trace_relativistic_normalized!, stateinit, tspan, param)
-            sol = solve(prob, Vern6(); dt = 1.0e-6)
-
-            # Theoretical relativistic gyroradius
-            # r = γ * m * v_perp / (q * B) = (γv)_perp / B (since m=q=1)
-            r_expected = u_perp / B0
-
-            r_calc = get_gyroradius(sol, 0.5)
-            @test r_calc ≈ r_expected rtol = 1.0e-3
+            # In the E × B drift frame, r = γ |v - v_E| / B with v = γv / γ.
+            E_drift(x, t) = SA[0.0, 0.1, 0.0]
+            param_E = prepare(E_drift, B_func; q = 1.0, m = 1.0, c = 1.0)
+            sol = solve(TraceProblem(stateinit, tspan, param_E; relativistic = true), Vern6())
+            @test get_gyroradius(sol, 0.0) ≈ gamma * (v_mag - 0.1) / B0
         end
 
         @testset "Zero Field" begin

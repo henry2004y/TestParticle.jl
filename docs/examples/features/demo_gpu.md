@@ -355,7 +355,7 @@ end
 stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]  # [m], [m/s]
 tspan = (0.0, 1.0)
 
-param = prepare(r, θ, ϕ, ZeroField(), B; species = Proton, gridtype = TP.StructuredGrid)
+param = prepare(r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid)
 prob = TraceProblem(stateinit, tspan, param)
 
 # Moving the parameters to the device converts the field into a GPUSphericalGrid

@@ -70,12 +70,11 @@ end
 
 const Bmag = 0.01
 uniform_B(x) = SA[0.0, 0.0, Bmag]
-zero_E = ZeroField()
 
 x0 = [0.0, 0.0, 0.0]
 v0 = [0.0, 1.0e5, 0.0]
 stateinit = [x0..., v0...]
-param = prepare(zero_E, uniform_B, species = Electron)
+param = prepare(; B = uniform_B, species = Electron)
 q2m = param.q2m
 
 ## Reference parameters
@@ -222,11 +221,9 @@ y = range(-21, 0, length = ny) # [l₀]
 B = fill(0.0, 3, nx, ny) # [B₀]
 B[3, :, :] .= 1.0
 
-E_field = ZeroField() # [E₀]
-
 ## If bc == 1, we set a NaN value outside the domain (default);
 ## If bc == 2, we set periodic boundary conditions.
-param = prepare(x, y, E_field, B; m = 1, q = 1, bc = FillExtrap(NaN))
+param = prepare(x, y; B, m = 1, q = 1, bc = FillExtrap(NaN))
 
 # Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
 # After half a cycle, the particle will move into the region where is field is not defined.

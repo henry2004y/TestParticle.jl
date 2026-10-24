@@ -42,14 +42,11 @@ end
 ## Create the time-dependent interpolator
 itp_B = LazyTimeInterpolator(times, loader)
 
-## Define a zero Electric field
-E_zero = ZeroField();
-
 # ## Prepare Particle Tracing Parameters
 # We trace a dimensionless particle. We set `q=1.0` and `m=1.0`.
 # The `prepare` function sets up the equation of motion parameters.
 
-param = prepare(gx, gy, gz, E_zero, itp_B; q = 1.0, m = 1.0);
+param = prepare(gx, gy, gz; B = itp_B, q = 1.0, m = 1.0);
 
 # ## Initial Conditions
 # We launch the particle with velocity purely perpendicular to the B field (in the x-direction).
@@ -62,9 +59,9 @@ stateinit = [x0..., v0...]
 tspan = (0.0, 10.0);
 
 # ## Run the Simulation
-# We use `trace_normalized!` which is suitable for dimensionless or normalized tracing.
+# With `q = 1, m = 1`, `trace!` traces in normalized units.
 
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7());
 
 # ## Visualization

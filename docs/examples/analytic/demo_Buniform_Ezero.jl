@@ -5,12 +5,10 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: ZeroField
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
 uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
-zero_E = ZeroField()
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
@@ -19,7 +17,7 @@ end
 ## Time span
 tspan = (0, 18)
 
-param = prepare(zero_E, uniform_B, species = Proton)
+param = prepare(; B = uniform_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

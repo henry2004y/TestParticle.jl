@@ -53,7 +53,7 @@ tspan = (0.0, π) # half averaged gyroperiod based on B₀
 ## Dummy initial state; positions have units l₀; velocities have units U₀
 stateinit = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-prob = ODEProblem(trace_normalized!, stateinit, tspan, param)
+prob = ODEProblem(trace!, stateinit, tspan, param)
 
 prob.u0[4:6] = let
     B0 = prob.p.B(prob.u0)

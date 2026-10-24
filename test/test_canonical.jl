@@ -17,7 +17,7 @@ using LinearAlgebra: norm
             phi(x, t) = x[1]^2 + 2 * x[2]^2
             A(x, t) = SA[0.0, 3.0 * x[1], 0.0]
 
-            pf = PotentialField(phi, A)
+            pf = PotentialField(; phi, A)
 
             x0 = SA[1.0, 2.0, 0.0]
             # ∇ϕ = [2x₁, 4x₂, 0] = [2, 8, 0]
@@ -29,22 +29,22 @@ using LinearAlgebra: norm
             # Analytical 1-arg gradients
             grad_phi_1arg(x) = SA[2 * x[1], 4 * x[2], 0.0]
             grad_A_1arg(x) = SA[0.0 3.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]
-            pf_explicit = PotentialField(
-                phi, A; grad_phi = grad_phi_1arg, grad_A = grad_A_1arg
+            pf_explicit = PotentialField(;
+                phi, A, grad_phi = grad_phi_1arg, grad_A = grad_A_1arg
             )
             @test pf_explicit.grad_phi(x0, 0.0) ≈ SA[2.0, 8.0, 0.0]
             @test pf_explicit.grad_A(x0, 0.0) ≈ expected_grad_A
 
-            # PotentialField with ZeroField
-            pf_zero_phi = PotentialField(A)
+            # Absent potentials
+            pf_zero_phi = PotentialField(; A)
             @test pf_zero_phi.grad_phi isa ZeroField
             @test pf_zero_phi.grad_A(x0, 0.0) ≈ expected_grad_A
 
-            pf_zero_A = PotentialField(phi, ZeroField())
-            @test pf_zero_A.grad_A(x0, 0.0) == zero(SMatrix{3, 3, Float64, 9})
+            pf_zero_A = PotentialField(; phi)
+            @test pf_zero_A.grad_A isa ZeroField
 
             # prepare_canonical with only vector potential
-            param_A = prepare_canonical(A; q = 1.0, m = 1.0)
+            param_A = prepare_canonical(; A, q = 1.0, m = 1.0)
             @test param_A[1] == 1.0
             @test param_A[4].phi isa ZeroField
 
@@ -70,7 +70,7 @@ using LinearAlgebra: norm
             T_period = 2π / Ω
 
             A_landau(x) = SA[0.0, B0 * x[1], 0.0]
-            pf = PotentialField(A_landau)
+            pf = PotentialField(; A = A_landau)
             param = prepare(pf; q = q, m = m)
 
             x0 = SA[0.0, 0.0, 0.0]
@@ -118,7 +118,7 @@ using LinearAlgebra: norm
             T_period = 2π / Ω0
 
             A_landau(x) = SA[0.0, B0 * x[1], 0.0]
-            pf = PotentialField(A_landau)
+            pf = PotentialField(; A = A_landau)
             param = prepare(pf; q = q, m = m, c = c_val)
 
             x0 = SA[0.0, 0.0, 0.0]
@@ -158,7 +158,7 @@ using LinearAlgebra: norm
             k = 4.0
             phi_harmonic(x, t) = 0.5 * k * x[1]^2
 
-            param = prepare_canonical(phi_harmonic, ZeroField(); q = q, m = m)
+            param = prepare_canonical(; phi = phi_harmonic, q = q, m = m)
 
             x0 = SA[1.0, 0.0, 0.0]
             v0 = SA[0.0, 0.0, 0.0]
@@ -192,7 +192,7 @@ using LinearAlgebra: norm
             tspan = (0.0, T_period)
 
             A_landau(x) = SA[0.0, B0 * x[1], 0.0]
-            param = prepare_canonical(A_landau; q = q, m = m, c = 1.0)
+            param = prepare_canonical(; A = A_landau, q = q, m = m, c = 1.0)
 
             x0 = SA[0.0, 0.0, 0.0]
             v0 = SA[1.0, 0.0, 0.0]

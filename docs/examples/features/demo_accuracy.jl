@@ -69,7 +69,6 @@ end
 
 ## Test Problem Definition
 B_func(x, t) = SA[0.0, 0.0, 1.0]
-E_func = ZeroField()
 
 ## Parameters (Dimensionless units: q=1, m=1, B=1)
 q = 1.0
@@ -88,7 +87,7 @@ t_end = n_periods * T_period
 tspan = (0.0, t_end)
 
 ## Trace problem
-param = prepare(E_func, B_func; q, m)
+param = prepare(; B = B_func, q, m)
 prob1 = TraceProblem(u0, tspan, param)
 
 ## Time steps to test

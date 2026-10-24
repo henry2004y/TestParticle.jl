@@ -75,8 +75,11 @@ function get_cell_centers(grid::RectilinearGrid)
     return map(c -> (c[1:(end - 1)] .+ c[2:end]) ./ 2, grid_coords)
 end
 
+prepare(grid::Union{CartesianGrid, RectilinearGrid}; E = nothing, B = nothing, F = nothing, kw...) =
+    prepare(grid, E, B, F; kw...)
+
 function prepare(
-        grid::CartesianGrid, E, B, F = TestParticle.ZeroField();
+        grid::CartesianGrid, E, B, F = nothing;
         order = 1, bc = TestParticle.FillExtrap(NaN), kw...
     )
     return TestParticle._prepare(
@@ -86,7 +89,7 @@ function prepare(
 end
 
 function prepare(
-        grid::RectilinearGrid, E, B, F = TestParticle.ZeroField();
+        grid::RectilinearGrid, E, B, F = nothing;
         order = 1, bc = TestParticle.FillExtrap(NaN), kw...
     )
     return TestParticle._prepare(
