@@ -96,7 +96,7 @@ end
             return remake(prob; u0 = u0_new)
         end
 
-        prob = TraceHybridProblem(u0, tspan, p; prob_func = hybrid_prob_func)
+        prob = TraceProblem(u0, tspan, p; prob_func = hybrid_prob_func)
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         seed = 5678
 
@@ -160,7 +160,7 @@ end
                 )
             )
         end
-        prob = TraceHybridProblem(u0, tspan, p; prob_func = pf_h)
+        prob = TraceProblem(u0, tspan, p; prob_func = pf_h)
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
         v1 = init_v(solve(prob, alg; trajectories = 6, seed = 1))
