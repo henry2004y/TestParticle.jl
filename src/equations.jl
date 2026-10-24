@@ -3,15 +3,15 @@
 get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
-function get_dv(v::AbstractVector{T}, x, p, t) where {T <: AbstractFloat}
-    E = SVector{3, T}(p.E(x, t))
-    B = SVector{3, T}(p.B(x, t))
-    F = SVector{3, T}(p.F(x, t))
+@inline function get_dv(v::AbstractVector{T}, x, p, t) where {T <: AbstractFloat}
+    E = _eval_field(T, p.E, x, t)
+    B = _eval_field(T, p.B, x, t)
+    F = _eval_field(T, p.F, x, t)
 
-    return T(p.q2m) * (v × B + E) + F / T(p.m)
+    return SVector{3, T}(T(p.q2m) * (v × B + E) + F / T(p.m))
 end
 
-get_dv(v, x, p, t) = p.q2m * (v × p.B(x, t) + p.E(x, t)) + p.F(x, t) / p.m
+@inline get_dv(v, x, p, t) = p.q2m * (v × p.B(x, t) + p.E(x, t)) + p.F(x, t) / p.m
 
 """
     get_dx!(dx, v, x, p, t)
@@ -89,14 +89,17 @@ function trace(y, p, t)
     return vcat(v, dv)
 end
 
+_speed_of_light(p) = hasproperty(p, :c) ? p.c : c
+
 """
     trace_relativistic!(dy, y, p, t)
 
 ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
+The speed of light is `p.c` when present, `c` in SI otherwise.
 """
 function trace_relativistic!(dy, y, p, t)
     γv = get_v(y)
-    v = get_relativistic_v(γv)
+    v = get_relativistic_v(γv; c = _speed_of_light(p))
     @inbounds dy[1:3] = v
     @inbounds dy[4:6] = get_dv(v, y, p, t)
 
@@ -174,94 +177,44 @@ end
 """
     trace_relativistic(y, p, t) -> SVector{6}
 
-ODE equations for relativistic charged particle (x, γv) moving in static EM field with out-of-place form.
+ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
 function trace_relativistic(y, p, t)
     γv = get_v(y)
-    v = get_relativistic_v(γv)
+    v = get_relativistic_v(γv; c = _speed_of_light(p))
     dv = get_dv(v, y, p, t)
 
     return vcat(v, dv)
 end
 
 """
-    trace_normalized!(dy, y, p, t)
+    _lorentz_factor(u, f, p)
 
-Normalized ODE equations for charged particle moving in EM field with in-place form.
-If the field is in 2D X-Y plane, periodic boundary should be applied for the field in z via
-the extrapolation function.
+Lorentz factor of the velocity part `u` of a state traced with the equations `f` and
+parameters `p`; the relativistic equations store `γv` in place of `v`.
 """
-function trace_normalized!(dy, y, p, t)
-    v = get_v(y)
-    E = p.E(y, t)
-    B = p.B(y, t)
+_lorentz_factor(u, f, p) = one(eltype(u))
+_lorentz_factor(
+    γv, ::Union{typeof(trace_relativistic!), typeof(trace_relativistic)}, p
+) = sqrt(1 + (γv ⋅ γv) / _speed_of_light(p)^2)
 
-    @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = v × B + E
+# Kept for compatibility until the next breaking release: the general equations with
+# `q = 1, m = 1` (and `c = 1`) and no external force, whatever `p` holds besides `E` and `B`.
+_normalized(p) = (; q2m = 1, m = 1, p.E, p.B, F = ZeroField(), c = 1)
 
-    return
-end
-
-"""
-    trace_normalized(y, p, t)
-
-Normalized ODE equations for charged particle moving in EM field with out-of-place form.
-"""
-function trace_normalized(y, p, t)
-    v = get_v(y)
-    E = p.E(y, t)
-    B = p.B(y, t)
-    dv = v × B + E
-
-    return vcat(v, dv)
-end
-
-"""
-    _lorentz_factor(u, f)
-
-Lorentz factor of the velocity part `u` of a state traced with the equations `f`,
-which store `γv` in place of `v` for the relativistic equations.
-"""
-_lorentz_factor(u, f) = one(eltype(u))
-_lorentz_factor(γv, ::Union{typeof(trace_relativistic!), typeof(trace_relativistic)}) =
-    sqrt(1 + (γv ⋅ γv) / c^2)
-
-"""
-    trace_relativistic_normalized!(dy, y, p, t)
-
-Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
-"""
-function trace_relativistic_normalized!(dy, y, p, t)
-    E = p.E(y, t)
-    B = p.B(y, t)
-    γv = get_v(y)
-
-    v = get_relativistic_v(γv; c = 1)
-    @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = v × B + E
-
-    return
-end
-
-"""
-    trace_relativistic_normalized(y, p, t)
-
-Normalized ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
-"""
-function trace_relativistic_normalized(y, p, t)
-    E = p.E(y, t)
-    B = p.B(y, t)
-    γv = get_v(y)
-
-    v = get_relativistic_v(γv; c = 1)
-    dv = v × B + E
-
-    return vcat(v, dv)
-end
+# Inlined down to the field evaluation (`get_dv` is `@inline`) so that the unit `q2m`, `m`
+# and `c` constant-fold and the rebuilt parameters, which copy the possibly large
+# interpolated fields, are never materialized.
+trace_normalized!(dy, y, p, t) = @inline trace!(dy, y, _normalized(p), t)
+trace_normalized(y, p, t) = @inline trace(y, _normalized(p), t)
+trace_relativistic_normalized!(dy, y, p, t) =
+    @inline trace_relativistic!(dy, y, _normalized(p), t)
+trace_relativistic_normalized(y, p, t) = @inline trace_relativistic(y, _normalized(p), t)
 
 _lorentz_factor(
     γv,
-    ::Union{typeof(trace_relativistic_normalized!), typeof(trace_relativistic_normalized)}
+    ::Union{typeof(trace_relativistic_normalized!), typeof(trace_relativistic_normalized)},
+    p
 ) = sqrt(1 + γv ⋅ γv)
 
 """
@@ -542,10 +495,10 @@ function trace_canonical!(dy, y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     v = (p_can - q * A) / m
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -564,10 +517,10 @@ function trace_canonical(y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     v = (p_can - q * A) / m
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -579,12 +532,12 @@ function trace_canonical_relativistic!(dy, y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     p_kin = p_can - q * A
     γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -603,12 +556,12 @@ function trace_canonical_relativistic(y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     p_kin = p_can - q * A
     γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -622,7 +575,7 @@ function velocity_to_canonical(
     (; q, m, c, pf) = p
     x_vec = SA[x0[1], x0[2], x0[3]]
     v_vec = SA[v0[1], v0[2], v0[3]]
-    A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
+    A = _eval_field(eltype(x_vec), pf.A, x_vec, t)
 
     p_can = if relativistic
         v2 = sum(v_vec .^ 2)
@@ -642,7 +595,7 @@ function canonical_to_velocity(
     (; q, m, c, pf) = p
     x_vec = SA[x[1], x[2], x[3]]
     p_vec = SA[p_can[1], p_can[2], p_can[3]]
-    A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
+    A = _eval_field(eltype(x_vec), pf.A, x_vec, t)
     p_kin = p_vec - q * A
 
     if relativistic
@@ -662,7 +615,7 @@ function canonical_hamiltonian(u::AbstractVector, p, t = 0.0; relativistic::Bool
     x = SA[u[1], u[2], u[3]]
     p_can = SA[u[4], u[5], u[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     phi = pf.phi isa ZeroField ? zero(eltype(x)) : pf.phi(x, t)
     p_kin = p_can - q * A
 

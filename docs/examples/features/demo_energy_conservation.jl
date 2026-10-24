@@ -50,7 +50,7 @@ function run_test(
     )
     results = Tuple{String, Float64}[]
     u0 = [x0..., v0...]
-    prob_ode = ODEProblem(trace_normalized!, u0, tspan, param)
+    prob_ode = ODEProblem(trace!, u0, tspan, param)
     prob_tp = TraceProblem(u0, tspan, param)
     prob_dyn = DynamicalODEProblem(get_dv!, get_dx!, v0, x0, tspan, param)
 

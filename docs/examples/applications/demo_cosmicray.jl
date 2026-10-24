@@ -14,7 +14,7 @@
 # r_L = \frac{|v_\perp|}{|B|},
 # ```
 # so one unit of distance equals one gyroradius. We trace with two solvers that
-# share the same underlying physics: the classic ``trace\_normalized!`` ODE
+# share the same underlying physics: the ``trace!`` ODE with ``q = m = 1``
 # (Runge–Kutta, ``Vern9``) and the native Boris pusher
 # (``MultistepBoris4`` through the ensemble ``TraceProblem`` interface). The latter
 # is the same solver path used for production runs on MHD snapshots; the only
@@ -123,7 +123,7 @@ Bfunc(x) = itp(x) ./ B0 # normalize: background guide field -> 1
 
 param = prepare(E_zero, Bfunc; q = 1.0, m = 1.0);
 
-# ## 3. Solver consistency: `trace_normalized!` vs Boris
+# ## 3. Solver consistency: RK vs Boris
 #
 # Both solvers advance the same normalized equations ``\dot{\mathbf{v}} =
 # \mathbf{v}\times\mathbf{B}``, ``\dot{\mathbf{x}} = \mathbf{v}`` with the same
@@ -138,7 +138,7 @@ param = prepare(E_zero, Bfunc; q = 1.0, m = 1.0);
 stateinit = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0] # v = 1 -> r_L = 1
 tspan0 = (0.0, 2π)
 
-prob_rk = ODEProblem(trace_normalized!, stateinit, tspan0, param_uniform)
+prob_rk = ODEProblem(trace!, stateinit, tspan0, param_uniform)
 sol_rk = solve(prob_rk, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b = TraceProblem(stateinit, tspan0, param_uniform)
@@ -163,7 +163,7 @@ ax = Axis(
     f[1, 1], title = "Perpendicular orbit (r_L = 1): both solvers",
     xlabel = "X", ylabel = "Y", aspect = DataAspect()
 )
-lines!(ax, sol_rk, idxs = (1, 2); color = :steelblue, linewidth = 2, label = "RK (trace_normalized!)")
+lines!(ax, sol_rk, idxs = (1, 2); color = :steelblue, linewidth = 2, label = "RK (trace!)")
 lines!(ax, sol_b[1, :], sol_b[2, :]; color = :tomato, linestyle = :dash, linewidth = 2, label = "Boris")
 axislegend(ax)
 f = DisplayAs.PNG(f) #hide
@@ -183,7 +183,7 @@ v0 = e1 + 0.3 * b0                 # |v| ≈ 1, mostly perpendicular
 stateinit_t = collect(vcat(x0, v0))
 tspan_t = (0.0, 2π * 3)
 
-prob_rk_t = ODEProblem(trace_normalized!, stateinit_t, tspan_t, param)
+prob_rk_t = ODEProblem(trace!, stateinit_t, tspan_t, param)
 sol_rk_t = solve(prob_rk_t, Vern9(); reltol = 1.0e-9, abstol = 1.0e-11)
 
 prob_b_t = TraceProblem(stateinit_t, tspan_t, param)
@@ -204,7 +204,7 @@ ax = Axis(
     f[1, 1], title = "Turbulent-field trajectory: both solvers",
     xlabel = "X", ylabel = "Y", aspect = DataAspect()
 )
-lines!(ax, first.(rk_xy), last.(rk_xy); color = :steelblue, linewidth = 2, label = "RK (trace_normalized!)")
+lines!(ax, first.(rk_xy), last.(rk_xy); color = :steelblue, linewidth = 2, label = "RK (trace!)")
 lines!(ax, first.(bc_xy), last.(bc_xy); color = :tomato, linestyle = :dash, linewidth = 2, label = "Boris")
 axislegend(ax)
 f = DisplayAs.PNG(f) #hide
