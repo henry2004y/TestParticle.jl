@@ -25,7 +25,6 @@ end
 
 # In TestParticle.jl v0.17, we introduced support for `Meshes.jl` grid geometries: `StructuredGrid`.
 # `StructuredGrid` detects whether the coordinates are uniform or non-uniform and selects the appropriate interpolation method.
-zero_E = TP.ZeroField()
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
@@ -35,7 +34,7 @@ end
 tspan = (0, 18)
 
 param = TP.prepare(
-    r, θ, ϕ, zero_E, B; species = TP.Proton, gridtype = TP.StructuredGrid
+    r, θ, ϕ; B, species = TP.Proton, gridtype = TP.StructuredGrid
 )
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7())

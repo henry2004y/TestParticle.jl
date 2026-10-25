@@ -110,7 +110,7 @@ Markdown.parse(String(take!(io))) #hide
 # With no magnetic field there is nothing for a Boris pusher to do, so an ordinary ODE
 # solver is used from here on.
 
-param = prepare(ZeroField(), ZeroField(), gravity; q = 0.0, m = 1.0)
+param = prepare(; F = gravity, q = 0.0, m = 1.0)
 
 # ## Fractal outcome map
 #
