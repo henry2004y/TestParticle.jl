@@ -117,7 +117,7 @@ end
     alg_args = (
         threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
     )
-    prob = TraceHybridProblem(u0, tspan, p)
+    prob = TraceProblem(u0, tspan, p)
 
     # Default (no `adiabaticity`) must equal `:curvature` exactly, i.e. the
     # legacy V1 behaviour is preserved.
@@ -206,7 +206,7 @@ end
         T_gyro = 2π / abs(q / m * B0)
         tspan = (0.0, 30 * T_gyro)
         p = (q / m, m, E_field, B_rot_f, TP.ZeroField())
-        prob_rot = TraceHybridProblem(u0, tspan, p)
+        prob_rot = TraceProblem(u0, tspan, p)
         args = (
             threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
             check_interval = 20,

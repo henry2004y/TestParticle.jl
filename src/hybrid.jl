@@ -3,7 +3,8 @@
 """
     AdaptiveHybrid{T}
 
-Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC).
+Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC), used as
+`solve(TraceProblem(u0, tspan, p), alg)` with the full-orbit state `u0`.
 
 Mode switching uses hysteresis with two adiabaticity thresholds to avoid
 rapid GC ↔ FO chattering near a single bound:
@@ -88,11 +89,7 @@ function AdaptiveHybrid(;
     )
 end
 
-"""
-    TraceHybridProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF}
-
-Problem type for hybrid GC-FO tracing. Initial condition `u0` should be the full orbit state (6-element).
-"""
+# Built by `solve(::TraceProblem, ::AdaptiveHybrid)`; exported for compatibility.
 struct TraceHybridProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     AbstractODEProblem{uType, tType, isinplace}
     f::F

@@ -41,7 +41,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
-        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceProblem(u0, tspan, p), alg)
         @test sols.u[1].retcode == TP.ReturnCode.Success
     end
 
@@ -52,7 +52,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         p = (q2m, m, E_field, B_field_sheared, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
-        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceProblem(u0, tspan, p), alg)
         @test sols.u[1].retcode == TP.ReturnCode.Success
     end
 
@@ -74,7 +74,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             check_interval = 100,
         )
 
-        sols = solve(TraceHybridProblem(u0, tspan, p), alg)
+        sols = solve(TraceProblem(u0, tspan, p), alg)
 
         @test sols.u[1].retcode == TP.ReturnCode.Success
         # Check that we actually have a reasonable number of steps (hybrid should adapt)
@@ -117,7 +117,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             threshold = 0.0, dtmax = 10 * T_gyro, dtmin = 1.0e-6 * T_gyro,
             check_interval = 100
         )
-        sol_h = solve(TraceHybridProblem(u0, tspan, p), alg_fo).u[1]
+        sol_h = solve(TraceProblem(u0, tspan, p), alg_fo).u[1]
 
         dt_fo = 2π * alg_fo.safety_fo / (abs(q2m) * 0.01)
         sol_b = solve(TraceProblem(u0, tspan, p), Boris(); dt = dt_fo)
@@ -166,7 +166,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             threshold_gc_to_fo = 0.2, threshold_fo_to_gc = 0.05,
             dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
         )
-        sol_buf = solve(TraceHybridProblem(u0, tspan, p), alg_buf).u[1]
+        sol_buf = solve(TraceProblem(u0, tspan, p), alg_buf).u[1]
         @test sol_buf.retcode == TP.ReturnCode.Success
         @test length(sol_buf.t) > 100
     end
@@ -177,7 +177,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         tspan = (0.0, 1.0e-4)
         p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
-        prob = TraceHybridProblem(u0, tspan, p)
+        prob = TraceProblem(u0, tspan, p)
 
         sol_all = solve(prob, alg).u[1]
 
@@ -235,10 +235,11 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             threshold = 0.1, dtmax = 1.0, reltol = 0.0
         )
 
-        @test_throws ArgumentError TraceHybridProblem(
-            SA[0.0, 0.0, 0.0], (0.0, 1.0), p_dummy
+        alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0)
+        @test_throws ArgumentError solve(
+            TraceProblem(SA[0.0, 0.0, 0.0], (0.0, 1.0), p_dummy), alg
         )
-        @test_throws ArgumentError TraceHybridProblem(u0_6, (1.0, 0.0), p_dummy)
+        @test_throws ArgumentError solve(TraceProblem(u0_6, (1.0, 0.0), p_dummy), alg)
     end
 
     # 10. Early termination with isoutside and maxiters
@@ -246,7 +247,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         tspan = (0.0, 1.0e-3)
         p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
-        prob = TraceHybridProblem(u0, tspan, p)
+        prob = TraceProblem(u0, tspan, p)
         isoutside = (u, p, t) -> u[3] > 1.0e-2
 
         # Termination via isoutside in GC mode
@@ -273,7 +274,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         tspan = (0.0, 1.0e-4)
         p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
-        prob = TraceHybridProblem(u0, tspan, p)
+        prob = TraceProblem(u0, tspan, p)
 
         sol_ends = solve(prob, alg; save_everystep = false).u[1]
         @test length(sol_ends.t) == 2
@@ -291,7 +292,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
             check_interval = 10,
         )
-        sol = solve(TraceHybridProblem(u0, tspan, p), alg).u[1]
+        sol = solve(TraceProblem(u0, tspan, p), alg).u[1]
         @test sol.retcode == TP.ReturnCode.Success
 
         # Diagnostic timestamps must be strictly monotonic (no duplicates)
