@@ -129,9 +129,9 @@ alg = tp.jl.seval("AdaptiveMultistepBoris{6}(n=4, safety=0.1)")
 res = tp.trace(x0, v0, tspan, dt, get_B, alg=alg)
 ```
 
-The adaptive hybrid solver needs a `TraceHybridProblem` rather than a
-`TraceProblem`, so it is not reachable through `trace`; build it with the raw
-Julia API instead, as in the hybrid [examples](@ref).
+The adaptive hybrid solver takes no fixed `dt`, so it is not reachable through
+`trace`; call `solve(TraceProblem(...), AdaptiveHybrid(...))` with the raw Julia API
+instead, as in the hybrid [examples](@ref).
 
 ### Result objects
 
