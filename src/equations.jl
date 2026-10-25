@@ -4,11 +4,11 @@ get_x(u) = @inbounds SA[u[1], u[2], u[3]]
 get_v(u) = @inbounds SA[u[4], u[5], u[6]]
 
 @inline function get_dv(v::AbstractVector{T}, x, p, t) where {T <: AbstractFloat}
-    E = SVector{3, T}(p.E(x, t))
-    B = SVector{3, T}(p.B(x, t))
-    F = SVector{3, T}(p.F(x, t))
+    E = _eval_field(T, p.E, x, t)
+    B = _eval_field(T, p.B, x, t)
+    F = _eval_field(T, p.F, x, t)
 
-    return T(p.q2m) * (v × B + E) + F / T(p.m)
+    return SVector{3, T}(T(p.q2m) * (v × B + E) + F / T(p.m))
 end
 
 @inline get_dv(v, x, p, t) = p.q2m * (v × p.B(x, t) + p.E(x, t)) + p.F(x, t) / p.m
@@ -495,10 +495,10 @@ function trace_canonical!(dy, y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     v = (p_can - q * A) / m
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -517,10 +517,10 @@ function trace_canonical(y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     v = (p_can - q * A) / m
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -532,12 +532,12 @@ function trace_canonical_relativistic!(dy, y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     p_kin = p_can - q * A
     γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -556,12 +556,12 @@ function trace_canonical_relativistic(y, p, t)
     x = @inbounds SA[y[1], y[2], y[3]]
     p_can = @inbounds SA[y[4], y[5], y[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     p_kin = p_can - q * A
     γ = √(1 + sum(p_kin .^ 2) / (m^2 * c^2))
     v = p_kin / (γ * m)
 
-    grad_phi = pf.grad_phi isa ZeroField ? zero(x) : SVector{3}(pf.grad_phi(x, t))
+    grad_phi = _eval_field(eltype(x), pf.grad_phi, x, t)
     grad_A = pf.grad_A(x, t)
 
     dp = q * (grad_A * v) - q * grad_phi
@@ -575,7 +575,7 @@ function velocity_to_canonical(
     (; q, m, c, pf) = p
     x_vec = SA[x0[1], x0[2], x0[3]]
     v_vec = SA[v0[1], v0[2], v0[3]]
-    A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
+    A = _eval_field(eltype(x_vec), pf.A, x_vec, t)
 
     p_can = if relativistic
         v2 = sum(v_vec .^ 2)
@@ -595,7 +595,7 @@ function canonical_to_velocity(
     (; q, m, c, pf) = p
     x_vec = SA[x[1], x[2], x[3]]
     p_vec = SA[p_can[1], p_can[2], p_can[3]]
-    A = pf.A isa ZeroField ? zero(x_vec) : SVector{3}(pf.A(x_vec, t))
+    A = _eval_field(eltype(x_vec), pf.A, x_vec, t)
     p_kin = p_vec - q * A
 
     if relativistic
@@ -615,7 +615,7 @@ function canonical_hamiltonian(u::AbstractVector, p, t = 0.0; relativistic::Bool
     x = SA[u[1], u[2], u[3]]
     p_can = SA[u[4], u[5], u[6]]
 
-    A = pf.A isa ZeroField ? zero(x) : SVector{3}(pf.A(x, t))
+    A = _eval_field(eltype(x), pf.A, x, t)
     phi = pf.phi isa ZeroField ? zero(eltype(x)) : pf.phi(x, t)
     p_kin = p_can - q * A
 
