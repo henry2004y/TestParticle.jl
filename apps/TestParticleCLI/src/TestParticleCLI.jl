@@ -111,7 +111,13 @@ function parse_particle_config(pdict::Dict{String, Any})::ParticleConfig
         energy_eV = Float64(pdict["energy_eV"])
         alpha_deg = Float64(get(pdict, "pitch_angle_deg", 90.0))
         alpha = deg2rad(alpha_deg)
-        m = sname == "proton" ? TP.mᵢ : TP.mₑ
+        m = if sname == "proton"
+            TP.mᵢ
+        elseif sname == "electron"
+            TP.mₑ
+        else
+            Float64(get(pdict, "m", TP.mₑ))
+        end
         v_mag = sqrt(2.0 * energy_eV * TP.eV / m)
         SA[v_mag * sin(alpha), 0.0, v_mag * cos(alpha)]
     else
