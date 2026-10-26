@@ -545,15 +545,20 @@ end
             E_drift(x, t) = SA[0.0, 0.1 * c * B0, 0.0]
             param_E = prepare(E_drift, B_func; species = Electron)
             r_iip = get_gyroradius(
-                solve(ODEProblem(trace_relativistic!, stateinit, tspan, param_E), Vern6()),
-                0.0
+                solve(
+                    ODEProblem(trace_relativistic!, stateinit, tspan, param_E),
+                    Vern6();
+                    dt = 1.0e-10,
+                ),
+                0.0,
             )
             r_oop = get_gyroradius(
                 solve(
                     ODEProblem(trace_relativistic, SVector{6}(stateinit), tspan, param_E),
-                    Vern6()
+                    Vern6();
+                    dt = 1.0e-10,
                 ),
-                0.0
+                0.0,
             )
             @test r_iip ≈ r_oop
         end

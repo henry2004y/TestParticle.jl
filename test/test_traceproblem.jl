@@ -132,7 +132,7 @@ using ..test_common: uniform_B, uniform_Ex
         @test prob_f32.p[2] isa Float32
 
         # ODE solver (Tsit5) in Float32
-        sol_ode_f32 = solve(prob_f32, Tsit5())
+        sol_ode_f32 = solve(prob_f32, Tsit5(); dt = dt_f32)
         @test eltype(sol_ode_f32.t) === Float32
         @test eltype(sol_ode_f32.u[end]) === Float32
 

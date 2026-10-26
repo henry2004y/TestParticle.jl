@@ -35,7 +35,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
     trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
 export AdaptiveHybrid
 export vdf_backward_trace, vdf_forward_trace
-export orbit, monitor
+export orbit, monitor, save_trajectory
 export get_fields, get_work_rates, get_work
 export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
@@ -87,6 +87,16 @@ include("deprecated.jl")
 function orbit end
 
 function monitor end
+
+function save_trajectory end
+
+function save_trajectory(args...; kwargs...)
+    throw(
+        ArgumentError(
+            "save_trajectory requires JLD2.jl. Please run `using JLD2` to enable trajectory saving."
+        )
+    )
+end
 
 include("precompile.jl")
 
