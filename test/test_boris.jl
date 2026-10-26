@@ -463,7 +463,7 @@ end
 
         # Post-process
         E_post, B_post = get_fields(sol)
-        work_post = get_work(sol)
+        work_post = get_work_rates(sol)
 
         # Comparison
         # Reference indices:

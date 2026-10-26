@@ -202,10 +202,6 @@ function PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A
     return PotentialField(f_phi, f_A, _grad_phi(grad_phi, f_phi), _grad_A(grad_A, f_A))
 end
 
-# Positional forms, kept for compatibility until the next breaking release.
-PotentialField(phi, A; kw...) = PotentialField(; phi, A, kw...)
-PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
-
 _grad_phi(g, phi) = prepare_field(g)
 _grad_phi(::Nothing, ::ZeroField) = ZeroField()
 _grad_phi(::Nothing, phi) = (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
@@ -236,7 +232,3 @@ end
 """
 prepare_canonical(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing, kw...) =
     prepare(PotentialField(; phi, A, grad_phi, grad_A); kw...)
-
-# Positional forms, kept for compatibility until the next breaking release.
-prepare_canonical(phi, A; kw...) = prepare_canonical(; phi, A, kw...)
-prepare_canonical(A; phi = nothing, kw...) = prepare_canonical(; phi, A, kw...)

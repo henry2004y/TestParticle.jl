@@ -36,7 +36,7 @@ export trace!, trace_relativistic!, trace_normalized!, trace_relativistic_normal
 export AdaptiveHybrid
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor
-export get_fields, get_work
+export get_fields, get_work_rates, get_work
 export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
@@ -54,7 +54,7 @@ public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
     Maxwellian, BiMaxwellian, Kappa, BiKappa,
     sample_unit_sphere, sample_maxwellian, sample_velocity_ball, generate_sphere,
     jacobian, derivative_t,
-    get_magnetic_properties, get_work_rates, get_work_channels,
+    get_magnetic_properties, get_work_channels,
     get_dx!, get_dv!,
     LazyTimeInterpolator,
     GPUGrid1D, GPUGrid2D, GPUGrid3D, GPUSphericalGrid, GPUUniformAxis,
@@ -67,6 +67,8 @@ public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
 
 include("types.jl")
 include("utility/utility.jl")
+include("utility/field_geometry.jl")
+include("utility/work.jl")
 include("utility/interpolation.jl")
 include("utility/gpu_grid.jl")
 include("sampler.jl")
@@ -76,9 +78,12 @@ include("gc/gc.jl")
 include("gc/gc_solver.jl")
 include("gc/rk4_gc.jl")
 include("gc/rk45_gc.jl")
+include("gc/equations.jl")
 include("equations.jl")
+include("canonical.jl")
 include("problem.jl")
 include("hybrid.jl")
+include("deprecated.jl")
 
 function orbit end
 

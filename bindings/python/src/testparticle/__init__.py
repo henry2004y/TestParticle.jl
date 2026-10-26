@@ -130,6 +130,7 @@ _REEXPORTS = [
     ("orbit", "orbit"),
     ("monitor", "monitor"),
     ("get_fields", "get_fields"),
+    ("get_work_rates", "get_work_rates"),
     ("get_work", "get_work"),
     ("LazyTimeInterpolator", "LazyTimeInterpolator"),
     ("CartesianGrid", "CartesianGrid"),

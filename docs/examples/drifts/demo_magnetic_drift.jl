@@ -14,7 +14,6 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using TestParticle: get_gc
-using TestParticle: get_B_parameters
 using LinearAlgebra: norm, ×, ⋅, normalize
 using ForwardDiff: jacobian
 using CairoMakie
@@ -47,7 +46,7 @@ curve_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * Bmag0
 
 # Analytic guiding-center drift evaluated directly from the field function, using
 # exactly the same quantities (`∇B` from the B-Jacobian, `κ` from `JB·b`) as the
-# package's [`get_B_parameters`](@ref TestParticle.get_B_parameters) /
+# package's [`get_magnetic_properties`](@ref TestParticle.get_magnetic_properties) /
 # `trace_gc_drifts!`. This is the "code
 # tracing" reference against which we compare the Boris-traced orbit.
 function analytic_drift(x, v, q, m)
