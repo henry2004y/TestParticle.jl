@@ -103,7 +103,7 @@ end
 function parse_particle_config(pdict::Dict{String, Any})::ParticleConfig
     sname = lowercase(get(pdict, "species", "electron"))
     pos = haskey(pdict, "position") ? parse_svector3(pdict["position"]) :
-          SA[0.0, 0.0, 0.0]
+        SA[0.0, 0.0, 0.0]
 
     vel = if haskey(pdict, "velocity")
         parse_svector3(pdict["velocity"])
