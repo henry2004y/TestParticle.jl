@@ -103,7 +103,7 @@ end
 
         if SaveWork
             magnetic_props = get_magnetic_properties(r, t, p.B)
-            B_vec = SVector{3, T}(magnetic_props[1])
+            B_vec = SVector{3, T}(magnetic_props.B)
             data = vcat(data, E_field, B_vec)
         else
             B_vec = SVector{3, T}(p.B(r, t))

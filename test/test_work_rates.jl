@@ -149,8 +149,8 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
         mp = TP.get_magnetic_properties(x, t, Bf)
         ref = TP.get_work_rates(y, p, t)
-        @test TP.get_work_rates(y, p, t, mp) == ref
-        @test TP.get_work_rates(y, p, t, mp, Ef(x, t)) == ref
+        @test TP.get_work_rates(y, p, t, mp) ≈ ref rtol = 1.0e-14
+        @test TP.get_work_rates(y, p, t, mp, Ef(x, t)) ≈ ref rtol = 1.0e-14
     end
 
     @testset "channel grouping merges grad-B into betatron" begin

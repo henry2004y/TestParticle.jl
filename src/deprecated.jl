@@ -6,6 +6,11 @@ PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
 prepare_canonical(phi, A; kw...) = prepare_canonical(; phi, A, kw...)
 prepare_canonical(A; phi = nothing, kw...) = prepare_canonical(; phi, A, kw...)
 
+function get_B_parameters(x, t, Bfunc)
+    (; B, Bmag, b̂, ∇B, JB) = get_magnetic_properties(x, t, Bfunc)
+    return B, Bmag, b̂, ∇B, JB
+end
+
 # The general equations with `q = 1, m = 1` (and `c = 1`) and no external force,
 # whatever `p` holds besides `E` and `B`.
 _normalized(p) = (; q2m = 1, m = 1, p.E, p.B, F = ZeroField(), c = 1)

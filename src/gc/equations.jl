@@ -73,28 +73,19 @@ Parallel velocity is also added. This expression requires the full particle traj
 function trace_gc_drifts!(dx, x, p, t)
     # TODO: support external forces
     (; q2m, sol) = p
-    Efunc, Bfunc = p.E, p.B
-    xu = sol(t)
-    v = get_v(xu)
-    E = Efunc(x, t)
+    v = get_v(sol(t))
+    E = p.E(x, t)
+    (; ∇B, κ, b̂, Bmag) = get_magnetic_properties(x, t, p.B)
 
-    B, Bmag, b, ∇B, JB = get_B_parameters(x, t, Bfunc)
-
-    v_par_val = v ⋅ b
-    v_par = v_par_val .* b
-    v_perp = v - v_par
+    v_par_val = v ⋅ b̂
+    v_par = v_par_val * b̂
     Ω = q2m * Bmag
-
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    # κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
-    κ = (JB * b + b * (-∇B ⋅ b)) / Bmag
-
-    v_E = (E × b) / Bmag
-    w = v_perp - v_E
+    v_E = (E × b̂) / Bmag
+    w = v - v_par - v_E
 
     # w^2*(b×∇|B|)/(2*Ω*B) + v∥^2*(b×κ)/Ω + v_E + v∥
-    @inbounds dx[1:3] = (w[1]^2 + w[2]^2 + w[3]^2) * (b × ∇B) / (2 * Ω * Bmag) +
-        v_par_val^2 * (b × κ) / Ω +
+    @inbounds dx[1:3] = (w ⋅ w) * (b̂ × ∇B) / (2 * Ω * Bmag) +
+        v_par_val^2 * (b̂ × κ) / Ω +
         v_E + v_par
 
     return
@@ -126,7 +117,7 @@ function trace_gc(y, p, t)
     X = get_x(y)
 
     E = p.E(X, t)
-    B, Bmag, b̂, ∇B, JB = get_B_parameters(X, t, p.B)
+    (; B, Bmag, b̂, ∇B, JB) = get_magnetic_properties(X, t, p.B)
 
     # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
     # ∇ × B from JB (Jacobian of B)

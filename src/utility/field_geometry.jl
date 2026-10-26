@@ -1,10 +1,3 @@
-@inline function _get_curvature(B, Bmag, b̂, JB)
-    # Grad-B from Jacobian
-    ∇B = JB' * b̂
-    # Curvature vector κ = (b̂ ⋅ ∇) b̂
-    return (JB * b̂ + b̂ * (-∇B ⋅ b̂)) / Bmag, ∇B
-end
-
 @inline function _get_B_jacobian(x, t, Bfunc)
     result = DiffResults.JacobianResult(x)
     result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
@@ -21,26 +14,29 @@ end
     get_magnetic_properties(x, t, Bfunc)
 
 Calculate magnetic field properties at position `x` and time `t`.
-Returns the NamedTuple `(; B, ∇B, κ, b̂, Bmag)`:
+Returns the NamedTuple `(; B, ∇B, κ, b̂, Bmag, JB)`:
 - `B`: Magnetic field vector
 - `∇B`: Gradient of magnetic field magnitude
-- `κ`: Curvature vector
+- `κ`: Curvature vector `(b̂ ⋅ ∇) b̂`
 - `b̂`: Unit magnetic field vector
 - `Bmag`: Magnitude of B
+- `JB`: Jacobian of B, `JB[i, j] = ∂Bᵢ/∂xⱼ`
+
+`∇B`, `κ` and `b̂` are zero in a magnetic null.
 """
 @inline function get_magnetic_properties(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
 
     Bmag = norm(B)
-    if Bmag == 0
-        vzero = zero(x)
-        return (; B = vzero, ∇B = vzero, κ = vzero, b̂ = vzero, Bmag)
+    if iszero(Bmag)
+        vzero = zero(B)
+        return (; B, ∇B = vzero, κ = vzero, b̂ = vzero, Bmag, JB)
     end
     b̂ = B / Bmag
+    ∇B = JB' * b̂
+    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
 
-    κ, ∇B = _get_curvature(B, Bmag, b̂, JB)
-
-    return (; B, ∇B, κ, b̂, Bmag)
+    return (; B, ∇B, κ, b̂, Bmag, JB)
 end
 
 """
@@ -64,18 +60,12 @@ Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`
 `ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
 """
 @inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
-    B, JB = _get_B_jacobian(r, t, Bfunc)
-    Bmag = norm(B)
+    (; κ, Bmag) = get_magnetic_properties(r, t, Bfunc)
     iszero(Bmag) && return Inf
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
 
-    κ, _ = _get_curvature(B, Bmag, B / Bmag, JB)
-
-    k_mag = norm(κ)
-    invRc = iszero(k_mag) ? zero(k_mag) : k_mag
-
-    return ρ * invRc
+    return ρ * norm(κ)
 end
 
 function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
@@ -155,22 +145,13 @@ parameters at position `x` and time `t`:
 components are `Inf`.
 """
 @inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
-    B, JB = _get_B_jacobian(x, t, Bfunc)
-    Bmag = norm(B)
+    (; ∇B, κ, Bmag, JB) = get_magnetic_properties(x, t, Bfunc)
     iszero(Bmag) && return (Inf, Inf, Inf)
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q)
-    b̂ = B / Bmag
-
-    # grad-B length scale L_B = |B| / |∇B|, with ∇B = ∇|B|
-    ∇B = JB' * b̂
-    gradB_mag = norm(∇B)
-    L_B = iszero(gradB_mag) ? Inf : Bmag / gradB_mag
-    ε_gradB = ρ / L_B
-
-    # curvature drift: ε_curv = ρ · |κ|, κ = (b̂ ⋅ ∇) b̂
-    κ, _ = _get_curvature(B, Bmag, b̂, JB)
     ε_curv = ρ * norm(κ)
+    # ρ / L_B with the grad-B length scale L_B = |B| / |∇B|
+    ε_gradB = ρ * norm(∇B) / Bmag
 
     # CHIMP's full criterion: ε = ρ · ‖JB‖_F / |B|, where ‖JB‖_F is the
     # Frobenius norm of the B-Jacobian. This dominates both ε_curv and ε_gradB.
@@ -181,28 +162,4 @@ end
 
 function adiabaticity_components(x, Bfunc, μ, t::Number = 0.0; species = Proton)
     return adiabaticity_components(x, Bfunc, species.q, species.m, μ, t)
-end
-
-"""
-    get_B_parameters(x, t, Bfunc)
-
-Evaluate the magnetic field `Bfunc` at `(x, t)` and return the field vector `B`,
-its magnitude `Bmag`, the unit vector `b̂ = B / Bmag`, the gradient `∇B`, and the
-Jacobian `JB` of the field.
-"""
-@inline function get_B_parameters(x, t, Bfunc)
-    B, JB = _get_B_jacobian(x, t, Bfunc)
-    Bmag = norm(B)
-    b̂ = B / Bmag
-    # Grad-B from Jacobian
-    ∇B = JB' * b̂
-
-    return B, Bmag, b̂, ∇B, JB
-end
-
-@inline function get_E_parameters(x, t, Efunc)
-    E = Efunc(x, t)
-    JE = jacobian(Efunc, x, t)
-
-    return E, JE
 end
