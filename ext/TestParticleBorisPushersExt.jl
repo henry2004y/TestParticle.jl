@@ -1,7 +1,7 @@
 module TestParticleBorisPushersExt
 
 using TestParticle
-import TestParticle: TraceProblem, TraceHybridProblem, AdaptiveHybrid,
+import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
@@ -30,9 +30,11 @@ using PrecompileTools: @setup_workload, @compile_workload
 
 # --- Boris ODE Problem Adaptation ---
 
+const FOProblem = TraceProblem{FullOrbit}
+
 _boris_rhs(u, p, t) = nothing
 
-function _boris_problem(prob::TraceProblem)
+function _boris_problem(prob::FOProblem)
     T = eltype(prob.u0)
     tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
     p = _promote_p(T, prob.p)
@@ -41,7 +43,7 @@ function _boris_problem(prob::TraceProblem)
     )
 end
 
-function _boris_initial_dt(prob::TraceProblem, alg)
+function _boris_initial_dt(prob::FOProblem, alg)
     q2m = prob.p.q2m
     u0 = prob.u0
     r0 = SVector{3}(u0[1], u0[2], u0[3])
@@ -51,7 +53,7 @@ function _boris_initial_dt(prob::TraceProblem, alg)
     return tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
 end
 
-function _boris_check_limits(prob::TraceProblem, dt, alg, maxiters)
+function _boris_check_limits(prob::FOProblem, dt, alg, maxiters)
     T = typeof(dt)
     tspan = prob.tspan
     timescale = max(abs(tspan[1]), abs(tspan[2]), abs(tspan[2] - tspan[1]))
@@ -132,7 +134,7 @@ function _boris_finalize(
 end
 
 function SciMLBase.solve(
-        prob::TraceProblem, alg::AbstractBoris;
+        prob::FOProblem, alg::AbstractBoris;
         saveat = (),
         dt::Union{Nothing, Real} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -174,25 +176,10 @@ function SciMLBase.solve(
     end
 end
 
-function SciMLBase.solve(
-        prob::TraceProblem, alg::AbstractBoris,
-        ensemblealg::BasicEnsembleAlgorithm;
-        trajectories::Int = 1,
-        seed::Union{Nothing, Integer} = nothing,
-        safetycopy::Bool = false,
-        kwargs...
-    )
-    ensemble_prob = EnsembleProblem(
-        prob; prob_func = prob.prob_func, safetycopy
-    )
-
-    return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
-end
-
 # --- AdaptiveHybrid Solver Implementation ---
 
 @inline function SciMLBase.solve(
-        prob::TraceHybridProblem, alg::AdaptiveHybrid,
+        prob::FOProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1,
         saveat = (),
@@ -201,6 +188,10 @@ end
         save_everystep::Bool = true, verbose::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
+    length(prob.u0) == 6 ||
+        throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
+    prob.tspan[2] > prob.tspan[1] ||
+        throw(ArgumentError("tspan[2] must be greater than tspan[1]."))
     plan = SavingPlan(
         saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
     )
@@ -211,16 +202,8 @@ end
     return alg.save_adiabaticity ? _solve(args..., Val(true)) : _solve(args..., Val(false))
 end
 
-function SciMLBase.solve(
-        prob::TraceProblem, alg::AdaptiveHybrid,
-        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial(); kwargs...
-    )
-    prob_hybrid = TraceHybridProblem(prob.u0, prob.tspan, prob.p; prob.prob_func)
-    return solve(prob_hybrid, alg, ensemblealg; kwargs...)
-end
-
 @inline function _solve(
-        ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceHybridProblem,
+        ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::FOProblem,
         trajectories, alg::AdaptiveHybrid,
         plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
@@ -239,7 +222,7 @@ end
     return EnsembleSolution(sols, elapsed_time, true)
 end
 
-function _get_sol_type(prob::TraceHybridProblem, dt, stats = nothing)
+function _get_sol_type(prob::FOProblem, dt, stats = nothing)
     u0 = prob.u0
     tspan = prob.tspan
     T_t = typeof(tspan[1] + dt)
@@ -265,7 +248,7 @@ end
     end
 end
 
-function _adia_sample_stats(prob::TraceHybridProblem, save_adiabaticity::Bool)
+function _adia_sample_stats(prob::FOProblem, save_adiabaticity::Bool)
     save_adiabaticity || return nothing
     T = eltype(prob.u0)
     return (
@@ -309,7 +292,7 @@ end
 @noinline _log_mode(msg, ϵ, t, r) = @info msg ϵ t r
 
 @inline function _hybrid_adaptive!(
-        sols, prob::TraceHybridProblem, irange, alg,
+        sols, prob::FOProblem, irange, alg,
         plan, isoutside::F,
         save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
     ) where {F, SaveAdia}
@@ -632,8 +615,7 @@ end
             solve(prob, MultistepBoris2(; n = 2); dt)
             solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)
 
-            prob_hybrid = TraceHybridProblem(stateinit, tspan, param)
-            solve(prob_hybrid, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
+            solve(prob, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
         end
     end
 end

@@ -41,6 +41,7 @@ export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
 
 public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
+    FullOrbit, Canonical, GuidingCenter,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
     get_gc, get_gc_velocity,

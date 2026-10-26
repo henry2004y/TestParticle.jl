@@ -12,6 +12,8 @@ prepare(
     x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = nothing; kw...
 ) = prepare(x, y, z; E, B, F, kw...)
 
+TraceHybridProblem(u0, tspan, p; kw...) = TraceProblem(u0, tspan, p; kw...)
+
 PotentialField(phi, A; kw...) = PotentialField(; phi, A, kw...)
 PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
 
