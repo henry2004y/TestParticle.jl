@@ -249,8 +249,8 @@ For time-dependent fields, we can use [`LazyTimeInterpolator`](@ref TestParticle
 The interpolators above are built on FastInterpolations.jl and live on the host. Pushing a
 particle on a device asks for something different: a plain struct with `Int32` indices whose
 axes and data can be copied to device memory and evaluated inside a kernel. TestParticle
-provides `GPUSphericalGrid` for spherical grids, and `GPUGrid3D`, `GPUGrid2D` and `GPUGrid1D`
-for Cartesian ones.
+provides [`GPUGrid`](@ref TestParticle.GPUGrid), a multilinear interpolator over Cartesian or
+spherical grids.
 
 `prepare` performs the conversion by itself once the parameters are handed to a device
 backend, see [GPU Ensemble Tracing](@ref). The very same grids can be built on the `CPU()`
@@ -258,18 +258,18 @@ backend, which is what the following does, so that the device interpolator can
 be inspected and benchmarked where no device is available:
 
 ```@example interp
-B_gpu = TP._to_gpu_spherical_grid(B_sph, CPU());
-A_gpu = TP._to_gpu_spherical_grid(A_sph, CPU());
-B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu, CPU());
+B_gpu = TP._to_gpu_grid(B_sph, CPU());
+A_gpu = TP._to_gpu_grid(A_sph, CPU());
+B_nu_gpu = TP._to_gpu_grid(B_sph_nu, CPU());
 ```
 
-A uniform grid vector becomes a `GPUUniformAxis`, which locates a cell with a multiply, and a
-non-uniform one a `GPUNonUniformAxis`, which brackets it with a binary search:
+An equally spaced grid vector becomes a `GPUUniformAxis`, which locates a cell with a multiply,
+and any other one a `GPUNonUniformAxis`, which brackets it with a binary search:
 
 ```@repl interp
 typeof(B_gpu)
-B_gpu.axis_r
-typeof(B_nu_gpu.axis_r)
+B_gpu.axes[1]
+typeof(B_nu_gpu.axes[1])
 ```
 
 Queries are unchanged, only the backend behind them differs. The location is still Cartesian,
@@ -291,7 +291,7 @@ B_gpu(20.0, 0.0, 0.0)
 ```
 
 The device grids implement a subset of the host interpolators: linear interpolation
-(`order = 1`, the default), uniform axes for Cartesian grids, and the boundary conditions
+(`order = 1`, the default) and the boundary conditions
 `FillExtrap`, `ClampExtrap`, `WrapExtrap` and an inclusive `PeriodicBC`. Moving any other
 interpolator to a device throws an `ArgumentError`.
 

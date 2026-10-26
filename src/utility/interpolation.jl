@@ -8,7 +8,7 @@ Abstract type for all field interpolators.
 abstract type AbstractFieldInterpolator <: Function end
 
 # The device conversion needs the grids, boundary conditions and order an interpolant was
-# built from, and FastInterpolations exposes none of them publicly.
+# built from.
 struct InterpSpec{G <: Tuple, B <: Tuple}
     grids::G
     bcs::B
@@ -245,11 +245,14 @@ end
 @inline _apply_extrap(x, x0, xmax, ::ClampExtrap) = (clamp(x, x0, xmax), false)
 
 @inline function _apply_extrap(x, x0, xmax, ::WrapExtrap)
-    span = xmax - x0
-    return (mod(x - x0, span) + x0, false)
+    return (mod(x - x0, xmax - x0) + x0, false)
 end
 
-@inline function _fill_value(bc::FillExtrap, ::Type{V}) where {V}
+_fill_value(::Tuple{}, ::Type{V}) where {V} = _nan_fill(V)
+_fill_value(bcs::Tuple, ::Type{V}) where {V} = first(bcs) isa FillExtrap ?
+    _fill_value(first(bcs), V) : _fill_value(Base.tail(bcs), V)
+
+function _fill_value(bc::FillExtrap, ::Type{V}) where {V}
     val = bc.fill_value
     val isa V && return val
     val isa Number || return _nan_fill(V)

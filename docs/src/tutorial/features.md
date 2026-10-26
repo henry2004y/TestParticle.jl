@@ -26,7 +26,7 @@ The table below summarizes the key features and tracing capabilities in `TestPar
 | | `saveat` & Dense Output | Explicit output times and linear step interpolation | [Boris Pusher](@ref Boris-Pusher) |
 | | `raw_output` | High-throughput dense array output bypassing solution wrapping on GPU | [GPU Ensemble Tracing](@ref) |
 | **Fields & Units** | Gridded Fields | 1D/2D/3D regular, rectilinear, and structured grid interpolation | [Field Interpolation](@ref) |
-| | Spherical Device Grids | GPU-optimized trilinear spherical grid interpolator (`GPUSphericalGrid`) | [GPU Ensemble Tracing](@ref) |
+| | Spherical Device Grids | GPU-optimized trilinear spherical grid interpolator (`GPUGrid`) | [GPU Ensemble Tracing](@ref) |
 | | Dimensionless Units | Normalized scaling by gyrofrequency, gyroradius, etc. | [Dimensionless Units](@ref Dimensionless-Units-and-Normalization) |
 | | Unitful Support | Physical units tracking via `Unitful.jl` | [Unitful Integration](@ref Unit-support) |
 | | Velocity Distributions | Particle sampling (Maxwellian, Kappa) from distribution functions | [Velocity Sampling](@ref) |

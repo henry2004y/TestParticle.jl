@@ -77,19 +77,19 @@ function setup_field(r, θ, ϕ)
     return param, param[4].field_function, param[3].field_function
 end
 
-@testset "GPUSphericalGrid" begin
+@testset "spherical GPUGrid" begin
     @testset "uniform grid agrees with the host interpolator" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA, CPU())
+            gB = TP._to_gpu_grid(fiB, CPU())
+            gA = TP._to_gpu_grid(fiA, CPU())
 
-            @test gB isa TP.GPUSphericalGrid
-            @test gB.axis_r isa TP.GPUUniformAxis
-            @test gB.axis_θ isa TP.GPUUniformAxis
-            @test gB.axis_ϕ isa TP.GPUUniformAxis
-            @test gB.axis_r.n == Int32(length(r))
-            @test gB.axis_r.x0 == first(r) && gB.axis_r.xmax == last(r)
+            @test gB isa TP.GPUGrid
+            @test gB.axes[1] isa TP.GPUUniformAxis
+            @test gB.axes[2] isa TP.GPUUniformAxis
+            @test gB.axes[3] isa TP.GPUUniformAxis
+            @test gB.axes[1].n == Int32(length(r))
+            @test gB.axes[1].x0 == first(r) && gB.axes[1].xmax == last(r)
 
             pts = quad_points(r, θ, ϕ)
             @test max_field_rel_diff(gB, fiB, pts) < 1.0e-12
@@ -112,12 +112,12 @@ end
                 ϕ = range(0.0, 2π, length = 9)
 
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA, CPU())
+            gB = TP._to_gpu_grid(fiB, CPU())
+            gA = TP._to_gpu_grid(fiA, CPU())
 
-            @test gB.axis_r isa TP.GPUNonUniformAxis
-            @test gB.axis_r.n == Int32(length(r))
-            @test gB.axis_r.x0 == first(r) && gB.axis_r.xmax == last(r)
+            @test gB.axes[1] isa TP.GPUNonUniformAxis
+            @test gB.axes[1].n == Int32(length(r))
+            @test gB.axes[1].x0 == first(r) && gB.axes[1].xmax == last(r)
 
             pts = quad_points(collect(r), θ, ϕ)
             @test max_field_rel_diff(gB, fiB, pts) < 1.0e-12
@@ -126,7 +126,7 @@ end
             end < 1.0e-12
             # Bracketing a non-uniform axis must stay inside the grid
             @test all(pts) do x
-                return !TP._axis_eval(gB.axis_r, norm(x))[3]
+                return !TP._axis_eval(gB.axes[1], norm(x))[3]
             end
         end
 
@@ -135,9 +135,9 @@ end
                 ϕ = collect(range(0.0, 2π, length = 9))
 
             param, fiB, _ = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB, CPU())
+            gB = TP._to_gpu_grid(fiB, CPU())
 
-            @test gB.axis_r isa TP.GPUNonUniformAxis
+            @test gB.axes[1] isa TP.GPUNonUniformAxis
             @test max_field_rel_diff(gB, fiB, quad_points(r, θ, ϕ)) < 1.0e-12
         end
 
@@ -146,11 +146,11 @@ end
                 ϕ = range(0.0, 2π, length = 16)
 
             _, fiB, _ = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB, CPU())
+            gB = TP._to_gpu_grid(fiB, CPU())
 
-            @test gB.axis_r isa TP.GPUNonUniformAxis
-            @test gB.axis_θ isa TP.GPUUniformAxis
-            @test gB.axis_ϕ isa TP.GPUUniformAxis
+            @test gB.axes[1] isa TP.GPUNonUniformAxis
+            @test gB.axes[2] isa TP.GPUUniformAxis
+            @test gB.axes[3] isa TP.GPUUniformAxis
             @test max_field_rel_diff(gB, fiB, quad_points(collect(r), θ, ϕ)) < 1.0e-12
         end
     end
@@ -162,7 +162,7 @@ end
                 r, θ, ϕ, zeros(size(B)), B; species = Proton, gridtype = TP.StructuredGrid
             )
             fi = param[4].field_function
-            g = TP._to_gpu_spherical_grid(fi, CPU())
+            g = TP._to_gpu_grid(fi, CPU())
 
             err = 0.0
             for (ir, rv) in enumerate(r), (iθ, θv) in enumerate(θ), (iϕ, ϕv) in enumerate(ϕ)
@@ -180,12 +180,11 @@ end
     @testset "call signatures" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, _ = setup_field(r, θ, ϕ)
-            g = TP._to_gpu_spherical_grid(fiB, CPU())
+            g = TP._to_gpu_grid(fiB, CPU())
             x = SA[1.5, 2.0, 1.0]
             expected = fiB(x)
 
             @test g(x[1], x[2], x[3]) ≈ expected
-            @test g(x[1], x[2], x[3], 0.0) ≈ expected
             @test g((x[1], x[2], x[3])) ≈ expected
             @test g((x[1], x[2], x[3]), 0.0) ≈ expected
             @test g(x) ≈ expected
@@ -201,8 +200,8 @@ end
     @testset "outside the domain" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA, CPU())
+            gB = TP._to_gpu_grid(fiB, CPU())
+            gA = TP._to_gpu_grid(fiA, CPU())
 
             # Inside the radial range
             @test !any(isnan, gB(1.0, 1.0, 1.0))
@@ -226,11 +225,11 @@ end
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             data = [SVector{3, Float64}(rv, 0.0, 0.0) for rv in r, _ in θ, _ in ϕ]
             bc_θ = TP.FillExtrap(NaN)
-            ax_r = TP.GPUUniformAxis(1.0, 1.0, 1.0, Int32(length(r)), TP.ClampExtrap())
-            ax_θ = TP.GPUUniformAxis(0.0, π / 8, 8 / π, Int32(length(θ)), bc_θ)
-            ax_ϕ = TP.GPUUniformAxis(0.0, π / 4, 4 / π, Int32(length(ϕ)), TP.WrapExtrap())
-            bc = (TP.ClampExtrap(), bc_θ, TP.WrapExtrap())
-            g = TP.GPUSphericalGrid(data, ax_r, ax_θ, ax_ϕ, bc)
+            ax_r = TP.GPUUniformAxis(1.0, 1.0, length(r), TP.ClampExtrap())
+            ax_θ = TP.GPUUniformAxis(0.0, π / 8, length(θ), bc_θ)
+            ax_ϕ = TP.GPUUniformAxis(0.0, π / 4, length(ϕ), TP.WrapExtrap())
+            fill = SVector(NaN, NaN, NaN)
+            g = TP.GPUGrid(data, (ax_r, ax_θ, ax_ϕ), fill, TP.SphericalCoords())
 
             θq, ϕq = π / 3, 1.0
             @test g(Tuple(TP.sph2cart(0.5, θq, ϕq))) ≈
@@ -242,7 +241,7 @@ end
         end
 
         # Wrapping makes an axis periodic over [x0, x0 + span)
-        let ax = TP.GPUUniformAxis(0.0, 1.0, 1.0, Int32(5), TP.WrapExtrap())
+        let ax = TP.GPUUniformAxis(0.0, 1.0, 5, TP.WrapExtrap())
             i1, w1, out1 = TP._axis_eval(ax, 0.25)
             i2, w2, out2 = TP._axis_eval(ax, 4.25)
             i3, w3, out3 = TP._axis_eval(ax, -3.75)
@@ -271,10 +270,6 @@ end
         end
     end
 
-    @testset "invalid input" begin
-        @test_throws ArgumentError TP._to_gpu_axis(1.0, CPU(), TP.FillExtrap(NaN))
-    end
-
     @testset "tracing on a backend" begin
         # A 1 m/s proton in a 10 nT field gyrates within a radius of about 1 m,
         # so it stays well inside the radial range of the grid.
@@ -285,7 +280,7 @@ end
             param = prepare(
                 r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid
             )
-            gB = TP._to_gpu_spherical_grid(param[4].field_function, CPU())
+            gB = TP._to_gpu_grid(param[4].field_function, CPU())
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
             prob_host = TraceProblem(stateinit, tspan, param)
@@ -313,8 +308,8 @@ end
             param = prepare(r, θ, ϕ, E, B; species = Proton, gridtype = TP.StructuredGrid)
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
-            gE = TP._to_gpu_spherical_grid(param[3].field_function, CPU())
-            gB = TP._to_gpu_spherical_grid(param[4].field_function, CPU())
+            gE = TP._to_gpu_grid(param[3].field_function, CPU())
+            gB = TP._to_gpu_grid(param[4].field_function, CPU())
 
             prob_host = TraceProblem(stateinit, tspan, param)
             prob_device = TraceProblem(

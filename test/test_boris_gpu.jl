@@ -12,6 +12,7 @@ import TestParticle as TP
 using BorisPushers
 using StaticArrays
 using KernelAbstractions
+using JLArrays
 using LinearAlgebra
 using ..test_common: uniform_B, zero_E, max_rel_diff
 
@@ -232,7 +233,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 species = Proton, gridtype = TP.StructuredGrid
             )
             fi_sph = param_sph[4].field_function
-            g_sph = TP._to_gpu_spherical_grid(fi_sph, CPU())
+            g_sph = TP._to_gpu_grid(fi_sph, CPU())
 
             @test g_sph(1.0, 1.0, 1.0) ≈ fi_sph(SA[1.0, 1.0, 1.0])
             @test g_sph((1.0, 1.0, 1.0)) ≈ fi_sph(SA[1.0, 1.0, 1.0])
@@ -253,41 +254,34 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             @test w ≈ 0.5
         end
 
-        # Boundary conditions
-        let data = collect(1.0:5.0)
-            bc_fill = TP.FillExtrap(0.0)
-            grid_fill = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_fill)
-            @test grid_fill(0.0) == 0.0
-            @test grid_fill(6.0) == 0.0
-            @test grid_fill(2.5) == 2.5
-
-            bc_clamp = TP.ClampExtrap()
-            grid_clamp = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_clamp)
-            @test grid_clamp(0.0) == 1.0
-            @test grid_clamp(6.0) == 5.0
-
-            bc_wrap = TP.WrapExtrap()
-            grid_wrap = TP.GPUGrid1D(data, 1.0, 1.0, 1.0, Int32(5), Int32(1), bc_wrap)
-            @test grid_wrap(5.5) ≈ grid_wrap(1.5)
-        end
-
         # A device grid reproduces the host field, inside and outside the grid, or refuses
         let x = range(0.0, 1.0, length = 11), yz = range(0.0, 1.0, length = 3)
             A = [SA[sinpi(2 * xi), 0.0, 0.0] for xi in x, _ in yz, _ in yz]
-            for bc in (TP.FillExtrap(NaN), TP.ClampExtrap(), TP.WrapExtrap(), TP.PeriodicBC())
-                fi = build_interpolator(A, x, yz, yz, 1, bc)
+            x_nu = collect(x)
+            x_nu[2] = 0.05
+            hosts = (
+                (
+                    build_interpolator(A, x, yz, yz, 1, bc) for bc in
+                        (TP.FillExtrap(NaN), TP.ClampExtrap(), TP.WrapExtrap(), TP.PeriodicBC())
+                )...,
+                build_interpolator(TP.RectilinearGrid, A, x_nu, yz, yz),
+            )
+            for fi in hosts
                 g = TP._to_gpu_grid(fi, CPU())
-                @test all((-0.25, 0.37, 1.05, 1.25)) do xq
+                @test all((-0.25, 0.03, 0.37, 1.05, 1.25)) do xq
                     all(isapprox.(g(xq, 0.5, 0.5), fi(SA[xq, 0.5, 0.5]); nans = true, atol = 1.0e-12))
                 end
             end
 
-            x_nu = collect(x)
-            x_nu[2] = 0.05
+            # JLArray forbids scalar indexing, as a real device does
+            fi_nu = hosts[end]
+            pts = [SA[0.03, 0.5, 0.5], SA[0.37, 0.2, 0.9], SA[1.25, 0.5, 0.5]]
+            g_jl = TP._to_gpu_grid(fi_nu, JLBackend())
+            @test all(isapprox.(Array(g_jl.(JLArray(pts))), fi_nu.(pts); nans = true))
+
             for fi in (
                     build_interpolator(A, x, yz, yz, 3),
                     build_interpolator(A, x, yz, yz, 1, TP.PeriodicBC(endpoint = :exclusive)),
-                    build_interpolator(TP.RectilinearGrid, A, x_nu, yz, yz),
                 )
                 @test_throws ArgumentError TP._to_gpu_grid(fi, CPU())
             end
