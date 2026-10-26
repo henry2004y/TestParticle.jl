@@ -1,0 +1,19 @@
+name = "TestParticleCLI"
+uuid = "6530594e-1547-4282-8aff-819555ee42d4"
+version = "0.1.0"
+
+[deps]
+BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
+
+[sources]
+BorisPushers = {path = "../../lib/BorisPushers"}
+TestParticle = {path = "../.."}
+
+[compat]
+LinearAlgebra = "1.13.0"
+StaticArrays = "1.9.24"
+TOML = "1.0.3"

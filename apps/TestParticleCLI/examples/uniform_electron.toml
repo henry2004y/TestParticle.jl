@@ -1,0 +1,15 @@
+[simulation]
+tspan = [0.0, 3.0e-8]
+dt = 3.0e-11
+saveat = 3.0e-10
+output = "uniform_trajectory.csv"
+
+[particle]
+species = "electron"
+position = [0.0, 0.0, 0.0]
+velocity = [0.0, 1.0e5, 0.0]
+
+[field]
+type = "uniform"
+B = [0.0, 0.0, 0.01]
+E = [0.0, 0.0, 0.0]
