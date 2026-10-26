@@ -1,5 +1,6 @@
 using Test
 using TestParticleCLI
+using LinearAlgebra: dot, norm
 using JLD2: jldopen
 
 @testset "TestParticleCLI" begin
@@ -13,6 +14,34 @@ using JLD2: jldopen
     @test TestParticleCLI.main(["-h"]) == 0
     @test TestParticleCLI.main(["--help"]) == 0
     @test TestParticleCLI.main(["nonexistent.toml"]) == 1
+
+    @testset "Pitch-angle initialization" begin
+        field_cfg = TestParticleCLI.parse_field_config(
+            Dict{String, Any}("type" => "uniform", "B" => [0.01, 0.0, 0.0])
+        )
+        _, B_field = TestParticleCLI.make_field_functions(field_cfg)
+        particle_cfg = TestParticleCLI.parse_particle_config(
+            Dict{String, Any}("energy_eV" => 1000.0, "pitch_angle_deg" => 45.0),
+            B_field,
+            0.0,
+        )
+        velocity = particle_cfg.stateinit[4:6]
+        magnetic_field = B_field(particle_cfg.stateinit[1:3], 0.0)
+
+        @test dot(velocity, magnetic_field) / (norm(velocity) * norm(magnetic_field)) ≈
+            cosd(45.0)
+        @test norm(velocity) ≈ sqrt(2.0 * 1000.0 * TestParticleCLI.TP.eV / particle_cfg.m)
+
+        zero_field_cfg = TestParticleCLI.parse_field_config(
+            Dict{String, Any}("type" => "uniform", "B" => [0.0, 0.0, 0.0])
+        )
+        _, zero_B_field = TestParticleCLI.make_field_functions(zero_field_cfg)
+        @test_throws ArgumentError TestParticleCLI.parse_particle_config(
+            Dict{String, Any}("energy_eV" => 1000.0),
+            zero_B_field,
+            0.0,
+        )
+    end
 
     let ret = TestParticleCLI.main(
             [

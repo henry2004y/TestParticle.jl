@@ -1,6 +1,6 @@
 module TestParticleCLI
 
-using LinearAlgebra: norm
+using LinearAlgebra: cross, norm
 using StaticArrays: SVector, SA
 import TOML
 using JLD2: jldopen
@@ -100,7 +100,24 @@ function make_field_functions(cfg::HarrisSheetConfig)
     return E_field, B_field
 end
 
-function parse_particle_config(pdict::Dict{String, Any})::ParticleConfig
+function initial_velocity_from_pitch_angle(
+        v_mag::Float64, alpha::Float64, B::SVector{3, Float64}
+    )
+    B_mag = norm(B)
+    if !(isfinite(B_mag) && B_mag > 0.0)
+        throw(ArgumentError("pitch angle is undefined for a zero or non-finite magnetic field"))
+    end
+
+    b_hat = B / B_mag
+    reference = abs(b_hat[1]) < 0.9 ? SA[1.0, 0.0, 0.0] : SA[0.0, 1.0, 0.0]
+    perpendicular = cross(b_hat, reference)
+    perpendicular /= norm(perpendicular)
+    return v_mag * (cos(alpha) * b_hat + sin(alpha) * perpendicular)
+end
+
+function parse_particle_config(
+        pdict::Dict{String, Any}, B_field, t0::Float64
+    )::ParticleConfig
     sname = lowercase(get(pdict, "species", "electron"))
     pos = haskey(pdict, "position") ? parse_svector3(pdict["position"]) :
         SA[0.0, 0.0, 0.0]
@@ -119,7 +136,7 @@ function parse_particle_config(pdict::Dict{String, Any})::ParticleConfig
             Float64(get(pdict, "m", TP.mₑ))
         end
         v_mag = sqrt(2.0 * energy_eV * TP.eV / m)
-        SA[v_mag * sin(alpha), 0.0, v_mag * cos(alpha)]
+        initial_velocity_from_pitch_angle(v_mag, alpha, B_field(pos, t0))
     else
         SA[0.0, 1.0e5, 0.0]
     end
@@ -281,10 +298,10 @@ function @main(args::Vector{String})::Cint
     field_dict = get(toml_data, "field", Dict{String, Any}())
 
     sim_cfg = parse_simulation_config(sim_dict, overrides)
-    part_cfg = parse_particle_config(part_dict)
     field_cfg = parse_field_config(field_dict)
 
     E_fn, B_fn = make_field_functions(field_cfg)
+    part_cfg = parse_particle_config(part_dict, B_fn, sim_cfg.tspan[1])
     param = if part_cfg.species_symbol == :proton
         prepare(E_fn, B_fn; species = Proton)
     elseif part_cfg.species_symbol == :electron
