@@ -53,7 +53,7 @@ function parse_field_config(fdict::Dict{String, Any})::AbstractFieldConfig
         B = haskey(fdict, "B") ? parse_svector3(fdict["B"]) : SA[0.0, 0.0, 0.01]
         return UniformFieldConfig(E, B)
     elseif ftype == "dipole"
-        M = Float64(get(fdict, "M", TP.BMoment_Earth))
+        M = Float64(get(fdict, "M", norm(TP.BMoment_Earth)))
         return DipoleFieldConfig(M, E)
     elseif ftype == "harris"
         B0 = Float64(get(fdict, "B0", 0.01))
