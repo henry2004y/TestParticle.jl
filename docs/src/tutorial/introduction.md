@@ -41,7 +41,6 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 
 # 1. Define Fields
 B(x, t) = SA[0, 0, 1e-8]  # Magnetic field (Tesla)
-E(x, t) = SA[0, 0, 0]     # Electric field (V/m)
 
 # 2. Define Initial Conditions
 x0 = [1.0, 0.0, 0.0]      # Initial position (m)
@@ -50,7 +49,7 @@ stateinit = [x0..., v0...]
 tspan = (0, 20)           # Time span (s)
 
 # 3. Prepare and Solve
-param = prepare(E, B, species=Proton)
+param = prepare(; B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

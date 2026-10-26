@@ -142,6 +142,12 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         stateinit_gc, param_gc = prepare_gc(
             stateinit; B = dipole_field, species = Proton
         )
+        stateinit_gc_pos, param_gc_pos = prepare_gc(
+            stateinit, nothing, dipole_field; species = Proton
+        )
+        @test stateinit_gc_pos == stateinit_gc
+        @test param_gc_pos.B.field_function === param_gc.B.field_function
+        @test param_gc_pos.E isa TP.ZeroField
 
         prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
 
