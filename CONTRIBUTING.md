@@ -41,7 +41,7 @@ Choose visibility by role, consistently across related API families:
 - **Export** tracing setup and execution: preparation functions, problem constructors,
   tracing right-hand sides (including canonical and guiding-center variants), solver
   algorithms, particle species constructors, field constructors, and `build_interpolator`.
-  Also export end-to-end VDF tracing, the main `get_fields`/`get_work` result
+  Also export end-to-end VDF tracing, the main `get_fields`/`get_work_rates` result
   accessors, `orbit`/`monitor`, and the SciML ensemble/callback interfaces used
   in the tracing workflow.
 - **Public but not exported** diagnostics, state and coordinate conversions, sampling

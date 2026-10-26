@@ -253,7 +253,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         prob = TP.TraceProblem(stateinit, (0.0, 15 * gyroperiod), param)
         sol = solve(prob, Boris(); dt, save_everystep = true)
 
-        rates = reduce(hcat, TP.get_work(sol))
+        rates = reduce(hcat, TP.get_work_rates(sol))
         P_par, P_fermi, P_grad, P_betatron = eachrow(rates)
 
         # Uniform field: the three non-betatron terms vanish identically.
@@ -302,7 +302,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
         prob = TraceProblem(u, (0.0, 1.0e-8), p; relativistic = true)
         sol = solve(prob, Vern9())
-        @test TP.get_work(sol) ≈
+        @test TP.get_work_rates(sol) ≈
             [TP.get_work_rates(u, p, t; relativistic = true) for (u, t) in zip(sol.u, sol.t)]
     end
 

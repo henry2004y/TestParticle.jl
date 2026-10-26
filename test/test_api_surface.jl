@@ -21,7 +21,7 @@ end
         :trace_gc!, :trace_gc_drifts!, :trace_gc_flr!, :trace_gc_exb!,
         :AdaptiveHybrid,
         :vdf_forward_trace, :vdf_backward_trace,
-        :get_fields, :get_work, :orbit, :monitor, :build_interpolator,
+        :get_fields, :get_work_rates, :get_work, :orbit, :monitor, :build_interpolator,
         :EnsembleProblem, :EnsembleSerial, :EnsembleThreads, :EnsembleDistributed,
         :EnsembleSplitThreads, :DiscreteCallback, :TerminateOutside,
     )
@@ -40,7 +40,7 @@ end
         :Maxwellian, :BiMaxwellian, :Kappa, :BiKappa,
         :sample_unit_sphere, :sample_maxwellian, :generate_sphere,
         :jacobian, :derivative_t,
-        :get_magnetic_properties, :get_work_rates, :get_work_channels,
+        :get_magnetic_properties, :get_work_channels,
         :LazyTimeInterpolator,
         :get_dx!,
         :get_dv!,

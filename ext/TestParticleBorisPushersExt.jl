@@ -648,7 +648,7 @@ BorisPushers.adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
             sol = solve(prob, alg_adaptive)
             solve(prob, alg_adaptive; save_fields = true, save_work = true)
             get_fields(sol)
-            get_work(sol)
+            get_work_rates(sol)
 
             solve(prob, MultistepBoris2(; n = 2); dt)
             solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)

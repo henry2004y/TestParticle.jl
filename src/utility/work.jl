@@ -104,11 +104,12 @@ function get_work_channels(xv, p, t; kwargs...)
 end
 
 """
-    get_work(sol::AbstractODESolution)
+    get_work_rates(sol::AbstractODESolution) -> Vector{SVector{4}}
 
-Return the work done by the electric field from the solution `sol`.
+Return the work rates at every saved state of the solution `sol`, reading `γv` for
+the relativistic equations.
 """
-function get_work(sol::AbstractODESolution)
+function get_work_rates(sol::AbstractODESolution)
     p = sol.prob.p
     relativistic = _is_relativistic(SciMLBase.unwrapped_f(sol.prob.f.f))
     return map((u, t) -> get_work_rates(u, p, t; relativistic), sol.u, sol.t)

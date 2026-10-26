@@ -6,6 +6,8 @@ PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
 prepare_canonical(phi, A; kw...) = prepare_canonical(; phi, A, kw...)
 prepare_canonical(A; phi = nothing, kw...) = prepare_canonical(; phi, A, kw...)
 
+get_work(sol::AbstractODESolution) = get_work_rates(sol)
+
 get_work_rates(xv, p, t, magnetic_properties, E = nothing) =
     get_work_rates(xv, p, t; magnetic_properties, E)
 

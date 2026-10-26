@@ -245,7 +245,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
             for s in sol.u
                 E, B = get_fields(s)
-                W = get_work(s)
+                W = get_work_rates(s)
 
                 @test length(E) == length(s.t)
                 @test length(B) == length(s.t)
