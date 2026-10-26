@@ -330,7 +330,7 @@ raw = solve(prob, Boris(), backend; dt, trajectories, isoutside, raw_output = tr
 Fields stored on a spherical grid are traced on a device without any extra step. Preparing
 them with `gridtype = StructuredGrid` builds a spherical interpolator, and handing the
 parameters to a device backend converts it into a
-[`GPUSphericalGrid`](@ref TestParticle.GPUSphericalGrid), a
+[`GPUGrid`](@ref TestParticle.GPUGrid), here a
 trilinear interpolator over `(r, θ, ϕ)` that carries its axes along in device memory. Uniform
 grid vectors and non-uniform ones, a logarithmic `r` for instance, are both supported; the
 interpolator itself is described in [Field Interpolation](@ref).
@@ -358,7 +358,7 @@ tspan = (0.0, 1.0)
 param = prepare(r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid)
 prob = TraceProblem(stateinit, tspan, param)
 
-# Moving the parameters to the device converts the field into a GPUSphericalGrid
+# Moving the parameters to the device converts the field into a GPUGrid
 backend = CUDABackend()
 sols = solve(prob, Boris(), backend; dt = 1.0e-4, trajectories = 1000, saveat = 1.0e-2)
 ```
@@ -368,10 +368,9 @@ components, and rotates a vector result back into the Cartesian basis, so a fiel
 `(Br, Bθ, Bϕ)` comes back as `(Bx, By, Bz)`. Outside the grid the spherical interpolator fills
 with `NaN` in `r` and in `θ`, and wraps periodically in `ϕ`.
 
-One thing is worth keeping in mind when comparing a device run against the host: the device
-grid always interpolates linearly, whatever `order` the host interpolator was built with, so
-keep `order = 1`, the default, when the two are meant to agree.
+Device grids support only part of what the host interpolators do; see
+[Field Interpolation](@ref) for which interpolators can be moved to a device.
 
 On the `CPU()` backend the host interpolator is used unchanged and no conversion happens; a
-`GPUSphericalGrid` therefore only appears for an actual device backend, or when one is built
+`GPUGrid` therefore only appears for an actual device backend, or when one is built
 explicitly as shown in [Field Interpolation](@ref).

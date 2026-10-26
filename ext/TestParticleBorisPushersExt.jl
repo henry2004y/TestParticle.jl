@@ -5,8 +5,7 @@ import TestParticle: TraceProblem, TraceHybridProblem, AdaptiveHybrid,
     SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
-    GPUGrid1D, GPUGrid2D, GPUGrid3D, GPUSphericalGrid,
-    _to_gpu_grid, _to_gpu_spherical_grid,
+    _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
     _gc_to_full, _get_gc_parameters, update_dp5,
     adiabaticity_components, _rng_seed, is_time_dependent, _foreach_chunk,
@@ -589,36 +588,16 @@ end
 
 BorisPushers.adapt_field_to_gpu(f::Function, backend::Backend) = Adapt.adapt(backend, f)
 
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator2D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator1D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend; dir = fi.dir)
-end
-
 function BorisPushers.adapt_field_to_gpu(
-        fi::SphericalFieldInterpolator, backend::Backend
+        fi::Union{
+            FieldInterpolator, FieldInterpolator2D, FieldInterpolator1D,
+            SphericalFieldInterpolator,
+        },
+        backend::Backend
     )
     backend isa CPU && return fi
-    return _to_gpu_spherical_grid(fi.itp, backend)
+    return _to_gpu_grid(fi, backend)
 end
-
-BorisPushers.adapt_field_to_gpu(g::GPUGrid3D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUGrid2D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUGrid1D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
 
 @setup_workload begin
     @compile_workload begin

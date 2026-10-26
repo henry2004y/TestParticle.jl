@@ -119,7 +119,7 @@ Perlmutter A100, the same 100,000-particle ensemble completes in **2.33 ms** (FP
 
 For discrete electromagnetic grids, TestParticle.jl automatically converts grid
 interpolations into device-native
-[`GPUGrid3D`](https://github.com/henry2004y/TestParticle.jl/blob/master/src/utility/gpu_grid.jl)
+[`GPUGrid`](https://github.com/henry2004y/TestParticle.jl/blob/master/src/utility/gpu_grid.jl)
 structures with hardware register trilinear evaluation:
 
 | Number of Particles $N$ | CPU Threads (20 Thr) | KA CPU (Fair Baseline) | GPU (Default API) | GPU (Raw Output) |
@@ -204,7 +204,7 @@ Based on our CPU and GPU scaling benchmarks across problem sizes, architectures,
   - **Hardware Implications:**
     - When `Float64` is required, **datacenter GPUs (A100/H100)** or **CPU clusters** are the ideal targets, as datacenter GPUs maintain full-rate FP64 ALUs (incurring only an expected ~2x compute difference relative to FP32).
     - **Consumer GPUs (GeForce RTX series)** throttle FP64 ALUs to a 1:64 rate. While they execute `Float64` with full mathematical correctness, hardware throughput is restricted. When FP64 is needed, choose datacenter GPUs or multi-core CPUs rather than downgrading precision to `Float32`.
-- **Electromagnetic Field Grids:** For discrete numerical grids, use `prepare` to generate device-native `GPUGrid3D` structures. This leverages hardware registers and L1/L2 cache for trilinear interpolation and avoids host-side interpolation overhead.
+- **Electromagnetic Field Grids:** For discrete numerical grids, use `prepare` to generate device-native `GPUGrid` structures. This leverages hardware registers and L1/L2 cache for trilinear interpolation and avoids host-side interpolation overhead.
 
 ## Presentations
 

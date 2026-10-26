@@ -129,7 +129,9 @@ function cart2sph(x, y, z)
         return SVector{3, eltype(r)}(0, 0, 0)
     end
     θ = acos(z / r)
-    ϕ = atan(y, x) |> mod2pi
+    ϕ = atan(y, x)
+    # Not `mod2pi`: it computes in Float64, which device kernels may lack or throttle.
+    ϕ < 0 && (ϕ += 2 * oftype(ϕ, π))
     return SVector{3}(r, θ, ϕ)
 end
 
