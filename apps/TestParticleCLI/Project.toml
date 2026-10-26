@@ -16,6 +16,6 @@ TestParticle = {path = "../.."}
 
 [compat]
 JLD2 = "0.6.7"
-LinearAlgebra = "1.13.0"
+LinearAlgebra = "1"
 StaticArrays = "1.9.24"
 TOML = "1.0.3"
