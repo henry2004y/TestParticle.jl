@@ -34,10 +34,7 @@ const source_flux = 100.0 # [real particle / s]
 const n_particles = 1000 # number of test particles
 const weights = source_flux / n_particles # [particles / s per test particle]
 
-zeroB(x) = SA[0.0, 0.0, 0.0]
-zeroE(x) = SA[0.0, 0.0, 0.0]
-
-param = prepare(zeroE, zeroB)
+param = prepare(; species = Proton)
 stateinit = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # particle position and velocity
 tspan = (0.0, 110.0) # Give particles enough time to reach the plane (x=100 with v>=1)
 prob = ODEProblem(trace, stateinit, tspan, param)

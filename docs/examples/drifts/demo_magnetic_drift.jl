@@ -44,7 +44,6 @@ CairoMakie.activate!(type = "png") #hide
 const Bmag0 = 1.0e-7
 
 curve_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * Bmag0
-zero_E(x) = SA[0.0, 0.0, 0.0];
 
 # Analytic guiding-center drift evaluated directly from the field function, using
 # exactly the same quantities (`∇B` from the B-Jacobian, `κ` from `JB·b`) as the
@@ -82,7 +81,7 @@ n = 9
 
 q, m = Proton.q, Proton.m
 
-param = prepare(zero_E, curve_B, species = Proton)
+param = prepare(; B = curve_B, species = Proton)
 gc = xu -> get_gc(xu, param)
 
 function scan_magnetic_drift(αs, v0, x0, b0, eperp, q, m, param, gc, tspan)

@@ -37,7 +37,6 @@ CairoMakie.activate!(type = "png") #hide
 
 const Bmag0 = 1.0e-7
 curve_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * Bmag0
-zero_E(x) = SA[0.0, 0.0, 0.0]
 x0 = SA[1.0, 0.0, 0.0]
 b0 = normalize(curve_B(x0))      # b = (0, -1, 0) at x0
 eperp = SA[0.0, 0.0, 1.0]        # perpendicular to b at x0
@@ -134,7 +133,7 @@ end
 # gyration phase).
 function ensemble_drift(vs)
     drifts = Float64[]
-    param = prepare(zero_E, curve_B, species = Proton)
+    param = prepare(; B = curve_B, species = Proton)
     gc = xu -> get_gc(xu, param)
     ts = range(0.0, 30.0; length = 250)
     A = hcat(ones(length(ts)), ts)
@@ -197,7 +196,7 @@ ax3 = Axis3(
 vs_iso = sample_ensemble(1.0, 1.0, 1; seed = 1)
 vs_an = sample_ensemble(2.0, 1.0, 1; seed = 2)
 for (lab, v) in [("isotropic", vs_iso[1]), ("bi-Max (T∥>T⊥)", vs_an[1])]
-    param = prepare(zero_E, curve_B, species = Proton)
+    param = prepare(; B = curve_B, species = Proton)
     sol = solve(
         ODEProblem(trace!, [x0..., v...], (0.0, 30.0), param), Vern9();
         abstol = 1.0e-9, reltol = 1.0e-9

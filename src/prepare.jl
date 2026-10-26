@@ -178,14 +178,14 @@ prepare(B; E = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
 
 # Keyword forms: the field roles are named, so they cannot be swapped.
 prepare(; E = nothing, B = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
-prepare(x::AbstractVector{<:Real}; E = nothing, B = nothing, F = nothing, kw...) =
+prepare(x::AbstractVector; E = nothing, B = nothing, F = nothing, kw...) =
     prepare(x, E, B, F; kw...)
 prepare(
-    x::AbstractVector{<:Real}, y::AbstractVector{<:Real};
+    x::AbstractVector, y::AbstractVector;
     E = nothing, B = nothing, F = nothing, kw...
 ) = prepare(x, y, E, B, F; kw...)
 prepare(
-    x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+    x::AbstractVector, y::AbstractVector, z::AbstractVector;
     E = nothing, B = nothing, F = nothing, kw...
 ) = prepare(x, y, z, E, B, F; kw...)
 

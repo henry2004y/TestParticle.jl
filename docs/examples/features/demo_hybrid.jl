@@ -39,9 +39,6 @@ function bottle_B(x, t)
     return SA[Bx, By, Bz]
 end
 
-B_field = TP.Field(bottle_B)
-E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-
 m = TP.mᵢ
 q = TP.qᵢ
 q2m = q / m;
@@ -70,7 +67,7 @@ T_gyro = 2π / Ω
 ## Trace long enough to see several bounces
 tspan = (0.0, 30 * T_gyro)
 
-param_fo = prepare(E_field, B_field; species = Proton)
+param_fo = prepare(; B = bottle_B, species = Proton)
 prob_fo = ODEProblem(trace, u0, tspan, param_fo)
 sol_fo = solve(prob_fo, Vern6())
 
@@ -86,10 +83,9 @@ z_fo = [u[3] for u in sol_fo.u]
 # conserved, whereas full-orbit tracing resolves the fast gyration of the particle.
 
 bottle_B_static(x) = bottle_B(x, 0.0)
-bottle_E_static(x) = SA[0.0, 0.0, 0.0]
 
 stateinit_gc, param_gc = TP.prepare_gc(
-    u0, bottle_E_static, bottle_B_static; species = Proton
+    u0; B = bottle_B_static, species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern6());
@@ -102,8 +98,6 @@ sol_gc = solve(prob_gc, Vern6());
 ## The classical adiabaticity criterion: ε = ρ_L / R_c < 0.1
 threshold = 0.1
 
-p = (q2m, m, E_field, B_field, ZeroField())
-
 alg = AdaptiveHybrid(;
     threshold,
     dtmax = T_gyro,
@@ -113,7 +107,8 @@ alg = AdaptiveHybrid(;
 )
 
 ## Set verbose = true to see the dynamic switching
-prob_hybrid = TraceProblem(u0, tspan, p)
+p = param_fo
+prob_hybrid = TraceProblem(u0, tspan, param_fo)
 sol = solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
 
 # ## Step 4: Compute Adiabaticity

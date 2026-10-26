@@ -490,7 +490,6 @@ def trace_gc(
     species_jl = _as_species(species)
     B_jl = _wrap_field_or_none(B)
     E_jl = _wrap_field_or_none(E)
-    E_arg = E_jl if E_jl is not None else TP.ZeroField()
 
     prepare_kw = {}
     if q is not None:
@@ -499,8 +498,8 @@ def trace_gc(
         prepare_kw["m"] = float(m)
 
     stateinit_gc, param = TP.prepare_gc(
-        _to_svector(np.concatenate([x0, v0])), E_arg, B_jl,
-        species=species_jl, **prepare_kw
+        _to_svector(np.concatenate([x0, v0])),
+        B=B_jl, E=E_jl, species=species_jl, **prepare_kw
     )
     u0 = _to_svector(stateinit_gc)
     prob = TP.TraceGCProblem(u0, tuple(tspan), param)

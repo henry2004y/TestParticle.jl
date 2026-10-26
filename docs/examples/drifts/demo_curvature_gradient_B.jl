@@ -98,13 +98,12 @@ end;
 # trace a proton with a small `v_z` so the resulting drift is visible.
 
 curved_B(x) = SA[x[2] / norm(x[1:2])^2, -x[1] / norm(x[1:2])^2, 0.0] * 1.0e-8
-zero_E(x) = SA[0.0, 0.0, 0.0]
 
 stateinit_curv = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
     [x0..., v0...]
 end
 tspan_curv = (0, 40)
-param_curv = prepare(zero_E, curved_B, species = Proton)
+param_curv = prepare(; B = curved_B, species = Proton)
 prob_curv = ODEProblem(trace!, stateinit_curv, tspan_curv, param_curv)
 sol_curv = solve(prob_curv, Vern9())
 gc_curv = xu -> get_gc(xu, param_curv)

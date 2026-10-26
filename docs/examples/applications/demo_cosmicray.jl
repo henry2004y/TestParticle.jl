@@ -83,9 +83,8 @@ CairoMakie.activate!(type = "png") #hide
 
 B0 = 1.0
 B_uniform(x) = SA[0.0, 0.0, B0]
-E_zero(x) = SA[0.0, 0.0, 0.0]
 
-param_uniform = prepare(E_zero, B_uniform; q = 1.0, m = 1.0)
+param_uniform = prepare(; B = B_uniform, q = 1.0, m = 1.0)
 
 function generate_turbulent_field(
         gridx, gridy, gridz; B0 = 1.0, amp = 0.3, n_modes = 6, kmax = 3, seed = 42
@@ -121,7 +120,7 @@ F = generate_turbulent_field(gridx, gridy, gridz; B0)
 itp = TP.build_interpolator(F, gridx, gridy, gridz, 1, TP.WrapExtrap())
 Bfunc(x) = itp(x) ./ B0 # normalize: background guide field -> 1
 
-param = prepare(E_zero, Bfunc; q = 1.0, m = 1.0);
+param = prepare(; B = Bfunc, q = 1.0, m = 1.0);
 
 # ## 3. Solver consistency: RK vs Boris
 #

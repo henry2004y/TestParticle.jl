@@ -794,6 +794,27 @@ end
         @test B_val + res == B_val
     end
 
+    @testset "prepare keyword with Unitful grids" begin
+        x = [0.0, 1.0]u"m"
+        y = [0.0, 1.0]u"m"
+        z = [0.0, 1.0]u"m"
+        B1 = zeros(3, 2)
+        B2 = zeros(3, 2, 2)
+        B3 = zeros(3, 2, 2, 2)
+
+        p1 = prepare(x; B = B1)
+        @test p1.B isa TP.Field
+        @test p1.E isa TP.ZeroField
+
+        p2 = prepare(x, y; B = B2)
+        @test p2.B isa TP.Field
+        @test p2.E isa TP.ZeroField
+
+        p3 = prepare(x, y, z; B = B3)
+        @test p3.B isa TP.Field
+        @test p3.E isa TP.ZeroField
+    end
+
     @testset "ZeroVector Operations" begin
         zv = TP.ZeroVector()
         v = SA[1.0, 2.0, 3.0]
