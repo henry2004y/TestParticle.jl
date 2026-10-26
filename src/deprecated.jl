@@ -6,6 +6,9 @@ PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
 prepare_canonical(phi, A; kw...) = prepare_canonical(; phi, A, kw...)
 prepare_canonical(A; phi = nothing, kw...) = prepare_canonical(; phi, A, kw...)
 
+get_work_rates(xv, p, t, magnetic_properties, E = nothing) =
+    get_work_rates(xv, p, t; magnetic_properties, E)
+
 function get_B_parameters(x, t, Bfunc)
     (; B, Bmag, b̂, ∇B, JB) = get_magnetic_properties(x, t, Bfunc)
     return B, Bmag, b̂, ∇B, JB

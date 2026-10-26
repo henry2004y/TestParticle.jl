@@ -1,8 +1,8 @@
 """
-    _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt) -> SVector{4}
+    get_work_rates(xv, p, t; magnetic_properties = nothing, E = nothing) -> SVector{4}
 
-Leading-order guiding-center work rates [W] shared by the full-orbit and the
-guiding-center flavors. Returns `(P_par, P_fermi, P_grad, P_betatron)`:
+Calculate the leading-order adiabatic work rates [W] `(P_par, P_fermi, P_grad, P_betatron)`
+acting on a full-orbit particle or a guiding center:
 
 | Term | Formula | Physics |
 |:---|:---|:---|
@@ -14,35 +14,13 @@ guiding-center flavors. Returns `(P_par, P_fermi, P_grad, P_betatron)`:
 Here `v_E = (E×b̂)/B` is the ExB drift, so `P_grad` is the perpendicular heating a
 particle picks up by being convected across `∇B` at fixed `μ`, while `P_betatron` is
 the heating from the local change of `|B|`. Together they are `μ (∂_t + v_E⋅∇) B`.
-
-Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
-"""
-@inline function _work_rate_terms(q, m, v_par::Number, μ, E, ∇B, κ, b̂, Bmag, dBdt)
-    # 1. Parallel work: q v∥ (E ⋅ b̂)
-    P_par = q * v_par * (E ⋅ b̂)
-    # 2. Fermi work: m v∥² / B (b̂ × κ) ⋅ E
-    P_fermi = (m * v_par^2 / Bmag) * ((b̂ × κ) ⋅ E)
-    # 3. Gradient drift work: μ / B (b̂ × ∇B) ⋅ E = μ v_E ⋅ ∇B
-    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
-    # 4. Betatron work: μ ∂B/∂t
-    P_betatron = μ * dBdt
-
-    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
-end
-
-"""
-    get_work_rates(xv, p, t[, magnetic_properties, E_field]) -> SVector{4}
-
-Calculate the work rates [W] acting on a full-orbit particle or a guiding center.
-Returns the four leading-order adiabatic terms `(P_par, P_fermi, P_grad, P_betatron)`
-documented in [`_work_rate_terms`](@ref); see [`get_work_channels`](@ref) for the
-grouping into physical acceleration channels.
+See [`get_work_channels`](@ref) for the grouping into physical acceleration channels.
 
 The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Saved
 guiding-center states can carry diagnostics appended by `save_fields`/`save_work`, so
 their length is not a reliable discriminator.
 
-`magnetic_properties` and `E_field` are optional precomputed values of
+`magnetic_properties` and `E` are optional precomputed values of
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
 to avoid recomputing the field Jacobian when the caller already has them.
 
@@ -58,66 +36,40 @@ invariance alone do not imply this condition. When it holds, any remaining misma
 is numerical (e.g. time-integration or quadrature error).
 
 All four terms are zero in a magnetic null.
+
+Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 """
-@inline function get_work_rates(xv, p, t, magnetic_properties = nothing, E_field = nothing)
-    return hasproperty(p, :μ) ?
-        _get_work_rates_gc(xv, p, t, magnetic_properties, E_field) :
-        _get_work_rates_fo(xv, p, t, magnetic_properties, E_field)
-end
-
-@inline function _get_work_rates_fo(xu, p, t, magnetic_properties = nothing, E_field = nothing)
-    (; q2m, m) = p
-    Efunc, Bfunc = p.E, p.B
-    r = get_x(xu)
-    q = q2m * m
-
-    E = E_field === nothing ? Efunc(r, t) : E_field
-
-    if magnetic_properties === nothing
-        _, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
-    else
-        _, ∇B, κ, b̂, Bmag = magnetic_properties
-    end
-
-    if Bmag == 0
-        return SVector{4, eltype(xu)}(0, 0, 0, 0)
-    end
-
-    v = get_v(xu)
-    v_par = v ⋅ b̂
-    v_perp = _get_v_perp(v, b̂)
-    μ = m * (v_perp ⋅ v_perp) / (2 * Bmag)
-    dBdt = derivative_t(Bfunc, r, t) ⋅ b̂
-
-    return _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt)
-end
-
-@inline function _get_work_rates_gc(xv, p, t, magnetic_properties = nothing, E_field = nothing)
-    (; q, q2m, μ) = p
-    Efunc, Bfunc = p.E, p.B
+@inline function get_work_rates(xv, p, t; magnetic_properties = nothing, E = nothing)
     r = get_x(xv)
-    v_par = xv[4]
+    (; ∇B, κ, b̂, Bmag) = @something magnetic_properties get_magnetic_properties(r, t, p.B)
+    iszero(Bmag) && return zero(SVector{4, eltype(xv)})
 
-    E = E_field === nothing ? Efunc(r, t) : E_field
+    E = @something E p.E(r, t)
+    q, m, v_par, μ = _work_rate_particle(xv, p, b̂, Bmag)
+    dBdt = derivative_t(p.B, r, t) ⋅ b̂
 
-    if magnetic_properties === nothing
-        _, ∇B, κ, b̂, Bmag = get_magnetic_properties(r, t, Bfunc)
-    else
-        _, ∇B, κ, b̂, Bmag = magnetic_properties
+    P_par = q * v_par * (E ⋅ b̂)
+    P_fermi = (m * v_par^2 / Bmag) * ((b̂ × κ) ⋅ E)
+    P_grad = (μ / Bmag) * ((b̂ × ∇B) ⋅ E)
+    P_betatron = μ * dBdt
+
+    return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
+end
+
+# Charge, mass, parallel velocity and magnetic moment of the traced particle.
+@inline function _work_rate_particle(xv, p, b̂, Bmag)
+    if hasproperty(p, :μ)
+        (; q, q2m, μ) = p
+        return q, q / q2m, xv[4], μ
     end
-
-    if Bmag == 0
-        return SVector{4, eltype(xv)}(0, 0, 0, 0)
-    end
-
-    m = q / q2m
-    dBdt = derivative_t(Bfunc, r, t) ⋅ b̂
-
-    return _work_rate_terms(q, m, v_par, μ, E, ∇B, κ, b̂, Bmag, dBdt)
+    (; q2m, m) = p
+    v = get_v(xv)
+    v_perp = _get_v_perp(v, b̂)
+    return q2m * m, m, v ⋅ b̂, m * (v_perp ⋅ v_perp) / (2 * Bmag)
 end
 
 """
-    get_work_channels(xv, p, t) -> SVector{3}
+    get_work_channels(xv, p, t; kwargs...) -> SVector{3}
 
 Group the work rates into the three physical acceleration channels
 `(P_parallel, P_fermi, P_betatron)` [W].
@@ -132,10 +84,10 @@ channels is:
   `(μ/B)(b̂×∇B)⋅E = μ v_E⋅∇B`, it is the convective (spatial) part of the betatron
   channel, while `μ ∂B/∂t` is its local (temporal) part.
 
-Both a full-orbit and a guiding-center state are accepted, as in `get_work_rates`.
+The state and the keywords are as in `get_work_rates`.
 """
-function get_work_channels(xv, p, t)
-    P_par, P_fermi, P_grad, P_betatron = get_work_rates(xv, p, t)
+function get_work_channels(xv, p, t; kwargs...)
+    P_par, P_fermi, P_grad, P_betatron = get_work_rates(xv, p, t; kwargs...)
 
     return SVector{3}(P_par, P_fermi, P_grad + P_betatron)
 end
