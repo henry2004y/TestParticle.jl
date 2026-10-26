@@ -45,7 +45,7 @@ v₀ = [0.0, 2.15, 3.1] .* 1.0e6
 r₀ = [7.3622, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 tspan = (0.0, 4.0e-5) # [s]
 
 prob = ODEProblem(trace!, stateinit, tspan, param)
@@ -77,7 +77,7 @@ v₀ = [0.0, 1.15, 5.1] .* 1.0e6
 r₀ = [6.6494, 0.0, 0.0]
 stateinit = [r₀..., v₀...]
 
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 tspan = (0.0, 4.0e-5)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)

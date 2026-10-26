@@ -15,10 +15,10 @@ using StaticArrays
 using ..test_common: uniform_grid, cartesian_grid
 
 "Oscillating electric field along +x."
-E_osc(r, t) = SA[5.0e-11 * sin(2π * t), 0, 0]  # [V/m]
+E(r, t) = SA[5.0e-11 * sin(2π * t), 0, 0]  # [V/m]
 
 "Oscillating magnetic field along +z."
-B_osc(r, t) = SA[0, 0, 1.0e-11 * cos(2π * t)]  # [T]
+B(r, t) = SA[0, 0, 1.0e-11 * cos(2π * t)]  # [T]
 
 "Constant force field along +y."
 F_const(r) = SA[0, 9.10938356e-42, 0]  # [N]
@@ -35,7 +35,7 @@ F_const(r) = SA[0, 9.10938356e-42, 0]  # [N]
     stateinit = [x0..., u0...]
     tspan = (0.0, 1.0)
 
-    param = prepare(grid, E_osc, B_osc, F; species = Electron)
+    param = prepare(grid; E, B, F, species = Electron)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1, 2, 3])
     @test isapprox(sol[1, end], -1.2828663442681638, rtol = 1.0e-2) &&
@@ -43,7 +43,7 @@ F_const(r) = SA[0, 9.10938356e-42, 0]  # [N]
         isapprox(sol[3, end], 1.0, rtol = 1.0e-2)
     @test get_gc([stateinit..., 0.0], param)[1] ≈ -0.5685630103565723
 
-    param = prepare(E_osc, B_osc, F_const; species = Electron)
+    param = prepare(; E, B, F = F_const, species = Electron)
     _, _, _, _, F_out = param
     @test F_out(x0)[2] ≈ 9.10938356e-42
 

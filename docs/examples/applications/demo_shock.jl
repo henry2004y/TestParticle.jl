@@ -73,7 +73,7 @@ weight₁ = n₁ / trajectories # relation between test particle and real partic
 
 prob = let
     ## bc=ClampExtrap() is Flat
-    param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
+    param = prepare(x; E, B, species = Proton, bc = ClampExtrap())
     stateinit = zeros(6) # particle position and velocity to be modified
     tspan = (0.0, 30.0)
     ODEProblem(trace!, stateinit, tspan, param)
@@ -368,7 +368,7 @@ end
 
 prob = let
     ## bc=ClampExtrap() is Flat
-    param = prepare(x, E, B; species = Proton, bc = ClampExtrap())
+    param = prepare(x; E, B, species = Proton, bc = ClampExtrap())
     stateinit = zeros(6) # particle position and velocity to be modified
     tspan = (0.0, 14.0)
     ODEProblem(trace!, stateinit, tspan, param)

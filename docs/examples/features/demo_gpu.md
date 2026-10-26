@@ -23,7 +23,7 @@ x0 = [0.0, 0.0, 0.0] # initial position, [m]
 u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = [x0..., u0...]
 
-param = prepare(E, B; species = Electron)
+param = prepare(; E, B, species = Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -74,7 +74,7 @@ x0 = SA[0.0, 0.0, 0.0] # initial position, [m]
 u0 = SA[1.0, 0.0, 0.0] # initial velocity, [m/s]
 stateinit = SA[x0..., u0...]
 
-param = prepare(E, B; species = Electron)
+param = prepare(; E, B, species = Electron)
 tspan = (0.0, 10.0)
 
 trajectories = 3
@@ -134,7 +134,7 @@ v0 = [1.0e5, 0.0, 0.0]       # initial velocity, [m/s]
 stateinit = [x0..., v0...]   # template state, overwritten per trajectory
 tspan = (0.0, 1.0e-6)
 
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 
 # Give every particle a perpendicular speed of its own
 trajectories = 1000
@@ -228,7 +228,7 @@ stateinit = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
 tspan = (0.0, 1.0e-6)
 dt = 1.0e-9
 
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 prob = TraceProblem(stateinit, tspan, param)
 u0 = repeat(reshape(stateinit, 1, 6), trajectories, 1)
 for i in 1:trajectories
@@ -291,7 +291,7 @@ stateinit = SA[x0..., v0...]
 tspan = (0.0, 1.0e-5)
 dt = 1.0e-7
 
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 
 # Ensemble with varying initial velocities along x
 trajectories = 8

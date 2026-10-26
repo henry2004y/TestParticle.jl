@@ -89,7 +89,7 @@ function AdaptiveHybrid(;
     )
 end
 
-# Built by `solve(::TraceProblem, ::AdaptiveHybrid)`; exported for compatibility.
+# Built by `solve(::TraceProblem, ::AdaptiveHybrid)`.
 struct TraceHybridProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
     AbstractODEProblem{uType, tType, isinplace}
     f::F

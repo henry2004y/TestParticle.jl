@@ -27,7 +27,7 @@ x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[1.0e4, 0.0, 1.0e4]
 u0_full = vcat(x0, v0)
 u0_gc, param = TestParticle.prepare_gc(
-    u0_full, zero_E, uniform_B; species = Proton
+    u0_full; E = zero_E, B = uniform_B, species = Proton
 )
 
 function prob_func(prob, ctx)
@@ -117,7 +117,7 @@ end
 
     # --- Boris (full 6D) ---
     let
-        param_b = prepare(zero_E, uniform_B; species = Proton)
+        param_b = prepare(; E = zero_E, B = uniform_B, species = Proton)
         function pf_b(prob, ctx)
             v = SA[1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng), 1.0e4 * rand(ctx.rng)]
             return remake(prob; u0 = SA[0.0, 0.0, 0.0, v...])

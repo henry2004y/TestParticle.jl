@@ -68,7 +68,7 @@ function setup_normalized_field(x0, u0, tspan)
     stateinit_norm = [x0_norm_val..., u0_norm_val...]
     tspan_norm = tspan ./ t_dim
 
-    param_norm = prepare(E_norm, B_norm; m = 1.0, q = 1.0)
+    param_norm = prepare(; E = E_norm, B = B_norm, m = 1.0, q = 1.0)
 
     return param_norm, stateinit_norm, tspan_norm
 end
@@ -114,7 +114,7 @@ stateinit = [x0..., u0...]
 # --- Benchmarks ---
 
 # Analytic Field
-param_analytic = prepare(E_analytic, B_analytic)
+param_analytic = prepare(; E = E_analytic, B = B_analytic)
 prob_ip = ODEProblem(trace!, stateinit, tspan, param_analytic) # in place
 prob_rel_ip = ODEProblem(trace_relativistic!, stateinit, tspan, param_analytic) # in place
 prob_oop = ODEProblem(trace, SA[stateinit...], tspan, param_analytic) # out of place
@@ -140,8 +140,8 @@ SUITE["trace"]["normalized"]["out of place"] = @benchmarkable solve(
 # Numerical Field
 mesh, E_numeric, B_numeric = setup_numeric_field()
 tspan_num = (0.0, 10.0)
-param_numeric = prepare(mesh, E_numeric, B_numeric; order = 1)
-param_numeric_cubic = prepare(mesh, E_numeric, B_numeric; order = 3)
+param_numeric = prepare(mesh; E = E_numeric, B = B_numeric, order = 1)
+param_numeric_cubic = prepare(mesh; E = E_numeric, B = B_numeric, order = 3)
 prob_ip_num = ODEProblem(trace!, stateinit, tspan_num, param_numeric) # in place
 prob_oop_num = ODEProblem(trace, SA[stateinit...], tspan_num, param_numeric) # out of place
 prob_boris = TraceProblem(stateinit, tspan_num, param_numeric)
@@ -195,7 +195,7 @@ SUITE["trace"]["numerical field"]["Boris kernel with isoutside"] = @benchmarkabl
 )
 
 # Time-Dependent Field
-param_td = prepare(E_td, B_td, F_td)
+param_td = prepare(; E = E_td, B = B_td, F = F_td)
 prob_ip_td = ODEProblem(trace!, stateinit, tspan, param_td) # in place
 prob_oop_td = ODEProblem(trace, SA[stateinit...], tspan, param_td) # out of place
 
@@ -244,8 +244,7 @@ end
 
 # GC
 stateinit_gc, param_gc = prepare_gc(
-    stateinit, E_analytic, B_analytic,
-    species = Proton
+    stateinit; E = E_analytic, B = B_analytic, species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())

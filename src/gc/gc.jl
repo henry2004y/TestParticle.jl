@@ -40,8 +40,6 @@ end
 
 """
     prepare_gc(xv, [grid...;] E = nothing, B = nothing, kw...) -> (state_gc, param_gc)
-    prepare_gc(xv, [grid...,] E, B; kw...)
-    prepare_gc(xv, B; kw...)
 
 Initial guiding-center state `[X..., vpar]` from full-orbit state `xv` and parameters
 `(; q, q2m, μ, E, B)` for tracing it. Omitted fields are zero. `xv` is

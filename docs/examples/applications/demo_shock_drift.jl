@@ -81,7 +81,7 @@ Bvecs = [B₁ .+ (B₂ .- B₁) .* 0.5 .* (1 .+ tanh(xq / L)) for xq in x]
 Bm = hcat(Bvecs...)
 Em = hcat([[Ex(xq), E_y, 0.0] for xq in x]...)
 
-param = prepare(x, Em, Bm; bc = ClampExtrap(), q = qᵢ, m = mᵢ)
+param = prepare(x; E = Em, B = Bm, bc = ClampExtrap(), q = qᵢ, m = mᵢ)
 
 function field_at(xq, Em, Bm)
     i = clamp(searchsortedlast(x, xq) + 1, 1, length(x))

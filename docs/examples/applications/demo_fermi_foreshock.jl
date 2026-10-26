@@ -259,7 +259,7 @@ trajectories = 1000;
 
 # **Case 1**: 0 core field
 
-param = prepare(E, Bcase1; species = Electron);
+param = prepare(; E, B = Bcase1, species = Electron);
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
@@ -297,7 +297,7 @@ const δBfunc = let
 end
 
 dt = 2.0e-4 # [s]
-param = prepare(E, Bcase2; species = Electron);
+param = prepare(; E, B = Bcase2, species = Electron);
 prob = TraceProblem(stateinit, tspan, param; prob_func)
 sols = solve(
     prob, Boris(), EnsembleThreads();

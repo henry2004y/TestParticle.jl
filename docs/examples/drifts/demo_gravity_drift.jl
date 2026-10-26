@@ -72,7 +72,7 @@ end
 ## Time span
 tspan = (0, 2.0)
 
-param = prepare(E, B, F, species = Proton)
+param = prepare(; E, B, F, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

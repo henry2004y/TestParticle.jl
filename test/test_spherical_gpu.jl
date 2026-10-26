@@ -73,7 +73,7 @@ end
 function setup_field(r, θ, ϕ)
     B = uniform_z_field(r, θ, ϕ)
     A = radial_scalar_field(r, θ, ϕ)
-    param = prepare(r, θ, ϕ, A, B; species = Proton, gridtype = TP.StructuredGrid)
+    param = prepare(r, θ, ϕ; E = A, B, species = Proton, gridtype = TP.StructuredGrid)
     return param, param[4].field_function, param[3].field_function
 end
 
@@ -159,7 +159,7 @@ end
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             B = uniform_z_field(r, θ, ϕ)
             param = prepare(
-                r, θ, ϕ, zeros(size(B)), B; species = Proton, gridtype = TP.StructuredGrid
+                r, θ, ϕ; E = zeros(size(B)), B, species = Proton, gridtype = TP.StructuredGrid
             )
             fi = param[4].field_function
             g = TP._to_gpu_grid(fi, CPU())
@@ -305,7 +305,7 @@ end
 
             E = radial_vector_field(r, θ, ϕ)
             B = uniform_z_field(r, θ, ϕ)
-            param = prepare(r, θ, ϕ, E, B; species = Proton, gridtype = TP.StructuredGrid)
+            param = prepare(r, θ, ϕ; E, B, species = Proton, gridtype = TP.StructuredGrid)
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
             gE = TP._to_gpu_grid(param[3].field_function, CPU())

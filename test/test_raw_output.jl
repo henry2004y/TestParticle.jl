@@ -34,9 +34,9 @@ function make_prob(N; T = Float64)
     states = initial_states(N; T)
     prob_func = (prob, ctx) -> remake(prob; u0 = collect(states[ctx.sim_id, :]))
     param = if T === Float32
-        prepare(zero_E32, uniform_B32; species = Proton, type = Float32)
+        prepare(; E = zero_E32, B = uniform_B32, species = Proton, type = Float32)
     else
-        prepare(zero_E, uniform_B; species = Proton)
+        prepare(; E = zero_E, B = uniform_B, species = Proton)
     end
     prob = TraceProblem(
         collect(states[1, :]), (zero(T), dt * NT), param; prob_func

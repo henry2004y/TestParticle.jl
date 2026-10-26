@@ -223,7 +223,7 @@ function setup_grid_problem(; grid_res = 32, dt = 1.0f-8, nsteps = NSTEPS_GRID)
         SA[0.0f0, 0.0f0, 0.0f0] for _ in 1:grid_res, _ in 1:grid_res, _ in 1:grid_res
     ]
 
-    param32 = prepare(x, y, z, E_data, B_data; species = Proton, type = Float32)
+    param32 = prepare(x, y, z; E = E_data, B = B_data, species = Proton, type = Float32)
     prob_func(prob, ctx) = remake(
         prob;
         u0 = Float32[
@@ -562,7 +562,7 @@ function main()
 
     B64(x) = SA[0.0, 0.0, 1.0e-8]
     E64(x) = SA[0.0, 0.0, 0.0]
-    param64 = prepare(E64, B64; species = Proton)
+    param64 = prepare(; E = E64, B = B64, species = Proton)
     dt64 = 1.0e-8
     tspan64 = (0.0, dt64 * NSTEPS_ANALYTICAL)
     prob_func64(prob, ctx) = remake(
@@ -574,7 +574,7 @@ function main()
 
     B32(x) = SA[0.0f0, 0.0f0, 1.0f-8]
     E32(x) = SA[0.0f0, 0.0f0, 0.0f0]
-    param32 = prepare(E32, B32; species = Proton, type = Float32)
+    param32 = prepare(; E = E32, B = B32, species = Proton, type = Float32)
     dt32 = 1.0f-8
     tspan32 = (0.0f0, dt32 * NSTEPS_ANALYTICAL)
     prob_func32(prob, ctx) = remake(

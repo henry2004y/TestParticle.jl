@@ -160,7 +160,7 @@ function exact_velocity(t, E, B, q, m)
 end
 
 ## Trace problem
-param2 = prepare(E_func2, B_func2; q, m)
+param2 = prepare(; E = E_func2, B = B_func2, q, m)
 prob2 = TraceProblem(u0, tspan2, param2)
 
 ## Time steps to test: from π/120 to π (log-spaced)

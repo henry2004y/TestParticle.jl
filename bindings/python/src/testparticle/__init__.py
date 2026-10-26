@@ -420,10 +420,7 @@ def trace(
     if m is not None:
         prepare_kw["m"] = float(m)
 
-    if E_jl is None:
-        param = TP.prepare(B_jl, species=species_jl, **prepare_kw)
-    else:
-        param = TP.prepare(E_jl, B_jl, species=species_jl, **prepare_kw)
+    param = TP.prepare(E=E_jl, B=B_jl, species=species_jl, **prepare_kw)
 
     u0 = _to_svector(np.concatenate([x0, v0]))
     if init_func is not None:

@@ -19,7 +19,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
 @testset "Boris on a backend" begin
     @testset "the device walks the same trajectory as the SciML loop" begin
         let tspan = (0.0, 1.0e-6), dt = 1.0e-9, saveat = 1.0e-8,
-                param = prepare(zero_E, uniform_B; species = Proton),
+                param = prepare(; E = zero_E, B = uniform_B, species = Proton),
                 prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
             for alg in (
@@ -40,7 +40,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
 
     @testset "a solver that picks its own step has no device path" begin
         let tspan = (0.0, 1.0e-6), dt = 1.0e-9,
-                param = prepare(zero_E, uniform_B; species = Proton),
+                param = prepare(; E = zero_E, B = uniform_B, species = Proton),
                 prob = TraceProblem([0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
             for alg in (AdaptiveBoris(safety = 0.1), AdaptiveMultistepBoris{2}(n = 2))
@@ -51,7 +51,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
 
     @testset "Float32 Boris on a backend" begin
         let tspan = (0.0f0, 1.0f-6), dt = 1.0f-9, saveat = 1.0f-8,
-                param = prepare(zero_E, uniform_B; species = Proton),
+                param = prepare(; E = zero_E, B = uniform_B, species = Proton),
                 prob = TraceProblem(Float32[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], tspan, param)
 
             sol_loop = solve(prob, Boris(); dt, saveat)
@@ -68,7 +68,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 B_grid = zeros(3, length(x), length(y), length(z))
 
             B_grid[3, :, :, :] .= 1.0e-8
-            param = prepare(x, y, z, zeros(size(B_grid)), B_grid; species = Proton)
+            param = prepare(x, y, z; E = zeros(size(B_grid)), B = B_grid, species = Proton)
             prob = TraceProblem([5.0, 5.0, 5.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6), param)
 
             sol_loop = solve(prob, Boris(); dt = 1.0e-9)
@@ -112,7 +112,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
 
             # Uniform spherical grid
             param_sph_u = prepare(
-                r_u, θ, ϕ, zeros(size(B_sph)), B_sph;
+                r_u, θ, ϕ; E = zeros(size(B_sph)), B = B_sph,
                 species = Proton, gridtype = TP.StructuredGrid
             )
             prob_sph_u = TraceProblem(
@@ -135,7 +135,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 B_sph_nu[2, :, iθ, :] .= -1.0e-8 * sinθ
             end
             param_sph_nu = prepare(
-                r_nu, θ, ϕ, zeros(size(B_sph_nu)), B_sph_nu;
+                r_nu, θ, ϕ; E = zeros(size(B_sph_nu)), B = B_sph_nu,
                 species = Proton, gridtype = TP.StructuredGrid
             )
             prob_sph_nu = TraceProblem(
@@ -178,7 +178,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x), j in 1:length(y), k in 1:length(z)
             B_grid3d[:, i, j, k] .= [x[i], y[j], z[k]]
         end
-        param3d = prepare(x, y, z, zeros(size(B_grid3d)), B_grid3d; species = Proton)
+        param3d = prepare(x, y, z; E = zeros(size(B_grid3d)), B = B_grid3d, species = Proton)
         fi3d = param3d[4].field_function
         g3d = TP._to_gpu_grid(fi3d, CPU())
 
@@ -195,7 +195,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x), j in 1:length(y)
             B_grid2d[:, i, j] .= [x[i], y[j], 0.0]
         end
-        param2d = prepare(x, y, zeros(size(B_grid2d)), B_grid2d; species = Proton)
+        param2d = prepare(x, y; E = zeros(size(B_grid2d)), B = B_grid2d, species = Proton)
         fi2d = param2d[4].field_function
         g2d = TP._to_gpu_grid(fi2d, CPU())
 
@@ -212,7 +212,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x)
             B_grid1d[:, i] .= [x[i], 0.0, 0.0]
         end
-        param1d = prepare(x, zeros(size(B_grid1d)), B_grid1d; species = Proton)
+        param1d = prepare(x; E = zeros(size(B_grid1d)), B = B_grid1d, species = Proton)
         fi1d = param1d[4].field_function
         g1d = TP._to_gpu_grid(fi1d, CPU())
 
@@ -229,8 +229,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             B_sph = zeros(3, length(r), length(θ), length(ϕ))
             B_sph[1, :, :, :] .= 1.0
             param_sph = prepare(
-                r, θ, ϕ, zeros(size(B_sph)), B_sph;
-                species = Proton, gridtype = TP.StructuredGrid
+                r, θ, ϕ; E = zeros(size(B_sph)), B = B_sph, species = Proton, gridtype = TP.StructuredGrid
             )
             fi_sph = param_sph[4].field_function
             g_sph = TP._to_gpu_grid(fi_sph, CPU())

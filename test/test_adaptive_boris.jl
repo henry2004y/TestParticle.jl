@@ -5,9 +5,8 @@ using BorisPushers
 using StaticArrays
 
 @testset "AdaptiveBoris Compatibility" begin
-    B_field(r, t) = SA[0, 0, 1.0e-8]
-    E_field(r, t) = SA[0, 0, 0]
-    param = TestParticle.prepare(E_field, B_field)
+    B(r, t) = SA[0, 0, 1.0e-8]
+    param = TestParticle.prepare(; B)
 
     tspan = (0.0, 1.0)
     x0 = [1.0, 0.0, 0.0]

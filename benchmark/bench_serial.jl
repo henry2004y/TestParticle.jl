@@ -12,7 +12,7 @@ uniform_B(x) = SA[0.0, 0.0, 1.0e-8]
 uniform_E(x) = SA[0.0, 0.0, 0.0]
 
 # Proton parameters by default
-param = prepare(uniform_E, uniform_B; species = Proton)
+param = prepare(; E = uniform_E, B = uniform_B, species = Proton)
 
 # Initial conditions
 x0 = [0.0, 0.0, 0.0]

@@ -20,8 +20,6 @@ const B₀, Bn, L = 20.0e-9, 2.0e-9, 0.4Rₑ
 const field = MS.HarrisSheet(B₀, L)
 const getB(xu) = field(xu) + SA[0.0, 0.0, Bn]
 
-getE(xu) = SA[0.0, 0.0, 0.0]
-
 ### Initialize particles
 
 ## Initial condition
@@ -39,7 +37,7 @@ stateinit = let
     [r₀..., v₀...]
 end
 
-param = prepare(getE, getB)
+param = prepare(; B = getB)
 tspan = (0.0, -400.0)
 
 prob = ODEProblem(trace!, stateinit, tspan, param)

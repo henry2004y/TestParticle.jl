@@ -105,12 +105,9 @@ end
 
 """
     prepare([grid...;] E = nothing, B = nothing, F = nothing, kwargs...) -> (; q2m, m, E, B, F[, c])
-    prepare([grid...,] E, B, F = nothing; kwargs...)
-    prepare(B; E = nothing, F = nothing, kwargs...)
 
 Tracing parameters for a particle in the electric field `E`, the magnetic field `B` and
-the external force `F`. Omitted fields are zero. Prefer the keyword form, which names each
-field; the positional form takes **`E` before `B`**, and a single positional field is `B`.
+the external force `F`. Omitted fields are zero.
 
 ```julia
 prepare(; B)              # magnetic field only
@@ -140,9 +137,19 @@ size `(3, size(grid)...)`, interpolated on the grid. The grid is given as
     copying field and grid arrays that stay unchanged for the interpolator's lifetime.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
 """
+prepare(; E = nothing, B = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
+
 function prepare(
-        x::AbstractVector, y::AbstractVector, E, B, F = nothing; order = 1,
-        bc = FillExtrap(NaN), kw...
+        x::AbstractVector; E = nothing, B = nothing, F = nothing,
+        order = 1, bc = ClampExtrap(), dir = 1, kw...
+    )
+    @assert issorted(x) "Grid vector `x` must be sorted."
+    return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
+end
+
+function prepare(
+        x::AbstractVector, y::AbstractVector; E = nothing, B = nothing, F = nothing,
+        order = 1, bc = FillExtrap(NaN), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
@@ -150,8 +157,9 @@ function prepare(
 end
 
 function prepare(
-        x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = nothing; order = 1,
-        bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
+        x::AbstractVector, y::AbstractVector, z::AbstractVector;
+        E = nothing, B = nothing, F = nothing,
+        order = 1, bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
@@ -160,34 +168,14 @@ function prepare(
 end
 
 function prepare(
-        x::Base.LogRange, y::AbstractVector, z::AbstractVector, E, B, F = nothing;
-        order = 1, bc = WrapExtrap(), kw...
+        x::Base.LogRange, y::AbstractVector, z::AbstractVector;
+        E = nothing, B = nothing, F = nothing, order = 1, bc = WrapExtrap(), kw...
     )
     @assert issorted(x) "Grid vector `x` must be sorted."
     @assert issorted(y) "Grid vector `y` must be sorted."
     @assert issorted(z) "Grid vector `z` must be sorted."
     return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
 end
-
-function prepare(x::AbstractVector, E, B, F = nothing; order = 1, bc = ClampExtrap(), dir = 1, kw...)
-    @assert issorted(x) "Grid vector `x` must be sorted."
-    return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
-end
-prepare(E, B, F = nothing; kw...) = _prepare(E, B, F; kw...)
-prepare(B; E = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
-
-# Keyword forms: the field roles are named, so they cannot be swapped.
-prepare(; E = nothing, B = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
-prepare(x::AbstractVector; E = nothing, B = nothing, F = nothing, kw...) =
-    prepare(x, E, B, F; kw...)
-prepare(
-    x::AbstractVector, y::AbstractVector;
-    E = nothing, B = nothing, F = nothing, kw...
-) = prepare(x, y, E, B, F; kw...)
-prepare(
-    x::AbstractVector, y::AbstractVector, z::AbstractVector;
-    E = nothing, B = nothing, F = nothing, kw...
-) = prepare(x, y, z, E, B, F; kw...)
 
 """
     PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing)

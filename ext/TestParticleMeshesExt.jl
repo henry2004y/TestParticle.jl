@@ -75,28 +75,21 @@ function get_cell_centers(grid::RectilinearGrid)
     return map(c -> (c[1:(end - 1)] .+ c[2:end]) ./ 2, grid_coords)
 end
 
-prepare(grid::Union{CartesianGrid, RectilinearGrid}; E = nothing, B = nothing, F = nothing, kw...) =
-    prepare(grid, E, B, F; kw...)
+_gridtype(::CartesianGrid) = TestParticle.CartesianGrid
+_gridtype(::RectilinearGrid) = TestParticle.RectilinearGrid
 
 function prepare(
-        grid::CartesianGrid, E, B, F = nothing;
+        grid::Union{CartesianGrid, RectilinearGrid}; E = nothing, B = nothing, F = nothing,
         order = 1, bc = TestParticle.FillExtrap(NaN), kw...
     )
     return TestParticle._prepare(
-        E, B, F, makegrid(grid)...;
-        gridtype = TestParticle.CartesianGrid, order, bc, kw...
+        E, B, F, makegrid(grid)...; gridtype = _gridtype(grid), order, bc, kw...
     )
 end
 
-function prepare(
-        grid::RectilinearGrid, E, B, F = nothing;
-        order = 1, bc = TestParticle.FillExtrap(NaN), kw...
-    )
-    return TestParticle._prepare(
-        E, B, F, makegrid(grid)...;
-        gridtype = TestParticle.RectilinearGrid, order, bc, kw...
-    )
-end
+# Compatibility form, removed with those in TestParticle's `deprecated.jl`.
+prepare(grid::Union{CartesianGrid, RectilinearGrid}, E, B, F = nothing; kw...) =
+    prepare(grid; E, B, F, kw...)
 
 # Virtual detectors
 
@@ -289,13 +282,13 @@ end
             (first(x), first(y), first(z)), (last(x), last(y), last(z));
             dims = (length(x) - 1, length(y) - 1, length(z) - 1)
         )
-        param = prepare(mesh, E, B)
+        param = prepare(mesh; E, B)
         get_cell_centers(mesh)
 
         rect_mesh = RectilinearGrid(x, y, z)
         makegrid(rect_mesh)
         get_cell_centers(rect_mesh)
-        param_rect = prepare(rect_mesh, E, B)
+        param_rect = prepare(rect_mesh; E, B)
 
         # Mock a simple solution for crossing tests
         t_array = collect(0.0:1.0:2.0)

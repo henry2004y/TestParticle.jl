@@ -12,9 +12,9 @@ import Tensors: Vec as Vec3
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
-uniform_B(x) = SA[0, 0, 1.0e-8]
+B(x) = SA[0, 0, 1.0e-8]
 
-nonuniform_E(x) = SA[1.0e-9 * cos(0.3 * x[1]), 0, 0]
+E(x) = SA[1.0e-9 * cos(0.3 * x[1]), 0, 0]
 
 ## Initial condition
 stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
@@ -24,12 +24,12 @@ end
 tspan = (0, 20)
 
 ## Proton
-param_p = prepare(nonuniform_E, uniform_B, species = Proton)
+param_p = prepare(; E, B, species = Proton)
 prob_p = ODEProblem(trace!, stateinit, tspan, param_p)
 sol_p = solve(prob_p, Vern9())
 
 ## Electron
-param_e = prepare(nonuniform_E, uniform_B, species = Electron)
+param_e = prepare(; E, B, species = Electron)
 prob_e = ODEProblem(trace!, stateinit, tspan, param_e)
 sol_e = solve(prob_e, Vern9())
 

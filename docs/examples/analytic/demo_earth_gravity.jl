@@ -40,7 +40,7 @@ end
 T_orbit = 2π * sqrt(r0^3 / (G * M))
 tspan = (0, 2T_orbit)
 
-param = prepare(E, B, F, species = Proton)
+param = prepare(; E, B, F, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 ## High accuracy is needed for conservation of energy and angular momentum over long periods,
 ## though for 2 orbits default tolerances might be acceptable.

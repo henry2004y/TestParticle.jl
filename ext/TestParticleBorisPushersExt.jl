@@ -614,8 +614,8 @@ end
         dt = 0.5
         # The slow particle stays inside the grid, where the interpolated field is finite.
         for (stateinit, param) in (
-                ([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(x, y, z, E, B)),
-                ([0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0], prepare(B_analytic)),
+                ([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(x, y, z; E, B)),
+                ([0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0], prepare(; B = B_analytic)),
             )
             prob = TraceProblem(stateinit, tspan, param)
 
