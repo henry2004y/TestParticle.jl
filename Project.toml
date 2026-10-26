@@ -21,18 +21,14 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
 BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
-[extras]
-BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
-
-[sources]
-BorisPushers = {path = "lib/BorisPushers"}
-
 [extensions]
 TestParticleBorisPushersExt = "BorisPushers"
+TestParticleJLD2Ext = "JLD2"
 TestParticleMeshesExt = "Meshes"
 TestParticleRecursiveArrayToolsExt = "RecursiveArrayTools"
 TestParticleVDFExt = "VelocityDistributionFunctions"
@@ -44,6 +40,7 @@ ChunkSplitters = "3"
 DiffResults = "1"
 FastInterpolations = "0.4.15"
 ForwardDiff = "1"
+JLD2 = "0.5, 0.6"
 LinearAlgebra = "1"
 Meshes = "0.56, 0.57, 0.58, 0.59, 0.60"
 MuladdMacro = "0.2.4"
@@ -54,3 +51,9 @@ SciMLBase = "3.7.1"
 StaticArrays = "1.2"
 VelocityDistributionFunctions = "0.2.2"
 julia = "1.11"
+
+[extras]
+BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
+
+[sources]
+BorisPushers = {path = "lib/BorisPushers"}
