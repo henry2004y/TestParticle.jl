@@ -5,11 +5,11 @@ using StaticArrays: SVector
 using PrecompileTools: @setup_workload, @compile_workload
 
 Base.@ccallable function testparticle_update_velocity_boris_f64(
-    v::Ptr{Cdouble},
-    E::Ptr{Cdouble},
-    B::Ptr{Cdouble},
-    qdt2m::Cdouble
-)::Cvoid
+        v::Ptr{Cdouble},
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble},
+        qdt2m::Cdouble
+    )::Cvoid
     v_in = SVector{3, Float64}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
     E_vec = SVector{3, Float64}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
     B_vec = SVector{3, Float64}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
@@ -22,11 +22,11 @@ Base.@ccallable function testparticle_update_velocity_boris_f64(
 end
 
 Base.@ccallable function testparticle_update_velocity_boris_f32(
-    v::Ptr{Cfloat},
-    E::Ptr{Cfloat},
-    B::Ptr{Cfloat},
-    qdt2m::Cfloat
-)::Cvoid
+        v::Ptr{Cfloat},
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat},
+        qdt2m::Cfloat
+    )::Cvoid
     v_in = SVector{3, Float32}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
     E_vec = SVector{3, Float32}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
     B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
@@ -39,13 +39,13 @@ Base.@ccallable function testparticle_update_velocity_boris_f32(
 end
 
 Base.@ccallable function testparticle_boris_step_staggered_f64(
-    x::Ptr{Cdouble},
-    v_half::Ptr{Cdouble},
-    q2m::Cdouble,
-    dt::Cdouble,
-    E::Ptr{Cdouble},
-    B::Ptr{Cdouble}
-)::Cvoid
+        x::Ptr{Cdouble},
+        v_half::Ptr{Cdouble},
+        q2m::Cdouble,
+        dt::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble}
+    )::Cvoid
     r = SVector{3, Float64}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
     vh = SVector{3, Float64}(
         unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
@@ -66,13 +66,13 @@ Base.@ccallable function testparticle_boris_step_staggered_f64(
 end
 
 Base.@ccallable function testparticle_boris_step_staggered_f32(
-    x::Ptr{Cfloat},
-    v_half::Ptr{Cfloat},
-    q2m::Cfloat,
-    dt::Cfloat,
-    E::Ptr{Cfloat},
-    B::Ptr{Cfloat}
-)::Cvoid
+        x::Ptr{Cfloat},
+        v_half::Ptr{Cfloat},
+        q2m::Cfloat,
+        dt::Cfloat,
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat}
+    )::Cvoid
     r = SVector{3, Float32}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
     vh = SVector{3, Float32}(
         unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
@@ -80,7 +80,7 @@ Base.@ccallable function testparticle_boris_step_staggered_f32(
     E_vec = SVector{3, Float32}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
     B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
 
-    vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt / 2f0)
+    vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt / 2.0f0)
     r_next = r + vh_next * dt
 
     unsafe_store!(x, r_next[1], 1)
@@ -93,13 +93,13 @@ Base.@ccallable function testparticle_boris_step_staggered_f32(
 end
 
 Base.@ccallable function testparticle_boris_push_f64(
-    x::Ptr{Cdouble},
-    v::Ptr{Cdouble},
-    q2m::Cdouble,
-    dt::Cdouble,
-    E::Ptr{Cdouble},
-    B::Ptr{Cdouble}
-)::Cvoid
+        x::Ptr{Cdouble},
+        v::Ptr{Cdouble},
+        q2m::Cdouble,
+        dt::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble}
+    )::Cvoid
     r = SVector{3, Float64}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
     vn = SVector{3, Float64}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
     E_vec = SVector{3, Float64}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
@@ -120,22 +120,22 @@ Base.@ccallable function testparticle_boris_push_f64(
 end
 
 Base.@ccallable function testparticle_boris_push_f32(
-    x::Ptr{Cfloat},
-    v::Ptr{Cfloat},
-    q2m::Cfloat,
-    dt::Cfloat,
-    E::Ptr{Cfloat},
-    B::Ptr{Cfloat}
-)::Cvoid
+        x::Ptr{Cfloat},
+        v::Ptr{Cfloat},
+        q2m::Cfloat,
+        dt::Cfloat,
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat}
+    )::Cvoid
     r = SVector{3, Float32}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
     vn = SVector{3, Float32}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
     E_vec = SVector{3, Float32}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
     B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
 
-    v_half = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt / 4f0)
-    v_half_next = update_velocity_boris(v_half, E_vec, B_vec, q2m * dt / 2f0)
+    v_half = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt / 4.0f0)
+    v_half_next = update_velocity_boris(v_half, E_vec, B_vec, q2m * dt / 2.0f0)
     r_next = r + v_half_next * dt
-    vn_next = update_velocity_boris(v_half_next, E_vec, B_vec, q2m * dt / 4f0)
+    vn_next = update_velocity_boris(v_half_next, E_vec, B_vec, q2m * dt / 4.0f0)
 
     unsafe_store!(x, r_next[1], 1)
     unsafe_store!(x, r_next[2], 2)
@@ -147,14 +147,14 @@ Base.@ccallable function testparticle_boris_push_f32(
 end
 
 Base.@ccallable function testparticle_boris_push_batch_f64(
-    n::Csize_t,
-    x::Ptr{Cdouble},
-    v::Ptr{Cdouble},
-    q2m::Cdouble,
-    dt::Cdouble,
-    E::Ptr{Cdouble},
-    B::Ptr{Cdouble}
-)::Cvoid
+        n::Csize_t,
+        x::Ptr{Cdouble},
+        v::Ptr{Cdouble},
+        q2m::Cdouble,
+        dt::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble}
+    )::Cvoid
     for i in 0:(n - 1)
         offset = 3 * i
         testparticle_boris_push_f64(
@@ -173,14 +173,14 @@ testparticle_boris_push_batch_f64(n::Integer, x, v, q2m, dt, E, B) =
     testparticle_boris_push_batch_f64(Csize_t(n), x, v, q2m, dt, E, B)
 
 Base.@ccallable function testparticle_boris_push_batch_f32(
-    n::Csize_t,
-    x::Ptr{Cfloat},
-    v::Ptr{Cfloat},
-    q2m::Cfloat,
-    dt::Cfloat,
-    E::Ptr{Cfloat},
-    B::Ptr{Cfloat}
-)::Cvoid
+        n::Csize_t,
+        x::Ptr{Cfloat},
+        v::Ptr{Cfloat},
+        q2m::Cfloat,
+        dt::Cfloat,
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat}
+    )::Cvoid
     for i in 0:(n - 1)
         offset = 3 * i
         testparticle_boris_push_f32(
@@ -229,7 +229,7 @@ testparticle_boris_push_batch_f32(n::Integer, x, v, q2m, dt, E, B) =
             pointer(x32), pointer(v32), 1.0f8, 1.0f-9, pointer(E32), pointer(B32)
         )
         testparticle_update_velocity_boris_f32(
-            pointer(v32), pointer(E32), pointer(B32), 1.0f8 * 1.0f-9 / 2f0
+            pointer(v32), pointer(E32), pointer(B32), 1.0f8 * 1.0f-9 / 2.0f0
         )
         testparticle_boris_push_batch_f32(
             Csize_t(1), pointer(x32), pointer(v32), 1.0f8, 1.0f-9,
