@@ -88,4 +88,3 @@ function AdaptiveHybrid(;
         T(abstol), T(reltol), maxiters, check_interval, adiabaticity, save_adiabaticity
     )
 end
-
