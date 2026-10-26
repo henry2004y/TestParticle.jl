@@ -107,6 +107,7 @@ alg = AdaptiveHybrid(;
 )
 
 ## Set verbose = true to see the dynamic switching
+p = param_fo
 prob_hybrid = TraceProblem(u0, tspan, param_fo)
 sol = solve(prob_hybrid, alg; verbose = false, seed = 1234).u[1];
 
