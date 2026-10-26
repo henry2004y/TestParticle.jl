@@ -1,55 +1,6 @@
 # Native GC solver
 
 """
-    TraceGCProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <: AbstractODEProblem{uType, tType, isinplace}
-
-Problem type for tracing guiding centers.
-"""
-struct TraceGCProblem{uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
-    AbstractODEProblem{uType, tType, isinplace}
-    f::F
-    "initial condition"
-    u0::uType
-    "time span"
-    tspan::tType
-    "(; q, q2m, μ, E, B)"
-    p::P
-    "function for setting initial conditions"
-    prob_func::PF
-end
-
-function TraceGCProblem(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC)
-    p = _named_params(p, GC_PARAMS)
-    _f = ODEFunction{true, DEFAULT_SPECIALIZATION}(x -> nothing) # dummy func
-    return TraceGCProblem{
-        typeof(u0), typeof(tspan), true, typeof(p), typeof(_f),
-        typeof(prob_func),
-    }(
-        _f,
-        u0,
-        tspan,
-        p,
-        prob_func
-    )
-end
-
-# For remake
-function TraceGCProblem{iip}(; f, u0, tspan, p, prob_func) where {iip}
-    p = _named_params(p, GC_PARAMS)
-    return TraceGCProblem{
-        typeof(u0), typeof(tspan), iip, typeof(p), typeof(f),
-        typeof(prob_func),
-    }(
-        f,
-        u0,
-        tspan,
-        p,
-        prob_func
-    )
-end
-
-
-"""
     solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
         saveat=nothing, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
         alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000,

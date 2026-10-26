@@ -130,6 +130,10 @@ using ..test_common: uniform_B, uniform_Ex
         @test eltype(prob_f32.tspan) === Float32
         @test prob_f32.p[1] isa Float32
         @test prob_f32.p[2] isa Float32
+        # Entries other than the particle constants keep their types.
+        p_user = TraceProblem(u0_f32, tspan, (; param..., n = 3, w = 2.0)).p
+        @test p_user.n isa Int
+        @test p_user.w isa Float64
 
         # ODE solver (Tsit5) in Float32
         sol_ode_f32 = solve(prob_f32, Tsit5(); dt = dt_f32)

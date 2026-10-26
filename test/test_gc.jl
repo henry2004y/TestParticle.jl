@@ -188,9 +188,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         end
 
         @testset "Comparison with DiffEq" begin
-            # Solve using DiffEq (Vern9, high accuracy)
-            prob_diffeq = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-            sol_diffeq = solve(prob_diffeq, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
+            sol_diffeq = solve(prob, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
             u_diffeq = sol_diffeq.u[end]
 
             # Solve using Native RK4
