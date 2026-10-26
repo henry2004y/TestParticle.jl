@@ -92,3 +92,5 @@ _lorentz_factor(u, f, p) = one(eltype(u))
 _lorentz_factor(
     γv, ::Union{typeof(trace_relativistic!), typeof(trace_relativistic)}, p
 ) = sqrt(1 + (γv ⋅ γv) / _speed_of_light(p)^2)
+
+_is_relativistic(f) = f in (trace_relativistic!, trace_relativistic)

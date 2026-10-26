@@ -102,7 +102,7 @@ function SciMLBase.remake(
     )
     tspan, p = _promote_trace_args(u0, tspan, p, FO_PARAMS)
     isinplace = !(u0 isa StaticArray)
-    relativistic = prob.f.f in (trace_relativistic!, trace_relativistic)
+    relativistic = _is_relativistic(prob.f.f)
     _f = if f === prob.f && (relativistic || prob.f.f in (trace!, trace))
         ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(
             _fo_equations(isinplace, relativistic)

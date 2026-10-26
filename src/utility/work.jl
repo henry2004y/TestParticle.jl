@@ -1,5 +1,6 @@
 """
-    get_work_rates(xv, p, t; magnetic_properties = nothing, E = nothing) -> SVector{4}
+    get_work_rates(xv, p, t; relativistic = false, magnetic_properties = nothing, E = nothing)
+        -> SVector{4}
 
 Calculate the leading-order adiabatic work rates [W] `(P_par, P_fermi, P_grad, P_betatron)`
 acting on a full-orbit particle or a guiding center:
@@ -18,7 +19,10 @@ See [`get_work_channels`](@ref) for the grouping into physical acceleration chan
 
 The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Saved
 guiding-center states can carry diagnostics appended by `save_fields`/`save_work`, so
-their length is not a reliable discriminator.
+their length is not a reliable discriminator. The magnetic moment of a full-orbit state
+is that of its gyration velocity `v⊥ - v_E`. With `relativistic = true`, the velocity part
+of a full-orbit state is `γv`, as traced by [`trace_relativistic!`](@ref), and the drifts
+are those of the relativistic mass `γm`.
 
 `magnetic_properties` and `E` are optional precomputed values of
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
@@ -39,13 +43,15 @@ All four terms are zero in a magnetic null.
 
 Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 """
-@inline function get_work_rates(xv, p, t; magnetic_properties = nothing, E = nothing)
+@inline function get_work_rates(
+        xv, p, t; relativistic::Bool = false, magnetic_properties = nothing, E = nothing
+    )
     r = get_x(xv)
     (; ∇B, κ, b̂, Bmag) = @something magnetic_properties get_magnetic_properties(r, t, p.B)
     iszero(Bmag) && return zero(SVector{4, eltype(xv)})
 
     E = @something E p.E(r, t)
-    q, m, v_par, μ = _work_rate_particle(xv, p, b̂, Bmag)
+    q, m, v_par, μ = _work_rate_particle(xv, p, E, b̂, Bmag, relativistic)
     dBdt = derivative_t(p.B, r, t) ⋅ b̂
 
     P_par = q * v_par * (E ⋅ b̂)
@@ -57,15 +63,20 @@ Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 end
 
 # Charge, mass, parallel velocity and magnetic moment of the traced particle.
-@inline function _work_rate_particle(xv, p, b̂, Bmag)
+@inline function _work_rate_particle(xv, p, E, b̂, Bmag, relativistic)
     if hasproperty(p, :μ)
+        relativistic && throw(ArgumentError("guiding-center states are nonrelativistic"))
         (; q, q2m, μ) = p
         return q, q / q2m, xv[4], μ
     end
-    (; q2m, m) = p
-    v = get_v(xv)
-    v_perp = _get_v_perp(v, b̂)
-    return q2m * m, m, v ⋅ b̂, m * (v_perp ⋅ v_perp) / (2 * Bmag)
+    q = p.q2m * p.m
+    v, m = get_v(xv), p.m
+    if relativistic
+        γ = √(1 + (v ⋅ v) / _speed_of_light(p)^2)
+        v, m = v / γ, γ * m
+    end
+    w = _get_v_perp(v, b̂) - (E × b̂) / Bmag
+    return q, m, v ⋅ b̂, m * (w ⋅ w) / (2 * Bmag)
 end
 
 """
@@ -99,5 +110,6 @@ Return the work done by the electric field from the solution `sol`.
 """
 function get_work(sol::AbstractODESolution)
     p = sol.prob.p
-    return map((u, t) -> get_work_rates(u, p, t), sol.u, sol.t)
+    relativistic = _is_relativistic(SciMLBase.unwrapped_f(sol.prob.f.f))
+    return map((u, t) -> get_work_rates(u, p, t; relativistic), sol.u, sol.t)
 end
