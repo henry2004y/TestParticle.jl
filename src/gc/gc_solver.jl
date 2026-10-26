@@ -1,69 +1,82 @@
 # Native GC solver
 
 """
-    solve(prob::TraceGCProblem; trajectories::Int=1, dt::AbstractFloat,
-        saveat=nothing, isoutside::Function=ODE_DEFAULT_ISOUTOFDOMAIN,
-        alg::Symbol=:rk4, abstol=1e-6, reltol=1e-6, maxiters=10000,
-        save_fields::Bool=false, save_work::Bool=false)
+    GCRK4()
 
-Trace guiding centers using the RK4 method with specified `prob`.
-If `alg` is `:rk45`, uses adaptive time stepping.
+Fixed-step RK4 native solver of [`TraceGCProblem`](@ref); needs `dt`.
+"""
+struct GCRK4 end
+
+"""
+    GCRK45(; abstol = 1e-6, reltol = 1e-6)
+
+Adaptive RK45 native solver of [`TraceGCProblem`](@ref); `dt` is the optional initial step.
+"""
+struct GCRK45{T}
+    abstol::T
+    reltol::T
+end
+
+GCRK45(; abstol = 1.0e-6, reltol = 1.0e-6) = GCRK45(promote(abstol, reltol)...)
+
+const GCAlgorithm = Union{GCRK4, GCRK45}
+
+"""
+    solve(prob::TraceGCProblem, alg::Union{GCRK4, GCRK45}, ensemblealg = EnsembleSerial();
+        trajectories = 1, dt = nothing, saveat = (), isoutside = ODE_DEFAULT_ISOUTOFDOMAIN,
+        save_start = true, save_end = true, save_everystep = true, maxiters = 10000,
+        save_fields = false, save_work = false, seed = nothing)
+
+Trace guiding centers with a native solver.
 
 `saveat` names the times at which to report the state, as a collection or as an
 interval; the state is interpolated linearly between the two steps that bracket
 each time, leaving the trajectory unchanged.
 """
 function solve(
-        prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        prob::TraceGCProblem, alg::GCAlgorithm,
+        ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
         trajectories::Int = 1,
         saveat = (),
         dt::Union{AbstractFloat, Nothing} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start::Bool = true, save_end::Bool = true, save_everystep::Bool = true,
-        alg::Symbol = :rk4, abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000,
-        save_fields::Bool = false, save_work::Bool = false,
+        maxiters = 10000, save_fields::Bool = false, save_work::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {F}
-    alg in (:rk4, :rk45) ||
-        throw(ArgumentError("alg must be :rk4 or :rk45 for TraceGCProblem; got $(repr(alg))."))
-
     plan = SavingPlan(saveat, prob.tspan, _gc_direction(prob), _gc_time_type(prob, dt))
 
-    return if save_fields
-        if save_work
-            return _solve(
-                ensemblealg, prob, trajectories, dt, plan, isoutside,
-                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(true), Val(true), seed
-            )
-        else
-            return _solve(
-                ensemblealg, prob, trajectories, dt, plan, isoutside,
-                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(true), Val(false), seed
-            )
-        end
+    # Ternaries give `Union{Val{true}, Val{false}}`, which inference splits into static
+    # calls; `Val(::Bool)` would dispatch dynamically and allocate on every solve.
+    return _solve(
+        ensemblealg, prob, trajectories, dt, plan, isoutside,
+        save_start, save_end, save_everystep, alg, maxiters,
+        save_fields ? Val(true) : Val(false), save_work ? Val(true) : Val(false), seed
+    )
+end
+
+function solve(
+        prob::TraceGCProblem, ensemblealg::BasicEnsembleAlgorithm = EnsembleSerial();
+        alg::Symbol, abstol = 1.0e-6, reltol = 1.0e-6, kwargs...
+    )
+    gcalg = if alg === :rk4
+        GCRK4()
+    elseif alg === :rk45
+        GCRK45(; abstol, reltol)
     else
-        if save_work
-            return _solve(
-                ensemblealg, prob, trajectories, dt, plan, isoutside,
-                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(false), Val(true), seed
-            )
-        else
-            return _solve(
-                ensemblealg, prob, trajectories, dt, plan, isoutside,
-                save_start, save_end, save_everystep, alg, abstol, reltol, maxiters,
-                Val(false), Val(false), seed
-            )
-        end
+        throw(ArgumentError("alg must be :rk4 or :rk45 for TraceGCProblem; got $(repr(alg))."))
     end
+    Base.depwarn(
+        "`solve(prob::TraceGCProblem; alg = $(repr(alg)))` is deprecated, use `solve(prob, $(nameof(typeof(gcalg)))(); ...)` instead.",
+        :solve
+    )
+    return solve(prob, gcalg, ensemblealg; kwargs...)
 end
 
 function _solve(
         ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::TraceGCProblem,
         trajectories, dt, plan, isoutside::F, save_start, save_end, save_everystep, alg,
-        abstol, reltol, maxiters, ::Val{SaveFields}, ::Val{SaveWork}, seed
+        maxiters, ::Val{SaveFields}, ::Val{SaveWork}, seed
     ) where {F, SaveFields, SaveWork}
     sols, nt, nout = _prepare_gc(
         prob, trajectories, dt, plan,
@@ -71,10 +84,10 @@ function _solve(
     )
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
-        if alg == :rk45
+        if alg isa GCRK45
             _rk45!(
-                sols, prob, irange, plan, dt, isoutside,
-                save_start, save_end, save_everystep, abstol, reltol, maxiters,
+                sols, prob, irange, alg, plan, dt, isoutside,
+                save_start, save_end, save_everystep, maxiters,
                 Val(SaveFields), Val(SaveWork), seed
             )
         else
@@ -135,16 +148,16 @@ function _prepare_gc(
     ) where {SaveFields, SaveWork}
     ttotal = prob.tspan[2] - prob.tspan[1]
     if isnothing(dt)
-        if alg == :rk4
-            error("dt must be provided for fixed step solver :rk4")
+        if alg isa GCRK4
+            error("dt must be provided for the fixed step solver GCRK4")
         end
         nt = 0
     else
-        if alg == :rk4 && sign(dt) != sign(ttotal) && ttotal != 0
-            error("dt must have the same sign as tspan[2] - tspan[1] for fixed step solver :rk4")
+        if alg isa GCRK4 && sign(dt) != sign(ttotal) && ttotal != 0
+            error("dt must have the same sign as tspan[2] - tspan[1] for the fixed step solver GCRK4")
         end
         nt = round(Int, ttotal / dt)
-        if alg == :rk4 && nt > maxiters
+        if alg isa GCRK4 && nt > maxiters
             nt = maxiters
         end
     end
@@ -155,8 +168,8 @@ function _prepare_gc(
         # One slot per requested time, plus the end of the run. A `maxiters` cut
         # short can leave some of them unreached, which the caller resizes away.
         nout += length(plan.times) + (save_end ? 1 : 0)
-    elseif alg == :rk4 && save_everystep
-        # For :rk45, nout stays at the count above since we don't know the exact steps.
+    elseif alg isa GCRK4 && save_everystep
+        # For GCRK45, nout stays at the count above since we don't know the exact steps.
         last_is_step = nt > 0
         nout += nt
         if !save_end && last_is_step
@@ -165,7 +178,7 @@ function _prepare_gc(
         if save_end && !last_is_step
             nout += 1
         end
-    elseif alg == :rk4 && save_end
+    elseif alg isa GCRK4 && save_end
         nout += 1
     end
 

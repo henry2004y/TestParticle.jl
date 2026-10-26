@@ -151,40 +151,51 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "Fixed RK4" begin
             dt = 1.0e-4
-            sol = solve(prob; dt, alg = :rk4)
+            sol = solve(prob, GCRK4(); dt)
             @test length(sol.u) == 1
             @test length(sol.u[1].t) == 10001
             @test sol.u[1].retcode == ReturnCode.MaxIters
 
             # Test save_everystep=false
-            sol_no_save = solve(prob; dt, alg = :rk4, save_everystep = false)
+            sol_no_save = solve(prob, GCRK4(); dt, save_everystep = false)
             @test length(sol_no_save.u[1].t) == 2 # start and end
 
             # Test early exit to cover resize!
             sol_early = solve(
-                prob; dt, alg = :rk4,
-                isoutside = (xv, p, t) -> t > 0.5
+                prob, GCRK4();
+                dt, isoutside = (xv, p, t) -> t > 0.5
             )
             @test length(sol_early.u[1].t) == 5001
         end
 
         @testset "Adaptive RK45" begin
             # Default tolerances
-            sol_def = solve(prob; dt = 1.0e-4, alg = :rk45)
+            sol_def = solve(prob, GCRK45(); dt = 1.0e-4)
             @test length(sol_def.u[1].t) == 61
             @test sol_def.u[1].retcode == ReturnCode.Success
 
             # Tight tolerances
             sol_tight = solve(
-                prob;
-                dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
+                prob, GCRK45(; abstol = 1.0e-8, reltol = 1.0e-8);
+                dt = 1.0e-4
             )
             @test length(sol_tight.u[1].t) > length(sol_def.u[1].t)
 
             # Accuracy check
-            sol_rk4 = solve(prob; dt = 1.0e-4, alg = :rk4)
+            sol_rk4 = solve(prob, GCRK4(); dt = 1.0e-4)
             diff = norm(sol_tight.u[1].u[end] - sol_rk4.u[1].u[end])
             @test diff < 10.0
+        end
+
+        @testset "Deprecated alg keyword" begin
+            sol_kw = @test_deprecated solve(
+                prob; dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
+            )
+            sol_tight = solve(
+                prob, GCRK45(; abstol = 1.0e-8, reltol = 1.0e-8); dt = 1.0e-4
+            )
+            @test sol_kw.u[1].t == sol_tight.u[1].t
+            @test_throws ArgumentError solve(prob; dt = 1.0e-4, alg = :rk5)
         end
 
         @testset "Comparison with DiffEq" begin
@@ -193,7 +204,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
             # Solve using Native RK4
             dt = 1.0e-4
-            sol_native = solve(prob; dt, alg = :rk4)
+            sol_native = solve(prob, GCRK4(); dt)
             u_native = sol_native.u[1].u[end]
 
             # Position difference
@@ -203,13 +214,9 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
         end
 
-        @testset "Unknown algorithm" begin
-            @test_throws ArgumentError solve(prob; dt = 1.0e-4, alg = :rk5)
-        end
-
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
-            sol_auto = solve(prob; alg = :rk45)
+            sol_auto = solve(prob, GCRK45())
             @test sol_auto.u[1].retcode == ReturnCode.Success
             @test length(sol_auto.u[1].t) == 58
         end
@@ -218,13 +225,14 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             trajectories = 10
 
             # Serial
-            sol_serial = solve(prob; trajectories, dt = 1.0e-4, alg = :rk45)
+            sol_serial = solve(prob, GCRK45(); trajectories, dt = 1.0e-4)
             @test length(sol_serial.u) == trajectories
             @test all(s -> s.retcode == ReturnCode.Success, sol_serial.u)
 
             # Threads
             sol_threads = solve(
-                prob, EnsembleThreads(); trajectories, dt = 1.0e-4, alg = :rk45
+                prob, GCRK45(), EnsembleThreads();
+                trajectories, dt = 1.0e-4
             )
             @test length(sol_threads.u) == trajectories
             @test all(s -> s.retcode == ReturnCode.Success, sol_threads.u)
@@ -242,7 +250,8 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
             # Solve with saving enabled
             sol = solve(
-                prob_saving; trajectories, dt = 1.0e-5, save_fields = true, save_work = true
+                prob_saving, GCRK4(); trajectories, dt = 1.0e-5, save_fields = true,
+                save_work = true
             )
 
             for s in sol.u
@@ -267,13 +276,13 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "saveat" begin
             dt = 1.0e-4
-            sol_all = solve(prob; dt, alg = :rk4).u[1]
+            sol_all = solve(prob, GCRK4(); dt).u[1]
 
             # Asking for intermediate output must not change the integration,
             # only where the state is reported. `save_start` and `save_end` keep
             # adding the two ends of the span around the requested times.
             ts = collect(0.1:0.1:0.9)
-            sol_at = solve(prob; dt, alg = :rk4, saveat = ts).u[1]
+            sol_at = solve(prob, GCRK4(); dt, saveat = ts).u[1]
 
             @test sol_at.t ≈ vcat(0.0, ts, 1.0)
             for (k, t) in enumerate(sol_at.t)
@@ -281,17 +290,18 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             end
 
             # The adaptive solver takes the same times.
-            sol_at45 = solve(prob; dt, alg = :rk45, saveat = ts).u[1]
+            sol_at45 = solve(prob, GCRK45(); dt, saveat = ts).u[1]
             @test sol_at45.t ≈ vcat(0.0, ts, 1.0)
 
             # An interval is accepted as well, and only the interior is taken
             # from it since the ends are reported separately.
-            sol_interval = solve(prob; dt, alg = :rk4, saveat = 0.25).u[1]
+            sol_interval = solve(prob, GCRK4(); dt, saveat = 0.25).u[1]
             @test sol_interval.t ≈ collect(0.0:0.25:1.0)
 
             # The field and work columns are appended on this path too.
             sol_fields = solve(
-                prob; dt, alg = :rk4, saveat = ts, save_fields = true
+                prob, GCRK4();
+                dt, saveat = ts, save_fields = true
             ).u[1]
             @test length(sol_fields.u[1]) == 10
             @test get_fields(sol_fields) isa Tuple

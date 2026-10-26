@@ -185,7 +185,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
             [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         sol = solve(
-            TraceGCProblem(state_gc, (0.0, 1.0e-6), p);
+            TraceGCProblem(state_gc, (0.0, 1.0e-6), p), GCRK4();
             dt = 1.0e-8, save_fields = true, save_work = true
         )
         traj = sol.u[1]

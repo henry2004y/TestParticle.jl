@@ -137,12 +137,11 @@ function _rk4!(
             resize!(tsave, iout)
         end
 
-        alg = :rk4
         t = tsave
         interp = LinearInterpolation(t, traj)
         stats = nothing
 
-        sols[i] = build_solution(prob, alg, t, traj; interp, retcode, stats)
+        sols[i] = build_solution(prob, GCRK4(), t, traj; interp, retcode, stats)
     end
 
     return

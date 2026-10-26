@@ -32,7 +32,7 @@ export trace!, trace_relativistic!, trace, trace_relativistic,
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
     trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
-export AdaptiveHybrid
+export AdaptiveHybrid, GCRK4, GCRK45
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor, save_trajectory
 export get_fields, get_work_rates

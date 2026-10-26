@@ -29,8 +29,8 @@
 
         stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z; E, B)
         prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-        solve(prob_gc; dt = 0.1, alg = :rk4)
-        solve(prob_gc; alg = :rk45)
+        solve(prob_gc, GCRK4(); dt = 0.1)
+        solve(prob_gc, GCRK45())
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
     end

@@ -251,12 +251,12 @@ SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 
 prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable solve(
-    $prob_native_gc;
-    dt = 2.0e-2, saveat = 2.0, alg = :rk4, maxiters = 10000
+    $prob_native_gc, GCRK4();
+    dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
 SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable solve(
-    $prob_native_gc;
-    dt = 2.0e-2, saveat = 2.0, alg = :rk45, maxiters = 10000
+    $prob_native_gc, GCRK45();
+    dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
 
 # Hybrid
