@@ -8,11 +8,12 @@ Abstract type for all field interpolators.
 abstract type AbstractFieldInterpolator <: Function end
 
 # The device conversion needs the grids, boundary conditions and order an interpolant was
-# built from.
-struct InterpSpec{G <: Tuple, B <: Tuple}
-    grids::G
-    bcs::B
-    order::Int
+# built from. Mutable so that interpolators hold it by reference: solvers copy the field
+# parameters by value into several structs, and an inline spec makes every copy larger.
+mutable struct InterpSpec{G <: Tuple, B <: Tuple}
+    const grids::G
+    const bcs::B
+    const order::Int
 end
 
 Adapt.adapt_structure(to, s::InterpSpec) =
