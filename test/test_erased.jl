@@ -3,6 +3,8 @@ module test_erased
 using Test
 using TestParticle
 using StaticArrays
+using BorisPushers
+using KernelAbstractions
 import TestParticle.ForwardDiff
 
 const TP = TestParticle
@@ -72,6 +74,26 @@ const TP = TestParticle
             # Idempotency
             field_erased = TP.ErasedField(p.B)
             @test field_erased === p.B
+        end
+    end
+
+    @testset "GPU Adaptation" begin
+        let
+            B_func(r) = SA[0.0, 0.0, 1.0]
+            field = TP.ErasedField(B_func)
+
+            struct MockDevice end
+            adapted = TP.Adapt.adapt(MockDevice(), field)
+            @test !(adapted.field_function isa TP.ErasedFunction)
+            @test adapted.field_function === B_func
+
+            struct MockBackend <: KernelAbstractions.GPU end
+            adapted_gpu = BorisPushers.adapt_field_to_gpu(field, MockBackend())
+            @test !(adapted_gpu.field_function isa TP.ErasedFunction)
+            @test adapted_gpu.field_function === B_func
+
+            adapted_cpu = BorisPushers.adapt_field_to_gpu(field, BorisPushers.CPU())
+            @test adapted_cpu === field
         end
     end
 end

@@ -89,3 +89,9 @@ ErasedField(f::AbstractFieldInterpolator) =
     getfield(f, :field_function).f32(xu, 0.0f0)
 @inline (f::Field{true, ErasedFunction})(xu::SVector{3, Float32}) =
     throw(ArgumentError("Time-dependent field function must have a time argument."))
+
+function Adapt.adapt_structure(to, f::Field{itd, ErasedFunction}) where {itd}
+    raw = getfield(f, :field_function).raw
+    adapted_raw = Adapt.adapt(to, raw)
+    return Field{itd, typeof(adapted_raw)}(adapted_raw)
+end
