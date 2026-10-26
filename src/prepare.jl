@@ -78,14 +78,23 @@ function Base.show(io::IO, f::Field)
     return println(io, "Time-dependent: ", is_time_dependent(f.field_function))
 end
 
+function Base.getproperty(f::Field, sym::Symbol)
+    if sym === :field_function
+        fn = getfield(f, :field_function)
+        return fn isa ErasedFunction ? fn.raw : fn
+    end
+    return getfield(f, sym)
+end
 
-prepare_field(f, args...; kwargs...) = Field(f)
+include("erased.jl")
+
+prepare_field(f, args...; kwargs...) = ErasedField(f)
+prepare_field(f::Field{itd, ErasedFunction}, args...; kwargs...) where {itd} = f
 prepare_field(f::ZeroField, args...; kwargs...) = f
 prepare_field(::Nothing, args...; kwargs...) = ZeroField()
 
-
 function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
-    return Field(build_interpolator(gridtype, f, x..., order, bc; kw...))
+    return ErasedField(build_interpolator(gridtype, f, x..., order, bc; kw...))
 end
 
 function _prepare(
@@ -159,8 +168,12 @@ Scalar potential `phi(x[, t])` and vector potential `A(x[, t])` for canonical tr
 `ForwardDiff`. `grad_A(x[, t])[i, j]` is ``∂A_j/∂x_i``, so that `grad_A * v` is
 ``∇(\\mathbf{A} ⋅ \\mathbf{v})`` at fixed ``\\mathbf{v}``.
 """
+_prepare_potential_scalar(f) = Field(f)
+_prepare_potential_scalar(f::ZeroField) = f
+_prepare_potential_scalar(::Nothing) = ZeroField()
+
 function PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing)
-    f_phi, f_A = prepare_field(phi), prepare_field(A)
+    f_phi, f_A = _prepare_potential_scalar(phi), prepare_field(A)
     return PotentialField(f_phi, f_A, _grad_phi(grad_phi, f_phi), _grad_A(grad_A, f_A))
 end
 
@@ -168,7 +181,7 @@ _grad_phi(g, phi) = prepare_field(g)
 _grad_phi(::Nothing, ::ZeroField) = ZeroField()
 _grad_phi(::Nothing, phi) = (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
 
-_grad_A(g, A) = prepare_field(g)
+_grad_A(g, A) = Field(g)
 _grad_A(::Nothing, ::ZeroField) = ZeroField()
 _grad_A(::Nothing, A) = (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
 

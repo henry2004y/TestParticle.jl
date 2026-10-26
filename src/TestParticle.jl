@@ -18,6 +18,7 @@ using StaticArrays: SVector, MVector, SA, StaticArray, SMatrix
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
+using FunctionWrappers: FunctionWrapper
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
 
@@ -40,7 +41,7 @@ export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
 
-public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
+public ReturnCode, Field, ErasedField, ErasedFunction, Species, SpeciesDict, ZeroVector,
     FullOrbit, Canonical, GuidingCenter,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
