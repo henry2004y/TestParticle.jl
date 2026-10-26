@@ -67,6 +67,8 @@ public ReturnCode, Field, Species, SpeciesDict, ZeroVector,
 
 include("types.jl")
 include("utility/utility.jl")
+include("utility/field_geometry.jl")
+include("utility/work.jl")
 include("utility/interpolation.jl")
 include("utility/gpu_grid.jl")
 include("sampler.jl")
@@ -76,7 +78,9 @@ include("gc/gc.jl")
 include("gc/gc_solver.jl")
 include("gc/rk4_gc.jl")
 include("gc/rk45_gc.jl")
+include("gc/equations.jl")
 include("equations.jl")
+include("canonical.jl")
 include("problem.jl")
 include("hybrid.jl")
 
