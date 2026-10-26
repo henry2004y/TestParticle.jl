@@ -258,9 +258,9 @@ backend, which is what the following does, so that the device interpolator can
 be inspected and benchmarked where no device is available:
 
 ```@example interp
-B_gpu = TP._to_gpu_spherical_grid(B_sph.itp, CPU());
-A_gpu = TP._to_gpu_spherical_grid(A_sph.itp, CPU());
-B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu.itp, CPU());
+B_gpu = TP._to_gpu_spherical_grid(B_sph, CPU());
+A_gpu = TP._to_gpu_spherical_grid(A_sph, CPU());
+B_nu_gpu = TP._to_gpu_spherical_grid(B_sph_nu, CPU());
 ```
 
 A uniform grid vector becomes a `GPUUniformAxis`, which locates a cell with a multiply, and a
@@ -290,10 +290,10 @@ B_gpu(0.01, 0.0, 0.0)
 B_gpu(20.0, 0.0, 0.0)
 ```
 
-One caveat comes with the device grids: they always interpolate linearly, whatever `order`
-the host interpolator was built with. A field prepared with `order = 3` is therefore not
-reproduced on the device, and `order = 1`, the default, is the one to use when the host and
-the device are meant to agree.
+The device grids implement a subset of the host interpolators: linear interpolation
+(`order = 1`, the default), uniform axes for Cartesian grids, and the boundary conditions
+`FillExtrap`, `ClampExtrap`, `WrapExtrap` and an inclusive `PeriodicBC`. Moving any other
+interpolator to a device throws an `ArgumentError`.
 
 ## Related API
 

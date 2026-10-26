@@ -81,8 +81,8 @@ end
     @testset "uniform grid agrees with the host interpolator" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(fiB, CPU())
+            gA = TP._to_gpu_spherical_grid(fiA, CPU())
 
             @test gB isa TP.GPUSphericalGrid
             @test gB.axis_r isa TP.GPUUniformAxis
@@ -112,8 +112,8 @@ end
                 ϕ = range(0.0, 2π, length = 9)
 
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(fiB, CPU())
+            gA = TP._to_gpu_spherical_grid(fiA, CPU())
 
             @test gB.axis_r isa TP.GPUNonUniformAxis
             @test gB.axis_r.n == Int32(length(r))
@@ -135,7 +135,7 @@ end
                 ϕ = collect(range(0.0, 2π, length = 9))
 
             param, fiB, _ = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(fiB, CPU())
 
             @test gB.axis_r isa TP.GPUNonUniformAxis
             @test max_field_rel_diff(gB, fiB, quad_points(r, θ, ϕ)) < 1.0e-12
@@ -146,7 +146,7 @@ end
                 ϕ = range(0.0, 2π, length = 16)
 
             _, fiB, _ = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(fiB, CPU())
 
             @test gB.axis_r isa TP.GPUNonUniformAxis
             @test gB.axis_θ isa TP.GPUUniformAxis
@@ -162,7 +162,7 @@ end
                 r, θ, ϕ, zeros(size(B)), B; species = Proton, gridtype = TP.StructuredGrid
             )
             fi = param[4].field_function
-            g = TP._to_gpu_spherical_grid(fi.itp, CPU())
+            g = TP._to_gpu_spherical_grid(fi, CPU())
 
             err = 0.0
             for (ir, rv) in enumerate(r), (iθ, θv) in enumerate(θ), (iϕ, ϕv) in enumerate(ϕ)
@@ -180,7 +180,7 @@ end
     @testset "call signatures" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, _ = setup_field(r, θ, ϕ)
-            g = TP._to_gpu_spherical_grid(fiB.itp, CPU())
+            g = TP._to_gpu_spherical_grid(fiB, CPU())
             x = SA[1.5, 2.0, 1.0]
             expected = fiB(x)
 
@@ -201,8 +201,8 @@ end
     @testset "outside the domain" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             _, fiB, fiA = setup_field(r, θ, ϕ)
-            gB = TP._to_gpu_spherical_grid(fiB.itp, CPU())
-            gA = TP._to_gpu_spherical_grid(fiA.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(fiB, CPU())
+            gA = TP._to_gpu_spherical_grid(fiA, CPU())
 
             # Inside the radial range
             @test !any(isnan, gB(1.0, 1.0, 1.0))
@@ -273,7 +273,6 @@ end
 
     @testset "invalid input" begin
         @test_throws ArgumentError TP._to_gpu_axis(1.0, CPU(), TP.FillExtrap(NaN))
-        @test_throws ArgumentError TP._to_gpu_spherical_grid((grid = 1,), CPU())
     end
 
     @testset "tracing on a backend" begin
@@ -286,7 +285,7 @@ end
             param = prepare(
                 r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid
             )
-            gB = TP._to_gpu_spherical_grid(param[4].field_function.itp, CPU())
+            gB = TP._to_gpu_spherical_grid(param[4].field_function, CPU())
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
             prob_host = TraceProblem(stateinit, tspan, param)
@@ -314,8 +313,8 @@ end
             param = prepare(r, θ, ϕ, E, B; species = Proton, gridtype = TP.StructuredGrid)
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
-            gE = TP._to_gpu_spherical_grid(param[3].field_function.itp, CPU())
-            gB = TP._to_gpu_spherical_grid(param[4].field_function.itp, CPU())
+            gE = TP._to_gpu_spherical_grid(param[3].field_function, CPU())
+            gB = TP._to_gpu_spherical_grid(param[4].field_function, CPU())
 
             prob_host = TraceProblem(stateinit, tspan, param)
             prob_device = TraceProblem(

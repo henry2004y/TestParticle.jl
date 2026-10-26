@@ -596,26 +596,19 @@ end
 
 BorisPushers.adapt_field_to_gpu(f::Function, backend::Backend) = Adapt.adapt(backend, f)
 
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator, backend::Backend)
+function BorisPushers.adapt_field_to_gpu(
+        fi::Union{FieldInterpolator, FieldInterpolator2D, FieldInterpolator1D},
+        backend::Backend
+    )
     backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator2D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator1D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend; dir = fi.dir)
+    return _to_gpu_grid(fi, backend)
 end
 
 function BorisPushers.adapt_field_to_gpu(
         fi::SphericalFieldInterpolator, backend::Backend
     )
     backend isa CPU && return fi
-    return _to_gpu_spherical_grid(fi.itp, backend)
+    return _to_gpu_spherical_grid(fi, backend)
 end
 
 BorisPushers.adapt_field_to_gpu(g::GPUGrid3D, backend::Backend) =

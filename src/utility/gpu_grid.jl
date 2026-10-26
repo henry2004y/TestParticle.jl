@@ -133,18 +133,7 @@ Adapt.adapt_structure(to, g::GPUGrid1D) = GPUGrid1D(
     Adapt.adapt(to, g.bc),
 )
 
-@inline function _fill_value(bc, ::Type{V}) where {V}
-    if hasproperty(bc, :fill_value)
-        val = bc.fill_value
-        if val isa V
-            return val
-        elseif val isa Number && V <: SVector
-            T = eltype(V)
-            return SVector{length(V), T}(ntuple(_ -> T(val), length(V)))
-        elseif val isa Number && V <: Number
-            return V(val)
-        end
-    end
+@inline function _nan_fill(::Type{V}) where {V}
     if V <: SVector
         T = eltype(V)
         return SVector{length(V), T}(ntuple(_ -> T(NaN), length(V)))
@@ -155,24 +144,12 @@ Adapt.adapt_structure(to, g::GPUGrid1D) = GPUGrid1D(
     end
 end
 
-@inline function _fill_value(bc::Tuple, ::Type{V}) where {V}
-    return _fill_value(bc[1], V)
-end
+@inline _fill_value(bc, ::Type{V}) where {V} = _nan_fill(V)
+@inline _fill_value(bc::Tuple, ::Type{V}) where {V} = _fill_value(bc[1], V)
 
 @inline function _apply_bc_1d(x, x0::T, xmax::T, bc) where {T}
     isnan(x) && return (x, true)
-    if bc isa FillExtrap
-        # Rounding in a coordinate transform, e.g. `cart2sph`, may place a point
-        # marginally outside the grid it was built from, so widen by a few ulps.
-        tol = 4 * eps(T) * max(abs(x0), abs(xmax))
-        (x < x0 - tol || x > xmax + tol) && return (x, true)
-    elseif bc isa ClampExtrap
-        x = clamp(x, x0, xmax)
-    elseif bc isa WrapExtrap
-        span = xmax - x0
-        x = mod(x - x0, span) + x0
-    end
-    return (x, false)
+    return _apply_extrap(x, x0, xmax, bc)
 end
 
 @inline function _get_bc_dim(bc::Tuple, dim::Int)
@@ -307,92 +284,40 @@ end
 @inline (g::GPUGrid1D)(xu::AbstractVector) = g(xu[g.dir])
 @inline (g::GPUGrid1D)(xu::AbstractVector, t) = g(xu)
 
-@inline function _grid_props(g)
-    if hasproperty(g, :lo)
-        return g.lo, g.h, g.inv_h, g.len
-    elseif hasproperty(g, :inner)
-        x0 = g.inner[1]
-        len = length(g.inner)
-        h = g.h isa AbstractArray ? g.h[1] : g.h
-        inv_h = g.inv_h isa AbstractArray ? g.inv_h[1] : g.inv_h
-        return x0, h, inv_h, len
-    elseif hasproperty(g, :x)
-        return _grid_props(g.x)
-    else
-        x0 = first(g)
-        len = length(g)
-        h = step(g)
-        inv_h = inv(h)
-        return x0, h, inv_h, len
-    end
+function _uniform_axis(g::AbstractRange, ::Type{T}) where {T}
+    dx = T(step(g))
+    return T(first(g)), dx, inv(dx), length(g)
 end
 
-function _to_gpu_grid(itp, backend; dir = 1)
-    if isdefined(itp, :grids) && isdefined(itp, :data)
-        N = length(itp.grids)
-        if N == 3
-            gx, gy, gz = itp.grids
-            x0, dx, inv_dx, nx = _grid_props(gx)
-            y0, dy, inv_dy, ny = _grid_props(gy)
-            z0, dz, inv_dz, nz = _grid_props(gz)
-            T = typeof(x0)
-            data_gpu = Adapt.adapt(backend, itp.data)
-            bc = itp.extraps
-            return GPUGrid3D(
-                data_gpu,
-                T(x0), T(dx), T(inv_dx), Int32(nx),
-                T(y0), T(dy), T(inv_dy), Int32(ny),
-                T(z0), T(dz), T(inv_dz), Int32(nz),
-                bc,
-            )
-        elseif N == 2
-            gx, gy = itp.grids
-            x0, dx, inv_dx, nx = _grid_props(gx)
-            y0, dy, inv_dy, ny = _grid_props(gy)
-            T = typeof(x0)
-            data_gpu = Adapt.adapt(backend, itp.data)
-            bc = itp.extraps
-            return GPUGrid2D(
-                data_gpu,
-                T(x0), T(dx), T(inv_dx), Int32(nx),
-                T(y0), T(dy), T(inv_dy), Int32(ny),
-                bc,
-            )
-        elseif N == 1
-            gx = itp.grids[1]
-            x0, dx, inv_dx, nx = _grid_props(gx)
-            T = typeof(x0)
-            data_gpu = Adapt.adapt(backend, itp.data)
-            bc = itp.extraps
-            return GPUGrid1D(
-                data_gpu,
-                T(x0), T(dx), T(inv_dx), Int32(nx),
-                Int32(dir),
-                bc,
-            )
-        end
-    elseif (isdefined(itp, :grid) || isdefined(itp, :x)) &&
-            (isdefined(itp, :data) || isdefined(itp, :y))
-        g = isdefined(itp, :grid) ? itp.grid : itp.x
-        x0, dx, inv_dx, nx = _grid_props(g)
-        T = typeof(x0)
-        data = isdefined(itp, :data) ? itp.data : itp.y
-        data_gpu = Adapt.adapt(backend, data)
-        bc = if hasproperty(itp, :extraps)
-            itp.extraps
-        elseif hasproperty(itp, :extrap)
-            itp.extrap
-        else
-            nothing
-        end
-        return GPUGrid1D(
-            data_gpu,
-            T(x0), T(dx), T(inv_dx), Int32(nx),
-            Int32(dir),
-            bc,
+function _uniform_axis(g::AbstractVector, ::Type{T}) where {T}
+    n = length(g)
+    x0 = T(first(g))
+    dx = (T(last(g)) - x0) / (n - 1)
+    uniform = all(i -> abs(g[i] - (x0 + (i - 1) * dx)) <= sqrt(eps(T)) * abs(dx), 1:n)
+    uniform || throw(
+        ArgumentError(
+            "Device Cartesian grids need uniformly spaced axes; " *
+                "the host interpolator was built on a non-uniform one."
         )
+    )
+    return x0, dx, inv(dx), n
+end
+
+function _to_gpu_grid(
+        fi::Union{FieldInterpolator, FieldInterpolator2D, FieldInterpolator1D}, backend
+    )
+    bc = _device_bcs(fi.spec)
+    grids = fi.spec.grids
+    T = float(eltype(first(grids)))
+    axes = map(g -> _uniform_axis(g, T), grids)
+    data = Adapt.adapt(backend, _itp_data(fi.itp))
+    if fi isa FieldInterpolator
+        return GPUGrid3D(data, axes[1]..., axes[2]..., axes[3]..., bc)
+    elseif fi isa FieldInterpolator2D
+        return GPUGrid2D(data, axes[1]..., axes[2]..., bc)
+    else
+        return GPUGrid1D(data, axes[1]..., fi.dir, bc)
     end
-    return Adapt.adapt(backend, itp)
 end
 
 """
@@ -580,53 +505,20 @@ end
 @inline (g::GPUSphericalGrid)(x::Real, y::Real, z::Real, t) = g(x, y, z)
 
 function _to_gpu_axis(g, backend, bc)
-    if hasproperty(g, :lo) && g.h isa Number
-        T = typeof(g.lo)
-        x0 = T(g.lo)
-        dx = T(g.h)
-        inv_dx = T(g.inv_h)
-        n = Int32(g.len)
-        xmax = x0 + T(n - 1) * dx
-        return GPUUniformAxis(x0, dx, inv_dx, n, xmax, bc)
-    elseif hasproperty(g, :inner)
-        coords = g.inner
-        T = eltype(coords)
-        coords_gpu = Adapt.adapt(backend, coords)
-        n = Int32(length(coords))
-        return GPUNonUniformAxis(coords_gpu, T(coords[1]), T(coords[end]), n, bc)
-    elseif g isa AbstractRange && !(g isa Base.LogRange)
-        T = eltype(g)
-        x0 = T(first(g))
-        dx = T(step(g))
-        inv_dx = inv(dx)
-        n = Int32(length(g))
-        xmax = x0 + T(n - 1) * dx
-        return GPUUniformAxis(x0, dx, inv_dx, n, xmax, bc)
+    if g isa AbstractRange
+        x0, dx, inv_dx, n = _uniform_axis(g, float(eltype(g)))
+        return GPUUniformAxis(x0, dx, inv_dx, n, bc)
     elseif g isa AbstractVector
-        T = eltype(g)
-        coords_gpu = Adapt.adapt(backend, collect(g))
-        n = Int32(length(g))
-        return GPUNonUniformAxis(coords_gpu, T(first(g)), T(last(g)), n, bc)
+        coords_gpu = Adapt.adapt(backend, collect(float(eltype(g)), g))
+        return GPUNonUniformAxis(coords_gpu, bc)
     else
         throw(ArgumentError("Unsupported grid axis type: $(typeof(g))"))
     end
 end
 
-function _to_gpu_spherical_grid(itp, backend)
-    if isdefined(itp, :grids) && isdefined(itp, :data)
-        gr, gθ, gϕ = itp.grids
-        bc = itp.extraps
-        bcr = _get_bc_dim(bc, 1)
-        bcθ = _get_bc_dim(bc, 2)
-        bcϕ = _get_bc_dim(bc, 3)
-
-        axis_r = _to_gpu_axis(gr, backend, bcr)
-        axis_θ = _to_gpu_axis(gθ, backend, bcθ)
-        axis_ϕ = _to_gpu_axis(gϕ, backend, bcϕ)
-
-        data_gpu = Adapt.adapt(backend, itp.data)
-        return GPUSphericalGrid(data_gpu, axis_r, axis_θ, axis_ϕ, bc)
-    else
-        throw(ArgumentError("Expected interpolant with grids and data fields."))
-    end
+function _to_gpu_spherical_grid(fi::SphericalFieldInterpolator, backend)
+    bc = _device_bcs(fi.spec)
+    axis_r, axis_θ, axis_ϕ = map((g, b) -> _to_gpu_axis(g, backend, b), fi.spec.grids, bc)
+    data = Adapt.adapt(backend, _itp_data(fi.itp))
+    return GPUSphericalGrid(data, axis_r, axis_θ, axis_ϕ, bc)
 end
