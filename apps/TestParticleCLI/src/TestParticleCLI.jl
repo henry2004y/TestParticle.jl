@@ -270,7 +270,8 @@ function @main(args::Vector{String})::Cint
             overrides["tspan1"] = args[i + 1]
             i += 2
         else
-            i += 1
+            println(Core.stderr, "Error: unknown option or missing value: ", arg)
+            return 1
         end
     end
 
