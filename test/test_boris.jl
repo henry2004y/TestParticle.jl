@@ -21,8 +21,6 @@ using ..test_common:
 "B field that only exists for t > 5, to pin down that absolute time is used."
 B_after_five(r, t) = t > 5 ? SA[0.0, 0.0, 0.01] : SA[0.0, 0.0, 0.0]
 
-E_zero(r, t) = SA[0.0, 0.0, 0.0]
-
 "Uniform B that grows linearly in time, so the betatron term is nonzero."
 B_growing(x, t) = SA[0.0, 0.0, 0.01 * (1.0 + 1.0e7 * t)]
 
@@ -45,7 +43,7 @@ end
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        param = prepare(zero_field, uniform_B_strong, species = Electron)
+        param = prepare(; B = uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol = solve(prob, Boris(); dt, saveat = 10 * dt)
@@ -84,7 +82,7 @@ end
         stateinit = [x0..., v0...]
         tspan = (0.0, 0.01)
         dt = 1.0e-4
-        param = prepare(zero_field, time_varying_B, species = Electron)
+        param = prepare(; B = time_varying_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
         sol = solve(prob, Boris(); dt, saveat = 100 * dt)
         @test sol[1, end] ≈ -512.8807214528281
@@ -221,7 +219,7 @@ end
 
         alg_adaptive = AdaptiveBoris(safety = 0.1)
 
-        param = prepare(constant_E, gradient_B, species = Electron)
+        param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol = solve(prob, alg_adaptive)
@@ -236,7 +234,7 @@ end
 
     @testset "Nonzero tspan[1]" begin
         # Start at t=10. If absolute time is used, B should be 0.01.
-        param = prepare(E_zero, B_after_five)
+        param = prepare(; B = B_after_five)
 
         tspan = (10.0, 10.1)
         dt = 0.001
@@ -260,7 +258,7 @@ end
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        param = prepare(zero_field, uniform_B_strong, species = Electron)
+        param = prepare(; B = uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         # Baseline: save_everystep=true (default), save_start=true, save_end=true
@@ -364,7 +362,7 @@ end
         tspan = (0.0, 1.0e-9)
         dt = 1.0e-11
 
-        param = prepare(constant_E, gradient_B, species = Electron)
+        param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         # Test save_work=true
@@ -394,7 +392,7 @@ end
         # E = 0
         # dB/dt = 0.01 * 1e7 = 1e5
         # P_betatron = mu * dB/dt
-        param_beta = prepare(zero_field, B_growing, species = Electron)
+        param_beta = prepare(; B = B_growing, species = Electron)
         prob_beta = TraceProblem(stateinit, tspan, param_beta)
 
         sol_beta = solve(
@@ -446,7 +444,7 @@ end
         tspan = (0.0, 1.0e-9)
         dt = 1.0e-11
 
-        param = prepare(constant_E, gradient_B, species = Electron)
+        param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         # Reference solution with saved data
@@ -483,7 +481,7 @@ end
         stateinit = [x0..., v0...]
         tspan = (0.0, 1.0e-9)
         dt = 1.0e-11
-        param = prepare(constant_E, gradient_B, species = Electron)
+        param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         # maxiters limit (nt = 100)
@@ -516,7 +514,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 3.0e-8)
             dt = 3.0e-11
-            param_dist = prepare(zero_field, uniform_B_strong; species = Electron)
+            param_dist = prepare(; B = uniform_B_strong, species = Electron)
 
             prob_dist = TraceProblem(
                 stateinit, tspan, param_dist; prob_func = prob_func_vy_by_id
@@ -593,7 +591,7 @@ end
         stateinit = [x0..., v0...]
         tspan = (0.0, 3.0e-8)
         dt = 3.0e-11
-        param = prepare(zero_field, uniform_B_strong, species = Electron)
+        param = prepare(; B = uniform_B_strong, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
         sol_all = solve(prob, Boris(); dt)

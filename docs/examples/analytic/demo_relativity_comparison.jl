@@ -28,13 +28,12 @@ CairoMakie.activate!(type = "png") #hide
 
 const B0 = 1.0 # [T]
 getB1(x) = SA[0.0, 0.0, B0]
-getE1(x) = SA[0.0, 0.0, 0.0]
 
 m = TestParticle.mᵢ
 q = TestParticle.qᵢ
 c = TestParticle.c
 
-param = prepare(getE1, getB1; species = Proton);
+param = prepare(; B = getB1, species = Proton);
 
 # Initial velocities to test: 10%, 50%, and 90% of speed of light
 rats = [0.1, 0.5, 0.9]
@@ -108,7 +107,7 @@ const E0 = 0.5 * c * B0 # strong electric field, v_drift = 0.5c
 getB2(x) = SA[0.0, 0.0, B0]
 getE2(x) = SA[0.0, E0, 0.0]
 
-param2 = prepare(getE2, getB2; species = Proton);
+param2 = prepare(; E = getE2, B = getB2, species = Proton);
 
 # Test with a single high initial velocity perpendicular to drift to see the cycloid differences.
 # Starting from rest:

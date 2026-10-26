@@ -23,7 +23,7 @@ v0 = [0.0, 0.01, 0.0] * Unitful.c0 # [m/s]
 u0 = [x0..., v0...]
 tspan = (0.0u"s", 2π * t_max) # [s]
 
-param = prepare(E, B, q = Unitful.q, m = Unitful.mp)
+param = prepare(; E, B, q = Unitful.q, m = Unitful.mp)
 prob = ODEProblem(trace!, u0, tspan, param)
 sol = solve(prob, Vern7())
 sol[end]
@@ -57,7 +57,7 @@ v0_SI = [0.0, 0.01TP.c, 0.0]
 u0_SI = [x0_SI..., v0_SI...]
 tspan_SI = tspan ./ u"s" # [s]
 
-param_SI = prepare(E_SI, B_SI, species = Proton)
+param_SI = prepare(; E = E_SI, B = B_SI, species = Proton)
 prob_SI = ODEProblem(trace!, u0_SI, tspan_SI, param_SI)
 sol_SI = solve(prob_SI, Vern7())
 sol_SI[end]

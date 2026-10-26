@@ -1,5 +1,17 @@
 # Kept for compatibility until the next breaking release, then removed.
 
+export trace_normalized!, trace_relativistic_normalized!,
+    trace_normalized, trace_relativistic_normalized, get_work, TraceHybridProblem
+
+prepare(E, B, F = nothing; kw...) = prepare(; E, B, F, kw...)
+prepare(B; E = nothing, F = nothing, kw...) = prepare(; E, B, F, kw...)
+prepare(x::AbstractVector, E, B, F = nothing; kw...) = prepare(x; E, B, F, kw...)
+prepare(x::AbstractVector, y::AbstractVector, E, B, F = nothing; kw...) =
+    prepare(x, y; E, B, F, kw...)
+prepare(
+    x::AbstractVector, y::AbstractVector, z::AbstractVector, E, B, F = nothing; kw...
+) = prepare(x, y, z; E, B, F, kw...)
+
 PotentialField(phi, A; kw...) = PotentialField(; phi, A, kw...)
 PotentialField(A; phi = nothing, kw...) = PotentialField(; phi, A, kw...)
 

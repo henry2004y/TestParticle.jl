@@ -22,7 +22,7 @@ using ..test_common: uniform_B, uniform_Ex
     tspan = (0.0, 1.0e-6)
     dt = 1.0e-9
 
-    param = prepare(uniform_Ex, uniform_B; species = Proton)
+    param = prepare(; E = uniform_Ex, B = uniform_B, species = Proton)
 
     @testset "In-place solving (Vector)" begin
         prob_tp = TraceProblem(stateinit_vec, tspan, param)
@@ -149,7 +149,7 @@ using ..test_common: uniform_B, uniform_Ex
         @test prob_switched.p[1] isa Float32
 
         # prepare with type = Float32
-        param_f32 = prepare(uniform_Ex, uniform_B; species = Proton, type = Float32)
+        param_f32 = prepare(; E = uniform_Ex, B = uniform_B, species = Proton, type = Float32)
         @test param_f32[1] isa Float32
         @test param_f32[2] isa Float32
         prob_direct_f32 = TraceProblem(u0_f32, tspan_f32, param_f32)

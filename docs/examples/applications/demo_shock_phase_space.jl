@@ -164,7 +164,7 @@ const tspan = (0.0, 10.0) # forward simulation time span [s]
 ## (checked against `/140` and `/280`).
 const dt = get_gyroperiod(3 * B_mag) / 70 # time step [s]
 
-param = prepare(get_E_shock, get_B_shock; species = Proton)
+param = prepare(; E = get_E_shock, B = get_B_shock, species = Proton)
 
 # ### Source distribution
 #

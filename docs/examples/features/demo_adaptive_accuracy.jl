@@ -225,7 +225,7 @@ end
 t_end2 = 6 * T_gyro
 tspan2 = (0.0, t_end2)
 u0_2 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-param2 = prepare(E_func2, B_func2; q, m)
+param2 = prepare(; E = E_func2, B = B_func2, q, m)
 prob_tp2 = TraceProblem(u0_2, tspan2, param2)
 prob_ode2 = ODEProblem(trace!, u0_2, tspan2, param2)
 
@@ -330,7 +330,7 @@ end
 
 t_end3 = 200 * T_gyro
 tspan3 = (0.0, t_end3)
-param3 = prepare(E_func2, B_func2; q, m)
+param3 = prepare(; E = E_func2, B = B_func2, q, m)
 prob_tp3 = TraceProblem(u0_2, tspan3, param3)
 prob_ode3 = ODEProblem(trace!, u0_2, tspan3, param3)
 

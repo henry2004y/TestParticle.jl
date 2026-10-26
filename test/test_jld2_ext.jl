@@ -15,11 +15,7 @@ using JLD2
     tspan = (0.0, 3.0e-8)
     dt = 3.0e-11
 
-    param = prepare(
-        (x, t) -> SA[0.0, 0.0, 0.0],
-        (x, t) -> SA[0.0, 0.0, 0.01];
-        species = Electron
-    )
+    param = prepare(; B = (x, t) -> SA[0.0, 0.0, 0.01], species = Electron)
     prob = TraceProblem(stateinit, tspan, param)
     sol = solve(prob, Boris(); dt = dt, saveat = 10 * dt)
 

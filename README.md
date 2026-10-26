@@ -39,7 +39,7 @@ end
 # Time span
 tspan = (0, 20)
 # Assemble particle + fields
-param = prepare(E, B; species = Proton)
+param = prepare(; E, B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 # Trace trajectory and save positions & velocities
 sol = solve(prob, Vern7())

@@ -123,7 +123,7 @@ end
 # below is exact along the GC trajectory, so whatever mismatch is left comes from
 # the time integration and must be resolved for the check to be meaningful.
 
-stateinit_gc, param_gc = prepare_gc(stateinit, mirror_E, mirror_B; species)
+stateinit_gc, param_gc = prepare_gc(stateinit; E = mirror_E, B = mirror_B, species)
 q, q2m, μ, Efunc, Bfunc = param_gc
 m = q / q2m
 
@@ -199,7 +199,7 @@ compressed at rate `βv`, and return `(ts, W, ΔK)` in SI units.
 """
 function trace_case(x0v, pitch, tspanv; βv = β, nout = 4001)
     B, E = make_fields(βv)
-    sigc, p = prepare_gc(init_state(x0v, pitch, B), E, B; species)
+    sigc, p = prepare_gc(init_state(x0v, pitch, B); E, B, species)
     sol = solve(
         ODEProblem(trace_gc!, sigc, tspanv, p), Vern9();
         saveat = range(tspanv..., length = nout), reltol = 1.0e-12, abstol = 1.0e-10

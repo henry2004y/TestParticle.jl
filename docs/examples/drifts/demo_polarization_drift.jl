@@ -79,7 +79,7 @@ stateinit = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
 end
 ## Time span
 tspan = (0, 100)
-param = prepare(time_varying_E, uniform_B, species = Proton)
+param = prepare(; E = time_varying_E, B = uniform_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 

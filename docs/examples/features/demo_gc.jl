@@ -38,14 +38,13 @@ end
 tspan = (0, 41)
 
 ## 1. Full Orbit Simulation
-param = prepare(uniform_E, curved_B, species = Proton)
+param = prepare(; E = uniform_E, B = curved_B, species = Proton)
 prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ## 2. Guiding Center Simulations
 stateinit_gc, param_gc = TP.prepare_gc(
-    stateinit, uniform_E, curved_B,
-    species = Proton
+    stateinit; E = uniform_E, B = curved_B, species = Proton
 )
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
@@ -67,8 +66,8 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
 end
 
 stateinit_gc_num, param_gc_num = TP.prepare_gc(
-    stateinit, xrange, yrange, zrange,
-    uniform_E, B_numerical, species = Proton, order = 3
+    stateinit, xrange, yrange, zrange;
+    E = uniform_E, B = B_numerical, species = Proton, order = 3
 )
 
 prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
@@ -209,15 +208,14 @@ f = DisplayAs.PNG(f) #hide
 
 function run_grad_B_sim(B_func, tspan)
     ## Particle
-    param = prepare(uniform_E, B_func, species = Proton)
+    param = prepare(; E = uniform_E, B = B_func, species = Proton)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9())
 
     ## GC (Trace)
     stateinit_gc,
         param_gc = TP.prepare_gc(
-        stateinit, uniform_E, B_func,
-        species = Proton
+        stateinit; E = uniform_E, B = B_func, species = Proton
     )
     prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
     sol_gc = solve(prob_gc, Vern9())
@@ -287,14 +285,13 @@ f2 = DisplayAs.PNG(f2) #hide
 tspan_bench = (0, 500.0)
 
 ## Full Particle Problem
-param_full = prepare(uniform_E, grad_B_small, species = Proton)
+param_full = prepare(; E = uniform_E, B = grad_B_small, species = Proton)
 prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 
 ## Guiding Center Problem
 stateinit_gc,
     param_gc = TP.prepare_gc(
-    stateinit, uniform_E, grad_B_small,
-    species = Proton
+    stateinit; E = uniform_E, B = grad_B_small, species = Proton
 )
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})

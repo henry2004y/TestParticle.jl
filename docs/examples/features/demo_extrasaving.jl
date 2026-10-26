@@ -46,7 +46,7 @@ B ./= B₀
 E(x) = SA[0.0 / E₀, 0.0 / E₀, 0.0 / E₀]
 
 ## bc=WrapExtrap() uses periodic boundary conditions
-param = prepare(x, y, z, E, B; m = 1, q = 1, bc = WrapExtrap())
+param = prepare(x, y, z; E, B, m = 1, q = 1, bc = WrapExtrap())
 
 tspan = (0.0, π) # half averaged gyroperiod based on B₀
 
@@ -118,7 +118,7 @@ saved_values
 E_boris(x, t) = SA[0.1, 0.1, 0.1]
 B_boris(x, t) = SA[x[2], x[1], 1.0] * (1.0 + 0.1 * t)
 
-param_boris = prepare(E_boris, B_boris; m = 1, q = 1);
+param_boris = prepare(; E = E_boris, B = B_boris, m = 1, q = 1);
 
 ## Create TraceProblem for Boris solver
 u0_boris = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]

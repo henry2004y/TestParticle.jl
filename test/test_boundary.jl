@@ -35,7 +35,6 @@ B_along_x(r, t = 0.0) = SA[1.0, 0.0, 0.0]
 B_along_z(r) = SA[0.0, 0.0, 1.0]
 
 "Zero electric field."
-E_zero(r, t = 0.0) = SA[0.0, 0.0, 0.0]
 
 @testset "Callbacks and Termination" begin
 
@@ -102,7 +101,7 @@ E_zero(r, t = 0.0) = SA[0.0, 0.0, 0.0]
     end
 
     @testset "Spatial and Time Boundaries (Native Solvers)" begin
-        param = prepare(E_zero, B_along_x; species = Proton)
+        param = prepare(; B = B_along_x, species = Proton)
 
         @testset "Spatial rejection (AdaptiveBoris)" begin
             u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
@@ -127,7 +126,7 @@ E_zero(r, t = 0.0) = SA[0.0, 0.0, 0.0]
 
         @testset "Time rejection (GC RK4)" begin
             u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
-            stateinit_gc, param_gc = prepare_gc(u0, E_zero, B_along_z; species = Proton)
+            stateinit_gc, param_gc = prepare_gc(u0; B = B_along_z, species = Proton)
             tspan = (0.0, 1.0)
             prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
             dt = 1.0e-4

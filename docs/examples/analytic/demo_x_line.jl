@@ -36,7 +36,7 @@ v_p = TP.energy2velocity(Ek_p) # magnitude
 v0_p = [v_p, 0.0, 0.0]
 
 stateinit_p = [x0_p..., v0_p...]
-param_p = prepare(getE, getB, species = TP.Proton)
+param_p = prepare(; E = getE, B = getB, species = TP.Proton)
 tspan_p = (0.0, 100.0) # seconds
 
 prob_p = ODEProblem(TP.trace!, stateinit_p, tspan_p, param_p)
@@ -49,7 +49,7 @@ v_e = TP.energy2velocity(Ek_e, m = TP.mₑ, q = TP.qₑ) # magnitude
 v0_e = [v_e, 0.0, 0.0]
 
 stateinit_e = [x0_e..., v0_e...]
-param_e = prepare(getE, getB, species = TP.Electron)
+param_e = prepare(; E = getE, B = getB, species = TP.Electron)
 tspan_e = (0.0, 15.0) # seconds, electron is much faster
 
 prob_e = ODEProblem(TP.trace!, stateinit_e, tspan_e, param_e)

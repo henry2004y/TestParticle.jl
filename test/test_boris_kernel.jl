@@ -29,7 +29,7 @@ prob_func_gpu(prob, ctx) = remake(
     tspan = (0.0, 1.0e-6)
     dt = 1.0e-9
 
-    param = prepare(zero_E, uniform_B; species = Proton)
+    param = prepare(; E = zero_E, B = uniform_B, species = Proton)
     prob = TraceProblem(stateinit, tspan, param)
 
     @testset "CPU Backend" begin
@@ -187,7 +187,7 @@ prob_func_gpu(prob, ctx) = remake(
         tspan = (0.0, 1.0e-5)
         dt = 1.0e-7
 
-        param = prepare(zero_E, zero_E; species = Proton)
+        param = prepare(; E = zero_E, B = zero_E, species = Proton)
         prob = TraceProblem(stateinit, tspan, param)
 
         "Stop once the particle has passed x = 0.505."

@@ -12,7 +12,7 @@ x0 = [10.0, 10.0, 0.0] # initial position, [m]
 u0 = [1000.0, 0.0, 10.0] # initial velocity, [m/s]
 tspan = (0.0, 0.1)
 stateinit = [x0..., u0...]
-param = prepare(E, B; species = Electron)
+param = prepare(; E, B, species = Electron)
 
 sol = let prob = ODEProblem(trace!, stateinit, tspan, param)
     solve(prob, Vern6())

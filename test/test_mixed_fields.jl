@@ -13,7 +13,7 @@ using StaticArrays
 using ..test_common: uniform_grid, cartesian_grid
 
 "Analytic electric field, paired below with gridded B and force fields."
-E_analytic(r) = SA[0, 5.0e-11, 0]  # [V/m]
+E(r) = SA[0, 5.0e-11, 0]  # [V/m]
 
 @testset "mixed type fields" begin
     x, y, z = uniform_grid(15, 20, 25)
@@ -30,7 +30,7 @@ E_analytic(r) = SA[0, 5.0e-11, 0]  # [V/m]
     stateinit = [x0..., u0...]
     tspan = (0.0, 1.0)
 
-    param = prepare(grid, E_analytic, B, F; species = Electron)
+    param = prepare(grid; E, B, F, species = Electron)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1, 2])
     @test isapprox(sol[1, end], 1.5324506733176166, rtol = 1.0e-2) &&

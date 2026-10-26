@@ -480,7 +480,6 @@ end
             # Uniform B field
             B0 = 1.0e-8
             B_func(x, t) = SA[0.0, 0.0, B0]
-            E_func(x, t) = SA[0.0, 0.0, 0.0]
 
             # Particle parameters
             q = TestParticle.qᵢ
@@ -493,7 +492,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(E_func, B_func; species = Ion(1, 1)) # Proton
+            param = prepare(; B = B_func, species = Ion(1, 1)) # Proton
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -509,7 +508,6 @@ end
             # Uniform B field
             B0 = 0.01
             B_func(x, t) = SA[0.0, 0.0, B0]
-            E_func(x, t) = SA[0.0, 0.0, 0.0]
 
             # Particle parameters
             q = TestParticle.qₑ
@@ -529,7 +527,7 @@ end
             stateinit = [x0..., u0...]
             tspan = (0.0, 1.0e-9)
 
-            param = prepare(E_func, B_func; species = Electron)
+            param = prepare(; B = B_func, species = Electron)
             prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
             sol = solve(prob, Vern6(); dt = 1.0e-10) # small dt for small tspan
 
@@ -543,7 +541,7 @@ end
             # The drift frame is taken from the true velocity whether the
             # equations are solved in place, where the solver wraps them, or not.
             E_drift(x, t) = SA[0.0, 0.1 * c * B0, 0.0]
-            param_E = prepare(E_drift, B_func; species = Electron)
+            param_E = prepare(; E = E_drift, B = B_func, species = Electron)
             r_iip = get_gyroradius(
                 solve(
                     ODEProblem(trace_relativistic!, stateinit, tspan, param_E),
@@ -577,7 +575,7 @@ end
 
             # In the E × B drift frame, r = γ |v - v_E| / B with v = γv / γ.
             E_drift(x, t) = SA[0.0, 0.1, 0.0]
-            param_E = prepare(E_drift, B_func; q = 1.0, m = 1.0, c = 1.0)
+            param_E = prepare(; E = E_drift, B = B_func, q = 1.0, m = 1.0, c = 1.0)
             sol = solve(TraceProblem(stateinit, tspan, param_E; relativistic = true), Vern6())
             @test get_gyroradius(sol, 0.0) ≈ gamma * (v_mag - 0.1) / B0
         end
@@ -585,14 +583,13 @@ end
         @testset "Zero Field" begin
             # B = 0 -> r = Inf
             B_func(x, t) = SA[0.0, 0.0, 0.0]
-            E_func(x, t) = SA[0.0, 0.0, 0.0]
 
             x0 = SA[0.0, 0.0, 0.0]
             v0 = SA[1.0, 0.0, 0.0]
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(E_func, B_func; species = Ion(1, 1))
+            param = prepare(; B = B_func, species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -618,7 +615,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(E_func, B_func; species = Ion(1, 1))
+            param = prepare(; E = E_func, B = B_func, species = Ion(1, 1))
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -739,15 +736,13 @@ end
             # Define fields as closures to capture B0, or just use constant
             B_func_disp(x, t) = SA[0.0, 0.0, 1.0e-8]
             B_func_disp(x) = B_func_disp(x, 0.0)
-            E_func_disp(x, t) = SA[0.0, 0.0, 0.0]
-            E_func_disp(x) = E_func_disp(x, 0.0)
 
             # FO Solution
             x0 = SA[1.0, 0.0, 0.0]
             v0 = SA[0.0, 1.0e5, 0.0]
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0e-4) # Short duration
-            param_fo = prepare(E_func_disp, B_func_disp; species = Ion(1, 1))
+            param_fo = prepare(; B = B_func_disp, species = Ion(1, 1))
             prob_fo = ODEProblem(trace!, stateinit, tspan, param_fo)
             sol_fo = solve(prob_fo, Tsit5(); dt = 1.0e-6)
 
@@ -763,7 +758,7 @@ end
             @test ε_fo_scalar == 0.0
 
             # GC Solution
-            stateinit_gc, param_gc = prepare_gc(stateinit, E_func_disp, B_func_disp; species = Ion(1, 1))
+            stateinit_gc, param_gc = prepare_gc(stateinit; B = B_func_disp, species = Ion(1, 1))
             prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
             sol_gc = solve(prob_gc, Tsit5(); dt = 1.0e-6)
 
@@ -1059,7 +1054,7 @@ end
         E = fill(0.0, 3, length(x), length(y), length(z))
         B[3, :, :, :] .= 1.0e-8
 
-        param = prepare(rect_grid, E, B)
+        param = prepare(rect_grid; E, B)
         @test param[1] ≈ TP.qᵢ / TP.mᵢ
     end
 end

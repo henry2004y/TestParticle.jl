@@ -95,7 +95,7 @@ uniform_E_small(x) = SA[1.0e-10, 0, 0]
 stateinit_small = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1]
 tspan = (0, 40)
 
-param_small = prepare(uniform_E_small, uniform_B, species = Proton)
+param_small = prepare(; E = uniform_E_small, B = uniform_B, species = Proton)
 prob_small = ODEProblem(trace!, stateinit_small, tspan, param_small)
 sol_small = solve(prob_small, Vern9())
 
@@ -118,7 +118,7 @@ fig_small = DisplayAs.PNG(fig_small) #hide
 uniform_E_large(x) = SA[5.0e-9, 0, 0]
 stateinit_large = [1.0, 0.0, 0.0, 0.0, 0.0, 0.1]
 
-param_large = prepare(uniform_E_large, uniform_B, species = Proton)
+param_large = prepare(; E = uniform_E_large, B = uniform_B, species = Proton)
 prob_large = ODEProblem(trace!, stateinit_large, tspan, param_large)
 sol_large = solve(prob_large, Vern9())
 

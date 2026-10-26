@@ -30,7 +30,7 @@ end
     tspan = (0.0, 2.0e-7)
     stateinit = [x0..., u0...]
 
-    param = prepare(E_well, uniform_B_strong; species = Electron)
+    param = prepare(; E = E_well, B = uniform_B_strong, species = Electron)
     prob = ODEProblem(trace_relativistic!, stateinit, tspan, param)
     sol = solve(prob, Vern6(); dt = 1.0e-10, adaptive = false)
 
@@ -54,7 +54,7 @@ end
     @test isapprox(KE_end / Δx, 1.0e5, rtol = 1.0e-2)
 
     # Tracing relativistic particles in dimensionless units
-    param = prepare(zero_E, B_unit; m = 1, q = 1, c = 1)
+    param = prepare(; E = zero_E, B = B_unit, m = 1, q = 1, c = 1)
     tspan = (0.0, 1.0) # 1/2π period
     stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
     prob = TraceProblem(SVector{6}(stateinit), tspan, param; relativistic = true)

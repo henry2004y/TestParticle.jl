@@ -24,10 +24,10 @@ stateinit = let
     u0 = [1.0, 0.0, 0.0] # initial velocity, [m/s]
     [x0..., u0...]
 end
-param_electron = prepare(x, y, z, E, B, species = Electron)
+param_electron = prepare(x, y, z; E, B, species = Electron)
 tspan_electron = (0.0, 15.0)
 
-param_proton = prepare(x, y, z, E, B, species = Proton)
+param_proton = prepare(x, y, z; E, B, species = Proton)
 tspan_proton = (0.0, 10.0)
 
 ### Solve for the trajectories

@@ -57,10 +57,10 @@ zc_ = floor(Int, length(z) / 2) + 1
 stateinit_e = [x[xc_], y[yc_], z[zc_], Uex[xc_, yc_, zc_], Uey[xc_, yc_, zc_], Uez[xc_, yc_, zc_]]
 stateinit_p = [x[xc_], y[yc_], z[zc_], Uix[xc_, yc_, zc_], Uiy[xc_, yc_, zc_], Uiz[xc_, yc_, zc_]]
 
-param_electron = prepare(x, y, z, E, B, species = Electron)
+param_electron = prepare(x, y, z; E, B, species = Electron)
 tspan_electron = (0.0, 0.1)
 
-param_proton = prepare(x, y, z, E, B, species = Proton)
+param_proton = prepare(x, y, z; E, B, species = Proton)
 tspan_proton = (0.0, 10.0)
 trajectories = 5
 

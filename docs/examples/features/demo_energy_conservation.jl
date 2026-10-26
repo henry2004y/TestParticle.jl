@@ -358,7 +358,7 @@ const E_z = 0.1
 B_func4(x) = SA[0.0, 0.0, B₀]
 E_func4(x, t) = SA[0.0, E_y, E_z]
 
-param4 = prepare(E_func4, B_func4; q, m)
+param4 = prepare(; E = E_func4, B = B_func4, q, m)
 x0_4 = [0.0, 0.0, 0.0]
 v0_4 = [0.0, 0.0, 0.0]
 tspan4 = (0.0, 200 * T)

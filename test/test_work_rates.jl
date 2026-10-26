@@ -123,7 +123,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # decomposition is exact rather than O(ε) accurate.
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
         state_gc, p = TP.prepare_gc(
-            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton
+            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         μ = p.μ
         @test μ > 0
@@ -144,7 +144,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         x = SA[3.0, -2.0, 5.0]
         t = 0.3
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
-        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton)
+        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton)
         y = SA[x[1], x[2], x[3], 2.0e4]
 
         mp = TP.get_magnetic_properties(x, t, Bf)
@@ -158,7 +158,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         x = SA[3.0, -2.0, 5.0]
         t = 0.3
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
-        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton)
+        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton)
         y = SA[x[1], x[2], x[3], 2.0e4]
 
         wr = TP.get_work_rates(y, p, t)
@@ -182,7 +182,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # the flavor must come from the parameter layout, not from `length(xv)`.
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
         state_gc, p = TP.prepare_gc(
-            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton
+            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         sol = solve(
             TraceGCProblem(state_gc, (0.0, 1.0e-6), p);
@@ -204,7 +204,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
     @testset "static field with E = 0 does no work" begin
         Bf, Ef = TP.Field(mirror_B_static), TP.Field(E_zero)
         state_gc, p = TP.prepare_gc(
-            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], Ef, Bf; species = TP.Proton
+            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         y = SA[state_gc[1], state_gc[2], state_gc[3], state_gc[4]]
 
@@ -217,7 +217,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
     @testset "pure betatron: uniform B(t) with the induced E" begin
         Bf, Ef = TP.Field(uniform_Bt), TP.Field(uniform_Et)
         state_gc, p = TP.prepare_gc(
-            [0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4], Ef, Bf; species = TP.Proton
+            [0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         q, q2m, μ, _, _ = p
         m = q / q2m
@@ -245,7 +245,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # Same physics integrated with the Boris pusher: the gyro-averaged work
         # rates must match the guiding-center prediction.
         stateinit = [0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4]
-        param = TP.prepare(uniform_Et, uniform_Bt; species = TP.Proton)
+        param = TP.prepare(; E = uniform_Et, B = uniform_Bt, species = TP.Proton)
         μ₀ = TP.mᵢ * (3.0e4^2) / (2 * B₀₀)
         gyroperiod = 2π * TP.mᵢ / (TP.qᵢ * B₀₀)
         dt = gyroperiod / 200
@@ -310,7 +310,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # frozen in time, so tracing it with E = 0 must leave K untouched.
         Bf, Ef = TP.Field(bottle_B), TP.Field(E_zero)
         state_gc, p = TP.prepare_gc(
-            [5.0, 0.0, 2.0, 2.0e4, 1.0e4, 4.0e4], Ef, Bf; species = TP.Proton
+            [5.0, 0.0, 2.0, 2.0e4, 1.0e4, 4.0e4]; E = Ef, B = Bf, species = TP.Proton
         )
         q, q2m, μ, _, _ = p
         m = q / q2m

@@ -136,7 +136,7 @@ stateinit_grad = let x0 = [1.0, 0, 0], v0 = [0.0, 1.0, 0.1]
     [x0..., v0...]
 end
 tspan_grad = (0, 20)
-param_grad = prepare(uniform_E, grad_B, species = Proton)
+param_grad = prepare(; E = uniform_E, B = grad_B, species = Proton)
 prob_grad = ODEProblem(trace!, stateinit_grad, tspan_grad, param_grad)
 sol_grad = solve(prob_grad, Vern9())
 gc_grad = xu -> get_gc(xu, param_grad)

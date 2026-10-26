@@ -44,7 +44,7 @@
 # where all the coefficients with subscript 0 are expressed in SI units. All the variables with a prime are written in the dimensionless units.
 #
 # The normalized equation is the general one with ``q = m = 1``, so tracing in
-# dimensionless units only needs `prepare(E, B; q = 1, m = 1)`.
+# dimensionless units only needs `prepare(; E, B, q = 1, m = 1)`.
 #
 # ## Dimensionless and Dimensional Tracing
 #
@@ -75,7 +75,7 @@ v0_dim = [0.0, 0.01c, 0.0] # [m/s]
 stateinit1 = [x0_dim..., v0_dim...]
 tspan1 = (0, 2π * t_dim) # [s]
 
-param1 = prepare(E_field, B_field, species = Proton)
+param1 = prepare(; E = E_field, B = B_field, species = Proton)
 prob1 = ODEProblem(trace!, stateinit1, tspan1, param1)
 sol1 = solve(prob1, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 
@@ -83,7 +83,7 @@ sol1 = solve(prob1, Vern9(); reltol = 1.0e-4, abstol = 1.0e-6)
 B_normalize(x) = SA[0, 0, B_dim / B_dim]
 E_normalize(x) = SA[Emag_dim / E_dim, 0.0, 0.0]
 ## For full EM problems, the normalization of E and B should be done separately.
-param2 = prepare(E_normalize, B_normalize; m = 1, q = 1)
+param2 = prepare(; E = E_normalize, B = B_normalize, m = 1, q = 1)
 ## Scale initial conditions by the conversion factors
 x0_norm = x0_dim ./ l_dim
 v0_norm = v0_dim ./ U_dim
@@ -128,7 +128,7 @@ f = DisplayAs.PNG(f) #hide
 # At ``v = 0.9`` the orbit closes after ``2\pi\gamma`` with gyroradius ``\gamma v \approx 2.06``,
 # instead of after ``2\pi`` with radius 0.9 as in the non-relativistic case.
 
-param = prepare(xu -> SA[0.0, 0.0, 0.0], xu -> SA[0.0, 0.0, 1.0]; m = 1, q = 1, c = 1)
+param = prepare(; B = xu -> SA[0.0, 0.0, 1.0], m = 1, q = 1, c = 1)
 v = 0.9
 γ = 1 / sqrt(1 - v^2)
 stateinit = [0.0, 0.0, 0.0, γ * v, 0.0, 0.0]

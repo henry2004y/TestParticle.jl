@@ -32,11 +32,10 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
     @testset "Guiding Center Dispatch" begin
         # Setup
-        E_field(x, t) = SA[0.0, 0.0, 0.0]
         # Time-dependent B field to verify t is correctly handled
         B_field_t(x, t) = SA[0.0, 0.0, 1.0 + t]
 
-        param_t = prepare(E_field, B_field_t)
+        param_t = prepare(; B = B_field_t)
 
         # Case 1: 7-element vector (x, y, z, vx, vy, vz, t)
         # t = 1.0 -> B = 2.0
@@ -65,8 +64,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         # Setup simple uniform field
         B0 = 1.0 # T
         B_field(r) = SA[0, 0, B0]
-        E_field(r) = SA[0, 0, 0]
-        param = prepare(E_field, B_field; species = Proton)
+        param = prepare(; B = B_field, species = Proton)
 
         @testset "Reversibility GC -> Full -> GC" begin
             R = SA[1.0, 0.0, 0.0]
@@ -91,7 +89,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             E0 = 1.0e3
             B_field2(r) = SA[0, 0, B0]
             E_field2(r) = SA[0, E0, 0] # E in y
-            param2 = prepare(E_field2, B_field2; species = Proton)
+            param2 = prepare(; E = E_field2, B = B_field2, species = Proton)
 
             # v_E = (E x B) / B² = (E0/B0, 0, 0) = (1000, 0, 0)
             gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
@@ -111,7 +109,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "Phase check" begin
             B_field3(r) = SA[0, 0, 1.0]
-            param3 = prepare(E_field, B_field3; species = Proton)
+            param3 = prepare(; B = B_field3, species = Proton)
 
             gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
             μ = 1.0e-15
@@ -307,7 +305,7 @@ end
     stateinit = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1]
     tspan = (0, 10)
 
-    param = prepare(uniform_Ex, curved_B, species = Proton)
+    param = prepare(; E = uniform_Ex, B = curved_B, species = Proton)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9())
 
@@ -324,8 +322,7 @@ end
 
     stateinit_gc,
         param_gc = prepare_gc(
-        stateinit, uniform_Ex, curved_B,
-        species = Proton
+        stateinit; E = uniform_Ex, B = curved_B, species = Proton
     )
 
     prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
@@ -344,7 +341,7 @@ end
     a, kx, ky, kz, Bz = 1.0e-9, 0.3, 0.2, 0.1, 1.0e-8
     E(x) = SA[a * cos(kx * x[1]) * cos(ky * x[2]), a * sin(kz * x[3]), 0.0]
     B(x) = SA[0.0, 0.0, Bz]
-    param = prepare(E, B, species = Proton)
+    param = prepare(; E, B, species = Proton)
     xp, v = SA[1.5, -0.5, 0.0], SA[0.3, 1.0, 0.1]
     x = [1.0, 2.0, 3.0]
     dx = similar(x)

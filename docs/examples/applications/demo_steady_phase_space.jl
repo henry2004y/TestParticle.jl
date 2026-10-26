@@ -54,11 +54,11 @@ const V_drift = -400.0e3  # desired E×B drift speed [m/s] (along -x)
 ## E×B drift: u_E = E×B/B²  ⇒  E = B × u_E  (with E·B = 0).
 const E_vec = SA[0.0, B_mag * V_drift, 0.0]  # [V/m]
 
-function get_E_steady(r, t = 0.0)
+function E(r, t = 0.0)
     return E_vec
 end
 
-function get_B_steady(r, t = 0.0)
+function B(r, t = 0.0)
     return B_vec
 end;
 
@@ -88,7 +88,7 @@ detector_down = Meshes.Plane(
     Meshes.Point(x_downstream, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0)
 )
 
-param = prepare(get_E_steady, get_B_steady; species = Proton);
+param = prepare(; E, B, species = Proton);
 
 # ## Analytic reference and error metric
 # The exact detector VDF is the source bi-Maxwellian evaluated at the detector

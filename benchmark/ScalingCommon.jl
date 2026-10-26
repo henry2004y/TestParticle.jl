@@ -63,7 +63,7 @@ Uniform field tracing problem shared by every benchmark mode. `prob_func` only c
 the parallel velocity, so every trajectory costs the same.
 """
 function make_problem()
-    param = prepare(uniform_E, uniform_B; species = Proton)
+    param = prepare(; E = uniform_E, B = uniform_B, species = Proton)
     stateinit = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
     return TraceProblem(stateinit, TSPAN, param; prob_func)
 end

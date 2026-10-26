@@ -53,12 +53,12 @@ end
     stateinit = [x0..., u0...]
     tspan = (0.0, 1.0)
 
-    param = prepare(x, y, z, E, B, species = Ion(; q = 1, m = 16)) # O+
+    param = prepare(x, y, z; E, B, species = Ion(; q = 1, m = 16)) # O+
     @test param[2] ≈ 16 * TP.mᵢ
 
     callback = TerminateOutside(isoutside)
 
-    param = prepare(x, y, z, E, B)
+    param = prepare(x, y, z; E, B)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(
         prob, Tsit5();
@@ -67,7 +67,7 @@ end
     # There are numerical differences on x86 and ARM platforms!
     @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
 
-    param = prepare(x, y, z, E, B; order = 3)
+    param = prepare(x, y, z; E, B, order = 3)
     prob = remake(prob; p = param)
     sol = solve(
         prob, Tsit5();
@@ -78,14 +78,13 @@ end
     # GC prepare
     stateinit_gc,
         param_gc = prepare_gc(
-        stateinit, x, y, z, E, B;
-        species = Proton, order = 1
+        stateinit, x, y, z; E, B, species = Proton, order = 1
     )
     @test stateinit_gc[2] ≈ -1.0439684914853153
     # μ = m * v_perp^2 / (2B)
     @test param_gc[3] ≈ 8.36310961845e-20 rtol = 1.0e-6
 
-    param = prepare(grid, E, B)
+    param = prepare(grid; E, B)
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 8 && isapprox(sol[1, end], 0.8539409515568538, rtol = 1.0e-2)
@@ -107,16 +106,26 @@ end
 
     # Nonuniform spherical grid
     r, θ, ϕ, B_sph = spherical_field()
-    param = prepare(r, θ, ϕ, zero_field, B_sph; gridtype = StructuredGrid)
+    param = prepare(r, θ, ϕ; B = B_sph, gridtype = StructuredGrid)
     # Check field interpolation Bz
     @test param[4](SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
 
     # Vector inputs for the spherical grid follow the same path
     param_vec = prepare(
-        collect(r), collect(θ), collect(ϕ), zero_field, B_sph;
+        collect(r), collect(θ), collect(ϕ); B = B_sph,
         species = Ion(; m = 16, q = 1), gridtype = StructuredGrid
     )
     @test param_vec[4](SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
+
+    @testset "positional compatibility forms" begin
+        xq = SA[1.0, 1.0, 1.0]
+        for p in (prepare(x, y, z, E, B), prepare(grid, E, B))
+            @test p.E(xq) ≈ SA[0.0, 0.0, 5.0e-10]
+            @test p.B(xq) ≈ SA[0.0, 0.0, 10.0e-9]
+        end
+        # A `LogRange` radius still implies the spherical grid.
+        @test prepare(r, θ, ϕ, zero_field, B_sph).B(xq)[3] ≈ 9.888387888463716e-9
+    end
 end
 
 end # module test_numerical_field

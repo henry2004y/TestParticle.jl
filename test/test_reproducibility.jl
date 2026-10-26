@@ -16,7 +16,7 @@ using VelocityDistributionFunctions
 using ..test_common: uniform_B, zero_field
 
 @testset "Reproducibility" begin
-    param = prepare(zero_field, uniform_B, species = Proton)
+    param = prepare(; B = uniform_B, species = Proton)
     tspan = (0.0, 1.0)
     stateinit = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     prob = ODEProblem(trace!, stateinit, tspan, param)
