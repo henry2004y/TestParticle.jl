@@ -289,6 +289,10 @@ function @main(args::Vector{String})::Cint
     prob = TraceProblem(part_cfg.stateinit, sim_cfg.tspan, param)
     println(Core.stdout, "Tracing particle...")
     sol = solve(prob, Boris(); dt = sim_cfg.dt, saveat = sim_cfg.saveat)
+    if sol.retcode != TP.ReturnCode.Success
+        println(Core.stderr, "Error: simulation failed with return code ", sol.retcode)
+        return 1
+    end
 
     n_steps = length(sol.u)
     println(Core.stdout, "Simulation complete: ", n_steps, " steps.")
