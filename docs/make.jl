@@ -163,6 +163,7 @@ makedocs(;
         ],
         "Examples" => example_pages,
         "Python Wrapper" => "python_wrapper.md",
+        "Command-Line App" => "cli.md",
         "API" => "api.md",
         "Plot Functions" => "plotfunctions.md",
     ],
