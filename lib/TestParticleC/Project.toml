@@ -1,0 +1,25 @@
+name = "TestParticleC"
+uuid = "a34e0214-411a-4293-8687-faefda7bcfc0"
+version = "0.1.0"
+authors = ["Hongyang Zhou <hyzhou@umich.edu>"]
+
+[deps]
+BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[sources]
+BorisPushers = {path = "../BorisPushers"}
+
+[compat]
+BorisPushers = "0.2"
+PrecompileTools = "1"
+StaticArrays = "1"
+julia = "1.11"
+
+[extras]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["LinearAlgebra", "Test"]
