@@ -7,18 +7,14 @@ Equations for tracing the guiding center using the ExB drift and parallel veloci
 """
 function trace_gc_exb!(dx, x, p, t)
     # TODO: support external forces
-    (; q2m, sol) = p
-    Efunc, Bfunc = p.E, p.B
-    xu = sol(t)
-    v = get_v(xu)
-    E = Efunc(x, t)
-    B = Bfunc(x, t)
+    v = get_v(p.sol(t))
+    E = p.E(x, t)
+    B = p.B(x, t)
 
     Bmag = norm(B)
     b = B / Bmag
-    v_par = (v ⋅ b) .* b
 
-    @inbounds dx[1:3] = (E × b) / Bmag + v_par
+    @inbounds dx[1:3] = (E × b) / Bmag + (v ⋅ b) * b
 
     return
 end
@@ -104,23 +100,20 @@ function trace_gc_drifts!(dx, x, p, t)
     return
 end
 
-
 """
     trace_gc!(dy, y, p, t)
 
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-function trace_gc!(dy, y, p, t)
-    v1, v2, v3, du = get_gc_derivatives(y, p, t)
+trace_gc!(dy, y, p, t) = _store!(dy, trace_gc(y, p, t))
 
-    @inbounds dy[1] = v1
-    @inbounds dy[2] = v2
-    @inbounds dy[3] = v3
-    @inbounds dy[4] = du
+"""
+    get_gc_velocity(y, p, t)
 
-    return
-end
+Get the guiding center velocity.
+"""
+get_gc_velocity(y, p, t) = get_x(trace_gc(y, p, t))
 
 """
     trace_gc(y, p, t)
@@ -128,21 +121,6 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
 """
 function trace_gc(y, p, t)
-    v1, v2, v3, du = get_gc_derivatives(y, p, t)
-    return SVector{4}(v1, v2, v3, du)
-end
-
-"""
-    get_gc_velocity(y, p, t)
-
-Get the guiding center velocity.
-"""
-function get_gc_velocity(y, p, t)
-    v1, v2, v3, _ = get_gc_derivatives(y, p, t)
-    return SVector{3}(v1, v2, v3)
-end
-
-function get_gc_derivatives(y, p, t)
     # TODO: support external forces
     (; q, q2m, μ) = p
     X = get_x(y)
@@ -172,5 +150,5 @@ function get_gc_derivatives(y, p, t)
     # dp_par/dt = q/B*_par * B* ⋅ E* => du/dt = (q/m)/B*_par * B* ⋅ E*
     du = q2m * inv_Bparᵉ * Bᵉ ⋅ Eᵉ
 
-    return v[1], v[2], v[3], du
+    return SVector{4}(v[1], v[2], v[3], du)
 end

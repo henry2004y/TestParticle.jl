@@ -74,7 +74,7 @@ function gc_energy_derivative(y, p, t)
     q, q2m, μ, _, Bfunc = p
     m = q / q2m
     X = SA[y[1], y[2], y[3]]
-    v1, v2, v3, du = TP.get_gc_derivatives(y, p, t)
+    v1, v2, v3, du = TP.trace_gc(y, p, t)
     _, ∇B, _, b̂, _ = TP.get_magnetic_properties(X, t, Bfunc)
     dBdt_local = TP.derivative_t(Bfunc, X, t) ⋅ b̂
 

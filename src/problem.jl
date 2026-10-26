@@ -130,6 +130,10 @@ function solve(
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end
 
+_canonical_equations(isinplace, relativistic) = relativistic ?
+    (isinplace ? trace_canonical_relativistic! : trace_canonical_relativistic) :
+    (isinplace ? trace_canonical! : trace_canonical)
+
 function TraceCanonicalProblem(
         u0, tspan, p;
         relativistic::Bool = false,
@@ -137,11 +141,7 @@ function TraceCanonicalProblem(
     )
     tspan, p = _promote_trace_args(u0, tspan, p, CANONICAL_PARAMS)
     isinplace = !(u0 isa StaticArray)
-    _func = if relativistic
-        isinplace ? trace_canonical_relativistic! : trace_canonical_relativistic
-    else
-        isinplace ? trace_canonical! : trace_canonical
-    end
+    _func = _canonical_equations(isinplace, relativistic)
     _f = ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(_func)
     return TraceCanonicalProblem{
         typeof(u0), typeof(tspan), isinplace, typeof(p), typeof(_f), typeof(prob_func),
@@ -185,19 +185,11 @@ function SciMLBase.remake(
     )
     tspan, p = _promote_trace_args(u0, tspan, p, CANONICAL_PARAMS)
     isinplace = !(u0 isa StaticArray)
-    _f = if f === prob.f && (
-            prob.f.f === trace_canonical! || prob.f.f === trace_canonical ||
-                prob.f.f === trace_canonical_relativistic! || prob.f.f === trace_canonical_relativistic
+    relativistic = prob.f.f in (trace_canonical_relativistic!, trace_canonical_relativistic)
+    _f = if f === prob.f && (relativistic || prob.f.f in (trace_canonical!, trace_canonical))
+        ODEFunction{isinplace, DEFAULT_SPECIALIZATION}(
+            _canonical_equations(isinplace, relativistic)
         )
-        is_rel = prob.f.f === trace_canonical_relativistic! ||
-            prob.f.f === trace_canonical_relativistic
-        if is_rel
-            isinplace ? ODEFunction{true, DEFAULT_SPECIALIZATION}(trace_canonical_relativistic!) :
-                ODEFunction{false, DEFAULT_SPECIALIZATION}(trace_canonical_relativistic)
-        else
-            isinplace ? ODEFunction{true, DEFAULT_SPECIALIZATION}(trace_canonical!) :
-                ODEFunction{false, DEFAULT_SPECIALIZATION}(trace_canonical)
-        end
     else
         f
     end

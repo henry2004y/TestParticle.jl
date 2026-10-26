@@ -18,46 +18,31 @@ end
 
 In-place solver components for `DynamicalODEProblem` (location).
 """
-function get_dx!(dx, v, x, p, t)
-    @inbounds for i in eachindex(dx, v)
-        dx[i] = v[i]
-    end
-    return
-end
+get_dx!(dx, v, x, p, t) = _store!(dx, v)
 
 """
     get_dv!(dv, v, x, p, t)
 
 In-place solver components for `DynamicalODEProblem` (velocity).
 """
-function get_dv!(dv, v, x, p, t)
-    val = get_dv(v, x, p, t)
-    @inbounds for i in eachindex(dv, val)
-        dv[i] = val[i]
-    end
+get_dv!(dv, v, x, p, t) = _store!(dv, get_dv(v, x, p, t))
 
-    return
-end
+"""
+    get_relativistic_v(γv; c = c)
 
-function get_relativistic_v(γv::AbstractVector{T}; c = c) where {T <: AbstractFloat}
-    c_val = T(c)
-    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-    if γ²v² > eps(T)
-        v̂ = normalize(γv)
-    else # no velocity
-        v̂ = SVector{3, T}(0, 0, 0)
-    end
-    return √(γ²v² / (1 + γ²v² / c_val^2)) * v̂
-end
-
+Velocity of a particle with the relativistic velocity `γv`.
+"""
 function get_relativistic_v(γv; c = c)
-    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-    if γ²v² > eps(eltype(γv))
-        v̂ = normalize(γv)
-    else # no velocity
-        v̂ = zero(γv)
+    γ²v² = γv ⋅ γv
+    return γv / √(1 + γ²v² / oftype(float(γ²v²), c)^2)
+end
+
+# The in-place equations store the out-of-place right-hand side.
+@inline function _store!(dy, rhs)
+    @inbounds for i in eachindex(rhs)
+        dy[i] = rhs[i]
     end
-    return √(γ²v² / (1 + γ²v² / c^2)) * v̂
+    return
 end
 
 """
@@ -65,18 +50,7 @@ end
 
 ODE equations for charged particle moving in EM field and external force field with in-place form.
 """
-function trace!(dy, y, p, t)
-    v = get_v(y)
-    dv = get_dv(v, y, p, t)
-    @inbounds dy[1] = v[1]
-    @inbounds dy[2] = v[2]
-    @inbounds dy[3] = v[3]
-    @inbounds dy[4] = dv[1]
-    @inbounds dy[5] = dv[2]
-    @inbounds dy[6] = dv[3]
-
-    return
-end
+trace!(dy, y, p, t) = _store!(dy, trace(y, p, t))
 
 """
     trace(y, p, t)::SVector{6}
@@ -84,9 +58,8 @@ end
 ODE equations for charged particle moving in EM field and external force field with out-of-place form.
 """
 function trace(y, p, t)
-    v = y[SA[4:6...]]
-    dv = get_dv(v, y, p, t)
-    return vcat(v, dv)
+    v = get_v(y)
+    return vcat(v, get_dv(v, y, p, t))
 end
 
 _speed_of_light(p) = hasproperty(p, :c) ? p.c : c
@@ -97,14 +70,7 @@ _speed_of_light(p) = hasproperty(p, :c) ? p.c : c
 ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 The speed of light is `p.c` when present, `c` in SI otherwise.
 """
-function trace_relativistic!(dy, y, p, t)
-    γv = get_v(y)
-    v = get_relativistic_v(γv; c = _speed_of_light(p))
-    @inbounds dy[1:3] = v
-    @inbounds dy[4:6] = get_dv(v, y, p, t)
-
-    return
-end
+trace_relativistic!(dy, y, p, t) = _store!(dy, trace_relativistic(y, p, t))
 
 """
     trace_relativistic(y, p, t) -> SVector{6}
@@ -112,11 +78,8 @@ end
 ODE equations for relativistic charged particle (x, γv) moving in EM field with out-of-place form.
 """
 function trace_relativistic(y, p, t)
-    γv = get_v(y)
-    v = get_relativistic_v(γv; c = _speed_of_light(p))
-    dv = get_dv(v, y, p, t)
-
-    return vcat(v, dv)
+    v = get_relativistic_v(get_v(y); c = _speed_of_light(p))
+    return vcat(v, get_dv(v, y, p, t))
 end
 
 """
@@ -137,11 +100,11 @@ _normalized(p) = (; q2m = 1, m = 1, p.E, p.B, F = ZeroField(), c = 1)
 # Inlined down to the field evaluation (`get_dv` is `@inline`) so that the unit `q2m`, `m`
 # and `c` constant-fold and the rebuilt parameters, which copy the possibly large
 # interpolated fields, are never materialized.
-trace_normalized!(dy, y, p, t) = @inline trace!(dy, y, _normalized(p), t)
 trace_normalized(y, p, t) = @inline trace(y, _normalized(p), t)
-trace_relativistic_normalized!(dy, y, p, t) =
-    @inline trace_relativistic!(dy, y, _normalized(p), t)
+trace_normalized!(dy, y, p, t) = _store!(dy, trace_normalized(y, p, t))
 trace_relativistic_normalized(y, p, t) = @inline trace_relativistic(y, _normalized(p), t)
+trace_relativistic_normalized!(dy, y, p, t) =
+    _store!(dy, trace_relativistic_normalized(y, p, t))
 
 _lorentz_factor(
     γv,
