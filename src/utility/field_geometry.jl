@@ -150,7 +150,6 @@ components are `Inf`.
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q)
     ε_curv = ρ * norm(κ)
-    # ρ / L_B with the grad-B length scale L_B = |B| / |∇B|
     ε_gradB = ρ * norm(∇B) / Bmag
 
     # CHIMP's full criterion: ε = ρ · ‖JB‖_F / |B|, where ‖JB‖_F is the

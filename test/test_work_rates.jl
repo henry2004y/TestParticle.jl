@@ -266,8 +266,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
     end
 
     @testset "full-orbit μ excludes the ExB drift" begin
-        # A particle moving at exactly v_E does not gyrate, so it has no magnetic
-        # moment to pick up betatron work with.
+        # Moving at v_E: no gyration, so μ = 0.
         E0 = SA[1.0e-3, 0.0, 0.0]
         Bf, Ef = TP.Field(uniform_Bt), TP.Field((x, t) -> E0)
         p = TP.prepare(; E = Ef, B = Bf)
@@ -284,7 +283,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         γv = SA[1.0e8, -2.0e8, 1.5e8]
         u = SA[x..., γv...]
 
-        # The guiding-center drifts in terms of the momentum P = mγv.
+        # Expected rates from the momentum P = mγv.
         (; ∇B, κ, b̂, Bmag) = TP.get_magnetic_properties(x, t, Bf)
         E = Ef(x, t)
         m, q = p.m, p.q2m * p.m

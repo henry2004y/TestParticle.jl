@@ -19,10 +19,9 @@ See [`get_work_channels`](@ref) for the grouping into physical acceleration chan
 
 The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Saved
 guiding-center states can carry diagnostics appended by `save_fields`/`save_work`, so
-their length is not a reliable discriminator. The magnetic moment of a full-orbit state
-is that of its gyration velocity `v⊥ - v_E`. With `relativistic = true`, the velocity part
-of a full-orbit state is `γv`, as traced by [`trace_relativistic!`](@ref), and the drifts
-are those of the relativistic mass `γm`.
+their length is not a reliable discriminator. Full-orbit `μ` uses the gyration velocity
+`v⊥ - v_E`. With `relativistic = true`, a full-orbit state holds `γv` and the drifts use
+the mass `γm`.
 
 `magnetic_properties` and `E` are optional precomputed values of
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
@@ -62,7 +61,6 @@ Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
     return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
 end
 
-# Charge, mass, parallel velocity and magnetic moment of the traced particle.
 @inline function _work_rate_particle(xv, p, E, b̂, Bmag, relativistic)
     if hasproperty(p, :μ)
         relativistic && throw(ArgumentError("guiding-center states are nonrelativistic"))
@@ -106,8 +104,7 @@ end
 """
     get_work_rates(sol::AbstractODESolution) -> Vector{SVector{4}}
 
-Return the work rates at every saved state of the solution `sol`, reading `γv` for
-the relativistic equations.
+Work rates at every saved state of `sol`.
 """
 function get_work_rates(sol::AbstractODESolution)
     p = sol.prob.p

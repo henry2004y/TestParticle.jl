@@ -27,17 +27,11 @@ In-place solver components for `DynamicalODEProblem` (velocity).
 """
 get_dv!(dv, v, x, p, t) = _store!(dv, @inline get_dv(v, x, p, t))
 
-"""
-    get_relativistic_v(γv; c = c)
-
-Velocity of a particle with the relativistic velocity `γv`.
-"""
 function get_relativistic_v(γv; c = c)
     γ²v² = γv ⋅ γv
     return γv / √(1 + γ²v² / oftype(float(γ²v²), c)^2)
 end
 
-# The in-place equations store the out-of-place right-hand side.
 @inline function _store!(dy, rhs)
     @inbounds for i in eachindex(rhs)
         dy[i] = rhs[i]
