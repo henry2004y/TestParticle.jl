@@ -83,6 +83,7 @@ include("equations.jl")
 include("canonical.jl")
 include("problem.jl")
 include("hybrid.jl")
+include("deprecated.jl")
 
 function orbit end
 
