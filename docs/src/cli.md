@@ -1,4 +1,4 @@
-# Command-Line Application (CLI)
+# App
 
 `TestParticleCLI` is a standalone, statically compilable command-line interface for
 tracing charged particles in electromagnetic fields using [TestParticle.jl](index.md).
