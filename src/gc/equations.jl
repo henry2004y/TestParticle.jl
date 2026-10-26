@@ -97,7 +97,7 @@ end
 Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
 Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
 """
-trace_gc!(dy, y, p, t) = _store!(dy, trace_gc(y, p, t))
+trace_gc!(dy, y, p, t) = _store!(dy, @inline trace_gc(y, p, t))
 
 """
     get_gc_velocity(y, p, t)

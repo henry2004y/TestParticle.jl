@@ -22,10 +22,10 @@ _grad_A_v(::ZeroField, x, t, v) = ZeroVector()
 end
 
 trace_canonical(y, p, t) = _trace_canonical(y, p, t, false)
-trace_canonical!(dy, y, p, t) = _store!(dy, trace_canonical(y, p, t))
+trace_canonical!(dy, y, p, t) = _store!(dy, @inline trace_canonical(y, p, t))
 trace_canonical_relativistic(y, p, t) = _trace_canonical(y, p, t, true)
 trace_canonical_relativistic!(dy, y, p, t) =
-    _store!(dy, trace_canonical_relativistic(y, p, t))
+    _store!(dy, @inline trace_canonical_relativistic(y, p, t))
 
 function velocity_to_canonical(
         x0::AbstractVector, v0::AbstractVector, p;

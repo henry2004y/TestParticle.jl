@@ -25,7 +25,7 @@ get_dx!(dx, v, x, p, t) = _store!(dx, v)
 
 In-place solver components for `DynamicalODEProblem` (velocity).
 """
-get_dv!(dv, v, x, p, t) = _store!(dv, get_dv(v, x, p, t))
+get_dv!(dv, v, x, p, t) = _store!(dv, @inline get_dv(v, x, p, t))
 
 """
     get_relativistic_v(γv; c = c)
@@ -50,7 +50,7 @@ end
 
 ODE equations for charged particle moving in EM field and external force field with in-place form.
 """
-trace!(dy, y, p, t) = _store!(dy, trace(y, p, t))
+trace!(dy, y, p, t) = _store!(dy, @inline trace(y, p, t))
 
 """
     trace(y, p, t)::SVector{6}
@@ -70,7 +70,7 @@ _speed_of_light(p) = hasproperty(p, :c) ? p.c : c
 ODE equations for relativistic charged particle (x, γv) moving in EM field with in-place form.
 The speed of light is `p.c` when present, `c` in SI otherwise.
 """
-trace_relativistic!(dy, y, p, t) = _store!(dy, trace_relativistic(y, p, t))
+trace_relativistic!(dy, y, p, t) = _store!(dy, @inline trace_relativistic(y, p, t))
 
 """
     trace_relativistic(y, p, t) -> SVector{6}

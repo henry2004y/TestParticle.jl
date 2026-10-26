@@ -24,10 +24,10 @@ _normalized(p) = (; q2m = 1, m = 1, p.E, p.B, F = ZeroField(), c = 1)
 # and `c` constant-fold and the rebuilt parameters, which copy the possibly large
 # interpolated fields, are never materialized.
 trace_normalized(y, p, t) = @inline trace(y, _normalized(p), t)
-trace_normalized!(dy, y, p, t) = _store!(dy, trace_normalized(y, p, t))
+trace_normalized!(dy, y, p, t) = _store!(dy, @inline trace_normalized(y, p, t))
 trace_relativistic_normalized(y, p, t) = @inline trace_relativistic(y, _normalized(p), t)
 trace_relativistic_normalized!(dy, y, p, t) =
-    _store!(dy, trace_relativistic_normalized(y, p, t))
+    _store!(dy, @inline trace_relativistic_normalized(y, p, t))
 
 _lorentz_factor(
     γv,
