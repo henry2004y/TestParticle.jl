@@ -1,8 +1,8 @@
 [deps]
 BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Magnetostatics = "e551bd30-f216-4325-9989-532520624021"
