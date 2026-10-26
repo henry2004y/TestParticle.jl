@@ -20,8 +20,13 @@ function _named_params(p::NTuple{N, Any}, names) where {N}
 end
 _named_params(p, names) = p
 
-@inline _promote_p(::Type{T}, p::NamedTuple) where {T <: AbstractFloat} =
-    map(x -> x isa Real ? T(x) : x, p)
+# Only the particle constants follow the state's float type; other entries of `p`, such as
+# user data, keep theirs.
+const PARTICLE_CONSTANTS = (:q, :q2m, :m, :c, :μ)
+
+@inline _promote_p(::Type{T}, p::NamedTuple{K}) where {T <: AbstractFloat, K} = NamedTuple{K}(
+    map((k, x) -> k in PARTICLE_CONSTANTS && x isa Real ? T(x) : x, K, values(p))
+)
 @inline _promote_p(::Type{T}, p) where {T} = p
 
 @inline function _promote_trace_args(u0, tspan, p, names)
