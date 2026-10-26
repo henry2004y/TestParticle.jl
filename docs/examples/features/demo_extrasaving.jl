@@ -164,9 +164,9 @@ for i in indices #hide
 end #hide
 println("="^70) #hide
 
-# ## Post-processing with `get_fields` and `get_work`
+# ## Post-processing with `get_fields` and `get_work_rates`
 #
-# If you didn't save the fields or work during the simulation (e.g., to save memory or if you decided to inspect them later), you can compute them from the trajectory solution using `get_fields` and `get_work`.
+# If you didn't save the fields or work during the simulation (e.g., to save memory or if you decided to inspect them later), you can compute them from the trajectory solution using `get_fields` and `get_work_rates`.
 # Note: This requires the problem parameters (fields) to be accessible from the solution object.
 
 ## Solving without saving extra data
@@ -174,7 +174,7 @@ sol = solve(prob_boris, Boris(); dt = 0.1);
 
 ## Compute fields and work post-simulation
 E_post, B_post = get_fields(sol);
-work_post = get_work(sol);
+work_post = get_work_rates(sol);
 
 using Markdown #hide
 io = IOBuffer() #hide

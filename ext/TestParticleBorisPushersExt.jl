@@ -5,8 +5,7 @@ import TestParticle: TraceProblem, TraceHybridProblem, AdaptiveHybrid,
     SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
-    GPUGrid1D, GPUGrid2D, GPUGrid3D, GPUSphericalGrid,
-    _to_gpu_grid, _to_gpu_spherical_grid,
+    _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
     _gc_to_full, _get_gc_parameters, update_dp5,
     adiabaticity_components, _rng_seed, is_time_dependent, _foreach_chunk,
@@ -94,30 +93,23 @@ end
         xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}
     ) where {SaveFields, SaveWork}
     data = xv
-    local E_field, magnetic_props
+    E = magnetic_properties = nothing
 
     if SaveFields
         r = get_x(xv)
         T = eltype(xv)
-        E_field = SVector{3, T}(p.E(r, t))
-
+        E = SVector{3, T}(p.E(r, t))
         if SaveWork
-            magnetic_props = get_magnetic_properties(r, t, p.B)
-            B_vec = SVector{3, T}(magnetic_props[1])
-            data = vcat(data, E_field, B_vec)
+            magnetic_properties = get_magnetic_properties(r, t, p.B)
+            B = magnetic_properties.B
         else
-            B_vec = SVector{3, T}(p.B(r, t))
-            data = vcat(data, E_field, B_vec)
+            B = p.B(r, t)
         end
+        data = vcat(data, E, SVector{3, T}(B))
     end
 
     if SaveWork
-        if SaveFields
-            work = get_work_rates(xv, p, t, magnetic_props, E_field)
-        else
-            work = get_work_rates(xv, p, t)
-        end
-        data = vcat(data, work)
+        data = vcat(data, get_work_rates(xv, p, t; magnetic_properties, E))
     end
 
     return data
@@ -596,36 +588,16 @@ end
 
 BorisPushers.adapt_field_to_gpu(f::Function, backend::Backend) = Adapt.adapt(backend, f)
 
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator2D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend)
-end
-
-function BorisPushers.adapt_field_to_gpu(fi::FieldInterpolator1D, backend::Backend)
-    backend isa CPU && return fi
-    return _to_gpu_grid(fi.itp, backend; dir = fi.dir)
-end
-
 function BorisPushers.adapt_field_to_gpu(
-        fi::SphericalFieldInterpolator, backend::Backend
+        fi::Union{
+            FieldInterpolator, FieldInterpolator2D, FieldInterpolator1D,
+            SphericalFieldInterpolator,
+        },
+        backend::Backend
     )
     backend isa CPU && return fi
-    return _to_gpu_spherical_grid(fi.itp, backend)
+    return _to_gpu_grid(fi, backend)
 end
-
-BorisPushers.adapt_field_to_gpu(g::GPUGrid3D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUGrid2D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUGrid1D, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
-BorisPushers.adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
-    backend isa CPU ? g : Adapt.adapt(backend, g)
 
 @setup_workload begin
     @compile_workload begin
@@ -655,7 +627,7 @@ BorisPushers.adapt_field_to_gpu(g::GPUSphericalGrid, backend::Backend) =
             sol = solve(prob, alg_adaptive)
             solve(prob, alg_adaptive; save_fields = true, save_work = true)
             get_fields(sol)
-            get_work(sol)
+            get_work_rates(sol)
 
             solve(prob, MultistepBoris2(; n = 2); dt)
             solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)

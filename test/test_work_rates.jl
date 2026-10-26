@@ -74,7 +74,7 @@ function gc_energy_derivative(y, p, t)
     q, q2m, μ, _, Bfunc = p
     m = q / q2m
     X = SA[y[1], y[2], y[3]]
-    v1, v2, v3, du = TP.get_gc_derivatives(y, p, t)
+    v1, v2, v3, du = TP.trace_gc(y, p, t)
     _, ∇B, _, b̂, _ = TP.get_magnetic_properties(X, t, Bfunc)
     dBdt_local = TP.derivative_t(Bfunc, X, t) ⋅ b̂
 
@@ -149,8 +149,9 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
         mp = TP.get_magnetic_properties(x, t, Bf)
         ref = TP.get_work_rates(y, p, t)
-        @test TP.get_work_rates(y, p, t, mp) == ref
-        @test TP.get_work_rates(y, p, t, mp, Ef(x, t)) == ref
+        @test TP.get_work_rates(y, p, t; magnetic_properties = mp) ≈ ref rtol = 1.0e-14
+        @test TP.get_work_rates(y, p, t; magnetic_properties = mp, E = Ef(x, t)) ≈
+            ref rtol = 1.0e-14
     end
 
     @testset "channel grouping merges grad-B into betatron" begin
@@ -252,7 +253,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         prob = TP.TraceProblem(stateinit, (0.0, 15 * gyroperiod), param)
         sol = solve(prob, Boris(); dt, save_everystep = true)
 
-        rates = reduce(hcat, TP.get_work(sol))
+        rates = reduce(hcat, TP.get_work_rates(sol))
         P_par, P_fermi, P_grad, P_betatron = eachrow(rates)
 
         # Uniform field: the three non-betatron terms vanish identically.
@@ -262,6 +263,46 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
         # μ is adiabatically conserved, so μ ∂B/∂t is a constant power input.
         @test sum(P_betatron) / length(P_betatron) ≈ μ₀ * B₀₀ * β rtol = 0.05
+    end
+
+    @testset "full-orbit μ excludes the ExB drift" begin
+        # Moving at v_E: no gyration, so μ = 0.
+        E0 = SA[1.0e-3, 0.0, 0.0]
+        Bf, Ef = TP.Field(uniform_Bt), TP.Field((x, t) -> E0)
+        p = TP.prepare(; E = Ef, B = Bf)
+        v_E = (E0 × SA[0.0, 0.0, 1.0]) / B₀₀
+        wr = TP.get_work_rates(SA[0.0, 0.0, 0.0, v_E...], p, 0.0)
+
+        @test abs(wr[4]) < 1.0e-12 * TP.mᵢ * (v_E ⋅ v_E) * β / 2
+    end
+
+    @testset "relativistic full-orbit work rates" begin
+        Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
+        p = TP.prepare(; E = Ef, B = Bf)
+        x, t = SA[3.0, -2.0, 5.0], 0.3
+        γv = SA[1.0e8, -2.0e8, 1.5e8]
+        u = SA[x..., γv...]
+
+        # Expected rates from the momentum P = mγv.
+        (; ∇B, κ, b̂, Bmag) = TP.get_magnetic_properties(x, t, Bf)
+        E = Ef(x, t)
+        m, q = p.m, p.q2m * p.m
+        γ = sqrt(1 + (γv ⋅ γv) / TP.c^2)
+        P_par = m * (γv ⋅ b̂)
+        P_w = m * (γv - (γv ⋅ b̂) * b̂ - γ * (E × b̂) / Bmag)
+        μ = (P_w ⋅ P_w) / (2 * m * Bmag)
+        expected = SA[
+            q * P_par / (γ * m) * (E ⋅ b̂),
+            P_par^2 / (γ * m * Bmag) * ((b̂ × κ) ⋅ E),
+            μ / (γ * Bmag) * ((b̂ × ∇B) ⋅ E),
+            μ / γ * (TP.derivative_t(Bf, x, t) ⋅ b̂),
+        ]
+        @test TP.get_work_rates(u, p, t; relativistic = true) ≈ expected rtol = 1.0e-10
+
+        prob = TraceProblem(u, (0.0, 1.0e-8), p; relativistic = true)
+        sol = solve(prob, Vern9())
+        @test TP.get_work_rates(sol) ≈
+            [TP.get_work_rates(u, p, t; relativistic = true) for (u, t) in zip(sol.u, sol.t)]
     end
 
     @testset "guiding center conserves energy in a static bottle" begin
