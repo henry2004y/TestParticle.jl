@@ -132,50 +132,24 @@ size `(3, size(grid)...)`, interpolated on the grid. The grid is given as
   - `type`: number type to convert `q2m`, `m` (and `c`) to, e.g. `Float32`.
   - `order = 1`: interpolation order, 0, 1 or 3.
   - `bc`: boundary condition from `FastInterpolations.jl`; `FillExtrap(NaN)` by default,
-    `ClampExtrap()` in 1D and `WrapExtrap()` on spherical grids.
+    `ClampExtrap()` in 1D. Ignored on spherical grids, which fill `r` and `θ` with `NaN`
+    and wrap `ϕ`.
   - `store = StorePolicy()`: interpolation storage policy; `StorePolicy(copy = false)` skips
     copying field and grid arrays that stay unchanged for the interpolator's lifetime.
   - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`.
 """
-prepare(; E = nothing, B = nothing, F = nothing, kw...) = _prepare(E, B, F; kw...)
-
 function prepare(
-        x::AbstractVector; E = nothing, B = nothing, F = nothing,
-        order = 1, bc = ClampExtrap(), dir = 1, kw...
+        grid::AbstractVector...; E = nothing, B = nothing, F = nothing,
+        gridtype = _default_gridtype(grid), order = 1, bc = _default_bc(grid), kw...
     )
-    @assert issorted(x) "Grid vector `x` must be sorted."
-    return _prepare(E, B, F, x; gridtype = CartesianGrid, order, bc, dir, kw...)
+    all(issorted, grid) || throw(ArgumentError("Grid vectors must be sorted."))
+    return _prepare(E, B, F, grid...; gridtype, order, bc, kw...)
 end
 
-function prepare(
-        x::AbstractVector, y::AbstractVector; E = nothing, B = nothing, F = nothing,
-        order = 1, bc = FillExtrap(NaN), kw...
-    )
-    @assert issorted(x) "Grid vector `x` must be sorted."
-    @assert issorted(y) "Grid vector `y` must be sorted."
-    return _prepare(E, B, F, x, y; gridtype = CartesianGrid, order, bc, kw...)
-end
-
-function prepare(
-        x::AbstractVector, y::AbstractVector, z::AbstractVector;
-        E = nothing, B = nothing, F = nothing,
-        order = 1, bc = FillExtrap(NaN), gridtype = CartesianGrid, kw...
-    )
-    @assert issorted(x) "Grid vector `x` must be sorted."
-    @assert issorted(y) "Grid vector `y` must be sorted."
-    @assert issorted(z) "Grid vector `z` must be sorted."
-    return _prepare(E, B, F, x, y, z; gridtype, order, bc, kw...)
-end
-
-function prepare(
-        x::Base.LogRange, y::AbstractVector, z::AbstractVector;
-        E = nothing, B = nothing, F = nothing, order = 1, bc = WrapExtrap(), kw...
-    )
-    @assert issorted(x) "Grid vector `x` must be sorted."
-    @assert issorted(y) "Grid vector `y` must be sorted."
-    @assert issorted(z) "Grid vector `z` must be sorted."
-    return _prepare(E, B, F, x, y, z; gridtype = StructuredGrid, order, bc, kw...)
-end
+_default_gridtype(::Tuple{Base.LogRange, Any, Any}) = StructuredGrid
+_default_gridtype(_) = CartesianGrid
+_default_bc(::Tuple{Any}) = ClampExtrap()
+_default_bc(_) = FillExtrap(NaN)
 
 """
     PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing)

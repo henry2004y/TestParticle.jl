@@ -75,17 +75,9 @@ function get_cell_centers(grid::RectilinearGrid)
     return map(c -> (c[1:(end - 1)] .+ c[2:end]) ./ 2, grid_coords)
 end
 
-_gridtype(::CartesianGrid) = TestParticle.CartesianGrid
-_gridtype(::RectilinearGrid) = TestParticle.RectilinearGrid
-
-function prepare(
-        grid::Union{CartesianGrid, RectilinearGrid}; E = nothing, B = nothing, F = nothing,
-        order = 1, bc = TestParticle.FillExtrap(NaN), kw...
-    )
-    return TestParticle._prepare(
-        E, B, F, makegrid(grid)...; gridtype = _gridtype(grid), order, bc, kw...
-    )
-end
+# `build_interpolator` forwards the Meshes.jl grid type above.
+prepare(grid::Union{CartesianGrid, RectilinearGrid}; kw...) =
+    prepare(makegrid(grid)...; gridtype = typeof(grid), kw...)
 
 # Compatibility form, removed with those in TestParticle's `deprecated.jl`.
 prepare(grid::Union{CartesianGrid, RectilinearGrid}, E, B, F = nothing; kw...) =
