@@ -3,6 +3,7 @@ module TestParticleCLI
 using LinearAlgebra: norm
 using StaticArrays: SVector, SA
 import TOML
+using JLD2: jldopen
 using TestParticle
 import TestParticle as TP
 using BorisPushers
@@ -168,13 +169,66 @@ function write_trajectory_csv(
     return
 end
 
+function write_trajectory_jld2(
+        filepath::String, t_vec::AbstractVector{Float64}, u_vec::AbstractVector
+    )
+    n = length(t_vec)
+    x = zeros(Float64, n)
+    y = zeros(Float64, n)
+    z = zeros(Float64, n)
+    vx = zeros(Float64, n)
+    vy = zeros(Float64, n)
+    vz = zeros(Float64, n)
+    for i in 1:n
+        u = u_vec[i]
+        x[i] = u[1]
+        y[i] = u[2]
+        z[i] = u[3]
+        vx[i] = u[4]
+        vy[i] = u[5]
+        vz[i] = u[6]
+    end
+    jldopen(filepath, "w") do f
+        f["t"] = collect(t_vec)
+        f["x"] = x
+        f["y"] = y
+        f["z"] = z
+        f["vx"] = vx
+        f["vy"] = vy
+        f["vz"] = vz
+        states = Matrix{Float64}(undef, 6, n)
+        states[1, :] .= x
+        states[2, :] .= y
+        states[3, :] .= z
+        states[4, :] .= vx
+        states[5, :] .= vy
+        states[6, :] .= vz
+        f["states"] = states
+    end
+    return
+end
+
+function save_trajectory(
+        filepath::String, t_vec::AbstractVector{Float64}, u_vec::AbstractVector
+    )
+    ext = lowercase(splitext(filepath)[2])
+    if ext in (".h5", ".hdf5", ".jld2")
+        write_trajectory_jld2(filepath, t_vec, u_vec)
+    else
+        open(filepath, "w") do io
+            write_trajectory_csv(io, t_vec, u_vec)
+        end
+    end
+    return
+end
+
 function print_usage()
     println(Core.stdout, "TestParticleCLI - Command Line Particle Tracer")
     println(Core.stdout, "Usage: tp_cli <config.toml> [options]")
     println(Core.stdout, "Options:")
     println(Core.stdout, "  --dt <val>       Override time step dt")
     println(Core.stdout, "  --saveat <val>   Override output save interval")
-    println(Core.stdout, "  --output <path>  Write trajectory CSV to specified file")
+    println(Core.stdout, "  --output <path>  Write trajectory to file (.csv, .h5, .jld2)")
     println(Core.stdout, "  --tspan1 <val>   Override end time")
     println(Core.stdout, "  -h, --help       Show this help message")
     return
@@ -243,9 +297,7 @@ function @main(args::Vector{String})::Cint
     println(Core.stdout, "Final Velocity: [", u_end[4], ", ", u_end[5], ", ", u_end[6], "]")
 
     if !isempty(sim_cfg.output_path)
-        open(sim_cfg.output_path, "w") do io
-            write_trajectory_csv(io, sol.t, sol.u)
-        end
+        save_trajectory(sim_cfg.output_path, sol.t, sol.u)
         println(Core.stdout, "Trajectory written to: ", sim_cfg.output_path)
     end
 

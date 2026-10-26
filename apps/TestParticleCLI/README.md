@@ -7,7 +7,7 @@
 - **Config-Driven Runs**: Configure initial conditions, simulation parameters, and electromagnetic fields via TOML.
 - **CLI Overrides**: Override parameters like `--dt`, `--saveat`, `--output`, and `--tspan1` directly from the terminal.
 - **Field Catalog**: Supports `uniform`, `dipole`, and `harris` current sheet fields.
-- **Fast Trajectory I/O**: Streams trajectory data ($t, x, y, z, v_x, v_y, v_z$) to CSV.
+- **Fast Trajectory I/O**: Streams trajectory data to plain-text CSV (`.csv`) or HDF5-compatible binary containers (`.h5`, `.hdf5`, `.jld2`) using JLD2 (stores `t`, `x`, `y`, `z`, `vx`, `vy`, `vz`, and `states`).
 - **Statically Compilable**: Compatible with `JuliaC` to compile into a native standalone binary.
 
 ## Direct Execution via Julia
