@@ -592,6 +592,7 @@ end
         B[3, :, :, :] .= 10.0e-9
         E[3, :, :, :] .= 5.0e-10
         B_analytic(r) = SA[0.0, 0.0, 1.0e-9]
+        E_analytic(r, t) = SA[1.0e-10, 0.0, 0.0]
 
         tspan = (0.0, 1.0)
         dt = 0.5
@@ -599,6 +600,10 @@ end
         for (stateinit, param) in (
                 ([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(x, y, z; E, B)),
                 ([0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0], prepare(; B = B_analytic)),
+                (
+                    [0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0],
+                    prepare(; E = E_analytic, B = B_analytic),
+                ),
             )
             prob = TraceProblem(stateinit, tspan, param)
 
@@ -616,6 +621,24 @@ end
             solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)
 
             solve(prob, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
+        end
+
+        let
+            tspan32 = (0.0f0, 1.0f0)
+            dt32 = 0.5f0
+            stateinit32 = Float32[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
+            param32_B = prepare(B_analytic; type = Float32)
+            param32_EB = prepare(; E = E_analytic, B = B_analytic, type = Float32)
+
+            for param in (param32_B, param32_EB)
+                prob32 = TraceProblem(stateinit32, tspan32, param)
+                solve(prob32, Boris(); dt = dt32, save_everystep = false)
+                solve(
+                    prob32, Boris(), EnsembleThreads();
+                    dt = dt32, trajectories = 2, save_everystep = false
+                )
+                solve(prob32, Boris(), CPU(); dt = dt32, save_everystep = false)
+            end
         end
     end
 end

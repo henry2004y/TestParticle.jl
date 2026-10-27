@@ -14,6 +14,7 @@ include("test_common.jl")
     include("test_normalized_fields.jl")
     include("test_zerovector.jl")
     include("test_derivatives.jl")
+    include("test_erased.jl")
 end
 
 include("test_boris.jl")
