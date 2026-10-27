@@ -385,6 +385,7 @@ Base.@ccallable function testparticle_boris_push_batch_f64(
         n::Csize_t, x::Ptr{Cdouble}, v::Ptr{Cdouble}, q2m::Cdouble, dt::Cdouble,
         E::Ptr{Cdouble}, B::Ptr{Cdouble}
     )::Cvoid
+    iszero(n) && return nothing
     for i in 0:(n - 1)
         offset = 3 * i
         testparticle_boris_push_f64(
@@ -402,6 +403,7 @@ Base.@ccallable function testparticle_boris_push_batch_f32(
         n::Csize_t, x::Ptr{Cfloat}, v::Ptr{Cfloat}, q2m::Cfloat, dt::Cfloat,
         E::Ptr{Cfloat}, B::Ptr{Cfloat}
     )::Cvoid
+    iszero(n) && return nothing
     for i in 0:(n - 1)
         offset = 3 * i
         testparticle_boris_push_f32(
@@ -475,6 +477,7 @@ Base.@ccallable function testparticle_multistep_boris_push_batch_f64(
         n_particles::Csize_t, x::Ptr{Cdouble}, v::Ptr{Cdouble}, q2m::Cdouble,
         dt::Cdouble, E::Ptr{Cdouble}, B::Ptr{Cdouble}, n_sub::Cint, order::Cint
     )::Cvoid
+    iszero(n_particles) && return nothing
     for i in 0:(n_particles - 1)
         offset = 3 * i
         testparticle_multistep_boris_push_f64(
@@ -496,6 +499,7 @@ Base.@ccallable function testparticle_multistep_boris_push_batch_f32(
         n_particles::Csize_t, x::Ptr{Cfloat}, v::Ptr{Cfloat}, q2m::Cfloat,
         dt::Cfloat, E::Ptr{Cfloat}, B::Ptr{Cfloat}, n_sub::Cint, order::Cint
     )::Cvoid
+    iszero(n_particles) && return nothing
     for i in 0:(n_particles - 1)
         offset = 3 * i
         testparticle_multistep_boris_push_f32(
@@ -598,6 +602,7 @@ Base.@ccallable function testparticle_boris_push_batch_multispecies_f64(
         n::Csize_t, x::Ptr{Cdouble}, v::Ptr{Cdouble}, q2m_arr::Ptr{Cdouble},
         dt::Cdouble, E::Ptr{Cdouble}, B::Ptr{Cdouble}
     )::Cvoid
+    iszero(n) && return nothing
     for i in 0:(n - 1)
         offset = 3 * i
         q2m = unsafe_load(q2m_arr, i + 1)
