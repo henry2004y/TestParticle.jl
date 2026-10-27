@@ -43,6 +43,16 @@ using LinearAlgebra: norm
             pf_zero_A = PotentialField(; phi)
             @test pf_zero_A.grad_A isa ZeroField
 
+            pf_explicit_zero_grad = PotentialField(
+                ; A, grad_A = TestParticle.ZeroField()
+            )
+            @test pf_explicit_zero_grad.grad_A isa ZeroField
+            p_zero_grad = prepare(pf_explicit_zero_grad; q = 1.0, m = 1.0)
+            y_test = SA[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+            @test TestParticle.trace_canonical(
+                y_test, p_zero_grad, 0.0
+            ) isa SVector{6, Float64}
+
             # prepare_canonical with only vector potential
             param_A = prepare_canonical(; A, q = 1.0, m = 1.0)
             @test param_A[1] == 1.0

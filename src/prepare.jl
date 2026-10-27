@@ -181,6 +181,7 @@ _grad_phi(g, phi) = prepare_field(g)
 _grad_phi(::Nothing, ::ZeroField) = ZeroField()
 _grad_phi(::Nothing, phi) = (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
 
+_grad_A(g::ZeroField, A) = g
 _grad_A(g, A) = Field(g)
 _grad_A(::Nothing, ::ZeroField) = ZeroField()
 _grad_A(::Nothing, A) = (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
