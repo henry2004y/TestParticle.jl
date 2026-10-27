@@ -204,6 +204,40 @@ using LinearAlgebra
             end
         end
     end
+
+    @testset "Adaptive Boris and Resync" begin
+        let
+            B = [0.0, 0.0, 2.0]
+            q2m = 1.0e8
+            safety = 0.05
+            dt_prop = TestParticleC.testparticle_boris_propose_dt_f64(
+                q2m, pointer(B), safety
+            )
+            @test dt_prop ≈ (2π * 0.05) / (1.0e8 * 2.0)
+
+            # Test Resync
+            v_half = [1.0e5, 0.0, 0.0]
+            E = [0.0, 0.0, 0.0]
+            dt_prev = 1.0e-9
+            dt_next = 2.0e-9
+            TestParticleC.testparticle_boris_resync_velocity_half_f64(
+                pointer(v_half), q2m, dt_prev, dt_next, pointer(E), pointer(B)
+            )
+            @test norm(v_half) ≈ 1.0e5 atol = 1.0e-8
+
+            # Test Adaptive Step
+            x = [0.0, 0.0, 0.0]
+            vh = [1.0e5, 0.0, 0.0]
+            dt_out = [0.0]
+            TestParticleC.testparticle_adaptive_boris_step_f64(
+                pointer(x), pointer(vh), dt_prev, pointer(dt_out),
+                q2m, pointer(E), pointer(B), safety
+            )
+            @test norm(vh) ≈ 1.0e5 atol = 1.0e-8
+            @test norm(x) > 0.0
+            @test dt_out[1] ≈ dt_prop
+        end
+    end
 end
 
 end # module test_testparticlec

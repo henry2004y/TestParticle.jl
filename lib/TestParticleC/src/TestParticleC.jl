@@ -524,6 +524,162 @@ testparticle_multistep_boris_push_batch_f32(
     Csize_t(n), x, v, q2m, dt, E, B, Cint(n_sub), Cint(order)
 )
 
+Base.@ccallable function testparticle_boris_propose_dt_f64(
+        q2m::Cdouble,
+        B::Ptr{Cdouble},
+        safety::Cdouble
+    )::Cdouble
+    B_vec = SVector{3, Float64}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+    Bmag = sqrt(sum(abs2, B_vec))
+    (iszero(Bmag) || iszero(q2m)) && return 0.0
+    return (2.0 * π * safety) / (abs(q2m) * Bmag)
+end
+
+Base.@ccallable function testparticle_boris_propose_dt_f32(
+        q2m::Cfloat,
+        B::Ptr{Cfloat},
+        safety::Cfloat
+    )::Cfloat
+    B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+    Bmag = sqrt(sum(abs2, B_vec))
+    (iszero(Bmag) || iszero(q2m)) && return 0.0f0
+    return (2.0f0 * Float32(π) * safety) / (abs(q2m) * Bmag)
+end
+
+Base.@ccallable function testparticle_boris_resync_velocity_half_f64(
+        v_half::Ptr{Cdouble},
+        q2m::Cdouble,
+        dt_prev::Cdouble,
+        dt_next::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble}
+    )::Cvoid
+    vh = SVector{3, Float64}(
+        unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
+    )
+    E_vec = SVector{3, Float64}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
+    B_vec = SVector{3, Float64}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+
+    v_node = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_prev / 4)
+    vh_new = update_velocity_boris(v_node, E_vec, B_vec, -q2m * dt_next / 4)
+
+    unsafe_store!(v_half, vh_new[1], 1)
+    unsafe_store!(v_half, vh_new[2], 2)
+    unsafe_store!(v_half, vh_new[3], 3)
+    return nothing
+end
+
+Base.@ccallable function testparticle_boris_resync_velocity_half_f32(
+        v_half::Ptr{Cfloat},
+        q2m::Cfloat,
+        dt_prev::Cfloat,
+        dt_next::Cfloat,
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat}
+    )::Cvoid
+    vh = SVector{3, Float32}(
+        unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
+    )
+    E_vec = SVector{3, Float32}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
+    B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+
+    v_node = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_prev / 4.0f0)
+    vh_new = update_velocity_boris(v_node, E_vec, B_vec, -q2m * dt_next / 4.0f0)
+
+    unsafe_store!(v_half, vh_new[1], 1)
+    unsafe_store!(v_half, vh_new[2], 2)
+    unsafe_store!(v_half, vh_new[3], 3)
+    return nothing
+end
+
+Base.@ccallable function testparticle_adaptive_boris_step_f64(
+        x::Ptr{Cdouble},
+        v_half::Ptr{Cdouble},
+        dt_current::Cdouble,
+        dt_next::Ptr{Cdouble},
+        q2m::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble},
+        safety::Cdouble
+    )::Cvoid
+    r = SVector{3, Float64}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
+    vh = SVector{3, Float64}(
+        unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
+    )
+    E_vec = SVector{3, Float64}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
+    B_vec = SVector{3, Float64}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+
+    vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_current / 2)
+    r_next = r + vh_next * dt_current
+
+    unsafe_store!(x, r_next[1], 1)
+    unsafe_store!(x, r_next[2], 2)
+    unsafe_store!(x, r_next[3], 3)
+
+    Bmag = sqrt(sum(abs2, B_vec))
+    dt_prop = (!iszero(Bmag) && !iszero(q2m)) ?
+        (2.0 * π * safety) / (abs(q2m) * Bmag) : dt_current
+
+    if dt_prop != dt_current && dt_prop > 0.0
+        v_node = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt_current / 4)
+        vh_resynced = update_velocity_boris(v_node, E_vec, B_vec, -q2m * dt_prop / 4)
+        unsafe_store!(v_half, vh_resynced[1], 1)
+        unsafe_store!(v_half, vh_resynced[2], 2)
+        unsafe_store!(v_half, vh_resynced[3], 3)
+    else
+        unsafe_store!(v_half, vh_next[1], 1)
+        unsafe_store!(v_half, vh_next[2], 2)
+        unsafe_store!(v_half, vh_next[3], 3)
+    end
+
+    unsafe_store!(dt_next, dt_prop)
+    return nothing
+end
+
+Base.@ccallable function testparticle_adaptive_boris_step_f32(
+        x::Ptr{Cfloat},
+        v_half::Ptr{Cfloat},
+        dt_current::Cfloat,
+        dt_next::Ptr{Cfloat},
+        q2m::Cfloat,
+        E::Ptr{Cfloat},
+        B::Ptr{Cfloat},
+        safety::Cfloat
+    )::Cvoid
+    r = SVector{3, Float32}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
+    vh = SVector{3, Float32}(
+        unsafe_load(v_half, 1), unsafe_load(v_half, 2), unsafe_load(v_half, 3)
+    )
+    E_vec = SVector{3, Float32}(unsafe_load(E, 1), unsafe_load(E, 2), unsafe_load(E, 3))
+    B_vec = SVector{3, Float32}(unsafe_load(B, 1), unsafe_load(B, 2), unsafe_load(B, 3))
+
+    vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_current / 2.0f0)
+    r_next = r + vh_next * dt_current
+
+    unsafe_store!(x, r_next[1], 1)
+    unsafe_store!(x, r_next[2], 2)
+    unsafe_store!(x, r_next[3], 3)
+
+    Bmag = sqrt(sum(abs2, B_vec))
+    dt_prop = (!iszero(Bmag) && !iszero(q2m)) ?
+        (2.0f0 * Float32(π) * safety) / (abs(q2m) * Bmag) : dt_current
+
+    if dt_prop != dt_current && dt_prop > 0.0f0
+        v_node = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt_current / 4.0f0)
+        vh_resynced = update_velocity_boris(v_node, E_vec, B_vec, -q2m * dt_prop / 4.0f0)
+        unsafe_store!(v_half, vh_resynced[1], 1)
+        unsafe_store!(v_half, vh_resynced[2], 2)
+        unsafe_store!(v_half, vh_resynced[3], 3)
+    else
+        unsafe_store!(v_half, vh_next[1], 1)
+        unsafe_store!(v_half, vh_next[2], 2)
+        unsafe_store!(v_half, vh_next[3], 3)
+    end
+
+    unsafe_store!(dt_next, dt_prop)
+    return nothing
+end
+
 @setup_workload begin
     @compile_workload begin
         x64 = [0.0, 0.0, 0.0]
