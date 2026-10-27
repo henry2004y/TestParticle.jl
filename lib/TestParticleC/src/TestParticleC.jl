@@ -988,6 +988,65 @@ testparticle_trace_boris_f32(
             Csize_t(1), pointer(x64), pointer(v64), 1.0e8, 1.0e-9,
             pointer(E64), pointer(B64)
         )
+        testparticle_multistep_boris_push_f64(
+            pointer(x64), pointer(v64), 1.0e8, 1.0e-9, pointer(E64), pointer(B64),
+            Cint(2), Cint(4)
+        )
+        testparticle_multistep_boris_step_staggered_f64(
+            pointer(x64), pointer(v64), 1.0e8, 1.0e-9, pointer(E64), pointer(B64),
+            Cint(2), Cint(4)
+        )
+        testparticle_hyper_boris4_push_f64(
+            pointer(x64), pointer(v64), 1.0e8, 1.0e-9, pointer(E64), pointer(B64), Cint(2)
+        )
+        testparticle_hyper_boris6_push_f64(
+            pointer(x64), pointer(v64), 1.0e8, 1.0e-9, pointer(E64), pointer(B64), Cint(2)
+        )
+        testparticle_multistep_boris_push_batch_f64(
+            Csize_t(1), pointer(x64), pointer(v64), 1.0e8, 1.0e-9,
+            pointer(E64), pointer(B64), Cint(2), Cint(4)
+        )
+        testparticle_boris_propose_dt_f64(1.0e8, pointer(B64), 0.1)
+        testparticle_boris_resync_velocity_half_f64(
+            pointer(v64), 1.0e8, 1.0e-9, 2.0e-9, pointer(E64), pointer(B64)
+        )
+        dt_out64 = [0.0]
+        testparticle_adaptive_boris_step_f64(
+            pointer(x64), pointer(v64), 1.0e-9, pointer(dt_out64), 1.0e8,
+            pointer(E64), pointer(B64), 0.1
+        )
+
+        x_c64 = [0.0]
+        y_c64 = [0.0]
+        z_c64 = [0.0]
+        vx_c64 = [1.0e5]
+        vy_c64 = [0.0]
+        vz_c64 = [0.0]
+        Ex_c64 = [0.0]
+        Ey_c64 = [0.0]
+        Ez_c64 = [0.0]
+        Bx_c64 = [0.0]
+        By_c64 = [0.0]
+        Bz_c64 = [1.0]
+        testparticle_boris_push_batch_soa_f64(
+            Csize_t(1), pointer(x_c64), pointer(y_c64), pointer(z_c64),
+            pointer(vx_c64), pointer(vy_c64), pointer(vz_c64),
+            Ptr{Cdouble}(C_NULL), 1.0e8, 1.0e-9,
+            pointer(Ex_c64), pointer(Ey_c64), pointer(Ez_c64),
+            pointer(Bx_c64), pointer(By_c64), pointer(Bz_c64)
+        )
+        testparticle_boris_step_staggered_batch_soa_f64(
+            Csize_t(1), pointer(x_c64), pointer(y_c64), pointer(z_c64),
+            pointer(vx_c64), pointer(vy_c64), pointer(vz_c64),
+            Ptr{Cdouble}(C_NULL), 1.0e8, 1.0e-9,
+            pointer(Ex_c64), pointer(Ey_c64), pointer(Ez_c64),
+            pointer(Bx_c64), pointer(By_c64), pointer(Bz_c64)
+        )
+        q2m_arr64 = [1.0e8]
+        testparticle_boris_push_batch_multispecies_f64(
+            Csize_t(1), pointer(x64), pointer(v64), pointer(q2m_arr64), 1.0e-9,
+            pointer(E64), pointer(B64)
+        )
 
         x32 = Float32[0.0, 0.0, 0.0]
         v32 = Float32[1.0e5, 0.0, 0.0]
@@ -1005,6 +1064,33 @@ testparticle_trace_boris_f32(
         testparticle_boris_push_batch_f32(
             Csize_t(1), pointer(x32), pointer(v32), 1.0f8, 1.0f-9,
             pointer(E32), pointer(B32)
+        )
+        testparticle_multistep_boris_push_f32(
+            pointer(x32), pointer(v32), 1.0f8, 1.0f-9, pointer(E32), pointer(B32),
+            Cint(2), Cint(4)
+        )
+        testparticle_multistep_boris_step_staggered_f32(
+            pointer(x32), pointer(v32), 1.0f8, 1.0f-9, pointer(E32), pointer(B32),
+            Cint(2), Cint(4)
+        )
+        testparticle_hyper_boris4_push_f32(
+            pointer(x32), pointer(v32), 1.0f8, 1.0f-9, pointer(E32), pointer(B32), Cint(2)
+        )
+        testparticle_hyper_boris6_push_f32(
+            pointer(x32), pointer(v32), 1.0f8, 1.0f-9, pointer(E32), pointer(B32), Cint(2)
+        )
+        testparticle_multistep_boris_push_batch_f32(
+            Csize_t(1), pointer(x32), pointer(v32), 1.0f8, 1.0f-9,
+            pointer(E32), pointer(B32), Cint(2), Cint(4)
+        )
+        testparticle_boris_propose_dt_f32(1.0f8, pointer(B32), 0.1f0)
+        testparticle_boris_resync_velocity_half_f32(
+            pointer(v32), 1.0f8, 1.0f-9, 2.0f-9, pointer(E32), pointer(B32)
+        )
+        dt_out32 = Float32[0.0]
+        testparticle_adaptive_boris_step_f32(
+            pointer(x32), pointer(v32), 1.0f-9, pointer(dt_out32), 1.0f8,
+            pointer(E32), pointer(B32), 0.1f0
         )
     end
 end
