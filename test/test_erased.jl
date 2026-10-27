@@ -96,6 +96,43 @@ const TP = TestParticle
             @test adapted_cpu === field
         end
     end
+
+    @testset "Full-state (6-component) Evaluation & Type Stability" begin
+        let
+            # Velocity-dependent callback
+            F_drag(xu) = SA[0.0, 0.0, -0.1 * xu[6]]
+            p = prepare(; F = F_drag)
+            y64 = SA[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+            val64 = @inferred p.F(y64, 0.0)
+            @test val64 isa SVector{3, Float64}
+            @test val64 ≈ SA[0.0, 0.0, -0.6]
+
+            y32 = SA[1.0f0, 2.0f0, 3.0f0, 4.0f0, 5.0f0, 6.0f0]
+            val32 = @inferred p.F(y32, 0.0f0)
+            @test val32 isa SVector{3, Float32}
+            @test val32 ≈ SA[0.0f0, 0.0f0, -0.6f0]
+
+            # Vector input conversion for 6 components
+            @test p.F([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 0.0) ≈ SA[0.0, 0.0, -0.6]
+
+            # Strictly 3-component typed signature fallback
+            B_typed(r::SVector{3, Float64}) = SA[r[1], r[2], r[3]]
+            p_typed = prepare(; B = B_typed)
+            val_typed = @inferred p_typed.B(y64, 0.0)
+            @test val_typed ≈ SA[1.0, 2.0, 3.0]
+
+            # ODE equations trace type stability
+            B_func(r) = SA[0.0, 0.0, 1.0]
+            p_trace = prepare(; B = B_func)
+            trace_val = @inferred TestParticle.trace(y64, p_trace, 0.0)
+            @test trace_val isa SVector{6, Float64}
+
+            trace_rel_val = @inferred TestParticle.trace_relativistic(
+                y64, p_trace, 0.0
+            )
+            @test trace_rel_val isa SVector{6, Float64}
+        end
+    end
 end
 
 end # module test_erased

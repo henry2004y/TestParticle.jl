@@ -42,12 +42,12 @@ end
 
 Field(f::Function) = Field{is_time_dependent(f), typeof(f)}(f)
 
-@inline (f::Field{true})(xu, t) = f.field_function(xu, t)
+@inline (f::Field{true})(xu, t) = getfield(f, :field_function)(xu, t)
 @inline function (f::Field{true})(xu)
     throw(ArgumentError("Time-dependent field function must have a time argument."))
 end
-@inline (f::Field{false})(xu, t) = f.field_function(xu)
-@inline (f::Field{false})(xu) = f.field_function(xu)
+@inline (f::Field{false})(xu, t) = getfield(f, :field_function)(xu)
+@inline (f::Field{false})(xu) = getfield(f, :field_function)(xu)
 
 function jacobian(f::Field{true}, xu, t)
     return jacobian(f.field_function, xu, t)
