@@ -10,7 +10,7 @@ end
 @testset "Exported and public API" begin
     exported = (
         :prepare, :prepare_gc, :prepare_canonical, :prepare_erased,
-        :ZeroField, :PotentialField,
+        :PotentialField,
         :Proton, :Electron, :Ion,
         :TraceProblem, :TraceCanonicalProblem, :TraceGCProblem, :TraceHybridProblem,
         :solve, :remake,
@@ -29,7 +29,7 @@ end
     )
     public_only = (
         :ReturnCode, :Field, :ErasedField, :ErasedFunction, :Species, :SpeciesDict,
-        :ZeroVector,
+        :ZeroField, :ZeroVector,
         :FullOrbit, :Canonical, :GuidingCenter,
         :CartesianGrid, :RectilinearGrid, :StructuredGrid,
         :qₑ, :mₑ, :qᵢ, :mᵢ, :c, :μ₀, :ϵ₀, :kB, :Rₑ, :BMoment_Earth, :eV,

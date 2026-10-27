@@ -12,7 +12,7 @@ using TestParticle: ClampExtrap, FillExtrap, LazyTimeInterpolator, WrapExtrap,
     generate_sphere, get_adiabaticity, get_curvature_radius, get_first_crossing,
     get_gyroperiod, get_gyroradius, get_mean_magnitude, get_particle_crossings,
     get_particle_flux
-using TestParticle: cart2sph, cart2sphvec, PeriodicBC, sph2cartvec, StorePolicy
+using TestParticle: cart2sph, cart2sphvec, PeriodicBC, sph2cartvec, StorePolicy, ZeroField
 using StaticArrays
 using LinearAlgebra
 using OrdinaryDiffEq
