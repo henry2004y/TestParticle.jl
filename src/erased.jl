@@ -61,23 +61,27 @@ function ErasedFunction(f, itd::Bool = is_time_dependent(f))
         applicable(f, zero(SVector{6, Float64}))
     call_full64 = can_call_full64 ?
         ((y, t) -> SVector{3, Float64}(f_2arg(y, t))) :
-        ((y, t) -> SVector{3, Float64}(
-            f_2arg(SVector{3, Float64}(y[1], y[2], y[3]), t)
-        ))
+        (
+            (y, t) -> SVector{3, Float64}(
+                f_2arg(SVector{3, Float64}(y[1], y[2], y[3]), t)
+            )
+        )
 
     can_call_full32 = itd ? applicable(f, zero(SVector{6, Float32}), 0.0f0) :
         applicable(f, zero(SVector{6, Float32}))
     call_full32 = can_call_full32 ?
         ((y, t) -> SVector{3, Float32}(f_2arg(y, t))) :
-        ((y, t) -> SVector{3, Float32}(
-            f_2arg(SVector{3, Float32}(y[1], y[2], y[3]), t)
-        ))
+        (
+            (y, t) -> SVector{3, Float32}(
+                f_2arg(SVector{3, Float32}(y[1], y[2], y[3]), t)
+            )
+        )
 
     f64_full = FunctionWrapper{
-        SVector{3, Float64}, Tuple{SVector{6, Float64}, Float64}
+        SVector{3, Float64}, Tuple{SVector{6, Float64}, Float64},
     }(call_full64)
     f32_full = FunctionWrapper{
-        SVector{3, Float32}, Tuple{SVector{6, Float32}, Float32}
+        SVector{3, Float32}, Tuple{SVector{6, Float32}, Float32},
     }(call_full32)
 
     return ErasedFunction(f64, f32, f64_full, f32_full, f, itd)

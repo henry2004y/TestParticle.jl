@@ -258,7 +258,7 @@ end
         field_fn::Ptr{Cvoid}, t::Float64, r_buf::Vector{Float64},
         E_buf::Vector{Float64}, B_buf::Vector{Float64}, user_data::Ptr{Cvoid}
     )
-    ccall(
+    return ccall(
         field_fn, Cvoid,
         (Cdouble, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cvoid}),
         t, pointer(r_buf), pointer(E_buf), pointer(B_buf), user_data
@@ -269,7 +269,7 @@ end
         field_fn::Ptr{Cvoid}, t::Float32, r_buf::Vector{Float32},
         E_buf::Vector{Float32}, B_buf::Vector{Float32}, user_data::Ptr{Cvoid}
     )
-    ccall(
+    return ccall(
         field_fn, Cvoid,
         (Cfloat, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cvoid}),
         t, pointer(r_buf), pointer(E_buf), pointer(B_buf), user_data

@@ -352,20 +352,28 @@ using LinearAlgebra
             null64 = Ptr{Cdouble}(C_NULL)
             null32 = Ptr{Cfloat}(C_NULL)
 
-            @test isnothing(TestParticleC.testparticle_boris_push_batch_f64(
-                Csize_t(0), null64, null64, 1.0e8, 1.0e-9, null64, null64
-            ))
-            @test isnothing(TestParticleC.testparticle_boris_push_batch_f32(
-                Csize_t(0), null32, null32, 1.0f8, 1.0f-9, null32, null32
-            ))
-            @test isnothing(TestParticleC.testparticle_multistep_boris_push_batch_f64(
-                Csize_t(0), null64, null64, 1.0e8, 1.0e-9, null64, null64,
-                Cint(2), Cint(4)
-            ))
-            @test isnothing(TestParticleC.testparticle_multistep_boris_push_batch_f32(
-                Csize_t(0), null32, null32, 1.0f8, 1.0f-9, null32, null32,
-                Cint(2), Cint(4)
-            ))
+            @test isnothing(
+                TestParticleC.testparticle_boris_push_batch_f64(
+                    Csize_t(0), null64, null64, 1.0e8, 1.0e-9, null64, null64
+                )
+            )
+            @test isnothing(
+                TestParticleC.testparticle_boris_push_batch_f32(
+                    Csize_t(0), null32, null32, 1.0f8, 1.0f-9, null32, null32
+                )
+            )
+            @test isnothing(
+                TestParticleC.testparticle_multistep_boris_push_batch_f64(
+                    Csize_t(0), null64, null64, 1.0e8, 1.0e-9, null64, null64,
+                    Cint(2), Cint(4)
+                )
+            )
+            @test isnothing(
+                TestParticleC.testparticle_multistep_boris_push_batch_f32(
+                    Csize_t(0), null32, null32, 1.0f8, 1.0f-9, null32, null32,
+                    Cint(2), Cint(4)
+                )
+            )
             @test isnothing(
                 TestParticleC.testparticle_boris_push_batch_multispecies_f64(
                     Csize_t(0), null64, null64, null64, 1.0e-9, null64, null64
