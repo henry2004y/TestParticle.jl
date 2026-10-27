@@ -102,6 +102,8 @@ _REEXPORTS = [
     ("solve", "solve"),
     ("TraceProblem", "TraceProblem"),
     ("TraceGCProblem", "TraceGCProblem"),
+    ("GCRK4", "GCRK4"),
+    ("GCRK45", "GCRK45"),
     ("TraceHybridProblem", "TraceHybridProblem"),
     ("ZeroField", "ZeroField"),
     ("Maxwellian", "Maxwellian"),
@@ -477,7 +479,7 @@ def trace_gc(
     """Trace guiding-center trajectories with the RK4/RK45 method.
 
     Parameters mirror :func:`trace`, with the addition of ``alg``
-    (``"rk4"`` or ``"rk45"``). The returned :class:`GCTraceResult` exposes the
+    (``"rk4"``, ``"rk45"`` or a ``GCRK4``/``GCRK45`` object). The returned :class:`GCTraceResult` exposes the
     guiding-center position ``R`` and parallel velocity ``vpar``.
     """
     x0 = np.asarray(x0, dtype=float)
@@ -507,11 +509,15 @@ def trace_gc(
         trajectories=int(trajectories),
         save_fields=bool(save_fields),
         save_work=bool(save_work),
-        alg=jl.Symbol(alg),
     )
     if saveat is not None:
         solve_kw["saveat"] = saveat
-    sols = TP.solve(prob, **solve_kw)
+    if isinstance(alg, str):
+        gc_algs = {"rk4": TP.GCRK4, "rk45": TP.GCRK45}
+        if alg not in gc_algs:
+            raise ValueError(f"alg must be 'rk4' or 'rk45'; got {alg!r}")
+        alg = gc_algs[alg]()
+    sols = TP.solve(prob, alg, **solve_kw)
 
     ts, us = jl._tp_extract(sols)
     ts_py = [np.asarray(t) for t in ts]

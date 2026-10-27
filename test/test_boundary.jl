@@ -71,7 +71,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = solve(prob, dt = 0.2, alg = :rk4; isoutside = outside_or_nan)
+            sol = solve(prob, GCRK4(); dt = 0.2, isoutside = outside_or_nan)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -82,7 +82,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = solve(prob, dt = 0.01, alg = :rk45; isoutside = outside_or_nan)
+            sol = solve(prob, GCRK45(); dt = 0.01, isoutside = outside_or_nan)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -93,7 +93,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = solve(prob, dt = 0.01, alg = :rk45)
+            sol = solve(prob, GCRK45(); dt = 0.01)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -131,7 +131,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
             dt = 1.0e-4
 
-            sol_early = solve(prob; dt, alg = :rk4, isoutside = past_half_time)
+            sol_early = solve(prob, GCRK4(); dt, isoutside = past_half_time)
             @test sol_early.u[1].t[end] ≈ 0.5
             @test sol_early.u[1].retcode == ReturnCode.Terminated
         end

@@ -50,11 +50,12 @@ end
 Apply RK45 method for particles with index in `irange`.
 """
 function _rk45!(
-        sols, prob, irange, plan, dt_initial, isoutside,
-        save_start, save_end, save_everystep, abstol, reltol, maxiters,
+        sols, prob, irange, alg, plan, dt_initial, isoutside,
+        save_start, save_end, save_everystep, maxiters,
         ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
     ) where {SaveFields, SaveWork}
     (; tspan, p, u0) = prob
+    (; abstol, reltol) = alg
     T = eltype(u0)
 
     safety = 0.9
@@ -184,7 +185,6 @@ function _rk45!(
             push!(tsave, t)
         end
 
-        alg = :rk45
         t_final = tsave
         u_final = traj
         interp = LinearInterpolation(t_final, u_final)

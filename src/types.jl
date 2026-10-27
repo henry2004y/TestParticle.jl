@@ -47,7 +47,7 @@ const TraceCanonicalProblem = TraceProblem{Canonical}
     TraceGCProblem(u0, tspan, p; prob_func)
 
 [`TraceProblem`](@ref) of a guiding center: `u0 = [X..., vpar]` and `p = (; q, q2m, μ, E, B)`
-from [`prepare_gc`](@ref).
+from [`prepare_gc`](@ref). Native solvers: [`GCRK4`](@ref), [`GCRK45`](@ref).
 """
 const TraceGCProblem = TraceProblem{GuidingCenter}
 
