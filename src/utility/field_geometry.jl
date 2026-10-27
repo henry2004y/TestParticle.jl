@@ -1,3 +1,11 @@
+@inline function _get_B_jacobian(x::SVector{3, T}, t, Bfunc) where {T}
+    result = DiffResults.JacobianResult(x)
+    result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
+    JB = SMatrix{3, 3, T, 9}(DiffResults.jacobian(result))
+    B = SVector{3, T}(DiffResults.value(result))
+    return B, JB
+end
+
 @inline function _get_B_jacobian(x, t, Bfunc)
     result = DiffResults.JacobianResult(x)
     result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)

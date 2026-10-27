@@ -27,22 +27,58 @@ end
 @inline (ef::ErasedFunction)(xu::SVector{6, Float64}) = ef.f64_full(xu, 0.0)
 @inline (ef::ErasedFunction)(xu::SVector{6, Float32}) = ef.f32_full(xu, 0.0f0)
 
-@inline (ef::ErasedFunction)(xu::AbstractVector{Float64}, t::Float64) =
-    length(xu) == 3 ? ef.f64(SVector{3, Float64}(xu), t) :
-    length(xu) == 6 ? ef.f64_full(SVector{6, Float64}(xu), t) :
-    (ef.itd ? ef.raw(xu, t) : ef.raw(xu))
-@inline (ef::ErasedFunction)(xu::AbstractVector{Float32}, t::Float32) =
-    length(xu) == 3 ? ef.f32(SVector{3, Float32}(xu), t) :
-    length(xu) == 6 ? ef.f32_full(SVector{6, Float32}(xu), t) :
-    (ef.itd ? ef.raw(xu, t) : ef.raw(xu))
-@inline (ef::ErasedFunction)(xu::AbstractVector{Float64}) =
-    length(xu) == 3 ? ef.f64(SVector{3, Float64}(xu), 0.0) :
-    length(xu) == 6 ? ef.f64_full(SVector{6, Float64}(xu), 0.0) :
-    (ef.itd ? ef.raw(xu, 0.0) : ef.raw(xu))
-@inline (ef::ErasedFunction)(xu::AbstractVector{Float32}) =
-    length(xu) == 3 ? ef.f32(SVector{3, Float32}(xu), 0.0f0) :
-    length(xu) == 6 ? ef.f32_full(SVector{6, Float32}(xu), 0.0f0) :
-    (ef.itd ? ef.raw(xu, 0.0f0) : ef.raw(xu))
+@inline function (ef::ErasedFunction)(
+        xu::AbstractVector{Float64}, t::Float64
+    )::SVector{3, Float64}
+    if length(xu) == 3
+        return ef.f64(SVector{3, Float64}(xu[1], xu[2], xu[3]), t)
+    elseif length(xu) == 6
+        return ef.f64_full(
+            SVector{6, Float64}(xu[1], xu[2], xu[3], xu[4], xu[5], xu[6]), t
+        )
+    else
+        return SVector{3, Float64}(ef.itd ? ef.raw(xu, t) : ef.raw(xu))
+    end
+end
+@inline function (ef::ErasedFunction)(
+        xu::AbstractVector{Float32}, t::Float32
+    )::SVector{3, Float32}
+    if length(xu) == 3
+        return ef.f32(SVector{3, Float32}(xu[1], xu[2], xu[3]), t)
+    elseif length(xu) == 6
+        return ef.f32_full(
+            SVector{6, Float32}(xu[1], xu[2], xu[3], xu[4], xu[5], xu[6]), t
+        )
+    else
+        return SVector{3, Float32}(ef.itd ? ef.raw(xu, t) : ef.raw(xu))
+    end
+end
+@inline function (ef::ErasedFunction)(
+        xu::AbstractVector{Float64}
+    )::SVector{3, Float64}
+    if length(xu) == 3
+        return ef.f64(SVector{3, Float64}(xu[1], xu[2], xu[3]), 0.0)
+    elseif length(xu) == 6
+        return ef.f64_full(
+            SVector{6, Float64}(xu[1], xu[2], xu[3], xu[4], xu[5], xu[6]), 0.0
+        )
+    else
+        return SVector{3, Float64}(ef.itd ? ef.raw(xu, 0.0) : ef.raw(xu))
+    end
+end
+@inline function (ef::ErasedFunction)(
+        xu::AbstractVector{Float32}
+    )::SVector{3, Float32}
+    if length(xu) == 3
+        return ef.f32(SVector{3, Float32}(xu[1], xu[2], xu[3]), 0.0f0)
+    elseif length(xu) == 6
+        return ef.f32_full(
+            SVector{6, Float32}(xu[1], xu[2], xu[3], xu[4], xu[5], xu[6]), 0.0f0
+        )
+    else
+        return SVector{3, Float32}(ef.itd ? ef.raw(xu, 0.0f0) : ef.raw(xu))
+    end
+end
 
 @inline (ef::ErasedFunction)(xu, t) = ef.itd ? ef.raw(xu, t) : ef.raw(xu)
 @inline (ef::ErasedFunction)(xu) = ef.itd ? ef.raw(xu, 0.0) : ef.raw(xu)
@@ -145,6 +181,24 @@ ErasedField(f::AbstractFieldInterpolator) =
 @inline (f::Field{false, ErasedFunction})(xu::SVector{6, Float32}) =
     getfield(f, :field_function).f32_full(xu, 0.0f0)
 @inline (f::Field{true, ErasedFunction})(xu::SVector{6, Float32}) =
+    throw(ArgumentError("Time-dependent field function must have a time argument."))
+
+@inline (f::Field{false, ErasedFunction})(xu::AbstractVector{Float64}, t::Float64) =
+    getfield(f, :field_function)(xu, t)
+@inline (f::Field{true, ErasedFunction})(xu::AbstractVector{Float64}, t::Float64) =
+    getfield(f, :field_function)(xu, t)
+@inline (f::Field{false, ErasedFunction})(xu::AbstractVector{Float32}, t::Float32) =
+    getfield(f, :field_function)(xu, t)
+@inline (f::Field{true, ErasedFunction})(xu::AbstractVector{Float32}, t::Float32) =
+    getfield(f, :field_function)(xu, t)
+
+@inline (f::Field{false, ErasedFunction})(xu::AbstractVector{Float64}) =
+    getfield(f, :field_function)(xu)
+@inline (f::Field{true, ErasedFunction})(xu::AbstractVector{Float64}) =
+    throw(ArgumentError("Time-dependent field function must have a time argument."))
+@inline (f::Field{false, ErasedFunction})(xu::AbstractVector{Float32}) =
+    getfield(f, :field_function)(xu)
+@inline (f::Field{true, ErasedFunction})(xu::AbstractVector{Float32}) =
     throw(ArgumentError("Time-dependent field function must have a time argument."))
 
 function Adapt.adapt_structure(to, f::Field{itd, ErasedFunction}) where {itd}

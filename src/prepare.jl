@@ -88,25 +88,30 @@ end
 
 include("erased.jl")
 
-prepare_field(f, args...; kwargs...) = ErasedField(f)
-prepare_field(f::Field{itd, ErasedFunction}, args...; kwargs...) where {itd} = f
+prepare_field(f, args...; erased = false, kwargs...) = erased ? ErasedField(f) : Field(f)
+prepare_field(
+    f::Field{itd, ErasedFunction}, args...; erased = false, kwargs...
+) where {itd} = f
+prepare_field(f::Field, args...; erased = false, kwargs...) = erased ? ErasedField(f) : f
 prepare_field(f::ZeroField, args...; kwargs...) = f
 prepare_field(::Nothing, args...; kwargs...) = ZeroField()
 
-function prepare_field(f::AbstractArray, x...; gridtype, order, bc, kw...)
-    return ErasedField(build_interpolator(gridtype, f, x..., order, bc; kw...))
+function prepare_field(f::AbstractArray, x...; gridtype, order, bc, erased = false, kw...)
+    itp = build_interpolator(gridtype, f, x..., order, bc; kw...)
+    return erased ? ErasedField(itp) : Field(itp)
 end
 
 function _prepare(
         E::TE, B::TB, F::TF, args...; species = Proton, q = nothing,
-        m = nothing, c = nothing, gridtype::Type{G} = CartesianGrid, type = nothing, kw...
+        m = nothing, c = nothing, gridtype::Type{G} = CartesianGrid, type = nothing,
+        erased::Bool = false, kw...
     ) where {TE, TB, TF, G}
     q = @something q species.q
     m = @something m species.m
     if !isnothing(type)
         q, m = type(q), type(m)
     end
-    E, B, F = map(f -> prepare_field(f, args...; gridtype, kw...), (E, B, F))
+    E, B, F = map(f -> prepare_field(f, args...; gridtype, erased, kw...), (E, B, F))
     p = (; q2m = q / m, m, E, B, F)
     isnothing(c) && return p
     return (; p..., c = isnothing(type) ? c : type(c))
@@ -149,11 +154,20 @@ size `(3, size(grid)...)`, interpolated on the grid. The grid is given as
 """
 function prepare(
         grid::AbstractVector...; E = nothing, B = nothing, F = nothing,
-        gridtype = _default_gridtype(grid), order = 1, bc = _default_bc(grid), kw...
+        gridtype = _default_gridtype(grid), order = 1, bc = _default_bc(grid),
+        erased::Bool = false, kw...
     )
     all(issorted, grid) || throw(ArgumentError("Grid vectors must be sorted."))
-    return _prepare(E, B, F, grid...; gridtype, order, bc, kw...)
+    return _prepare(E, B, F, grid...; gridtype, order, bc, erased, kw...)
 end
+
+"""
+    prepare_erased([grid...;] E = nothing, B = nothing, F = nothing, kwargs...)
+
+Tracing parameters with type-erased fields for uniform dispatch and static compilation.
+Equivalent to `prepare(args...; erased = true, kwargs...)`.
+"""
+prepare_erased(args...; kw...) = prepare(args...; erased = true, kw...)
 
 _default_gridtype(::Tuple{Base.LogRange, Any, Any}) = StructuredGrid
 _default_gridtype(_) = CartesianGrid
@@ -161,30 +175,40 @@ _default_bc(::Tuple{Any}) = ClampExtrap()
 _default_bc(_) = FillExtrap(NaN)
 
 """
-    PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing)
+    PotentialField(;
+        phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing, erased = false
+    )
 
 Scalar potential `phi(x[, t])` and vector potential `A(x[, t])` for canonical tracing;
 `nothing` is an absent potential. Gradients that are not given are computed with
 `ForwardDiff`. `grad_A(x[, t])[i, j]` is ``∂A_j/∂x_i``, so that `grad_A * v` is
 ``∇(\\mathbf{A} ⋅ \\mathbf{v})`` at fixed ``\\mathbf{v}``.
 """
-_prepare_potential_scalar(f) = Field(f)
-_prepare_potential_scalar(f::ZeroField) = f
-_prepare_potential_scalar(::Nothing) = ZeroField()
+_prepare_potential_scalar(f, erased) = erased ? ErasedField(f) : Field(f)
+_prepare_potential_scalar(f::ZeroField, erased) = f
+_prepare_potential_scalar(::Nothing, erased) = ZeroField()
 
-function PotentialField(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing)
-    f_phi, f_A = _prepare_potential_scalar(phi), prepare_field(A)
-    return PotentialField(f_phi, f_A, _grad_phi(grad_phi, f_phi), _grad_A(grad_A, f_A))
+function PotentialField(;
+        phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing,
+        erased::Bool = false, kw...
+    )
+    f_phi, f_A = _prepare_potential_scalar(phi, erased), prepare_field(A; erased, kw...)
+    return PotentialField(
+        f_phi, f_A, _grad_phi(grad_phi, f_phi; erased, kw...),
+        _grad_A(grad_A, f_A; erased, kw...)
+    )
 end
 
-_grad_phi(g, phi) = prepare_field(g)
-_grad_phi(::Nothing, ::ZeroField) = ZeroField()
-_grad_phi(::Nothing, phi) = (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
+_grad_phi(g, phi; erased = false, kw...) = prepare_field(g; erased, kw...)
+_grad_phi(::Nothing, ::ZeroField; kw...) = ZeroField()
+_grad_phi(::Nothing, phi; kw...) =
+    (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
 
-_grad_A(g::ZeroField, A) = g
-_grad_A(g, A) = Field(g)
-_grad_A(::Nothing, ::ZeroField) = ZeroField()
-_grad_A(::Nothing, A) = (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
+_grad_A(g::ZeroField, A; kw...) = g
+_grad_A(g, A; erased = false, kw...) = erased ? ErasedField(g) : Field(g)
+_grad_A(::Nothing, ::ZeroField; kw...) = ZeroField()
+_grad_A(::Nothing, A; kw...) =
+    (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
 
 """
     prepare(pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c, type = nothing)
@@ -206,5 +230,8 @@ end
 
 [`PotentialField`](@ref) and [`prepare`](@ref) in one call, for `TraceCanonicalProblem`.
 """
-prepare_canonical(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing, kw...) =
-    prepare(PotentialField(; phi, A, grad_phi, grad_A); kw...)
+prepare_canonical(;
+    phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing,
+    erased::Bool = false, kw...
+) =
+    prepare(PotentialField(; phi, A, grad_phi, grad_A, erased); kw...)

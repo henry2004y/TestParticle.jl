@@ -26,7 +26,7 @@ import Adapt
 import Base: +, -, *, /
 import LinearAlgebra: ×
 
-export prepare, prepare_gc, prepare_canonical, ZeroField, PotentialField
+export prepare, prepare_gc, prepare_canonical, prepare_erased, ZeroField, PotentialField
 export Proton, Electron, Ion
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
 export trace!, trace_relativistic!, trace, trace_relativistic,
