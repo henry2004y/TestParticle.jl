@@ -306,6 +306,46 @@ using LinearAlgebra
             end
         end
     end
+
+    @testset "Trajectory Field Callback Tracing" begin
+        let
+            function dummy_field(t, x_ptr, E_ptr, B_ptr, user_data)
+                unsafe_store!(E_ptr, 0.0, 1)
+                unsafe_store!(E_ptr, 0.0, 2)
+                unsafe_store!(E_ptr, 0.0, 3)
+                unsafe_store!(B_ptr, 0.0, 1)
+                unsafe_store!(B_ptr, 0.0, 2)
+                unsafe_store!(B_ptr, 1.0, 3)
+                return nothing
+            end
+
+            c_field = @cfunction(
+                $dummy_field, Cvoid,
+                (Cdouble, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cvoid})
+            )
+
+            x = [0.0, 0.0, 0.0]
+            v = [1.0e5, 0.0, 0.0]
+            t_start = 0.0
+            t_end = 1.0e-8
+            dt = 1.0e-9
+            q2m = 1.0e8
+            max_steps = Csize_t(100)
+            n_taken = [Csize_t(0)]
+            traj = zeros(7 * 100)
+
+            ret = TestParticleC.testparticle_trace_boris_f64(
+                pointer(x), pointer(v), t_start, t_end, dt, q2m,
+                c_field, C_NULL, max_steps, pointer(n_taken), pointer(traj)
+            )
+
+            @test ret == 0
+            @test n_taken[1] == 10
+            @test norm(v) ≈ 1.0e5 atol = 1.0e-8
+            @test norm(x) > 0.0
+            @test traj[1] == 0.0 # initial time
+        end
+    end
 end
 
 end # module test_testparticlec

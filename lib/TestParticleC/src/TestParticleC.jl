@@ -803,6 +803,172 @@ Base.@ccallable function testparticle_boris_push_batch_multispecies_f64(
     return nothing
 end
 
+Base.@ccallable function testparticle_trace_boris_f64(
+        x::Ptr{Cdouble},
+        v::Ptr{Cdouble},
+        t_start::Cdouble,
+        t_end::Cdouble,
+        dt::Cdouble,
+        q2m::Cdouble,
+        field_fn::Ptr{Cvoid},
+        user_data::Ptr{Cvoid},
+        max_steps::Csize_t,
+        n_steps_taken::Ptr{Csize_t},
+        trajectory_out::Ptr{Cdouble}
+    )::Cint
+    (field_fn == C_NULL || dt <= 0.0 || max_steps == 0) && return Cint(-1)
+
+    r = SVector{3, Float64}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
+    vn = SVector{3, Float64}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
+
+    r_buf = zeros(Float64, 3)
+    E_buf = zeros(Float64, 3)
+    B_buf = zeros(Float64, 3)
+
+    t = t_start
+    steps = 0
+    save_traj = trajectory_out != C_NULL
+
+    while t < t_end && steps < Int(max_steps)
+        r_buf[1] = r[1]
+        r_buf[2] = r[2]
+        r_buf[3] = r[3]
+
+        ccall(
+            field_fn, Cvoid,
+            (Cdouble, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cvoid}),
+            t, pointer(r_buf), pointer(E_buf), pointer(B_buf), user_data
+        )
+
+        E_vec = SVector{3, Float64}(E_buf[1], E_buf[2], E_buf[3])
+        B_vec = SVector{3, Float64}(B_buf[1], B_buf[2], B_buf[3])
+
+        if save_traj
+            base = 7 * steps
+            unsafe_store!(trajectory_out, t, base + 1)
+            unsafe_store!(trajectory_out, r[1], base + 2)
+            unsafe_store!(trajectory_out, r[2], base + 3)
+            unsafe_store!(trajectory_out, r[3], base + 4)
+            unsafe_store!(trajectory_out, vn[1], base + 5)
+            unsafe_store!(trajectory_out, vn[2], base + 6)
+            unsafe_store!(trajectory_out, vn[3], base + 7)
+        end
+
+        dt_step = min(dt, t_end - t)
+        vh = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt_step / 4)
+        vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_step / 2)
+        r = r + vh_next * dt_step
+        vn = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt_step / 4)
+
+        t += dt_step
+        steps += 1
+    end
+
+    unsafe_store!(x, r[1], 1)
+    unsafe_store!(x, r[2], 2)
+    unsafe_store!(x, r[3], 3)
+    unsafe_store!(v, vn[1], 1)
+    unsafe_store!(v, vn[2], 2)
+    unsafe_store!(v, vn[3], 3)
+
+    if n_steps_taken != C_NULL
+        unsafe_store!(n_steps_taken, Csize_t(steps))
+    end
+
+    return Cint(0)
+end
+
+Base.@ccallable function testparticle_trace_boris_f32(
+        x::Ptr{Cfloat},
+        v::Ptr{Cfloat},
+        t_start::Cfloat,
+        t_end::Cfloat,
+        dt::Cfloat,
+        q2m::Cfloat,
+        field_fn::Ptr{Cvoid},
+        user_data::Ptr{Cvoid},
+        max_steps::Csize_t,
+        n_steps_taken::Ptr{Csize_t},
+        trajectory_out::Ptr{Cfloat}
+    )::Cint
+    (field_fn == C_NULL || dt <= 0.0f0 || max_steps == 0) && return Cint(-1)
+
+    r = SVector{3, Float32}(unsafe_load(x, 1), unsafe_load(x, 2), unsafe_load(x, 3))
+    vn = SVector{3, Float32}(unsafe_load(v, 1), unsafe_load(v, 2), unsafe_load(v, 3))
+
+    r_buf = zeros(Float32, 3)
+    E_buf = zeros(Float32, 3)
+    B_buf = zeros(Float32, 3)
+
+    t = t_start
+    steps = 0
+    save_traj = trajectory_out != C_NULL
+
+    while t < t_end && steps < Int(max_steps)
+        r_buf[1] = r[1]
+        r_buf[2] = r[2]
+        r_buf[3] = r[3]
+
+        ccall(
+            field_fn, Cvoid,
+            (Cfloat, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cvoid}),
+            t, pointer(r_buf), pointer(E_buf), pointer(B_buf), user_data
+        )
+
+        E_vec = SVector{3, Float32}(E_buf[1], E_buf[2], E_buf[3])
+        B_vec = SVector{3, Float32}(B_buf[1], B_buf[2], B_buf[3])
+
+        if save_traj
+            base = 7 * steps
+            unsafe_store!(trajectory_out, t, base + 1)
+            unsafe_store!(trajectory_out, r[1], base + 2)
+            unsafe_store!(trajectory_out, r[2], base + 3)
+            unsafe_store!(trajectory_out, r[3], base + 4)
+            unsafe_store!(trajectory_out, vn[1], base + 5)
+            unsafe_store!(trajectory_out, vn[2], base + 6)
+            unsafe_store!(trajectory_out, vn[3], base + 7)
+        end
+
+        dt_step = min(dt, t_end - t)
+        vh = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt_step / 4.0f0)
+        vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt_step / 2.0f0)
+        r = r + vh_next * dt_step
+        vn = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt_step / 4.0f0)
+
+        t += dt_step
+        steps += 1
+    end
+
+    unsafe_store!(x, r[1], 1)
+    unsafe_store!(x, r[2], 2)
+    unsafe_store!(x, r[3], 3)
+    unsafe_store!(v, vn[1], 1)
+    unsafe_store!(v, vn[2], 2)
+    unsafe_store!(v, vn[3], 3)
+
+    if n_steps_taken != C_NULL
+        unsafe_store!(n_steps_taken, Csize_t(steps))
+    end
+
+    return Cint(0)
+end
+
+testparticle_trace_boris_f64(
+    x, v, t_start, t_end, dt, q2m, field_fn::Base.CFunction,
+    user_data, max_steps, n_steps_taken, trajectory_out
+) = testparticle_trace_boris_f64(
+    x, v, t_start, t_end, dt, q2m, Base.unsafe_convert(Ptr{Cvoid}, field_fn),
+    user_data, max_steps, n_steps_taken, trajectory_out
+)
+
+testparticle_trace_boris_f32(
+    x, v, t_start, t_end, dt, q2m, field_fn::Base.CFunction,
+    user_data, max_steps, n_steps_taken, trajectory_out
+) = testparticle_trace_boris_f32(
+    x, v, t_start, t_end, dt, q2m, Base.unsafe_convert(Ptr{Cvoid}, field_fn),
+    user_data, max_steps, n_steps_taken, trajectory_out
+)
+
 @setup_workload begin
     @compile_workload begin
         x64 = [0.0, 0.0, 0.0]
