@@ -1,8 +1,9 @@
 # TestParticleC
 
 `TestParticleC` is a lightweight C-ABI wrapper around `BorisPushers.jl` providing
-statically callable C symbols for high-performance particle pushing in C, C++, and Fortran
-MHD and PIC codes.
+statically callable C symbols for high-performance particle pushing in any language
+with a C-compatible ABI or FFI (such as C, C++, Fortran, Rust, Python, or Zig)
+in MHD and PIC simulation codes.
 
 ## C API (`include/testparticle.h`)
 

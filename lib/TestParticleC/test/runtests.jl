@@ -122,6 +122,88 @@ using LinearAlgebra
             @test norm(v) > 0.0
         end
     end
+
+    @testset "Multistep Boris Push" begin
+        let
+            for order in (2, 4, 6)
+                x = [0.0, 0.0, 0.0]
+                v = [1.0e5, 0.0, 0.0]
+                E = [0.0, 0.0, 0.0]
+                B = [0.0, 0.0, 1.0]
+                q2m = 1.0e8
+                dt = 1.0e-9
+
+                TestParticleC.testparticle_multistep_boris_push_f64(
+                    pointer(x), pointer(v), q2m, dt, pointer(E), pointer(B),
+                    Cint(2), Cint(order)
+                )
+                @test norm(v) ≈ 1.0e5 atol = 1.0e-8
+                @test norm(x) > 0.0
+            end
+        end
+    end
+
+    @testset "Hyper-Boris 4 and 6 Specialized" begin
+        let
+            x4 = [0.0, 0.0, 0.0]
+            v4 = [1.0e5, 0.0, 0.0]
+            x6 = [0.0, 0.0, 0.0]
+            v6 = [1.0e5, 0.0, 0.0]
+            E = [0.0, 0.0, 0.0]
+            B = [0.0, 0.0, 1.0]
+            q2m = 1.0e8
+            dt = 1.0e-9
+
+            TestParticleC.testparticle_hyper_boris4_push_f64(
+                pointer(x4), pointer(v4), q2m, dt, pointer(E), pointer(B), Cint(2)
+            )
+            TestParticleC.testparticle_hyper_boris6_push_f64(
+                pointer(x6), pointer(v6), q2m, dt, pointer(E), pointer(B), Cint(2)
+            )
+
+            @test norm(v4) ≈ 1.0e5 atol = 1.0e-8
+            @test norm(v6) ≈ 1.0e5 atol = 1.0e-8
+            @test norm(x4) > 0.0
+            @test norm(x6) > 0.0
+        end
+    end
+
+    @testset "Multistep Staggered and Batch" begin
+        let
+            x = [0.0, 0.0, 0.0]
+            v_half = [1.0e5, 0.0, 0.0]
+            E = [0.0, 0.0, 0.0]
+            B = [0.0, 0.0, 1.0]
+            q2m = 1.0e8
+            dt = 1.0e-9
+
+            TestParticleC.testparticle_multistep_boris_step_staggered_f64(
+                pointer(x), pointer(v_half), q2m, dt, pointer(E), pointer(B),
+                Cint(2), Cint(4)
+            )
+            @test norm(v_half) ≈ 1.0e5 atol = 1.0e-8
+            @test x ≈ v_half * dt
+
+            n = 4
+            xb = zeros(3 * n)
+            vb = zeros(3 * n)
+            Eb = zeros(3 * n)
+            Bb = zeros(3 * n)
+            for i in 0:(n - 1)
+                vb[3 * i + 1] = 1.0e5
+                Bb[3 * i + 3] = 1.0
+            end
+
+            TestParticleC.testparticle_multistep_boris_push_batch_f64(
+                n, pointer(xb), pointer(vb), q2m, dt, pointer(Eb), pointer(Bb),
+                2, 4
+            )
+            for i in 0:(n - 1)
+                vi = [vb[3 * i + 1], vb[3 * i + 2], vb[3 * i + 3]]
+                @test norm(vi) ≈ 1.0e5 atol = 1.0e-8
+            end
+        end
+    end
 end
 
 end # module test_testparticlec
