@@ -434,4 +434,125 @@ int32_t testparticle_trace_boris_f32(
 }
 #endif
 
+/* ========================================================================= */
+/* Type-Generic Dispatch (C11 _Generic and C++ Function Overloads)           */
+/* ========================================================================= */
+
+#if defined(__cplusplus)
+inline void testparticle_boris_push(
+    double* x, double* v, double q2m, double dt, const double* E, const double* B
+) {
+    testparticle_boris_push_f64(x, v, q2m, dt, E, B);
+}
+inline void testparticle_boris_push(
+    float* x, float* v, float q2m, float dt, const float* E, const float* B
+) {
+    testparticle_boris_push_f32(x, v, q2m, dt, E, B);
+}
+
+inline void testparticle_boris_step_staggered(
+    double* x, double* v_half, double q2m, double dt, const double* E, const double* B
+) {
+    testparticle_boris_step_staggered_f64(x, v_half, q2m, dt, E, B);
+}
+inline void testparticle_boris_step_staggered(
+    float* x, float* v_half, float q2m, float dt, const float* E, const float* B
+) {
+    testparticle_boris_step_staggered_f32(x, v_half, q2m, dt, E, B);
+}
+
+inline void testparticle_update_velocity_boris(
+    double* v, const double* E, const double* B, double qdt2m
+) {
+    testparticle_update_velocity_boris_f64(v, E, B, qdt2m);
+}
+inline void testparticle_update_velocity_boris(
+    float* v, const float* E, const float* B, float qdt2m
+) {
+    testparticle_update_velocity_boris_f32(v, E, B, qdt2m);
+}
+
+inline void testparticle_multistep_boris_push(
+    double* x, double* v, double q2m, double dt, const double* E, const double* B,
+    int32_t n, int32_t order
+) {
+    testparticle_multistep_boris_push_f64(x, v, q2m, dt, E, B, n, order);
+}
+inline void testparticle_multistep_boris_push(
+    float* x, float* v, float q2m, float dt, const float* E, const float* B,
+    int32_t n, int32_t order
+) {
+    testparticle_multistep_boris_push_f32(x, v, q2m, dt, E, B, n, order);
+}
+
+inline void testparticle_hyper_boris4_push(
+    double* x, double* v, double q2m, double dt, const double* E, const double* B, int32_t n
+) {
+    testparticle_hyper_boris4_push_f64(x, v, q2m, dt, E, B, n);
+}
+inline void testparticle_hyper_boris4_push(
+    float* x, float* v, float q2m, float dt, const float* E, const float* B, int32_t n
+) {
+    testparticle_hyper_boris4_push_f32(x, v, q2m, dt, E, B, n);
+}
+
+inline void testparticle_hyper_boris6_push(
+    double* x, double* v, double q2m, double dt, const double* E, const double* B, int32_t n
+) {
+    testparticle_hyper_boris6_push_f64(x, v, q2m, dt, E, B, n);
+}
+inline void testparticle_hyper_boris6_push(
+    float* x, float* v, float q2m, float dt, const float* E, const float* B, int32_t n
+) {
+    testparticle_hyper_boris6_push_f32(x, v, q2m, dt, E, B, n);
+}
+
+inline double testparticle_boris_propose_dt(double q2m, const double* B, double safety) {
+    return testparticle_boris_propose_dt_f64(q2m, B, safety);
+}
+inline float testparticle_boris_propose_dt(float q2m, const float* B, float safety) {
+    return testparticle_boris_propose_dt_f32(q2m, B, safety);
+}
+
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
+#define testparticle_boris_push(x, v, q2m, dt, E, B) _Generic((x), \
+    double*: testparticle_boris_push_f64, \
+    float*:  testparticle_boris_push_f32 \
+)(x, v, q2m, dt, E, B)
+
+#define testparticle_boris_step_staggered(x, v_half, q2m, dt, E, B) _Generic((x), \
+    double*: testparticle_boris_step_staggered_f64, \
+    float*:  testparticle_boris_step_staggered_f32 \
+)(x, v_half, q2m, dt, E, B)
+
+#define testparticle_update_velocity_boris(v, E, B, qdt2m) _Generic((v), \
+    double*: testparticle_update_velocity_boris_f64, \
+    float*:  testparticle_update_velocity_boris_f32 \
+)(v, E, B, qdt2m)
+
+#define testparticle_multistep_boris_push(x, v, q2m, dt, E, B, n, order) _Generic((x), \
+    double*: testparticle_multistep_boris_push_f64, \
+    float*:  testparticle_multistep_boris_push_f32 \
+)(x, v, q2m, dt, E, B, n, order)
+
+#define testparticle_hyper_boris4_push(x, v, q2m, dt, E, B, n) _Generic((x), \
+    double*: testparticle_hyper_boris4_push_f64, \
+    float*:  testparticle_hyper_boris4_push_f32 \
+)(x, v, q2m, dt, E, B, n)
+
+#define testparticle_hyper_boris6_push(x, v, q2m, dt, E, B, n) _Generic((x), \
+    double*: testparticle_hyper_boris6_push_f64, \
+    float*:  testparticle_hyper_boris6_push_f32 \
+)(x, v, q2m, dt, E, B, n)
+
+#define testparticle_boris_propose_dt(q2m, B, safety) _Generic((B), \
+    const double*: testparticle_boris_propose_dt_f64, \
+    double*:       testparticle_boris_propose_dt_f64, \
+    const float*:  testparticle_boris_propose_dt_f32, \
+    float*:        testparticle_boris_propose_dt_f32 \
+)(q2m, B, safety)
+
+#endif
+
 #endif /* TESTPARTICLE_H */
