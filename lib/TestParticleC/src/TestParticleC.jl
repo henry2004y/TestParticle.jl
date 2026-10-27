@@ -680,6 +680,129 @@ Base.@ccallable function testparticle_adaptive_boris_step_f32(
     return nothing
 end
 
+Base.@ccallable function testparticle_boris_push_batch_soa_f64(
+        n::Csize_t,
+        x::Ptr{Cdouble}, y::Ptr{Cdouble}, z::Ptr{Cdouble},
+        vx::Ptr{Cdouble}, vy::Ptr{Cdouble}, vz::Ptr{Cdouble},
+        q2m_arr::Ptr{Cdouble},
+        q2m_scalar::Cdouble,
+        dt::Cdouble,
+        Ex::Ptr{Cdouble}, Ey::Ptr{Cdouble}, Ez::Ptr{Cdouble},
+        Bx::Ptr{Cdouble}, By::Ptr{Cdouble}, Bz::Ptr{Cdouble}
+    )::Cvoid
+    has_arr = q2m_arr != C_NULL
+    for i in 1:Int(n)
+        q2m = has_arr ? unsafe_load(q2m_arr, i) : q2m_scalar
+        r = SVector{3, Float64}(unsafe_load(x, i), unsafe_load(y, i), unsafe_load(z, i))
+        vn = SVector{3, Float64}(unsafe_load(vx, i), unsafe_load(vy, i), unsafe_load(vz, i))
+        E_vec = SVector{3, Float64}(unsafe_load(Ex, i), unsafe_load(Ey, i), unsafe_load(Ez, i))
+        B_vec = SVector{3, Float64}(unsafe_load(Bx, i), unsafe_load(By, i), unsafe_load(Bz, i))
+
+        vh = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt / 4)
+        vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt / 2)
+        r_next = r + vh_next * dt
+        vn_next = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt / 4)
+
+        unsafe_store!(x, r_next[1], i)
+        unsafe_store!(y, r_next[2], i)
+        unsafe_store!(z, r_next[3], i)
+        unsafe_store!(vx, vn_next[1], i)
+        unsafe_store!(vy, vn_next[2], i)
+        unsafe_store!(vz, vn_next[3], i)
+    end
+    return nothing
+end
+
+Base.@ccallable function testparticle_boris_push_batch_soa_f32(
+        n::Csize_t,
+        x::Ptr{Cfloat}, y::Ptr{Cfloat}, z::Ptr{Cfloat},
+        vx::Ptr{Cfloat}, vy::Ptr{Cfloat}, vz::Ptr{Cfloat},
+        q2m_arr::Ptr{Cfloat},
+        q2m_scalar::Cfloat,
+        dt::Cfloat,
+        Ex::Ptr{Cfloat}, Ey::Ptr{Cfloat}, Ez::Ptr{Cfloat},
+        Bx::Ptr{Cfloat}, By::Ptr{Cfloat}, Bz::Ptr{Cfloat}
+    )::Cvoid
+    has_arr = q2m_arr != C_NULL
+    for i in 1:Int(n)
+        q2m = has_arr ? unsafe_load(q2m_arr, i) : q2m_scalar
+        r = SVector{3, Float32}(unsafe_load(x, i), unsafe_load(y, i), unsafe_load(z, i))
+        vn = SVector{3, Float32}(unsafe_load(vx, i), unsafe_load(vy, i), unsafe_load(vz, i))
+        E_vec = SVector{3, Float32}(unsafe_load(Ex, i), unsafe_load(Ey, i), unsafe_load(Ez, i))
+        B_vec = SVector{3, Float32}(unsafe_load(Bx, i), unsafe_load(By, i), unsafe_load(Bz, i))
+
+        vh = update_velocity_boris(vn, E_vec, B_vec, -q2m * dt / 4.0f0)
+        vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt / 2.0f0)
+        r_next = r + vh_next * dt
+        vn_next = update_velocity_boris(vh_next, E_vec, B_vec, q2m * dt / 4.0f0)
+
+        unsafe_store!(x, r_next[1], i)
+        unsafe_store!(y, r_next[2], i)
+        unsafe_store!(z, r_next[3], i)
+        unsafe_store!(vx, vn_next[1], i)
+        unsafe_store!(vy, vn_next[2], i)
+        unsafe_store!(vz, vn_next[3], i)
+    end
+    return nothing
+end
+
+Base.@ccallable function testparticle_boris_step_staggered_batch_soa_f64(
+        n::Csize_t,
+        x::Ptr{Cdouble}, y::Ptr{Cdouble}, z::Ptr{Cdouble},
+        vhx::Ptr{Cdouble}, vhy::Ptr{Cdouble}, vhz::Ptr{Cdouble},
+        q2m_arr::Ptr{Cdouble},
+        q2m_scalar::Cdouble,
+        dt::Cdouble,
+        Ex::Ptr{Cdouble}, Ey::Ptr{Cdouble}, Ez::Ptr{Cdouble},
+        Bx::Ptr{Cdouble}, By::Ptr{Cdouble}, Bz::Ptr{Cdouble}
+    )::Cvoid
+    has_arr = q2m_arr != C_NULL
+    for i in 1:Int(n)
+        q2m = has_arr ? unsafe_load(q2m_arr, i) : q2m_scalar
+        r = SVector{3, Float64}(unsafe_load(x, i), unsafe_load(y, i), unsafe_load(z, i))
+        vh = SVector{3, Float64}(
+            unsafe_load(vhx, i), unsafe_load(vhy, i), unsafe_load(vhz, i)
+        )
+        E_vec = SVector{3, Float64}(unsafe_load(Ex, i), unsafe_load(Ey, i), unsafe_load(Ez, i))
+        B_vec = SVector{3, Float64}(unsafe_load(Bx, i), unsafe_load(By, i), unsafe_load(Bz, i))
+
+        vh_next = update_velocity_boris(vh, E_vec, B_vec, q2m * dt / 2)
+        r_next = r + vh_next * dt
+
+        unsafe_store!(x, r_next[1], i)
+        unsafe_store!(y, r_next[2], i)
+        unsafe_store!(z, r_next[3], i)
+        unsafe_store!(vhx, vh_next[1], i)
+        unsafe_store!(vhy, vh_next[2], i)
+        unsafe_store!(vhz, vh_next[3], i)
+    end
+    return nothing
+end
+
+Base.@ccallable function testparticle_boris_push_batch_multispecies_f64(
+        n::Csize_t,
+        x::Ptr{Cdouble},
+        v::Ptr{Cdouble},
+        q2m_arr::Ptr{Cdouble},
+        dt::Cdouble,
+        E::Ptr{Cdouble},
+        B::Ptr{Cdouble}
+    )::Cvoid
+    for i in 0:(n - 1)
+        offset = 3 * i
+        q2m = unsafe_load(q2m_arr, i + 1)
+        testparticle_boris_push_f64(
+            x + offset * sizeof(Cdouble),
+            v + offset * sizeof(Cdouble),
+            q2m,
+            dt,
+            E + offset * sizeof(Cdouble),
+            B + offset * sizeof(Cdouble)
+        )
+    end
+    return nothing
+end
+
 @setup_workload begin
     @compile_workload begin
         x64 = [0.0, 0.0, 0.0]

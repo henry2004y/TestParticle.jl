@@ -238,6 +238,74 @@ using LinearAlgebra
             @test dt_out[1] ≈ dt_prop
         end
     end
+
+    @testset "SoA and Multi-Species Batch Push" begin
+        let
+            n = 5
+            x = zeros(n)
+            y = zeros(n)
+            z = zeros(n)
+            vx = fill(1.0e5, n)
+            vy = zeros(n)
+            vz = zeros(n)
+            Ex = zeros(n)
+            Ey = zeros(n)
+            Ez = zeros(n)
+            Bx = zeros(n)
+            By = zeros(n)
+            Bz = fill(1.0, n)
+            q2m_arr = [1.0e8, 2.0e8, 0.5e8, 1.5e8, 1.0e8]
+            dt = 1.0e-9
+
+            # Test SoA with array of q2m
+            TestParticleC.testparticle_boris_push_batch_soa_f64(
+                Csize_t(n),
+                pointer(x), pointer(y), pointer(z),
+                pointer(vx), pointer(vy), pointer(vz),
+                pointer(q2m_arr), 0.0, dt,
+                pointer(Ex), pointer(Ey), pointer(Ez),
+                pointer(Bx), pointer(By), pointer(Bz)
+            )
+
+            for i in 1:n
+                vi = [vx[i], vy[i], vz[i]]
+                @test norm(vi) ≈ 1.0e5 atol = 1.0e-8
+            end
+            @test any(x .!= 0.0)
+
+            # Test Staggered SoA with scalar q2m
+            TestParticleC.testparticle_boris_step_staggered_batch_soa_f64(
+                Csize_t(n),
+                pointer(x), pointer(y), pointer(z),
+                pointer(vx), pointer(vy), pointer(vz),
+                Ptr{Cdouble}(C_NULL), 1.0e8, dt,
+                pointer(Ex), pointer(Ey), pointer(Ez),
+                pointer(Bx), pointer(By), pointer(Bz)
+            )
+            for i in 1:n
+                vi = [vx[i], vy[i], vz[i]]
+                @test norm(vi) ≈ 1.0e5 atol = 1.0e-8
+            end
+
+            # Test Multi-species AoS
+            x_aos = zeros(3 * n)
+            v_aos = zeros(3 * n)
+            E_aos = zeros(3 * n)
+            B_aos = zeros(3 * n)
+            for i in 0:(n - 1)
+                v_aos[3 * i + 1] = 1.0e5
+                B_aos[3 * i + 3] = 1.0
+            end
+            TestParticleC.testparticle_boris_push_batch_multispecies_f64(
+                Csize_t(n), pointer(x_aos), pointer(v_aos), pointer(q2m_arr),
+                dt, pointer(E_aos), pointer(B_aos)
+            )
+            for i in 0:(n - 1)
+                vi = [v_aos[3 * i + 1], v_aos[3 * i + 2], v_aos[3 * i + 3]]
+                @test norm(vi) ≈ 1.0e5 atol = 1.0e-8
+            end
+        end
+    end
 end
 
 end # module test_testparticlec
