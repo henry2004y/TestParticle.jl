@@ -528,7 +528,7 @@ def trace_gc(
     return [GCTraceResult(t, u, save_fields, save_work) for t, u in zip(ts_py, us_py)]
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "jl",
