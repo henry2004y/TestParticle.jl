@@ -254,7 +254,7 @@ function make_injection(Lx, Ly, Lz; rL = 1.0)
         return remake(prob; u0 = [x, y, z, v0...])
     end
     return prob_func
-end
+end;
 
 # ## 5. Ensemble tracing (Boris)
 #

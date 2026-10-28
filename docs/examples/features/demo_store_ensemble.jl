@@ -17,7 +17,7 @@ using StaticArrays
 using JLD2
 
 # Set seed for reproducibility
-seed = 1234
+seed = 1234;
 
 # ## Setup: Ensemble Simulation
 #

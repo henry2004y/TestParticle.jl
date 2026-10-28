@@ -87,7 +87,7 @@ sol = solve(prob, Vern9(); reltol = 1.0e-6, maxiters = 1.0e8);
 t = sol.t
 x = sol[1, :]
 y = sol[2, :]
-z = sol[3, :]
+z = sol[3, :];
 
 # ### 1. Gyro Motion
 # Zoom in on a small segment at the beginning.
