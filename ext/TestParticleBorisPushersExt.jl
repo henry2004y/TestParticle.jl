@@ -300,6 +300,7 @@ end
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
     q = q2m * m
     T = eltype(u0)
+    Tt = typeof(tspan[1])
 
     is_td = is_time_dependent(Efunc) || is_time_dependent(Bfunc)
 
@@ -330,12 +331,12 @@ end
             Bmag = norm(B_vec)
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
-            dt = 0.5 * 2π / ω
+            dt = Tt(0.5 * 2π / ω)
             verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
             mode = :FO
-            dt = _fo_dt(alg, q2m, Bfunc, r, t)
-            v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
+            dt = Tt(_fo_dt(alg, q2m, Bfunc, r, t))
+            v = update_velocity(v, r, -dt / 2, t, p, Boris())
             Bmag_curr = zero(T)
             verbose && _log_mode("Initial mode: FO", ϵ, t)
         end
@@ -403,8 +404,8 @@ end
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
 
-                        dt = _fo_dt(alg, q2m, Bfunc, r, t)
-                        v = update_velocity(v, r, -0.5 * dt, t, p, Boris())
+                        dt = Tt(_fo_dt(alg, q2m, Bfunc, r, t))
+                        v = update_velocity(v, r, -dt / 2, t, p, Boris())
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -436,7 +437,7 @@ end
                     t += dt
                     xv_gc = y_next
                     Bmag_next = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - 0.5 * dt * (q2m * (Bmag_curr + Bmag_next)))
+                    phase = mod2pi(phase - dt * (q2m * (Bmag_curr + Bmag_next)) / 2)
                     Bmag_curr = Bmag_next
 
                     if use_saveat(plan) || save_everystep
@@ -452,7 +453,7 @@ end
                 scale = error_ratio == 0.0 ?
                     max_growth : safety_gc * (1.0 / error_ratio)^0.2
                 scale = max(min_growth, min(scale, max_growth))
-                dt *= scale
+                dt *= Tt(scale)
                 if t < tspan[2] && dt < 1.0e-14
                     retcode = ReturnCode.DtLessThanMin
                     break
@@ -462,7 +463,7 @@ end
                 if it % alg.check_interval == 0 && t != t_last_check
                     t_last_check = t
                     t_sync = is_td ? t : zero(T)
-                    v_sync = update_velocity(v, r, 0.5 * dt, t_sync, p, Boris())
+                    v_sync = update_velocity(v, r, dt / 2, t_sync, p, Boris())
                     xv_sync = SVector{6, T}(
                         r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
                     )
@@ -492,7 +493,7 @@ end
 
                         Bmag_curr = norm(Bfunc(X_gc, t))
                         omega = abs(q2m * Bmag_curr)
-                        dt = 0.5 * 2π / omega
+                        dt = Tt(0.5 * 2π / omega)
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -506,7 +507,7 @@ end
                 end
 
                 v_prev = v
-                v = update_velocity(v, r, dt, t + 0.5 * dt, p, Boris())
+                v = update_velocity(v, r, dt, t + dt / 2, p, Boris())
                 r_next = r + v * dt
                 t_next = t + dt
                 if isoutside(vcat(r_next, v), p, t_next)
@@ -516,7 +517,7 @@ end
                 end
 
                 if use_saveat(plan) || (save_everystep && (it - 1) > 0)
-                    v_save = update_velocity(v_prev, r, 0.5 * dt, t, p, Boris())
+                    v_save = update_velocity(v_prev, r, dt / 2, t, p, Boris())
                     isave, t_last, y_last = _hybrid_save!(
                         traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)
                     )
@@ -534,7 +535,7 @@ end
                 push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
                 t_final = is_td ? t : zero(T)
-                v_final = update_velocity(v, r, 0.5 * dt, t_final, p, Boris())
+                v_final = update_velocity(v, r, dt / 2, t_final, p, Boris())
                 push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)
