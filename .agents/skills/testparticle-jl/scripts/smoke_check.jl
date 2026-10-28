@@ -38,14 +38,14 @@ println("  gyroperiod = ", P, " s, gyroradius = ", R, " m")
 let
     param = prepare(; B = uniform_B, species = Proton)
     prob = TraceProblem(xv0, (0.0, P), param)
-    sol = solve(prob, Vern7(); reltol = 1e-12, abstol = 1e-12)
+    sol = solve(prob, Vern7(); reltol = 1.0e-12, abstol = 1.0e-12)
 
     u_end = sol.u[end]
     closure = norm(u_end[1:3] - xv0[1:3]) / R
-    check("full orbit closes after one gyroperiod", closure < 1e-6, "rel err $closure")
+    check("full orbit closes after one gyroperiod", closure < 1.0e-6, "rel err $closure")
 
     speed = norm(u_end[4:6])
-    check("speed conserved", abs(speed - V0) / V0 < 1e-9)
+    check("speed conserved", abs(speed - V0) / V0 < 1.0e-9)
 end
 
 ## Native Boris pusher: energy conservation over ten periods ------------------
@@ -57,7 +57,7 @@ let
 
     speeds = [norm(u[4:6]) for u in sol.u]
     drift = maximum(abs.(speeds .- V0)) / V0
-    check("Boris conserves speed", drift < 1e-12, "max rel drift $drift")
+    check("Boris conserves speed", drift < 1.0e-12, "max rel drift $drift")
     check("Boris produced the expected number of saves", length(sol.u) == 11)
 end
 
@@ -68,8 +68,8 @@ let
     sol = solve(prob, GCRK4(); dt = P / 100)
 
     X = sol.u[end][1:3]
-    check("guiding center stays at rest", norm(X) / R < 1e-4, "|X|/ρ = $(norm(X) / R)")
-    check("parallel velocity stays zero", abs(sol.u[end][4]) / V0 < 1e-6)
+    check("guiding center stays at rest", norm(X) / R < 1.0e-4, "|X|/ρ = $(norm(X) / R)")
+    check("parallel velocity stays zero", abs(sol.u[end][4]) / V0 < 1.0e-6)
 end
 
 failed = count(r -> !r.ok, results)
