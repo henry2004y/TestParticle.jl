@@ -5,19 +5,22 @@ Update state using the Dormand-Prince 5(4) method.
 Returns dy as the update and E as the error estimate, both as SArrays.
 """
 @muladd function update_dp5(y, param, dt, t)
+    # Step in the state precision so Float32 states stay Float32
+    T = eltype(y)
+    dt = T(dt)
     # Coefficients for DP5
-    c2, c3, c4, c5, c6 = 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0
-    a21 = 1 / 5
-    a31, a32 = 3 / 40, 9 / 40
-    a41, a42, a43 = 44 / 45, -56 / 15, 32 / 9
-    a51, a52, a53, a54 = 19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729
-    a61, a62, a63, a64, a65 = 9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656
-    a71, a72, a73, a74, a75, a76 = 35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
+    c2, c3, c4, c5, c6 = T.((1 / 5, 3 / 10, 4 / 5, 8 / 9, 1.0))
+    a21 = T(1 / 5)
+    a31, a32 = T.((3 / 40, 9 / 40))
+    a41, a42, a43 = T.((44 / 45, -56 / 15, 32 / 9))
+    a51, a52, a53, a54 = T.((19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729))
+    a61, a62, a63, a64, a65 = T.((9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656))
+    a71, a72, a73, a74, a75, a76 = T.((35 / 384, 0.0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84))
 
     # Coefficients for 5th order solution and error estimate
     # b2 = b7 = e2 = 0.0
-    b1, b3, b4, b5, b6 = 35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84
-    e1, e3, e4, e5, e6, e7 = 71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40
+    b1, b3, b4, b5, b6 = T.((35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84))
+    e1, e3, e4, e5, e6, e7 = T.((71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40))
 
     k1 = trace_gc(y, param, t)
 
@@ -57,6 +60,7 @@ function _rk45!(
     (; tspan, p, u0) = prob
     (; abstol, reltol) = alg
     T = eltype(u0)
+    Tt = typeof(tspan[1] + one(T))
 
     safety = 0.9
     max_growth = 5.0
@@ -72,13 +76,13 @@ function _rk45!(
 
     @inbounds for i in irange
         traj = SVector{vars_dim, T}[]
-        tsave = typeof(tspan[1] + one(T))[]
+        tsave = Tt[]
 
         rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
         xv = SVector{4, T}(new_prob.u0)
 
-        t = tspan[1]
+        t = Tt(tspan[1])
 
         if isnothing(dt_initial)
             # Estimate initial step size based on gyroperiod
@@ -87,13 +91,13 @@ function _rk45!(
             Bmag = norm(B_vec)
 
             if Bmag == 0 || q2m == 0
-                dt = 1.0e-6
+                dt = Tt(1.0e-6)
             else
                 omega = abs(q2m * Bmag)
-                dt = 0.5 * 2π / omega # 0.5 gyroperiod
+                dt = Tt(0.5 * 2π / omega) # 0.5 gyroperiod
             end
         else
-            dt = dt_initial
+            dt = Tt(dt_initial)
         end
 
         if save_start
@@ -175,7 +179,7 @@ function _rk45!(
                 safety * (1.0 / error_ratio)^0.2
             end
             scale = max(min_growth, min(scale, max_growth))
-            dt *= scale
+            dt *= Tt(scale)
 
             dt < 1.0e-14 && break
         end
