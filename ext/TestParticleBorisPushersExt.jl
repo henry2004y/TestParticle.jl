@@ -7,7 +7,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
-    _gc_to_full, _get_gc_parameters, update_dp5,
+    _gc_to_full, _get_gc_parameters, init_gc_integrator, gc_step!,
     adiabaticity_components, _rng_seed, is_time_dependent, _foreach_chunk,
     ODE_DEFAULT_ISOUTOFDOMAIN
 
@@ -304,10 +304,6 @@ end
 
     is_td = is_time_dependent(Efunc) || is_time_dependent(Bfunc)
 
-    safety_gc = 0.9
-    max_growth = 5.0
-    min_growth = 0.2
-
     @inbounds for i in irange
         rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
@@ -332,8 +328,12 @@ end
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = Tt(0.5 * 2π / ω)
+            integrator_gc = init_gc_integrator(
+                xv_gc, (t, tspan[2]), p_gc, dt, alg.abstol, alg.reltol, alg.maxiters
+            )
             verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
+            integrator_gc = nothing
             mode = :FO
             dt = Tt(_fo_dt(alg, q2m, Bfunc, r, t))
             v = update_velocity(v, r, -dt / 2, t, p, Boris())
@@ -414,50 +414,30 @@ end
                     end
                 end
 
-                if t + dt > tspan[2]
-                    dt = tspan[2] - t
-                end
-
-                dx, E_err = update_dp5(xv_gc, p_gc, dt, t)
-
-                sum_sq_error = 0.0
-                y_next = xv_gc + dx
-                for k in 1:4
-                    sc = alg.abstol + max(abs(xv_gc[k]), abs(y_next[k])) * alg.reltol
-                    sum_sq_error += (E_err[k] / sc)^2
-                end
-                error_ratio = 0.5 * sqrt(sum_sq_error)
-
-                if error_ratio <= 1.0
-                    if isoutside(y_next, p_gc, t + dt)
-                        retcode = ReturnCode.Terminated
-                        break
-                    end
-
-                    t += dt
-                    xv_gc = y_next
-                    Bmag_next = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - dt * (q2m * (Bmag_curr + Bmag_next)) / 2)
-                    Bmag_curr = Bmag_next
-
-                    if use_saveat(plan) || save_everystep
-                        y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
-                        isave, t_last, y_last = _hybrid_save!(
-                            traj, tsave, plan, isave, t_last, y_last, t, y_out
-                        )
-                    end
-                    steps += 1
-                    it += 1
-                end
-
-                scale = error_ratio == 0.0 ?
-                    max_growth : safety_gc * (1.0 / error_ratio)^0.2
-                scale = max(min_growth, min(scale, max_growth))
-                dt *= Tt(scale)
-                if t < tspan[2] && dt < 1.0e-14
-                    retcode = ReturnCode.DtLessThanMin
+                code = gc_step!(integrator_gc, isoutside, p_gc)
+                if code != ReturnCode.Success
+                    retcode = code
                     break
                 end
+
+                t_next = Tt(integrator_gc.t)
+                y_next = SVector{4, T}(integrator_gc.u)
+                dt_step = t_next - t
+                t = t_next
+                xv_gc = y_next
+                Bmag_next = norm(Bfunc(get_x(xv_gc), t))
+                phase = mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2)
+                Bmag_curr = Bmag_next
+                dt = Tt(integrator_gc.dt)
+
+                if use_saveat(plan) || save_everystep
+                    y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                    isave, t_last, y_last = _hybrid_save!(
+                        traj, tsave, plan, isave, t_last, y_last, t, y_out
+                    )
+                end
+                steps += 1
+                it += 1
 
             else # Mode == :FO
                 if it % alg.check_interval == 0 && t != t_last_check
@@ -494,6 +474,10 @@ end
                         Bmag_curr = norm(Bfunc(X_gc, t))
                         omega = abs(q2m * Bmag_curr)
                         dt = Tt(0.5 * 2π / omega)
+                        integrator_gc = init_gc_integrator(
+                            xv_gc, (t, tspan[2]), p_gc,
+                            dt, alg.abstol, alg.reltol, alg.maxiters
+                        )
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -621,7 +605,10 @@ end
             solve(prob, MultistepBoris2(; n = 2); dt)
             solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)
 
-            solve(prob, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
+            # `threshold = 0` never leaves the full-orbit mode, so the hybrid loop
+            # is compiled here without needing the guiding-center integrator that
+            # `TestParticleVernerExt` supplies.
+            solve(prob, AdaptiveHybrid(threshold = 0.0, dtmax = 1.0))
         end
 
         let

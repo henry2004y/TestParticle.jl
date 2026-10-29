@@ -254,8 +254,8 @@ SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable solve(
     $prob_native_gc, GCRK4();
     dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
-SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable solve(
-    $prob_native_gc, GCRK45();
+SUITE["trace"]["GC"]["Native Vern7"] = @benchmarkable solve(
+    $prob_native_gc, GCVern7();
     dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
 
@@ -298,6 +298,38 @@ let
 
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable solve(
         $prob_hybrid, $alg; verbose = false, seed = 1234
+    )
+end
+
+# GC on the magnetic bottle, under the tolerances used by issue #669. Every entry
+# integrates with Vern7: the native one through `GCVern7`, the others straight from
+# OrdinaryDiffEq, so the gap is what the ensemble wrapper costs.
+SUITE["trace"]["GC bottle"] = BenchmarkGroup()
+let
+    bottle_B_static(x) = bottle_B_hybrid(x, 0.0)
+
+    x0 = SA[0.0, 0.0, 0.0]
+    u0_bottle = vcat(x0, SA[5.0e4, 0.0, 1.0e5])
+    T_gyro = 2π / (abs(TP.qᵢ / TP.mᵢ) * B0_hybrid)
+    tspan = (0.0, 30 * T_gyro)
+
+    stateinit_gc, param_gc = prepare_gc(
+        u0_bottle; B = bottle_B_static, species = Proton
+    )
+    prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
+    prob_diffeq = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+
+    SUITE["trace"]["GC bottle"]["Native Vern7"] = @benchmarkable solve(
+        $prob_native, GCVern7(); save_everystep = false
+    )
+    SUITE["trace"]["GC bottle"]["Tsit5"] = @benchmarkable solve(
+        $prob_diffeq, Tsit5(); save_everystep = false
+    )
+    SUITE["trace"]["GC bottle"]["Vern7"] = @benchmarkable solve(
+        $prob_diffeq, Vern7(); save_everystep = false
+    )
+    SUITE["trace"]["GC bottle"]["Vern9"] = @benchmarkable solve(
+        $prob_diffeq, Vern9(); save_everystep = false
     )
 end
 

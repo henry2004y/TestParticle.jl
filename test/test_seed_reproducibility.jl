@@ -11,6 +11,7 @@ using TestParticle
 using BorisPushers
 using StaticArrays
 using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using Random
 using LinearAlgebra
 using VelocityDistributionFunctions
@@ -60,11 +61,11 @@ end
 
         # Test RK45
         sols1_rk45 = solve(
-            prob, GCRK45();
+            prob, GCVern7();
             trajectories = 3, dt = 1.0e-5, seed
         )
         sols2_rk45 = solve(
-            prob, GCRK45();
+            prob, GCVern7();
             trajectories = 3, dt = 1.0e-5, seed
         )
 

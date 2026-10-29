@@ -20,7 +20,7 @@ end
         :trace_canonical, :trace_canonical!,
         :trace_canonical_relativistic, :trace_canonical_relativistic!,
         :trace_gc!, :trace_gc_drifts!, :trace_gc_flr!, :trace_gc_exb!,
-        :AdaptiveHybrid, :GCRK4, :GCRK45,
+        :AdaptiveHybrid, :GCRK4, :GCVern7, :GCRK45,
         :vdf_forward_trace, :vdf_backward_trace,
         :get_fields, :get_work_rates, :get_work, :orbit, :monitor,
         :save_trajectory, :build_interpolator,
