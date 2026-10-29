@@ -24,9 +24,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 BorisPushers = "1e8b2ed2-ea1c-4b6e-b3f5-67c29d6bd197"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
+OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
-
 
 [extensions]
 TestParticleBorisPushersExt = "BorisPushers"
@@ -34,6 +34,7 @@ TestParticleJLD2Ext = "JLD2"
 TestParticleMeshesExt = "Meshes"
 TestParticleRecursiveArrayToolsExt = "RecursiveArrayTools"
 TestParticleVDFExt = "VelocityDistributionFunctions"
+TestParticleVernerExt = "OrdinaryDiffEqVerner"
 
 [compat]
 Adapt = "4.4"
@@ -54,4 +55,3 @@ SciMLBase = "3.7.1"
 StaticArrays = "1.2"
 VelocityDistributionFunctions = "0.2.2"
 julia = "1.11"
-

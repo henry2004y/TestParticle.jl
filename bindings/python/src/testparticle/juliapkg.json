@@ -9,6 +9,9 @@
         },
         "OrdinaryDiffEq": {
             "uuid": "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+        },
+        "OrdinaryDiffEqVerner": {
+            "uuid": "79d7bb75-1356-48c1-b8c0-6832512096c2"
         }
     }
 }

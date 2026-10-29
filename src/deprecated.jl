@@ -2,6 +2,12 @@
 
 export trace_normalized!, trace_relativistic_normalized!,
     trace_normalized, trace_relativistic_normalized, get_work, TraceHybridProblem
+export GCRK45
+
+# `GCRK45` named the Dormand-Prince 4(5) scheme the solver used before it moved to
+# Vern7. An alias rather than a wrapper function so that existing `::GCRK45` type
+# annotations keep working.
+const GCRK45 = GCVern7
 
 prepare(E, B, F = nothing; kw...) = prepare(; E, B, F, kw...)
 prepare(B; E = nothing, F = nothing, kw...) = prepare(; E, B, F, kw...)

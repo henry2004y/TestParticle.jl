@@ -10,6 +10,7 @@ using TestParticle
 using TestParticle: get_adiabaticity
 import TestParticle as TP
 using BorisPushers
+using OrdinaryDiffEqVerner
 using StaticArrays
 using LinearAlgebra
 using Test
@@ -39,6 +40,22 @@ rotating_B(B0, k) = (x, t) -> SA[B0 * cos(k * x[3]), B0 * sin(k * x[3]), 0.0]
 "Fraction of the recorded diagnostics that spent in the full-orbit mode."
 fo_frac(sol) = count(==(:FO), sol.stats.adiabaticity.mode) /
     length(sol.stats.adiabaticity.mode)
+
+"Fraction of the trace time spent in the full-orbit mode."
+function fo_time_frac(sol)
+    (; t, mode) = sol.stats.adiabaticity
+    total = sol.t[end] - sol.t[begin]
+    iszero(total) && return 0.0
+
+    # Each recorded mode holds from its own timestamp up to the next one, and the
+    # last one up to the end of the trace.
+    fo_time = zero(total)
+    for i in eachindex(mode)
+        t_hi = i < lastindex(mode) ? t[i + 1] : sol.t[end]
+        mode[i] === :FO && (fo_time += t_hi - t[i])
+    end
+    return fo_time / total
+end
 
 @testset "Adiabaticity components" begin
     @testset "uniform field" begin
@@ -166,8 +183,12 @@ end
         @test f_jac >= f_curv
         @test f_jac >= f_grad
 
-        # :curvature reproduces the classic V1 behaviour (mostly guiding-center).
-        @test 0.1 < f_curv < 0.5
+        # :curvature reproduces the classic V1 behaviour: a real hybrid split,
+        # not a run spent entirely in one mode. Time weighted rather than counted
+        # from the diagnostics, since only a handful of checks are recorded and
+        # `check_interval` counts steps, so the record fraction jumps coarsely
+        # whenever the GC integrator changes step size.
+        @test 0.1 < fo_time_frac(sol_curv) < 0.75
 
         # Diagnostics populated for every recorded mode; only the adiabaticity
         # value used by the selected mode is stored (one scalar per check), and

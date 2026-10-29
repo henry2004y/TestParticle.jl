@@ -11,6 +11,8 @@ import TestParticle as TP
 using StaticArrays
 using LinearAlgebra
 using BorisPushers
+# The GC half of AdaptiveHybrid steps with Vern7 from this package.
+using OrdinaryDiffEqVerner
 using Test
 using ..test_common: bottle_B, bottle_B0, sheared_B
 

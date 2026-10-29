@@ -26,16 +26,18 @@ from juliacall import AnyValue, Main as jl
 # Since TestParticle.jl v0.25.0 the Boris pusher family lives in the companion
 # package BorisPushers.jl, and TestParticle only gains its ``solve`` methods for
 # those algorithms (and for the adaptive hybrid solver) once BorisPushers is
-# loaded. Both packages are therefore loaded unconditionally here.
+# loaded. The adaptive guiding-center solver is likewise supplied by an extension
+# that loads with OrdinaryDiffEqVerner. All three are loaded unconditionally here.
 try:
     jl.seval("using TestParticle")
     jl.seval("using BorisPushers")
+    jl.seval("using OrdinaryDiffEqVerner")
     jl.seval("using PythonCall")  # exposes `pyconvert` for wrapping Python callables
 except Exception as exc:  # pragma: no cover - depends on the user environment
     raise RuntimeError(
-        "Failed to load TestParticle and BorisPushers from Julia. Make sure the "
-        "Julia dependencies declared in juliapkg.json are instantiated (this "
-        "happens automatically on first `import testparticle`)."
+        "Failed to load TestParticle, BorisPushers and OrdinaryDiffEqVerner from "
+        "Julia. Make sure the Julia dependencies declared in juliapkg.json are "
+        "instantiated (this happens automatically on first `import testparticle`)."
     ) from exc
 
 TP = jl.TestParticle
@@ -103,6 +105,7 @@ _REEXPORTS = [
     ("TraceProblem", "TraceProblem"),
     ("TraceGCProblem", "TraceGCProblem"),
     ("GCRK4", "GCRK4"),
+    ("GCVern7", "GCVern7"),
     ("GCRK45", "GCRK45"),
     ("TraceHybridProblem", "TraceHybridProblem"),
     ("ZeroField", "ZeroField"),
@@ -476,11 +479,12 @@ def trace_gc(
     q=None,
     m=None,
 ):
-    """Trace guiding-center trajectories with the RK4/RK45 method.
+    """Trace guiding-center trajectories with the RK4/Vern7 method.
 
     Parameters mirror :func:`trace`, with the addition of ``alg``
-    (``"rk4"``, ``"rk45"`` or a ``GCRK4``/``GCRK45`` object). The returned :class:`GCTraceResult` exposes the
-    guiding-center position ``R`` and parallel velocity ``vpar``.
+    (``"rk4"``, ``"rk45"``/``"vern7"`` or a ``GCRK4``/``GCVern7`` object). The
+    returned :class:`GCTraceResult` exposes the guiding-center position ``R`` and
+    parallel velocity ``vpar``.
     """
     x0 = np.asarray(x0, dtype=float)
     v0 = np.asarray(v0, dtype=float)
@@ -513,9 +517,9 @@ def trace_gc(
     if saveat is not None:
         solve_kw["saveat"] = saveat
     if isinstance(alg, str):
-        gc_algs = {"rk4": TP.GCRK4, "rk45": TP.GCRK45}
+        gc_algs = {"rk4": TP.GCRK4, "rk45": TP.GCVern7, "vern7": TP.GCVern7}
         if alg not in gc_algs:
-            raise ValueError(f"alg must be 'rk4' or 'rk45'; got {alg!r}")
+            raise ValueError(f"alg must be 'rk4', 'rk45' or 'vern7'; got {alg!r}")
         alg = gc_algs[alg]()
     sols = TP.solve(prob, alg, **solve_kw)
 

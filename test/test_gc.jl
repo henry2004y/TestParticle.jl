@@ -15,6 +15,8 @@ using Test
 using LinearAlgebra
 using SciMLBase
 using OrdinaryDiffEq
+# GCVern7 steps with Vern7, which TestParticle loads through its extension.
+using OrdinaryDiffEqVerner
 import Magnetostatics as MS
 using ..test_common: uniform_Ex, curved_B
 
@@ -168,15 +170,15 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test length(sol_early.u[1].t) == 5001
         end
 
-        @testset "Adaptive RK45" begin
+        @testset "Adaptive Vern7" begin
             # Default tolerances
-            sol_def = solve(prob, GCRK45(); dt = 1.0e-4)
-            @test length(sol_def.u[1].t) == 61
+            sol_def = solve(prob, GCVern7(); dt = 1.0e-4)
             @test sol_def.u[1].retcode == ReturnCode.Success
+            @test sol_def.u[1].t[end] == tspan[2]
 
-            # Tight tolerances
+            # Tight tolerances take more steps, not fewer.
             sol_tight = solve(
-                prob, GCRK45(; abstol = 1.0e-8, reltol = 1.0e-8);
+                prob, GCVern7(; abstol = 1.0e-8, reltol = 1.0e-8);
                 dt = 1.0e-4
             )
             @test length(sol_tight.u[1].t) > length(sol_def.u[1].t)
@@ -187,12 +189,31 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test diff < 10.0
         end
 
+        @testset "GCRK45 alias" begin
+            # The solver used to be named after the Dormand-Prince tableau it ran.
+            @test GCRK45 === GCVern7
+            dt = 1.0e-4
+            @test solve(prob, GCRK45(); dt).u[1].t == solve(prob, GCVern7(); dt).u[1].t
+        end
+
+        @testset "Adaptive Vern7 return codes" begin
+            # Running out of steps is a failure, not a silent early success.
+            sol_maxiters = solve(prob, GCVern7(); dt = 1.0e-4, maxiters = 10)
+            @test sol_maxiters.u[1].retcode == ReturnCode.MaxIters
+            @test sol_maxiters.u[1].t[end] < tspan[2]
+
+            # Finishing exactly at the end of the span still succeeds.
+            sol_done = solve(prob, GCVern7(); dt = 1.0e-4)
+            @test sol_done.u[1].retcode == ReturnCode.Success
+            @test sol_done.u[1].t[end] == tspan[2]
+        end
+
         @testset "Deprecated alg keyword" begin
             sol_kw = @test_deprecated solve(
                 prob; dt = 1.0e-4, alg = :rk45, abstol = 1.0e-8, reltol = 1.0e-8
             )
             sol_tight = solve(
-                prob, GCRK45(; abstol = 1.0e-8, reltol = 1.0e-8); dt = 1.0e-4
+                prob, GCVern7(; abstol = 1.0e-8, reltol = 1.0e-8); dt = 1.0e-4
             )
             @test sol_kw.u[1].t == sol_tight.u[1].t
             @test_throws ArgumentError solve(prob; dt = 1.0e-4, alg = :rk5)
@@ -212,26 +233,39 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
             # Parallel velocity difference
             @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
+
+            # The adaptive solver is higher order, so it lands much closer than
+            # the fixed step one despite taking fewer steps.
+            sol_adaptive = solve(prob, GCVern7(); dt).u[1]
+            u_adaptive = sol_adaptive.u[end]
+            @test norm(u_diffeq[1:3] - u_adaptive[1:3]) / norm(u_diffeq[1:3]) < 1.0e-6
+            @test abs(u_diffeq[4] - u_adaptive[4]) / abs(u_diffeq[4]) < 1.0e-6
+            @test length(sol_adaptive.t) < length(sol_native.u[1].t)
         end
 
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
-            sol_auto = solve(prob, GCRK45())
+            sol_auto = solve(prob, GCVern7())
             @test sol_auto.u[1].retcode == ReturnCode.Success
-            @test length(sol_auto.u[1].t) == 58
+            @test sol_auto.u[1].t[end] == tspan[2]
+
+            # The estimated first step lands in the same ballpark as a supplied
+            # one, so neither takes many more steps than the other.
+            sol_manual = solve(prob, GCVern7(); dt = 1.0e-4)
+            @test length(sol_auto.u[1].t) < 2 * length(sol_manual.u[1].t)
         end
 
         @testset "Ensemble" begin
             trajectories = 10
 
             # Serial
-            sol_serial = solve(prob, GCRK45(); trajectories, dt = 1.0e-4)
+            sol_serial = solve(prob, GCVern7(); trajectories, dt = 1.0e-4)
             @test length(sol_serial.u) == trajectories
             @test all(s -> s.retcode == ReturnCode.Success, sol_serial.u)
 
             # Threads
             sol_threads = solve(
-                prob, GCRK45(), EnsembleThreads();
+                prob, GCVern7(), EnsembleThreads();
                 trajectories, dt = 1.0e-4
             )
             @test length(sol_threads.u) == trajectories
@@ -290,7 +324,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             end
 
             # The adaptive solver takes the same times.
-            sol_at45 = solve(prob, GCRK45(); dt, saveat = ts).u[1]
+            sol_at45 = solve(prob, GCVern7(); dt, saveat = ts).u[1]
             @test sol_at45.t ≈ vcat(0.0, ts, 1.0)
 
             # An interval is accepted as well, and only the interior is taken

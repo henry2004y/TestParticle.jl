@@ -33,7 +33,7 @@ export trace!, trace_relativistic!, trace, trace_relativistic,
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
     trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
-export AdaptiveHybrid, GCRK4, GCRK45
+export AdaptiveHybrid, GCRK4, GCVern7
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor, save_trajectory
 export get_fields, get_work_rates
@@ -78,7 +78,7 @@ include("saveat.jl")
 include("gc/gc.jl")
 include("gc/gc_solver.jl")
 include("gc/rk4_gc.jl")
-include("gc/rk45_gc.jl")
+include("gc/vern7_gc.jl")
 include("gc/equations.jl")
 include("equations.jl")
 include("canonical.jl")

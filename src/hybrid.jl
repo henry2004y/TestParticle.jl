@@ -3,7 +3,7 @@
 """
     AdaptiveHybrid{T}
 
-Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC), used as
+Hybrid algorithm that switches between adaptive Boris (FO) and Vern7 (GC), used as
 `solve(TraceProblem(u0, tspan, p), alg)` with the full-orbit state `u0`.
 
 Mode switching uses hysteresis with two adiabaticity thresholds to avoid

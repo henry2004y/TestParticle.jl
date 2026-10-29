@@ -30,7 +30,8 @@
         stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z; E, B)
         prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
         solve(prob_gc, GCRK4(); dt = 0.1)
-        solve(prob_gc, GCRK45())
+        # GCVern7 is precompiled by TestParticleVernerExt, which only loads with
+        # OrdinaryDiffEqVerner.
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
     end

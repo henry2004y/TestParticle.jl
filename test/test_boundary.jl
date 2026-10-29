@@ -13,6 +13,7 @@ using BorisPushers
 using StaticArrays
 using LinearAlgebra: norm
 using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using SciMLBase: ReturnCode
 
 "Fields that turn to NaN outside the unit sphere."
@@ -82,7 +83,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = solve(prob, GCRK45(); dt = 0.01, isoutside = outside_or_nan)
+            sol = solve(prob, GCVern7(); dt = 0.01, isoutside = outside_or_nan)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0
@@ -93,7 +94,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             u0_gc = [0.9, 0.0, 0.0, 1.0]
             p_gc = (1.0, 1.0, 0.0, E_nan, B_nan)
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
-            sol = solve(prob, GCRK45(); dt = 0.01)
+            sol = solve(prob, GCVern7(); dt = 0.01)
 
             @test !any(isnan, sol.u[1].u[end])
             @test norm(sol.u[1].u[end][1:3]) <= 1.0

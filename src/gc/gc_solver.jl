@@ -8,21 +8,25 @@ Fixed-step RK4 native solver of [`TraceGCProblem`](@ref); needs `dt`.
 struct GCRK4 end
 
 """
-    GCRK45(; abstol = 1e-6, reltol = 1e-6)
+    GCVern7(; abstol = 1e-6, reltol = 1e-6)
 
-Adaptive RK45 native solver of [`TraceGCProblem`](@ref); `dt` is the optional initial step.
+Adaptive native solver of [`TraceGCProblem`](@ref); `dt` is the optional initial step.
+Each accepted step is taken by `Vern7` from OrdinaryDiffEqVerner, so it requires
+`using OrdinaryDiffEqVerner`. That package is a weak dependency to keep it out of
+the import path of users who never trace a guiding center; without it this solver
+raises an `ArgumentError` and [`GCRK4`](@ref) remains available.
 """
-struct GCRK45{T}
+struct GCVern7{T}
     abstol::T
     reltol::T
 end
 
-GCRK45(; abstol = 1.0e-6, reltol = 1.0e-6) = GCRK45(promote(abstol, reltol)...)
+GCVern7(; abstol = 1.0e-6, reltol = 1.0e-6) = GCVern7(promote(abstol, reltol)...)
 
-const GCAlgorithm = Union{GCRK4, GCRK45}
+const GCAlgorithm = Union{GCRK4, GCVern7}
 
 """
-    solve(prob::TraceGCProblem, alg::Union{GCRK4, GCRK45}, ensemblealg = EnsembleSerial();
+    solve(prob::TraceGCProblem, alg::Union{GCRK4, GCVern7}, ensemblealg = EnsembleSerial();
         trajectories = 1, dt = nothing, saveat = (), isoutside = ODE_DEFAULT_ISOUTOFDOMAIN,
         save_start = true, save_end = true, save_everystep = true, maxiters = 10000,
         save_fields = false, save_work = false, seed = nothing)
@@ -62,7 +66,7 @@ function solve(
     gcalg = if alg === :rk4
         GCRK4()
     elseif alg === :rk45
-        GCRK45(; abstol, reltol)
+        GCVern7(; abstol, reltol)
     else
         throw(ArgumentError("alg must be :rk4 or :rk45 for TraceGCProblem; got $(repr(alg))."))
     end
@@ -84,8 +88,8 @@ function _solve(
     )
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
-        if alg isa GCRK45
-            _rk45!(
+        if alg isa GCVern7
+            _vern7!(
                 sols, prob, irange, alg, plan, dt, isoutside,
                 save_start, save_end, save_everystep, maxiters,
                 Val(SaveFields), Val(SaveWork), seed
@@ -169,7 +173,7 @@ function _prepare_gc(
         # short can leave some of them unreached, which the caller resizes away.
         nout += length(plan.times) + (save_end ? 1 : 0)
     elseif alg isa GCRK4 && save_everystep
-        # For GCRK45, nout stays at the count above since we don't know the exact steps.
+        # For GCVern7, nout stays at the count above since we don't know the exact steps.
         last_is_step = nt > 0
         nout += nt
         if !save_end && last_is_step
