@@ -300,6 +300,126 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test length(adia.t) > 1
         @test all(diff(adia.t) .> 0)
     end
+
+    # 13. The full-orbit step follows the local gyroperiod instead of staying at
+    # the value it had when the solver entered the full-orbit mode.
+    @testset "adaptive full-orbit step" begin
+        u0 = SA[0.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        T_gyro = gyroperiod(bottle_B0)
+        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+
+        # threshold = 0 forces the full-orbit mode for the whole trajectory.
+        alg = AdaptiveHybrid(;
+            threshold = 0.0, dtmax = T_gyro, dtmin = 1.0e-6 * T_gyro,
+            check_interval = 10,
+        )
+        sol = solve(TraceProblem(u0, (0.0, 10 * T_gyro), p), alg).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+
+        steps = diff(sol.t)
+        @test length(steps) > 10
+        # The bottle field spans a factor of two in |B| over the bounce, so the
+        # step size must change by more than a few percent. The last step is the
+        # truncated remainder of the time span and is excluded.
+        @test maximum(steps[1:(end - 1)]) > 1.05 * minimum(steps[1:(end - 1)])
+    end
+
+    # 14. The adiabaticity check is bounded in time, not only in accepted steps,
+    # so a long guiding-center step cannot skip far into a non-adiabatic region.
+    @testset "check time bound" begin
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        T_gyro = gyroperiod(0.01)
+        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        prob = TraceProblem(u0, (0.0, 1.0e-2), p)
+
+        # A uniform field keeps the guiding-center steps growing geometrically,
+        # so the step count never reaches `check_interval` in this span.
+        base = (;
+            threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 1000,
+        )
+        sol_bound = solve(prob, AdaptiveHybrid(; base..., check_dt = T_gyro)).u[1]
+        sol_free = solve(prob, AdaptiveHybrid(; base..., check_dt = 1.0e9)).u[1]
+
+        @test sol_bound.retcode == TP.ReturnCode.Success
+        @test sol_free.retcode == TP.ReturnCode.Success
+        # With a time bound the solver checks repeatedly; without one only the
+        # initial diagnostic is recorded.
+        @test length(sol_bound.stats.adiabaticity.t) > 2
+        @test length(sol_free.stats.adiabaticity.t) == 1
+    end
+
+    # 15. The switch correction refines the guiding-center map with fixed-point
+    # iterations, and `switch_correction = 0` recovers the zeroth-order map.
+    @testset "switch correction" begin
+        T_gyro = gyroperiod(bottle_B0)
+        # A state off the magnetic axis, where the field is curved.
+        u = SA[5.0, 0.0, 40.0, 4.0e4, 1.0e4, 9.0e4]
+        t = 0.0
+
+        X0, vpar0, μ0, phase0 = TP._gc_state_at_switch(
+            u, E_field, B_field_bottle, q, m, t, 0
+        )
+        X_legacy, vpar_legacy, _, _, μ_legacy, phase_legacy = TP._get_gc_parameters(
+            u, E_field, B_field_bottle, q, m, t
+        )
+        @test X0 == X_legacy
+        @test vpar0 == vpar_legacy
+        @test μ0 == μ_legacy
+
+        # Residual of the implicit map X = x - ρ(X): the correction reduces it
+        # by orders of magnitude for a curved field.
+        residual(X, vpar, μ, phase) = begin
+            x_rec = TP._gc_to_full(
+                SVector(X[1], X[2], X[3], vpar), E_field, B_field_bottle, q, m,
+                μ, t, phase
+            )
+            norm(TP.get_x(x_rec) - u[SA[1, 2, 3]])
+        end
+        X2, vpar2, μ2, phase2 = TP._gc_state_at_switch(
+            u, E_field, B_field_bottle, q, m, t, 2
+        )
+        @test residual(X2, vpar2, μ2, phase2) < 1.0e-2 * residual(X0, vpar0, μ0, phase0)
+
+        # The corrected map is the exact inverse of the reconstruction used when
+        # switching back to the full orbit: GC -> FO -> GC returns the state.
+        state_gc = SVector(X2[1], X2[2], X2[3], vpar2)
+        xv_back = TP._gc_to_full(
+            state_gc, E_field, B_field_bottle, q, m, μ2, t, phase2
+        )
+        X_back, vpar_back, μ_back, phase_back = TP._gc_state_at_switch(
+            xv_back, E_field, B_field_bottle, q, m, t, 2
+        )
+        @test X_back ≈ X2 atol = 1.0e-5
+        @test vpar_back ≈ vpar2 rtol = 1.0e-6
+        @test μ_back ≈ μ2 rtol = 1.0e-6
+
+        # `switch_correction = 0` reproduces the legacy conversion exactly.
+        alg = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            switch_correction = 0,
+        )
+        sol = solve(
+            TraceProblem(
+                u, (0.0, 5 * T_gyro),
+                (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+            ),
+            alg
+        ).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+    end
+
+    # 16. Validation of the new keywords.
+    @testset "new keyword validation" begin
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_dt == 20.0
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).switch_correction == 2
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, check_dt = 0.0
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, switch_correction = -1
+        )
+    end
 end
 
 end # module test_hybrid

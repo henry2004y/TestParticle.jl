@@ -21,13 +21,26 @@ function _get_gc_parameters(xv, E, B, q, m, t)
     # Get the guiding center location
     X = x - ρ
     # Get EM field at guiding center
-    b = B(X, t)
+    vpar, μ, phase = _gc_moments(X, v, E, B, q, m, t)
+
+    return X, vpar, q, q / m, μ, phase
+end
+
+"""
+    _gc_moments(x, v, E, B, q, m, t) -> (vpar, μ, phase)
+
+Parallel velocity, magnetic moment and gyrophase of a particle at position `x`
+with velocity `v`, with the fields evaluated at `x` (unlike
+[`_get_gc_parameters`](@ref), which evaluates them at the guiding center).
+"""
+@inline function _gc_moments(x, v, E, B, q, m, t)
+    b = B(x, t)
     Bmag = norm(b)
     b̂ = b / Bmag
     vpar = b̂ ⋅ v
 
     vperp = v - vpar * b̂
-    e = E(X, t)
+    e = E(x, t)
     vE = (e × b̂) / Bmag
     w = vperp - vE
     μ = m * (w ⋅ w) / (2 * Bmag)
@@ -35,7 +48,50 @@ function _get_gc_parameters(xv, E, B, q, m, t)
     e1, e2 = get_perp_vector(b̂)
     phase = atan(w ⋅ e2, w ⋅ e1)
 
-    return X, vpar, q, q / m, μ, phase
+    return vpar, μ, phase
+end
+
+"""
+    _gc_state_at_switch(xv, E, B, q, m, t, niter) -> (X, vpar, μ, phase)
+
+Guiding-center state of the full-orbit state `xv`, refined by up to `niter`
+fixed-point iterations of `X = x - ρ(X)`: the Larmor radius is evaluated at the
+guiding center instead of at the particle, which is the first-order correction
+that removes the `O(ε)` error of the zeroth-order map. `niter = 0` recovers the
+zeroth-order map.
+
+This map is the exact inverse of [`_gc_to_full`](@ref), so a switch to the
+guiding center and back returns the particle where it was; the reverse
+conversion needs no correction of its own.
+
+An iteration is kept only if it reduces the residual `‖x - (X + ρ(X))‖`, so a
+strongly non-adiabatic crossing, where the fixed-point map stops contracting,
+cannot make the conversion worse than the zeroth-order one.
+"""
+function _gc_state_at_switch(xv, E, B, q, m, t, niter)
+    x = xv[SA[1:3...]]
+    v = xv[SA[4:6...]]
+    X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)
+    niter > 0 || return X, vpar, μ, phase
+
+    x_rec = _gc_to_full(SVector(X[1], X[2], X[3], vpar), E, B, q, m, μ, t, phase)
+    residual = norm(x - get_x(x_rec))
+
+    for _ in 1:niter
+        X_next = X + (x - get_x(x_rec))
+        vpar_next, μ_next, phase_next = _gc_moments(X_next, v, E, B, q, m, t)
+        x_rec_next = _gc_to_full(
+            SVector(X_next[1], X_next[2], X_next[3], vpar_next), E, B, q, m,
+            μ_next, t, phase_next
+        )
+        residual_next = norm(x - get_x(x_rec_next))
+        residual_next < residual || break
+
+        X, vpar, μ, phase = X_next, vpar_next, μ_next, phase_next
+        x_rec, residual = x_rec_next, residual_next
+    end
+
+    return X, vpar, μ, phase
 end
 
 """
