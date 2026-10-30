@@ -479,8 +479,11 @@ end
                     xv_sync = SVector{6, T}(
                         r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
                     )
-                    X_gc, vpar, μ_fo, phase_fo = _gc_state_at_switch(
-                        xv_sync, Efunc, Bfunc, q, m, t, n_correct
+                    # The decision only needs the adiabaticity at the guiding
+                    # center: the first-order correction is applied once, below,
+                    # to the state that is actually carried over.
+                    X_gc, _, _, _, μ_fo, _ = _get_gc_parameters(
+                        xv_sync, Efunc, Bfunc, q, m, t
                     )
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     ϵ = _adia_select(comps, alg)
@@ -498,6 +501,9 @@ end
                                 traj, tsave, plan, isave, t_last, y_last, t, xv_sync
                             )
                         end
+                        X_gc, vpar, μ_fo, phase_fo = _gc_state_at_switch(
+                            xv_sync, Efunc, Bfunc, q, m, t, n_correct
+                        )
                         xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                         p_gc = (; q, q2m, μ = μ_fo, E = Efunc, B = Bfunc)
                         μ = μ_fo
