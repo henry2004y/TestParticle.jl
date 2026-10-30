@@ -1,10 +1,13 @@
 """
-    update_dp5(y, param, dt, t)::(dy, E)
+    update_dp5(y, param, dt, t, mp = nothing)::(dy, E)
 
 Update state using the Dormand-Prince 5(4) method.
 Returns dy as the update and E as the error estimate, both as SArrays.
+
+`mp` is the [`get_magnetic_properties`](@ref) output at `y` and `t`, when the
+caller already has it, so the first stage does not recompute the derivatives.
 """
-@muladd function update_dp5(y, param, dt, t)
+@muladd function update_dp5(y, param, dt, t, mp = nothing)
     # Step in the state precision so Float32 states stay Float32
     T = eltype(y)
     dt = T(dt)
@@ -22,7 +25,7 @@ Returns dy as the update and E as the error estimate, both as SArrays.
     b1, b3, b4, b5, b6 = T.((35 / 384, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84))
     e1, e3, e4, e5, e6, e7 = T.((71 / 57600, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40))
 
-    k1 = trace_gc(y, param, t)
+    k1 = mp === nothing ? trace_gc(y, param, t) : _trace_gc(y, param, t, mp)
 
     y_tmp = y + dt * (a21 * k1)
     k2 = trace_gc(y_tmp, param, t + c2 * dt)

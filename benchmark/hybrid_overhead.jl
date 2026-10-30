@@ -22,15 +22,17 @@ const E_ZERO = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 """
     per_call(f, n = 10_000) -> (ns, sink)
 
-Cost of one `f()` call in nanoseconds, measured over `n` calls. `f` must return a
-number or something `sum` reduces to one; the accumulated value is returned so
-the loop cannot be optimised away.
+Cost of one `f(delta)` call in nanoseconds, averaged over `n` calls. `f` must
+return a number and must depend on its argument, otherwise the compiler hoists
+the whole call out of the loop; `delta` sweeps a tiny offset so every iteration
+does distinct work. The accumulated result is returned so the loop cannot be
+optimised away.
 """
 function per_call(f, n = 10_000)
-    f()
+    f(0.0)
     acc = 0.0
-    t = @elapsed for _ in 1:n
-        acc += sum(f())
+    t = @elapsed for i in 1:n
+        acc += f(1.0e-6 * Float64(i % 16))
     end
     return 1.0e9 * t / n, acc
 end
@@ -63,22 +65,36 @@ function micro_benchmarks(Bfunc, u0, tspan)
     fields = BorisPushers._node_fields(p, x, t0)
     dt = 1.0e-2
 
+    shift3 = SVector(1.0, 0.0, 0.0)
+    shift4 = SVector(1.0, 0.0, 0.0, 0.0)
+    shift6 = SVector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
     ops = (
-        ("adiabaticity_components", () -> sum(TP.adiabaticity_components(
-            X, B, q, m, μ, t0))),
-        ("_gc_to_full", () -> sum(TP._gc_to_full(state_gc, E, B, q, m, μ, t0, phase))),
-        ("_get_gc_parameters", () -> sum(TP._get_gc_parameters(u0, E, B, q, m, t0)[1])),
-        ("_gc_state_at_switch (2 it)", () -> begin
-            Xs, vp, μs, ph = TP._gc_state_at_switch(u0, E, B, q, m, t0, 2)
+        ("adiabaticity_components", δ -> sum(TP.adiabaticity_components(
+            X + δ * shift3, B, q, m, μ, t0))),
+        ("get_magnetic_properties", δ -> sum(
+            TP.get_magnetic_properties(X + δ * shift3, t0, B).κ)),
+        ("_adiabaticity_components (cached mp)", δ -> sum(
+            TP._adiabaticity_components(
+                TP.get_magnetic_properties(X + δ * shift3, t0, B), q, m, μ))),
+        ("_gc_to_full", δ -> sum(TP._gc_to_full(
+            state_gc + δ * shift4, E, B, q, m, μ, t0, phase))),
+        ("_get_gc_parameters", δ -> sum(
+            TP._get_gc_parameters(u0 + δ * shift6, E, B, q, m, t0)[1])),
+        ("_gc_state_at_switch (2 it)", δ -> begin
+            Xs, vp, μs, ph = TP._gc_state_at_switch(u0 + δ * shift6, E, B, q, m, t0, 2)
             return sum(Xs) + vp + μs + ph
         end),
-        ("update_dp5 (one GC step)", () -> sum(TP.update_dp5(state_gc, p_gc, dt, t0))),
-        ("advance_boris (one FO step)", () -> begin
-            r, vn = BorisPushers.advance_boris(v, x, dt, t0, fields, Boris())
+        ("update_dp5 (one GC step)", δ -> begin
+            dy, E = TP.update_dp5(state_gc + δ * shift4, p_gc, dt, t0)
+            return sum(dy) + sum(E)
+        end),
+        ("advance_boris (one FO step)", δ -> begin
+            r, vn = BorisPushers.advance_boris(v, x + δ * shift3, dt, t0, fields, Boris())
             return sum(r) + sum(vn)
         end),
-        ("update_velocity_node", () -> sum(
-            BorisPushers.update_velocity_node(v, x, dt, t0, fields, Boris()))),
+        ("update_velocity_node", δ -> sum(BorisPushers.update_velocity_node(
+            v, x + δ * shift3, dt, t0, fields, Boris()))),
     )
 
     println("\n### Per-operation cost\n")

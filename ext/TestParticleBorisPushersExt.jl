@@ -8,8 +8,8 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
     _gc_to_full, _gc_state_at_switch, _get_gc_parameters,
-    update_dp5, adiabaticity_components, _rng_seed, is_time_dependent,
-    _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
+    update_dp5, adiabaticity_components, _adiabaticity_components, _rng_seed,
+    is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
@@ -392,11 +392,11 @@ end
 
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
+                mp = nothing
                 if _check_due(it, t - t_last_check, check_interval, check_dt)
                     t_last_check = t
-                    comps = adiabaticity_components(
-                        xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
-                    )
+                    mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
+                    comps = _adiabaticity_components(mp, q, m, μ)
                     ϵ = _adia_select(comps, alg)
                     if ϵ ≥ alg.threshold_gc_to_fo
                         mode = :FO
@@ -414,7 +414,11 @@ end
                         v = xv_fo[SVector(4, 5, 6)]
 
                         fields = _node_fields(p, r, t)
-                        dt = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+                        # Clip the guiding-center step to the full-orbit
+                        # stability limit instead of resetting it.
+                        dt = Tt(
+                            clamp(dt, alg.dtmin, Tt(_fo_dt(alg, q2m, norm(fields.B(r, t)))))
+                        )
                         v = update_velocity_half(v, r, dt, t, fields, Boris())
                         continue
                     elseif SaveAdia
@@ -428,7 +432,7 @@ end
                     dt = tspan[2] - t
                 end
 
-                dx, E_err = update_dp5(xv_gc, p_gc, dt, t)
+                dx, E_err = update_dp5(xv_gc, p_gc, dt, t, mp)
 
                 sum_sq_error = 0.0
                 y_next = xv_gc + dx
@@ -510,8 +514,10 @@ end
                         phase = phase_fo
 
                         Bmag_curr = norm(Bfunc(X_gc, t))
+                        # Carry the full-orbit step over instead of resetting
+                        # it, capped at half a gyroperiod.
                         omega = abs(q2m * Bmag_curr)
-                        dt = Tt(0.5 * 2π / omega)
+                        dt = min(dt, Tt(0.5 * 2π / omega))
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)

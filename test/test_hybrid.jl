@@ -409,7 +409,64 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test sol.retcode == TP.ReturnCode.Success
     end
 
-    # 16. Validation of the new keywords.
+    # 16. The adiabaticity check reuses the field derivatives that the step needs
+    # anyway, so both must agree with the standalone evaluation.
+    @testset "cached field properties" begin
+        u = SA[5.0, 0.0, 40.0, 4.0e4, 1.0e4, 9.0e4]
+        X = u[SA[1, 2, 3]]
+        μ = 1.0e-15
+        mp = TP.get_magnetic_properties(X, 0.0, B_field_bottle)
+
+        @test all(isapprox.(
+            TP._adiabaticity_components(mp, q, m, μ),
+            TP.adiabaticity_components(X, B_field_bottle, q, m, μ, 0.0)
+        ))
+
+        state_gc = SVector(X[1], X[2], X[3], 8.0e4)
+        p_gc = (; q, q2m, μ, E = E_field, B = B_field_bottle)
+        @test TP.update_dp5(state_gc, p_gc, 1.0e-6, 0.0, mp) ==
+            TP.update_dp5(state_gc, p_gc, 1.0e-6, 0.0)
+    end
+
+    # 17. A mode switch clips the step to the target mode's stability limit
+    # instead of resetting it, so the step does not jump at the switch.
+    @testset "step carried through a switch" begin
+        u0 = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        T_gyro = gyroperiod(bottle_B0)
+        tspan = (0.0, 30 * T_gyro)
+        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        alg = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 10,
+        )
+        sol = solve(TraceProblem(u0, tspan, p), alg).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+
+        adia = sol.stats.adiabaticity
+        steps = diff(sol.t)
+        n_to_gc, n_to_fo = 0, 0
+        for i in 2:length(adia.mode)
+            adia.mode[i] === adia.mode[i - 1] && continue
+            j = findfirst(t -> t ≈ adia.t[i], sol.t)
+            (j === nothing || j < 2 || j >= length(steps)) && continue
+            if adia.mode[i] === :GC
+                # The full-orbit step is carried over, capped at half a
+                # gyroperiod, so it never jumps above the cap.
+                n_to_gc += 1
+                @test steps[j] <= 1.2 * max(steps[j - 1], 0.5 * T_gyro)
+            else
+                # The guiding-center step is clipped to the full-orbit limit.
+                n_to_fo += 1
+                Bmag = norm(bottle_B(sol.u[j][SA[1, 2, 3]], sol.t[j]))
+                dt_lim = min(2π * alg.safety_fo / (abs(q2m) * Bmag), alg.dtmax)
+                @test steps[j] <= 1.2 * dt_lim
+            end
+        end
+        @test n_to_gc > 0
+        @test n_to_fo > 0
+    end
+
+    # 18. Validation of the new keywords.
     @testset "new keyword validation" begin
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_dt == 20.0
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).switch_correction == 2
