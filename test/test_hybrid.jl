@@ -324,7 +324,26 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test maximum(steps[1:(end - 1)]) > 1.05 * minimum(steps[1:(end - 1)])
     end
 
-    # 14. The adiabaticity check is bounded in time, not only in accepted steps,
+    # 14. The step never crosses the next check deadline, so a long
+    # guiding-center step cannot pass through a non-adiabatic region unexamined.
+    @testset "check deadline" begin
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        T_gyro = gyroperiod(0.01)
+        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        check_dt = 5 * T_gyro
+        alg = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 10 * T_gyro, dtmin = 1.0e-6 * T_gyro,
+            check_dt, check_interval = 1_000_000,
+        )
+        sol = solve(TraceProblem(u0, (0.0, 40 * T_gyro), p), alg).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+
+        gaps = diff(sol.stats.adiabaticity.t)
+        @test length(gaps) > 2
+        @test maximum(gaps) <= check_dt * (1 + 1.0e-9)
+    end
+
+    # 15. The adiabaticity check is bounded in time, not only in accepted steps,
     # so a long guiding-center step cannot skip far into a non-adiabatic region.
     @testset "check time bound" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
@@ -497,7 +516,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
 
     # 19. Validation of the new keywords.
     @testset "new keyword validation" begin
-        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_dt == 20.0
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_dt == 200.0
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).switch_correction == 2
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_margin_max == 1.0
         @test_throws ArgumentError AdaptiveHybrid(;

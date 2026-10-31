@@ -36,11 +36,15 @@ time-reversible. The guiding-center mode uses an embedded RK45 error estimate,
 so its steps may span many gyroperiods.
 
 Because a guiding-center step can be long compared with the scale on which `ε`
-varies, the adiabaticity check after an accepted step is triggered by whichever
-comes first: `check_interval` accepted steps, or `check_dt` in simulation time
-since the previous check. `check_dt` defaults to `10 * dtmax`, which bounds the
-time a particle can travel unexamined without making the check dominate the
-cost; lower it when `ε` changes on a scale shorter than that.
+varies, the adiabaticity check is triggered by whichever comes first:
+`check_interval` accepted steps, or `check_dt` in simulation time since the
+previous check. A step is also clipped so that it never crosses the next check
+deadline, which makes `check_dt` a hard bound on the simulated time a particle
+can travel between examinations rather than a bound that a long step could
+overshoot. `check_dt` defaults to `100 * dtmax`: small enough to catch a
+transition that a long guiding-center step would otherwise jump over, and large
+enough that the clamp does not turn `check_dt` into a step-size cap that costs
+more than the monitoring saves. Lower it where `ε` changes on a shorter scale.
 
 While the solver is in the full-orbit mode, `check_margin_max > 1` lengthens
 both bounds by up to that factor in proportion to how far `ε` sits above
@@ -92,7 +96,7 @@ function AdaptiveHybrid(;
         threshold = 0.1,
         threshold_gc_to_fo = threshold,
         threshold_fo_to_gc = threshold,
-        dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 10 * dtmax,
+        dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 100 * dtmax,
         check_margin_max = 1.0, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
         adiabaticity = :curvature, save_adiabaticity = true, switch_correction = 2

@@ -286,18 +286,30 @@ let
     tspan = (0.0, 10 * T_gyro)
 
     p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
-    alg = AdaptiveHybrid(;
-        threshold = 0.1,
-        dtmax = T_gyro,
-        dtmin = 1.0e-4 * T_gyro,
-        maxiters = 10000,
-        check_interval = 100,
-        save_adiabaticity = false,
-    )
     prob_hybrid = TraceProblem(u0, tspan, p)
 
-    SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable solve(
-        $prob_hybrid, $alg; verbose = false, seed = 1234
+    # The cost of the hybrid depends on which mode the trajectory spends its time
+    # in, and on a bottle like this the outcome of a mixed run is decided by where
+    # the particle happens to be at the first check. The two modes are therefore
+    # benchmarked separately, by pinning the thresholds. Note that the field
+    # strength grows by more than an order of magnitude along the bounce, so the
+    # full-orbit step follows the local gyroperiod (~700 steps here); a fixed
+    # tenth of the *initial* gyroperiod, as measured before that change, aliases
+    # the gyration in the strong-field region.
+    alg_fo = AdaptiveHybrid(;
+        threshold = 0.0, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+        maxiters = 10000, check_interval = 100, save_adiabaticity = false,
+    )
+    alg_gc = AdaptiveHybrid(;
+        threshold = 1.0e9, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+        maxiters = 10000, check_interval = 100, save_adiabaticity = false,
+    )
+
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid, full orbit"] = @benchmarkable solve(
+        $prob_hybrid, $alg_fo; verbose = false, seed = 1234
+    )
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid, guiding center"] = @benchmarkable solve(
+        $prob_hybrid, $alg_gc; verbose = false, seed = 1234
     )
 end
 

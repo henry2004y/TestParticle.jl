@@ -46,8 +46,24 @@ function energy_drift(sol, m)
     return abs(ke(u_last) - ke(u_first)) / ke(u_first)
 end
 
-fo_frac(sol) = sol.stats === nothing ? NaN :
-    count(==(:FO), sol.stats.adiabaticity.mode) / length(sol.stats.adiabaticity.mode)
+"""
+Fraction of the simulated time spent in the full-orbit mode. The diagnostics
+record the mode at each check and the mode cannot change in between, so every
+record owns the interval up to the next one. Counting records instead would let
+the shorter full-orbit steps dominate regardless of how long they take.
+"""
+function fo_fraction(sol)
+    sol.stats === nothing && return NaN
+    ad = sol.stats.adiabaticity
+    isempty(ad.t) && return NaN
+    t_end = sol.t[end]
+    full_orbit_time = 0.0
+    for i in eachindex(ad.t)
+        t_hi = i < length(ad.t) ? ad.t[i + 1] : t_end
+        ad.mode[i] === :FO && (full_orbit_time += t_hi - ad.t[i])
+    end
+    return full_orbit_time / (t_end - ad.t[1])
+end
 
 """
 Harris sheet, `B = (B0 tanh(z/L), 0, Bg)`. The guide field `Bg` keeps `|B|` finite
@@ -85,7 +101,7 @@ function compare(name, Bfunc, u0, tspan, dt_reference, dt_boris, hybrid_kw)
         ("GCRK45", timed(() -> solve(gc_prob, GCRK45())), NaN, gc),
         (
             "AdaptiveHybrid", timed(() -> solve(prob, alg; verbose = false)),
-            fo_frac(hybrid), hybrid,
+            fo_fraction(hybrid), hybrid,
         ),
     )
 

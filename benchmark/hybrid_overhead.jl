@@ -22,17 +22,17 @@ const E_ZERO = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 """
     per_call(f, n = 10_000) -> (ns, sink)
 
-Cost of one `f(delta)` call in nanoseconds, averaged over `n` calls. `f` must
-return a number and must depend on its argument, otherwise the compiler hoists
-the whole call out of the loop; `delta` sweeps a tiny offset so every iteration
-does distinct work. The accumulated result is returned so the loop cannot be
+Cost of one `f(delta)` call in nanoseconds, averaged over `n` calls. `f` receives
+a different `delta` every iteration and must use it for every input it touches
+(position, velocity and time), otherwise the call is loop-invariant and the
+compiler hoists it. The accumulated result is returned so the loop cannot be
 optimised away.
 """
 function per_call(f::F, n = 10_000) where {F}
     f(0.0)
     acc = 0.0
     t = @elapsed for i in 1:n
-        acc += f(1.0e-6 * Float64(i % 16))
+        acc += f(1.0e-3 * Float64(i % 16))
     end
     return 1.0e9 * t / n, acc
 end
@@ -41,7 +41,7 @@ end
 function report(f::F, name) where {F}
     t, acc = per_call(f)
     f(0.0)
-    bytes = @allocated f(1.0e-6)
+    bytes = @allocated f(1.0e-3)
     @printf("| `%s` | %.1f | %d |\n", name, t, bytes)
     return acc == -Inf && error("unreachable")
 end
@@ -84,33 +84,39 @@ function micro_benchmarks(Bfunc, u0, tspan)
 
     # Each `report` call is specialised on its own closure type. Iterating a
     # heterogeneous tuple of closures instead would dispatch dynamically and
-    # box the arguments, which inflates every measurement.
+    # box the arguments, which inflates every measurement. Every closure uses δ
+    # for all of its inputs and consumes every value it computes, so nothing can
+    # be folded away.
+    mp = TP.get_magnetic_properties(X, t0, B)
+
     report("adiabaticity_components") do δ
-        sum(TP.adiabaticity_components(X + δ * shift3, B, q, m, μ, t0))
+        sum(TP.adiabaticity_components(X + δ * shift3, B, q, m, μ * (1 + δ), t0 + δ))
     end
     report("get_magnetic_properties") do δ
-        sum(TP.get_magnetic_properties(X + δ * shift3, t0, B).κ)
+        sum(TP.get_magnetic_properties(X + δ * shift3, t0 + δ, B).κ)
     end
     report("_adiabaticity_components (cached mp)") do δ
-        sum(TP._adiabaticity_components(
-            TP.get_magnetic_properties(X + δ * shift3, t0, B), q, m, μ))
+        sum(TP._adiabaticity_components(mp, q, m, μ * (1 + δ)))
     end
     report("_gc_adia_parameters (X, μ only)") do δ
-        Xa, μa = TP._gc_adia_parameters(u0 + δ * shift6, E, B, q, m, t0)
+        Xa, μa = TP._gc_adia_parameters(u0 + δ * shift6, E, B, q, m, t0 + δ)
         sum(Xa) + μa
     end
     report("_gc_to_full") do δ
-        sum(TP._gc_to_full(state_gc + δ * shift4, E, B, q, m, μ, t0, phase))
+        sum(TP._gc_to_full(state_gc + δ * shift4, E, B, q, m, μ, t0 + δ, phase))
     end
     report("_get_gc_parameters") do δ
-        sum(TP._get_gc_parameters(u0 + δ * shift6, E, B, q, m, t0)[1])
+        Xg, vp, qq, qm, μg, ph = TP._get_gc_parameters(
+            u0 + δ * shift6, E, B, q, m, t0 + δ
+        )
+        sum(Xg) + vp + qq + qm + μg + ph
     end
     report("_gc_state_at_switch (2 it)") do δ
-        Xs, vp, μs, ph = TP._gc_state_at_switch(u0 + δ * shift6, E, B, q, m, t0, 2)
+        Xs, vp, μs, ph = TP._gc_state_at_switch(u0 + δ * shift6, E, B, q, m, t0 + δ, 2)
         sum(Xs) + vp + μs + ph
     end
     report("update_dp5 (one GC step)") do δ
-        dy, dE = TP.update_dp5(state_gc + δ * shift4, p_gc, dt, t0)
+        dy, dE = TP.update_dp5(state_gc + δ * shift4, p_gc, dt, t0 + δ)
         sum(dy) + sum(dE)
     end
     report("advance_boris (one FO step)") do δ

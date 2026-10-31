@@ -393,6 +393,9 @@ end
         retcode = ReturnCode.Success
         t_last_check = t
         check_scale = one(Tt)
+        # A step chosen by a switch must be the one actually taken, otherwise the
+        # staggered velocity and the step disagree.
+        dt_fixed = false
 
         adia_t = Vector{typeof(tspan[1])}(undef, 0)
         adia_vals = Vector{T}(undef, 0)
@@ -439,6 +442,7 @@ end
                             clamp(dt, alg.dtmin, Tt(_fo_dt(alg, q2m, norm(fields.B(r, t)))))
                         )
                         v = update_velocity_half(v, r, dt, t, fields, Boris())
+                        dt_fixed = true
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -449,6 +453,13 @@ end
 
                 if t + dt > tspan[2]
                     dt = tspan[2] - t
+                end
+                # Never step past the next check deadline: a long guiding-center
+                # step could otherwise enter a non-adiabatic region and only be
+                # examined after leaving it again.
+                dt_check = t_last_check + check_scale * check_dt - t
+                if alg.dtmin < dt_check < dt
+                    dt = dt_check
                 end
 
                 dx, E_err = update_dp5(xv_gc, p_gc, dt, t, mp)
@@ -545,9 +556,15 @@ end
                     end
                 end
 
-                dt_new = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+                dt_new = dt_fixed ? dt : Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+                dt_fixed = false
                 if t + dt_new > tspan[2]
                     dt_new = tspan[2] - t
+                end
+                # Never step past the next check deadline (see the GC branch).
+                dt_check = t_last_check + check_scale * check_dt - t
+                if alg.dtmin < dt_check < dt_new
+                    dt_new = dt_check
                 end
                 if dt_new != dt
                     v = BorisPushers.update_velocity_resync(
