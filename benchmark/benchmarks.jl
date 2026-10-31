@@ -294,10 +294,43 @@ let
         check_interval = 100,
         save_adiabaticity = false,
     )
-    prob_hybrid = TraceHybridProblem(u0, tspan, p)
+    prob_hybrid = TraceProblem(u0, tspan, p)
 
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid"] = @benchmarkable solve(
         $prob_hybrid, $alg; verbose = false, seed = 1234
+    )
+end
+
+# Hybrid in a current sheet: the particle crosses a field reversal, so the solver
+# alternates between the adiabatic and non-adiabatic regimes.
+let
+    B0_sheet = 1.0e-7
+    L_sheet = 2.0e4
+    Bg_sheet = 2.0e-8
+    sheet_B(x, t) = SA[B0_sheet * tanh(x[3] / L_sheet), 0.0, Bg_sheet]
+
+    m = TP.mᵢ
+    q = TP.qᵢ
+    q2m = q / m
+    T_gyro = 2π / (abs(q2m) * B0_sheet)
+
+    v = 2.0e5
+    u0 = vcat(SA[0.0, 0.0, -2L_sheet], SA[0.0, 0.95v, 0.3v])
+    p = (q2m, m, TP.Field((x, t) -> SA[0.0, 0.0, 0.0]), TP.Field(sheet_B),
+        TP.ZeroField())
+    prob_sheet = TraceProblem(u0, (0.0, 200 * T_gyro), p)
+
+    alg_sheet = AdaptiveHybrid(;
+        threshold = 0.1,
+        dtmax = T_gyro / 20,
+        dtmin = 1.0e-4 * T_gyro,
+        maxiters = 500_000,
+        check_interval = 10,
+        save_adiabaticity = false,
+    )
+
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid current sheet"] = @benchmarkable solve(
+        $prob_sheet, $alg_sheet; verbose = false, seed = 1234
     )
 end
 

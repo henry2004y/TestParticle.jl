@@ -4,9 +4,10 @@
 # between full orbit (FO) and guiding center (GC) tracing based on the local
 # adiabaticity parameter `ε = ρ_L / R_c`.
 #
-# We use a magnetic bottle field where the adiabaticity varies spatially:
-# near the midplane `ε` is large (non-adiabatic → FO), and near the mirror
-# points `ε` is small (adiabatic → GC).
+# We use a magnetic bottle field where the adiabaticity varies spatially: away
+# from the mirror points the field lines are strongly curved (`ε` large,
+# non-adiabatic → FO), while closer to the mirror points the curvature drops
+# (`ε` small, adiabatic → GC).
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
@@ -48,14 +49,18 @@ q2m = q / m;
 # First we trace the proton using the standard ODE solver to confirm
 # it is trapped and bounces inside the magnetic bottle.
 #
-# The proton is initialized at the midplane ``(x,y,z) = (0,0,0)`` with
-# a perpendicular velocity ``v_{\perp} = 5\times10^4~\mathrm{m/s}``
-# in the ``x``-direction and a parallel velocity
-# ``v_{\parallel} = 1\times10^5~\mathrm{m/s}`` in the ``z``-direction.
-# This gives a significant perpendicular component needed for the
-# mirror force to reflect the particle.
+# The proton is initialized at the midplane with a perpendicular velocity
+# ``v_{\perp} = 5\times10^4~\mathrm{m/s}`` in the ``x``-direction and a parallel
+# velocity ``v_{\parallel} = 1\times10^5~\mathrm{m/s}`` in the ``z``-direction.
+# This gives a significant perpendicular component needed for the mirror force
+# to reflect the particle.
+#
+# The starting point is put off the magnetic axis. On the axis the field is
+# exactly uniform, so its curvature — and hence `ε` — vanishes there;
+# launching at ``x = 10~\mathrm{m}`` (about two gyroradii) puts the particle in
+# the region where the field lines actually bend.
 
-x0 = SA[0.0, 0.0, 0.0]
+x0 = SA[10.0, 0.0, 0.0]
 v_perp = 5.0e4  # [m/s]
 v_par = 1.0e5   # [m/s]
 v0 = SA[v_perp, 0.0, v_par]
@@ -105,6 +110,14 @@ alg = AdaptiveHybrid(;
     maxiters = 500_000,
     check_interval = 10,
 )
+
+# Both modes adapt their step to the local field: the full-orbit mode follows
+# the gyroperiod, the guiding-center mode uses an embedded RK45 estimate. The
+# adiabaticity is checked after every `check_interval` accepted steps *or*
+# every `check_dt` of simulated time, whichever comes first — a guiding-center
+# step can otherwise span many gyroperiods and enter a non-adiabatic region
+# unnoticed. `check_dt` defaults to `10 * dtmax`; lower it where `ε` varies
+# faster than that.
 
 ## Set verbose = true to see the dynamic switching
 p = param_fo

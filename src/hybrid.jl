@@ -28,6 +28,43 @@ the `adiabaticity` field, which may be:
   `:curvature`/`:gradB` miss (e.g. a field whose direction rotates in space
   while keeping constant magnitude).
 
+Both modes adapt their step size to the local field. The full-orbit mode uses a
+Boris step `dt = 2π * safety_fo / (|q/m| * |B|)` clipped to `[dtmin, dtmax]` and
+recomputed after every accepted step; when the step changes, the staggered
+velocity is re-centered on the new step so that the leapfrog scheme stays
+time-reversible. The guiding-center mode uses an embedded RK45 error estimate,
+so its steps may span many gyroperiods.
+
+Because a guiding-center step can be long compared with the scale on which `ε`
+varies, the adiabaticity check after an accepted step is triggered by whichever
+comes first: `check_interval` accepted steps, or `check_dt` in simulation time
+since the previous check. `check_dt` defaults to `10 * dtmax`, which bounds the
+time a particle can travel unexamined without making the check dominate the
+cost; lower it when `ε` changes on a scale shorter than that.
+
+While the solver is in the full-orbit mode, `check_margin_max > 1` lengthens
+both bounds by up to that factor in proportion to how far `ε` sits above
+`threshold_fo_to_gc`: `ε` changes by `O(ε)` over one curvature radius, so an `ε`
+that is a factor `k` above the exit threshold needs of order `k` such excursions
+before the mode can flip, and checking in between only costs time. The interval
+collapses back to its nominal value as `ε` approaches the threshold, and the
+guiding-center mode always uses the nominal interval, so a transition *into* a
+non-adiabatic region is detected as early as with a uniform interval.
+
+It is off by default (`check_margin_max = 1`). Stretching reorders the mode
+history enough to matter: on the magnetic-bottle benchmark `4` makes the run
+about 40% faster but the RMS position error 50% larger, because the full-orbit
+excursions become fewer and longer and the full-orbit step is the coarser one.
+Raise it only where the full-orbit mode is cheap relative to the guiding-center
+mode.
+
+On the switch to the guiding center, the state is refined by up to
+`switch_correction` fixed-point iterations of `X = x - ρ(X)` instead of the
+zeroth-order `X = x - ρ(x)` map, which removes the `O(ε)` jump that the switch
+would otherwise introduce. That map is the exact inverse of the reconstruction
+back to the full orbit, so the round trip through a switch returns the particle
+where it was. Set `switch_correction = 0` for the legacy behavior.
+
 Each check point records only the adiabaticity value used by the selected
 `adiabaticity` mode (a single scalar per check) together with the active mode
 in `sol.stats.adiabaticity`. This diagnostic is only saved when
@@ -42,23 +79,29 @@ struct AdaptiveHybrid{T}
     safety_fo::T
     abstol::T
     reltol::T
+    check_dt::T
+    check_margin_max::T
     maxiters::Int
     check_interval::Int
     adiabaticity::Symbol
     save_adiabaticity::Bool
+    switch_correction::Int
 end
 
 function AdaptiveHybrid(;
         threshold = 0.1,
         threshold_gc_to_fo = threshold,
         threshold_fo_to_gc = threshold,
-        dtmax, dtmin = 1.0e-2 * dtmax, safety_fo = 0.1,
+        dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 10 * dtmax,
+        check_margin_max = 1.0, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
-        adiabaticity = :curvature, save_adiabaticity = true
+        adiabaticity = :curvature, save_adiabaticity = true, switch_correction = 2
     )
     dtmax > 0 || throw(ArgumentError("dtmax must be positive."))
     dtmin > 0 || throw(ArgumentError("dtmin must be positive."))
     dtmin <= dtmax || throw(ArgumentError("dtmin must be <= dtmax."))
+    check_dt > 0 || throw(ArgumentError("check_dt must be positive."))
+    check_margin_max >= 1 || throw(ArgumentError("check_margin_max must be >= 1."))
     safety_fo > 0 || throw(ArgumentError("safety_fo must be positive."))
     maxiters > 0 || throw(ArgumentError("maxiters must be positive."))
     threshold_fo_to_gc >= 0 ||
@@ -66,6 +109,8 @@ function AdaptiveHybrid(;
     abstol > 0 || throw(ArgumentError("abstol must be positive."))
     reltol > 0 || throw(ArgumentError("reltol must be positive."))
     check_interval > 0 || throw(ArgumentError("check_interval must be positive."))
+    switch_correction >= 0 ||
+        throw(ArgumentError("switch_correction must be non-negative."))
     threshold_gc_to_fo >= threshold_fo_to_gc ||
         throw(
         ArgumentError(
@@ -80,11 +125,13 @@ function AdaptiveHybrid(;
     )
     T = promote_type(
         typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
-        typeof(dtmin), typeof(dtmax), typeof(safety_fo), typeof(abstol),
-        typeof(reltol)
+        typeof(dtmin), typeof(dtmax), typeof(check_dt), typeof(check_margin_max),
+        typeof(safety_fo), typeof(abstol), typeof(reltol)
     )
     return AdaptiveHybrid{T}(
-        T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax), T(safety_fo),
-        T(abstol), T(reltol), maxiters, check_interval, adiabaticity, save_adiabaticity
+        T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax),
+        T(safety_fo), T(abstol), T(reltol), T(check_dt), T(check_margin_max),
+        maxiters, check_interval, adiabaticity, save_adiabaticity,
+        switch_correction
     )
 end

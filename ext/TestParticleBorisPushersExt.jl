@@ -7,13 +7,13 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
-    _gc_to_full, _get_gc_parameters, update_dp5,
-    adiabaticity_components, _rng_seed, is_time_dependent, _foreach_chunk,
-    ODE_DEFAULT_ISOUTOFDOMAIN
+    _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
+    update_dp5, adiabaticity_components, _adiabaticity_components, _rng_seed,
+    is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
-    AdaptiveMultistepBoris, update_velocity, adapt_field_to_gpu
+    AdaptiveMultistepBoris, update_velocity, adapt_field_to_gpu, _node_fields
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
@@ -260,11 +260,31 @@ function _adia_sample_stats(prob::FOProblem, save_adiabaticity::Bool)
     )
 end
 
-@inline function _fo_dt(alg, q2m, Bfunc, r, t = 0.0)
-    Bmag = norm(Bfunc(r, t))
+@inline function _fo_dt(alg, q2m, Bmag)
     ω = abs(q2m) * Bmag
-    dt = 2π * alg.safety_fo / ω
+    dt = 2π * alg.safety_fo / ω # Inf for a vanishing field, hence clipped to dtmax
     return clamp(dt, alg.dtmin, alg.dtmax)
+end
+
+@inline function _check_due(it, dt_since_check, check_interval, check_dt)
+    return dt_since_check > zero(dt_since_check) &&
+        (it % check_interval == 0 || dt_since_check >= check_dt)
+end
+
+"""
+Multiplier on the check interval while the solver is in the full-orbit mode: `1`
+next to the exit threshold `β`, growing with `ϵ/β` up to `check_margin_max`. `ϵ`
+changes by `O(ϵ)` over one curvature radius, so an `ϵ` that is a factor `k` above
+`β` needs of order `k` of those excursions before the mode can flip; checking in
+between only costs time. The guiding-center side is deliberately left at the
+nominal interval: shortening it there would delay detection of a transition
+*into* a non-adiabatic region, which is the case the check exists for.
+"""
+@inline function _check_scale(ϵ, alg, mode)
+    mode === :FO || return 1.0
+    β = alg.threshold_fo_to_gc
+    iszero(β) && return 1.0
+    return clamp(ϵ / β - 1, 1.0, alg.check_margin_max)
 end
 
 @inline function _hybrid_save!(
@@ -308,6 +328,10 @@ end
     max_growth = 5.0
     min_growth = 0.2
 
+    check_interval = alg.check_interval
+    check_dt = Tt(alg.check_dt)
+    n_correct = alg.switch_correction
+
     @inbounds for i in irange
         rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
         new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
@@ -335,8 +359,9 @@ end
             verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
             mode = :FO
-            dt = Tt(_fo_dt(alg, q2m, Bfunc, r, t))
-            v = update_velocity(v, r, -dt / 2, t, p, Boris())
+            fields = _node_fields(p, r, t)
+            dt = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+            v = update_velocity_half(v, r, dt, t, fields, Boris())
             Bmag_curr = zero(T)
             verbose && _log_mode("Initial mode: FO", ϵ, t)
         end
@@ -367,12 +392,13 @@ end
         it = 1
         retcode = ReturnCode.Success
         t_last_check = t
+        check_scale = one(Tt)
 
         adia_t = Vector{typeof(tspan[1])}(undef, 0)
         adia_vals = Vector{T}(undef, 0)
         adia_mode = Vector{Symbol}(undef, 0)
         if SaveAdia
-            adia_cap = max(10, div(initial_capacity, alg.check_interval) + 2)
+            adia_cap = max(10, div(initial_capacity, check_interval) + 2)
             sizehint!(adia_t, adia_cap)
             sizehint!(adia_vals, adia_cap)
             sizehint!(adia_mode, adia_cap)
@@ -383,12 +409,14 @@ end
 
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
-                if it % alg.check_interval == 0 && t != t_last_check
+                mp = nothing
+                it_eff = max(1, round(Int, check_scale * check_interval))
+                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
                     t_last_check = t
-                    comps = adiabaticity_components(
-                        xv_gc[SVector(1, 2, 3)], Bfunc, q, m, μ, t
-                    )
+                    mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
+                    comps = _adiabaticity_components(mp, q, m, μ)
                     ϵ = _adia_select(comps, alg)
+                    check_scale = Tt(_check_scale(ϵ, alg, mode))
                     if ϵ ≥ alg.threshold_gc_to_fo
                         mode = :FO
                         it = 1
@@ -404,8 +432,13 @@ end
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
 
-                        dt = Tt(_fo_dt(alg, q2m, Bfunc, r, t))
-                        v = update_velocity(v, r, -dt / 2, t, p, Boris())
+                        fields = _node_fields(p, r, t)
+                        # Clip the guiding-center step to the full-orbit
+                        # stability limit instead of resetting it.
+                        dt = Tt(
+                            clamp(dt, alg.dtmin, Tt(_fo_dt(alg, q2m, norm(fields.B(r, t)))))
+                        )
+                        v = update_velocity_half(v, r, dt, t, fields, Boris())
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -418,7 +451,7 @@ end
                     dt = tspan[2] - t
                 end
 
-                dx, E_err = update_dp5(xv_gc, p_gc, dt, t)
+                dx, E_err = update_dp5(xv_gc, p_gc, dt, t, mp)
 
                 sum_sq_error = 0.0
                 y_next = xv_gc + dx
@@ -460,18 +493,23 @@ end
                 end
 
             else # Mode == :FO
-                if it % alg.check_interval == 0 && t != t_last_check
+                # One field evaluation per step serves the adiabaticity check,
+                # the step-size update and the saved node velocity.
+                fields = _node_fields(p, r, t)
+                it_eff = max(1, round(Int, check_scale * check_interval))
+                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
                     t_last_check = t
-                    t_sync = is_td ? t : zero(T)
-                    v_sync = update_velocity(v, r, dt / 2, t_sync, p, Boris())
+                    v_sync = update_velocity_node(v, r, dt, t, fields, Boris())
                     xv_sync = SVector{6, T}(
                         r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
                     )
-                    X_gc, vpar, _, _, μ_fo, phase_fo = _get_gc_parameters(
-                        xv_sync, Efunc, Bfunc, q, m, t
-                    )
+                    # The decision only needs the adiabaticity at the guiding
+                    # center: the first-order correction and the gyrophase are
+                    # applied once, below, to the state actually carried over.
+                    X_gc, μ_fo = _gc_adia_parameters(xv_sync, Efunc, Bfunc, q, m, t)
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     ϵ = _adia_select(comps, alg)
+                    check_scale = Tt(_check_scale(ϵ, alg, mode))
                     if ϵ < alg.threshold_fo_to_gc
                         mode = :GC
                         it = 1
@@ -486,14 +524,19 @@ end
                                 traj, tsave, plan, isave, t_last, y_last, t, xv_sync
                             )
                         end
+                        X_gc, vpar, μ_fo, phase_fo = _gc_state_at_switch(
+                            xv_sync, Efunc, Bfunc, q, m, t, n_correct
+                        )
                         xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                         p_gc = (; q, q2m, μ = μ_fo, E = Efunc, B = Bfunc)
                         μ = μ_fo
                         phase = phase_fo
 
                         Bmag_curr = norm(Bfunc(X_gc, t))
+                        # Carry the full-orbit step over instead of resetting
+                        # it, capped at half a gyroperiod.
                         omega = abs(q2m * Bmag_curr)
-                        dt = Tt(0.5 * 2π / omega)
+                        dt = min(dt, Tt(0.5 * 2π / omega))
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -502,13 +545,19 @@ end
                     end
                 end
 
-                if t + dt > tspan[2]
-                    dt = tspan[2] - t
+                dt_new = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+                if t + dt_new > tspan[2]
+                    dt_new = tspan[2] - t
+                end
+                if dt_new != dt
+                    v = BorisPushers.update_velocity_resync(
+                        v, r, dt, dt_new, t, fields, Boris()
+                    )
+                    dt = dt_new
                 end
 
                 v_prev = v
-                v = update_velocity(v, r, dt, t + dt / 2, p, Boris())
-                r_next = r + v * dt
+                r_next, v = advance_boris(v, r, dt, t, fields, Boris())
                 t_next = t + dt
                 if isoutside(vcat(r_next, v), p, t_next)
                     retcode = ReturnCode.Terminated
@@ -517,7 +566,7 @@ end
                 end
 
                 if use_saveat(plan) || (save_everystep && (it - 1) > 0)
-                    v_save = update_velocity(v_prev, r, dt / 2, t, p, Boris())
+                    v_save = update_velocity_node(v_prev, r, dt, t, fields, Boris())
                     isave, t_last, y_last = _hybrid_save!(
                         traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)
                     )
@@ -535,7 +584,7 @@ end
                 push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
                 t_final = is_td ? t : zero(T)
-                v_final = update_velocity(v, r, dt / 2, t_final, p, Boris())
+                v_final = update_velocity_node(v, r, dt, t_final, p, Boris())
                 push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)
