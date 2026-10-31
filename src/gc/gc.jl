@@ -10,7 +10,7 @@ ignore `t`.
 
 #TODO : support external forces
 """
-function _get_gc_parameters(xv, E, B, q, m, t)
+@inline function _get_gc_parameters(xv, E, B, q, m, t)
     x, v = xv[SA[1:3...]], xv[SA[4:6...]]
 
     bparticle = B(x, t)
@@ -88,7 +88,7 @@ An iteration is kept only if it reduces the residual `‖x - (X + ρ(X))‖`, so
 strongly non-adiabatic crossing, where the fixed-point map stops contracting,
 cannot make the conversion worse than the zeroth-order one.
 """
-function _gc_state_at_switch(xv, E, B, q, m, t, niter)
+@inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
     x = xv[SA[1:3...]]
     v = xv[SA[4:6...]]
     X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)

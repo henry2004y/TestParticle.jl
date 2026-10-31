@@ -37,6 +37,15 @@ function per_call(f::F, n = 10_000) where {F}
     return 1.0e9 * t / n, acc
 end
 
+"Print one row of the per-operation table; `f` must depend on its argument."
+function report(f::F, name) where {F}
+    t, acc = per_call(f)
+    f(0.0)
+    bytes = @allocated f(1.0e-6)
+    @printf("| `%s` | %.1f | %d |\n", name, t, bytes)
+    return acc == -Inf && error("unreachable")
+end
+
 "Best wall time [ms] of `f()`, after a warm-up call."
 function time_ms(f, n = 5)
     f()
@@ -69,45 +78,47 @@ function micro_benchmarks(Bfunc, u0, tspan)
     shift4 = SVector(1.0, 0.0, 0.0, 0.0)
     shift6 = SVector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    ops = (
-        ("adiabaticity_components", δ -> sum(TP.adiabaticity_components(
-            X + δ * shift3, B, q, m, μ, t0))),
-        ("get_magnetic_properties", δ -> sum(
-            TP.get_magnetic_properties(X + δ * shift3, t0, B).κ)),
-        ("_adiabaticity_components (cached mp)", δ -> sum(
-            TP._adiabaticity_components(
-                TP.get_magnetic_properties(X + δ * shift3, t0, B), q, m, μ))),
-        ("_gc_adia_parameters (X, μ only)", δ -> begin
-            Xa, μa = TP._gc_adia_parameters(u0 + δ * shift6, E, B, q, m, t0)
-            return sum(Xa) + μa
-        end),
-        ("_gc_to_full", δ -> sum(TP._gc_to_full(
-            state_gc + δ * shift4, E, B, q, m, μ, t0, phase))),
-        ("_get_gc_parameters", δ -> sum(
-            TP._get_gc_parameters(u0 + δ * shift6, E, B, q, m, t0)[1])),
-        ("_gc_state_at_switch (2 it)", δ -> begin
-            Xs, vp, μs, ph = TP._gc_state_at_switch(u0 + δ * shift6, E, B, q, m, t0, 2)
-            return sum(Xs) + vp + μs + ph
-        end),
-        ("update_dp5 (one GC step)", δ -> begin
-            dy, E = TP.update_dp5(state_gc + δ * shift4, p_gc, dt, t0)
-            return sum(dy) + sum(E)
-        end),
-        ("advance_boris (one FO step)", δ -> begin
-            r, vn = BorisPushers.advance_boris(v, x + δ * shift3, dt, t0, fields, Boris())
-            return sum(r) + sum(vn)
-        end),
-        ("update_velocity_node", δ -> sum(BorisPushers.update_velocity_node(
-            v, x + δ * shift3, dt, t0, fields, Boris()))),
-    )
-
     println("\n### Per-operation cost\n")
-    println("| Operation | Time [ns] |")
-    println("| :--- | ---: |")
-    for (name, f) in ops
-        t, acc = per_call(f)
-        @printf("| `%s` | %.1f |\n", name, t)
-        acc == -Inf && error("unreachable")
+    println("| Operation | Time [ns] | Allocated [B] |")
+    println("| :--- | ---: | ---: |")
+
+    # Each `report` call is specialised on its own closure type. Iterating a
+    # heterogeneous tuple of closures instead would dispatch dynamically and
+    # box the arguments, which inflates every measurement.
+    report("adiabaticity_components") do δ
+        sum(TP.adiabaticity_components(X + δ * shift3, B, q, m, μ, t0))
+    end
+    report("get_magnetic_properties") do δ
+        sum(TP.get_magnetic_properties(X + δ * shift3, t0, B).κ)
+    end
+    report("_adiabaticity_components (cached mp)") do δ
+        sum(TP._adiabaticity_components(
+            TP.get_magnetic_properties(X + δ * shift3, t0, B), q, m, μ))
+    end
+    report("_gc_adia_parameters (X, μ only)") do δ
+        Xa, μa = TP._gc_adia_parameters(u0 + δ * shift6, E, B, q, m, t0)
+        sum(Xa) + μa
+    end
+    report("_gc_to_full") do δ
+        sum(TP._gc_to_full(state_gc + δ * shift4, E, B, q, m, μ, t0, phase))
+    end
+    report("_get_gc_parameters") do δ
+        sum(TP._get_gc_parameters(u0 + δ * shift6, E, B, q, m, t0)[1])
+    end
+    report("_gc_state_at_switch (2 it)") do δ
+        Xs, vp, μs, ph = TP._gc_state_at_switch(u0 + δ * shift6, E, B, q, m, t0, 2)
+        sum(Xs) + vp + μs + ph
+    end
+    report("update_dp5 (one GC step)") do δ
+        dy, dE = TP.update_dp5(state_gc + δ * shift4, p_gc, dt, t0)
+        sum(dy) + sum(dE)
+    end
+    report("advance_boris (one FO step)") do δ
+        r, vn = BorisPushers.advance_boris(v, x + δ * shift3, dt, t0, fields, Boris())
+        sum(r) + sum(vn)
+    end
+    report("update_velocity_node") do δ
+        sum(BorisPushers.update_velocity_node(v, x + δ * shift3, dt, t0, fields, Boris()))
     end
     return nothing
 end
