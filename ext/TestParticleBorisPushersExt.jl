@@ -7,7 +7,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
-    _gc_to_full, _gc_state_at_switch, _get_gc_parameters,
+    _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
     update_dp5, adiabaticity_components, _adiabaticity_components, _rng_seed,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
@@ -484,11 +484,9 @@ end
                         r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
                     )
                     # The decision only needs the adiabaticity at the guiding
-                    # center: the first-order correction is applied once, below,
-                    # to the state that is actually carried over.
-                    X_gc, _, _, _, μ_fo, _ = _get_gc_parameters(
-                        xv_sync, Efunc, Bfunc, q, m, t
-                    )
+                    # center: the first-order correction and the gyrophase are
+                    # applied once, below, to the state actually carried over.
+                    X_gc, μ_fo = _gc_adia_parameters(xv_sync, Efunc, Bfunc, q, m, t)
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     ϵ = _adia_select(comps, alg)
                     if ϵ < alg.threshold_fo_to_gc

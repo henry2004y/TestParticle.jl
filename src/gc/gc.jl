@@ -52,6 +52,26 @@ with velocity `v`, with the fields evaluated at `x` (unlike
 end
 
 """
+    _gc_adia_parameters(xv, E, B, q, m, t) -> (X, μ)
+
+Guiding-center position and magnetic moment of the full-orbit state `xv` — the
+two quantities an adiabaticity estimate needs. Unlike
+[`_get_gc_parameters`](@ref) this skips the gyrophase (an `atan2` and two basis
+vectors that the estimate never uses) and returns a two-element tuple, which
+keeps the call allocation-free; the result is identical.
+"""
+@inline function _gc_adia_parameters(xv, E, B, q, m, t)
+    x = xv[SA[1:3...]]
+    v = xv[SA[4:6...]]
+    b = B(x, t)
+    Bmag = norm(b)
+    b̂ = b / Bmag
+    X = x - (b̂ × v) / ((q / m) * Bmag)
+    _, μ, _ = _gc_moments(X, v, E, B, q, m, t)
+    return X, μ
+end
+
+"""
     _gc_state_at_switch(xv, E, B, q, m, t, niter) -> (X, vpar, μ, phase)
 
 Guiding-center state of the full-orbit state `xv`, refined by up to `niter`

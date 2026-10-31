@@ -422,6 +422,15 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             TP.adiabaticity_components(X, B_field_bottle, q, m, μ, 0.0)
         ))
 
+        # The lean two-element version used by the check drops the gyrophase but
+        # returns the same guiding center and magnetic moment.
+        X_check, μ_check = TP._gc_adia_parameters(u, E_field, B_field_bottle, q, m, 0.0)
+        X_full, _, _, _, μ_full, _ = TP._get_gc_parameters(
+            u, E_field, B_field_bottle, q, m, 0.0
+        )
+        @test X_check == X_full
+        @test μ_check == μ_full
+
         state_gc = SVector(X[1], X[2], X[3], 8.0e4)
         p_gc = (; q, q2m, μ, E = E_field, B = B_field_bottle)
         @test TP.update_dp5(state_gc, p_gc, 1.0e-6, 0.0, mp) ==

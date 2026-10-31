@@ -28,7 +28,7 @@ the whole call out of the loop; `delta` sweeps a tiny offset so every iteration
 does distinct work. The accumulated result is returned so the loop cannot be
 optimised away.
 """
-function per_call(f, n = 10_000)
+function per_call(f::F, n = 10_000) where {F}
     f(0.0)
     acc = 0.0
     t = @elapsed for i in 1:n
@@ -77,6 +77,10 @@ function micro_benchmarks(Bfunc, u0, tspan)
         ("_adiabaticity_components (cached mp)", δ -> sum(
             TP._adiabaticity_components(
                 TP.get_magnetic_properties(X + δ * shift3, t0, B), q, m, μ))),
+        ("_gc_adia_parameters (X, μ only)", δ -> begin
+            Xa, μa = TP._gc_adia_parameters(u0 + δ * shift6, E, B, q, m, t0)
+            return sum(Xa) + μa
+        end),
         ("_gc_to_full", δ -> sum(TP._gc_to_full(
             state_gc + δ * shift4, E, B, q, m, μ, t0, phase))),
         ("_get_gc_parameters", δ -> sum(
