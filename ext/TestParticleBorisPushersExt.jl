@@ -271,6 +271,22 @@ end
         (it % check_interval == 0 || dt_since_check >= check_dt)
 end
 
+"""
+Multiplier on the check interval while the solver is in the full-orbit mode: `1`
+next to the exit threshold `β`, growing with `ϵ/β` up to `check_margin_max`. `ϵ`
+changes by `O(ϵ)` over one curvature radius, so an `ϵ` that is a factor `k` above
+`β` needs of order `k` of those excursions before the mode can flip; checking in
+between only costs time. The guiding-center side is deliberately left at the
+nominal interval: shortening it there would delay detection of a transition
+*into* a non-adiabatic region, which is the case the check exists for.
+"""
+@inline function _check_scale(ϵ, alg, mode)
+    mode === :FO || return 1.0
+    β = alg.threshold_fo_to_gc
+    iszero(β) && return 1.0
+    return clamp(ϵ / β - 1, 1.0, alg.check_margin_max)
+end
+
 @inline function _hybrid_save!(
         traj, tsave, plan, isave, t_last, y_last, t_out, y_out
     )
@@ -376,6 +392,7 @@ end
         it = 1
         retcode = ReturnCode.Success
         t_last_check = t
+        check_scale = one(Tt)
 
         adia_t = Vector{typeof(tspan[1])}(undef, 0)
         adia_vals = Vector{T}(undef, 0)
@@ -393,11 +410,13 @@ end
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
                 mp = nothing
-                if _check_due(it, t - t_last_check, check_interval, check_dt)
+                it_eff = max(1, round(Int, check_scale * check_interval))
+                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
                     t_last_check = t
                     mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
                     comps = _adiabaticity_components(mp, q, m, μ)
                     ϵ = _adia_select(comps, alg)
+                    check_scale = Tt(_check_scale(ϵ, alg, mode))
                     if ϵ ≥ alg.threshold_gc_to_fo
                         mode = :FO
                         it = 1
@@ -477,7 +496,8 @@ end
                 # One field evaluation per step serves the adiabaticity check,
                 # the step-size update and the saved node velocity.
                 fields = _node_fields(p, r, t)
-                if _check_due(it, t - t_last_check, check_interval, check_dt)
+                it_eff = max(1, round(Int, check_scale * check_interval))
+                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
                     t_last_check = t
                     v_sync = update_velocity_node(v, r, dt, t, fields, Boris())
                     xv_sync = SVector{6, T}(
@@ -489,6 +509,7 @@ end
                     X_gc, μ_fo = _gc_adia_parameters(xv_sync, Efunc, Bfunc, q, m, t)
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     ϵ = _adia_select(comps, alg)
+                    check_scale = Tt(_check_scale(ϵ, alg, mode))
                     if ϵ < alg.threshold_fo_to_gc
                         mode = :GC
                         it = 1

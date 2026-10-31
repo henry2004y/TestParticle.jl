@@ -163,6 +163,10 @@ Internal GC → full-orbit conversion taking the field functions and charges
 directly, so it can be shared by the GC and hybrid solvers. `E_field` and
 `B_field` must be callable as `E_field(x, t)` / `B_field(x, t)`; static fields
 simply ignore `t`.
+
+Returns an `SVector{6}` so that it can be used in a hot loop and stored in a
+`Vector{SVector{6}}` without allocating; [`gc_to_full`](@ref) converts it to a
+`Vector` for the public API.
 """
 function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
     R = get_x(state_gc)
@@ -191,7 +195,7 @@ function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
 
     x = R + ρ_vec
 
-    return vcat(x, v)
+    return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
 end
 
 """

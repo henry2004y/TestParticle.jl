@@ -475,15 +475,39 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test n_to_fo > 0
     end
 
-    # 18. Validation of the new keywords.
+    # 18. While the solver is confidently non-adiabatic, the full-orbit check
+    # interval is stretched, so a run in that regime needs fewer checks.
+    @testset "stretched check interval" begin
+        u0 = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        T_gyro = gyroperiod(bottle_B0)
+        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        prob = TraceProblem(u0, (0.0, 30 * T_gyro), p)
+        base = (;
+            threshold = 0.05, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 10,
+        )
+        sol_flat = solve(prob, AdaptiveHybrid(; base..., check_margin_max = 1.0)).u[1]
+        sol_long = solve(prob, AdaptiveHybrid(; base..., check_margin_max = 10.0)).u[1]
+
+        @test sol_flat.retcode == TP.ReturnCode.Success
+        @test sol_long.retcode == TP.ReturnCode.Success
+        @test length(sol_long.stats.adiabaticity.t) <
+            length(sol_flat.stats.adiabaticity.t)
+    end
+
+    # 19. Validation of the new keywords.
     @testset "new keyword validation" begin
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_dt == 20.0
         @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).switch_correction == 2
+        @test AdaptiveHybrid(; threshold = 0.1, dtmax = 2.0).check_margin_max == 1.0
         @test_throws ArgumentError AdaptiveHybrid(;
             threshold = 0.1, dtmax = 1.0, check_dt = 0.0
         )
         @test_throws ArgumentError AdaptiveHybrid(;
             threshold = 0.1, dtmax = 1.0, switch_correction = -1
+        )
+        @test_throws ArgumentError AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0, check_margin_max = 0.5
         )
     end
 end

@@ -42,6 +42,22 @@ since the previous check. `check_dt` defaults to `10 * dtmax`, which bounds the
 time a particle can travel unexamined without making the check dominate the
 cost; lower it when `ε` changes on a scale shorter than that.
 
+While the solver is in the full-orbit mode, `check_margin_max > 1` lengthens
+both bounds by up to that factor in proportion to how far `ε` sits above
+`threshold_fo_to_gc`: `ε` changes by `O(ε)` over one curvature radius, so an `ε`
+that is a factor `k` above the exit threshold needs of order `k` such excursions
+before the mode can flip, and checking in between only costs time. The interval
+collapses back to its nominal value as `ε` approaches the threshold, and the
+guiding-center mode always uses the nominal interval, so a transition *into* a
+non-adiabatic region is detected as early as with a uniform interval.
+
+It is off by default (`check_margin_max = 1`). Stretching reorders the mode
+history enough to matter: on the magnetic-bottle benchmark `4` makes the run
+about 40% faster but the RMS position error 50% larger, because the full-orbit
+excursions become fewer and longer and the full-orbit step is the coarser one.
+Raise it only where the full-orbit mode is cheap relative to the guiding-center
+mode.
+
 On the switch to the guiding center, the state is refined by up to
 `switch_correction` fixed-point iterations of `X = x - ρ(X)` instead of the
 zeroth-order `X = x - ρ(x)` map, which removes the `O(ε)` jump that the switch
@@ -64,6 +80,7 @@ struct AdaptiveHybrid{T}
     abstol::T
     reltol::T
     check_dt::T
+    check_margin_max::T
     maxiters::Int
     check_interval::Int
     adiabaticity::Symbol
@@ -75,7 +92,8 @@ function AdaptiveHybrid(;
         threshold = 0.1,
         threshold_gc_to_fo = threshold,
         threshold_fo_to_gc = threshold,
-        dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 10 * dtmax, safety_fo = 0.1,
+        dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 10 * dtmax,
+        check_margin_max = 1.0, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
         adiabaticity = :curvature, save_adiabaticity = true, switch_correction = 2
     )
@@ -83,6 +101,7 @@ function AdaptiveHybrid(;
     dtmin > 0 || throw(ArgumentError("dtmin must be positive."))
     dtmin <= dtmax || throw(ArgumentError("dtmin must be <= dtmax."))
     check_dt > 0 || throw(ArgumentError("check_dt must be positive."))
+    check_margin_max >= 1 || throw(ArgumentError("check_margin_max must be >= 1."))
     safety_fo > 0 || throw(ArgumentError("safety_fo must be positive."))
     maxiters > 0 || throw(ArgumentError("maxiters must be positive."))
     threshold_fo_to_gc >= 0 ||
@@ -106,12 +125,13 @@ function AdaptiveHybrid(;
     )
     T = promote_type(
         typeof(threshold_gc_to_fo), typeof(threshold_fo_to_gc),
-        typeof(dtmin), typeof(dtmax), typeof(check_dt), typeof(safety_fo),
-        typeof(abstol), typeof(reltol)
+        typeof(dtmin), typeof(dtmax), typeof(check_dt), typeof(check_margin_max),
+        typeof(safety_fo), typeof(abstol), typeof(reltol)
     )
     return AdaptiveHybrid{T}(
         T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax),
-        T(safety_fo), T(abstol), T(reltol), T(check_dt), maxiters, check_interval,
-        adiabaticity, save_adiabaticity, switch_correction
+        T(safety_fo), T(abstol), T(reltol), T(check_dt), T(check_margin_max),
+        maxiters, check_interval, adiabaticity, save_adiabaticity,
+        switch_correction
     )
 end
