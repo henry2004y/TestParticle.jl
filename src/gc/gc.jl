@@ -1,5 +1,42 @@
 # Guiding center.
 
+"Split a full-orbit state into position and velocity."
+@inline _split_xv(xv) = xv[SA[1:3...]], xv[SA[4:6...]]
+
+"""
+    _gc_position(x, v, B, q, m, t)
+
+Guiding-center position `X = x - ρ(x)`, with the Larmor radius `ρ` evaluated at
+the particle: the zeroth-order map.
+"""
+@inline function _gc_position(x, v, B, q, m, t)
+    b = B(x, t)
+    Bmag = norm(b)
+    return x - ((b / Bmag) × v) / ((q / m) * Bmag)
+end
+
+"""
+    _gc_frame(x, v, E, B, m, t) -> (; b̂, w, vpar, μ)
+
+Field-aligned frame at position `x`: unit field `b̂`, gyration velocity
+`w = v - vpar b̂ - v_E`, parallel velocity `vpar = b̂ ⋅ v` and magnetic moment
+`μ = m|w|² / (2|B|)`.
+"""
+@inline function _gc_frame(x, v, E, B, m, t)
+    b = B(x, t)
+    Bmag = norm(b)
+    b̂ = b / Bmag
+    vpar = b̂ ⋅ v
+    w = v - vpar * b̂ - (E(x, t) × b̂) / Bmag
+    return (; b̂, w, vpar, μ = m * (w ⋅ w) / (2 * Bmag))
+end
+
+"Gyrophase of the gyration velocity `w` in the frame built from `b̂`."
+@inline function _gc_phase(b̂, w)
+    e1, e2 = get_perp_vector(b̂)
+    return atan(w ⋅ e2, w ⋅ e1)
+end
+
 """
     _get_gc_parameters(xv, E, B, q, m, t) -> (X, vpar, q, q / m, μ, phase)
 
@@ -11,64 +48,24 @@ ignore `t`.
 #TODO : support external forces
 """
 @inline function _get_gc_parameters(xv, E, B, q, m, t)
-    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
-
-    bparticle = B(x, t)
-    Bmag_particle = norm(bparticle)
-    b̂particle = bparticle / Bmag_particle
-    # vector of Larmor radius
-    ρ = (b̂particle × v) / (q / m * Bmag_particle)
-    # Get the guiding center location
-    X = x - ρ
-    # Get EM field at guiding center
-    vpar, μ, phase = _gc_moments(X, v, E, B, q, m, t)
-
-    return X, vpar, q, q / m, μ, phase
-end
-
-"""
-    _gc_moments(x, v, E, B, q, m, t) -> (vpar, μ, phase)
-
-Parallel velocity, magnetic moment and gyrophase of a particle at position `x`
-with velocity `v`, with the fields evaluated at `x` (unlike
-[`_get_gc_parameters`](@ref), which evaluates them at the guiding center).
-"""
-@inline function _gc_moments(x, v, E, B, q, m, t)
-    b = B(x, t)
-    Bmag = norm(b)
-    b̂ = b / Bmag
-    vpar = b̂ ⋅ v
-
-    vperp = v - vpar * b̂
-    e = E(x, t)
-    vE = (e × b̂) / Bmag
-    w = vperp - vE
-    μ = m * (w ⋅ w) / (2 * Bmag)
-
-    e1, e2 = get_perp_vector(b̂)
-    phase = atan(w ⋅ e2, w ⋅ e1)
-
-    return vpar, μ, phase
+    x, v = _split_xv(xv)
+    X = _gc_position(x, v, B, q, m, t)
+    f = _gc_frame(X, v, E, B, m, t)
+    return X, f.vpar, q, q / m, f.μ, _gc_phase(f.b̂, f.w)
 end
 
 """
     _gc_adia_parameters(xv, E, B, q, m, t) -> (X, μ)
 
 Guiding-center position and magnetic moment of the full-orbit state `xv` — the
-two quantities an adiabaticity estimate needs. Unlike
-[`_get_gc_parameters`](@ref) this skips the gyrophase (an `atan2` and two basis
-vectors that the estimate never uses) and returns a two-element tuple, which
-keeps the call allocation-free; the result is identical.
+two quantities an adiabaticity estimate needs. The gyrophase (`get_perp_vector`
+and an `atan2`) is skipped because the estimate never uses it; the values are
+identical to those of [`_get_gc_parameters`](@ref).
 """
 @inline function _gc_adia_parameters(xv, E, B, q, m, t)
-    x = xv[SA[1:3...]]
-    v = xv[SA[4:6...]]
-    b = B(x, t)
-    Bmag = norm(b)
-    b̂ = b / Bmag
-    X = x - (b̂ × v) / ((q / m) * Bmag)
-    _, μ, _ = _gc_moments(X, v, E, B, q, m, t)
-    return X, μ
+    x, v = _split_xv(xv)
+    X = _gc_position(x, v, B, q, m, t)
+    return X, _gc_frame(X, v, E, B, m, t).μ
 end
 
 """
@@ -89,8 +86,7 @@ strongly non-adiabatic crossing, where the fixed-point map stops contracting,
 cannot make the conversion worse than the zeroth-order one.
 """
 @inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
-    x = xv[SA[1:3...]]
-    v = xv[SA[4:6...]]
+    x, v = _split_xv(xv)
     X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)
     niter > 0 || return X, vpar, μ, phase
 
@@ -99,15 +95,16 @@ cannot make the conversion worse than the zeroth-order one.
 
     for _ in 1:niter
         X_next = X + (x - get_x(x_rec))
-        vpar_next, μ_next, phase_next = _gc_moments(X_next, v, E, B, q, m, t)
+        f = _gc_frame(X_next, v, E, B, m, t)
+        phase_next = _gc_phase(f.b̂, f.w)
         x_rec_next = _gc_to_full(
-            SVector(X_next[1], X_next[2], X_next[3], vpar_next), E, B, q, m,
-            μ_next, t, phase_next
+            SVector(X_next[1], X_next[2], X_next[3], f.vpar), E, B, q, m,
+            f.μ, t, phase_next
         )
         residual_next = norm(x - get_x(x_rec_next))
         residual_next < residual || break
 
-        X, vpar, μ, phase = X_next, vpar_next, μ_next, phase_next
+        X, vpar, μ, phase = X_next, f.vpar, f.μ, phase_next
         x_rec, residual = x_rec_next, residual_next
     end
 
