@@ -339,7 +339,54 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test sol.retcode == TP.ReturnCode.Success
 
         gaps = diff(sol.stats.adiabaticity.t)
+        push!(gaps, sol.t[end] - sol.stats.adiabaticity.t[end])
         @test length(gaps) > 2
+        @test maximum(gaps) <= check_dt * (1 + 1.0e-9)
+    end
+
+    # 14a. Landing on a deadline repeatedly must still trigger a check: an
+    # elapsed-time comparison can round just below `check_dt` and skip it.
+    @testset "repeated deadline landings" begin
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        T_gyro = gyroperiod(0.01)
+        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        for (threshold, check_dt, dtmin, dtmax, tspan) in (
+                (0.1, 0.5 * T_gyro, 1.0e-6 * T_gyro, 10 * T_gyro, 40 * T_gyro),
+                (0.0, 0.5 * T_gyro, 1.0e-6 * T_gyro, 10 * T_gyro, 40 * T_gyro),
+                (0.1, 0.1, 1.0e-9, 1.0, 0.5),
+            )
+            alg = AdaptiveHybrid(;
+                threshold, dtmax, dtmin, check_dt, check_interval = 1_000_000,
+            )
+            sol = solve(TraceProblem(u0, (0.0, tspan), p), alg).u[1]
+            @test sol.retcode == TP.ReturnCode.Success
+
+            ad = sol.stats.adiabaticity
+            gaps = diff(ad.t)
+            push!(gaps, sol.t[end] - ad.t[end])
+            @test length(gaps) > 2
+            @test maximum(gaps) <= check_dt * (1 + 1.0e-9)
+        end
+    end
+
+    # 14b. A positive deadline remainder is clipped even when it is below
+    # `dtmin`, which is an allowed configuration (`check_dt <= dtmin`).
+    @testset "deadline below dtmin" begin
+        u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
+        T_gyro = gyroperiod(0.01)
+        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        check_dt = 0.01 * T_gyro
+        alg = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 10 * T_gyro, dtmin = 0.1 * T_gyro,
+            check_dt, check_interval = 1_000_000,
+        )
+        sol = solve(TraceProblem(u0, (0.0, 2 * T_gyro), p), alg).u[1]
+        @test sol.retcode == TP.ReturnCode.Success
+
+        ad = sol.stats.adiabaticity
+        gaps = diff(ad.t)
+        push!(gaps, sol.t[end] - ad.t[end])
+        @test length(gaps) > 20
         @test maximum(gaps) <= check_dt * (1 + 1.0e-9)
     end
 

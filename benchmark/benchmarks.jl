@@ -272,8 +272,9 @@ end
 # Each hybrid entry is paired with the standalone AdaptiveBoris and GCRK45 solvers
 # on the same trajectory, so the timings can be read as a comparison. The FO
 # baseline tracks the local gyroperiod with the same safety factor as the hybrid's
-# FO mode; a fixed step tied to the initial gyroperiod is up to 20x longer than the
-# local gyroperiod in the bottle and only aliases the gyration. Diagnostics are
+# FO mode and gets the same `dtmin` / `dtmax` bounds, so both follow one step
+# resolution; a fixed step tied to the initial gyroperiod is up to 20x longer than
+# the local gyroperiod in the bottle and only aliases the gyration. Diagnostics are
 # left at their default (on): a normal solve also records the check history.
 let
     B_bottle = TP.Field(bottle_B_hybrid)
@@ -286,6 +287,8 @@ let
     p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
     v0 = SA[5.0e4, 0.0, 1.0e5]
     dt_boris = 0.1 * T_gyro
+    dtmax_boris = T_gyro
+    dtmin_boris = 1.0e-4 * T_gyro
     alg_boris = AdaptiveBoris(safety = 0.1)
 
     # Pinned thresholds isolate the cost of each mode. On the axis the field is
@@ -315,7 +318,8 @@ let
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, magnetic bottle"] = @benchmarkable solve(
-        $prob_mixed, $alg_boris; dt = $dt_boris
+        $prob_mixed, $alg_boris;
+        dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["GCRK45, magnetic bottle"] = @benchmarkable solve(
         $prob_gc, GCRK45()
@@ -351,6 +355,8 @@ let
     p = (q2m, m, E_zero, B_sheet, TP.ZeroField())
     prob_sheet = TraceProblem(u0, tspan, p)
     dt_boris = T_gyro / 20
+    dtmax_boris = dt_boris
+    dtmin_boris = 1.0e-4 * T_gyro
     alg_boris = AdaptiveBoris(safety = 0.1)
 
     alg_sheet = AdaptiveHybrid(;
@@ -361,7 +367,8 @@ let
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, current sheet"] = @benchmarkable solve(
-        $prob_sheet, $alg_boris; dt = $dt_boris
+        $prob_sheet, $alg_boris;
+        dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["GCRK45, current sheet"] = @benchmarkable solve(
         $prob_gc, GCRK45()
@@ -397,6 +404,8 @@ let
     p = (q2m, m, E_zero, B_adia, TP.ZeroField())
     prob_adia = TraceProblem(u0, tspan, p)
     dt_boris = 0.1 * T_gyro
+    dtmax_boris = T_gyro
+    dtmin_boris = 1.0e-4 * T_gyro
     alg_boris = AdaptiveBoris(safety = 0.1)
 
     alg_adia = AdaptiveHybrid(;
@@ -407,7 +416,8 @@ let
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, adiabatic bottle"] = @benchmarkable solve(
-        $prob_adia, $alg_boris; dt = $dt_boris
+        $prob_adia, $alg_boris;
+        dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["GCRK45, adiabatic bottle"] = @benchmarkable solve(
         $prob_gc, GCRK45()

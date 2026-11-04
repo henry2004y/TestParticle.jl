@@ -266,9 +266,13 @@ end
     return clamp(dt, alg.dtmin, alg.dtmax)
 end
 
-@inline function _check_due(it, dt_since_check, check_interval, check_dt)
-    return dt_since_check > zero(dt_since_check) &&
-        (it % check_interval == 0 || dt_since_check >= check_dt)
+# Compare against the absolute deadline also used to clip steps. Subtracting
+# `t - t_last_check` can round just below `check_dt` right after a step landed on
+# the deadline, which would skip the check and leave the following step unclipped.
+@inline function _check_due(it, t, t_last_check, check_interval, deadline)
+    tol = deadline isa AbstractFloat ? 4 * eps(deadline) : zero(deadline)
+    return t > t_last_check &&
+        (it % check_interval == 0 || t + tol >= deadline)
 end
 
 """
@@ -414,12 +418,14 @@ end
             if mode == :GC
                 mp = nothing
                 it_eff = max(1, round(Int, check_scale * check_interval))
-                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
+                deadline = t_last_check + check_scale * check_dt
+                if _check_due(it, t, t_last_check, it_eff, deadline)
                     t_last_check = t
                     mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
                     comps = _adiabaticity_components(mp, q, m, μ)
                     ϵ = _adia_select(comps, alg)
                     check_scale = Tt(_check_scale(ϵ, alg, mode))
+                    deadline = t + check_scale * check_dt
                     if ϵ ≥ alg.threshold_gc_to_fo
                         mode = :FO
                         it = 1
@@ -456,9 +462,10 @@ end
                 end
                 # Never step past the next check deadline: a long guiding-center
                 # step could otherwise enter a non-adiabatic region and only be
-                # examined after leaving it again.
-                dt_check = t_last_check + check_scale * check_dt - t
-                if alg.dtmin < dt_check < dt
+                # examined after leaving it again. Clip every positive remainder,
+                # including ones below `dtmin`, so `check_dt` stays a hard bound.
+                dt_check = deadline - t
+                if zero(dt_check) < dt_check < dt
                     dt = dt_check
                 end
 
@@ -508,7 +515,8 @@ end
                 # the step-size update and the saved node velocity.
                 fields = _node_fields(p, r, t)
                 it_eff = max(1, round(Int, check_scale * check_interval))
-                if _check_due(it, t - t_last_check, it_eff, check_scale * check_dt)
+                deadline = t_last_check + check_scale * check_dt
+                if _check_due(it, t, t_last_check, it_eff, deadline)
                     t_last_check = t
                     v_sync = update_velocity_node(v, r, dt, t, fields, Boris())
                     xv_sync = SVector{6, T}(
@@ -521,6 +529,7 @@ end
                     comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
                     ϵ = _adia_select(comps, alg)
                     check_scale = Tt(_check_scale(ϵ, alg, mode))
+                    deadline = t + check_scale * check_dt
                     if ϵ < alg.threshold_fo_to_gc
                         mode = :GC
                         it = 1
@@ -562,8 +571,8 @@ end
                     dt_new = tspan[2] - t
                 end
                 # Never step past the next check deadline (see the GC branch).
-                dt_check = t_last_check + check_scale * check_dt - t
-                if alg.dtmin < dt_check < dt_new
+                dt_check = deadline - t
+                if zero(dt_check) < dt_check < dt_new
                     dt_new = dt_check
                 end
                 if dt_new != dt
