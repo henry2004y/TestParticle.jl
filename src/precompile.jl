@@ -20,14 +20,21 @@
     out6, out4 = zeros(6), zeros(4)
 
     @compile_workload begin
-        param = prepare(x, y, z; E, B)
+        param = prepare(;
+            E = build_interpolator(E, (x, y, z); bc = FillExtrap(NaN)),
+            B = build_interpolator(B, (x, y, z); bc = FillExtrap(NaN))
+        )
         prob = TraceProblem(stateinit, tspan, param)
         trace(stateinit_s, param, t)
         trace!(out6, stateinit, param, t)
         trace_relativistic(stateinit_s, param, t)
         trace_relativistic!(out6, stateinit, param, t)
 
-        stateinit_gc, param_gc = prepare_gc(gc_init, x, y, z; E, B)
+        stateinit_gc, param_gc = prepare_gc(
+            gc_init;
+            E = build_interpolator(E, (x, y, z); bc = FillExtrap(NaN)),
+            B = build_interpolator(B, (x, y, z); bc = FillExtrap(NaN))
+        )
         prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
         solve(prob_gc, GCRK4(); dt = 0.1)
         solve(prob_gc, GCRK45())

@@ -66,8 +66,10 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
 end
 
 stateinit_gc_num, param_gc_num = TP.prepare_gc(
-    stateinit, xrange, yrange, zrange;
-    E = uniform_E, B = B_numerical, species = Proton, order = 3
+    stateinit;
+    E = uniform_E,
+    B = build_interpolator(B_numerical, (xrange, yrange, zrange); bc = TestParticle.FillExtrap(NaN), order = 3),
+    species = Proton
 )
 
 prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)

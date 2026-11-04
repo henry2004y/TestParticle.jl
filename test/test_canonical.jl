@@ -67,7 +67,7 @@ using LinearAlgebra: norm
 
             # prepare with single positional field
             B_func(x, t) = SA[0.0, 0.0, 1.0]
-            param_b = prepare(B_func; q = 1.0, m = 1.0)
+            param_b = prepare(; B = B_func, q = 1.0, m = 1.0)
             @test param_b[1] == 1.0
         end
     end

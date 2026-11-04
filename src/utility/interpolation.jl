@@ -106,7 +106,7 @@ end
 Adapt.adapt_structure(to, fi::FieldInterpolator1D) =
     FieldInterpolator1D(Adapt.adapt(to, fi.itp), Adapt.adapt(to, fi.spec), fi.dir)
 
-function jacobian(f::Function, x)
+function jacobian(f, x)
     return ForwardDiff.jacobian(f, x)
 end
 
@@ -158,24 +158,27 @@ function _fastinterp(
         grids, A, order, bc_or_extrap, coeffs = OnTheFly();
         store::StorePolicy = StorePolicy()
     )
-    # Ensure FillExtrap value matches eltype(A) for SVector types
-    if bc_or_extrap isa FillExtrap && bc_or_extrap.fill_value isa Number &&
-            isnan(bc_or_extrap.fill_value)
-        T = eltype(A)
-        if T <: SVector
-            bc_or_extrap = FillExtrap(SVector{3, eltype(T)}(NaN, NaN, NaN))
-        else
-            bc_or_extrap = FillExtrap(T(NaN))
+    axes = grids isa Tuple ? grids : (grids,)
+    for g in axes
+        length(g) >= 2 && all(isfinite, g) && all(d -> d > zero(d), diff(g)) ||
+            throw(ArgumentError("Grid nodes must be finite and strictly increasing."))
+    end
+    policies = bc_or_extrap isa Tuple ? bc_or_extrap : map(Returns(bc_or_extrap), axes)
+    length(policies) == length(axes) ||
+        throw(ArgumentError("Provide one boundary policy per grid axis."))
+    policies = map(policies) do policy
+        if policy isa FillExtrap && policy.fill_value isa Number
+            T = eltype(A)
+            value = T <: SVector ? T(ntuple(_ -> policy.fill_value, length(T))) :
+                T(policy.fill_value)
+            return FillExtrap(value)
         end
+        return policy
     end
-
-    if bc_or_extrap isa AbstractExtrap
-        bc_val = NoBC()
-        extrap_val = bc_or_extrap
-    else
-        bc_val = bc_or_extrap
-        extrap_val = NoExtrap()
-    end
+    bcs = map(p -> p isa AbstractExtrap ? NoBC() : p, policies)
+    extrap = map(p -> p isa AbstractExtrap ? p : NoExtrap(), policies)
+    bc_val = grids isa Tuple ? bcs : only(bcs)
+    extrap_val = grids isa Tuple ? extrap : only(extrap)
 
     itp = if order == 1
         linear_interp(grids, A; bc = bc_val, extrap = extrap_val, store)
@@ -187,29 +190,7 @@ function _fastinterp(
         throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
     end
     axes = grids isa Tuple ? grids : (grids,)
-    spec = InterpSpec(map(_own_grid, axes), map(Returns(bc_or_extrap), axes), order)
-    return itp, spec
-end
-
-function _fastinterp_spherical(
-        grids, A, order, coeffs = PreCompute();
-        store::StorePolicy = StorePolicy()
-    )
-    # r and θ always extrapolate with NaN, ϕ is always periodic.
-    T = eltype(A)
-    fill_value = T <: SVector ? SVector{3, eltype(T)}(NaN, NaN, NaN) : T(NaN)
-    extrap = (Extrap(:fill; fill_value), Extrap(:fill; fill_value), NoExtrap())
-    bc = (NoBC(), NoBC(), PeriodicBC(check = false))
-    itp = if order == 1
-        linear_interp(grids, A; bc, extrap, store)
-    elseif order == 3
-        _cardinal_interp(grids, A, coeffs, bc, extrap, store)
-    elseif order == 0
-        constant_interp(grids, A; bc, extrap, store)
-    else
-        throw(ArgumentError("Interpolation order $order is not supported. Supported orders are 0, 1, and 3."))
-    end
-    spec = InterpSpec(map(_own_grid, grids), (extrap[1], extrap[2], bc[3]), order)
+    spec = InterpSpec(map(_own_grid, axes), policies, order)
     return itp, spec
 end
 
@@ -285,38 +266,37 @@ function _check_interpolation_consistency(A, grids, order)
     return
 end
 
-@doc raw"""
-    build_interpolator(gridtype, A, grids..., order::Int=1, bc=FillExtrap(NaN);
-        coeffs=OnTheFly(), store=StorePolicy())
-    build_interpolator(A, grids..., order::Int=1, bc=FillExtrap(NaN);
-        coeffs=OnTheFly(), store=StorePolicy())
+"""
+    build_interpolator(A, grids::Tuple; bc, order=1, gridtype=CartesianGrid, kwargs...)
+    build_interpolator([gridtype,] A, grids..., order=1, bc=FillExtrap(NaN); kwargs...)
 
-Return a function for interpolating field array `A` on the given grids.
+Build a callable field for [`prepare`](@ref). Vector data has shape
+`(3, length.(grids)...)` or contains `SVector{3}` values. Orders are 0, 1, and 3.
+The tuple API requires `bc`: one policy for all axes or a tuple of per-axis policies.
 
-# Arguments
+`PeriodicBC(endpoint=:inclusive)` repeats the endpoint; `:exclusive` omits it
+(uniform-grid period `NΔx`). `WrapExtrap()` wraps over the grid span without imposing
+spline periodicity. `FillExtrap(NaN)` fills outside; `ClampExtrap()` extends constantly.
+Field lookup neither wraps particle state nor terminates trajectories.
 
-  - `gridtype`: `CartesianGrid`, `RectilinearGrid` or `StructuredGrid`. Usually
-    determined by the number of grids.
-  - `A`: field array. For vector fields, the first dimension should be 3 unless
-    the array contains `SVector`s.
-  - `order::Int=1`: order of interpolation in [0,1,3].
-  - `bc=FillExtrap(NaN)`: boundary condition type from `FastInterpolations.jl`.
-    - `FillExtrap(NaN)`: Fill with NaN (default).
-    - `ClampExtrap()`: Clamp (flat extrapolation).
-    - `WrapExtrap()`: Periodic wrapping over the grid span ($L = (N - 1) \Delta x$).
-  - `coeffs=OnTheFly()`: coefficient strategy for cubic interpolation (order=3).
-  - `store=StorePolicy()`: storage policy forwarded to `FastInterpolations.jl`.
-    The default copies the grid and field data. Use `StorePolicy(copy=false)` to
-    alias compatible inputs and avoid the construction-time data copy.
+`gridtype=StructuredGrid` uses spherical `(r, θ, ϕ)` grids and `(Br, Bθ, Bϕ)` components;
+queries and outputs are Cartesian. Supply fill/clamp for radius and colatitude and
+`PeriodicBC` with period `2π` for longitude. Its positional default is
+`(FillExtrap(NaN), FillExtrap(NaN), PeriodicBC(check = false))`.
 
-# Notes
-
-With `StorePolicy(copy=false)`, the interpolator may alias `A` and the grid arrays.
-Do not mutate or resize aliased inputs while the interpolator is in use. When input
-conversion is required, `FastInterpolations.jl` may still copy the data.
-""" build_interpolator
-
+`coeffs` selects cubic coefficient storage. `store=StorePolicy(copy=false)` may alias
+inputs, which must remain unchanged. Device conversion requires order 1 and fill,
+clamp, wrap, or inclusive periodic policies; exclusive periodic fields are CPU-only.
+"""
 function build_interpolator end
+
+function build_interpolator(
+        A::AbstractArray, grids::Tuple; bc, order::Int = 1,
+        gridtype = CartesianGrid, kwargs...
+    )
+    1 <= length(grids) <= 3 || throw(ArgumentError("Provide 1, 2, or 3 grid axes."))
+    return build_interpolator(gridtype, A, grids..., order, bc; kwargs...)
+end
 
 @inline build_interpolator(A::AbstractArray, grid1, args...; kwargs...) =
     build_interpolator(CartesianGrid, A, grid1, args...; kwargs...)
@@ -379,7 +359,8 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 4},
-        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN);
+        gridr, gridθ, gridϕ, order::Int = 1,
+        bc = (FillExtrap(NaN), FillExtrap(NaN), PeriodicBC(check = false));
         coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     @assert size(A, 1) == 3 "Incompatible 3D force field and grid!"
@@ -391,7 +372,8 @@ end
 
 function build_interpolator(
         ::Type{<:StructuredGrid}, A::AbstractArray{T, 3},
-        gridr, gridθ, gridϕ, order::Int = 1, bc = FillExtrap(NaN);
+        gridr, gridθ, gridϕ, order::Int = 1,
+        bc = (FillExtrap(NaN), FillExtrap(NaN), PeriodicBC(check = false));
         coeffs = OnTheFly(), store::StorePolicy = StorePolicy()
     ) where {T}
     r_min = minimum(gridr)
@@ -399,13 +381,40 @@ function build_interpolator(
     ϕ_min, ϕ_max = extrema(gridϕ)
 
     @assert r_min >= 0 "r must be non-negative."
-    @assert θ_min >= 0 && θ_max <= π "θ must be within [0, π]."
-    @assert ϕ_min >= 0 && ϕ_max <= 2π "ϕ must be within [0, 2π]."
+    @assert θ_min >= 0 && θ_max <= Float64(π) + 4eps(float(θ_max)) "θ must be within [0, π]."
+    @assert ϕ_min >= 0 && ϕ_max <= 2π + 4eps(float(ϕ_max)) "ϕ must be within [0, 2π]."
 
-    _check_interpolation_consistency(A, (gridr, gridθ, gridϕ), order)
-    itp, spec = _fastinterp_spherical(
-        (gridr, gridθ, gridϕ), A, order, coeffs; store
+    bc isa Tuple && length(bc) == 3 || throw(
+        ArgumentError(
+            "Spherical fields require (radial, colatitude, longitude) boundary policies."
+        )
     )
+    all(p -> p isa Union{FillExtrap, ClampExtrap}, bc[1:2]) ||
+        throw(ArgumentError("Radius and colatitude support fill or clamp policies."))
+    longitude = bc[3]
+    longitude isa PeriodicBC || throw(
+        ArgumentError(
+            "Longitude requires PeriodicBC with an explicit endpoint convention."
+        )
+    )
+    span = last(gridϕ) - first(gridϕ)
+    period = if longitude isa PeriodicBC{:inclusive}
+        span
+    elseif isnothing(longitude.period)
+        steps = diff(gridϕ)
+        all(d -> isapprox(d, first(steps)), steps) || throw(
+            ArgumentError(
+                "Nonuniform exclusive longitude requires an explicit period."
+            )
+        )
+        span + first(steps)
+    else
+        longitude.period
+    end
+    isapprox(period, oftype(float(period), 2π)) ||
+        throw(ArgumentError("Longitude period must be 2π."))
+    _check_interpolation_consistency(A, (gridr, gridθ, gridϕ), order)
+    itp, spec = _fastinterp((gridr, gridθ, gridϕ), A, order, bc, coeffs; store)
     return SphericalFieldInterpolator(itp, spec)
 end
 
@@ -443,6 +452,7 @@ function build_interpolator(
         As = reinterpret(reshape, SVector{3, eltype(A)}, A)
     end
 
+    dir in 1:3 || throw(ArgumentError("dir must be 1, 2, or 3."))
     _check_interpolation_consistency(As, (gridx,), order)
     itp, spec = _fastinterp(gridx, As, order, bc, coeffs; store)
     return FieldInterpolator1D(itp, spec, dir)

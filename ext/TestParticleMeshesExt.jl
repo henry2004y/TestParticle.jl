@@ -11,6 +11,13 @@ using LinearAlgebra: norm, ⋅
 using PrecompileTools: @setup_workload, @compile_workload
 using ChunkSplitters: index_chunks
 
+function build_interpolator(
+        A::AbstractArray, grid::Union{CartesianGrid, RectilinearGrid};
+        bc, kwargs...
+    )
+    return build_interpolator(A, makegrid(grid); bc, gridtype = typeof(grid), kwargs...)
+end
+
 # Grid build_interpolator forwarding
 TestParticle.build_interpolator(::Type{<:CartesianGrid}, args...; kwargs...) =
     TestParticle.build_interpolator(TestParticle.CartesianGrid, args...; kwargs...)
@@ -76,13 +83,6 @@ function get_cell_centers(grid::RectilinearGrid)
 end
 
 # `build_interpolator` forwards the Meshes.jl grid type above.
-prepare(grid::Union{CartesianGrid, RectilinearGrid}; kw...) =
-    prepare(makegrid(grid)...; gridtype = typeof(grid), kw...)
-
-# Compatibility form, removed with those in TestParticle's `deprecated.jl`.
-prepare(grid::Union{CartesianGrid, RectilinearGrid}, E, B, F = nothing; kw...) =
-    prepare(grid; E, B, F, kw...)
-
 # Virtual detectors
 
 const Surface = Union{Disk, Plane, Sphere}
@@ -274,13 +274,25 @@ end
             (first(x), first(y), first(z)), (last(x), last(y), last(z));
             dims = (length(x) - 1, length(y) - 1, length(z) - 1)
         )
-        param = prepare(mesh; E, B)
+        param = prepare(;
+            E = build_interpolator(
+                E, mesh;
+                bc = TestParticle.FillExtrap(NaN)
+            ),
+            B = build_interpolator(B, mesh; bc = TestParticle.FillExtrap(NaN))
+        )
         get_cell_centers(mesh)
 
         rect_mesh = RectilinearGrid(x, y, z)
         makegrid(rect_mesh)
         get_cell_centers(rect_mesh)
-        param_rect = prepare(rect_mesh; E, B)
+        param_rect = prepare(;
+            E = build_interpolator(
+                E, rect_mesh;
+                bc = TestParticle.FillExtrap(NaN)
+            ),
+            B = build_interpolator(B, rect_mesh; bc = TestParticle.FillExtrap(NaN))
+        )
 
         # Mock a simple solution for crossing tests
         t_array = collect(0.0:1.0:2.0)

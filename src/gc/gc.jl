@@ -39,17 +39,17 @@ function _get_gc_parameters(xv, E, B, q, m, t)
 end
 
 """
-    prepare_gc(xv, [grid...;] E = nothing, B = nothing, kw...) -> (state_gc, param_gc)
+    prepare_gc(xv; E = nothing, B = nothing, kw...) -> (state_gc, param_gc)
 
 Initial guiding-center state `[X..., vpar]` from full-orbit state `xv` and parameters
 `(; q, q2m, μ, E, B)` for tracing it. Omitted fields are zero. `xv` is
 `[x, y, z, vx, vy, vz]`. Field arguments and keywords mirror [`prepare`](@ref).
 # TODO: support external forces
 """
-function prepare_gc(xv, args...; species = Proton, q = nothing, m = nothing, t = 0, kw...)
+function prepare_gc(xv; species = Proton, q = nothing, m = nothing, t = 0, kw...)
     q = @something q species.q
     m = @something m species.m
-    (; E, B) = prepare(args...; q, m, kw...)
+    (; E, B) = prepare(; q, m, kw...)
     X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, E, B, q, m, t)
 
     return [X..., vpar], (; q, q2m, μ, E, B)

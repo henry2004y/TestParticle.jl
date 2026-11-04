@@ -213,6 +213,7 @@ end
             theta = range(0, pi, length = 5)
             phi = range(0, 2pi, length = 5)
             Bsph = rand(3, 5, 5, 5)
+            Bsph[:, :, :, end] .= Bsph[:, :, :, 1]
             itpsph = build_interpolator(StructuredGrid, Bsph, r, theta, phi)
             ptsph = SA[1.0, 1.0, 1.0]
             @test itpsph(ptsph, 0.0) == itpsph(ptsph)
@@ -305,6 +306,7 @@ end
         phi = range(0.0, 2π, length = 10)
 
         B_array_sph = rand(3, 10, 10, 10)
+        B_array_sph[:, :, :, end] .= B_array_sph[:, :, :, 1]
         B_svector_sph = reinterpret(reshape, SVector{3, Float64}, B_array_sph)
 
         itp_sph_implicit = build_interpolator(StructuredGrid, B_array_sph, r, theta, phi)
@@ -802,15 +804,21 @@ end
         B2 = zeros(3, 2, 2)
         B3 = zeros(3, 2, 2, 2)
 
-        p1 = prepare(x; B = B1)
+        p1 = prepare(;
+            B = build_interpolator(B1, (x,); bc = TestParticle.ClampExtrap())
+        )
         @test p1.B isa TP.Field
         @test p1.E isa TP.ZeroField
 
-        p2 = prepare(x, y; B = B2)
+        p2 = prepare(;
+            B = build_interpolator(B2, (x, y); bc = TestParticle.FillExtrap(NaN))
+        )
         @test p2.B isa TP.Field
         @test p2.E isa TP.ZeroField
 
-        p3 = prepare(x, y, z; B = B3)
+        p3 = prepare(;
+            B = build_interpolator(B3, (x, y, z); bc = TestParticle.FillExtrap(NaN))
+        )
         @test p3.B isa TP.Field
         @test p3.E isa TP.ZeroField
     end
@@ -1054,7 +1062,10 @@ end
         E = fill(0.0, 3, length(x), length(y), length(z))
         B[3, :, :, :] .= 1.0e-8
 
-        param = prepare(rect_grid; E, B)
+        param = prepare(;
+            E = build_interpolator(E, rect_grid; bc = TestParticle.FillExtrap(NaN)),
+            B = build_interpolator(B, rect_grid; bc = TestParticle.FillExtrap(NaN))
+        )
         @test param[1] ≈ TP.qᵢ / TP.mᵢ
     end
 end

@@ -66,16 +66,16 @@ const TP = TestParticle
     @testset "prepare integration and field_function unwrapping" begin
         let
             B_func(r) = [0.0, 0.0, 1.0]
-            p_default = prepare(B_func)
+            p_default = prepare(; B = B_func)
             @test p_default.B isa TP.Field{false}
             @test !(p_default.B isa TP.ErasedField)
             @test p_default.B.field_function === B_func
 
-            p_erased = prepare_erased(B_func)
+            p_erased = prepare_erased(; B = B_func)
             @test p_erased.B isa TP.ErasedField{false}
             @test p_erased.B.field_function === B_func
 
-            p_kw = prepare(B_func; erased = true)
+            p_kw = prepare(; B = B_func, erased = true)
             @test p_kw.B isa TP.ErasedField{false}
 
             # Idempotency

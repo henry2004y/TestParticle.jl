@@ -73,7 +73,23 @@ end
 function setup_field(r, θ, ϕ)
     B = uniform_z_field(r, θ, ϕ)
     A = radial_scalar_field(r, θ, ϕ)
-    param = prepare(r, θ, ϕ; E = A, B, species = Proton, gridtype = TP.StructuredGrid)
+    param = prepare(;
+        E = build_interpolator(
+            A, (r, θ, ϕ);
+            bc = (
+                TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                TestParticle.PeriodicBC(; endpoint = :inclusive),
+            ), gridtype = TP.StructuredGrid
+        ),
+        B = build_interpolator(
+            B, (r, θ, ϕ);
+            bc = (
+                TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                TestParticle.PeriodicBC(; endpoint = :inclusive),
+            ), gridtype = TP.StructuredGrid
+        ),
+        species = Proton
+    )
     return param, param[4].field_function, param[3].field_function
 end
 
@@ -158,8 +174,22 @@ end
     @testset "grid nodes are reproduced" begin
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 9), ϕ = range(0.0, 2π, length = 9)
             B = uniform_z_field(r, θ, ϕ)
-            param = prepare(
-                r, θ, ϕ; E = zeros(size(B)), B, species = Proton, gridtype = TP.StructuredGrid
+            param = prepare(;
+                E = build_interpolator(
+                    zeros(size(B)), (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                B = build_interpolator(
+                    B, (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
             )
             fi = param[4].field_function
             g = TP._to_gpu_grid(fi, CPU())
@@ -277,8 +307,15 @@ end
                 dt = 1.0e-5, tspan = (0.0, 1.0e-3)
 
             B = uniform_z_field(r, θ, ϕ)
-            param = prepare(
-                r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid
+            param = prepare(;
+                B = build_interpolator(
+                    B, (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
             )
             gB = TP._to_gpu_grid(param[4].field_function, CPU())
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
@@ -305,7 +342,23 @@ end
 
             E = radial_vector_field(r, θ, ϕ)
             B = uniform_z_field(r, θ, ϕ)
-            param = prepare(r, θ, ϕ; E, B, species = Proton, gridtype = TP.StructuredGrid)
+            param = prepare(;
+                E = build_interpolator(
+                    E, (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                B = build_interpolator(
+                    B, (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
+            )
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
             gE = TP._to_gpu_grid(param[3].field_function, CPU())

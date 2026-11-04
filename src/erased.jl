@@ -132,7 +132,7 @@ Type alias for a `Field` wrapping an `ErasedFunction`.
 """
 const ErasedField{itd} = Field{itd, ErasedFunction}
 
-function ErasedField(f::Function)
+function ErasedField(f)
     itd = is_time_dependent(f)
     return Field{itd, ErasedFunction}(ErasedFunction(f, itd))
 end

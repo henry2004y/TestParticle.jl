@@ -7,6 +7,7 @@ include("test_common.jl")
 @testset "TestParticle.jl" begin
     include("test_sampling.jl")
     include("test_numerical_field.jl")
+    include("test_explicit_fields.jl")
     include("test_mixed_fields.jl")
     include("test_time_dependent_fields.jl")
     include("test_field_exceptions.jl")
