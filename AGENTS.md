@@ -72,3 +72,16 @@ For example, if the user has deleted a function you wrote, do not reintroduce
 that function in subsequent code generation.
 If you believe that changes made by the user are potentially problematic,
 please clearly explain your concerns and ask the user for clarification.
+
+# Agent skills
+This file holds the project invariants that must always apply. Step-by-step
+procedures live in [`.agents/skills/`](./.agents/skills/) and are loaded on
+demand:
+
+- [`testparticle-jl`](./.agents/skills/testparticle-jl/SKILL.md): the tracing
+  workflow, API signatures, the source map and extension points, the test, doc,
+  and benchmark procedures, and a `smoke_check.jl` sanity script.
+
+Load that skill for any task beyond a local edit. Keep the scopes disjoint: add
+rules here, add procedures to the skill, and do not duplicate content between
+them.
