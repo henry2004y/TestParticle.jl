@@ -269,47 +269,61 @@ function bottle_B_hybrid(x, t)
     return SA[Bx, By, Bz]
 end
 
+# Each hybrid entry is paired with the standalone Boris and GCRK45 solvers on the
+# same trajectory, so the timings can be read as a comparison. Diagnostics are
+# left at their default (on): a normal solve also records the check history.
 let
     B_bottle = TP.Field(bottle_B_hybrid)
     E_bottle = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 
-    m = TP.mᵢ
-    q = TP.qᵢ
+    m, q = TP.mᵢ, TP.qᵢ
     q2m = q / m
-
-    x0 = SA[0.0, 0.0, 0.0]
-    v0 = SA[5.0e4, 0.0, 1.0e5]
-    u0 = vcat(x0, v0)
-
-    Ω = abs(q2m) * B0_hybrid
-    T_gyro = 2π / Ω
+    T_gyro = 2π / (abs(q2m) * B0_hybrid)
     tspan = (0.0, 10 * T_gyro)
-
     p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
-    prob_hybrid = TraceProblem(u0, tspan, p)
+    v0 = SA[5.0e4, 0.0, 1.0e5]
+    dt_boris = 0.1 * T_gyro
 
-    # The cost of the hybrid depends on which mode the trajectory spends its time
-    # in, and on a bottle like this the outcome of a mixed run is decided by where
-    # the particle happens to be at the first check. The two modes are therefore
-    # benchmarked separately, by pinning the thresholds. Note that the field
-    # strength grows by more than an order of magnitude along the bounce, so the
-    # full-orbit step follows the local gyroperiod (~700 steps here); a fixed
-    # tenth of the *initial* gyroperiod, as measured before that change, aliases
-    # the gyration in the strong-field region.
+    # Pinned thresholds isolate the cost of each mode. On the axis the field is
+    # exactly uniform, so a mixed run would be decided by where the particle
+    # happens to be at the first check. The field strength grows by more than an
+    # order of magnitude along the bounce, so the full-orbit step follows the
+    # local gyroperiod (~700 steps here) instead of aliasing the gyration.
+    prob = TraceProblem(vcat(SA[0.0, 0.0, 0.0], v0), tspan, p)
     alg_fo = AdaptiveHybrid(;
         threshold = 0.0, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
-        maxiters = 10000, check_interval = 100, save_adiabaticity = false,
+        maxiters = 10000, check_interval = 100,
     )
     alg_gc = AdaptiveHybrid(;
         threshold = 1.0e9, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
-        maxiters = 10000, check_interval = 100, save_adiabaticity = false,
+        maxiters = 10000, check_interval = 100,
     )
 
+    # Off the axis the field lines bend and ε crosses the threshold: the solver
+    # switches mode three times on this trajectory.
+    u0_mixed = vcat(SA[10.0, 0.0, 0.0], v0)
+    prob_mixed = TraceProblem(u0_mixed, tspan, p)
+    alg_mixed = AdaptiveHybrid(;
+        threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+        maxiters = 10000, check_interval = 10,
+    )
+    state_gc, param_gc = TP.prepare_gc(u0_mixed; B = B_bottle, species = Proton)
+    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
+
+    SUITE["trace"]["Hybrid"]["Boris, magnetic bottle"] = @benchmarkable solve(
+        $prob_mixed, Boris(); dt = $dt_boris
+    )
+    SUITE["trace"]["Hybrid"]["GCRK45, magnetic bottle"] = @benchmarkable solve(
+        $prob_gc, GCRK45()
+    )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, full orbit"] = @benchmarkable solve(
-        $prob_hybrid, $alg_fo; verbose = false, seed = 1234
+        $prob, $alg_fo; verbose = false, seed = 1234
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, guiding center"] = @benchmarkable solve(
-        $prob_hybrid, $alg_gc; verbose = false, seed = 1234
+        $prob, $alg_gc; verbose = false, seed = 1234
+    )
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid, mixed"] = @benchmarkable solve(
+        $prob_mixed, $alg_mixed; verbose = false, seed = 1234
     )
 end
 
@@ -321,27 +335,33 @@ let
     Bg_sheet = 2.0e-8
     sheet_B(x, t) = SA[B0_sheet * tanh(x[3] / L_sheet), 0.0, Bg_sheet]
 
-    m = TP.mᵢ
-    q = TP.qᵢ
+    m, q = TP.mᵢ, TP.qᵢ
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_sheet)
+    tspan = (0.0, 200 * T_gyro)
 
     v = 2.0e5
     u0 = vcat(SA[0.0, 0.0, -2L_sheet], SA[0.0, 0.95v, 0.3v])
-    p = (q2m, m, TP.Field((x, t) -> SA[0.0, 0.0, 0.0]), TP.Field(sheet_B),
-        TP.ZeroField())
-    prob_sheet = TraceProblem(u0, (0.0, 200 * T_gyro), p)
+    B_sheet = TP.Field(sheet_B)
+    E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
+    p = (q2m, m, E_zero, B_sheet, TP.ZeroField())
+    prob_sheet = TraceProblem(u0, tspan, p)
+    dt_boris = T_gyro / 20
 
     alg_sheet = AdaptiveHybrid(;
-        threshold = 0.1,
-        dtmax = T_gyro / 20,
-        dtmin = 1.0e-4 * T_gyro,
-        maxiters = 500_000,
-        check_interval = 10,
-        save_adiabaticity = false,
+        threshold = 0.1, dtmax = dt_boris, dtmin = 1.0e-4 * T_gyro,
+        maxiters = 500_000, check_interval = 10,
     )
+    state_gc, param_gc = TP.prepare_gc(u0; B = B_sheet, species = Proton)
+    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
-    SUITE["trace"]["Hybrid"]["AdaptiveHybrid current sheet"] = @benchmarkable solve(
+    SUITE["trace"]["Hybrid"]["Boris, current sheet"] = @benchmarkable solve(
+        $prob_sheet, Boris(); dt = $dt_boris
+    )
+    SUITE["trace"]["Hybrid"]["GCRK45, current sheet"] = @benchmarkable solve(
+        $prob_gc, GCRK45()
+    )
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid, current sheet"] = @benchmarkable solve(
         $prob_sheet, $alg_sheet; verbose = false, seed = 1234
     )
 end
