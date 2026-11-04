@@ -273,6 +273,7 @@ end
 Build a callable field for [`prepare`](@ref). Vector data has shape
 `(3, length.(grids)...)` or contains `SVector{3}` values. Orders are 0, 1, and 3.
 The tuple API requires `bc`: one policy for all axes or a tuple of per-axis policies.
+`FillExtrap` values must agree across axes.
 
 `PeriodicBC(endpoint=:inclusive)` repeats the endpoint; `:exclusive` omits it
 (uniform-grid period `NΔx`). `WrapExtrap()` wraps over the grid span without imposing

@@ -17,6 +17,11 @@ struct BothCallable end
     @test f([3.5, 0.5, 0.0]) ≈ SVector(1.5, 0.5, 0.0)
     @test all(isnan, f([0.0, 3.0, 0.0]))
     @test_throws ArgumentError build_interpolator(A, (x, y); bc = (ClampExtrap(),))
+    # `GPUGrid` holds one fill value, so conflicting fills must not reach device conversion.
+    @test_throws ArgumentError build_interpolator(
+        A, (x, y);
+        bc = (FillExtrap(0.0), FillExtrap(NaN))
+    )
     @test_throws ArgumentError build_interpolator(
         A, ([0.0, 1.0, 1.0, 3.0], y);
         bc = ClampExtrap()
