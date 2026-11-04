@@ -670,6 +670,7 @@ end
             B_zero(x, t) = SA[0.0, 0.0, 0.0]
             x = SA[1.0, 0.0, 0.0]
             @test get_curvature_radius(x, 0.0, B_zero) == Inf
+            @test get_curvature_radius(x, 0.0, ZeroField()) == Inf
         end
 
         @testset "Uniform Field" begin
