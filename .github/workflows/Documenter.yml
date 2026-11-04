@@ -33,6 +33,10 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+  # Examples are cached by their own source hash, so `src/` changes do not rerun them.
+  schedule:
+    - cron: '0 6 * * 1'
+
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: write
@@ -83,6 +87,7 @@ jobs:
           GKSwstype: "100" # for Plots.jl plots (if you have them)
           JULIA_DEBUG: "Documenter"
           DATADEPS_ALWAYS_ACCEPT: true
+          DOCS_FORCE_REBUILD: ${{ github.event_name == 'schedule' }}
       - name: Save Julia depot cache on cancel or failure
         id: julia-cache-save
         if: cancelled() || failure()
