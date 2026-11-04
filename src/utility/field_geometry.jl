@@ -153,7 +153,18 @@ parameters at position `x` and time `t`:
 components are `Inf`.
 """
 @inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
-    (; ∇B, κ, Bmag, JB) = get_magnetic_properties(x, t, Bfunc)
+    return _adiabaticity_components(get_magnetic_properties(x, t, Bfunc), q, m, μ)
+end
+
+"""
+    _adiabaticity_components(mp, q, m, μ)
+
+Same as [`adiabaticity_components`](@ref) but taking the
+[`get_magnetic_properties`](@ref) output `mp` instead of recomputing it, for
+callers that already have the field derivatives in hand.
+"""
+@inline function _adiabaticity_components(mp, q, m, μ)
+    (; ∇B, κ, Bmag, JB) = mp
     iszero(Bmag) && return (Inf, Inf, Inf)
 
     ρ = sqrt(2 * μ * m / Bmag) / abs(q)

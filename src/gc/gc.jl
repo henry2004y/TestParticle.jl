@@ -1,5 +1,42 @@
 # Guiding center.
 
+"Split a full-orbit state into position and velocity."
+@inline _split_xv(xv) = xv[SA[1:3...]], xv[SA[4:6...]]
+
+"""
+    _gc_position(x, v, B, q, m, t)
+
+Guiding-center position `X = x - ρ(x)`, with the Larmor radius `ρ` evaluated at
+the particle: the zeroth-order map.
+"""
+@inline function _gc_position(x, v, B, q, m, t)
+    b = B(x, t)
+    Bmag = norm(b)
+    return x - ((b / Bmag) × v) / ((q / m) * Bmag)
+end
+
+"""
+    _gc_frame(x, v, E, B, m, t) -> (; b̂, w, vpar, μ)
+
+Field-aligned frame at position `x`: unit field `b̂`, gyration velocity
+`w = v - vpar b̂ - v_E`, parallel velocity `vpar = b̂ ⋅ v` and magnetic moment
+`μ = m|w|² / (2|B|)`.
+"""
+@inline function _gc_frame(x, v, E, B, m, t)
+    b = B(x, t)
+    Bmag = norm(b)
+    b̂ = b / Bmag
+    vpar = b̂ ⋅ v
+    w = v - vpar * b̂ - (E(x, t) × b̂) / Bmag
+    return (; b̂, w, vpar, μ = m * (w ⋅ w) / (2 * Bmag))
+end
+
+"Gyrophase of the gyration velocity `w` in the frame built from `b̂`."
+@inline function _gc_phase(b̂, w)
+    e1, e2 = get_perp_vector(b̂)
+    return atan(w ⋅ e2, w ⋅ e1)
+end
+
 """
     _get_gc_parameters(xv, E, B, q, m, t) -> (X, vpar, q, q / m, μ, phase)
 
@@ -10,32 +47,68 @@ ignore `t`.
 
 #TODO : support external forces
 """
-function _get_gc_parameters(xv, E, B, q, m, t)
-    x, v = xv[SA[1:3...]], xv[SA[4:6...]]
+@inline function _get_gc_parameters(xv, E, B, q, m, t)
+    x, v = _split_xv(xv)
+    X = _gc_position(x, v, B, q, m, t)
+    f = _gc_frame(X, v, E, B, m, t)
+    return X, f.vpar, q, q / m, f.μ, _gc_phase(f.b̂, f.w)
+end
 
-    bparticle = B(x, t)
-    Bmag_particle = norm(bparticle)
-    b̂particle = bparticle / Bmag_particle
-    # vector of Larmor radius
-    ρ = (b̂particle × v) / (q / m * Bmag_particle)
-    # Get the guiding center location
-    X = x - ρ
-    # Get EM field at guiding center
-    b = B(X, t)
-    Bmag = norm(b)
-    b̂ = b / Bmag
-    vpar = b̂ ⋅ v
+"""
+    _gc_adia_parameters(xv, E, B, q, m, t) -> (X, μ)
 
-    vperp = v - vpar * b̂
-    e = E(X, t)
-    vE = (e × b̂) / Bmag
-    w = vperp - vE
-    μ = m * (w ⋅ w) / (2 * Bmag)
+Guiding-center position and magnetic moment of the full-orbit state `xv` — the
+two quantities an adiabaticity estimate needs. The gyrophase (`get_perp_vector`
+and an `atan2`) is skipped because the estimate never uses it; the values are
+identical to those of [`_get_gc_parameters`](@ref).
+"""
+@inline function _gc_adia_parameters(xv, E, B, q, m, t)
+    x, v = _split_xv(xv)
+    X = _gc_position(x, v, B, q, m, t)
+    return X, _gc_frame(X, v, E, B, m, t).μ
+end
 
-    e1, e2 = get_perp_vector(b̂)
-    phase = atan(w ⋅ e2, w ⋅ e1)
+"""
+    _gc_state_at_switch(xv, E, B, q, m, t, niter) -> (X, vpar, μ, phase)
 
-    return X, vpar, q, q / m, μ, phase
+Guiding-center state of the full-orbit state `xv`, refined by up to `niter`
+fixed-point iterations of `X = x - ρ(X)`: the Larmor radius is evaluated at the
+guiding center instead of at the particle, which is the first-order correction
+that removes the `O(ε)` error of the zeroth-order map. `niter = 0` recovers the
+zeroth-order map.
+
+This map is the exact inverse of [`_gc_to_full`](@ref), so a switch to the
+guiding center and back returns the particle where it was; the reverse
+conversion needs no correction of its own.
+
+An iteration is kept only if it reduces the residual `‖x - (X + ρ(X))‖`, so a
+strongly non-adiabatic crossing, where the fixed-point map stops contracting,
+cannot make the conversion worse than the zeroth-order one.
+"""
+@inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
+    x, v = _split_xv(xv)
+    X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)
+    niter > 0 || return X, vpar, μ, phase
+
+    x_rec = _gc_to_full(SVector(X[1], X[2], X[3], vpar), E, B, q, m, μ, t, phase)
+    residual = norm(x - get_x(x_rec))
+
+    for _ in 1:niter
+        X_next = X + (x - get_x(x_rec))
+        f = _gc_frame(X_next, v, E, B, m, t)
+        phase_next = _gc_phase(f.b̂, f.w)
+        x_rec_next = _gc_to_full(
+            SVector(X_next[1], X_next[2], X_next[3], f.vpar), E, B, q, m,
+            f.μ, t, phase_next
+        )
+        residual_next = norm(x - get_x(x_rec_next))
+        residual_next < residual || break
+
+        X, vpar, μ, phase = X_next, f.vpar, f.μ, phase_next
+        x_rec, residual = x_rec_next, residual_next
+    end
+
+    return X, vpar, μ, phase
 end
 
 """
@@ -87,6 +160,10 @@ Internal GC → full-orbit conversion taking the field functions and charges
 directly, so it can be shared by the GC and hybrid solvers. `E_field` and
 `B_field` must be callable as `E_field(x, t)` / `B_field(x, t)`; static fields
 simply ignore `t`.
+
+Returns an `SVector{6}` so that it can be used in a hot loop and stored in a
+`Vector{SVector{6}}` without allocating; [`gc_to_full`](@ref) converts it to a
+`Vector` for the public API.
 """
 function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
     R = get_x(state_gc)
@@ -115,7 +192,7 @@ function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
 
     x = R + ρ_vec
 
-    return vcat(x, v)
+    return SVector{6}(x[1], x[2], x[3], v[1], v[2], v[3])
 end
 
 """

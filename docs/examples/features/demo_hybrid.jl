@@ -4,9 +4,10 @@
 # between full orbit (FO) and guiding center (GC) tracing based on the local
 # adiabaticity parameter `ε = ρ_L / R_c`.
 #
-# We use a magnetic bottle field where the adiabaticity varies spatially:
-# near the midplane `ε` is large (non-adiabatic → FO), and near the mirror
-# points `ε` is small (adiabatic → GC).
+# We use a magnetic bottle field where the adiabaticity varies spatially: away
+# from the mirror points the field lines are strongly curved (`ε` large,
+# non-adiabatic → FO), while closer to the mirror points the curvature drops
+# (`ε` small, adiabatic → GC).
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
@@ -48,14 +49,18 @@ q2m = q / m;
 # First we trace the proton using the standard ODE solver to confirm
 # it is trapped and bounces inside the magnetic bottle.
 #
-# The proton is initialized at the midplane ``(x,y,z) = (0,0,0)`` with
-# a perpendicular velocity ``v_{\perp} = 5\times10^4~\mathrm{m/s}``
-# in the ``x``-direction and a parallel velocity
-# ``v_{\parallel} = 1\times10^5~\mathrm{m/s}`` in the ``z``-direction.
-# This gives a significant perpendicular component needed for the
-# mirror force to reflect the particle.
+# The proton is initialized at the midplane with a perpendicular velocity
+# ``v_{\perp} = 5\times10^4~\mathrm{m/s}`` in the ``x``-direction and a parallel
+# velocity ``v_{\parallel} = 1\times10^5~\mathrm{m/s}`` in the ``z``-direction.
+# This gives a significant perpendicular component needed for the mirror force
+# to reflect the particle.
+#
+# The starting point is put off the magnetic axis. On the axis the field is
+# exactly uniform, so its curvature — and hence `ε` — vanishes there;
+# launching at ``x = 10~\mathrm{m}`` (about two gyroradii) puts the particle in
+# the region where the field lines actually bend.
 
-x0 = SA[0.0, 0.0, 0.0]
+x0 = SA[10.0, 0.0, 0.0]
 v_perp = 5.0e4  # [m/s]
 v_par = 1.0e5   # [m/s]
 v0 = SA[v_perp, 0.0, v_par]
@@ -106,6 +111,14 @@ alg = AdaptiveHybrid(;
     check_interval = 10,
 )
 
+# Both modes adapt their step to the local field: the full-orbit mode follows
+# the gyroperiod, the guiding-center mode uses an embedded RK45 estimate. The
+# adiabaticity is checked after every `check_interval` accepted steps *or*
+# every `check_dt` of simulated time, whichever comes first — a guiding-center
+# step can otherwise span many gyroperiods and enter a non-adiabatic region
+# unnoticed. `check_dt` defaults to `100 * dtmax`; lower it where `ε` varies
+# faster than that.
+
 ## Set verbose = true to see the dynamic switching
 p = param_fo
 prob_hybrid = TraceProblem(u0, tspan, param_fo)
@@ -127,69 +140,78 @@ clims = extrema(log10.(clamp.(vcat(ε_fo, ε_gc, ε_hybrid), ε_clamp_lo, Inf)))
 
 # ## Visualization
 #
-# We define a helper to plot a 3D trajectory colored by ε, with
-# start/end markers and a colorbar.
+# All three trajectories are sampled on the same uniform time grid before plotting.
+# `sol_fo` and `sol_gc` are Vern6 ODE solutions with high-order dense output; the
+# native hybrid solution interpolates linearly between its saved nodes, so its
+# curve keeps the straight segments of its much coarser output. Sampling more
+# densely does not add information: that coarseness is the point of the hybrid
+# solver — it saves far fewer points — not a measure of accuracy. Shared axis
+# limits are taken from the drawn curves, so no trajectory is clipped.
 
-## Plot a 3D trajectory colored by ε onto an existing Axis3
-## When `npts` is set, the solution is interpolated for a smoother curve.
-function plot_trajectory!(ax, sol, ε_vals; npts = nothing)
-    if isnothing(npts)
-        xs = [u[1] for u in sol.u]
-        ys = [u[2] for u in sol.u]
-        zs = [u[3] for u in sol.u]
-        ε_plot = ε_vals
-    else
-        t_new = range(sol.t[1], sol.t[end]; length = npts)
-        xs = Vector{Float64}(undef, npts)
-        ys = Vector{Float64}(undef, npts)
-        zs = Vector{Float64}(undef, npts)
-        ε_plot = Vector{Float64}(undef, npts)
-        for (i, t) in enumerate(t_new)
-            u = sol(t)
-            xs[i], ys[i], zs[i] = u[1], u[2], u[3]
-            ## Linearly interpolate ε to the new time grid
-            idx = clamp(searchsortedlast(sol.t, t), 1, length(sol.t) - 1)
-            frac = (t - sol.t[idx]) / (sol.t[idx + 1] - sol.t[idx])
-            ε_plot[i] = ε_vals[idx] + frac * (ε_vals[idx + 1] - ε_vals[idx])
-        end
+const npts_plot = 5000
+
+"Sample `sol` and its adiabaticity on a uniform time grid for plotting."
+function trajectory_points(sol, ε_vals; npts = npts_plot)
+    t_new = range(tspan[1], tspan[2]; length = npts)
+    xs = Vector{Float64}(undef, npts)
+    ys = Vector{Float64}(undef, npts)
+    zs = Vector{Float64}(undef, npts)
+    ε_plot = Vector{Float64}(undef, npts)
+    for (i, t) in enumerate(t_new)
+        u = sol(t)
+        xs[i], ys[i], zs[i] = u[1], u[2], u[3]
+        idx = clamp(searchsortedlast(sol.t, t), 1, length(sol.t) - 1)
+        frac = (t - sol.t[idx]) / (sol.t[idx + 1] - sol.t[idx])
+        ε_plot[i] = ε_vals[idx] + frac * (ε_vals[idx + 1] - ε_vals[idx])
     end
-    ε_log = log10.(clamp.(ε_plot, ε_clamp_lo, Inf))
+    return (; xs, ys, zs, ε = ε_plot)
+end
+
+"Axis limits shared by a set of sampled trajectories."
+function shared_limits(traces)
+    lo = fill(Inf, 3)
+    hi = fill(-Inf, 3)
+    for tr in traces, (k, c) in enumerate((tr.xs, tr.ys, tr.zs))
+        lo[k] = min(lo[k], minimum(c))
+        hi[k] = max(hi[k], maximum(c))
+    end
+    return ((lo[1], hi[1]), (lo[2], hi[2]), (lo[3], hi[3]))
+end
+
+## Plot a sampled trajectory colored by ε onto an existing Axis3
+function plot_trajectory!(ax, tr)
+    ε_log = log10.(clamp.(tr.ε, ε_clamp_lo, Inf))
     lines!(
-        ax, xs, ys, zs;
+        ax, tr.xs, tr.ys, tr.zs;
         color = ε_log, colormap = :turbo, colorrange = clims, linewidth = 1.0
     )
-    scatter!(ax, [Point3f(xs[1], ys[1], zs[1])]; color = :purple, markersize = 12)
+    scatter!(
+        ax, [Point3f(tr.xs[1], tr.ys[1], tr.zs[1])];
+        color = :purple, markersize = 12
+    )
     return scatter!(
-        ax, [Point3f(xs[end], ys[end], zs[end])];
+        ax, [Point3f(tr.xs[end], tr.ys[end], tr.zs[end])];
         color = :red, marker = :rect, markersize = 12
     )
 end
 
 f = Figure(; size = (1400, 900), fontsize = 20)
 
-## Compute shared axis limits from all three trajectories
-lims = let
-    xs = (Inf, -Inf)
-    ys = (Inf, -Inf)
-    zs = (Inf, -Inf)
-    for sol_curr in (sol_fo, sol_gc, sol)
-        for u in sol_curr.u
-            xs = (min(xs[1], u[1]), max(xs[2], u[1]))
-            ys = (min(ys[1], u[2]), max(ys[2], u[2]))
-            zs = (min(zs[1], u[3]), max(zs[2], u[3]))
-        end
-    end
-    (xs, ys, zs)
-end
+traces = (
+    trajectory_points(sol_fo, ε_fo),
+    trajectory_points(sol_gc, ε_gc),
+    trajectory_points(sol, ε_hybrid),
+)
+lims = shared_limits(traces)
 
-## Top row: three 3D trajectories + shared colorbar
+## Top row: three interpolated 3D trajectories + shared colorbar
 ax_fo = Axis3(
     f[1, 1],
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]",
     title = "Full Orbit (Particle)", aspect = :data,
     limits = lims,
 )
-plot_trajectory!(ax_fo, sol_fo, ε_fo; npts = 5000)
+plot_trajectory!(ax_fo, traces[1])
 
 ax_gc = Axis3(
     f[1, 2],
@@ -197,7 +219,7 @@ ax_gc = Axis3(
     title = "Guiding Center (GC Position)", aspect = :data,
     limits = lims,
 )
-plot_trajectory!(ax_gc, sol_gc, ε_gc; npts = 5000)
+plot_trajectory!(ax_gc, traces[2])
 
 ax_hyb = Axis3(
     f[1, 3],
@@ -205,7 +227,7 @@ ax_hyb = Axis3(
     title = "Hybrid Mode (Particle)", aspect = :data,
     limits = lims,
 )
-plot_trajectory!(ax_hyb, sol, ε_hybrid)
+plot_trajectory!(ax_hyb, traces[3])
 
 Colorbar(f[1, 4]; colormap = :turbo, limits = clims, label = L"\log_{10}(\epsilon)")
 
@@ -268,26 +290,45 @@ f = DisplayAs.PNG(f) #hide
 
 # ## Performance Comparison
 #
-# Finally, we compare the execution time and memory allocations of the three solvers.
+# Finally, we compare the execution time, memory and output size of the three
+# solvers. Pointwise position differences are a poor accuracy measure in this
+# bottle: the gyrophase and the bounce phase are exponentially sensitive, and the
+# guiding-center equations describe a different curve from the particle. The drift
+# of the kinetic energy is the robust numerical accuracy measure here.
+
+"Largest relative energy drift over the trajectory."
+function energy_drift(sol)
+    e = map(sol.u) do u
+        if length(u) == 6
+            return 0.5 * m * sum(abs2, u[SA[4, 5, 6]])
+        end
+        x = SA[u[1], u[2], u[3]]
+        return 0.5 * m * u[4]^2 + param_gc.μ * norm(bottle_B_static(x))
+    end
+    return (maximum(e) - minimum(e)) / e[1]
+end
 
 b_fo = @be solve(prob_fo, Vern6())
 b_gc = @be solve(prob_gc, Vern6())
 b_hy = @be solve(prob_hybrid, alg; verbose = false)
 
 io = IOBuffer() #hide
-println(io, "| Solver | Time | Allocations |") #hide
-println(io, "| :--- | :--- | :--- |") #hide
+println(io, "| Solver | Time | Allocations | Saved points | Energy drift |") #hide
+println(io, "| :--- | :--- | :--- | ---: | ---: |") #hide
 Printf.@printf(
-    io, "| Full Orbit | %.2f μs | %.2f KiB |\n",
-    median(b_fo).time * 1.0e6, median(b_fo).bytes / 1024
+    io, "| Full Orbit | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    median(b_fo).time * 1.0e6, median(b_fo).bytes / 1024,
+    length(sol_fo.t), energy_drift(sol_fo)
 ) #hide
 Printf.@printf(
-    io, "| Guiding Center | %.2f μs | %.2f KiB |\n",
-    median(b_gc).time * 1.0e6, median(b_gc).bytes / 1024
+    io, "| Guiding Center | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    median(b_gc).time * 1.0e6, median(b_gc).bytes / 1024,
+    length(sol_gc.t), energy_drift(sol_gc)
 ) #hide
 Printf.@printf(
-    io, "| Hybrid | %.2f μs | %.2f KiB |\n",
-    median(b_hy).time * 1.0e6, median(b_hy).bytes / 1024
+    io, "| Hybrid | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    median(b_hy).time * 1.0e6, median(b_hy).bytes / 1024,
+    length(sol.t), energy_drift(sol)
 ) #hide
 Markdown.parse(String(take!(io))) #hide
 
@@ -300,9 +341,10 @@ Markdown.parse(String(take!(io))) #hide
 # - `:gradB`     → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
 # - `:both`      → OR of the two criteria: switch to full orbit whenever *either*
 #   `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently `max(ε_curv, ε_gradB) ≥ α`),
-# - `:jacobian`  → `ε_jac = ρ_L · ‖JB‖_F / |B|`, all-in-one criterion, which also captures torsion and shear.
+# - `:jacobian`  → `ε_jac = ρ_L · ‖JB‖_F / |B|`, all-in-one criterion, which also
+#   captures torsion and shear.
 #
-# All three solve the same problem; they differ only in *when* the solver drops
+# The criteria solve the same problem; they differ only in *when* the solver drops
 # into the full-orbit mode, so the trajectories stay close while the time spent
 # in each mode changes.
 
@@ -320,7 +362,8 @@ sol_curv = solve(prob_mode, alg_curv; verbose = false, seed = 1234).u[1]
 sol_gradB = solve(prob_mode, alg_gradB; verbose = false, seed = 1234).u[1]
 sol_both = solve(prob_mode, alg_both; verbose = false, seed = 1234).u[1];
 
-# RMS position error vs the full-orbit reference, and the FO-mode fraction.
+# RMS position difference vs the full-orbit reference (dominated by gyrophase and
+# bounce phase here), and the fraction of simulated time spent in the FO mode.
 function _adia_rms(sol)
     errs = Float64[]
     for (t, u) in zip(sol.t, sol.u)
@@ -330,8 +373,15 @@ function _adia_rms(sol)
     return sqrt(mean(errs .^ 2))
 end
 function _adia_fo_frac(sol)
-    mode = sol.stats.adiabaticity.mode
-    return count(==(:FO), mode) / length(mode)
+    ad = sol.stats.adiabaticity
+    isempty(ad.t) && return 0.0
+    t_end = sol.t[end]
+    t_fo = 0.0
+    for i in eachindex(ad.t)
+        t_hi = i < length(ad.t) ? ad.t[i + 1] : t_end
+        ad.mode[i] === :FO && (t_fo += t_hi - ad.t[i])
+    end
+    return t_fo / (t_end - ad.t[1])
 end
 
 ε_col_curv = get_adiabaticity(sol_curv)
@@ -341,7 +391,7 @@ end
 io2 = IOBuffer() #hide
 println(io2, "### Result vs full-orbit reference") #hide
 println(io2, "") #hide
-println(io2, "| Mode | FO fraction | Saved points | RMS pos. err [m] |") #hide
+println(io2, "| Mode | FO time fraction | Saved points | RMS pos. diff [m] |") #hide
 println(io2, "| :--- | :--- | :--- | :--- |") #hide
 Printf.@printf(
     io2, "| `:curvature` | %.2f | %d | %.2e |\n",
@@ -361,40 +411,35 @@ Markdown.parse(String(take!(io2))) #hide
 #
 # The three modes trace nearly the same path (all stay close to the full-orbit
 # reference); they differ in *when* the solver drops into the full-orbit mode.
+# As above, every curve is interpolated onto the same time grid and the shared
+# limits come from those curves, so the three panels are drawn on one scale.
 
 f_modes = Figure(; size = (1400, 460), fontsize = 20)
 
-lms = let
-    lx = (Inf, -Inf)
-    ly = (Inf, -Inf)
-    lz = (Inf, -Inf)
-    for s in (sol_curv, sol_gradB, sol_both)
-        for u in s.u
-            lx = (min(lx[1], u[1]), max(lx[2], u[1]))
-            ly = (min(ly[1], u[2]), max(ly[2], u[2]))
-            lz = (min(lz[1], u[3]), max(lz[2], u[3]))
-        end
-    end
-    (lx, ly, lz)
-end
+traces_modes = (
+    trajectory_points(sol_curv, ε_col_curv),
+    trajectory_points(sol_gradB, ε_col_gradB),
+    trajectory_points(sol_both, ε_col_both),
+)
+lms = shared_limits(traces_modes)
 
 ax_c = Axis3(
     f_modes[1, 1], title = ":curvature", aspect = :data, limits = lms,
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
 )
-plot_trajectory!(ax_c, sol_curv, ε_col_curv)
+plot_trajectory!(ax_c, traces_modes[1])
 
 ax_g = Axis3(
     f_modes[1, 2], title = ":gradB", aspect = :data, limits = lms,
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
 )
-plot_trajectory!(ax_g, sol_gradB, ε_col_gradB)
+plot_trajectory!(ax_g, traces_modes[2])
 
 ax_b = Axis3(
     f_modes[1, 3], title = ":both", aspect = :data, limits = lms,
     xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]"
 )
-plot_trajectory!(ax_b, sol_both, ε_col_both)
+plot_trajectory!(ax_b, traces_modes[3])
 
 f_modes = DisplayAs.PNG(f_modes) #hide
 

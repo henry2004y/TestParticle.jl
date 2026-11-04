@@ -112,12 +112,23 @@ get_gc_velocity(y, p, t) = get_x(trace_gc(y, p, t))
 Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
 """
 function trace_gc(y, p, t)
+    return _trace_gc(y, p, t, get_magnetic_properties(get_x(y), t, p.B))
+end
+
+"""
+    _trace_gc(y, p, t, mp)
+
+Same as [`trace_gc`](@ref) with the [`get_magnetic_properties`](@ref) output
+`mp` at `get_x(y)` supplied by the caller, so that a step and the adiabaticity
+check can share one evaluation of the field derivatives.
+"""
+@inline function _trace_gc(y, p, t, mp)
     # TODO: support external forces
     (; q, q2m, μ) = p
     X = get_x(y)
 
     E = p.E(X, t)
-    (; B, Bmag, b̂, ∇B, JB) = get_magnetic_properties(X, t, p.B)
+    (; B, Bmag, b̂, ∇B, JB) = mp
 
     # ∇ × b̂ = (∇ × B + b̂ × ∇B) / B
     # ∇ × B from JB (Jacobian of B)
