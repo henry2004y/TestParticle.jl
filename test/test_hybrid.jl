@@ -436,10 +436,12 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         μ = 1.0e-15
         mp = TP.get_magnetic_properties(X, 0.0, B_field_bottle)
 
-        @test all(isapprox.(
-            TP._adiabaticity_components(mp, q, m, μ),
-            TP.adiabaticity_components(X, B_field_bottle, q, m, μ, 0.0)
-        ))
+        @test all(
+            isapprox.(
+                TP._adiabaticity_components(mp, q, m, μ),
+                TP.adiabaticity_components(X, B_field_bottle, q, m, μ, 0.0)
+            )
+        )
 
         # The lean two-element version used by the check drops the gyrophase but
         # returns the same guiding center and magnetic moment.

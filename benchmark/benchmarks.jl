@@ -269,8 +269,11 @@ function bottle_B_hybrid(x, t)
     return SA[Bx, By, Bz]
 end
 
-# Each hybrid entry is paired with the standalone Boris and GCRK45 solvers on the
-# same trajectory, so the timings can be read as a comparison. Diagnostics are
+# Each hybrid entry is paired with the standalone AdaptiveBoris and GCRK45 solvers
+# on the same trajectory, so the timings can be read as a comparison. The FO
+# baseline tracks the local gyroperiod with the same safety factor as the hybrid's
+# FO mode; a fixed step tied to the initial gyroperiod is up to 20x longer than the
+# local gyroperiod in the bottle and only aliases the gyration. Diagnostics are
 # left at their default (on): a normal solve also records the check history.
 let
     B_bottle = TP.Field(bottle_B_hybrid)
@@ -283,6 +286,7 @@ let
     p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
     v0 = SA[5.0e4, 0.0, 1.0e5]
     dt_boris = 0.1 * T_gyro
+    alg_boris = AdaptiveBoris(safety = 0.1)
 
     # Pinned thresholds isolate the cost of each mode. On the axis the field is
     # exactly uniform, so a mixed run would be decided by where the particle
@@ -310,8 +314,8 @@ let
     state_gc, param_gc = TP.prepare_gc(u0_mixed; B = B_bottle, species = Proton)
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
-    SUITE["trace"]["Hybrid"]["Boris, magnetic bottle"] = @benchmarkable solve(
-        $prob_mixed, Boris(); dt = $dt_boris
+    SUITE["trace"]["Hybrid"]["AdaptiveBoris, magnetic bottle"] = @benchmarkable solve(
+        $prob_mixed, $alg_boris; dt = $dt_boris
     )
     SUITE["trace"]["Hybrid"]["GCRK45, magnetic bottle"] = @benchmarkable solve(
         $prob_gc, GCRK45()
@@ -347,6 +351,7 @@ let
     p = (q2m, m, E_zero, B_sheet, TP.ZeroField())
     prob_sheet = TraceProblem(u0, tspan, p)
     dt_boris = T_gyro / 20
+    alg_boris = AdaptiveBoris(safety = 0.1)
 
     alg_sheet = AdaptiveHybrid(;
         threshold = 0.1, dtmax = dt_boris, dtmin = 1.0e-4 * T_gyro,
@@ -355,14 +360,60 @@ let
     state_gc, param_gc = TP.prepare_gc(u0; B = B_sheet, species = Proton)
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
-    SUITE["trace"]["Hybrid"]["Boris, current sheet"] = @benchmarkable solve(
-        $prob_sheet, Boris(); dt = $dt_boris
+    SUITE["trace"]["Hybrid"]["AdaptiveBoris, current sheet"] = @benchmarkable solve(
+        $prob_sheet, $alg_boris; dt = $dt_boris
     )
     SUITE["trace"]["Hybrid"]["GCRK45, current sheet"] = @benchmarkable solve(
         $prob_gc, GCRK45()
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, current sheet"] = @benchmarkable solve(
         $prob_sheet, $alg_sheet; verbose = false, seed = 1234
+    )
+end
+
+# The cases above are deliberately non-adiabatic stress tests (ε ≳ 0.1): there a
+# guiding-center step cannot be much longer than a full-orbit step, but each DP5
+# stage needs field derivatives, so standalone GC can lose even to adaptive Boris.
+# The opposite regime is the reason to trace guiding centers: with ε ≪ 1 one GC
+# step can span many gyroperiods while FO still resolves every gyration. Measure
+# it on the same footing, over enough gyroperiods for the gain to show up.
+let
+    B0_adia = 1.0e-4
+    α_adia = 1.0e-8
+    adia_B(x, t) = SA[
+        -B0_adia * α_adia * x[1] * x[3],
+        -B0_adia * α_adia * x[2] * x[3],
+        B0_adia * (1 + α_adia * x[3]^2),
+    ]
+
+    m, q = TP.mᵢ, TP.qᵢ
+    q2m = q / m
+    T_gyro = 2π / (abs(q2m) * B0_adia)
+    tspan = (0.0, 1000 * T_gyro)
+
+    u0 = vcat(SA[1.0, 0.0, 0.0], SA[5.0e4, 0.0, 1.0e5])
+    B_adia = TP.Field(adia_B)
+    E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
+    p = (q2m, m, E_zero, B_adia, TP.ZeroField())
+    prob_adia = TraceProblem(u0, tspan, p)
+    dt_boris = 0.1 * T_gyro
+    alg_boris = AdaptiveBoris(safety = 0.1)
+
+    alg_adia = AdaptiveHybrid(;
+        threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+        maxiters = 10000, check_interval = 10,
+    )
+    state_gc, param_gc = TP.prepare_gc(u0; B = B_adia, species = Proton)
+    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
+
+    SUITE["trace"]["Hybrid"]["AdaptiveBoris, adiabatic bottle"] = @benchmarkable solve(
+        $prob_adia, $alg_boris; dt = $dt_boris
+    )
+    SUITE["trace"]["Hybrid"]["GCRK45, adiabatic bottle"] = @benchmarkable solve(
+        $prob_gc, GCRK45()
+    )
+    SUITE["trace"]["Hybrid"]["AdaptiveHybrid, adiabatic bottle"] = @benchmarkable solve(
+        $prob_adia, $alg_adia; verbose = false, seed = 1234
     )
 end
 
