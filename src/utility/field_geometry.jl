@@ -18,6 +18,10 @@ end
     return zero(x), zeros(eltype(x), 3, 3)
 end
 
+@inline function _get_B_jacobian(x::SVector{3, T}, t, ::ZeroField) where {T}
+    return zero(x), zero(SMatrix{3, 3, T, 9})
+end
+
 """
     get_magnetic_properties(x, t, Bfunc)
 
