@@ -8,7 +8,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     _to_gpu_grid,
     get_x, get_magnetic_properties, get_work_rates, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
-    update_dp5, adiabaticity_components, _adiabaticity_components, _rng_seed,
+    update_dp5, adiabaticity_components, _adiabaticity_components,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
@@ -211,11 +211,14 @@ end
     sample_stats = _adia_sample_stats(prob, SaveAdia)
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
+    # The seeds of SciMLBase's ensemble solve, so every solver draws the same states.
+    sim_seeds = isnothing(seed) ? nothing :
+        SciMLBase.generate_sim_seeds(nothing, seed, trajectories)
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
         _hybrid_adaptive!(
-            sols, prob, irange, alg, plan,
-            isoutside, save_start, save_end, save_everystep, verbose, seed, Val(SaveAdia)
+            sols, prob, irange, alg, plan, isoutside,
+            save_start, save_end, save_everystep, verbose, sim_seeds, Val(SaveAdia)
         )
     end
 
@@ -318,7 +321,7 @@ end
 @inline function _hybrid_adaptive!(
         sols, prob::FOProblem, irange, alg,
         plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
+        save_start, save_end, save_everystep, verbose, sim_seeds, ::Val{SaveAdia}
     ) where {F, SaveAdia}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
@@ -337,8 +340,9 @@ end
     n_correct = alg.switch_correction
 
     @inbounds for i in irange
-        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
-        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
+        sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
+        rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
+        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]
         v = xv_fo[SVector(4, 5, 6)]
