@@ -346,4 +346,12 @@ prob_func_gpu(prob, ctx) = remake(
     end
 end
 
+@testset "output_func receives the ensemble context" begin
+    param = prepare(; E = zero_E, B = uniform_B, species = Proton)
+    prob = TraceProblem(SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-9), param)
+    eprob = EnsembleProblem(prob; output_func = (sol, ctx) -> (ctx.sim_id, false))
+    sols = solve(eprob, Boris(), EnsembleKernel(CPU()); dt = 1.0e-10, trajectories = 3)
+    @test sols.u == 1:3
+end
+
 end # module test_boris_kernel

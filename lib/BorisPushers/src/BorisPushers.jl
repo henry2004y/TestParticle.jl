@@ -16,6 +16,7 @@ import OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqAdaptiveAlgori
 using StaticArrays
 using MuladdMacro
 using LinearAlgebra
+using Random: default_rng, Xoshiro
 using KernelAbstractions: @kernel, @index, @Const, synchronize, Backend, CPU
 import KernelAbstractions as KA
 import Adapt

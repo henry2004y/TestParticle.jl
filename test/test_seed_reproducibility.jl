@@ -11,6 +11,7 @@ using TestParticle
 using BorisPushers
 using StaticArrays
 using OrdinaryDiffEq
+using KernelAbstractions: CPU
 using Random
 using LinearAlgebra
 using VelocityDistributionFunctions
@@ -175,4 +176,25 @@ end
     end
 end
 
+@testset "A seed draws the same initial states on every solver" begin
+    B_uniform(x, t) = SA[0.0, 0.0, 1.0e-8]
+    function random_v(prob, ctx)
+        u = prob.u0
+        return remake(prob; u0 = SA[u[1], u[2], u[3], 1.0e5 * rand(ctx.rng), 0.0, 0.0])
+    end
+    prob = TraceProblem(
+        SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-9),
+        prepare(; B = B_uniform, species = Proton); prob_func = random_v
+    )
+    init_v(sols) = [sol.u[1][4] for sol in sols.u]
+    kw = (; trajectories = 3, seed = 7)
+
+    v = init_v(solve(prob, Boris(), EnsembleSerial(); dt = 1.0e-10, kw...))
+    @test allunique(v)
+    @test init_v(solve(prob, Tsit5(), EnsembleSerial(); kw...)) == v
+    @test init_v(solve(prob, Boris(), EnsembleThreads(); dt = 1.0e-10, kw...)) == v
+    @test init_v(solve(prob, Boris(), EnsembleKernel(CPU()); dt = 1.0e-10, kw...)) == v
+    hybrid = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-10)
+    @test init_v(solve(prob, hybrid; kw...)) == v
+end
 end # module test_seed_reproducibility

@@ -281,16 +281,23 @@ function _unpack_dense_solutions!(
     return sols
 end
 
-@inline function _call_prob_func(prob_func, prob, i::Int, repeat::Int, seed)
-    ctx = (sim_id = i, repeat = repeat)
-    return prob_func(prob, ctx)
+# The seeds of SciMLBase's ensemble solve, so CPU and kernel paths draw the same states.
+function _sim_seeds(seed, trajectories)
+    return isnothing(seed) ? nothing :
+        SciMLBase.generate_sim_seeds(nothing, seed, trajectories)
+end
+
+@inline function _ensemble_context(i::Int, sim_seeds)
+    sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
+    rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
+    return SciMLBase.EnsembleContext(i, 1, 0, sim_seed, rng, nothing)
 end
 
 
 @inline function _init_particle!(
-        xv_init::AbstractMatrix, prob, prob_func, i::Int, seed
+        xv_init::AbstractMatrix, prob, prob_func, i::Int, sim_seeds
     )
-    new_prob = _call_prob_func(prob_func, prob, i, 0, seed)
+    new_prob = prob_func(prob, _ensemble_context(i, sim_seeds))
     u0_i = new_prob.u0
     @inbounds for c in 1:6
         xv_init[i, c] = u0_i[c]
@@ -301,11 +308,12 @@ end
 function _init_particles!(
         xv_init::AbstractMatrix{T}, prob, prob_func, n_particles::Int, seed
     ) where {T}
+    sim_seeds = _sim_seeds(seed, n_particles)
     if n_particles == 1
-        _init_particle!(xv_init, prob, prob_func, 1, seed)
+        _init_particle!(xv_init, prob, prob_func, 1, sim_seeds)
     else
         _foreach_chunked(n_particles) do i
-            _init_particle!(xv_init, prob, prob_func, i, seed)
+            _init_particle!(xv_init, prob, prob_func, i, sim_seeds)
         end
     end
     return xv_init
@@ -1045,7 +1053,10 @@ function SciMLBase.__solve(
     raw_output && return sols
 
     final_sols = if output_func !== SciMLBase.DEFAULT_OUTPUT_FUNC
-        first_out, rerun = output_func(sols[1], 1)
+        # States are initialized by now, so `ctx.rng` restarts from the trajectory's seed
+        # instead of continuing the stream `prob_func` drew from.
+        sim_seeds = _sim_seeds(seed, trajectories)
+        first_out, rerun = output_func(sols[1], _ensemble_context(1, sim_seeds))
         if rerun
             throw(
                 ArgumentError("rerun from output_func is not supported in EnsembleKernel")
@@ -1054,7 +1065,7 @@ function SciMLBase.__solve(
         transformed = Vector{typeof(first_out)}(undef, length(sols))
         transformed[1] = first_out
         for i in 2:length(sols)
-            out, rerun = output_func(sols[i], i)
+            out, rerun = output_func(sols[i], _ensemble_context(i, sim_seeds))
             if rerun
                 throw(
                     ArgumentError(
