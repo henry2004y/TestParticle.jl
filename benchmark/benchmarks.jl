@@ -5,7 +5,7 @@ using TestParticle
 using BorisPushers
 using TestParticle: LazyTimeInterpolator, get_particle_flux
 import TestParticle as TP
-using OrdinaryDiffEq, StaticArrays
+using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqVerner, StaticArrays
 using BorisPushers: CPU
 using Meshes: Vec, Plane, Disk, Point, Sphere, CartesianGrid, StructuredGrid
 
@@ -265,12 +265,12 @@ prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 
 prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-SUITE["trace"]["GC"]["Native RK4"] = @benchmarkable solve(
-    $prob_native_gc, GCRK4();
-    dt = 2.0e-2, saveat = 2.0, maxiters = 10000
+SUITE["trace"]["GC"]["RK4"] = @benchmarkable solve(
+    $prob_native_gc, RK4();
+    dt = 2.0e-2, adaptive = false, saveat = 2.0, maxiters = 10000
 )
-SUITE["trace"]["GC"]["Native RK45"] = @benchmarkable solve(
-    $prob_native_gc, GCRK45();
+SUITE["trace"]["GC"]["Vern7"] = @benchmarkable solve(
+    $prob_native_gc, Vern7();
     dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
 
@@ -284,7 +284,7 @@ function bottle_B_hybrid(x, t)
     return SA[Bx, By, Bz]
 end
 
-# Each hybrid entry is paired with the standalone AdaptiveBoris and GCRK45 solvers
+# Each hybrid entry is paired with the standalone AdaptiveBoris and Vern7 solvers
 # on the same trajectory, so the timings can be read as a comparison. The FO
 # baseline tracks the local gyroperiod with the same safety factor as the hybrid's
 # FO mode and gets the same `dtmin` / `dtmax` bounds, so both follow one step
@@ -336,8 +336,8 @@ let
         $prob_mixed, $alg_boris;
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
-    SUITE["trace"]["Hybrid"]["GCRK45, magnetic bottle"] = @benchmarkable solve(
-        $prob_gc, GCRK45()
+    SUITE["trace"]["Hybrid"]["Vern7, magnetic bottle"] = @benchmarkable solve(
+        $prob_gc, Vern7()
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, full orbit"] = @benchmarkable solve(
         $prob, $alg_fo; verbose = false, seed = 1234
@@ -385,8 +385,8 @@ let
         $prob_sheet, $alg_boris;
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
-    SUITE["trace"]["Hybrid"]["GCRK45, current sheet"] = @benchmarkable solve(
-        $prob_gc, GCRK45()
+    SUITE["trace"]["Hybrid"]["Vern7, current sheet"] = @benchmarkable solve(
+        $prob_gc, Vern7()
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, current sheet"] = @benchmarkable solve(
         $prob_sheet, $alg_sheet; verbose = false, seed = 1234
@@ -394,7 +394,7 @@ let
 end
 
 # The cases above are deliberately non-adiabatic stress tests (ε ≳ 0.1): there a
-# guiding-center step cannot be much longer than a full-orbit step, but each DP5
+# guiding-center step cannot be much longer than a full-orbit step, but each
 # stage needs field derivatives, so standalone GC can lose even to adaptive Boris.
 # The opposite regime is the reason to trace guiding centers: with ε ≪ 1 one GC
 # step can span many gyroperiods while FO still resolves every gyration. Measure
@@ -434,8 +434,8 @@ let
         $prob_adia, $alg_boris;
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
-    SUITE["trace"]["Hybrid"]["GCRK45, adiabatic bottle"] = @benchmarkable solve(
-        $prob_gc, GCRK45()
+    SUITE["trace"]["Hybrid"]["Vern7, adiabatic bottle"] = @benchmarkable solve(
+        $prob_gc, Vern7()
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, adiabatic bottle"] = @benchmarkable solve(
         $prob_adia, $alg_adia; verbose = false, seed = 1234

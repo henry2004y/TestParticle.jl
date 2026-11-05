@@ -10,6 +10,7 @@ using TestParticle
 using TestParticle: get_adiabaticity
 import TestParticle as TP
 using BorisPushers
+using OrdinaryDiffEqVerner
 using StaticArrays
 using LinearAlgebra
 using Test

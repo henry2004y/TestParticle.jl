@@ -8,7 +8,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     _to_gpu_grid,
     get_x, get_magnetic_properties, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
-    update_dp5, adiabaticity_components, _adiabaticity_components,
+    init_gc_integrator, gc_step!, adiabaticity_components, _adiabaticity_components,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
@@ -279,10 +279,6 @@ end
 
     is_td = is_time_dependent(Efunc) || is_time_dependent(Bfunc)
 
-    safety_gc = 0.9
-    max_growth = 5.0
-    min_growth = 0.2
-
     check_interval = alg.check_interval
     check_dt = Tt(alg.check_dt)
     n_correct = alg.switch_correction
@@ -312,8 +308,10 @@ end
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = Tt(0.5 * 2π / ω)
+            integrator_gc = init_gc_integrator(xv_gc, (t, tspan[2]), p_gc, dt, alg)
             verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
+            integrator_gc = nothing
             mode = :FO
             fields = _node_fields(p, r, t)
             dt = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
@@ -368,7 +366,6 @@ end
 
         while t < tspan[2] && steps < alg.maxiters
             if mode == :GC
-                mp = nothing
                 it_eff = max(1, round(Int, check_scale * check_interval))
                 deadline = t_last_check + check_scale * check_dt
                 if _check_due(it, t, t_last_check, it_eff, deadline)
@@ -409,58 +406,33 @@ end
                     end
                 end
 
-                if t + dt > tspan[2]
-                    dt = tspan[2] - t
-                end
                 # Never step past the next check deadline: a long guiding-center
                 # step could otherwise enter a non-adiabatic region and only be
-                # examined after leaving it again. Clip every positive remainder,
-                # including ones below `dtmin`, so `check_dt` stays a hard bound.
-                dt_check = deadline - t
-                if zero(dt_check) < dt_check < dt
-                    dt = dt_check
-                end
-
-                dx, E_err = update_dp5(xv_gc, p_gc, dt, t, mp)
-
-                sum_sq_error = 0.0
-                y_next = xv_gc + dx
-                for k in 1:4
-                    sc = alg.abstol + max(abs(xv_gc[k]), abs(y_next[k])) * alg.reltol
-                    sum_sq_error += (E_err[k] / sc)^2
-                end
-                error_ratio = 0.5 * sqrt(sum_sq_error)
-
-                if error_ratio <= 1.0
-                    if isoutside(y_next, p_gc, t + dt)
-                        retcode = ReturnCode.Terminated
-                        break
-                    end
-
-                    t += dt
-                    xv_gc = y_next
-                    Bmag_next = norm(Bfunc(get_x(xv_gc), t))
-                    phase = mod2pi(phase - dt * (q2m * (Bmag_curr + Bmag_next)) / 2)
-                    Bmag_curr = Bmag_next
-
-                    if use_saveat(plan) || save_everystep
-                        y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
-                        isave, t_last, y_last = _hybrid_save!(
-                            traj, tsave, plan, isave, t_last, y_last, t, y_out
-                        )
-                    end
-                    steps += 1
-                    it += 1
-                end
-
-                scale = error_ratio == 0.0 ?
-                    max_growth : safety_gc * (1.0 / error_ratio)^0.2
-                scale = max(min_growth, min(scale, max_growth))
-                dt *= Tt(scale)
-                if t < tspan[2] && dt < 1.0e-14
-                    retcode = ReturnCode.DtLessThanMin
+                # examined after leaving it again.
+                code = gc_step!(integrator_gc, deadline, isoutside, p_gc, tspan[2])
+                if code != ReturnCode.Success
+                    retcode = code
                     break
                 end
+
+                t_next = Tt(integrator_gc.t)
+                y_next = SVector{4, T}(integrator_gc.u)
+                dt_step = t_next - t
+                t = t_next
+                xv_gc = y_next
+                Bmag_next = norm(Bfunc(get_x(xv_gc), t))
+                phase = mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2)
+                Bmag_curr = Bmag_next
+                dt = Tt(integrator_gc.dt)
+
+                if use_saveat(plan) || save_everystep
+                    y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                    isave, t_last, y_last = _hybrid_save!(
+                        traj, tsave, plan, isave, t_last, y_last, t, y_out
+                    )
+                end
+                steps += 1
+                it += 1
 
             else # Mode == :FO
                 # One field evaluation per step serves the adiabaticity check,
@@ -509,6 +481,9 @@ end
                         # it, capped at half a gyroperiod.
                         omega = abs(q2m * Bmag_curr)
                         dt = min(dt, Tt(0.5 * 2π / omega))
+                        integrator_gc = init_gc_integrator(
+                            xv_gc, (t, tspan[2]), p_gc, dt, alg
+                        )
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
@@ -653,7 +628,10 @@ end
 
             solve(prob, MultistepBoris2(; n = 2); dt)
 
-            solve(prob, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
+            # `threshold = 0` never leaves the full-orbit mode, so the hybrid loop
+            # is compiled here without needing the guiding-center integrator that
+            # `TestParticleVernerExt` supplies.
+            solve(prob, AdaptiveHybrid(threshold = 0.0, dtmax = 1.0))
         end
 
         let

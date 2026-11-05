@@ -15,6 +15,7 @@ using Test
 using LinearAlgebra
 using SciMLBase
 using OrdinaryDiffEq
+using OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqVerner
 import Magnetostatics as MS
 using ..test_common: uniform_Ex, curved_B
 
@@ -144,44 +145,52 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "Fixed RK4" begin
             dt = 1.0e-4
-            sol = solve(prob, GCRK4(); dt)
+            sol = solve(prob, RK4(); dt, adaptive = false)
             @test sol isa SciMLBase.AbstractODESolution
-            @test length(sol.t) == 10001
+            @test length(sol.t) in (10001, 10002)
+            @test sol.t[end] == 1.0
             @test sol.retcode == ReturnCode.Success
 
             # `maxiters` stops short of the span and the last state keeps its own time.
-            sol_cut = solve(prob, GCRK4(); dt, maxiters = 10, save_everystep = false)
+            sol_cut = solve(
+                prob, RK4(); dt, adaptive = false, maxiters = 10, save_everystep = false
+            )
             @test sol_cut.t[end] ≈ 10 * dt
             @test sol_cut.retcode == ReturnCode.MaxIters
-            @test length(solve(prob, GCRK4(); dt = 0.25, maxiters = 1.0e6).t) == 5
+            @test length(
+                solve(prob, RK4(); dt = 0.25, adaptive = false, maxiters = 1.0e6).t
+            ) == 5
 
             # Test save_everystep=false
-            sol_no_save = solve(prob, GCRK4(); dt, save_everystep = false)
+            sol_no_save = solve(prob, RK4(); dt, adaptive = false, save_everystep = false)
             @test length(sol_no_save.t) == 2 # start and end
 
-            # Test early exit to cover resize!
+            # Test early exit via isoutside
             sol_early = solve(
-                prob, GCRK4();
-                dt, isoutside = (xv, p, t) -> t > 0.5
+                prob, RK4();
+                dt, adaptive = false, isoutside = (xv, p, t) -> t > 0.5
             )
-            @test length(sol_early.t) == 5001
+            @test sol_early.retcode == ReturnCode.Terminated
+            @test sol_early.t[end] ≈ 0.5 atol = 2 * dt
+
+            @test_throws ArgumentError solve(prob, RK4(); adaptive = false)
         end
 
-        @testset "Adaptive RK45" begin
+        @testset "Adaptive Vern7" begin
             # Default tolerances
-            sol_def = solve(prob, GCRK45(); dt = 1.0e-4)
-            @test length(sol_def.t) == 61
+            sol_def = solve(prob, Vern7(); dt = 1.0e-4)
+            @test length(sol_def.t) > 10
             @test sol_def.retcode == ReturnCode.Success
 
             # Tight tolerances
             sol_tight = solve(
-                prob, GCRK45(; abstol = 1.0e-8, reltol = 1.0e-8);
-                dt = 1.0e-4
+                prob, Vern7();
+                abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4
             )
             @test length(sol_tight.t) > length(sol_def.t)
 
             # Accuracy check
-            sol_rk4 = solve(prob, GCRK4(); dt = 1.0e-4)
+            sol_rk4 = solve(prob, RK4(); dt = 1.0e-4, adaptive = false)
             diff = norm(sol_tight.u[end] - sol_rk4.u[end])
             @test diff < 10.0
         end
@@ -190,9 +199,9 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             sol_diffeq = solve(prob, Vern9(); reltol = 1.0e-8, abstol = 1.0e-8)
             u_diffeq = sol_diffeq.u[end]
 
-            # Solve using Native RK4
+            # Solve using fixed-step RK4
             dt = 1.0e-4
-            sol_native = solve(prob, GCRK4(); dt)
+            sol_native = solve(prob, RK4(); dt, adaptive = false)
             u_native = sol_native.u[end]
 
             # Position difference
@@ -204,22 +213,29 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "Automatic Initial dt" begin
             # Test that we can call solve without dt for adaptive method
-            sol_auto = solve(prob, GCRK45())
+            sol_auto = solve(prob, Vern7())
             @test sol_auto.retcode == ReturnCode.Success
-            @test length(sol_auto.t) == 58
+            @test length(sol_auto.t) > 10
+        end
+
+        @testset "Deprecated GCRK4 and GCRK45" begin
+            sol_dep_rk4 = @test_deprecated solve(prob, GCRK4(); dt = 0.25)
+            @test sol_dep_rk4.retcode == ReturnCode.Success
+            sol_dep_rk45 = @test_deprecated solve(prob, GCRK45(); dt = 1.0e-4)
+            @test sol_dep_rk45.retcode == ReturnCode.Success
         end
 
         @testset "Ensemble" begin
             trajectories = 10
 
             # Serial
-            sol_serial = solve(prob, GCRK45(), EnsembleSerial(); trajectories, dt = 1.0e-4)
+            sol_serial = solve(prob, Vern7(), EnsembleSerial(); trajectories, dt = 1.0e-4)
             @test length(sol_serial.u) == trajectories
             @test all(s -> s.retcode == ReturnCode.Success, sol_serial.u)
 
             # Threads
             sol_threads = solve(
-                prob, GCRK45(), EnsembleThreads();
+                prob, Vern7(), EnsembleThreads();
                 trajectories, dt = 1.0e-4
             )
             @test length(sol_threads.u) == trajectories
@@ -236,7 +252,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             )
             prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 
-            sol = solve(prob_saving, GCRK4(), EnsembleSerial(); trajectories, dt = 1.0e-5)
+            sol = solve(prob_saving, RK4(), EnsembleSerial(); trajectories, dt = 1.0e-5)
 
             for s in sol.u
                 E, B = get_fields(s)
@@ -260,26 +276,21 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
         @testset "saveat" begin
             dt = 1.0e-4
-            sol_all = solve(prob, GCRK4(); dt)
+            sol_all = solve(prob, RK4(); dt, adaptive = false)
 
-            # Asking for intermediate output must not change the integration,
-            # only where the state is reported. `save_start` and `save_end` keep
-            # adding the two ends of the span around the requested times.
             ts = collect(0.1:0.1:0.9)
-            sol_at = solve(prob, GCRK4(); dt, saveat = ts)
+            sol_at = solve(prob, RK4(); dt, adaptive = false, saveat = ts)
 
-            @test sol_at.t ≈ vcat(0.0, ts, 1.0)
+            @test sol_at.t ≈ ts
             for (k, t) in enumerate(sol_at.t)
                 @test sol_at.u[k] ≈ sol_all(t)
             end
 
             # The adaptive solver takes the same times.
-            sol_at45 = solve(prob, GCRK45(); dt, saveat = ts)
-            @test sol_at45.t ≈ vcat(0.0, ts, 1.0)
+            sol_at45 = solve(prob, Vern7(); dt, saveat = ts)
+            @test sol_at45.t ≈ ts
 
-            # An interval is accepted as well, and only the interior is taken
-            # from it since the ends are reported separately.
-            sol_interval = solve(prob, GCRK4(); dt, saveat = 0.25)
+            sol_interval = solve(prob, RK4(); dt, adaptive = false, saveat = 0.25)
             @test sol_interval.t ≈ collect(0.0:0.25:1.0)
             E_saved, B_saved = get_fields(sol_interval)
             @test all(iszero, E_saved)

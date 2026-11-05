@@ -1,9 +1,23 @@
 # Adaptive hybrid GC-FO solver
 
-"""
-    AdaptiveHybrid{T}
+@noinline function _verner_missing()
+    throw(
+        ArgumentError(
+            "The default guiding-center solver of AdaptiveHybrid requires " *
+            "OrdinaryDiffEqVerner. Run `using OrdinaryDiffEqVerner` first, or pass " *
+            "`gc_alg` explicitly to AdaptiveHybrid."
+        )
+    )
+end
 
-Hybrid algorithm that switches between adaptive Boris (FO) and RK45 (GC), used as
+default_gc_alg(::Any) = _verner_missing()
+default_gc_alg() = default_gc_alg(Val(:default))
+
+"""
+    AdaptiveHybrid{T, A}
+
+Hybrid algorithm that switches between adaptive Boris (FO) and a guiding-center ODE
+solver `gc_alg` (defaulting to `Vern7()` when `OrdinaryDiffEqVerner` is loaded), used as
 `solve(TraceProblem(u0, tspan, p), alg)` with the full-orbit state `u0`.
 
 Mode switching uses hysteresis with two adiabaticity thresholds to avoid
@@ -32,8 +46,8 @@ Both modes adapt their step size to the local field. The full-orbit mode uses a
 Boris step `dt = 2π * safety_fo / (|q/m| * |B|)` clipped to `[dtmin, dtmax]` and
 recomputed after every accepted step; when the step changes, the staggered
 velocity is re-centered on the new step so that the leapfrog scheme stays
-time-reversible. The guiding-center mode uses an embedded RK45 error estimate,
-so its steps may span many gyroperiods.
+time-reversible. The guiding-center mode steps with `gc_alg`, so its steps may
+span many gyroperiods.
 
 Because a guiding-center step can be long compared with the scale on which `ε`
 varies, the adiabaticity check is triggered by whichever comes first:
@@ -75,7 +89,7 @@ in `sol.stats.adiabaticity`. This diagnostic is only saved when
 `save_adiabaticity = true` (the default); set it to `false` to skip the
 buffers and reduce memory/allocation overhead.
 """
-struct AdaptiveHybrid{T}
+struct AdaptiveHybrid{T, A}
     threshold_gc_to_fo::T
     threshold_fo_to_gc::T
     dtmin::T
@@ -90,6 +104,7 @@ struct AdaptiveHybrid{T}
     adiabaticity::Symbol
     save_adiabaticity::Bool
     switch_correction::Int
+    gc_alg::A
 end
 
 function AdaptiveHybrid(;
@@ -99,7 +114,8 @@ function AdaptiveHybrid(;
         dtmax, dtmin = 1.0e-2 * dtmax, check_dt = 100 * dtmax,
         check_margin_max = 1.0, safety_fo = 0.1,
         abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 10000, check_interval = 10,
-        adiabaticity = :curvature, save_adiabaticity = true, switch_correction = 2
+        adiabaticity = :curvature, save_adiabaticity = true, switch_correction = 2,
+        gc_alg = nothing
     )
     dtmax > 0 || throw(ArgumentError("dtmax must be positive."))
     dtmin > 0 || throw(ArgumentError("dtmin must be positive."))
@@ -132,10 +148,41 @@ function AdaptiveHybrid(;
         typeof(dtmin), typeof(dtmax), typeof(check_dt), typeof(check_margin_max),
         typeof(safety_fo), typeof(abstol), typeof(reltol)
     )
-    return AdaptiveHybrid{T}(
+    return AdaptiveHybrid{T, typeof(gc_alg)}(
         T(threshold_gc_to_fo), T(threshold_fo_to_gc), T(dtmin), T(dtmax),
         T(safety_fo), T(abstol), T(reltol), T(check_dt), T(check_margin_max),
         maxiters, check_interval, adiabaticity, save_adiabaticity,
-        switch_correction
+        switch_correction, gc_alg
     )
+end
+
+function init_gc_integrator(
+        xv::SVector{4, T}, tspan, p, dt, alg::AdaptiveHybrid
+    ) where {T}
+    gc_alg = alg.gc_alg === nothing ? default_gc_alg() : alg.gc_alg
+    prob = ODEProblem{false, FullSpecialize}(trace_gc, xv, tspan, p)
+    return SciMLBase.init(
+        prob, gc_alg;
+        dt, abstol = alg.abstol, reltol = alg.reltol, maxiters = alg.maxiters,
+        save_start = false, save_end = false, save_everystep = false, dense = false
+    )
+end
+
+function gc_step!(
+        integrator::SciMLBase.DEIntegrator, t_limit, isoutside::F, p, tspan_end
+    ) where {F}
+    t_before = integrator.t
+    dt_max = t_limit - t_before
+    if zero(dt_max) < dt_max && t_limit < tspan_end
+        SciMLBase.step!(integrator, dt_max, true)
+    else
+        SciMLBase.step!(integrator)
+    end
+
+    y = SVector{4}(integrator.u)
+    isoutside(y, p, integrator.t) && return ReturnCode.Terminated
+
+    code = SciMLBase.check_error(integrator)
+    code != ReturnCode.Success && return code
+    return integrator.t == t_before ? ReturnCode.DtLessThanMin : ReturnCode.Success
 end

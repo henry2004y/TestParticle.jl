@@ -36,8 +36,6 @@
             B = build_interpolator(B, (x, y, z); bc = FillExtrap(NaN))
         )
         prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-        solve(prob_gc, GCRK4(); dt = 0.1)
-        solve(prob_gc, GCRK45())
         trace_gc(stateinit_gc, param_gc, t)
         trace_gc!(out4, stateinit_gc, param_gc, t)
     end
