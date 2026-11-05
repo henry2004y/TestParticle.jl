@@ -355,7 +355,12 @@ end
 stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]  # [m], [m/s]
 tspan = (0.0, 1.0)
 
-param = prepare(r, θ, ϕ; B, species = Proton, gridtype = TP.StructuredGrid)
+param = prepare(;
+        B = build_interpolator(B, (r, θ, ϕ); bc = (
+                TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                TestParticle.PeriodicBC(; endpoint = :inclusive),
+            ), gridtype = TP.StructuredGrid),
+        species = Proton)
 prob = TraceProblem(stateinit, tspan, param)
 
 # Moving the parameters to the device converts the field into a GPUGrid

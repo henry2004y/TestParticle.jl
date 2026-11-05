@@ -140,8 +140,26 @@ SUITE["trace"]["normalized"]["out of place"] = @benchmarkable solve(
 # Numerical Field
 mesh, E_numeric, B_numeric = setup_numeric_field()
 tspan_num = (0.0, 10.0)
-param_numeric = prepare(mesh; E = E_numeric, B = B_numeric, order = 1)
-param_numeric_cubic = prepare(mesh; E = E_numeric, B = B_numeric, order = 3)
+param_numeric = prepare(;
+    E = build_interpolator(
+        E_numeric, mesh;
+        bc = TestParticle.FillExtrap(NaN), order = 1
+    ),
+    B = build_interpolator(
+        B_numeric, mesh;
+        bc = TestParticle.FillExtrap(NaN), order = 1
+    )
+)
+param_numeric_cubic = prepare(;
+    E = build_interpolator(
+        E_numeric, mesh;
+        bc = TestParticle.FillExtrap(NaN), order = 3
+    ),
+    B = build_interpolator(
+        B_numeric, mesh;
+        bc = TestParticle.FillExtrap(NaN), order = 3
+    )
+)
 prob_ip_num = ODEProblem(trace!, stateinit, tspan_num, param_numeric) # in place
 prob_oop_num = ODEProblem(trace, SA[stateinit...], tspan_num, param_numeric) # out of place
 prob_boris = TraceProblem(stateinit, tspan_num, param_numeric)

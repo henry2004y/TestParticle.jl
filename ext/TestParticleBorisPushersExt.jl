@@ -641,7 +641,9 @@ BorisPushers.adapt_field_to_gpu(field::ZeroField, ::Backend) = field
 function BorisPushers.adapt_field_to_gpu(field::Field, backend::Backend)
     backend isa CPU && return field
 
-    adapted_func = BorisPushers.adapt_field_to_gpu(field.field_function, backend)
+    raw = field.field_function
+    adapted_func = raw isa Function ? BorisPushers.adapt_field_to_gpu(raw, backend) :
+        Adapt.adapt(backend, raw)
     return Field{is_time_dependent(field), typeof(adapted_func)}(adapted_func)
 end
 
@@ -674,7 +676,12 @@ end
         dt = 0.5
         # The slow particle stays inside the grid, where the interpolated field is finite.
         for (stateinit, param) in (
-                ([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(x, y, z; E, B)),
+                (
+                    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0], prepare(;
+                        E = build_interpolator(E, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+                        B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN))
+                    ),
+                ),
                 ([0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0], prepare(; B = B_analytic)),
                 (
                     [0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0],
@@ -703,7 +710,7 @@ end
             tspan32 = (0.0f0, 1.0f0)
             dt32 = 0.5f0
             stateinit32 = Float32[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
-            param32_B = prepare(B_analytic; type = Float32)
+            param32_B = prepare(; B = B_analytic, type = Float32)
             param32_EB = prepare(; E = E_analytic, B = B_analytic, type = Float32)
 
             for param in (param32_B, param32_EB)

@@ -223,7 +223,11 @@ B[3, :, :] .= 1.0
 
 ## If bc == 1, we set a NaN value outside the domain (default);
 ## If bc == 2, we set periodic boundary conditions.
-param = prepare(x, y; B, m = 1, q = 1, bc = FillExtrap(NaN))
+param = prepare(;
+    B = build_interpolator(B, (x, y); bc = FillExtrap(NaN)),
+    m = 1,
+    q = 1
+)
 
 # Note that we set a radius of 10 - 2i, where i is the index of the particle. The trajectory domain extends from -20 to 0 in y, and -10 to 10 in x.
 # After half a cycle, the particle will move into the region where is field is not defined.

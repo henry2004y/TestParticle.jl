@@ -223,7 +223,12 @@ function setup_grid_problem(; grid_res = 32, dt = 1.0f-8, nsteps = NSTEPS_GRID)
         SA[0.0f0, 0.0f0, 0.0f0] for _ in 1:grid_res, _ in 1:grid_res, _ in 1:grid_res
     ]
 
-    param32 = prepare(x, y, z; E = E_data, B = B_data, species = Proton, type = Float32)
+    param32 = prepare(;
+        E = build_interpolator(E_data, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+        B = build_interpolator(B_data, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+        species = Proton,
+        type = Float32
+    )
     prob_func(prob, ctx) = remake(
         prob;
         u0 = Float32[

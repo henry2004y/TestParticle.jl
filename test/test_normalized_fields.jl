@@ -36,7 +36,12 @@ zero_normalized(sz...) = zeros(3, sz...)
     B = zero_normalized(length(x), length(y), length(z))
     B[3, :, :, :] .= 1.0
 
-    param = prepare(x, y, z; E, B, m = 1, q = 1)
+    param = prepare(;
+        E = build_interpolator(E, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+        B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+        m = 1,
+        q = 1
+    )
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Vern9(); save_idxs = [1])
     @test length(sol.u) == 7 && isapprox(sol[1, end], 1.0, rtol = 1.0e-2)
@@ -49,10 +54,19 @@ zero_normalized(sz...) = zeros(3, sz...)
     grid = cartesian_grid(x, y)
 
     # periodic BC
-    param = prepare(grid; E, B, species = Proton, bc = WrapExtrap())
+    param = prepare(;
+        E = build_interpolator(E, grid; bc = WrapExtrap()),
+        B = build_interpolator(B, grid; bc = WrapExtrap()),
+        species = Proton
+    )
     @test param[3] isa TP.Field
     @test startswith(repr(param[3]), "Field with")
-    param = prepare(x, y; E, B, m = 1, q = 1, bc = WrapExtrap())
+    param = prepare(;
+        E = build_interpolator(E, (x, y); bc = WrapExtrap()),
+        B = build_interpolator(B, (x, y); bc = WrapExtrap()),
+        m = 1,
+        q = 1
+    )
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
@@ -62,7 +76,12 @@ zero_normalized(sz...) = zeros(3, sz...)
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
 
     # Because the field is uniform, the order of interpolation does not matter.
-    param = prepare(grid; E, B, m = 1, q = 1, order = 3)
+    param = prepare(;
+        E = build_interpolator(E, grid; bc = TestParticle.FillExtrap(NaN), order = 3),
+        B = build_interpolator(B, grid; bc = TestParticle.FillExtrap(NaN), order = 3),
+        m = 1,
+        q = 1
+    )
     prob = remake(prob; p = param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)
@@ -73,7 +92,12 @@ zero_normalized(sz...) = zeros(3, sz...)
     B = zero_normalized(length(x))
     B[3, :] .= 1.0
 
-    param = prepare(x; E, B, m = 1, q = 1, bc = ClampExtrap())
+    param = prepare(;
+        E = build_interpolator(E, (x,); bc = ClampExtrap()),
+        B = build_interpolator(B, (x,); bc = ClampExtrap()),
+        m = 1,
+        q = 1
+    )
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1])
     @test length(sol.u) == 9 && isapprox(sol[1, end], EXPECTED, rtol = 1.0e-2)

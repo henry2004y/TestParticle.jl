@@ -204,7 +204,7 @@ Based on our CPU and GPU scaling benchmarks across problem sizes, architectures,
   - **Hardware Implications:**
     - When `Float64` is required, **datacenter GPUs (A100/H100)** or **CPU clusters** are the ideal targets, as datacenter GPUs maintain full-rate FP64 ALUs (incurring only an expected ~2x compute difference relative to FP32).
     - **Consumer GPUs (GeForce RTX series)** throttle FP64 ALUs to a 1:64 rate. While they execute `Float64` with full mathematical correctness, hardware throughput is restricted. When FP64 is needed, choose datacenter GPUs or multi-core CPUs rather than downgrading precision to `Float32`.
-- **Electromagnetic Field Grids:** For discrete numerical grids, use `prepare` to generate device-native `GPUGrid` structures. This leverages hardware registers and L1/L2 cache for trilinear interpolation and avoids host-side interpolation overhead.
+- **Electromagnetic Field Grids:** Construct numerical fields with [`build_interpolator`](@ref), then pass them to `prepare(; E, B)`. Supported interpolators are converted to device grids by the GPU solver; see the constructor documentation for boundary and order restrictions.
 
 ## Presentations
 

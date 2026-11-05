@@ -4,6 +4,33 @@ A robust field interpolation is the prerequisite for pushing particles.
 This example demonstrates the construction of scalar/vector field interpolators for Cartesian/Spherical grids.
 If the field is analytic, you can directly pass the generated function to [`prepare`](@ref).
 
+Construct each numerical field explicitly, then pass its callable to `prepare`:
+
+```julia
+using TestParticle
+using TestParticle: PeriodicBC, FillExtrap
+B = build_interpolator(Bdata, (x, y, z);
+    bc = (PeriodicBC(; endpoint = :exclusive),
+        PeriodicBC(; endpoint = :exclusive), FillExtrap(NaN)))
+p = prepare(; B)
+```
+
+The tuple constructor requires `bc`; see [`build_interpolator`](@ref) for endpoint,
+array-layout, and device contracts. E and B can use independent grids and policies.
+Array inputs belong in `build_interpolator`, not `prepare`.
+Foreign interpolators need only implement `f(x)` or `f(x, t)`. For callables with
+both signatures, select explicitly with `TestParticle.Field(f; time_dependent=false)`
+or `true`; automatic detection prefers the two-argument signature.
+
+Periodic fields do not wrap particle coordinates. Trajectories remain unwrapped for
+displacement analysis; wrap coordinates separately for plotting. Open-field NaNs do
+not terminate a trajectory cleanly: configure the solver's boundary termination.
+For spherical fields use `gridtype=StructuredGrid` and provide a tuple of radial,
+colatitude, and longitude policies. Longitude must be periodic with period `2π`;
+choose inclusive or exclusive endpoints explicitly. Radial and colatitude policies
+support fill or clamp. Vector input components are spherical; queries and outputs
+are Cartesian. Nonzero fill vectors are also rotated from the spherical basis.
+
 ```@example interp
 using TestParticle
 using TestParticle: FillExtrap, LazyTimeInterpolator

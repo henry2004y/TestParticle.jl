@@ -68,7 +68,14 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 B_grid = zeros(3, length(x), length(y), length(z))
 
             B_grid[3, :, :, :] .= 1.0e-8
-            param = prepare(x, y, z; E = zeros(size(B_grid)), B = B_grid, species = Proton)
+            param = prepare(;
+                E = build_interpolator(
+                    zeros(size(B_grid)), (x, y, z);
+                    bc = TestParticle.FillExtrap(NaN)
+                ),
+                B = build_interpolator(B_grid, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+                species = Proton
+            )
             prob = TraceProblem([5.0, 5.0, 5.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6), param)
 
             sol_loop = solve(prob, Boris(); dt = 1.0e-9)
@@ -111,9 +118,20 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             end
 
             # Uniform spherical grid
-            param_sph_u = prepare(
-                r_u, θ, ϕ; E = zeros(size(B_sph)), B = B_sph,
-                species = Proton, gridtype = TP.StructuredGrid
+            param_sph_u = prepare(;
+                E = build_interpolator(
+                    zeros(size(B_sph)), (r_u, θ, ϕ); bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                B = build_interpolator(
+                    B_sph, (r_u, θ, ϕ); bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
             )
             prob_sph_u = TraceProblem(
                 [2.0, 2.0, 2.0, 1.0, 0.0, 0.0], (0.0, 1.0e-3), param_sph_u
@@ -134,9 +152,20 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 B_sph_nu[1, :, iθ, :] .= 1.0e-8 * cosθ
                 B_sph_nu[2, :, iθ, :] .= -1.0e-8 * sinθ
             end
-            param_sph_nu = prepare(
-                r_nu, θ, ϕ; E = zeros(size(B_sph_nu)), B = B_sph_nu,
-                species = Proton, gridtype = TP.StructuredGrid
+            param_sph_nu = prepare(;
+                E = build_interpolator(
+                    zeros(size(B_sph_nu)), (r_nu, θ, ϕ); bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                B = build_interpolator(
+                    B_sph_nu, (r_nu, θ, ϕ); bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
             )
             prob_sph_nu = TraceProblem(
                 [2.0, 2.0, 2.0, 1.0, 0.0, 0.0], (0.0, 1.0e-3), param_sph_nu
@@ -178,7 +207,14 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x), j in 1:length(y), k in 1:length(z)
             B_grid3d[:, i, j, k] .= [x[i], y[j], z[k]]
         end
-        param3d = prepare(x, y, z; E = zeros(size(B_grid3d)), B = B_grid3d, species = Proton)
+        param3d = prepare(;
+            E = build_interpolator(
+                zeros(size(B_grid3d)), (x, y, z);
+                bc = TestParticle.FillExtrap(NaN)
+            ),
+            B = build_interpolator(B_grid3d, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
+            species = Proton
+        )
         fi3d = param3d[4].field_function
         g3d = TP._to_gpu_grid(fi3d, CPU())
 
@@ -195,7 +231,14 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x), j in 1:length(y)
             B_grid2d[:, i, j] .= [x[i], y[j], 0.0]
         end
-        param2d = prepare(x, y; E = zeros(size(B_grid2d)), B = B_grid2d, species = Proton)
+        param2d = prepare(;
+            E = build_interpolator(
+                zeros(size(B_grid2d)), (x, y);
+                bc = TestParticle.FillExtrap(NaN)
+            ),
+            B = build_interpolator(B_grid2d, (x, y); bc = TestParticle.FillExtrap(NaN)),
+            species = Proton
+        )
         fi2d = param2d[4].field_function
         g2d = TP._to_gpu_grid(fi2d, CPU())
 
@@ -212,7 +255,14 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         for i in 1:length(x)
             B_grid1d[:, i] .= [x[i], 0.0, 0.0]
         end
-        param1d = prepare(x; E = zeros(size(B_grid1d)), B = B_grid1d, species = Proton)
+        param1d = prepare(;
+            E = build_interpolator(
+                zeros(size(B_grid1d)), (x,);
+                bc = TestParticle.ClampExtrap()
+            ),
+            B = build_interpolator(B_grid1d, (x,); bc = TestParticle.ClampExtrap()),
+            species = Proton
+        )
         fi1d = param1d[4].field_function
         g1d = TP._to_gpu_grid(fi1d, CPU())
 
@@ -228,8 +278,22 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         let r = 1.0:1.0:5.0, θ = range(0.0, π, length = 5), ϕ = range(0.0, 2π, length = 5)
             B_sph = zeros(3, length(r), length(θ), length(ϕ))
             B_sph[1, :, :, :] .= 1.0
-            param_sph = prepare(
-                r, θ, ϕ; E = zeros(size(B_sph)), B = B_sph, species = Proton, gridtype = TP.StructuredGrid
+            param_sph = prepare(;
+                E = build_interpolator(
+                    zeros(size(B_sph)), (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                B = build_interpolator(
+                    B_sph, (r, θ, ϕ);
+                    bc = (
+                        TestParticle.FillExtrap(NaN), TestParticle.FillExtrap(NaN),
+                        TestParticle.PeriodicBC(; endpoint = :inclusive),
+                    ), gridtype = TP.StructuredGrid
+                ),
+                species = Proton
             )
             fi_sph = param_sph[4].field_function
             g_sph = TP._to_gpu_grid(fi_sph, CPU())

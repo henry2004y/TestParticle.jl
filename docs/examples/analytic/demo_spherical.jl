@@ -33,8 +33,15 @@ end
 ## Time span
 tspan = (0, 18)
 
-param = TP.prepare(
-    r, θ, ϕ; B, species = TP.Proton, gridtype = TP.StructuredGrid
+param = TP.prepare(;
+    B = TP.build_interpolator(
+        B, (r, θ, ϕ);
+        bc = (
+            TP.FillExtrap(NaN), TP.FillExtrap(NaN),
+            TP.PeriodicBC(; endpoint = :inclusive),
+        ), gridtype = TP.StructuredGrid
+    ),
+    species = TP.Proton
 )
 prob = ODEProblem(TP.trace!, stateinit, tspan, param)
 sol = solve(prob, Vern7())

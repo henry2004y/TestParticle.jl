@@ -46,7 +46,12 @@ B ./= B₀
 E(x) = SA[0.0 / E₀, 0.0 / E₀, 0.0 / E₀]
 
 ## bc=WrapExtrap() uses periodic boundary conditions
-param = prepare(x, y, z; E, B, m = 1, q = 1, bc = WrapExtrap())
+param = prepare(;
+    E,
+    B = build_interpolator(B, (x, y, z); bc = WrapExtrap()),
+    m = 1,
+    q = 1
+)
 
 tspan = (0.0, π) # half averaged gyroperiod based on B₀
 

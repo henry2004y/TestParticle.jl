@@ -35,7 +35,12 @@ F_const(r) = SA[0, 9.10938356e-42, 0]  # [N]
     stateinit = [x0..., u0...]
     tspan = (0.0, 1.0)
 
-    param = prepare(grid; E, B, F, species = Electron)
+    param = prepare(;
+        E = E,
+        B = B,
+        F = build_interpolator(F, grid; bc = TestParticle.FillExtrap(NaN)),
+        species = Electron
+    )
     prob = ODEProblem(trace!, stateinit, tspan, param)
     sol = solve(prob, Tsit5(); save_idxs = [1, 2, 3])
     @test isapprox(sol[1, end], -1.2828663442681638, rtol = 1.0e-2) &&

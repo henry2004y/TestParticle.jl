@@ -46,7 +46,11 @@ itp_B = LazyTimeInterpolator(times, loader)
 # We trace a dimensionless particle. We set `q=1.0` and `m=1.0`.
 # The `prepare` function sets up the equation of motion parameters.
 
-param = prepare(gx, gy, gz; B = itp_B, q = 1.0, m = 1.0);
+param = prepare(;
+    B = itp_B,
+    q = 1.0,
+    m = 1.0
+);
 
 # ## Initial Conditions
 # We launch the particle with velocity purely perpendicular to the B field (in the x-direction).
