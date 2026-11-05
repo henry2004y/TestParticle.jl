@@ -38,10 +38,7 @@ end
     # potential energy gained along the way.
     x = sol.u[end][1:3]
     Δx = x[1] - x0[1] + x[2] - x0[2]
-    KE_end = get_energy(sol[4:6, end]; m = TP.mₑ, q = TP.qₑ)
-    @test isapprox(KE_end / Δx, 1.0e5, rtol = 1.0e-2)
-    KE_all = get_energy(sol; m = TP.mₑ, q = TP.qₑ)
-    @test isapprox(KE_all[end] / Δx, 1.0e5, rtol = 1.0e-2)
+    @test isapprox(get_energy(sol)[end] / Δx, 1.0e5, rtol = 1.0e-2)
     # Convert to velocity
     @test isapprox(get_velocity(sol)[1, end], -1.6588724708347203e7, rtol = 1.0e-2)
 
@@ -50,21 +47,20 @@ end
 
     x = sol[1:3, end]
     Δx = x[1] - x0[1] + x[2] - x0[2]
-    KE_end = get_energy(sol[4:6, end]; m = TP.mₑ, q = TP.qₑ)
-    @test isapprox(KE_end / Δx, 1.0e5, rtol = 1.0e-2)
+    @test isapprox(get_energy(sol)[end] / Δx, 1.0e5, rtol = 1.0e-2)
 
     # Tracing relativistic particles in dimensionless units
     param = prepare(; E = zero_E, B = B_unit, m = 1, q = 1, c = 1)
     tspan = (0.0, 1.0) # 1/2π period
     stateinit = [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]
-    prob = TraceProblem(SVector{6}(stateinit), tspan, param; relativistic = true)
+    prob = TraceProblem{RelativisticOrbit}(SVector{6}(stateinit), tspan, param)
     sol = solve(prob, Vern6())
     @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
     # `remake` to another array kind keeps the relativistic equations.
     sol = solve(remake(prob; u0 = stateinit), Vern6())
     @test isapprox(sol[1, end], 0.38992532495827226, rtol = 1.0e-3)
 
-    prob = TraceProblem(zeros(6), tspan, param; relativistic = true)
+    prob = TraceProblem{RelativisticOrbit}(zeros(6), tspan, param)
     sol = solve(prob, Vern6(); abstol = 1.0e-8, reltol = 1.0e-8, dt = 1.0e-4)
     @test isapprox(sol[1, end], 0.0, atol = 1.0e-2) && length(sol.u) == 3
 end

@@ -86,7 +86,7 @@ using LinearAlgebra: norm
 
             x0 = SA[0.0, 0.0, 0.0]
             v0 = SA[1.0, 0.0, 0.0]
-            u0 = velocity_to_canonical(x0, v0, param; relativistic = false)
+            u0 = velocity_to_canonical(x0, v0, param)
 
             # In Landau gauge, p_y = m vy + q A_y = 0 initially
             @test u0[5] ≈ 0.0 atol = 1.0e-15
@@ -94,7 +94,7 @@ using LinearAlgebra: norm
             tspan = (0.0, 5 * T_period)
             dt = T_period / 40
 
-            prob = TraceCanonicalProblem(u0, tspan, param; relativistic = false)
+            prob = TraceCanonicalProblem(u0, tspan, param)
             sol = solve(prob, ImplicitMidpoint(); dt = dt, adaptive = false)
 
             # 1. Exact conservation of cyclic momentum py to machine precision
@@ -103,17 +103,17 @@ using LinearAlgebra: norm
             @test py_start ≈ py_end atol = 1.0e-14
 
             # 2. Energy conservation to machine precision with ImplicitMidpoint
-            H_start = canonical_hamiltonian(sol.u[1], param; relativistic = false)
-            H_end = canonical_hamiltonian(sol.u[end], param; relativistic = false)
+            H_start = canonical_hamiltonian(sol.u[1], param)
+            H_end = canonical_hamiltonian(sol.u[end], param)
             @test H_start ≈ H_end rtol = 1.0e-12
 
             # 3. Trajectory and velocity conversion
-            v_end = canonical_to_velocity(sol.u[end], param; relativistic = false)
+            v_end = canonical_to_velocity(sol.u[end], param)
             @test norm(v_end) ≈ norm(v0) rtol = 1.0e-12
 
             # In-place mutable vector support
             u0_mut = [x0..., (u0[4:6])...]
-            prob_mut = TraceCanonicalProblem(u0_mut, tspan, param; relativistic = false)
+            prob_mut = TraceCanonicalProblem(u0_mut, tspan, param)
             sol_mut = solve(prob_mut, ImplicitMidpoint(); dt = dt, adaptive = false)
             @test sol_mut.u[end][5] ≈ py_start atol = 1.0e-14
         end
@@ -134,29 +134,29 @@ using LinearAlgebra: norm
 
             x0 = SA[0.0, 0.0, 0.0]
             v0 = SA[0.6 * c_val, 0.0, 0.0]
-            u0 = velocity_to_canonical(x0, v0, param; relativistic = true)
+            u0 = velocity_to_canonical(x0, v0, param; model = RelativisticCanonical())
 
             tspan = (0.0, 5 * T_period)
             dt = T_period / 50
 
-            prob = TraceCanonicalProblem(u0, tspan, param; relativistic = true)
+            prob = TraceProblem{RelativisticCanonical}(u0, tspan, param)
             sol = solve(prob, ImplicitMidpoint(); dt = dt, adaptive = false)
 
             # Cyclic momentum py must be conserved to machine precision
             @test sol.u[1][5] ≈ sol.u[end][5] atol = 1.0e-14
 
             # Symplectic energy error is bounded
-            H_start = canonical_hamiltonian(sol.u[1], param; relativistic = true)
-            H_end = canonical_hamiltonian(sol.u[end], param; relativistic = true)
+            H_start = canonical_hamiltonian(sol.u[1], param; model = RelativisticCanonical())
+            H_end = canonical_hamiltonian(sol.u[end], param; model = RelativisticCanonical())
             @test (abs(H_end - H_start) / H_start) < 1.0e-3
 
             # Velocity recovery
-            v_end = canonical_to_velocity(sol.u[end], param; relativistic = true)
+            v_end = canonical_to_velocity(sol.u[end], param; model = RelativisticCanonical())
             @test norm(v_end) ≈ norm(v0) rtol = 1.0e-3
 
             # In-place mutable relativistic test
             u0_mut = [x0..., (u0[4:6])...]
-            prob_mut = TraceCanonicalProblem(u0_mut, tspan, param; relativistic = true)
+            prob_mut = TraceProblem{RelativisticCanonical}(u0_mut, tspan, param)
             sol_mut = solve(prob_mut, ImplicitMidpoint(); dt = dt, adaptive = false)
             @test sol_mut.u[end][5] ≈ sol.u[1][5] atol = 1.0e-14
         end
@@ -173,19 +173,19 @@ using LinearAlgebra: norm
 
             x0 = SA[1.0, 0.0, 0.0]
             v0 = SA[0.0, 0.0, 0.0]
-            u0 = velocity_to_canonical(x0, v0, param; relativistic = false)
+            u0 = velocity_to_canonical(x0, v0, param)
 
             ω = √(k * q / m) # ω = 2.0
             T_osc = 2π / ω
             tspan = (0.0, 2 * T_osc)
             dt = T_osc / 100
 
-            prob = TraceCanonicalProblem(u0, tspan, param; relativistic = false)
+            prob = TraceCanonicalProblem(u0, tspan, param)
             sol = solve(prob, ImplicitMidpoint(); dt = dt, adaptive = false)
 
             # Energy should be conserved
-            H_start = canonical_hamiltonian(sol.u[1], param; relativistic = false)
-            H_end = canonical_hamiltonian(sol.u[end], param; relativistic = false)
+            H_start = canonical_hamiltonian(sol.u[1], param)
+            H_end = canonical_hamiltonian(sol.u[end], param)
             @test H_start ≈ H_end rtol = 1.0e-12
 
             # After integer periods, particle returns to x0
@@ -207,9 +207,9 @@ using LinearAlgebra: norm
 
             x0 = SA[0.0, 0.0, 0.0]
             v0 = SA[1.0, 0.0, 0.0]
-            u0 = velocity_to_canonical(x0, v0, param; relativistic = false)
+            u0 = velocity_to_canonical(x0, v0, param)
 
-            prob = TraceCanonicalProblem(u0, tspan, param; relativistic = false)
+            prob = TraceCanonicalProblem(u0, tspan, param)
 
             # Property access
             @test :kwargs in propertynames(prob)
@@ -230,16 +230,16 @@ using LinearAlgebra: norm
             @test prob_remake_nr.f.f === trace_canonical
 
             u0_mut = [x0..., (u0[4:6])...]
-            prob_mut = TraceCanonicalProblem(u0_mut, tspan, param; relativistic = false)
+            prob_mut = TraceCanonicalProblem(u0_mut, tspan, param)
             prob_remake_mut = remake(prob_mut; tspan = (0.0, 2 * T_period))
             @test prob_remake_mut.tspan == (0.0, 2 * T_period)
             @test prob_remake_mut.f.f === trace_canonical!
 
-            prob_rel = TraceCanonicalProblem(u0, tspan, param; relativistic = true)
+            prob_rel = TraceProblem{RelativisticCanonical}(u0, tspan, param)
             prob_remake_rel = remake(prob_rel; tspan = (0.0, 2 * T_period))
             @test prob_remake_rel.f.f === trace_canonical_relativistic
 
-            prob_rel_mut = TraceCanonicalProblem(u0_mut, tspan, param; relativistic = true)
+            prob_rel_mut = TraceProblem{RelativisticCanonical}(u0_mut, tspan, param)
             prob_remake_rel_mut = remake(prob_rel_mut; tspan = (0.0, 2 * T_period))
             @test prob_remake_rel_mut.f.f === trace_canonical_relativistic!
 

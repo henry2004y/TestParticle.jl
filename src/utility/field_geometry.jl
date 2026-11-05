@@ -84,45 +84,27 @@ function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
     return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
 end
 
-function get_adiabaticity(xv, p::NamedTuple, t)
-    if hasproperty(p, :μ)
-        (; q, q2m, μ) = p
-        return get_adiabaticity(xv[SA[1, 2, 3]], p.B, q, q / q2m, μ, t)
-    else
-        (; q2m, m) = p
-        Bfunc = p.B
-        q = q2m * m
-
-        x = xv[SA[1, 2, 3]]
-        v = xv[SA[4, 5, 6]]
-
-        B = Bfunc(x, t)
-        Bmag = norm(B)
-        b̂ = B / Bmag
-        vpar_val = v ⋅ b̂
-        vperp_vec = v - vpar_val * b̂
-        μ = m * (vperp_vec ⋅ vperp_vec) / (2 * Bmag)
-
-        return get_adiabaticity(x, Bfunc, q, m, μ, t)
-    end
+# At the particle, not its guiding center: near a field null `x - ρ` lands far away in the
+# strong field, and `ϵ` there would read as adiabatic.
+function get_adiabaticity(xv, p::NamedTuple, t; model = _param_model(p))
+    x = get_x(xv)
+    B = p.B(x, t)
+    Bmag = norm(B)
+    iszero(Bmag) && return Inf
+    q, m, _, μ = _adiabatic_particle(model, xv, p, p.E(x, t), B / Bmag, Bmag)
+    return get_adiabaticity(x, p.B, q, m, μ, t)
 end
 
 """
     get_adiabaticity(sol::AbstractODESolution)
 
 Calculate the adiabaticity parameter `ϵ` from a solution `sol` at all time steps.
-The parameters `q`, `m`, `Bfunc` are extracted from `sol.prob.p`.
+The model, parameters `q`, `m` and `Bfunc` are extracted from `sol.prob`.
 """
 function get_adiabaticity(sol::AbstractODESolution)
-    n = length(sol.t)
-    ε = Vector{Float64}(undef, n)
     p = sol.prob.p
-
-    @inbounds for i in 1:n
-        ε[i] = get_adiabaticity(sol.u[i], p, sol.t[i])
-    end
-
-    return ε
+    model = _model(sol.prob)
+    return Float64[get_adiabaticity(u, p, t; model) for (u, t) in zip(sol.u, sol.t)]
 end
 
 """
@@ -132,7 +114,7 @@ Calculate the adiabaticity parameter `ϵ` from a solution `sol` at time `t`.
 `t` must be a scalar.
 """
 function get_adiabaticity(sol::AbstractODESolution, t)
-    return get_adiabaticity(sol(t), sol.prob.p, t)
+    return get_adiabaticity(sol(t), sol.prob.p, t; model = _model(sol.prob))
 end
 
 """

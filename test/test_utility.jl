@@ -50,6 +50,60 @@ function interpolation_construction_allocations(B, x, order, store)
     return @allocated build_interpolator(B, x, x, x, order; store)
 end
 
+@testset "Diagnostics follow the model" begin
+    B_z(x) = SA[0.0, 0.0, 1.0e-8]
+    v = [0.0, 1.0e5, 1.0e4]
+    u0 = [0.0, 0.0, 0.0, v...]
+    tspan = (0.0, 1.0e-9)
+    electron = prepare(; species = Electron, B = B_z)
+    energy = TP.mₑ * sum(abs2, v) / (2 * TP.qᵢ)
+    sol = solve(TraceProblem(u0, tspan, electron), Tsit5())
+    @test TP.get_energy(sol)[1] ≈ energy
+    @test TP.get_velocity(sol)[:, 1] ≈ v
+
+    γv = [0.0, 0.0, 0.0, 2 * TP.c, 0.0, 0.0]
+    rel = TraceProblem{RelativisticOrbit}(γv, tspan, electron)
+    @test remake(rel; u0 = SVector{6}(γv)) isa TraceProblem{RelativisticOrbit}
+    sol_rel = solve(rel, Tsit5())
+    @test TP.get_velocity(sol_rel)[1, 1] ≈ 2 * TP.c / √5
+    @test TP.get_energy(sol_rel)[1] ≈ (√5 - 1) * TP.mₑ * TP.c^2 / TP.qᵢ
+
+    # The default equations imply the model, and an explicit one must agree with them.
+    @test TraceProblem(trace_relativistic!, γv, tspan, electron) isa
+        TraceProblem{RelativisticOrbit}
+    gc0, p_gc = prepare_gc(u0; species = Electron, B = B_z)
+    @test TP.get_energy(solve(TraceProblem(trace_gc!, gc0, tspan, p_gc), Tsit5()))[1] ≈ energy
+    @test_throws ArgumentError TraceProblem{RelativisticOrbit}(trace!, γv, tspan, electron)
+    @test remake(rel; f = trace!) isa TraceProblem{FullOrbit}
+    @test TraceProblem(γv, tspan, electron; relativistic = true) isa
+        TraceProblem{RelativisticOrbit}
+
+    # Without a velocity part, these must not read the canonical momentum as one.
+    p_can = prepare_canonical(; A = x -> SA[0.0, 0.0, 0.0])
+    sol_can = solve(TraceCanonicalProblem(SVector{6}(u0), (0.0, 1.0), p_can), Tsit5())
+    @test_throws MethodError TP.get_energy(sol_can)
+    @test_throws MethodError TP.get_velocity(sol_can)
+
+    # The state alone cannot tell `γv` from `v`.
+    B_g(x) = SA[0.0, 1.0e-8 * x[3] / 1.0e6, 1.0e-8]
+    p_g = prepare(; species = Electron, B = B_g)
+    xv_rel = SVector{6}(γv) + SA[0.0, 0.0, 1.0e5, 0.0, 0.0, 0.0]
+    @test TP.get_adiabaticity(xv_rel, p_g, 0.0; model = RelativisticOrbit()) ≠
+        TP.get_adiabaticity(xv_rel, p_g, 0.0)
+
+    # Drifting at `v_E` is no gyration.
+    E_x(x) = SA[1.0e-3, 0.0, 0.0]
+    p_E = prepare(; E = E_x, B = B_g)
+    r = SA[0.0, 0.0, 1.0e5]
+    v_E = TP._get_exb_drift(E_x(r), B_g(r), norm(B_g(r)))
+    @test TP.get_adiabaticity(vcat(r, v_E), p_E, 0.0) ≈ 0 atol = 1.0e-10
+
+    # A particle at a current-sheet null is not adiabatic, wherever its guiding center lands.
+    B_sheet(x) = SA[2.0e-8 * tanh(x[3] / 1.0e6), 0.0, 1.0e-10]
+    p_sheet = prepare(; B = B_sheet)
+    @test TP.get_adiabaticity(SA[0.0, 0.0, 2.0e3, 0.0, 3.0e5, 0.0], p_sheet, 0.0) > 1
+end
+
 @testset "Utility" begin
     @testset "Basic Utility" begin
         V, B = 440.0e3, 5.0e-9
@@ -578,7 +632,7 @@ end
             # In the E × B drift frame, r = γ |v - v_E| / B with v = γv / γ.
             E_drift(x, t) = SA[0.0, 0.1, 0.0]
             param_E = prepare(; E = E_drift, B = B_func, q = 1.0, m = 1.0, c = 1.0)
-            sol = solve(TraceProblem(stateinit, tspan, param_E; relativistic = true), Vern6())
+            sol = solve(TraceProblem{RelativisticOrbit}(stateinit, tspan, param_E), Vern6())
             @test get_gyroradius(sol, 0.0) ≈ gamma * (v_mag - 0.1) / B0
         end
 

@@ -135,7 +135,7 @@ function run_test(
     if gc
         q2m, m_gc, Efunc, Bfunc, _ = param
         state_gc, μ_gc = full_to_gc(SVector{6}(u0...), param)
-        p_gc = (q2m * m_gc, q2m, μ_gc, Efunc, Bfunc)
+        p_gc = (; q = q2m * m_gc, q2m, μ = μ_gc, E = Efunc, B = Bfunc)
         prob_gc = TraceGCProblem(state_gc, tspan, p_gc)
         sol_gc = solve(prob_gc, GCRK4(); dt).u[1]
         q_gc = q2m * m_gc

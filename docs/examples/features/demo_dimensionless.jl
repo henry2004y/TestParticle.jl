@@ -124,7 +124,7 @@ f = DisplayAs.PNG(f) #hide
 # * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
 # * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
 #
-# Hence `c = 1` in `prepare`; `relativistic = true` makes the state `(x, γv)`.
+# Hence `c = 1` in `prepare`; `RelativisticOrbit` makes the state `(x, γv)`.
 # At ``v = 0.9`` the orbit closes after ``2\pi\gamma`` with gyroradius ``\gamma v \approx 2.06``,
 # instead of after ``2\pi`` with radius 0.9 as in the non-relativistic case.
 
@@ -133,7 +133,7 @@ v = 0.9
 γ = 1 / sqrt(1 - v^2)
 stateinit = [0.0, 0.0, 0.0, γ * v, 0.0, 0.0]
 tspan = (0.0, 2π * γ) # one gyroperiod
-prob = TraceProblem(stateinit, tspan, param; relativistic = true)
+prob = TraceProblem{RelativisticOrbit}(stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ### Visualization

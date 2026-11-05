@@ -16,13 +16,16 @@ Base.convert(::Type{Species{T}}, s::Species) where {T} = Species{T}(s)
 const DEFAULT_PROB_FUNC(prob, ctx) = prob
 
 """
-    FullOrbit, Canonical, GuidingCenter
+    FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical, GuidingCenter
 
 Model of a [`TraceProblem`](@ref): the equations that its state `u0` and parameters `p`
-follow.
+follow, and thereby the solvers and diagnostics that apply to it. `RelativisticOrbit`
+states hold `γv` in place of `v`.
 """
 struct FullOrbit end
+struct RelativisticOrbit end
 struct Canonical end
+struct RelativisticCanonical end
 struct GuidingCenter end
 
 struct TraceProblem{M, uType, tType, isinplace, P, F <: AbstractODEFunction, PF} <:
@@ -36,10 +39,11 @@ struct TraceProblem{M, uType, tType, isinplace, P, F <: AbstractODEFunction, PF}
 end
 
 """
-    TraceCanonicalProblem(u0, tspan, p; relativistic = false, prob_func)
+    TraceCanonicalProblem(u0, tspan, p; prob_func)
 
 [`TraceProblem`](@ref) in canonical coordinates: `u0 = [x..., p...]` and `p = (; q, m, c, pf)`
-from [`prepare_canonical`](@ref).
+from [`prepare_canonical`](@ref). The relativistic variant is
+`TraceProblem{RelativisticCanonical}`.
 """
 const TraceCanonicalProblem = TraceProblem{Canonical}
 

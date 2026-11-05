@@ -297,12 +297,12 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
             μ / (γ * Bmag) * ((b̂ × ∇B) ⋅ E),
             μ / γ * (TP.derivative_t(Bf, x, t) ⋅ b̂),
         ]
-        @test TP.get_work_rates(u, p, t; relativistic = true) ≈ expected rtol = 1.0e-10
+        @test TP.get_work_rates(u, p, t; model = TP.RelativisticOrbit()) ≈ expected rtol = 1.0e-10
 
-        prob = TraceProblem(u, (0.0, 1.0e-8), p; relativistic = true)
+        prob = TraceProblem{RelativisticOrbit}(u, (0.0, 1.0e-8), p)
         sol = solve(prob, Vern9())
         @test TP.get_work_rates(sol) ≈
-            [TP.get_work_rates(u, p, t; relativistic = true) for (u, t) in zip(sol.u, sol.t)]
+            [TP.get_work_rates(u, p, t; model = TP.RelativisticOrbit()) for (u, t) in zip(sol.u, sol.t)]
     end
 
     @testset "guiding center conserves energy in a static bottle" begin
