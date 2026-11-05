@@ -133,7 +133,7 @@ v = 0.9
 γ = 1 / sqrt(1 - v^2)
 stateinit = [0.0, 0.0, 0.0, γ * v, 0.0, 0.0]
 tspan = (0.0, 2π * γ) # one gyroperiod
-prob = TraceProblem(stateinit, tspan, param; relativistic = true)
+prob = TraceProblem{RelativisticOrbit}(stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ### Visualization

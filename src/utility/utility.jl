@@ -258,6 +258,7 @@ Return the gyroradius [m] from the solution `sol` at time `t`.
 The interpolated magnetic field function is obtained from `sol.prob.p`.
 """
 function get_gyroradius(sol::AbstractODESolution, t)
+    model = _model(sol.prob)
     # Interpolate state at time t
     xu = sol(t)
     x = get_x(xu)
@@ -275,8 +276,7 @@ function get_gyroradius(sol::AbstractODESolution, t)
     # Calculate ExB drift
     v_E = _get_exb_drift(E, B, Bmag)
 
-    # Solvers may wrap the equations, e.g. in a `FunctionWrappersWrapper`.
-    γ = _lorentz_factor(u, SciMLBase.unwrapped_f(sol.prob.f.f), p)
+    γ = _lorentz_factor(u, model, p)
 
     v_gyro = u / γ - v_E # Subtract drift velocity
 
@@ -307,55 +307,42 @@ function get_gyroperiod(B = 5.0e-9; q = qᵢ, m = mᵢ)
 end
 
 """
-Return velocity from relativistic γv in `sol`.
+    get_velocity(sol) -> Matrix
+
+Velocity of a full-orbit `sol` at every saved state, as a `3 × n` matrix.
 """
 function get_velocity(sol)
+    model = _model(sol.prob)
+    p = sol.prob.p
     v = Array{eltype(sol.u[1]), 2}(undef, 3, length(sol.u))
-    inv_c2 = 1 / c^2
     @inbounds for is in axes(v, 2)
-        u_i = sol.u[is]
-        v1 = u_i[4]
-        v2 = u_i[5]
-        v3 = u_i[6]
-        γ²v² = v1 * v1 + v2 * v2 + v3 * v3
-        γ = √(1 + γ²v² * inv_c2)
-        inv_γ = inv(γ)
-        v[1, is] = v1 * inv_γ
-        v[2, is] = v2 * inv_γ
-        v[3, is] = v3 * inv_γ
+        u = get_v(sol.u[is])
+        v[:, is] = u / _lorentz_factor(u, model, p)
     end
 
     return v
 end
 
 """
-Return the energy [eV] from relativistic `sol`.
-"""
-function get_energy(sol::AbstractODESolution; m = mᵢ, q = qᵢ)
-    e = Vector{eltype(sol.u[1])}(undef, length(sol.u))
-    inv_c2 = 1 / c^2
-    mc2_q = m * c^2 / abs(q)
-    @inbounds for i in eachindex(e)
-        u_i = sol.u[i]
-        v1 = u_i[4]
-        v2 = u_i[5]
-        v3 = u_i[6]
-        γ²v² = v1 * v1 + v2 * v2 + v3 * v3
-        γ = √(1 + γ²v² * inv_c2)
-        e[i] = (γ - 1) * mc2_q
-    end
+    get_energy(sol::AbstractODESolution) -> Vector
 
-    return e
+Kinetic energy per unit charge [eV for `|q| = e`] at every saved state of `sol`, from the
+model and the particle of `sol.prob`.
+"""
+function get_energy(sol::AbstractODESolution)
+    p = sol.prob.p
+    model = _model(sol.prob)
+    return map((u, t) -> _energy(model, u, p, t), sol.u, sol.t)
 end
 
-"""
-Calculate the energy [eV] of a relativistic particle from γv in [m/s].
-"""
-function get_energy(γv; m = mᵢ, q = qᵢ)
-    γ²v² = γv[1]^2 + γv[2]^2 + γv[3]^2
-    γ = √(1 + γ²v² / c^2)
+_energy(::FullOrbit, u, p, t) = (v = get_v(u); (v ⋅ v) / (2 * abs(p.q2m)))
 
-    return (γ - 1) * m * c^2 / abs(q)
+function _energy(model::RelativisticOrbit, u, p, t)
+    return (_lorentz_factor(get_v(u), model, p) - 1) * _speed_of_light(p)^2 / abs(p.q2m)
+end
+
+function _energy(::GuidingCenter, u, p, t)
+    return u[4]^2 / (2 * abs(p.q2m)) + p.μ * norm(p.B(get_x(u), t)) / abs(p.q)
 end
 
 """

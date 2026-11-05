@@ -29,6 +29,7 @@ import LinearAlgebra: ×
 export prepare, prepare_gc, prepare_canonical, prepare_erased, PotentialField
 export Proton, Electron, Ion
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
+export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical, GuidingCenter
 export trace!, trace_relativistic!, trace, trace_relativistic,
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
@@ -43,7 +44,6 @@ export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
 
 public ReturnCode, Field, ErasedField, ErasedFunction, Species, SpeciesDict,
     ZeroField, ZeroVector,
-    FullOrbit, Canonical, GuidingCenter,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
     get_gc, get_gc_velocity,

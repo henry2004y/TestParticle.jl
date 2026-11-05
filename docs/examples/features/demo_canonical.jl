@@ -71,7 +71,7 @@ tspan = (0.0, t_end)
 dt = T_period / 40
 
 ## Trace in canonical form using ImplicitMidpoint
-prob_can = TraceCanonicalProblem(u0_can, tspan, param_can; relativistic = false)
+prob_can = TraceCanonicalProblem(u0_can, tspan, param_can)
 sol_can = solve(prob_can, ImplicitMidpoint(); dt = dt, adaptive = false)
 
 ## Trace in velocity form using Boris
@@ -116,7 +116,7 @@ v0_rel = SA[0.6 * c_val, 0.0, 0.0]
 param_can_rel = prepare(pf; q = q, m = m, c = c_val)
 u0_can_rel = velocity_to_canonical(x0, v0_rel, param_can_rel; relativistic = true)
 
-prob_can_rel = TraceCanonicalProblem(u0_can_rel, tspan, param_can_rel; relativistic = true)
+prob_can_rel = TraceProblem{RelativisticCanonical}(u0_can_rel, tspan, param_can_rel)
 sol_can_rel = solve(prob_can_rel, ImplicitMidpoint(); dt = dt, adaptive = false)
 
 H0_rel = canonical_hamiltonian(sol_can_rel.u[1], param_can_rel; relativistic = true)

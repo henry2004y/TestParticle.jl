@@ -77,14 +77,10 @@ function trace_relativistic(y, p, t)
 end
 
 """
-    _lorentz_factor(u, f, p)
+    _lorentz_factor(u, model, p)
 
-Lorentz factor of the velocity part `u` of a state traced with the equations `f` and
-parameters `p`; the relativistic equations store `γv` in place of `v`.
+Lorentz factor of the velocity part `u` of a full-orbit state; relativistic states store `γv`
+in place of `v`. Other models have no velocity part, so they have no method.
 """
-_lorentz_factor(u, f, p) = one(eltype(u))
-_lorentz_factor(
-    γv, ::Union{typeof(trace_relativistic!), typeof(trace_relativistic)}, p
-) = sqrt(1 + (γv ⋅ γv) / _speed_of_light(p)^2)
-
-_is_relativistic(f) = f in (trace_relativistic!, trace_relativistic)
+_lorentz_factor(u, ::FullOrbit, p) = one(eltype(u))
+_lorentz_factor(γv, ::RelativisticOrbit, p) = sqrt(1 + (γv ⋅ γv) / _speed_of_light(p)^2)
