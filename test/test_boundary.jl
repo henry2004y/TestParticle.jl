@@ -42,7 +42,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
     @testset "NaN handling with DiscreteCallback" begin
         u0 = [0.9, 0.0, 0.0, 0.0, 1.0, 0.0] # Starts inside, moving out
         tspan = (0.0, 1.0)
-        p = (1.0, 1.0, E_nan, B_nan, (x, t) -> 0.0)
+        p = (1.0, 1.0, E_nan, B_nan, TestParticle.ZeroField())
 
         @testset "Boris" begin
             prob = TraceProblem(u0, tspan, p)
