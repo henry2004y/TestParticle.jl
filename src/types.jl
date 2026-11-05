@@ -40,9 +40,11 @@ const TraceCanonicalProblem = TraceProblem{Canonical}
 """
     TraceGCProblem(u0, tspan, p; prob_func)
 
-[`TraceProblem`](@ref) of a guiding center: `u0 = [X..., vpar]` and `p = (; q, q2m, μ, E, B)`
-from [`prepare_gc`](@ref). The relativistic variant is
-`TraceProblem{RelativisticGuidingCenter}`.
+[`TraceProblem`](@ref) of a guiding center with `p` from [`prepare`](@ref) without `F`.
+`u0` is the guiding-center state `[X..., vpar, μ]` or a full-orbit state `[x..., v...]`,
+converted by [`full_to_gc`](@ref) at `tspan[1]`; the same holds for `u0` set by `prob_func`.
+The relativistic variant is `TraceProblem{RelativisticGuidingCenter}`, which takes
+`[X..., γvpar, μ]` or `[x..., (γv)...]`.
 """
 const TraceGCProblem = TraceProblem{GuidingCenter}
 

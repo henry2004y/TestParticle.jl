@@ -9,7 +9,7 @@ end
 
 @testset "Exported and public API" begin
     exported = (
-        :prepare, :prepare_gc, :prepare_canonical, :prepare_erased,
+        :prepare, :prepare_canonical, :prepare_erased,
         :PotentialField,
         :Particle, :Proton, :Electron, :Positron,
         :TraceProblem, :TraceCanonicalProblem, :TraceGCProblem,

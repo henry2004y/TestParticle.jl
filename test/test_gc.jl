@@ -70,18 +70,13 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         @testset "Reversibility GC -> Full -> GC" begin
             R = SA[1.0, 0.0, 0.0]
             vpar = 1.0e5
-            gc_state = [R..., vpar]
             μ = 1.0e-15
+            gc_state = [R..., vpar, μ]
             phase = π / 3
 
-            xu = gc_to_full(gc_state, param, μ, phase)
+            xu = gc_to_full(gc_state, param; phase)
             @test length(xu) == 6
-
-            gc_new, μ_new = full_to_gc(xu, param)
-
-            @test gc_new[1:3] ≈ R rtol = 1.0e-5
-            @test gc_new[4] ≈ vpar rtol = 1.0e-5
-            @test μ_new ≈ μ rtol = 1.0e-5
+            @test full_to_gc(xu, param) ≈ gc_state rtol = 1.0e-5
         end
 
         @testset "With E-field (ExB drift)" begin
@@ -93,32 +88,30 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             param2 = prepare(; E = E_field2, B = B_field2, species = Proton)
 
             # v_E = (E x B) / B² = (E0/B0, 0, 0) = (1000, 0, 0)
-            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
-            μ = 0.0 # No gyromotion, only drift
+            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0, 0.0] # μ = 0: no gyromotion, only drift
 
-            xu = gc_to_full(gc_state, param2, μ)
+            xu = gc_to_full(gc_state, param2)
             v = xu[4:6]
             @test v[1] ≈ 1000.0 atol = 1.0e-5
             @test v[2] ≈ 0.0 atol = 1.0e-5
             @test v[3] ≈ 0.0 atol = 1.0e-5
 
-            gc_new, μ_new = full_to_gc(xu, param2)
+            gc_new = full_to_gc(xu, param2)
             @test gc_new[1:3] ≈ SA[0.0, 0.0, 0.0] atol = 1.0e-5
             @test gc_new[4] ≈ 0.0 atol = 1.0e-5
-            @test μ_new ≈ 0.0 atol = 1.0e-10
+            @test gc_new[5] ≈ 0.0 atol = 1.0e-10
         end
 
         @testset "Phase check" begin
             B_field3(r) = SA[0, 0, 1.0]
             param3 = prepare(; B = B_field3, species = Proton)
 
-            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0]
-            μ = 1.0e-15
+            gc_state = [SA[0.0, 0.0, 0.0]..., 0.0, 1.0e-15]
 
             # For B in Z the perpendicular plane is XY, so phase 0 points along
             # +x and phase π/2 along +y.
-            v0 = gc_to_full(gc_state, param3, μ, 0.0)[4:6]
-            v90 = gc_to_full(gc_state, param3, μ, π / 2)[4:6]
+            v0 = gc_to_full(gc_state, param3; phase = 0.0)[4:6]
+            v90 = gc_to_full(gc_state, param3; phase = π / 2)[4:6]
 
             @test dot(normalize(v0), normalize(v90)) ≈ 0.0 atol = 1.0e-5
             @test isapprox(normalize(v0), SA[1.0, 0.0, 0.0], atol = 1.0e-5)
@@ -138,10 +131,12 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         stateinit = [r₀..., v₀...]
         tspan = (0.0, 1.0)
 
-        stateinit_gc, param_gc = prepare_gc(
-            stateinit; B = dipole_field, species = Proton
+        param_gc = prepare(; B = dipole_field, species = Proton)
+        prob = TraceGCProblem(stateinit, tspan, param_gc)
+        @test prob.u0 ≈ full_to_gc(stateinit, param_gc)
+        @test_throws ArgumentError TraceGCProblem(
+            stateinit, tspan, prepare(; B = dipole_field, F = x -> SA[1.0, 0.0, 0.0])
         )
-        prob = TraceGCProblem(stateinit_gc, tspan, param_gc)
 
         @testset "Fixed RK4" begin
             dt = 1.0e-4
@@ -247,10 +242,9 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             tspan_saving = (0.0, 1.0e-4)
             r0 = [1.5 * TP.Rₑ, 0.0, 0.0]
             v0 = [0.0, 1.0e5, 1.0e5] # Arbitrary
-            state_gc_0, param_gc_ready = prepare_gc(
-                vcat(r0, v0); B = dipole_field, species = Proton
+            prob_saving = TraceGCProblem(
+                vcat(r0, v0), tspan_saving, prepare(; B = dipole_field, species = Proton)
             )
-            prob_saving = TraceGCProblem(state_gc_0, tspan_saving, param_gc_ready)
 
             sol = solve(prob_saving, RK4(), EnsembleSerial(); trajectories, dt = 1.0e-5)
 
@@ -320,12 +314,7 @@ end
     X = get_gc.(x, y, z, vx, vy, vz, bx, by, bz, param.q2m)
     @test sum(X[end]) ≈ 1.5380318687643348 rtol = 1.0e-6
 
-    stateinit_gc,
-        param_gc = prepare_gc(
-        stateinit; E = uniform_Ex, B = curved_B, species = Proton
-    )
-
-    prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+    prob_gc = ODEProblem(trace_gc!, full_to_gc(stateinit, param), tspan, param)
     sol_gc = solve(prob_gc, Vern9())
 
     # analytical drifts
@@ -351,7 +340,7 @@ end
     # E × B / B² = (Ey, -Ex, 0) / Bz
     drift = SA[Ey, -Ex, 0.0] / Bz
     ∇²drift = SA[-kz^2 * Ey, (kx^2 + ky^2) * Ex, 0.0] / Bz
-    r4 = (v[1]^2 + v[2]^2) / (4 * (param[1] * Bz)^2)
+    r4 = (v[1]^2 + v[2]^2) / (4 * (param.q2m * Bz)^2)
     @test dx ≈ drift + r4 * ∇²drift + SA[0.0, 0.0, v[3]] rtol = 1.0e-12
 end
 

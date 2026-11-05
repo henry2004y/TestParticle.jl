@@ -27,7 +27,7 @@ using Markdown #hide
 using Printf
 using TestParticle
 using BorisPushers
-using TestParticle: full_to_gc, get_dv!, get_dx!
+using TestParticle: get_dv!, get_dx!
 using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqSDIRK
 using StaticArrays
 using LinearAlgebra: ×, norm
@@ -133,12 +133,9 @@ function run_test(
     ## E_GC = ½ m v_∥² + μ B; for static fields this equals the full-orbit
     ## kinetic energy, so it is compared against the same analytic reference.
     if gc
-        q2m, m_gc, Efunc, Bfunc, _ = param
-        state_gc, μ_gc = full_to_gc(SVector{6}(u0...), param)
-        p_gc = (; q = q2m * m_gc, q2m, μ = μ_gc, E = Efunc, B = Bfunc)
-        prob_gc = TraceGCProblem(state_gc, tspan, p_gc)
+        prob_gc = TraceGCProblem(SVector{6}(u0...), tspan, param)
+        m_gc, μ_gc, q_gc, Bfunc = param.m, prob_gc.u0[5], param.q, param.B
         sol_gc = solve(prob_gc, RK4(); dt, adaptive = false, dense = false)
-        q_gc = q2m * m_gc
         function gc_energy(u, t)
             e = 0.5 * m_gc * u[4]^2 + μ_gc * norm(Bfunc(u[1:3], t))
             if !isnothing(gc_phi)

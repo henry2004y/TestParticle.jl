@@ -49,7 +49,7 @@ F_const(r) = SA[0, 9.10938356e-42, 0]  # [N]
     @test get_gc([stateinit..., 0.0], param)[1] ≈ -0.5685630103565723
 
     param = prepare(; E, B, F = F_const, species = Electron)
-    _, _, _, _, F_out = param
+    F_out = param.F
     @test F_out(x0)[2] ≈ 9.10938356e-42
 
     stateinit = SA[x0..., u0...]

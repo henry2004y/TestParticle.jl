@@ -218,12 +218,12 @@ f1 = DisplayAs.PNG(f1) #hide
 
 # ## Relativistic Guiding-Center Tracing with Pitch-Angle Scattering
 #
-# In `RelativisticGuidingCenter`, the ODE state is $\mathbf{y} = (X_x, X_y, X_z, u_\parallel)$
-# with parallel proper velocity $u_\parallel = \gamma v_\parallel$, while the relativistic
-# magnetic moment $\mu = p_\perp^2 / (2 m_e B) = m_e u_\perp^2 / (2 B)$ is carried in the
-# parameter struct `p`. We store `μ` in a lightweight mutable struct `GCScatterParam` along
-# with a per-trajectory `Xoshiro` RNG so `EnsembleThreads()` remains thread-safe and
-# reproducible.
+# In `RelativisticGuidingCenter`, the ODE state is
+# $\mathbf{y} = (X_x, X_y, X_z, u_\parallel, \mu)$ with parallel proper velocity
+# $u_\parallel = \gamma v_\parallel$ and relativistic magnetic moment
+# $\mu = p_\perp^2 / (2 m_e B) = m_e u_\perp^2 / (2 B)$, so a scattering kick resets both
+# $u_\parallel$ and $\mu$ in the state. Each trajectory carries its own `Xoshiro` RNG in
+# its parameters so `EnsembleThreads()` remains thread-safe and reproducible.
 #
 # Isotropic pitch-angle diffusion on the velocity sphere obeys the singularity-free Itô SDE
 # in $\mu_\alpha = \cos\alpha \in [-1, 1]$:
@@ -236,15 +236,6 @@ f1 = DisplayAs.PNG(f1) #hide
 # applied at the end of each adaptive ODE step via a stateless `DiscreteCallback` with
 # reflecting boundaries at $\mu_\alpha = \pm 1$, conserving total kinetic energy
 # $K = m_e c^2(\gamma - 1)$ across each elastic scattering kick.
-
-mutable struct GCScatterParam{T, FE, FB, R}
-    const q::T
-    const q2m::T
-    μ::T
-    const E::FE
-    const B::FB
-    const rng::R
-end
 
 @inline function gc_energy_eV(u_par, μ, Bmag)
     m = Electron.m
@@ -266,7 +257,7 @@ function make_scatter_callback(L_init, vf; est = false, ww = false, msw = false)
         p = integrator.p
         Bmag = norm(p.B(SA[u[1], u[2], u[3]], t))
         u_par = u[4]
-        u_perp² = max(2.0 * p.μ * Bmag / m, 0.0)
+        u_perp² = max(2.0 * u[5] * Bmag / m, 0.0)
         u_tot = sqrt(u_par^2 + u_perp²)
         u_tot == 0.0 && return
         E_eV = m * c^2 * (sqrt(1.0 + u_tot^2 / c^2) - 1.0) / eV
@@ -283,8 +274,8 @@ function make_scatter_callback(L_init, vf; est = false, ww = false, msw = false)
         μ_new = clamp(μ_new, -1.0, 1.0)
         u_par_new = u_tot * μ_new
         u_perp²_new = u_tot^2 * max(1.0 - μ_new^2, 0.0)
-        p.μ = 0.5 * m * u_perp²_new / Bmag
-        integrator.u = SVector{4}(u[1], u[2], u[3], u_par_new)
+        μ_mag_new = 0.5 * m * u_perp²_new / Bmag
+        integrator.u = SVector{5}(u[1], u[2], u[3], u_par_new, μ_mag_new)
         return
     end
     return DiscreteCallback(condition, affect!; save_positions = (false, false))
@@ -304,23 +295,21 @@ function trace_recorded_electron(
     ts = Float64[0.0]
     xs = Float64[u0_gc[1] / Rₑ]
     B0 = norm(p_init.B(SA[u0_gc[1], u0_gc[2], u0_gc[3]], 0.0))
-    Ks = Float64[gc_energy_eV(u0_gc[4], p_init.μ, B0) / 1.0e3]
-    u_perp0 = sqrt(max(2.0 * p_init.μ * B0 / m, 0.0))
+    Ks = Float64[gc_energy_eV(u0_gc[4], u0_gc[5], B0) / 1.0e3]
+    u_perp0 = sqrt(max(2.0 * u0_gc[5] * B0 / m, 0.0))
     αs = Float64[rad2deg(atan(u_perp0, u0_gc[4]))]
     Bs = Float64[B0 * 1.0e9]
 
-    p = GCScatterParam(
-        p_init.q, p_init.q2m, p_init.μ, p_init.E, p_init.B, copy(p_init.rng)
-    )
+    p = (; p_init..., rng = copy(p_init.rng))
     cb_scat = make_scatter_callback(L_init, vf; est, ww, msw)
     function record_affect!(integrator)
         u = integrator.u
         t = integrator.t
         Bmag = norm(integrator.p.B(SA[u[1], u[2], u[3]], t))
-        u_perp = sqrt(max(2.0 * integrator.p.μ * Bmag / m, 0.0))
+        u_perp = sqrt(max(2.0 * u[5] * Bmag / m, 0.0))
         push!(ts, t)
         push!(xs, u[1] / Rₑ)
-        push!(Ks, gc_energy_eV(u[4], integrator.p.μ, Bmag) / 1.0e3)
+        push!(Ks, gc_energy_eV(u[4], u[5], Bmag) / 1.0e3)
         push!(αs, rad2deg(atan(u_perp, u[4])))
         push!(Bs, Bmag * 1.0e9)
         return
@@ -343,6 +332,7 @@ end
 
 best_traj, L_init_3 = let
     Bfunc, Efunc, L_init = make_foreshock_fields(; n_t = 3, β = β_comp, vf = v_f)
+    p_field = prepare(; E = Efunc, B = Bfunc, species = Electron)
     rng = Xoshiro(2025)
     best_E = 0.0
     best_data = nothing
@@ -351,14 +341,9 @@ best_traj, L_init_3 = let
         v0 = rand(rng, BiMaxwellian(Electron; T = 50.0))
         γ0 = inv(sqrt(1.0 - sum(abs2, v0) / c^2))
         xv0 = SA[x0[1], x0[2], x0[3], γ0 * v0[1], γ0 * v0[2], γ0 * v0[3]]
-        sgc, pgc = prepare_gc(
-            xv0; E = Efunc, B = Bfunc, species = Electron,
-            model = RelativisticGuidingCenter()
-        )
-        p_init = GCScatterParam(
-            pgc.q, pgc.q2m, pgc.μ, pgc.E, pgc.B, Xoshiro(rand(rng, UInt64))
-        )
-        tr = trace_recorded_electron(SVector{4}(sgc), p_init, L_init, v_f)
+        sgc = TP.full_to_gc(xv0, p_field; model = RelativisticGuidingCenter())
+        p_init = (; p_field..., rng = Xoshiro(rand(rng, UInt64)))
+        tr = trace_recorded_electron(sgc, p_init, L_init, v_f)
         if tr.Ks[end] > best_E
             best_E = tr.Ks[end]
             best_data = tr
@@ -426,13 +411,8 @@ function run_ensemble(;
     tspan = (0.0, t_end)
 
     u0_dummy = SA[0.5 * ΔL, 0.0, 0.0, 1.0e6, 1.0e6, 0.0]
-    state0_gc, param0_gc = prepare_gc(
-        u0_dummy; E = Efunc, B = Bfunc, species = Electron,
-        model = RelativisticGuidingCenter()
-    )
-    p0 = GCScatterParam(
-        param0_gc.q, param0_gc.q2m, param0_gc.μ, param0_gc.E, param0_gc.B, Xoshiro(seed)
-    )
+    p_field = prepare(; E = Efunc, B = Bfunc, species = Electron)
+    p0 = (; p_field..., rng = Xoshiro(seed))
 
     L_outer = L_init[end]
     isoutside(u, p, t) = u[1] < -4.0 * w_bs || u[1] > (L_outer - vf * t) + 4.0 * w_ft
@@ -443,19 +423,13 @@ function run_ensemble(;
         v0 = rand(rng, BiMaxwellian(Electron; T = 50.0))
         γ0 = inv(sqrt(1.0 - sum(abs2, v0) / c^2))
         xv0 = SA[x0[1], x0[2], x0[3], γ0 * v0[1], γ0 * v0[2], γ0 * v0[3]]
-        sgc, pgc = prepare_gc(
-            xv0; E = Efunc, B = Bfunc, species = Electron,
-            model = RelativisticGuidingCenter()
-        )
-        p_new = GCScatterParam(
-            pgc.q, pgc.q2m, pgc.μ, pgc.E, pgc.B, Xoshiro(rand(rng, UInt64))
-        )
-        return remake(prob; u0 = SVector{4}(sgc), p = p_new)
+        ## The problem converts the full-orbit state to its guiding center.
+        return remake(prob; u0 = xv0, p = (; p_field..., rng = Xoshiro(rand(rng, UInt64))))
     end
 
     cb_scat = (est || ww || msw) ?
         make_scatter_callback(L_init, vf; est, ww, msw) : nothing
-    prob = TraceGCProblem(SVector{4}(state0_gc), tspan, p0; relativistic = true, prob_func)
+    prob = TraceGCProblem(u0_dummy, tspan, p0; relativistic = true, prob_func)
     sols = solve(
         prob, Tsit5(), EnsembleThreads();
         isoutside, callback = cb_scat, trajectories, seed,
@@ -466,9 +440,8 @@ function run_ensemble(;
     for (k, sol) in enumerate(sols.u)
         u_end = sol.u[end]
         t_k = sol.t[end]
-        p_k = sol.prob.p
-        B_end = norm(p_k.B(SA[u_end[1], u_end[2], u_end[3]], t_k))
-        E_final[k] = gc_energy_eV(u_end[4], p_k.μ, B_end)
+        B_end = norm(sol.prob.p.B(SA[u_end[1], u_end[2], u_end[3]], t_k))
+        E_final[k] = gc_energy_eV(u_end[4], u_end[5], B_end)
     end
     return E_final
 end

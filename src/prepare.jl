@@ -83,12 +83,12 @@ prepare_field(::Nothing; erased = false) = ZeroField()
 """
     prepare(; E=nothing, B=nothing, F=nothing, species=Proton, q, m, c, erased=false)
 
-Build particle parameters from callable electric, magnetic, and external force fields.
-Omitted fields are zero. Each callable accepts `x` or `(x, t)` and returns three components.
-Construct numerical fields with [`build_interpolator`](@ref) before calling `prepare`.
-See [`Field`](@ref) to select the calling convention. `q` and `m` override `species`;
-`c` sets the relativistic speed of light. Particle constants take the float type of the
-state when traced.
+Build particle parameters `(; q, q2m, m, E, B, F)` from callable electric, magnetic, and
+external force fields, for every model. Omitted fields are zero. Each callable accepts `x` or
+`(x, t)` and returns three components. Construct numerical fields with
+[`build_interpolator`](@ref) before calling `prepare`. See [`Field`](@ref) to select the
+calling convention. `q` and `m` override `species`; `c` sets the relativistic speed of light.
+Particle constants take the float type of the state when traced.
 
 # Examples
 ```jldoctest
@@ -125,7 +125,7 @@ function prepare(;
     q = @something q species.q
     m = @something m species.m
     E, B, F = map(f -> prepare_field(f; erased), (E, B, F))
-    p = (; q2m = q / m, m, E, B, F)
+    p = (; q, q2m = q / m, m, E, B, F)
     isnothing(c) && return p
     return (; p..., c)
 end
@@ -179,8 +179,7 @@ _grad_A(::Nothing, A; erased = false) =
 Return parameters `(; q, m, c, pf)` for `TraceCanonicalProblem`.
 """
 function prepare(
-        pf::PotentialField;
-        species = Proton, q = nothing, m = nothing, c = c
+        pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c
     )
     q = @something q species.q
     m = @something m species.m

@@ -215,7 +215,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             B = build_interpolator(B_grid3d, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
             species = Proton
         )
-        fi3d = param3d[4].field_function
+        fi3d = param3d.B.field_function
         g3d = TP._to_gpu_grid(fi3d, CPU())
 
         @test g3d(1.5, 2.5, 3.5) ≈ SA[1.5, 2.5, 3.5]
@@ -239,7 +239,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             B = build_interpolator(B_grid2d, (x, y); bc = TestParticle.FillExtrap(NaN)),
             species = Proton
         )
-        fi2d = param2d[4].field_function
+        fi2d = param2d.B.field_function
         g2d = TP._to_gpu_grid(fi2d, CPU())
 
         @test g2d(1.5, 2.5) ≈ SA[1.5, 2.5, 0.0]
@@ -263,7 +263,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
             B = build_interpolator(B_grid1d, (x,); bc = TestParticle.ClampExtrap()),
             species = Proton
         )
-        fi1d = param1d[4].field_function
+        fi1d = param1d.B.field_function
         g1d = TP._to_gpu_grid(fi1d, CPU())
 
         @test g1d(2.5) ≈ SA[2.5, 0.0, 0.0]
@@ -295,7 +295,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
                 ),
                 species = Proton
             )
-            fi_sph = param_sph[4].field_function
+            fi_sph = param_sph.B.field_function
             g_sph = TP._to_gpu_grid(fi_sph, CPU())
 
             @test g_sph(1.0, 1.0, 1.0) ≈ fi_sph(SA[1.0, 1.0, 1.0])

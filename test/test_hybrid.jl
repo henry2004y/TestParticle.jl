@@ -136,10 +136,8 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
                 X, vpar, _, _, μ, phase = TP._get_gc_parameters(
                     xv, E_field, B_field_flat, q, m, 0.0
                 )
-                state_gc = SA[X[1], X[2], X[3], vpar]
-                xv_rec = TP._gc_to_full(
-                    state_gc, E_field, B_field_flat, q, m, μ, 0.0, phase
-                )
+                state_gc = SA[X[1], X[2], X[3], vpar, μ]
+                xv_rec = TP._gc_to_full(state_gc, E_field, B_field_flat, q, m, 0.0, phase)
                 @test norm(xv[SA[1, 2, 3]] - xv_rec[SA[1, 2, 3]]) < 1.0e-10
                 @test norm(xv[SA[4, 5, 6]] - xv_rec[SA[4, 5, 6]]) < 1.0e-8
             end
@@ -465,42 +463,27 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u = SA[5.0, 0.0, 40.0, 4.0e4, 1.0e4, 9.0e4]
         t = 0.0
 
-        X0, vpar0, μ0, phase0 = TP._gc_state_at_switch(
-            u, E_field, B_field_bottle, q, m, t, 0
-        )
-        X_legacy, vpar_legacy, _, _, μ_legacy, phase_legacy = TP._get_gc_parameters(
+        gc0, phase0 = TP._gc_state_at_switch(u, E_field, B_field_bottle, q, m, t, 0)
+        X_legacy, vpar_legacy, _, _, μ_legacy, _ = TP._get_gc_parameters(
             u, E_field, B_field_bottle, q, m, t
         )
-        @test X0 == X_legacy
-        @test vpar0 == vpar_legacy
-        @test μ0 == μ_legacy
+        @test gc0 == SVector(X_legacy..., vpar_legacy, μ_legacy)
 
         # Residual of the implicit map X = x - ρ(X): the correction reduces it
         # by orders of magnitude for a curved field.
-        residual(X, vpar, μ, phase) = begin
-            x_rec = TP._gc_to_full(
-                SVector(X[1], X[2], X[3], vpar), E_field, B_field_bottle, q, m,
-                μ, t, phase
-            )
-            norm(TP.get_x(x_rec) - u[SA[1, 2, 3]])
-        end
-        X2, vpar2, μ2, phase2 = TP._gc_state_at_switch(
-            u, E_field, B_field_bottle, q, m, t, 2
+        residual(gc, phase) = norm(
+            TP.get_x(TP._gc_to_full(gc, E_field, B_field_bottle, q, m, t, phase)) -
+                u[SA[1, 2, 3]]
         )
-        @test residual(X2, vpar2, μ2, phase2) < 1.0e-2 * residual(X0, vpar0, μ0, phase0)
+        gc2, phase2 = TP._gc_state_at_switch(u, E_field, B_field_bottle, q, m, t, 2)
+        @test residual(gc2, phase2) < 1.0e-2 * residual(gc0, phase0)
 
         # The corrected map is the exact inverse of the reconstruction used when
         # switching back to the full orbit: GC -> FO -> GC returns the state.
-        state_gc = SVector(X2[1], X2[2], X2[3], vpar2)
-        xv_back = TP._gc_to_full(
-            state_gc, E_field, B_field_bottle, q, m, μ2, t, phase2
-        )
-        X_back, vpar_back, μ_back, phase_back = TP._gc_state_at_switch(
-            xv_back, E_field, B_field_bottle, q, m, t, 2
-        )
-        @test X_back ≈ X2 atol = 1.0e-5
-        @test vpar_back ≈ vpar2 rtol = 1.0e-6
-        @test μ_back ≈ μ2 rtol = 1.0e-6
+        xv_back = TP._gc_to_full(gc2, E_field, B_field_bottle, q, m, t, phase2)
+        gc_back, _ = TP._gc_state_at_switch(xv_back, E_field, B_field_bottle, q, m, t, 2)
+        @test TP.get_x(gc_back) ≈ TP.get_x(gc2) atol = 1.0e-5
+        @test gc_back[4:5] ≈ gc2[4:5] rtol = 1.0e-6
 
         # `switch_correction = 0` reproduces the legacy conversion exactly.
         alg = AdaptiveHybrid(;
@@ -857,9 +840,8 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             p = (; q2m, m, E = E_field, B = B_adia, F = TP.ZeroField())
             prob = TraceProblem(u0, tspan, p)
 
-            u0_gc, p_gc = TP.prepare_gc(u0; B = B_adia, species = Proton)
             sol_gc = solve(
-                TraceGCProblem(u0_gc, tspan, p_gc), Vern7();
+                TraceGCProblem(u0, tspan, prepare(; B = B_adia, species = Proton)), Vern7();
                 abstol = 1.0e-6, reltol = 1.0e-6,
             )
 

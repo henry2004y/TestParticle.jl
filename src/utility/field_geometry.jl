@@ -112,7 +112,7 @@ end
 
 # At the particle, not its guiding center: near a field null `x - ρ` lands far away in the
 # strong field, and `ϵ` there would read as adiabatic.
-function get_adiabaticity(xv, p::NamedTuple, t; model = _param_model(p))
+function get_adiabaticity(xv, p::NamedTuple, t; model = _state_model(xv))
     x = get_x(xv)
     mp = get_magnetic_properties(x, t, p.B)
     iszero(mp.Bmag) && return Inf

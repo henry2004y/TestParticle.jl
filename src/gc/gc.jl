@@ -89,43 +89,32 @@ never uses it; the values match those of [`_get_gc_parameters`](@ref).
     return X, f.vpar, f.μ
 end
 
-"""
-    _gc_state_at_switch(xv, E, B, q, m, t, niter) -> (X, vpar, μ, phase)
-
-Guiding-center state of the full-orbit state `xv`, refined by up to `niter`
-fixed-point iterations of `X = x - ρ(X)`: the Larmor radius is evaluated at the
-guiding center instead of at the particle, which is the first-order correction
-that removes the `O(ε)` error of the zeroth-order map. `niter = 0` recovers the
-zeroth-order map.
-
-This map is the exact inverse of [`_gc_to_full`](@ref), so a switch to the
-guiding center and back returns the particle where it was; the reverse
-conversion needs no correction of its own.
-
-An iteration is kept only if it reduces the residual `‖x - (X + ρ(X))‖`, so a
-strongly non-adiabatic crossing, where the fixed-point map stops contracting,
-cannot make the conversion worse than the zeroth-order one.
-"""
+# Guiding-center state `[X..., vpar, μ]` and gyrophase of `xv`, refined by up to `niter`
+# fixed-point iterations of `X = x - ρ(X)`: evaluating the Larmor radius at the guiding
+# center instead of the particle removes the `O(ε)` error of the zeroth-order map
+# (`niter = 0`). The result is the exact inverse of `_gc_to_full`, so a switch to the guiding
+# center and back returns the particle where it was. An iteration is kept only if it reduces
+# the residual `‖x - (X + ρ(X))‖`, so where the map stops contracting the result is no worse
+# than zeroth order.
 @inline function _gc_switch_state_checked(xv, E, B, q, m, t, niter)
     x, v = _split_xv(xv)
     X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)
-    niter > 0 || return X, vpar, μ, phase, true
+    state = SVector(X[1], X[2], X[3], vpar, μ)
+    niter > 0 || return state, phase, true
 
-    x_rec = _gc_to_full(SVector(X[1], X[2], X[3], vpar), E, B, q, m, μ, t, phase)
+    x_rec = _gc_to_full(state, E, B, q, m, t, phase)
     residual = norm(x - get_x(x_rec))
 
     for _ in 1:niter
         X_next = X + (x - get_x(x_rec))
         f = _gc_frame(X_next, v, E, B, m, t)
         phase_next = _gc_phase(f.b̂, f.w)
-        x_rec_next = _gc_to_full(
-            SVector(X_next[1], X_next[2], X_next[3], f.vpar), E, B, q, m,
-            f.μ, t, phase_next
-        )
+        state_next = SVector(X_next[1], X_next[2], X_next[3], f.vpar, f.μ)
+        x_rec_next = _gc_to_full(state_next, E, B, q, m, t, phase_next)
         residual_next = norm(x - get_x(x_rec_next))
         residual_next < residual || break
 
-        X, vpar, μ, phase = X_next, f.vpar, f.μ, phase_next
+        X, state, phase = X_next, state_next, phase_next
         x_rec, residual = x_rec_next, residual_next
     end
 
@@ -139,116 +128,80 @@ cannot make the conversion worse than the zeroth-order one.
     B_opp = B(2 * X - x, t)
     B_prod = norm(B_X) * norm(B_opp)
     same_dir = !iszero(B_prod) && (B_X ⋅ B_opp) > (B_prod / 2)
-    return X, vpar, μ, phase, inv_ok && same_dir
+    return state, phase, inv_ok && same_dir
 end
 
 @inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
-    X, vpar, μ, phase, _ = _gc_switch_state_checked(xv, E, B, q, m, t, niter)
-    return X, vpar, μ, phase
+    state, phase, _ = _gc_switch_state_checked(xv, E, B, q, m, t, niter)
+    return state, phase
 end
 
 """
-    prepare_gc(xv; E = nothing, B = nothing, model = GuidingCenter(), c = nothing, kw...)
-        -> (state_gc, param_gc)
+    full_to_gc(xv, p; t = 0, model = GuidingCenter())
 
-Initial guiding-center state `[X..., vpar]` from full-orbit state `xv` and parameters
-`(; q, q2m, μ, E, B)` (with `c` included when passed) for tracing it. Omitted fields are
-zero. `xv` is `[x, y, z, vx, vy, vz]` for `GuidingCenter()` and
-`[x, y, z, γvx, γvy, γvz]` for `RelativisticGuidingCenter()`. Field arguments and keywords
-mirror [`prepare`](@ref).
+Guiding-center state `[X..., vpar, μ]` of the full-orbit state `xv = [x, y, z, vx, vy, vz]`
+at time `t` in the fields of `p` from [`prepare`](@ref), in the float type of `xv`; an
+`SVector` for a static `xv`. For `model = RelativisticGuidingCenter()`,
+`xv = [x..., (γv)...]`, and the state holds `γvpar` and `μ = p⊥² / (2mB)`.
+
+[`TraceGCProblem`](@ref) converts a full-orbit `u0` itself.
 
 # Examples
 ```jldoctest
 julia> B(x) = SA[0.0, 0.0, 1.0e-8];
 
+julia> p = prepare(; B, species = Proton);
+
 julia> u0 = SA[1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
-julia> u0_gc, p_gc = prepare_gc(u0; B, species = Proton);
+julia> sol = solve(TraceGCProblem(u0, (0.0, 1.0), p), Vern7());
 
-julia> prob_gc = TraceGCProblem(u0_gc, (0.0, 1.0), p_gc);
-
-julia> sol_gc = solve(prob_gc, Vern7());
-
-julia> isapprox(sol_gc.u[end], u0_gc; atol = 1.0e-12)
+julia> isapprox(sol.u[end], TestParticle.full_to_gc(u0, p); atol = 1.0e-12)
 true
 ```
-# TODO: support external forces
 """
-function prepare_gc(
-        xv; species = Proton, q = nothing, m = nothing, c = nothing,
-        t = 0, model = GuidingCenter(), kw...
+function full_to_gc(xv, p; t = 0, model = GuidingCenter())
+    T = float(eltype(xv))
+    X, vpar, _, _, μ, _ = _get_gc_parameters(
+        xv, p.E, p.B, p.q, p.m, t, model, _speed_of_light(p)
     )
-    q = @something q species.q
-    m = @something m species.m
-    (; E, B) = prepare(; q, m, kw...)
-    c_val = @something c TestParticle.c
-    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, E, B, q, m, t, model, c_val)
-
-    p = (; q, q2m, μ, E, B)
-    return [X..., vpar], isnothing(c) ? p : (; p..., c)
+    state = SVector{5, T}(X[1], X[2], X[3], vpar, μ)
+    return xv isa StaticArray ? state : Vector(state)
 end
 
 """
-    full_to_gc(xu, param, t = 0; model = GuidingCenter())
+    gc_to_full(state_gc, p; phase = 0, t = 0, model = GuidingCenter())
 
-Convert full particle state `xu` to guiding center state `state_gc` and magnetic moment `μ`.
-Returns `(state_gc, μ)`, where `state_gc = [R..., vpar]` (or `[R..., γvpar]` for
-`model = RelativisticGuidingCenter()`, expecting `xu = [x..., (γv)...]`).
+Full-orbit state `[x, y, z, vx, vy, vz]` (`[x..., (γv)...]` for
+`RelativisticGuidingCenter()`) of the guiding-center state `[X..., vpar, μ]` at gyrophase
+`phase` and time `t`: the inverse of [`full_to_gc`](@ref).
 """
-function full_to_gc(xu, param, t = 0; model = GuidingCenter())
-    (; q2m, m, E, B) = param
-    c_val = _speed_of_light(param)
-    X, vpar, _, _, μ, _ = _get_gc_parameters(xu, E, B, q2m * m, m, t, model, c_val)
-    state_gc = SVector{4}(X[1], X[2], X[3], vpar)
-
-    return state_gc, μ
+function gc_to_full(state_gc, p; phase = 0, t = 0, model = GuidingCenter())
+    return Vector(
+        _gc_to_full(
+            state_gc, p.E, p.B, p.q, p.m, t, phase, model,
+            _speed_of_light(p)
+        )
+    )
 end
 
-"""
-    gc_to_full(state_gc, param, μ, phase = 0; t = 0, model = GuidingCenter())
-
-Convert guiding center state `state_gc` to full particle state `xu`.
-Returns `xu = [x, y, z, vx, vy, vz]` (or `[x, y, z, γvx, γvy, γvz]` for
-`model = RelativisticGuidingCenter()`).
-"""
-function gc_to_full(
-        state_gc, param, μ, phase = 0; t = 0, model = GuidingCenter()
-    )
-    (; q2m, m, E, B) = param
-    c_val = _speed_of_light(param)
-    return Vector(_gc_to_full(state_gc, E, B, q2m * m, m, μ, t, phase, model, c_val))
-end
-
-"""
-    _gc_to_full(
-        state_gc, E_field, B_field, q, m, μ, t, phase = 0,
-        model = GuidingCenter(), c_val = c
-    )
-
-Internal GC → full-orbit conversion taking the field functions and charges
-directly, so it can be shared by the GC and hybrid solvers. `E_field` and
-`B_field` must be callable as `E_field(x, t)` / `B_field(x, t)`; static fields
-simply ignore `t`.
-
-Returns an `SVector{6}` so that it can be used in a hot loop and stored in a
-`Vector{SVector{6}}` without allocating; [`gc_to_full`](@ref) converts it to a
-`Vector` for the public API.
-"""
+# Takes the fields and charges instead of `p` so the hybrid solver can share it, and returns
+# an `SVector{6}` to stay allocation-free in its loop; `gc_to_full` wraps it.
 @inline function _gc_to_full(
-        state_gc, E_field, B_field, q, m, μ, t, phase = 0,
+        state_gc, E_field, B_field, q, m, t, phase = 0,
         model = GuidingCenter(), c_val = c
     )
     R = get_x(state_gc)
     B = B_field(R, t)
-    return _gc_to_full(state_gc, E_field, B, norm(B), q, m, μ, t, phase, model, c_val)
+    return _gc_to_full(state_gc, E_field, B, norm(B), q, m, t, phase, model, c_val)
 end
 
 @muladd @inline function _gc_to_full(
-        state_gc, E_field, B::SVector{3}, Bmag::Real, q, m, μ, t, phase = 0,
+        state_gc, E_field, B::SVector{3}, Bmag::Real, q, m, t, phase = 0,
         model = GuidingCenter(), c_val = c
     )
     R = get_x(state_gc)
-    vpar = state_gc[4]
+    vpar, μ = state_gc[4], state_gc[5]
 
     E = E_field(R, t)
     inv_Bmag = inv(Bmag)

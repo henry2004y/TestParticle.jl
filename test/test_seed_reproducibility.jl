@@ -28,21 +28,19 @@ tspan = (0.0, 1.0e-4)
 x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[1.0e4, 0.0, 1.0e4]
 u0_full = vcat(x0, v0)
-u0_gc, param = TestParticle.prepare_gc(
-    u0_full; E = zero_E, B = uniform_B, species = Proton
-)
+param = TestParticle.prepare(; E = zero_E, B = uniform_B, species = Proton)
 
 function prob_func(prob, ctx)
     vdf = BiMaxwellian(; vth = 1.0)
     # Using ctx.rng is critical here!
     v = rand(ctx.rng, vdf)
-    # Guiding-center equations expect a 4-element state (x, y, z, vpar)
-    return remake(prob; u0 = [prob.u0[1:3]..., v[3]])
+    # The guiding-center problem converts the full-orbit state.
+    return remake(prob; u0 = [x0..., v...])
 end
 
 @testset "GC Solver Seed Reproducibility" begin
     let
-        prob = TraceGCProblem(u0_gc, tspan, param; prob_func)
+        prob = TraceGCProblem(u0_full, tspan, param; prob_func)
         seed = 1234
 
         # Test RK4
@@ -142,7 +140,7 @@ end
 
     # --- GC (rk4) ---
     let
-        prob = TraceGCProblem(u0_gc, tspan, param; prob_func)
+        prob = TraceGCProblem(u0_full, tspan, param; prob_func)
         init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
         v1 = init_v(
             solve(prob, RK4(), EnsembleSerial(); trajectories = 6, dt = 1.0e-5, seed = 1)

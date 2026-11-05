@@ -27,38 +27,27 @@ dipole_field(r) = dipole(r)
             u_perp = 2.0 * c
             μ = Electron.m * u_perp^2 / (2 * B0)
             phase = π / 3
-            gc_state = SA[R[1], R[2], R[3], upar]
+            gc_state = SA[R[1], R[2], R[3], upar, μ]
 
-            xu = gc_to_full(
-                gc_state, param_B, μ, phase; model = RelativisticGuidingCenter()
-            )
+            xu = gc_to_full(gc_state, param_B; phase, model = RelativisticGuidingCenter())
             @test length(xu) == 6
             # Proper velocity magnitude matches √(u_∥² + u_⊥²)
             @test norm(xu[4:6]) ≈ hypot(upar, u_perp) rtol = 1.0e-12
 
-            gc_back, μ_back = full_to_gc(
-                xu, param_B; model = RelativisticGuidingCenter()
-            )
-            @test gc_back[1:3] ≈ R rtol = 1.0e-12
-            @test gc_back[4] ≈ upar rtol = 1.0e-12
-            @test μ_back ≈ μ rtol = 1.0e-12
+            @test full_to_gc(xu, param_B; model = RelativisticGuidingCenter()) ≈ gc_state rtol = 1.0e-12
 
             # With E × B drift (v_E = E0 / B0 = 1e5 m/s along +x), μ = 0
-            gc_drift = SA[0.0, 0.0, 0.0, upar]
+            gc_drift = SA[0.0, 0.0, 0.0, upar, 0.0]
             γ0 = sqrt(1 + (upar / c)^2)
-            xu_eb = gc_to_full(
-                gc_drift, param_EB, 0.0; model = RelativisticGuidingCenter()
-            )
+            xu_eb = gc_to_full(gc_drift, param_EB; model = RelativisticGuidingCenter())
             @test xu_eb[4] ≈ γ0 * (E0 / B0) rtol = 1.0e-12
             @test xu_eb[5] ≈ 0.0 atol = 1.0e-12
             @test xu_eb[6] ≈ upar rtol = 1.0e-12
 
-            gc_eb_back, μ_eb_back = full_to_gc(
-                xu_eb, param_EB; model = RelativisticGuidingCenter()
-            )
+            gc_eb_back = full_to_gc(xu_eb, param_EB; model = RelativisticGuidingCenter())
             @test gc_eb_back[1:3] ≈ SA[0.0, 0.0, 0.0] atol = 1.0e-12
             @test gc_eb_back[4] ≈ upar rtol = 1.0e-12
-            @test μ_eb_back ≈ 0.0 atol = 1.0e-30
+            @test gc_eb_back[5] ≈ 0.0 atol = 1.0e-30
 
             # get_gc with use_vE = true subtracts γ v_E for relativistic states
             X_gc = get_gc(
@@ -75,18 +64,15 @@ dipole_field(r) = dipole(r)
             x0 = SA[0.0, 0.0, 0.0]
             u0 = SA[x0..., v0...]
 
-            u0_nr, p_nr = prepare_gc(u0; B = B_grad, species = Proton)
-            u0_rel, p_rel = prepare_gc(
-                u0; B = B_grad, species = Proton, model = RelativisticGuidingCenter()
-            )
+            p = prepare(; B = B_grad, species = Proton)
 
             tspan = (0.0, 1.0)
             sol_nr = solve(
-                TraceGCProblem(u0_nr, tspan, p_nr), Vern7();
+                TraceGCProblem(u0, tspan, p), Vern7();
                 reltol = 1.0e-10, abstol = 1.0e-10
             )
             sol_rel = solve(
-                TraceProblem{RelativisticGuidingCenter}(u0_rel, tspan, p_rel), Vern7();
+                TraceProblem{RelativisticGuidingCenter}(u0, tspan, p), Vern7();
                 reltol = 1.0e-10, abstol = 1.0e-10
             )
             @test sol_rel.retcode == ReturnCode.Success
@@ -112,11 +98,9 @@ dipole_field(r) = dipole(r)
             prob_fo = TraceProblem{RelativisticOrbit}(u0_fo, tspan, p_fo)
             sol_fo = solve(prob_fo, Vern7(); reltol = 1.0e-9, abstol = 1.0e-9)
 
-            u0_gc, p_gc = prepare_gc(
-                u0_fo; B = dipole_field, species = Electron,
-                model = RelativisticGuidingCenter()
-            )
-            prob_gc = TraceProblem{RelativisticGuidingCenter}(u0_gc, tspan, p_gc)
+            p_gc = p_fo
+            prob_gc = TraceProblem{RelativisticGuidingCenter}(u0_fo, tspan, p_gc)
+            u0_gc = prob_gc.u0
             sol_gc = solve(prob_gc, Vern7(); reltol = 1.0e-9, abstol = 1.0e-9)
 
             @test sol_gc.retcode == ReturnCode.Success
@@ -134,7 +118,7 @@ dipole_field(r) = dipole(r)
             @test maximum(abs.(E_gc .- E_gc[1])) / E_gc[1] < 1.0e-7
 
             # In-place and out-of-place equations agree
-            du = zeros(4)
+            du = zeros(5)
             trace_gc_relativistic!(du, u0_gc, p_gc, 0.0)
             @test du ≈ trace_gc_relativistic(u0_gc, p_gc, 0.0) rtol = 1.0e-14
             @test get_gc_velocity(
@@ -166,13 +150,8 @@ dipole_field(r) = dipole(r)
 
             # Pure mirror: energy conserved, parallel momentum mirrors
             u0_fo = SA[0.0, 0.0, 0.0, 1.5, 0.0, 1.0] # γ = √(1 + 3.25) ≈ 2.06
-            u0_gc, p_gc = prepare_gc(
-                u0_fo; B = B_mirror, q = 1.0, m = 1.0, c = 1.0,
-                model = RelativisticGuidingCenter()
-            )
-            @test p_gc.c == 1.0
-
-            prob = TraceProblem{RelativisticGuidingCenter}(u0_gc, (0.0, 10.0), p_gc)
+            p_gc = prepare(; B = B_mirror, q = 1.0, m = 1.0, c = 1.0)
+            prob = TraceProblem{RelativisticGuidingCenter}(u0_fo, (0.0, 10.0), p_gc)
             sol = solve(prob, Vern7(); reltol = 1.0e-10, abstol = 1.0e-10)
             @test sol.retcode == ReturnCode.Success
             E = get_energy(sol)
@@ -180,18 +159,17 @@ dipole_field(r) = dipole(r)
 
             # With uniform E_z along uniform B_z: du_∥/dt = (q/m) E_z, dH/dt = 0
             B_z(r) = SA[0.0, 0.0, 1.0]
-            u0_e, p_e = prepare_gc(
-                SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]; E = E_z, B = B_z,
-                q = 1.0, m = 1.0, c = 1.0, model = RelativisticGuidingCenter()
+            p_e = prepare(; E = E_z, B = B_z, q = 1.0, m = 1.0, c = 1.0)
+            prob_e = TraceProblem{RelativisticGuidingCenter}(
+                SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0], (0.0, 2.0), p_e
             )
-            prob_e = TraceProblem{RelativisticGuidingCenter}(u0_e, (0.0, 2.0), p_e)
             sol_e = solve(prob_e, RK4(); dt = 1.0e-2, adaptive = false)
             @test sol_e.retcode == ReturnCode.Success
             @test sol_e.u[end][4] ≈ 0.05 * 2.0 rtol = 1.0e-8
 
             # Work rate P_par = q (u_∥ / γ) E_z
             u_end = sol_e.u[end]
-            γ_end = sqrt(1 + u_end[4]^2 + 2 * p_e.μ * 1.0)
+            γ_end = sqrt(1 + u_end[4]^2 + 2 * u_end[5] * 1.0)
             rates = get_work_rates(u_end, p_e, 2.0; model = RelativisticGuidingCenter())
             @test rates[1] ≈ (u_end[4] / γ_end) * 0.05 rtol = 1.0e-12
         end
@@ -200,25 +178,23 @@ dipole_field(r) = dipole(r)
     @testset "Problem construction and Float32 preservation" begin
         let B_u(r) = SA[0.0f0, 0.0f0, 1.0f-5]
             u0 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f8, 0.0f0, 1.0f8]
-            u0_gc, p_gc = prepare_gc(
-                u0; B = B_u, species = Electron, model = RelativisticGuidingCenter()
-            )
-            prob = TraceProblem{RelativisticGuidingCenter}(
-                SVector{4, Float32}(u0_gc), (0.0f0, 1.0f-4), p_gc
-            )
+            p_gc = prepare(; B = B_u, species = Electron)
+            prob = TraceProblem{RelativisticGuidingCenter}(u0, (0.0f0, 1.0f-4), p_gc)
+            u0_gc = prob.u0
+            @test u0_gc isa SVector{5, Float32}
             sol = solve(prob, Vern7())
             @test sol.retcode == ReturnCode.Success
             @test eltype(sol.u[end]) === Float32
 
             # Constructing from equations directly infers RelativisticGuidingCenter
             prob_from_f = TraceProblem(
-                trace_gc_relativistic, SVector{4}(u0_gc), (0.0, 1.0e-4), p_gc
+                trace_gc_relativistic, u0_gc, (0.0, 1.0e-4), p_gc
             )
             @test prob_from_f isa TraceProblem{RelativisticGuidingCenter}
 
             # Mismatched equations throw ArgumentError
             @test_throws ArgumentError TraceProblem{RelativisticGuidingCenter}(
-                trace_gc!, SVector{4}(u0_gc), (0.0, 1.0e-4), p_gc
+                trace_gc!, u0_gc, (0.0, 1.0e-4), p_gc
             )
         end
     end

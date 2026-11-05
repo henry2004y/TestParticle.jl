@@ -83,8 +83,8 @@ end
     # The default equations imply the model, and an explicit one must agree with them.
     @test TraceProblem(trace_relativistic!, γv, tspan, electron) isa
         TraceProblem{RelativisticOrbit}
-    gc0, p_gc = prepare_gc(u0; species = Electron, B = B_z)
-    @test TP.get_energy(solve(TraceProblem(trace_gc!, gc0, tspan, p_gc), Tsit5()))[1] ≈ energy
+    p_gc = prepare(; species = Electron, B = B_z)
+    @test TP.get_energy(solve(TraceProblem(trace_gc!, u0, tspan, p_gc), Tsit5()))[1] ≈ energy
     @test_throws ArgumentError TraceProblem{RelativisticOrbit}(trace!, γv, tspan, electron)
     @test remake(rel; f = trace!) isa TraceProblem{FullOrbit}
     @test (@test_deprecated TraceProblem(γv, tspan, electron; relativistic = true)) isa
@@ -1096,8 +1096,8 @@ end
             @test ε_fo_scalar == 0.0
 
             # GC Solution
-            stateinit_gc, param_gc = prepare_gc(stateinit; B = B_func_disp, species = Proton)
-            prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+            param_gc = prepare(; B = B_func_disp, species = Proton)
+            prob_gc = ODEProblem(trace_gc!, TP.full_to_gc(stateinit, param_gc), tspan, param_gc)
             sol_gc = solve(prob_gc, Tsit5(); dt = 1.0e-6)
 
             # Test vector output
@@ -1402,7 +1402,7 @@ end
             E = build_interpolator(E, rect_grid; bc = TestParticle.FillExtrap(NaN)),
             B = build_interpolator(B, rect_grid; bc = TestParticle.FillExtrap(NaN))
         )
-        @test param[1] ≈ Proton.q / Proton.m
+        @test param.q2m ≈ Proton.q / Proton.m
     end
 end
 
