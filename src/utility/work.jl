@@ -17,11 +17,9 @@ particle picks up by being convected across `∇B` at fixed `μ`, while `P_betat
 the heating from the local change of `|B|`. Together they are `μ (∂_t + v_E⋅∇) B`.
 See [`get_work_channels`](@ref) for the grouping into physical acceleration channels.
 
-The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Saved
-guiding-center states can carry diagnostics appended by `save_fields`/`save_work`, so
-their length is not a reliable discriminator. Full-orbit `μ` uses the gyration velocity
-`v⊥ - v_E`. With `relativistic = true`, a full-orbit state holds `γv` and the drifts use
-the mass `γm`.
+The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Full-orbit
+`μ` uses the gyration velocity `v⊥ - v_E`. With `relativistic = true`, a full-orbit state
+holds `γv` and the drifts use the mass `γm`.
 
 `magnetic_properties` and `E` are optional precomputed values of
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
@@ -104,10 +102,12 @@ end
 """
     get_work_rates(sol::AbstractODESolution) -> Vector{SVector{4}}
 
-Work rates at every saved state of `sol`.
+Work rates at every saved state of `sol`, in the element type of the state.
 """
 function get_work_rates(sol::AbstractODESolution)
     p = sol.prob.p
     relativistic = _is_relativistic(SciMLBase.unwrapped_f(sol.prob.f.f))
-    return map((u, t) -> get_work_rates(u, p, t; relativistic), sol.u, sol.t)
+    return map(sol.u, sol.t) do u, t
+        SVector{4, eltype(u)}(get_work_rates(u, p, t; relativistic))
+    end
 end

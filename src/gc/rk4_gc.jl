@@ -49,16 +49,14 @@ end
 
 function _trace_gc_native(
         alg::GCRK4, prob, dt, plan, isoutside::F, save_start, save_end, save_everystep,
-        maxiters, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {F, SaveFields, SaveWork}
+        maxiters
+    ) where {F}
     (; tspan, p, u0) = prob
     nt, nsteps, nout = _rk4_steps(
         prob, dt, plan, save_start, save_end, save_everystep, maxiters
     )
     T = eltype(u0)
-    vars_dim = 4 + (SaveFields ? 6 : 0) + (SaveWork ? 4 : 0)
-
-    traj = Vector{SVector{vars_dim, T}}(undef, nout)
+    traj = Vector{SVector{4, T}}(undef, nout)
     tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
 
     iout = 0
@@ -66,7 +64,7 @@ function _trace_gc_native(
 
     if save_start
         iout += 1
-        traj[iout] = _prepare_saved_data_gc(xv, p, tspan[1], Val(SaveFields), Val(SaveWork))
+        traj[iout] = xv
         tsave[iout] = tspan[1]
     end
 
@@ -94,10 +92,7 @@ function _trace_gc_native(
                 t_target = plan.times[isave]
                 iout += 1
                 if iout <= nout
-                    traj[iout] = _prepare_saved_data_gc(
-                        saveat_interpolate(t, xv_prev, t_next, xv, t_target),
-                        p, t_target, Val(SaveFields), Val(SaveWork)
-                    )
+                    traj[iout] = saveat_interpolate(t, xv_prev, t_next, xv, t_target)
                     tsave[iout] = t_target
                 end
                 isave += 1
@@ -105,9 +100,7 @@ function _trace_gc_native(
         elseif save_everystep
             iout += 1
             if iout <= nout
-                traj[iout] = _prepare_saved_data_gc(
-                    xv, p, t_next, Val(SaveFields), Val(SaveWork)
-                )
+                traj[iout] = xv
                 tsave[iout] = t_next
             end
         end
@@ -123,9 +116,7 @@ function _trace_gc_native(
         t_final = (final_step == nsteps) ? tspan[2] : (tspan[1] + final_step * dt)
         if iout == 0 || plan.dir * (t_final - tsave[iout]) > 0
             iout += 1
-            traj[iout] = _prepare_saved_data_gc(
-                xv, p, t_final, Val(SaveFields), Val(SaveWork)
-            )
+            traj[iout] = xv
             tsave[iout] = t_final
         end
     end

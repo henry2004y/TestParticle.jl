@@ -85,6 +85,17 @@ def test_trace_save_fields():
     assert np.allclose(res.B, [0.0, 0.0, 1.0e-8], atol=1e-12)
 
 
+def test_save_work_without_fields():
+    import testparticle as tp
+
+    def get_B(x):
+        return [0.0, 0.0, 1.0e-8]
+
+    args = ([0.0, 0.0, 0.0], [1.0e5, 0.0, 0.0], (0.0, 1.0e-7), 5.0e-10, get_B)
+    for res in (tp.trace(*args, save_work=True), tp.trace_gc(*args, save_work=True)):
+        assert res.work.shape == (res.t.size, 4)
+
+
 def test_trace_gc():
     import testparticle as tp
 

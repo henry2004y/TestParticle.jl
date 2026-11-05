@@ -6,7 +6,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
-    get_x, get_magnetic_properties, get_work_rates, _promote_p,
+    get_x, get_magnetic_properties, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
     update_dp5, adiabaticity_components, _adiabaticity_components, _rng_seed,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
@@ -91,48 +91,6 @@ function _boris_callback(isoutside::F) where {F}
     return DiscreteCallback(condition, affect!)
 end
 
-@inline function _prepare_saved_data(
-        xv, p, t, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
-    data = xv
-    E = magnetic_properties = nothing
-
-    if SaveFields
-        r = get_x(xv)
-        T = eltype(xv)
-        E = SVector{3, T}(p.E(r, t))
-        if SaveWork
-            magnetic_properties = get_magnetic_properties(r, t, p.B)
-            B = magnetic_properties.B
-        else
-            B = p.B(r, t)
-        end
-        data = vcat(data, E, SVector{3, T}(B))
-    end
-
-    if SaveWork
-        data = vcat(data, get_work_rates(xv, p, t; magnetic_properties, E))
-    end
-
-    return data
-end
-
-_boris_finalize(sol, p, ::Val{false}, ::Val{false}) = sol
-
-function _boris_finalize(
-        sol, p, ::Val{SaveFields}, ::Val{SaveWork}
-    ) where {SaveFields, SaveWork}
-    u = [
-        _prepare_saved_data(sol.u[i], p, sol.t[i], Val(SaveFields), Val(SaveWork))
-            for i in eachindex(sol.t)
-    ]
-
-    return build_solution(
-        sol.prob, sol.alg, sol.t, u;
-        interp = LinearInterpolation(sol.t, u), retcode = sol.retcode, stats = nothing
-    )
-end
-
 function SciMLBase.solve(
         prob::FOProblem, alg::AbstractBoris;
         saveat = (),
@@ -141,8 +99,6 @@ function SciMLBase.solve(
         save_start::Bool = true,
         save_end::Bool = true,
         save_everystep::Bool = isempty(saveat),
-        save_fields::Bool = false,
-        save_work::Bool = false,
         maxiters::Int = 1_000_000,
         rng = nothing,
         seed = nothing,
@@ -155,7 +111,7 @@ function SciMLBase.solve(
     ode_prob = _boris_problem(prob)
     callback = _boris_callback(isoutside)
 
-    sol = if isempty(saveat)
+    return if isempty(saveat)
         solve(
             ode_prob, alg; dt = step, save_start, save_end, save_everystep,
             maxiters, callback, dense = false, kwargs...
@@ -165,14 +121,6 @@ function SciMLBase.solve(
             ode_prob, alg; dt = step, saveat, save_start, save_end,
             maxiters, callback, dense = false, kwargs...
         )
-    end
-
-    return if save_fields
-        save_work ? _boris_finalize(sol, prob.p, Val(true), Val(true)) :
-            _boris_finalize(sol, prob.p, Val(true), Val(false))
-    else
-        save_work ? _boris_finalize(sol, prob.p, Val(false), Val(true)) :
-            _boris_finalize(sol, prob.p, Val(false), Val(false))
     end
 end
 
@@ -696,12 +644,10 @@ end
 
             alg_adaptive = AdaptiveBoris(safety = 0.1)
             sol = solve(prob, alg_adaptive)
-            solve(prob, alg_adaptive; save_fields = true, save_work = true)
             get_fields(sol)
             get_work_rates(sol)
 
             solve(prob, MultistepBoris2(; n = 2); dt)
-            solve(prob, MultistepBoris2(; n = 2); dt, save_fields = true)
 
             solve(prob, AdaptiveHybrid(threshold = 0.1, dtmax = 1.0))
         end
