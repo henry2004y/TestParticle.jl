@@ -59,8 +59,8 @@ end
 
 Guiding-center position and magnetic moment of the full-orbit state `xv` — the
 two quantities an adiabaticity estimate needs. The gyrophase (`get_perp_vector`
-and an `atan2`) is skipped because the estimate never uses it; the values are
-identical to those of [`_get_gc_parameters`](@ref).
+and an `atan2`) is skipped because the estimate never uses it; the values
+match those of [`_get_gc_parameters`](@ref).
 """
 @inline function _gc_adia_parameters(xv, E, B, q, m, t)
     x, v = _split_xv(xv)
