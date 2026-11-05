@@ -283,11 +283,7 @@ end
 
 _detector_point(x::Real) = SA[Float64(x), 0.0, 0.0]
 _detector_point(p::SVector{3}) = Float64.(p)
-function _detector_point(p)
-    return isdefined(@__MODULE__, :coords) && applicable(coords, p) ?
-        (c = coords(p); SA[Float64(c.x.val), Float64(c.y.val), Float64(c.z.val)]) :
-        SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]
-end
+_detector_point(p) = SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]
 
 function _run_backward_pass(
         vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,

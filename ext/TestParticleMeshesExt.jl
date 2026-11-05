@@ -82,6 +82,11 @@ function get_cell_centers(grid::RectilinearGrid)
     return map(c -> (c[1:(end - 1)] .+ c[2:end]) ./ 2, grid_coords)
 end
 
+function TestParticle._detector_point(p::Point)
+    c = coords(p)
+    return SVector(Float64(c.x.val), Float64(c.y.val), Float64(c.z.val))
+end
+
 # `build_interpolator` forwards the Meshes.jl grid type above.
 # Virtual detectors
 

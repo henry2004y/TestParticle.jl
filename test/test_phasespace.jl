@@ -51,6 +51,8 @@ const x_detector = -200.0e3             # detector plane [m]
 const tspan = (0.0, 4.0)                # [s]; > transport time 500 km / 400 km/s
 const dt = get_gyroperiod(B_mag) / 40   # [s]
 const param = prepare(; E = get_E, B = get_B, species = Proton)
+@test TP._detector_point(Meshes.Point(1.0, 2.0, 3.0)) == SA[1.0, 2.0, 3.0]
+
 const detector = Meshes.Plane(Meshes.Point(x_detector, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
