@@ -527,6 +527,31 @@ end
                 prob_dist, Boris(), EnsembleSerial();
                 dt, saveat, trajectories
             )
+            @testset "Boris solvers reject what they would ignore" begin
+                B_z(x) = SA[0.0, 0.0, 1.0e-8]
+                u0 = [0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0]
+                tspan = (0.0, 1.0e-3)
+                p = prepare(; B = B_z)
+
+                rel = TraceProblem{RelativisticOrbit}(u0, tspan, p)
+                @test_throws ArgumentError solve(rel, Boris(); dt = 1.0e-4)
+                @test_throws ArgumentError solve(rel, Boris(), EnsembleSerial(); dt = 1.0e-4)
+                @test_throws ArgumentError solve(rel, Boris(), BorisPushers.CPU(); dt = 1.0e-4)
+
+                custom = TraceProblem((u, p, t) -> zero(u), SVector{6}(u0), tspan, p)
+                @test_throws ArgumentError solve(custom, Boris(); dt = 1.0e-4)
+
+                forced = TraceProblem(u0, tspan, prepare(; B = B_z, F = x -> SA[0.0, 0.0, 1.0]))
+                @test_throws ArgumentError solve(forced, Boris(); dt = 1.0e-4)
+
+                @test_throws ArgumentError solve(TraceProblem(u0, tspan, p), Boris())
+
+                hybrid = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-4)
+                for prob in (rel, TraceProblem((u, p, t) -> zero(u), SVector{6}(u0), tspan, p), forced)
+                    @test_throws ArgumentError solve(prob, hybrid)
+                end
+            end
+
             @testset "Boris" begin
                 sols_dist = solve(
                     prob_dist, Boris(),
