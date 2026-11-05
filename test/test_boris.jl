@@ -99,8 +99,7 @@ end
         # Analytic solution: particle moves at constant velocity v_drift = (1, 0, 0)
         # Position at t=10 should be (10, 0, 0)
         # q = 1, m = 1
-        # The solver expects param to be (q2m, m, E, B, F)
-        param = (1.0, 1.0, unit_Ey, unit_Bz, ZeroField())
+        param = (; q2m = 1.0, m = 1.0, E = unit_Ey, B = unit_Bz, F = ZeroField())
 
         # Initial condition: start at origin with the drift velocity
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
@@ -127,7 +126,7 @@ end
         # Test Gyrating particle
         # B = (0, 0, 1), E = 0, v = (1, 0, 0)
         # Gyroradius r = mv/qB = 1, gyroperiod T = 2πm/qB = 2π
-        param_gyro = (1.0, 1.0, ZeroField(), unit_Bz, ZeroField())
+        param_gyro = (; q2m = 1.0, m = 1.0, E = ZeroField(), B = unit_Bz, F = ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
@@ -158,7 +157,7 @@ end
 
     @testset "Hyper Boris" begin
         # E cross B drift tests
-        param = (1.0, 1.0, unit_Ey, unit_Bz, ZeroField())
+        param = (; q2m = 1.0, m = 1.0, E = unit_Ey, B = unit_Bz, F = ZeroField())
         u0 = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         tspan = (0.0, 10.0)
         dt = 0.1
@@ -185,7 +184,7 @@ end
         @test sol_hyper_single.u[end][4] ≈ 1.0 atol = 1.0e-6
 
         # Gyrating particle test
-        param_gyro = (1.0, 1.0, ZeroField(), unit_Bz, ZeroField())
+        param_gyro = (; q2m = 1.0, m = 1.0, E = ZeroField(), B = unit_Bz, F = ZeroField())
         u0_gyro = SA[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         prob_gyro = TP.TraceProblem(u0_gyro, (0.0, 2π), param_gyro)
 

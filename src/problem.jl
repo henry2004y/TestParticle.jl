@@ -1,24 +1,6 @@
 # TraceProblem constructors and SciML interface integration
 
-const FO_PARAMS = (:q2m, :m, :E, :B, :F)
-const GC_PARAMS = (:q, :q2m, :μ, :E, :B)
-const CANONICAL_PARAMS = (:q, :m, :c, :pf)
-
 @inline ODE_DEFAULT_ISOUTOFDOMAIN(u, p, t) = false
-
-"""
-    _named_params(p, names)
-
-Name the slots of a positional parameter tuple `p` after `names`, so that tuples
-written in the documented layout keep working. Other containers pass through.
-"""
-function _named_params(p::NTuple{N, Any}, names) where {N}
-    N <= length(names) || throw(
-        ArgumentError("expected at most $(length(names)) parameters $names, got $N")
-    )
-    return NamedTuple{ntuple(i -> names[i], Val(N))}(p)
-end
-_named_params(p, names) = p
 
 # Only the particle constants follow the state's float type; other entries of `p`, such as
 # user data, keep theirs.
@@ -29,8 +11,7 @@ const PARTICLE_CONSTANTS = (:q, :q2m, :m, :c, :μ)
 )
 @inline _promote_p(::Type{T}, p) where {T} = p
 
-@inline function _promote_trace_args(u0, tspan, p, names)
-    p = _named_params(p, names)
+@inline function _promote_trace_args(u0, tspan, p)
     T = eltype(u0)
     if T <: AbstractFloat
         tspan_T = (T(tspan[1]), T(tspan[2]))
@@ -40,10 +21,6 @@ const PARTICLE_CONSTANTS = (:q, :q2m, :m, :c, :μ)
         return tspan, p
     end
 end
-
-_param_names(::Type{<:Union{FullOrbit, RelativisticOrbit}}) = FO_PARAMS
-_param_names(::Type{<:Union{Canonical, RelativisticCanonical}}) = CANONICAL_PARAMS
-_param_names(::Type{GuidingCenter}) = GC_PARAMS
 
 # Default equations of each model. `_equations_model` is the reverse lookup, `nothing` for any
 # other function.
@@ -125,7 +102,7 @@ function TraceProblem{M}(
     ) where {M, iip}
     _equations_model(f) in (nothing, M) ||
         throw(ArgumentError("The equations of $(_equations_model(f)) do not fit the model $M."))
-    tspan, p = _promote_trace_args(u0, tspan, p, _param_names(M))
+    tspan, p = _promote_trace_args(u0, tspan, p)
     return TraceProblem{
         M, typeof(u0), typeof(tspan), iip, typeof(p), typeof(f), typeof(prob_func),
     }(f, u0, tspan, p, prob_func)

@@ -112,7 +112,7 @@ end
     u0 = vcat(x0, v0)
     T_gyro = 2π / abs(q2m * bottle_B0)
     tspan = (0.0, 30 * T_gyro)
-    p = (q2m, m, E_field, B_bottle, TP.ZeroField())
+    p = (; q2m, m, E = E_field, B = B_bottle, F = TP.ZeroField())
 
     alg_args = (
         threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 100,
@@ -203,7 +203,7 @@ end
         u0 = vcat(x0, SA[0.0, 0.0, vperp])
         T_gyro = 2π / abs(q / m * B0)
         tspan = (0.0, 30 * T_gyro)
-        p = (q / m, m, E_field, B_rot_f, TP.ZeroField())
+        p = (; q2m = q / m, m, E = E_field, B = B_rot_f, F = TP.ZeroField())
         prob_rot = TraceProblem(u0, tspan, p)
         args = (
             threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,

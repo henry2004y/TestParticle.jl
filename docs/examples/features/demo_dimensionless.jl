@@ -124,7 +124,7 @@ f = DisplayAs.PNG(f) #hide
 # * Location is normalized by the $L = c / \Omega_0$, where $\Omega_0 = q\,B_0 / m$, and
 # * Time is normalized by $\Omega_0^{-1}$, $t = t^\prime * \Omega_0^{-1}$.
 #
-# Hence `c = 1` in `prepare`; `relativistic = true` makes the state `(x, γv)`.
+# Hence `c = 1` in `prepare`; `RelativisticOrbit` makes the state `(x, γv)`.
 # At ``v = 0.9`` the orbit closes after ``2\pi\gamma`` with gyroradius ``\gamma v \approx 2.06``,
 # instead of after ``2\pi`` with radius 0.9 as in the non-relativistic case.
 
