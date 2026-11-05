@@ -21,128 +21,129 @@ Returns dy as the update SArray.
     return dy
 end
 
-"""
-Apply RK4 method for particles with index in `irange`.
-"""
-function _rk4!(
-        sols, prob, irange, plan, dt, nt, nout, isoutside,
-        save_start, save_end, save_everystep, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
-    ) where {SaveFields, SaveWork}
+# Steps to take, capped by `maxiters`, steps the span needs, and the saved state count.
+function _rk4_steps(prob, dt, plan, save_start, save_end, save_everystep, maxiters)
+    isnothing(dt) && throw(ArgumentError("GCRK4 needs a time step `dt`."))
+    ttotal = prob.tspan[2] - prob.tspan[1]
+    sign(dt) != sign(ttotal) && ttotal != 0 && throw(
+        ArgumentError("dt must have the same sign as tspan[2] - tspan[1] for GCRK4.")
+    )
+    nsteps = round(Int, ttotal / dt)
+    nt = trunc(Int, min(nsteps, maxiters))
+
+    nout = save_start ? 1 : 0
+    if use_saveat(plan)
+        # One slot per requested time, plus the end of the run. A `maxiters` cut
+        # short can leave some of them unreached, which the caller resizes away.
+        nout += length(plan.times) + (save_end ? 1 : 0)
+    elseif save_everystep
+        nout += nt
+        nt > 0 && !save_end && (nout -= 1)
+        nt == 0 && save_end && (nout += 1)
+    elseif save_end
+        nout += 1
+    end
+
+    return nt, nsteps, nout
+end
+
+function _trace_gc_native(
+        alg::GCRK4, prob, dt, plan, isoutside::F, save_start, save_end, save_everystep,
+        maxiters, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {F, SaveFields, SaveWork}
     (; tspan, p, u0) = prob
-    ttotal = tspan[2] - tspan[1]
+    nt, nsteps, nout = _rk4_steps(
+        prob, dt, plan, save_start, save_end, save_everystep, maxiters
+    )
     T = eltype(u0)
+    vars_dim = 4 + (SaveFields ? 6 : 0) + (SaveWork ? 4 : 0)
 
-    vars_dim = 4
-    if SaveFields
-        vars_dim += 6
+    traj = Vector{SVector{vars_dim, T}}(undef, nout)
+    tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+
+    iout = 0
+    xv = SVector{4, T}(u0)
+
+    if save_start
+        iout += 1
+        traj[iout] = _prepare_saved_data_gc(xv, p, tspan[1], Val(SaveFields), Val(SaveWork))
+        tsave[iout] = tspan[1]
     end
-    if SaveWork
-        vars_dim += 4
-    end
 
-    @inbounds for i in irange
-        traj = Vector{SVector{vars_dim, T}}(undef, nout)
-        tsave = Vector{typeof(tspan[1] + dt)}(undef, nout)
+    it = 1
+    nsave = length(plan.times)
+    isave = 1
 
-        # set initial conditions for each trajectory i
-        iout = 0
-        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
-        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
-        xv = SVector{4, T}(new_prob.u0)
+    while it <= nt && it <= maxiters
+        t = tspan[1] + (it - 1) * dt
+        t_next = t + dt
 
-        if save_start
-            iout += 1
-            traj[iout] = _prepare_saved_data_gc(
-                xv, p, tspan[1], Val(SaveFields), Val(SaveWork)
-            )
-            tsave[iout] = tspan[1]
+        xv_prev = xv
+        dx = update_rk4(xv, p, dt, t)
+        xv_next = xv + dx
+
+        if isoutside(xv_next, p, t_next)
+            break
         end
+        xv = xv_next
 
-        it = 1
-        nsave = length(plan.times)
-        isave = 1
-
-        while it <= nt && it <= maxiters
-            t = tspan[1] + (it - 1) * dt
-            t_next = t + dt
-
-            xv_prev = xv
-            dx = update_rk4(xv, p, dt, t)
-            xv_next = xv + dx
-
-            if isoutside(xv_next, p, t_next)
-                break
-            end
-            xv = xv_next
-
-            if use_saveat(plan)
-                # Report every requested time this step has passed, interpolating
-                # inside the step so the integration itself is untouched.
-                while isave <= nsave && saveat_reached(plan.times[isave], t_next, plan.dir)
-                    t_target = plan.times[isave]
-                    iout += 1
-                    if iout <= nout
-                        traj[iout] = _prepare_saved_data_gc(
-                            saveat_interpolate(t, xv_prev, t_next, xv, t_target),
-                            p, t_target, Val(SaveFields), Val(SaveWork)
-                        )
-                        tsave[iout] = t_target
-                    end
-                    isave += 1
-                end
-            elseif save_everystep
+        if use_saveat(plan)
+            # Report every requested time this step has passed, interpolating
+            # inside the step so the integration itself is untouched.
+            while isave <= nsave && saveat_reached(plan.times[isave], t_next, plan.dir)
+                t_target = plan.times[isave]
                 iout += 1
                 if iout <= nout
                     traj[iout] = _prepare_saved_data_gc(
-                        xv, p, t_next, Val(SaveFields), Val(SaveWork)
+                        saveat_interpolate(t, xv_prev, t_next, xv, t_target),
+                        p, t_target, Val(SaveFields), Val(SaveWork)
                     )
-                    tsave[iout] = t_next
+                    tsave[iout] = t_target
                 end
+                isave += 1
             end
-
-            it += 1
-        end
-
-        # Handle save_end logic
-        final_step = it - 1
-        should_save_final = false
-        if save_end
-            should_save_final = true
-        elseif !use_saveat(plan) && save_everystep && (final_step > 0)
-            should_save_final = true
-        end
-
-        if iout < nout && should_save_final
-            t_final = (final_step == nt) ? tspan[2] : (tspan[1] + final_step * dt)
-            if iout == 0 || plan.dir * (t_final - tsave[iout]) > 0
-                iout += 1
+        elseif save_everystep
+            iout += 1
+            if iout <= nout
                 traj[iout] = _prepare_saved_data_gc(
-                    xv, p, t_final, Val(SaveFields), Val(SaveWork)
+                    xv, p, t_next, Val(SaveFields), Val(SaveWork)
                 )
-                tsave[iout] = t_final
+                tsave[iout] = t_next
             end
         end
 
-        retcode = if it <= nt && it <= maxiters
-            ReturnCode.Terminated
-        elseif it > maxiters
-            ReturnCode.MaxIters
-        else
-            ReturnCode.Success
-        end
-
-        if iout < nout
-            resize!(traj, iout)
-            resize!(tsave, iout)
-        end
-
-        t = tsave
-        interp = LinearInterpolation(t, traj)
-        stats = nothing
-
-        sols[i] = build_solution(prob, GCRK4(), t, traj; interp, retcode, stats)
+        it += 1
     end
 
-    return
+    final_step = it - 1
+    should_save_final = save_end ||
+        (!use_saveat(plan) && save_everystep && final_step > 0)
+
+    if iout < nout && should_save_final
+        t_final = (final_step == nsteps) ? tspan[2] : (tspan[1] + final_step * dt)
+        if iout == 0 || plan.dir * (t_final - tsave[iout]) > 0
+            iout += 1
+            traj[iout] = _prepare_saved_data_gc(
+                xv, p, t_final, Val(SaveFields), Val(SaveWork)
+            )
+            tsave[iout] = t_final
+        end
+    end
+
+    retcode = if it <= nt
+        ReturnCode.Terminated
+    elseif nt < nsteps
+        ReturnCode.MaxIters
+    else
+        ReturnCode.Success
+    end
+
+    if iout < nout
+        resize!(traj, iout)
+        resize!(tsave, iout)
+    end
+
+    interp = LinearInterpolation(tsave, traj)
+
+    return build_solution(prob, alg, tsave, traj; interp, retcode, stats = nothing)
 end

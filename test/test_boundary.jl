@@ -73,9 +73,9 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = solve(prob, GCRK4(); dt = 0.2, isoutside = outside_or_nan)
 
-            @test !any(isnan, sol.u[1].u[end])
-            @test norm(sol.u[1].u[end][1:3]) <= 1.0
-            @test sol.u[1].retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[end])
+            @test norm(sol.u[end][1:3]) <= 1.0
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK45" begin
@@ -84,9 +84,9 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = solve(prob, GCRK45(); dt = 0.01, isoutside = outside_or_nan)
 
-            @test !any(isnan, sol.u[1].u[end])
-            @test norm(sol.u[1].u[end][1:3]) <= 1.0
-            @test sol.u[1].retcode == ReturnCode.Terminated
+            @test !any(isnan, sol.u[end])
+            @test norm(sol.u[end][1:3]) <= 1.0
+            @test sol.retcode == ReturnCode.Terminated
         end
 
         @testset "GC RK45 without domain check" begin
@@ -95,8 +95,8 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             prob = TraceGCProblem(u0_gc, tspan, p_gc)
             sol = solve(prob, GCRK45(); dt = 0.01)
 
-            @test !any(isnan, sol.u[1].u[end])
-            @test norm(sol.u[1].u[end][1:3]) <= 1.0
+            @test !any(isnan, sol.u[end])
+            @test norm(sol.u[end][1:3]) <= 1.0
         end
     end
 
@@ -132,8 +132,8 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             dt = 1.0e-4
 
             sol_early = solve(prob, GCRK4(); dt, isoutside = past_half_time)
-            @test sol_early.u[1].t[end] ≈ 0.5
-            @test sol_early.u[1].retcode == ReturnCode.Terminated
+            @test sol_early.t[end] ≈ 0.5
+            @test sol_early.retcode == ReturnCode.Terminated
         end
     end
 
