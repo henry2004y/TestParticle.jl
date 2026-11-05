@@ -51,8 +51,8 @@ sol_gc = solve(prob_gc, Vern9())
 
 ## Native GC Solvers
 prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_native_rk4 = solve(prob_native, GCRK4(); dt = 0.1).u[1]
-sol_native_rk45 = solve(prob_native, GCRK45()).u[1]
+sol_native_rk4 = solve(prob_native, GCRK4(); dt = 0.1)
+sol_native_rk45 = solve(prob_native, GCRK45())
 
 ## Guiding Center Simulation with Numeric B Field Interpolation
 xrange = range(0.9, 1.2, length = 20)

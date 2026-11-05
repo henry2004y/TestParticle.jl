@@ -52,14 +52,10 @@ caller already has it, so the first stage does not recompute the derivatives.
     return dy, E
 end
 
-"""
-Apply RK45 method for particles with index in `irange`.
-"""
-function _rk45!(
-        sols, prob, irange, alg, plan, dt_initial, isoutside,
-        save_start, save_end, save_everystep, maxiters,
-        ::Val{SaveFields}, ::Val{SaveWork}, seed = nothing
-    ) where {SaveFields, SaveWork}
+function _trace_gc_native(
+        alg::GCRK45, prob, dt_initial, plan, isoutside::F, save_start, save_end,
+        save_everystep, maxiters, ::Val{SaveFields}, ::Val{SaveWork}
+    ) where {F, SaveFields, SaveWork}
     (; tspan, p, u0) = prob
     (; abstol, reltol) = alg
     T = eltype(u0)
@@ -69,135 +65,107 @@ function _rk45!(
     max_growth = 5.0
     min_growth = 0.2
 
-    vars_dim = 4
-    if SaveFields
-        vars_dim += 6
+    vars_dim = 4 + (SaveFields ? 6 : 0) + (SaveWork ? 4 : 0)
+    traj = SVector{vars_dim, T}[]
+    tsave = Tt[]
+
+    xv = SVector{4, T}(u0)
+
+    t = Tt(tspan[1])
+
+    dt = if isnothing(dt_initial)
+        # Estimate initial step size based on gyroperiod
+        q2m = p.q2m
+        Bmag = norm(p.B(get_x(xv), t))
+        Bmag == 0 || q2m == 0 ? Tt(1.0e-6) : Tt(0.5 * 2π / abs(q2m * Bmag))
+    else
+        Tt(dt_initial)
     end
-    if SaveWork
-        vars_dim += 4
+
+    if save_start
+        push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
+        push!(tsave, t)
     end
 
-    @inbounds for i in irange
-        traj = SVector{vars_dim, T}[]
-        tsave = Tt[]
-
-        rng = isnothing(seed) ? default_rng() : Xoshiro(_rng_seed(seed, i))
-        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, nothing, rng, seed))
-        xv = SVector{4, T}(new_prob.u0)
-
-        t = Tt(tspan[1])
-
-        if isnothing(dt_initial)
-            # Estimate initial step size based on gyroperiod
-            q2m = p.q2m
-            B_vec = p.B(get_x(xv), t)
-            Bmag = norm(B_vec)
-
-            if Bmag == 0 || q2m == 0
-                dt = Tt(1.0e-6)
-            else
-                omega = abs(q2m * Bmag)
-                dt = Tt(0.5 * 2π / omega) # 0.5 gyroperiod
-            end
-        else
-            dt = Tt(dt_initial)
+    steps = 0
+    nsave = length(plan.times)
+    isave = 1
+    retcode = ReturnCode.Success
+    while t < tspan[2] && steps < maxiters
+        if t + dt > tspan[2]
+            dt = tspan[2] - t
         end
 
-        if save_start
-            push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
-            push!(tsave, t)
+        dx, E = update_dp5(xv, p, dt, t)
+
+        y_next = xv + dx
+        sum_sq_error = 0.0
+        for k in 1:4
+            sc = abstol + max(abs(xv[k]), abs(y_next[k])) * reltol
+            sum_sq_error += (E[k] / sc)^2
+        end
+        error_ratio = 0.5 * sqrt(sum_sq_error)
+
+        # A non-finite error estimate means the trial step hit invalid fields;
+        # either stop on the domain check or reject the step and shrink `dt`.
+        if !isfinite(error_ratio)
+            if isoutside(y_next, p, t + dt)
+                retcode = ReturnCode.Terminated
+                break
+            end
+            error_ratio = Inf
         end
 
-        steps = 0
-        nsave = length(plan.times)
-        isave = 1
-        retcode = ReturnCode.Success
-        while t < tspan[2] && steps < maxiters
-            if t + dt > tspan[2]
-                dt = tspan[2] - t
+        if error_ratio <= 1.0
+            if isoutside(y_next, p, t + dt)
+                retcode = ReturnCode.Terminated
+                break
             end
 
-            dx, E = update_dp5(xv, p, dt, t)
+            t_prev = t
+            xv_prev = xv
+            t += dt
+            xv = y_next
 
-            error_ratio = 0.0
-
-            y_next = xv + dx
-            sum_sq_error = 0.0
-            for k in 1:4
-                sc = abstol + max(abs(xv[k]), abs(y_next[k])) * reltol
-                sum_sq_error += (E[k] / sc)^2
-            end
-            error_ratio = 0.5 * sqrt(sum_sq_error)
-
-            # A non-finite error estimate means the trial step hit invalid fields;
-            # either stop on the domain check or reject the step and shrink `dt`.
-            if !isfinite(error_ratio)
-                if isoutside(y_next, p, t + dt)
-                    retcode = ReturnCode.Terminated
-                    break
-                end
-                error_ratio = Inf
-            end
-
-            if error_ratio <= 1.0
-                y_next = xv + dx
-
-                if isoutside(y_next, p, t + dt)
-                    retcode = ReturnCode.Terminated
-                    break
-                end
-
-                t_prev = t
-                xv_prev = xv
-                t += dt
-                xv = y_next
-
-                if use_saveat(plan)
-                    while isave <= nsave && saveat_reached(plan.times[isave], t, plan.dir)
-                        t_target = plan.times[isave]
-                        push!(
-                            traj, _prepare_saved_data_gc(
-                                saveat_interpolate(t_prev, xv_prev, t, xv, t_target),
-                                p, t_target, Val(SaveFields), Val(SaveWork)
-                            )
-                        )
-                        push!(tsave, t_target)
-                        isave += 1
-                    end
-                elseif save_everystep
+            if use_saveat(plan)
+                while isave <= nsave && saveat_reached(plan.times[isave], t, plan.dir)
+                    t_target = plan.times[isave]
                     push!(
                         traj, _prepare_saved_data_gc(
-                            xv, p, t, Val(SaveFields), Val(SaveWork)
+                            saveat_interpolate(t_prev, xv_prev, t, xv, t_target),
+                            p, t_target, Val(SaveFields), Val(SaveWork)
                         )
                     )
-                    push!(tsave, t)
+                    push!(tsave, t_target)
+                    isave += 1
                 end
-
-                steps += 1
+            elseif save_everystep
+                push!(
+                    traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork))
+                )
+                push!(tsave, t)
             end
 
-            scale = if error_ratio == 0.0
-                max_growth
-            else
-                safety * (1.0 / error_ratio)^0.2
-            end
-            scale = max(min_growth, min(scale, max_growth))
-            dt *= Tt(scale)
-
-            dt < 1.0e-14 && break
+            steps += 1
         end
 
-        if save_end && (isempty(tsave) || tsave[end] != t)
-            push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
-            push!(tsave, t)
+        scale = if error_ratio == 0.0
+            max_growth
+        else
+            safety * (1.0 / error_ratio)^0.2
         end
+        scale = max(min_growth, min(scale, max_growth))
+        dt *= Tt(scale)
 
-        t_final = tsave
-        u_final = traj
-        interp = LinearInterpolation(t_final, u_final)
-        stats = nothing
-
-        sols[i] = build_solution(prob, alg, t_final, u_final; interp, retcode, stats)
+        dt < 1.0e-14 && break
     end
-    return
+
+    if save_end && (isempty(tsave) || tsave[end] != t)
+        push!(traj, _prepare_saved_data_gc(xv, p, t, Val(SaveFields), Val(SaveWork)))
+        push!(tsave, t)
+    end
+
+    interp = LinearInterpolation(tsave, traj)
+
+    return build_solution(prob, alg, tsave, traj; interp, retcode, stats = nothing)
 end

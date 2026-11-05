@@ -45,11 +45,11 @@ end
 
         # Test RK4
         sols1_rk4 = solve(
-            prob, GCRK4();
+            prob, GCRK4(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
         sols2_rk4 = solve(
-            prob, GCRK4();
+            prob, GCRK4(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
 
@@ -60,11 +60,11 @@ end
 
         # Test RK45
         sols1_rk45 = solve(
-            prob, GCRK45();
+            prob, GCRK45(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
         sols2_rk45 = solve(
-            prob, GCRK45();
+            prob, GCRK45(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
 
@@ -142,9 +142,9 @@ end
     let
         prob = TraceGCProblem(u0_gc, tspan, param; prob_func)
         init_v(sols) = [sols.u[i].u[1][4] for i in 1:length(sols.u)]
-        v1 = init_v(solve(prob, GCRK4(); trajectories = 6, dt = 1.0e-5, seed = 1))
-        v2 = init_v(solve(prob, GCRK4(); trajectories = 6, dt = 1.0e-5, seed = 2))
-        v1b = init_v(solve(prob, GCRK4(); trajectories = 6, dt = 1.0e-5, seed = 1))
+        v1 = init_v(solve(prob, GCRK4(), EnsembleSerial(); trajectories = 6, dt = 1.0e-5, seed = 1))
+        v2 = init_v(solve(prob, GCRK4(), EnsembleSerial(); trajectories = 6, dt = 1.0e-5, seed = 2))
+        v1b = init_v(solve(prob, GCRK4(), EnsembleSerial(); trajectories = 6, dt = 1.0e-5, seed = 1))
         @test v1 == v1b
         @test !all(v2[i] == v1[i + 1] for i in 1:5)
     end
