@@ -64,7 +64,7 @@ param_can = prepare(pf; q = q, m = m)
 ## Initial condition: particle starting at origin moving in x direction
 x0 = SA[0.0, 0.0, 0.0]
 v0 = SA[1.0, 0.0, 0.0]
-u0_can = velocity_to_canonical(x0, v0, param_can; relativistic = false)
+u0_can = velocity_to_canonical(x0, v0, param_can)
 
 t_end = 20 * T_period
 tspan = (0.0, t_end)
@@ -114,14 +114,14 @@ fig1
 c_val = 1.0
 v0_rel = SA[0.6 * c_val, 0.0, 0.0]
 param_can_rel = prepare(pf; q = q, m = m, c = c_val)
-u0_can_rel = velocity_to_canonical(x0, v0_rel, param_can_rel; relativistic = true)
+u0_can_rel = velocity_to_canonical(x0, v0_rel, param_can_rel; model = RelativisticCanonical())
 
 prob_can_rel = TraceProblem{RelativisticCanonical}(u0_can_rel, tspan, param_can_rel)
 sol_can_rel = solve(prob_can_rel, ImplicitMidpoint(); dt = dt, adaptive = false)
 
-H0_rel = canonical_hamiltonian(sol_can_rel.u[1], param_can_rel; relativistic = true)
+H0_rel = canonical_hamiltonian(sol_can_rel.u[1], param_can_rel; model = RelativisticCanonical())
 H_rel_err = [
-    abs(canonical_hamiltonian(u, param_can_rel; relativistic = true) - H0_rel) / H0_rel
+    abs(canonical_hamiltonian(u, param_can_rel; model = RelativisticCanonical()) - H0_rel) / H0_rel
         for u in sol_can_rel.u
 ]
 

@@ -353,7 +353,7 @@ using ..test_common: uniform_B, zero_E, max_rel_diff
         # Tracing with Field(g3d) on CPU
         prob3d = TraceProblem(
             [1.0, 1.0, 1.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-6),
-            (param3d[1], param3d[2], param3d[3], TP.Field(g3d))
+            (; param3d..., B = TP.Field(g3d))
         )
         sol3d = solve(prob3d, Boris(), CPU(); dt = 1.0e-9)
         @test length(sol3d.u[1].u) == 1001

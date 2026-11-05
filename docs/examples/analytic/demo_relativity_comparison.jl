@@ -1,7 +1,7 @@
 # # Relativistic vs Non-relativistic Tracing
 #
 # This example compares the particle trajectories of `trace!` (non-relativistic)
-# and relativistic (`relativistic = true`) equations.
+# and relativistic (`RelativisticOrbit`) equations.
 # We demonstrate two cases:
 # 1. Uniform magnetic field (Cyclotron motion)
 # 2. Uniform ExB field (ExB drift)
