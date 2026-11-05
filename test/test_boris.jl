@@ -332,19 +332,10 @@ end
         @test sol_ms.t[1] == tspan[1]
         @test sol_ms.t[end] == tspan[2]
 
-        # Save fields test
-        sol_fields = solve(
-            prob, Boris();
-            dt, saveat = 10 * dt, save_fields = true
-        )
-        # Check dimensions of the state vector (not the solution object length)
-        @test length(sol_fields.u[1]) == 12
-        # Check field values. E=0, B=[0,0,0.01].
-        # Element 7-9 are E, 10-12 are B.
-        @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
-        @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
-        @test sol_fields.u[end][7:9] == [0.0, 0.0, 0.0]
-        @test sol_fields.u[end][10:12] == [0.0, 0.0, 0.01]
+        # E=0, B=[0,0,0.01].
+        E_saved, B_saved = get_fields(solve(prob, Boris(); dt, saveat = 10 * dt))
+        @test E_saved[1] == [0.0, 0.0, 0.0]
+        @test B_saved[1] == [0.0, 0.0, 0.01]
     end
 
     @testset "Save work" begin
@@ -366,23 +357,7 @@ end
         param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        # Test save_work=true
-        sol = solve(
-            prob, Boris();
-            dt,
-            save_work = true, save_everystep = true
-        )
-
-        # Dimension check: 6 (state) + 4 (work) = 10
-        @test length(sol.u[1]) == 10
-
-        # Check values
-        # Index 7: P_par
-        # Index 8: P_fermi
-        # Index 9: P_grad
-        # Index 10: P_betatron
-
-        work = sol.u[1][7:10]
+        work = get_work_rates(solve(prob, Boris(); dt))[1]
         @test work[1] ≈ 0.0 atol = 1.0e-10 # P_par
         @test work[2] ≈ 0.0 atol = 1.0e-10 # P_fermi
         @test abs(work[3]) > 0.0       # P_grad should be non-zero
@@ -396,44 +371,17 @@ end
         param_beta = prepare(; B = B_growing, species = Electron)
         prob_beta = TraceProblem(stateinit, tspan, param_beta)
 
-        sol_beta = solve(
-            prob_beta, Boris();
-            dt, save_work = true
-        )
-
-        work_beta = sol_beta.u[1][7:10]
+        work_beta = get_work_rates(solve(prob_beta, Boris(); dt))[1]
         @test work_beta[4] > 0.0 # P_betatron should be positive
 
-        # Test with save_fields=true AND save_work=true
-        sol_both = solve(
-            prob, Boris();
-            dt,
-            save_fields = true, save_work = true
-        )
-        # Dim: 6 + 6 + 4 = 16
-        @test length(sol_both.u[1]) == 16
-        # E, B at 7-12
-        # Work at 13-16
-        @test sol_both.u[1][13:16] == sol.u[1][7:10]
-
-        # Test Multistep Boris with save_work
-        sol_ms = solve(
-            prob, MultistepBoris{2}(; n = 2);
-            dt, save_work = true
-        )
-        @test length(sol_ms.u[1]) == 10
-        work_ms = sol_ms.u[1][7:10]
+        # Multistep Boris
+        work_ms = get_work_rates(solve(prob, MultistepBoris{2}(; n = 2); dt))[1]
         @test work_ms[1] ≈ 0.0 atol = 1.0e-10
         @test abs(work_ms[3]) > 0.0
 
-        # Test Adaptive Boris with save_work
+        # Adaptive Boris
         alg_adaptive = AdaptiveBoris(safety = 0.1)
-        sol_adaptive = solve(
-            prob, alg_adaptive;
-            save_work = true, save_everystep = true
-        )
-        @test length(sol_adaptive.u[1]) == 10
-        work_adaptive = sol_adaptive.u[1][7:10]
+        work_adaptive = get_work_rates(solve(prob, alg_adaptive))[1]
         @test work_adaptive[1] ≈ 0.0 atol = 1.0e-10
         @test abs(work_adaptive[3]) > 0.0
     end
@@ -448,32 +396,21 @@ end
         param = prepare(; E = constant_E, B = gradient_B, species = Electron)
         prob = TraceProblem(stateinit, tspan, param)
 
-        # Reference solution with saved data
-        sol_ref = solve(
-            prob, Boris();
-            dt,
-            save_fields = true, save_work = true
-        )
+        sol = solve(prob, Boris(); dt)
 
-        # Solution without saved data
-        sol = solve(
-            prob, Boris(); dt
-        )
-
-        # Post-process
         E_post, B_post = get_fields(sol)
         work_post = get_work_rates(sol)
 
-        # Comparison
-        # Reference indices:
-        # 1-6: state
-        # 7-9: E
-        # 10-12: B
-        # 13-16: work
+        u_end, t_end = sol.u[end], sol.t[end]
+        r_end = u_end[1:3]
+        @test E_post[end] ≈ param.E(r_end, t_end)
+        @test B_post[end] ≈ param.B(r_end, t_end)
+        @test work_post[end] ≈ get_work_rates(u_end, param, t_end)
 
-        @test E_post[end] ≈ sol_ref.u[end][7:9]
-        @test B_post[end] ≈ sol_ref.u[end][10:12]
-        @test work_post[end] ≈ sol_ref.u[end][13:16]
+        sol32 = solve(TraceProblem(Float32.(stateinit), tspan, param), Boris(); dt)
+        E32, B32 = get_fields(sol32)
+        @test eltype(E32[1]) === eltype(B32[1]) === Float32
+        @test eltype(get_work_rates(sol32)[1]) === Float32
     end
 
     @testset "Solver Limits" begin
@@ -606,14 +543,6 @@ end
         for (k, t) in enumerate(sol_at.t)
             @test sol_at.u[k] ≈ sol_all(t)
         end
-
-        # The field and work columns are appended on this path as well.
-        sol_fields = solve(
-            prob, Boris(); dt, saveat = ts, save_fields = true
-        )
-        @test length(sol_fields.u[1]) == 12
-        @test sol_fields.u[1][7:9] == [0.0, 0.0, 0.0]
-        @test sol_fields.u[1][10:12] == [0.0, 0.0, 0.01]
     end
 end
 

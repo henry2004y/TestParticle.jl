@@ -57,7 +57,7 @@ def _jl_symbol(name):
 # list of 2D arrays with shape ``(n_steps, n_vars)``.
 jl.seval(
     """
-    function _tp_extract(sols)
+    function _tp_extract(sols, save_fields = false, save_work = false)
         sol_list = sols isa TestParticle.EnsembleSolution ? sols.u :
             sols isa TestParticle.AbstractODESolution ? (sols,) : sols
         n = length(sol_list)
@@ -67,6 +67,11 @@ jl.seval(
             s = sol_list[i]
             t = collect(Float64, s.t)
             u = reduce(hcat, [Float64.(uu) for uu in s.u])
+            if save_fields
+                E, B = TestParticle.get_fields(s)
+                u = vcat(u, reduce(hcat, E), reduce(hcat, B))
+            end
+            save_work && (u = vcat(u, reduce(hcat, TestParticle.get_work_rates(s))))
             us[i] = permutedims(u)
             ts[i] = t
         end
@@ -303,7 +308,8 @@ class TraceResult:
     def work(self) -> np.ndarray:
         if not self.save_work:
             raise AttributeError("work was not saved; pass save_work=True")
-        return self.state[:, 12:16]
+        start = 12 if self.save_fields else 6
+        return self.state[:, start : start + 4]
 
 
 @dataclass
@@ -339,7 +345,8 @@ class GCTraceResult:
     def work(self) -> np.ndarray:
         if not self.save_work:
             raise AttributeError("work was not saved; pass save_work=True")
-        return self.state[:, 10:14]
+        start = 10 if self.save_fields else 4
+        return self.state[:, start : start + 4]
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +396,8 @@ def trace(
         Times at which to report the state, either a collection of times or a
         single interval. Forwarded straight to the Julia ``solve``.
     save_fields, save_work : optional
-        Mirrors of the Julia ``solve`` keywords.
+        Append the columns of ``get_fields`` and ``get_work_rates``, computed
+        after the solve.
     parallel : bool, optional
         Use ``EnsembleThreads`` when ``True``.
     alg : str or Julia object, optional
@@ -434,8 +442,6 @@ def trace(
     solve_kw = dict(
         dt=float(dt),
         trajectories=int(trajectories),
-        save_fields=bool(save_fields),
-        save_work=bool(save_work),
     )
     if saveat is not None:
         solve_kw["saveat"] = saveat
@@ -450,7 +456,7 @@ def trace(
     else:
         sols = TP.solve(prob, alg_jl, TP.EnsembleSerial(), **solve_kw)
 
-    ts, us = jl._tp_extract(sols)
+    ts, us = jl._tp_extract(sols, bool(save_fields), bool(save_work))
     ts_py = [np.asarray(t) for t in ts]
     us_py = [np.asarray(u) for u in us]
 
@@ -507,8 +513,6 @@ def trace_gc(
     solve_kw = dict(
         dt=float(dt),
         trajectories=int(trajectories),
-        save_fields=bool(save_fields),
-        save_work=bool(save_work),
     )
     if saveat is not None:
         solve_kw["saveat"] = saveat
@@ -519,7 +523,7 @@ def trace_gc(
         alg = gc_algs[alg]()
     sols = TP.solve(prob, alg, TP.EnsembleSerial(), **solve_kw)
 
-    ts, us = jl._tp_extract(sols)
+    ts, us = jl._tp_extract(sols, bool(save_fields), bool(save_work))
     ts_py = [np.asarray(t) for t in ts]
     us_py = [np.asarray(u) for u in us]
 

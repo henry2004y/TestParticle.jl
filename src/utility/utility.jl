@@ -429,14 +429,15 @@ end
 """
     get_fields(sol::AbstractODESolution)
 
-Return the electric and magnetic fields from the solution `sol`.
+Return the electric and magnetic fields at the saved states of `sol`, in the element type
+of the state.
 """
 function get_fields(sol::AbstractODESolution)
     p = sol.prob.p
     Efunc, Bfunc = p.E, p.B
 
-    E = map((u, t) -> Efunc(get_x(u), t), sol.u, sol.t)
-    B = map((u, t) -> Bfunc(get_x(u), t), sol.u, sol.t)
+    E = map((u, t) -> SVector{3, eltype(u)}(Efunc(get_x(u), t)), sol.u, sol.t)
+    B = map((u, t) -> SVector{3, eltype(u)}(Bfunc(get_x(u), t)), sol.u, sol.t)
 
     return E, B
 end

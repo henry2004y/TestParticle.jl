@@ -22,7 +22,7 @@ The table below summarizes the key features and tracing capabilities in `TestPar
 | **Parallel & Hardware** | Multithreading | CPU shared-memory parallelism (`EnsembleThreads`) | [Multithreaded Parallelization](@ref) |
 | | Distributed & Hybrid | Multi-process and multi-node clusters (`EnsembleDistributed`, `EnsembleSplitThreads`) | [Distributed Parallelization](@ref) |
 | | Native GPU Kernels | Backend-agnostic GPU execution (CUDA, AMDGPU, oneAPI, Metal) | [GPU Ensemble Tracing](@ref) |
-| **Output & Diagnostics** | `save_fields` & `save_work` | Inline trajectory logging of fields ($\mathbf{E}, \mathbf{B}$) and work rates | [Extra Diagnostics](@ref) |
+| **Output & Diagnostics** | `get_fields` & `get_work_rates` | Fields ($\mathbf{E}, \mathbf{B}$) and work rates along a saved trajectory | [Extra Diagnostics](@ref) |
 | | `saveat` & Dense Output | Explicit output times and linear step interpolation | [Boris Pusher](@ref Boris-Pusher) |
 | | `raw_output` | High-throughput dense array output bypassing solution wrapping on GPU | [GPU Ensemble Tracing](@ref) |
 | **Fields & Units** | Gridded Fields | 1D/2D/3D regular, rectilinear, and structured grid interpolation | [Field Interpolation](@ref) |

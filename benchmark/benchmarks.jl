@@ -173,9 +173,6 @@ SUITE["trace"]["numerical field"]["out of place"] = @benchmarkable solve(
 SUITE["trace"]["numerical field"]["Boris"] = @benchmarkable solve(
     $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7
 )
-SUITE["trace"]["numerical field"]["Boris with fields"] = @benchmarkable solve(
-    $prob_boris, Boris(); dt = 1 / 7, saveat = 10 / 7, save_fields = true
-)
 SUITE["trace"]["numerical field"]["Boris ensemble"] = @benchmarkable solve(
     $prob_boris, Boris(), EnsembleSerial(); dt = 1 / 7, saveat = 10 / 7, trajectories = 2
 )

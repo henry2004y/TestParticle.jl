@@ -196,7 +196,7 @@ sol = solve(prob, Boris(); dt, saveat = 5.0e-10)
 
 `saveat` does not shorten any step, so the trajectory is identical to a run without it and only the reporting changes. Inside a step the state is interpolated **linearly**, which is the dense output these methods admit: a Boris step advances the position linearly with the half-step velocity $\mathbf{v}_{n+1/2}$, so the interpolant reproduces the stored positions exactly, whereas the velocity is only as accurate as the method itself. Requesting a value inside a step is therefore consistent with the solver's own order, not better or worse than the step values around it.
 
-`save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `save_fields = true` and `save_work = true` keep appending their columns to every saved state.
+`save_start` and `save_end` (both `true` by default) add the ends of the time span to the requested times. `get_fields(sol)` and `get_work_rates(sol)` give the fields and work rates at the saved states.
 
 !!! warning "Removed keyword: `savestepinterval`"
     `savestepinterval = k`, which saved every $k$-th step regardless of how the

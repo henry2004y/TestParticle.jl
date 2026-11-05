@@ -5,7 +5,7 @@
 # The `SavingCallback` from DiffEqCallbacks.jl can be used to save additional outputs for diagnosis. Here we save the magnetic field along the trajectory, together with the parallel velocity.
 # Note that `SavingCallback` is currently not compatible with ensemble problems; for multiple particle tracing with customized outputs, see [Demo: ensemble tracing with extra saving](@ref Ensemble-Tracing).
 #
-# For the native Boris solvers, we also support `save_fields` and `save_work` keywords to save the fields and work done by the fields. These options are more efficient than using `SavingCallback` and are compatible with ensemble problems.
+# For the fields and the work done by them, `get_fields` and `get_work_rates` compute the values along any saved trajectory without callbacks.
 
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using BorisPushers
@@ -93,20 +93,14 @@ sol = solve(prob, Vern9(); callback = cb);
 
 saved_values
 
-# ## Native Boris Solver with Additional Diagnostics
+# ## Fields and Work Rates along a Trajectory
 #
-# The native Boris solver supports additional diagnostic outputs through the `save_fields` and `save_work` keywords.
-# These options allow you to save the electric and magnetic fields along the trajectory, as well as various work rate components without using callbacks.
-# Here, we set an E field with constant non-zero to generate parallel work, and a B field that is spatially varying and time-dependent.
+# `get_fields(sol)` returns the electric and magnetic fields at every saved state, and `get_work_rates(sol)` the work rates:
+#   - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate
+#   - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate
+#   - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate
+#   - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate
 #
-# - When `save_fields=true`, the solution will include 6 additional values per time step:
-#   - E field components (Ex, Ey, Ez) at indices 7, 8, 9
-#   - B field components (Bx, By, Bz) at indices 10, 11, 12
-# - When `save_work=true`, the solution will include 4 additional values per time step representing the work rates:
-#   - $P_{\parallel} = q v_{\parallel} (\mathbf{E} \cdot \hat{b})$: parallel work rate (index 7 or 13 depending on save_fields)
-#   - $P_{\text{Fermi}} = \frac{m v_{\parallel}^2}{B} (\hat{b} \times \boldsymbol{\kappa}) \cdot \mathbf{E}$: Fermi work rate (index 8 or 14)
-#   - $P_{\text{Grad}} = \frac{\mu}{B} (\hat{b} \times \nabla B) \cdot \mathbf{E}$: gradient drift work rate (index 9 or 15)
-#   - $P_{\text{Betatron}} = \mu \frac{\partial B}{\partial t}$: betatron work rate (index 10 or 16)
 # Then the total kinetic energy change is $\Delta E_{kin} \approx \int (P_{\parallel} + P_{\text{Fermi}} + P_{\text{Grad}} + P_{\text{Betatron}}) dt$.
 #
 # Note that $P_{\text{Grad}} = \frac{\mu}{B}(\hat{b} \times \nabla B) \cdot \mathbf{E} = \mu \mathbf{v}_E \cdot \nabla B$,
@@ -131,26 +125,20 @@ tspan_boris = (0.0, 2π)
 
 prob_boris = TraceProblem(u0_boris, tspan_boris, param_boris)
 
-## Solve with field saving enabled
-sol_fields = solve(prob_boris, Boris(); dt = 0.1, save_fields = true);
+sol_work = solve(prob_boris, Boris(); dt = 0.1);
 
-# The solution now contains 12 values per time step (6 for state + 6 for fields)
 ## Access the magnetic field along the trajectory
-B_trajectory = [u[10:12] for u in sol_fields.u];
+_, B_trajectory = get_fields(sol_work);
 
-## Verify that the saved B field matches the expected values
-println("First saved B field: ", B_trajectory[1])
-println("Last saved B field: ", B_trajectory[end])
+println("First B field: ", B_trajectory[1])
+println("Last B field: ", B_trajectory[end])
 
-## Solve with work saving enabled
-sol_work = solve(prob_boris, Boris(); dt = 0.1, save_work = true);
-
-# The solution now contains 10 values per time step (6 for state + 4 for work rates)
 # We access the work rates along the trajectory and show at selected time steps:
-P_par = [u[7] for u in sol_work.u]
-P_fermi = [u[8] for u in sol_work.u]
-P_grad = [u[9] for u in sol_work.u]
-P_betatron = [u[10] for u in sol_work.u]
+work = get_work_rates(sol_work)
+P_par = [w[1] for w in work]
+P_fermi = [w[2] for w in work]
+P_grad = [w[3] for w in work]
+P_betatron = [w[4] for w in work]
 
 using Printf #hide
 
@@ -168,27 +156,3 @@ for i in indices #hide
     ) #hide
 end #hide
 println("="^70) #hide
-
-# ## Post-processing with `get_fields` and `get_work_rates`
-#
-# If you didn't save the fields or work during the simulation (e.g., to save memory or if you decided to inspect them later), you can compute them from the trajectory solution using `get_fields` and `get_work_rates`.
-# Note: This requires the problem parameters (fields) to be accessible from the solution object.
-
-## Solving without saving extra data
-sol = solve(prob_boris, Boris(); dt = 0.1);
-
-## Compute fields and work post-simulation
-E_post, B_post = get_fields(sol);
-work_post = get_work_rates(sol);
-
-using Markdown #hide
-io = IOBuffer() #hide
-println(io, "| Metric | Value |") #hide
-println(io, "| :--- | :--- |") #hide
-println(io, "| Field Points | $(length(E_post)) |") #hide
-println(io, "| Work Points | $(length(work_post)) |") #hide
-println(io, "| Diff P_par | $(round(abs(work_post[10][1] - P_par[10]), sigdigits = 3)) |") #hide
-println(io, "| Diff P_fermi | $(round(abs(work_post[10][2] - P_fermi[10]), sigdigits = 3)) |") #hide
-println(io, "| Diff P_grad | $(round(abs(work_post[10][3] - P_grad[10]), sigdigits = 3)) |") #hide
-println(io, "| Diff P_betatron | $(round(abs(work_post[10][4] - P_betatron[10]), sigdigits = 3)) |") #hide
-Markdown.parse(String(take!(io))) #hide
