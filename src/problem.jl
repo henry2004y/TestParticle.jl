@@ -129,6 +129,19 @@ function solve(
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end
 
+const _GC_ODE_FUNC = ODEFunction{false, FullSpecialize}(trace_gc)
+
+@inline function _gc_ode_problem(
+        u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+        f::AbstractODEFunction = _GC_ODE_FUNC,
+        prob_func = DEFAULT_PROB_FUNC
+    ) where {T}
+    return TraceProblem{
+        GuidingCenter, SVector{4, T}, Tuple{T, T}, false,
+        typeof(p), typeof(f), typeof(prob_func),
+    }(f, u0, tspan, p, prob_func)
+end
+
 function _gc_initial_dt(prob::TraceGCProblem, ::Type{T}) where {T}
     q2m = prob.p.q2m
     Bmag = norm(prob.p.B(get_x(prob.u0), prob.tspan[1]))
@@ -156,6 +169,7 @@ function solve(
         prob::TraceGCProblem, alg::SciMLBase.AbstractODEAlgorithm;
         dt::Union{Nothing, Real} = nothing,
         adaptive::Bool = isadaptive(alg),
+        dense::Bool = false,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         callback = nothing,
         kwargs...
@@ -181,12 +195,15 @@ function solve(
 
     tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
     p = _promote_p(T, prob.p)
-    f = prob.f.f in (trace_gc!, trace_gc) ? trace_gc : prob.f.f
-    ode_prob = ODEProblem{false, FullSpecialize}(f, SVector{4, T}(prob.u0), tspan, p)
+    f = prob.f.f in (trace_gc!, trace_gc) ? _GC_ODE_FUNC :
+        ODEFunction{false, FullSpecialize}(prob.f.f)
+    ode_prob = _gc_ode_problem(SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
 
     cb_out = _isoutside_callback(isoutside)
     cb = cb_out === nothing ? callback :
         callback === nothing ? cb_out : SciMLBase.CallbackSet(cb_out, callback)
 
-    return solve(ode_prob, alg; dt = step, adaptive, callback = cb, kwargs...)
+    return SciMLBase.__solve(
+        ode_prob, alg; dt = step, adaptive, dense, callback = cb, kwargs...
+    )
 end

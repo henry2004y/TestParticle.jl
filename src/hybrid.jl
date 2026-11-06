@@ -160,12 +160,39 @@ function init_gc_integrator(
         xv::SVector{4, T}, tspan, p, dt, alg::AdaptiveHybrid
     ) where {T}
     gc_alg = alg.gc_alg === nothing ? default_gc_alg() : alg.gc_alg
-    prob = ODEProblem{false, FullSpecialize}(trace_gc, xv, tspan, p)
-    return SciMLBase.init(
+    prob = _gc_ode_problem(xv, (T(tspan[1]), T(tspan[2])), p)
+    return SciMLBase.__init(
         prob, gc_alg;
-        dt, abstol = alg.abstol, reltol = alg.reltol, maxiters = alg.maxiters,
+        dt = T(dt), abstol = alg.abstol, reltol = alg.reltol, maxiters = alg.maxiters,
         save_start = false, save_end = false, save_everystep = false, dense = false
     )
+end
+
+function reinit_gc_integrator!(
+        integrator::SciMLBase.DEIntegrator, xv::SVector{4, T}, tspan, p, dt
+    ) where {T}
+    t0 = typeof(integrator.t)(tspan[1])
+    tf = typeof(integrator.t)(tspan[2])
+    dt_t = typeof(integrator.t)(dt)
+    integrator.p = p
+    integrator.dt = dt_t
+    integrator.opts.dtmax = tf - t0
+    integrator.force_stepfail = false
+    integrator.last_stepfail = false
+    integrator.accept_step = false
+    integrator.isout = false
+    integrator.reeval_fsal = false
+    SciMLBase.set_proposed_dt!(integrator, dt_t)
+    SciMLBase.reinit!(
+        integrator, xv;
+        t0, tf,
+        erase_sol = false, reset_dt = false,
+        reinit_callbacks = false, reinit_retcode = false, reinit_cache = false
+    )
+    if integrator.fsalfirst !== nothing
+        integrator.fsalfirst = integrator.f(xv, p, t0)
+    end
+    return integrator
 end
 
 function gc_step!(
@@ -173,11 +200,15 @@ function gc_step!(
     ) where {F}
     t_before = integrator.t
     dt_max = t_limit - t_before
-    if zero(dt_max) < dt_max && t_limit < tspan_end
-        SciMLBase.step!(integrator, dt_max, true)
-    else
-        SciMLBase.step!(integrator)
+    dt_next = integrator.iter == 0 ? integrator.dt : SciMLBase.get_proposed_dt(integrator)
+    if zero(dt_max) < dt_max < dt_next && t_limit < tspan_end
+        if integrator.iter == 0
+            integrator.dt = dt_max
+        else
+            SciMLBase.set_proposed_dt!(integrator, dt_max)
+        end
     end
+    SciMLBase.step!(integrator)
 
     y = SVector{4}(integrator.u)
     isoutside(y, p, integrator.t) && return ReturnCode.Terminated

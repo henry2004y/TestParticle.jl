@@ -8,7 +8,8 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     _to_gpu_grid,
     get_x, get_magnetic_properties, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
-    init_gc_integrator, gc_step!, adiabaticity_components, _adiabaticity_components,
+    init_gc_integrator, reinit_gc_integrator!, gc_step!,
+    adiabaticity_components, _adiabaticity_components,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
@@ -282,6 +283,7 @@ end
     check_interval = alg.check_interval
     check_dt = Tt(alg.check_dt)
     n_correct = alg.switch_correction
+    integrator_gc = nothing
 
     @inbounds for i in irange
         sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
@@ -308,10 +310,13 @@ end
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = Tt(0.5 * 2π / ω)
-            integrator_gc = init_gc_integrator(xv_gc, (t, tspan[2]), p_gc, dt, alg)
+            if integrator_gc === nothing
+                integrator_gc = init_gc_integrator(xv_gc, (t, tspan[2]), p_gc, dt, alg)
+            else
+                reinit_gc_integrator!(integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt)
+            end
             verbose && _log_mode("Initial mode: GC", ϵ, t)
         else
-            integrator_gc = nothing
             mode = :FO
             fields = _node_fields(p, r, t)
             dt = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
@@ -351,14 +356,11 @@ end
         # staggered velocity and the step disagree.
         dt_fixed = false
 
-        adia_t = Vector{typeof(tspan[1])}(undef, 0)
-        adia_vals = Vector{T}(undef, 0)
-        adia_mode = Vector{Symbol}(undef, 0)
         if SaveAdia
             adia_cap = max(10, div(initial_capacity, check_interval) + 2)
-            sizehint!(adia_t, adia_cap)
-            sizehint!(adia_vals, adia_cap)
-            sizehint!(adia_mode, adia_cap)
+            adia_t = sizehint!(Vector{typeof(tspan[1])}(undef, 0), adia_cap)
+            adia_vals = sizehint!(Vector{T}(undef, 0), adia_cap)
+            adia_mode = sizehint!(Vector{Symbol}(undef, 0), adia_cap)
             push!(adia_t, t)
             push!(adia_vals, _adia_select(comps0, alg))
             push!(adia_mode, mode)
@@ -423,7 +425,7 @@ end
                 Bmag_next = norm(Bfunc(get_x(xv_gc), t))
                 phase = mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2)
                 Bmag_curr = Bmag_next
-                dt = Tt(integrator_gc.dt)
+                dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
 
                 if use_saveat(plan) || save_everystep
                     y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
@@ -481,9 +483,15 @@ end
                         # it, capped at half a gyroperiod.
                         omega = abs(q2m * Bmag_curr)
                         dt = min(dt, Tt(0.5 * 2π / omega))
-                        integrator_gc = init_gc_integrator(
-                            xv_gc, (t, tspan[2]), p_gc, dt, alg
-                        )
+                        if integrator_gc === nothing
+                            integrator_gc = init_gc_integrator(
+                                xv_gc, (t, tspan[2]), p_gc, dt, alg
+                            )
+                        else
+                            reinit_gc_integrator!(
+                                integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt
+                            )
+                        end
                         continue
                     elseif SaveAdia
                         push!(adia_t, t)
