@@ -4,7 +4,8 @@
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqVerner, StaticArrays
+using OrdinaryDiffEqLowOrderRK: RK4
 using TestParticle: get_gc
 using TestParticle: get_gc_velocity
 using FieldTracer
