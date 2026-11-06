@@ -331,15 +331,15 @@ end
             verbose && _log_mode("Initial mode: FO", ϵ, t)
         end
 
-        estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / dt)
         initial_capacity = if use_saveat(plan)
             length(plan.times) + 2
         elseif !save_everystep
             2
         elseif is_adiabatic
-            clamp(estimated_steps + div(estimated_steps, 10), 200, 512)
+            64
         else
-            clamp(2 * estimated_steps, 200, 10000)
+            estimated_steps = ceil(Int, (tspan[2] - tspan[1]) / dt)
+            clamp(estimated_steps + div(estimated_steps, 10), 10, 10000)
         end
         tsave = Vector{T}(undef, 0)
         sizehint!(tsave, initial_capacity)
@@ -365,7 +365,7 @@ end
         dt_fixed = false
 
         if SaveAdia
-            adia_cap = max(20, div(initial_capacity, check_interval) + 2)
+            adia_cap = max(10, div(initial_capacity, check_interval) + 2)
             adia_t = sizehint!(Vector{typeof(tspan[1])}(undef, 0), adia_cap)
             adia_vals = sizehint!(Vector{T}(undef, 0), adia_cap)
             adia_mode = sizehint!(Vector{Symbol}(undef, 0), adia_cap)
