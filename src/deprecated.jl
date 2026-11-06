@@ -22,7 +22,13 @@ GCRK45(; abstol = 1.0e-6, reltol = 1.0e-6) = GCRK45(promote(abstol, reltol)...)
     )
 end
 
-_rk4_alg(::Any) = _loworderrk_missing()
+function _rk4_alg(::Any)
+    try
+        return default_gc_alg()
+    catch
+        _loworderrk_missing()
+    end
+end
 _rk4_alg() = _rk4_alg(Val(:default))
 
 function solve(prob::TraceGCProblem, alg::GCRK4; kwargs...)
