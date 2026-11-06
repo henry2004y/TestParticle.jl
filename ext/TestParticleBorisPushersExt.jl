@@ -9,7 +9,7 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     get_x, get_magnetic_properties, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
     init_gc_integrator, reinit_gc_integrator!, gc_step!,
-    is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
+    is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN, DEFAULT_PROB_FUNC
 
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
@@ -160,7 +160,7 @@ end
     sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
     sols = Vector{sol_type}(undef, trajectories)
     # The seeds of SciMLBase's ensemble solve, so every solver draws the same states.
-    sim_seeds = isnothing(seed) ? nothing :
+    sim_seeds = (isnothing(seed) || prob.prob_func === DEFAULT_PROB_FUNC) ? nothing :
         SciMLBase.generate_sim_seeds(nothing, seed, trajectories)
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
@@ -289,9 +289,13 @@ end
     integrator_gc = nothing
 
     @inbounds for i in irange
-        sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
-        rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
-        new_prob = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
+        new_prob = if prob.prob_func === DEFAULT_PROB_FUNC
+            prob
+        else
+            sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
+            rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
+            prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
+        end
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]
         v = xv_fo[SVector(4, 5, 6)]
@@ -335,7 +339,7 @@ end
         elseif is_adiabatic
             clamp(estimated_steps + div(estimated_steps, 10), 200, 512)
         else
-            min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
+            clamp(2 * estimated_steps, 200, 10000)
         end
         tsave = Vector{T}(undef, 0)
         sizehint!(tsave, initial_capacity)
@@ -361,7 +365,7 @@ end
         dt_fixed = false
 
         if SaveAdia
-            adia_cap = max(10, div(initial_capacity, check_interval) + 2)
+            adia_cap = max(20, div(initial_capacity, check_interval) + 2)
             adia_t = sizehint!(Vector{typeof(tspan[1])}(undef, 0), adia_cap)
             adia_vals = sizehint!(Vector{T}(undef, 0), adia_cap)
             adia_mode = sizehint!(Vector{Symbol}(undef, 0), adia_cap)

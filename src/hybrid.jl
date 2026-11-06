@@ -12,6 +12,7 @@ end
 
 default_gc_alg(::Any) = _verner_missing()
 default_gc_alg() = default_gc_alg(Val(:default))
+_needs_fsal_init(::Any) = true
 
 """
     AdaptiveHybrid{T, A}
@@ -189,7 +190,7 @@ function reinit_gc_integrator!(
         erase_sol = false, reset_dt = false,
         reinit_callbacks = false, reinit_retcode = false, reinit_cache = false
     )
-    if integrator.fsalfirst !== nothing
+    if _needs_fsal_init(integrator.alg) && integrator.fsalfirst !== nothing
         integrator.fsalfirst = integrator.f(xv, p, t0)
     end
     return integrator

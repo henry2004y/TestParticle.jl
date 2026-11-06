@@ -5,12 +5,13 @@ module TestParticleVernerExt
 # does not pay for OrdinaryDiffEqVerner.
 
 using TestParticle
-import TestParticle: default_gc_alg
+import TestParticle: default_gc_alg, _needs_fsal_init
 
 using OrdinaryDiffEqVerner: Vern7
 using PrecompileTools: @setup_workload, @compile_workload
 
 default_gc_alg(::Val{:default}) = Vern7()
+_needs_fsal_init(::Vern7) = false
 
 @setup_workload begin
     x = range(-10, 10, length = 4)

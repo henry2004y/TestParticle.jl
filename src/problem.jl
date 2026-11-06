@@ -193,11 +193,17 @@ function solve(
         step = T(dt)
     end
 
-    tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
-    p = _promote_p(T, prob.p)
-    f = prob.f.f in (trace_gc!, trace_gc) ? _GC_ODE_FUNC :
-        ODEFunction{false, FullSpecialize}(prob.f.f)
-    ode_prob = _gc_ode_problem(SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
+    ode_prob = if prob.u0 isa SVector{4, T} && prob.tspan isa Tuple{T, T} &&
+            prob.f === _GC_ODE_FUNC
+        prob
+    else
+        tspan = prob.tspan isa Tuple{T, T} ? prob.tspan :
+            (T(prob.tspan[1]), T(prob.tspan[2]))
+        p = prob.tspan isa Tuple{T, T} ? prob.p : _promote_p(T, prob.p)
+        f = prob.f.f in (trace_gc!, trace_gc) ? _GC_ODE_FUNC :
+            ODEFunction{false, FullSpecialize}(prob.f.f)
+        _gc_ode_problem(SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
+    end
 
     cb_out = _isoutside_callback(isoutside)
     cb = cb_out === nothing ? callback :
