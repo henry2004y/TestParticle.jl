@@ -9,10 +9,9 @@
 Guiding-center position `X = x - ρ(x)`, with the Larmor radius `ρ` evaluated at
 the particle: the zeroth-order map.
 """
-@inline function _gc_position(x, v, B, q, m, t)
+@muladd @inline function _gc_position(x, v, B, q, m, t)
     b = B(x, t)
-    Bmag = norm(b)
-    return x - ((b / Bmag) × v) / ((q / m) * Bmag)
+    return x - (b × v) / ((q / m) * (b ⋅ b))
 end
 
 """
@@ -22,18 +21,19 @@ Field-aligned frame at position `x`: unit field `b̂`, gyration velocity
 `w = v - vpar b̂ - v_E`, parallel velocity `vpar = b̂ ⋅ v` and magnetic moment
 `μ = m|w|² / (2|B|)`.
 """
-@inline function _gc_frame(x, v, E, B, m, t)
+@muladd @inline function _gc_frame(x, v, E, B, m, t)
     b = B(x, t)
     Bmag = norm(b)
-    b̂ = b / Bmag
+    inv_Bmag = inv(Bmag)
+    b̂ = b * inv_Bmag
     vpar = b̂ ⋅ v
-    w = v - vpar * b̂ - (E(x, t) × b̂) / Bmag
-    return (; b̂, w, vpar, μ = m * (w ⋅ w) / (2 * Bmag))
+    w = v - vpar * b̂ - (E(x, t) × b̂) * inv_Bmag
+    return (; b̂, w, vpar, μ = m * (w ⋅ w) * (inv_Bmag / 2))
 end
 
 "Gyrophase of the gyration velocity `w` in the frame built from `b̂`."
 @inline function _gc_phase(b̂, w)
-    e1, e2 = get_perp_vector(b̂)
+    e1, e2 = _unit_perp_vectors(b̂)
     return atan(w ⋅ e2, w ⋅ e1)
 end
 
@@ -165,30 +165,38 @@ Returns an `SVector{6}` so that it can be used in a hot loop and stored in a
 `Vector{SVector{6}}` without allocating; [`gc_to_full`](@ref) converts it to a
 `Vector` for the public API.
 """
-function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
+@inline function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
+    R = get_x(state_gc)
+    B = B_field(R, t)
+    return _gc_to_full(state_gc, E_field, B, norm(B), q, m, μ, t, phase)
+end
+
+@muladd @inline function _gc_to_full(
+        state_gc, E_field, B::SVector{3}, Bmag::Real, q, m, μ, t, phase = 0
+    )
     R = get_x(state_gc)
     vpar = state_gc[4]
 
     E = E_field(R, t)
-    B = B_field(R, t)
-    Bmag = norm(B)
-    b̂ = B / Bmag
+    inv_Bmag = inv(Bmag)
+    b̂ = B * inv_Bmag
 
-    v_E = (E × b̂) / Bmag
+    v_E = (E × b̂) * inv_Bmag
 
     # perp speed, μ = m * w^2 / (2B)
     w = sqrt(2 * μ * Bmag / m)
 
     # perp vector
-    e1, e2 = get_perp_vector(b̂)
-    v_gyr = w * (cos(phase) * e1 + sin(phase) * e2)
+    e1, e2 = _unit_perp_vectors(b̂)
+    s, c = sincos(phase)
+    v_gyr = w * (c * e1 + s * e2)
     v_perp = v_gyr + v_E
 
     v = vpar * b̂ + v_perp
 
     # gyroradius
-    Ω = q * Bmag / m
-    ρ_vec = (b̂ × v_perp) / Ω
+    inv_Ω = (m / q) * inv_Bmag
+    ρ_vec = (b̂ × v_perp) * inv_Ω
 
     x = R + ρ_vec
 

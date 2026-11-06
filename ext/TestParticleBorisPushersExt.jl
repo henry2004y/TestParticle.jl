@@ -9,7 +9,6 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
     get_x, get_magnetic_properties, _promote_p,
     _gc_to_full, _gc_state_at_switch, _gc_adia_parameters, _get_gc_parameters,
     init_gc_integrator, reinit_gc_integrator!, gc_step!,
-    adiabaticity_components, _adiabaticity_components,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN
 
 using BorisPushers
@@ -188,15 +187,19 @@ function _get_sol_type(prob::FOProblem, dt, stats = nothing)
     return typeof(sol)
 end
 
-@inline function _adia_select(comps, alg::AdaptiveHybrid)
+@inline function _adia_value(mp, q, m, μ, alg::AdaptiveHybrid)
+    (; ∇B, κ, Bmag, JB) = mp
+    iszero(Bmag) && return oftype(Bmag, Inf)
+    inv_Bmag = inv(Bmag)
+    ρ = sqrt(2 * μ * m * inv_Bmag) / abs(q)
     if alg.adiabaticity === :curvature
-        return comps[1]
+        return ρ * norm(κ)
     elseif alg.adiabaticity === :gradB
-        return comps[2]
+        return ρ * norm(∇B) * inv_Bmag
     elseif alg.adiabaticity === :jacobian
-        return comps[3]
+        return ρ * sqrt(sum(abs2, JB)) * inv_Bmag
     else
-        return max(comps[1], comps[2])
+        return ρ * max(norm(κ), norm(∇B) * inv_Bmag)
     end
 end
 
@@ -296,8 +299,8 @@ end
 
         X_gc, vpar, _, _, μ, phase = _get_gc_parameters(xv_fo, Efunc, Bfunc, q, m, t)
 
-        comps0 = adiabaticity_components(X_gc, Bfunc, q, m, μ, t)
-        ϵ = _adia_select(comps0, alg)
+        mp0 = get_magnetic_properties(X_gc, t, Bfunc)
+        ϵ = _adia_value(mp0, q, m, μ, alg)
         is_adiabatic = ϵ < alg.threshold_gc_to_fo
 
         if is_adiabatic
@@ -305,8 +308,7 @@ end
             xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
             p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
 
-            B_vec = Bfunc(X_gc, t)
-            Bmag = norm(B_vec)
+            Bmag = mp0.Bmag
             Bmag_curr = Bmag
             ω = abs(q2m * Bmag)
             dt = Tt(0.5 * 2π / ω)
@@ -330,6 +332,8 @@ end
             length(plan.times) + 2
         elseif !save_everystep
             2
+        elseif is_adiabatic
+            clamp(estimated_steps + div(estimated_steps, 10), 200, 512)
         else
             min(max(10, estimated_steps + div(estimated_steps, 10)), 10000)
         end
@@ -362,7 +366,7 @@ end
             adia_vals = sizehint!(Vector{T}(undef, 0), adia_cap)
             adia_mode = sizehint!(Vector{Symbol}(undef, 0), adia_cap)
             push!(adia_t, t)
-            push!(adia_vals, _adia_select(comps0, alg))
+            push!(adia_vals, ϵ)
             push!(adia_mode, mode)
         end
 
@@ -373,8 +377,7 @@ end
                 if _check_due(it, t, t_last_check, it_eff, deadline)
                     t_last_check = t
                     mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
-                    comps = _adiabaticity_components(mp, q, m, μ)
-                    ϵ = _adia_select(comps, alg)
+                    ϵ = _adia_value(mp, q, m, μ, alg)
                     check_scale = Tt(_check_scale(ϵ, alg, mode))
                     deadline = t + check_scale * check_dt
                     if ϵ ≥ alg.threshold_gc_to_fo
@@ -387,7 +390,7 @@ end
                             push!(adia_mode, :FO)
                         end
                         xv_fo = _gc_to_full(
-                            xv_gc, Efunc, Bfunc, q, m, μ, t, phase
+                            xv_gc, Efunc, mp.B, mp.Bmag, q, m, μ, t, phase
                         )
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
@@ -422,13 +425,16 @@ end
                 dt_step = t_next - t
                 t = t_next
                 xv_gc = y_next
-                Bmag_next = norm(Bfunc(get_x(xv_gc), t))
+                B_next = Bfunc(get_x(xv_gc), t)
+                Bmag_next = norm(B_next)
                 phase = mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2)
                 Bmag_curr = Bmag_next
                 dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
 
                 if use_saveat(plan) || save_everystep
-                    y_out = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+                    y_out = _gc_to_full(
+                        xv_gc, Efunc, B_next, Bmag_next, q, m, μ, t, phase
+                    )
                     isave, t_last, y_last = _hybrid_save!(
                         traj, tsave, plan, isave, t_last, y_last, t, y_out
                     )
@@ -452,8 +458,8 @@ end
                     # center: the first-order correction and the gyrophase are
                     # applied once, below, to the state actually carried over.
                     X_gc, μ_fo = _gc_adia_parameters(xv_sync, Efunc, Bfunc, q, m, t)
-                    comps = adiabaticity_components(X_gc, Bfunc, q, m, μ_fo, t)
-                    ϵ = _adia_select(comps, alg)
+                    mp_fo = get_magnetic_properties(X_gc, t, Bfunc)
+                    ϵ = _adia_value(mp_fo, q, m, μ_fo, alg)
                     check_scale = Tt(_check_scale(ϵ, alg, mode))
                     deadline = t + check_scale * check_dt
                     if ϵ < alg.threshold_fo_to_gc
