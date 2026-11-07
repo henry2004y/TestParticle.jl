@@ -18,6 +18,7 @@ end
 _span_direction(tspan) = tspan[2] >= tspan[1] ? 1 : -1
 
 function _saveat_times(saveat, tspan, dir, ::Type{T}) where {T}
+    isempty(saveat) && return T[]
     t0, t1 = T(tspan[1]), T(tspan[2])
 
     raw = if saveat isa Number

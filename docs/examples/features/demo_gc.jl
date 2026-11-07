@@ -4,7 +4,8 @@
 # More theoretical details can be found in [Guiding Center](https://henry2004y.github.io/KeyNotes/contents/gc.html).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqVerner, StaticArrays
+using OrdinaryDiffEqLowOrderRK: RK4
 using TestParticle: get_gc
 using TestParticle: get_gc_velocity
 using FieldTracer
@@ -49,10 +50,10 @@ stateinit_gc, param_gc = TP.prepare_gc(
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 sol_gc = solve(prob_gc, Vern9())
 
-## Native GC Solvers
+## TraceGCProblem Solvers
 prob_native = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_native_rk4 = solve(prob_native, GCRK4(); dt = 0.1)
-sol_native_rk45 = solve(prob_native, GCRK45())
+sol_native_rk4 = solve(prob_native, RK4(); dt = 0.1, adaptive = false)
+sol_native_rk45 = solve(prob_native, Vern7())
 
 ## Guiding Center Simulation with Numeric B Field Interpolation
 xrange = range(0.9, 1.2, length = 20)
@@ -312,8 +313,8 @@ sol_gc_trace = solve(prob_gc, Vern9(), callback = cb)
 ## Benchmark
 b_full = @be solve(prob_full, Vern9())
 b_gc = @be solve(prob_gc, Vern9())
-b_native_rk4 = @be solve(prob_native_gc, GCRK4(); dt = 1.0)
-b_native_rk45 = @be solve(prob_native_gc, GCRK45())
+b_native_rk4 = @be solve(prob_native_gc, RK4(); dt = 1.0, adaptive = false)
+b_native_rk45 = @be solve(prob_native_gc, Vern7())
 
 ## Visualization of Benchmark Results
 f3 = Figure(size = (1000, 500), fontsize = 20)

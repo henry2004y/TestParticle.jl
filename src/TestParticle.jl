@@ -8,9 +8,9 @@ using FastInterpolations: constant_interp, linear_interp, cardinal_interp,
 using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, ReturnCode,
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
-    DEFAULT_SPECIALIZATION, ODEFunction, remake,
+    DEFAULT_SPECIALIZATION, FullSpecialize, ODEFunction, ODEProblem, remake,
     LinearInterpolation, build_solution, EnsembleSolution,
-    DiscreteCallback, terminate!, EnsembleContext
+    DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
@@ -33,7 +33,7 @@ export trace!, trace_relativistic!, trace, trace_relativistic,
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
     trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
-export AdaptiveHybrid, GCRK4, GCRK45
+export AdaptiveHybrid
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor, save_trajectory
 export get_fields, get_work_rates
@@ -76,9 +76,6 @@ include("sampler.jl")
 include("prepare.jl")
 include("saveat.jl")
 include("gc/gc.jl")
-include("gc/gc_solver.jl")
-include("gc/rk4_gc.jl")
-include("gc/rk45_gc.jl")
 include("gc/equations.jl")
 include("equations.jl")
 include("canonical.jl")

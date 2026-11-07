@@ -11,6 +11,8 @@ import TestParticle as TP
 using StaticArrays
 using LinearAlgebra
 using BorisPushers
+using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using Test
 using ..test_common: bottle_B, bottle_B0, sheared_B
 
@@ -502,16 +504,12 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test X_check ≈ X_full
         @test μ_check ≈ μ_full
 
-        # The error estimate cancels nearly to the rounding floor on short steps, where
-        # even `≈` is too strict for it, so take a step that resolves it.
-        state_gc = SVector(X[1], X[2], X[3], 8.0e4)
-        p_gc = (; q, q2m, μ, E = E_field, B = B_field_bottle)
-        @test all(
-            isapprox.(
-                TP.update_dp5(state_gc, p_gc, 1.0e-4, 0.0, mp),
-                TP.update_dp5(state_gc, p_gc, 1.0e-4, 0.0)
-            )
-        )
+        # Custom `gc_alg` can be passed to `AdaptiveHybrid`.
+        u0_flat = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
+        p_flat = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        alg_tsit = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6, gc_alg = Tsit5())
+        sol_tsit = solve(TraceProblem(u0_flat, (0.0, 1.0e-4), p_flat), alg_tsit).u[1]
+        @test sol_tsit.retcode == TP.ReturnCode.Success
     end
 
     # 17. A mode switch clips the step to the target mode's stability limit

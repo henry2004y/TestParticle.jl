@@ -1,8 +1,31 @@
 @inline function _get_B_jacobian(x::SVector{3, T}, t, Bfunc) where {T}
-    result = DiffResults.JacobianResult(x)
-    result = ForwardDiff.jacobian!(result, r -> Bfunc(r, t), x)
-    JB = SMatrix{3, 3, T, 9}(DiffResults.jacobian(result))
-    B = SVector{3, T}(DiffResults.value(result))
+    Tag = ForwardDiff.Tag{typeof(Bfunc), T}
+    D = ForwardDiff.Dual{Tag, T, 3}
+    z = zero(T)
+    o = one(T)
+    x_dual = SVector{3, D}(
+        D(x[1], ForwardDiff.Partials((o, z, z))),
+        D(x[2], ForwardDiff.Partials((z, o, z))),
+        D(x[3], ForwardDiff.Partials((z, z, o))),
+    )
+    b = Bfunc(x_dual, t)
+    b1, b2, b3 = b[1], b[2], b[3]
+    B = SVector{3, T}(
+        ForwardDiff.value(Tag, b1),
+        ForwardDiff.value(Tag, b2),
+        ForwardDiff.value(Tag, b3),
+    )
+    JB = SMatrix{3, 3, T, 9}(
+        ForwardDiff.partials(Tag, b1, 1),
+        ForwardDiff.partials(Tag, b2, 1),
+        ForwardDiff.partials(Tag, b3, 1),
+        ForwardDiff.partials(Tag, b1, 2),
+        ForwardDiff.partials(Tag, b2, 2),
+        ForwardDiff.partials(Tag, b3, 2),
+        ForwardDiff.partials(Tag, b1, 3),
+        ForwardDiff.partials(Tag, b2, 3),
+        ForwardDiff.partials(Tag, b3, 3),
+    )
     return B, JB
 end
 
@@ -36,7 +59,7 @@ Returns the NamedTuple `(; B, ∇B, κ, b̂, Bmag, JB)`:
 
 `∇B`, `κ` and `b̂` are zero in a magnetic null.
 """
-@inline function get_magnetic_properties(x, t, Bfunc)
+@muladd @inline function get_magnetic_properties(x, t, Bfunc)
     B, JB = _get_B_jacobian(x, t, Bfunc)
 
     Bmag = norm(B)
@@ -44,9 +67,10 @@ Returns the NamedTuple `(; B, ∇B, κ, b̂, Bmag, JB)`:
         vzero = zero(B)
         return (; B, ∇B = vzero, κ = vzero, b̂ = vzero, Bmag, JB)
     end
-    b̂ = B / Bmag
+    inv_Bmag = inv(Bmag)
+    b̂ = B * inv_Bmag
     ∇B = JB' * b̂
-    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) / Bmag
+    κ = (JB * b̂ - b̂ * (∇B ⋅ b̂)) * inv_Bmag
 
     return (; B, ∇B, κ, b̂, Bmag, JB)
 end

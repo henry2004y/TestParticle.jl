@@ -128,3 +128,88 @@ function solve(
 
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end
+
+const _GC_ODE_FUNC = ODEFunction{false, FullSpecialize}(trace_gc)
+
+@inline function _gc_ode_problem(
+        u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+        f::AbstractODEFunction = _GC_ODE_FUNC,
+        prob_func = DEFAULT_PROB_FUNC
+    ) where {T}
+    return TraceProblem{
+        GuidingCenter, SVector{4, T}, Tuple{T, T}, false,
+        typeof(p), typeof(f), typeof(prob_func),
+    }(f, u0, tspan, p, prob_func)
+end
+
+function _gc_initial_dt(prob::TraceGCProblem, ::Type{T}) where {T}
+    q2m = prob.p.q2m
+    Bmag = norm(prob.p.B(get_x(prob.u0), prob.tspan[1]))
+    if Bmag == 0 || q2m == 0
+        return T(1.0e-6)
+    end
+    tdir = sign(prob.tspan[2] - prob.tspan[1])
+    tdir == 0 && (tdir = one(tdir))
+    return T(tdir * 0.5 * 2π / abs(q2m * Bmag))
+end
+
+function _isoutside_callback(isoutside::F) where {F}
+    isoutside === ODE_DEFAULT_ISOUTOFDOMAIN && return nothing
+
+    condition = (u, t, integrator) -> isoutside(u, integrator.p, t)
+    affect! = function (integrator)
+        integrator.u = integrator.uprev
+        return terminate!(integrator)
+    end
+
+    return DiscreteCallback(condition, affect!)
+end
+
+function solve(
+        prob::TraceGCProblem, alg::SciMLBase.AbstractODEAlgorithm;
+        dt::Union{Nothing, Real} = nothing,
+        adaptive::Bool = isadaptive(alg),
+        dense::Bool = false,
+        isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
+        callback = nothing,
+        kwargs...
+    ) where {F}
+    T = eltype(prob.u0)
+    if dt === nothing
+        adaptive || throw(
+            ArgumentError("$(nameof(typeof(alg))) needs a time step `dt`.")
+        )
+        step = _gc_initial_dt(prob, T)
+    else
+        ttotal = prob.tspan[2] - prob.tspan[1]
+        if !adaptive && sign(dt) != sign(ttotal) && ttotal != 0
+            throw(
+                ArgumentError(
+                    "dt must have the same sign as tspan[2] - tspan[1] for " *
+                        "$(nameof(typeof(alg)))."
+                )
+            )
+        end
+        step = T(dt)
+    end
+
+    ode_prob = if prob.u0 isa SVector{4, T} && prob.tspan isa Tuple{T, T} &&
+            prob.f === _GC_ODE_FUNC
+        prob
+    else
+        tspan = prob.tspan isa Tuple{T, T} ? prob.tspan :
+            (T(prob.tspan[1]), T(prob.tspan[2]))
+        p = prob.tspan isa Tuple{T, T} ? prob.p : _promote_p(T, prob.p)
+        f = prob.f.f in (trace_gc!, trace_gc) ? _GC_ODE_FUNC :
+            ODEFunction{false, FullSpecialize}(prob.f.f)
+        _gc_ode_problem(SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
+    end
+
+    cb_out = _isoutside_callback(isoutside)
+    cb = cb_out === nothing ? callback :
+        callback === nothing ? cb_out : SciMLBase.CallbackSet(cb_out, callback)
+
+    return SciMLBase.__solve(
+        ode_prob, alg; dt = step, adaptive, dense, callback = cb, kwargs...
+    )
+end

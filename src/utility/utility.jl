@@ -175,6 +175,18 @@ function cart2sphvec(vx, vy, vz, x, y, z)
     return SVector{3}(vr, vθ, vϕ)
 end
 
+@inline function _unit_perp_vectors(b̂::SVector{3, T}) where {T}
+    z = zero(T)
+    e1 = if abs(b̂[3]) < T(0.9)
+        inv_n = inv(sqrt(muladd(b̂[1], b̂[1], b̂[2] * b̂[2])))
+        SA[-b̂[2] * inv_n, b̂[1] * inv_n, z]
+    else
+        inv_n = inv(sqrt(muladd(b̂[1], b̂[1], b̂[3] * b̂[3])))
+        SA[b̂[3] * inv_n, z, -b̂[1] * inv_n]
+    end
+    return e1, b̂ × e1
+end
+
 """
     get_perp_vector(b::AbstractVector)
 
@@ -182,12 +194,8 @@ Obtain two unit vectors `e1` and `e2` such that `(e1, e2, b)` form a right-hande
 system.
 """
 function get_perp_vector(b)
-    T = eltype(b)
-    b̂ = normalize(b)
-    v = abs(b̂[3]) < 0.9 ? SA[zero(T), zero(T), one(T)] : SA[zero(T), one(T), zero(T)]
-    e1 = normalize(v × b̂)
-    e2 = b̂ × e1
-    return e1, e2
+    b̂ = normalize(SVector{3}(b[1], b[2], b[3]))
+    return _unit_perp_vectors(b̂)
 end
 
 """

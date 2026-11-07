@@ -30,6 +30,7 @@ from juliacall import AnyValue, Main as jl
 try:
     jl.seval("using TestParticle")
     jl.seval("using BorisPushers")
+    jl.seval("using OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqVerner")
     jl.seval("using PythonCall")  # exposes `pyconvert` for wrapping Python callables
 except Exception as exc:  # pragma: no cover - depends on the user environment
     raise RuntimeError(
@@ -517,9 +518,15 @@ def trace_gc(
     if saveat is not None:
         solve_kw["saveat"] = saveat
     if isinstance(alg, str):
-        gc_algs = {"rk4": TP.GCRK4, "rk45": TP.GCRK45}
+        gc_algs = {
+            "rk4": jl.OrdinaryDiffEqLowOrderRK.RK4,
+            "rk45": jl.OrdinaryDiffEqVerner.Vern7,
+            "vern7": jl.OrdinaryDiffEqVerner.Vern7,
+        }
         if alg not in gc_algs:
-            raise ValueError(f"alg must be 'rk4' or 'rk45'; got {alg!r}")
+            raise ValueError(f"alg must be 'rk4', 'rk45', or 'vern7'; got {alg!r}")
+        if alg == "rk4":
+            solve_kw["adaptive"] = False
         alg = gc_algs[alg]()
     sols = TP.solve(prob, alg, TP.EnsembleSerial(), **solve_kw)
 
