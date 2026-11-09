@@ -17,7 +17,7 @@ GCRK45(; abstol = 1.0e-6, reltol = 1.0e-6) = GCRK45(promote(abstol, reltol)...)
     throw(
         ArgumentError(
             "GCRK4 is deprecated and forwards to `RK4()` from OrdinaryDiffEqLowOrderRK. " *
-            "Run `using OrdinaryDiffEqLowOrderRK` and pass `RK4()` directly."
+                "Run `using OrdinaryDiffEqLowOrderRK` and pass `RK4()` directly."
         )
     )
 end
@@ -43,7 +43,7 @@ end
 function solve(prob::TraceGCProblem, alg::GCRK45; kwargs...)
     Base.depwarn(
         "`GCRK45()` is deprecated, use `Vern7()` from `OrdinaryDiffEqVerner` " *
-        "(or another SciML ODE solver) instead.",
+            "(or another SciML ODE solver) instead.",
         :GCRK45
     )
     return solve(

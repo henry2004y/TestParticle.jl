@@ -4,8 +4,8 @@
     throw(
         ArgumentError(
             "The default guiding-center solver of AdaptiveHybrid requires " *
-            "OrdinaryDiffEqVerner. Run `using OrdinaryDiffEqVerner` first, or pass " *
-            "`gc_alg` explicitly to AdaptiveHybrid."
+                "OrdinaryDiffEqVerner. Run `using OrdinaryDiffEqVerner` first, or pass " *
+                "`gc_alg` explicitly to AdaptiveHybrid."
         )
     )
 end
