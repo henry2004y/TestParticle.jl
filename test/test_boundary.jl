@@ -88,7 +88,7 @@ B_along_z(r) = SA[0.0, 0.0, 1.0]
             @test !any(isnan, sol.u[end])
             @test norm(sol.u[end][1:3]) <= 1.0
             @test sol.retcode in (
-                ReturnCode.Terminated, ReturnCode.DtLessThanMin, ReturnCode.Unstable
+                ReturnCode.Terminated, ReturnCode.DtLessThanMin, ReturnCode.Unstable,
             )
         end
 

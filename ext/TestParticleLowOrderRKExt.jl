@@ -10,4 +10,3 @@ using OrdinaryDiffEqLowOrderRK: RK4
 _rk4_alg(::Val{:default}) = RK4()
 
 end # module TestParticleLowOrderRKExt
-
