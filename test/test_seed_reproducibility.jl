@@ -88,7 +88,7 @@ end
         u0 = vcat(x0, v0)
 
         # Highly curved field to force switching, which calls rand(rng)
-        p = (q2m, m, E_zero, B_sheared, TestParticle.ZeroField())
+        p = (; q2m, m, E = E_zero, B = B_sheared, F = TestParticle.ZeroField())
 
         # Setup prob_func that samples initial conditions randomly
         function hybrid_prob_func(prob, ctx)
@@ -163,7 +163,7 @@ end
         q = TestParticle.qᵢ
         q2m = q / m
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
-        p = (q2m, m, E_zero, B_sheared, TestParticle.ZeroField())
+        p = (; q2m, m, E = E_zero, B = B_sheared, F = TestParticle.ZeroField())
         function pf_h(prob, ctx)
             v = SA[1.0e4 + 1.0e2 * rand(ctx.rng), 0.0, 1.0e3]
             return remake(

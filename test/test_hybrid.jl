@@ -40,7 +40,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "uniform field" begin
         u0 = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
         tspan = (0.0, 1.0e-4)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
         sols = solve(TraceProblem(u0, tspan, p), alg)
@@ -51,7 +51,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "sheared field" begin
         u0 = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
         tspan = (0.0, 1.0e-5)
-        p = (q2m, m, E_field, B_field_sheared, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_sheared, F = TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
 
         sols = solve(TraceProblem(u0, tspan, p), alg)
@@ -66,7 +66,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = vcat(SA[0.0, 0.0, 0.0], v0)
         T_gyro = gyroperiod(bottle_B0)
         tspan = (0.0, 30 * T_gyro)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
 
         # Consistent with demo_hybrid.jl
         alg = AdaptiveHybrid(;
@@ -113,7 +113,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = vcat(SA[0.0, 0.0, 0.0], v0)
         T_gyro = gyroperiod(0.01)
         tspan = (0.0, 30 * T_gyro)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
 
         alg_fo = AdaptiveHybrid(;
             threshold = 0.0, dtmax = 10 * T_gyro, dtmin = 1.0e-6 * T_gyro,
@@ -161,7 +161,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = SA[0.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
         T_gyro = gyroperiod(bottle_B0)
         tspan = (0.0, 30 * T_gyro)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
 
         # Wide hysteresis band: α = 0.2, β = 0.05.
         alg_buf = AdaptiveHybrid(;
@@ -177,7 +177,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "saveat" begin
         u0 = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
         tspan = (0.0, 1.0e-4)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         prob = TraceProblem(u0, tspan, p)
 
@@ -212,7 +212,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
 
     # 9. Constructor and parameter validation
     @testset "validation" begin
-        p_dummy = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p_dummy = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         u0_6 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         @test_throws ArgumentError AdaptiveHybrid(; threshold = 0.1, dtmax = -1.0)
         @test_throws ArgumentError AdaptiveHybrid(;
@@ -248,7 +248,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "early termination" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         tspan = (0.0, 1.0e-3)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         prob = TraceProblem(u0, tspan, p)
         isoutside = (u, p, t) -> u[3] > 1.0e-2
 
@@ -274,7 +274,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "minimal storage" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         tspan = (0.0, 1.0e-4)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         alg = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6)
         prob = TraceProblem(u0, tspan, p)
 
@@ -289,7 +289,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = SA[0.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
         T_gyro = gyroperiod(bottle_B0)
         tspan = (0.0, 10 * T_gyro)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
         alg = AdaptiveHybrid(;
             threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
             check_interval = 10,
@@ -308,7 +308,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "adaptive full-orbit step" begin
         u0 = SA[0.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
         T_gyro = gyroperiod(bottle_B0)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
 
         # threshold = 0 forces the full-orbit mode for the whole trajectory.
         alg = AdaptiveHybrid(;
@@ -331,7 +331,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "check deadline" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         T_gyro = gyroperiod(0.01)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         check_dt = 5 * T_gyro
         alg = AdaptiveHybrid(;
             threshold = 0.1, dtmax = 10 * T_gyro, dtmin = 1.0e-6 * T_gyro,
@@ -351,7 +351,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "repeated deadline landings" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         T_gyro = gyroperiod(0.01)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         for (threshold, check_dt, dtmin, dtmax, tspan) in (
                 (0.1, 0.5 * T_gyro, 1.0e-6 * T_gyro, 10 * T_gyro, 40 * T_gyro),
                 (0.0, 0.5 * T_gyro, 1.0e-6 * T_gyro, 10 * T_gyro, 40 * T_gyro),
@@ -376,7 +376,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "deadline below dtmin" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         T_gyro = gyroperiod(0.01)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         check_dt = 0.01 * T_gyro
         alg = AdaptiveHybrid(;
             threshold = 0.1, dtmax = 10 * T_gyro, dtmin = 0.1 * T_gyro,
@@ -397,7 +397,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "check time bound" begin
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         T_gyro = gyroperiod(0.01)
-        p = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         prob = TraceProblem(u0, (0.0, 1.0e-2), p)
 
         # A uniform field keeps the guiding-center steps growing geometrically,
@@ -470,7 +470,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         sol = solve(
             TraceProblem(
                 u, (0.0, 5 * T_gyro),
-                (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+                (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
             ),
             alg
         ).u[1]
@@ -506,7 +506,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
 
         # Custom `gc_alg` can be passed to `AdaptiveHybrid`.
         u0_flat = vcat(SA[0.0, 0.0, 0.0], SA[1.0e4, 0.0, 1.0e3])
-        p_flat = (q2m, m, E_field, B_field_flat, TP.ZeroField())
+        p_flat = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
         alg_tsit = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-6, gc_alg = Tsit5())
         sol_tsit = solve(TraceProblem(u0_flat, (0.0, 1.0e-4), p_flat), alg_tsit).u[1]
         @test sol_tsit.retcode == TP.ReturnCode.Success
@@ -518,7 +518,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
         T_gyro = gyroperiod(bottle_B0)
         tspan = (0.0, 30 * T_gyro)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
         alg = AdaptiveHybrid(;
             threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
             check_interval = 10,
@@ -555,7 +555,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
     @testset "stretched check interval" begin
         u0 = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
         T_gyro = gyroperiod(bottle_B0)
-        p = (q2m, m, E_field, B_field_bottle, TP.ZeroField())
+        p = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
         prob = TraceProblem(u0, (0.0, 30 * T_gyro), p)
         base = (;
             threshold = 0.05, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,

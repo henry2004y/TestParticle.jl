@@ -1,5 +1,5 @@
 """
-    get_work_rates(xv, p, t; relativistic = false, magnetic_properties = nothing, E = nothing)
+    get_work_rates(xv, p, t; model = _param_model(p), magnetic_properties = nothing, E = nothing)
         -> SVector{4}
 
 Calculate the leading-order adiabatic work rates [W] `(P_par, P_fermi, P_grad, P_betatron)`
@@ -17,9 +17,9 @@ particle picks up by being convected across `∇B` at fixed `μ`, while `P_betat
 the heating from the local change of `|B|`. Together they are `μ (∂_t + v_E⋅∇) B`.
 See [`get_work_channels`](@ref) for the grouping into physical acceleration channels.
 
-The state is taken as a guiding center when `p` carries a magnetic moment `μ`. Full-orbit
-`μ` uses the gyration velocity `v⊥ - v_E`. With `relativistic = true`, a full-orbit state
-holds `γv` and the drifts use the mass `γm`.
+`model` defaults to `GuidingCenter()` when `p` carries a magnetic moment `μ` and to
+`FullOrbit()` otherwise. Full-orbit `μ` uses the gyration velocity `v⊥ - v_E`. For
+`RelativisticOrbit()`, the state holds `γv` and the drifts use the mass `γm`.
 
 `magnetic_properties` and `E` are optional precomputed values of
 [`get_magnetic_properties`](@ref) and of the electric field at `(get_x(xv), t)`, used
@@ -41,14 +41,14 @@ All four terms are zero in a magnetic null.
 Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 """
 @inline function get_work_rates(
-        xv, p, t; relativistic::Bool = false, magnetic_properties = nothing, E = nothing
+        xv, p, t; model = _param_model(p), magnetic_properties = nothing, E = nothing
     )
     r = get_x(xv)
     (; ∇B, κ, b̂, Bmag) = @something magnetic_properties get_magnetic_properties(r, t, p.B)
     iszero(Bmag) && return zero(SVector{4, eltype(xv)})
 
     E = @something E p.E(r, t)
-    q, m, v_par, μ = _work_rate_particle(xv, p, E, b̂, Bmag, relativistic)
+    q, m, v_par, μ = _adiabatic_particle(model, xv, p, E, b̂, Bmag)
     dBdt = derivative_t(p.B, r, t) ⋅ b̂
 
     P_par = q * v_par * (E ⋅ b̂)
@@ -59,20 +59,19 @@ Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
     return SVector{4}(P_par, P_fermi, P_grad, P_betatron)
 end
 
-@inline function _work_rate_particle(xv, p, E, b̂, Bmag, relativistic)
-    if hasproperty(p, :μ)
-        relativistic && throw(ArgumentError("guiding-center states are nonrelativistic"))
-        (; q, q2m, μ) = p
-        return q, q / q2m, xv[4], μ
-    end
-    q = p.q2m * p.m
-    v, m = get_v(xv), p.m
-    if relativistic
-        γ = √(1 + (v ⋅ v) / _speed_of_light(p)^2)
-        v, m = v / γ, γ * m
-    end
+# Charge, mass, parallel velocity and magnetic moment of a state. Full-orbit `μ` uses the
+# gyration velocity, and relativistic states the velocity and the mass `γm`.
+@inline function _adiabatic_particle(::GuidingCenter, xv, p, E, b̂, Bmag)
+    (; q, q2m, μ) = p
+    return q, q / q2m, xv[4], μ
+end
+
+@inline function _adiabatic_particle(model, xv, p, E, b̂, Bmag)
+    u = get_v(xv)
+    γ = _lorentz_factor(u, model, p)
+    v, m = u / γ, γ * p.m
     w = _get_v_perp(v, b̂) - (E × b̂) / Bmag
-    return q, m, v ⋅ b̂, m * (w ⋅ w) / (2 * Bmag)
+    return p.q2m * p.m, m, v ⋅ b̂, m * (w ⋅ w) / (2 * Bmag)
 end
 
 """
@@ -106,8 +105,8 @@ Work rates at every saved state of `sol`, in the element type of the state.
 """
 function get_work_rates(sol::AbstractODESolution)
     p = sol.prob.p
-    relativistic = _is_relativistic(SciMLBase.unwrapped_f(sol.prob.f.f))
+    model = _model(sol.prob)
     return map(sol.u, sol.t) do u, t
-        SVector{4, eltype(u)}(get_work_rates(u, p, t; relativistic))
+        SVector{4, eltype(u)}(get_work_rates(u, p, t; model))
     end
 end

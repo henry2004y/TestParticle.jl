@@ -321,10 +321,7 @@ end
             stateinit = [2.0, 2.0, 2.0, 1.0, 0.0, 0.0]
 
             prob_host = TraceProblem(stateinit, tspan, param)
-            prob_device = TraceProblem(
-                stateinit, tspan,
-                (param[1], param[2], param[3], TP.Field(gB), param[5])
-            )
+            prob_device = TraceProblem(stateinit, tspan, (; param..., B = TP.Field(gB)))
 
             sol_host = TP.solve(prob_host, Boris(); dt)
             sol_device = TP.solve(prob_device, Boris(), CPU(); dt, trajectories = 1).u[1]
@@ -366,8 +363,7 @@ end
 
             prob_host = TraceProblem(stateinit, tspan, param)
             prob_device = TraceProblem(
-                stateinit, tspan,
-                (param[1], param[2], TP.Field(gE), TP.Field(gB), param[5])
+                stateinit, tspan, (; param..., E = TP.Field(gE), B = TP.Field(gB))
             )
 
             sol_host = TP.solve(prob_host, Boris(); dt)

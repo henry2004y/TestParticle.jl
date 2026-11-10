@@ -1,7 +1,7 @@
 module TestParticleBorisPushersExt
 
 using TestParticle
-import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid,
+import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid, _equations_model,
     SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
@@ -34,6 +34,44 @@ const FOProblem = TraceProblem{FullOrbit}
 
 _boris_rhs(u, p, t) = nothing
 
+# Boris and hybrid solvers build their own update from `p.q2m`, `p.E` and `p.B`, so anything
+# else in the problem would be silently ignored.
+function _check_boris_problem(prob)
+    _equations_model(prob.f) === FullOrbit && prob.p.F isa ZeroField || throw(
+        ArgumentError(
+            "Boris and hybrid solvers need the default `FullOrbit` equations without `F`."
+        )
+    )
+    return
+end
+
+function SciMLBase.__solve(
+        eprob::EnsembleProblem{<:TraceProblem}, alg::AbstractBoris, ens::EnsembleKernel;
+        kwargs...
+    )
+    _check_boris_problem(eprob.prob)
+    prob_func = eprob.prob_func
+    if prob_func !== DEFAULT_PROB_FUNC
+        eprob = EnsembleProblem(
+            eprob.prob;
+            prob_func = (prob, ctx) -> (
+                new_prob = prob_func(prob, ctx);
+                _check_boris_problem(new_prob);
+                new_prob
+            ),
+            output_func = eprob.output_func,
+            reduction = eprob.reduction,
+            u_init = eprob.u_init,
+            safetycopy = eprob.safetycopy
+        )
+    end
+    return invoke(
+        SciMLBase.__solve,
+        Tuple{SciMLBase.AbstractEnsembleProblem, AbstractBoris, EnsembleKernel},
+        eprob, alg, ens; kwargs...
+    )
+end
+
 function _boris_problem(prob::FOProblem)
     T = eltype(prob.u0)
     tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
@@ -44,6 +82,8 @@ function _boris_problem(prob::FOProblem)
 end
 
 function _boris_initial_dt(prob::FOProblem, alg)
+    hasproperty(alg, :safety) ||
+        throw(ArgumentError("$(nameof(typeof(alg))) needs a time step `dt`."))
     q2m = prob.p.q2m
     u0 = prob.u0
     r0 = SVector{3}(u0[1], u0[2], u0[3])
@@ -92,7 +132,7 @@ function _boris_callback(isoutside::F) where {F}
 end
 
 function SciMLBase.solve(
-        prob::FOProblem, alg::AbstractBoris;
+        prob::TraceProblem, alg::AbstractBoris;
         saveat = (),
         dt::Union{Nothing, Real} = nothing,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
@@ -104,6 +144,7 @@ function SciMLBase.solve(
         seed = nothing,
         kwargs...
     ) where {F}
+    _check_boris_problem(prob)
     T = eltype(prob.u0)
     step = dt === nothing ? T(_boris_initial_dt(prob, alg)) : T(dt)
     _boris_check_limits(prob, step, alg, maxiters)
@@ -127,7 +168,7 @@ end
 # --- AdaptiveHybrid Solver Implementation ---
 
 @inline function SciMLBase.solve(
-        prob::FOProblem, alg::AdaptiveHybrid,
+        prob::TraceProblem, alg::AdaptiveHybrid,
         ensemblealg::EA = EnsembleSerial();
         trajectories::Int = 1,
         saveat = (),
@@ -136,6 +177,7 @@ end
         save_everystep::Bool = true, verbose::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
+    _check_boris_problem(prob)
     length(prob.u0) == 6 ||
         throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
     prob.tspan[2] > prob.tspan[1] ||
@@ -294,7 +336,9 @@ end
         else
             sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
             rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
-            prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
+            p_i = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
+            _check_boris_problem(p_i)
+            p_i
         end
         xv_fo = SVector{6, T}(new_prob.u0)
         r = xv_fo[SVector(1, 2, 3)]

@@ -43,7 +43,7 @@ stateinit = [r₀..., v₀...]
 param = prepare(; B = getB, species = Electron)
 tspan = (0.0, 1.0e-5)
 
-prob_rel = TraceProblem(stateinit, tspan, param; relativistic = true)
+prob_rel = TraceProblem{RelativisticOrbit}(stateinit, tspan, param)
 prob_non = TraceProblem(stateinit, tspan, param)
 
 vratio = √(v₀[1]^2 + v₀[2]^2 + v₀[3]^2) / c

@@ -299,7 +299,7 @@ let
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_hybrid)
     tspan = (0.0, 10 * T_gyro)
-    p = (q2m, m, E_bottle, B_bottle, TP.ZeroField())
+    p = (; q2m, m, E = E_bottle, B = B_bottle, F = TP.ZeroField())
     v0 = SA[5.0e4, 0.0, 1.0e5]
     dt_boris = 0.1 * T_gyro
     dtmax_boris = T_gyro
@@ -367,7 +367,7 @@ let
     u0 = vcat(SA[0.0, 0.0, -2L_sheet], SA[0.0, 0.95v, 0.3v])
     B_sheet = TP.Field(sheet_B)
     E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-    p = (q2m, m, E_zero, B_sheet, TP.ZeroField())
+    p = (; q2m, m, E = E_zero, B = B_sheet, F = TP.ZeroField())
     prob_sheet = TraceProblem(u0, tspan, p)
     dt_boris = T_gyro / 20
     dtmax_boris = dt_boris
@@ -416,7 +416,7 @@ let
     u0 = vcat(SA[1.0, 0.0, 0.0], SA[5.0e4, 0.0, 1.0e5])
     B_adia = TP.Field(adia_B)
     E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-    p = (q2m, m, E_zero, B_adia, TP.ZeroField())
+    p = (; q2m, m, E = E_zero, B = B_adia, F = TP.ZeroField())
     prob_adia = TraceProblem(u0, tspan, p)
     dt_boris = 0.1 * T_gyro
     dtmax_boris = T_gyro

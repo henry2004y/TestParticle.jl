@@ -1,7 +1,7 @@
 # # Relativistic vs Non-relativistic Tracing
 #
 # This example compares the particle trajectories of `trace!` (non-relativistic)
-# and relativistic (`relativistic = true`) equations.
+# and relativistic (`RelativisticOrbit`) equations.
 # We demonstrate two cases:
 # 1. Uniform magnetic field (Cyclotron motion)
 # 2. Uniform ExB field (ExB drift)
@@ -69,7 +69,7 @@ for (i, v_mag) in enumerate(v_ratios)
     ## Relativistic initial state: [r, γv]
     γ = 1 / sqrt(1 - (v_mag / c)^2)
     u0_rel = [r0..., (γ * v0)...]
-    prob_rel = TraceProblem(u0_rel, tspan, param; relativistic = true)
+    prob_rel = TraceProblem{RelativisticOrbit}(u0_rel, tspan, param)
     sol_rel = solve(prob_rel, Vern7())
 
     ## Plot
@@ -126,7 +126,7 @@ sol_non_drift = solve(prob_non_drift, Vern7());
 # Relativistic
 # if v=0, γ=1
 u0_rel = [r0..., v0...]
-prob_rel_drift = TraceProblem(u0_rel, tspan, param2; relativistic = true)
+prob_rel_drift = TraceProblem{RelativisticOrbit}(u0_rel, tspan, param2)
 sol_rel_drift = solve(prob_rel_drift, Vern7());
 
 # Trajectory comparison
