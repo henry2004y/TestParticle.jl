@@ -291,7 +291,7 @@ f = DisplayAs.PNG(f) #hide
 # ## Performance Comparison
 #
 # Finally, we compare the execution time, memory and output size of the
-# solvers (including native [`AdaptiveBoris`](@ref) alongside `Vern7`). Pointwise
+# solvers (including native `AdaptiveBoris` alongside `Vern7`). Pointwise
 # position differences are a poor accuracy measure in this bottle: the gyrophase
 # and the bounce phase are exponentially sensitive, and the guiding-center
 # equations describe a different curve from the particle. The drift of the
