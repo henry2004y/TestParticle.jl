@@ -288,6 +288,22 @@ queries and outputs are Cartesian. Supply fill/clamp for radius and colatitude a
 `coeffs` selects cubic coefficient storage. `store=StorePolicy(copy=false)` may alias
 inputs, which must remain unchanged. Device conversion requires order 1 and fill,
 clamp, wrap, or inclusive periodic policies; exclusive periodic fields are CPU-only.
+
+# Examples
+```jldoctest
+julia> grid = (-1.0:1.0:2.0, -1.0:1.0:2.0, -1.0:1.0:2.0);
+
+julia> B_arr = zeros(3, 4, 4, 4);
+
+julia> B_arr[3, :, :, :] .= 1.0e-8;
+
+julia> B = build_interpolator(B_arr, grid; bc = TestParticle.FillExtrap(NaN));
+
+julia> p = prepare(; B, species = Proton);
+
+julia> p.B(SA[0.5, 0.5, 0.5], 0.0) ≈ SA[0.0, 0.0, 1.0e-8]
+true
+```
 """
 function build_interpolator end
 

@@ -1,74 +1,19 @@
-# Formatting
-- When writing Julia code, try to keep the maximum line length under _92 characters_.
-- When writing commit messages, follow the format `component: Brief summary` for
-  the title. In the body of the commit message, provide a brief prose summary of
-  the purpose of the changes made.
-  When referencing external GitHub PRs or issues, use proper GitHub interlinking
-  format (e.g., `owner/repo#123` for PRs/issues).
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for Runic formatting (92-char limit), API visibility (`export` vs `public`), and environment setup.
 
-# Coding rules
-- When writing functions, avoid generic types of Any if possible.
+# Code and commits
+- Avoid `Any` in function signatures, and use an explicit `;` before keyword arguments in calls.
+- Add comments or docstrings only when behavior is not obvious from names and types.
+- Commit titles follow `component: Brief summary` with a brief prose body; link external issues/PRs as `owner/repo#123`.
+- Respect manual user edits to code you wrote; explain concerns and ask before reintroducing modified or deleted code.
 
-- For function calls with keyword arguments, use an explicit `;` for clarity.
+# Dependencies
+- Manage dependencies with `Pkg.add` and `Pkg.rm`; edit `Project.toml` directly only for `[compat]`.
+- Subpackages `lib/BorisPushers` and `lib/TestParticleC` are wired into `test` and `docs` via `[sources]` in their `Project.toml` files.
 
-- For AI agents: **ONLY INCLUDE COMMENTS WHERE TRULY NECESSARY**.
-  When the function name or implementation clearly indicates its purpose or
-  behavior, redundant comments are unnecessary.
-
-- On the other hand, for general utilities that expected to be used in multiple
-  places in this package, it's fine to use docstrings to clarify their
-  behavior. However, even in these cases, if the function name and behavior are
-  self-explanatory, no special docstring is needed.
-
-# Running test code
-Please make sure to test new code that you write.
-
-If explicit test file or code is provided, prioritize running that.
-Otherwise, you can run the entire test suite for the TestParticle project by activating
-the `test` workspace and running `test` in the Pkg REPL.
-
-# Test code structure
-Test code should be written in files that define independent module spaces with
-a `test_` prefix (if not already existing in a large `@testset`).
-Then include these files from [`test/runtests.jl`](./test/runtests.jl).
-This ensures that these files can be run independently from the REPL.
-For example, test code for a new feature would be in a file like
-this:
-> test/test_feature.jl
-```julia
-module test_feature
-using Test # Each module space needs to explicitly declare the code needed for execution
-...
-end # module test_feature
-```
-And `test/test_feature.jl` is included from `test/runtests.jl` like this:
-> test/runtests.jl
-```julia
-@testset "TestParticle.jl" begin
-   ...
-   @testset "feature" include("test_feature.jl")
-   ...
-end
-```
-
-In each test file, you are encouraged to use `@testset "testset name"` to
-organize our tests cleanly. For code clarity, unless specifically necessary,
-avoid using `using`, `import`, and `struct` definitions  inside `@testset`
-blocks, and instead place them at the top level.
-
-Also, you are encouraged to use `let`-blocks to ensure that names aren't
-unintentionally reused between multiple test cases.
-
-# Environment-related issues
-For AI agents: **NEVER MODIFY [Manifest.toml](./Manifest.toml) BY YOURSELF**.
-For adding and deleting packages, use `Pkg.add("PackageName")` and `Pkg.rm("PackageName")`
-first. Agents can modify [Project.toml](./Project.toml) only for the compat if needed.
-
-# About modifications to code you've written
-If you, as an AI agent, add or modify code, and the user appears to have made
-further manual changes to that code after your response, please respect those
-modifications as much as possible.
-For example, if the user has deleted a function you wrote, do not reintroduce
-that function in subsequent code generation.
-If you believe that changes made by the user are potentially problematic,
-please clearly explain your concerns and ask the user for clarification.
+# Testing and doctests
+- Single test file (fast loop): `julia --project=test -e 'include("test/test_canonical.jl")'`
+- Full test suite: `julia --project=test test/runtests.jl`
+- Subpackages: `julia --project=lib/BorisPushers -e 'using Pkg; Pkg.test()'` and `julia --project=lib/TestParticleC -e 'using Pkg; Pkg.test()'`
+- Doctests: `julia --project=docs docs/make.jl doctest`
+- Write new tests as standalone `module test_<name>` files included from [`test/runtests.jl`](./test/runtests.jl), placing imports and `struct` definitions at module top level and isolating cases in `let` blocks.
+- Update [`test/test_api_surface.jl`](./test/test_api_surface.jl) whenever `export` or `public` names change.

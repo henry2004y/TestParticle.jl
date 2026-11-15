@@ -1,24 +1,29 @@
 using Documenter, DocumenterVitepress
-using TestParticle
+using TestParticle, BorisPushers, OrdinaryDiffEqVerner, StaticArrays
 using SHA: sha256, bytes2hex
 
 using Literate
 
+DocMeta.setdocmeta!(
+    TestParticle,
+    :DocTestSetup,
+    :(using TestParticle, BorisPushers, OrdinaryDiffEqVerner, StaticArrays);
+    recursive = true,
+)
+
+const DOCTEST_ONLY = "doctest" in ARGS
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "examples")
 const OUTPUT_DIR = joinpath(@__DIR__, "src")
 
-# Create output directories
-mkpath(OUTPUT_DIR)
-categories = ["drifts", "analytic", "applications", "features"]
-for category in categories
-    mkpath(joinpath(OUTPUT_DIR, category))
-end
+if !DOCTEST_ONLY
+    mkpath(OUTPUT_DIR)
+    for category in ("drifts", "analytic", "applications", "features")
+        mkpath(joinpath(OUTPUT_DIR, category))
+    end
 
-# Copy and clean index.md
-index_src = joinpath(EXAMPLES_DIR, "overview.md")
-index_out = joinpath(OUTPUT_DIR, "overview.md")
-cp(index_src, index_out; force = true)
+    cp(joinpath(EXAMPLES_DIR, "overview.md"), joinpath(OUTPUT_DIR, "overview.md"); force = true)
+end
 
 # Define orders manually
 drifts_order = [
@@ -130,49 +135,53 @@ function process_examples(
     return pages
 end
 
-drifts_pages = process_examples("drifts", drifts_order)
-analytic_pages = process_examples("analytic", analytic_order)
-applications_pages = process_examples("applications", applications_order)
-features_pages = process_examples("features", features_order)
-
-example_pages = [
-    "Overview" => "overview.md",
-    "Drifts" => drifts_pages,
-    "Analytic Fields" => analytic_pages,
-    "Applications" => applications_pages,
-    "Features" => features_pages,
+base_pages = [
+    "Home" => "index.md",
+    "Tutorial" => [
+        "Introduction" => "tutorial/introduction.md",
+        "Numerical Methods" => "tutorial/numerical_methods.md",
+        "Boris Pusher" => "tutorial/boris.md",
+        "Guiding Center" => "tutorial/guiding_center.md",
+        "Features Walkthrough" => "tutorial/features.md",
+    ],
+    "Python Wrapper" => "python_wrapper.md",
+    "API" => "api.md",
+    "Plot Functions" => "plotfunctions.md",
 ]
+
+pages = if DOCTEST_ONLY
+    base_pages
+else
+    example_pages = [
+        "Overview" => "overview.md",
+        "Drifts" => process_examples("drifts", drifts_order),
+        "Analytic Fields" => process_examples("analytic", analytic_order),
+        "Applications" => process_examples("applications", applications_order),
+        "Features" => process_examples("features", features_order),
+    ]
+    insert!(copy(base_pages), 3, "Examples" => example_pages)
+end
 
 makedocs(;
     modules = [TestParticle],
     authors = "Hongyang Zhou <hyzhou@umich.edu> and contributors",
     sitename = "TestParticle.jl",
-    format = DocumenterVitepress.MarkdownVitepress(
+    doctest = DOCTEST_ONLY ? :only : true,
+    format = DocumenterVitepress.MarkdownVitepress(;
         repo = "https://github.com/henry2004y/TestParticle.jl",
         devbranch = "master",
-        devurl = "dev"
+        devurl = "dev",
     ),
-    pages = [
-        "Home" => "index.md",
-        "Tutorial" => [
-            "Introduction" => "tutorial/introduction.md",
-            "Numerical Methods" => "tutorial/numerical_methods.md",
-            "Boris Pusher" => "tutorial/boris.md",
-            "Guiding Center" => "tutorial/guiding_center.md",
-            "Features Walkthrough" => "tutorial/features.md",
-        ],
-        "Examples" => example_pages,
-        "Python Wrapper" => "python_wrapper.md",
-        "API" => "api.md",
-        "Plot Functions" => "plotfunctions.md",
-    ],
-    warnonly = [:missing_docs, :linkcheck]
+    pages,
+    warnonly = [:missing_docs, :linkcheck],
 )
 
-DocumenterVitepress.deploydocs(;
-    repo = "github.com/henry2004y/TestParticle.jl",
-    target = "build",
-    devbranch = "master",
-    branch = "gh-pages",
-    push_preview = true
-)
+if !DOCTEST_ONLY
+    DocumenterVitepress.deploydocs(;
+        repo = "github.com/henry2004y/TestParticle.jl",
+        target = "build",
+        devbranch = "master",
+        branch = "gh-pages",
+        push_preview = true,
+    )
+end

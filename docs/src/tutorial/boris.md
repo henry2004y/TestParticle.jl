@@ -211,8 +211,8 @@ The Boris family is implemented in its own package,
 which follows the SciML convention for an algorithm package: the methods are
 ordinary SciML algorithms, driven by the SciML loop, and they can be used on
 their own. TestParticle.jl depends on it and adds the parts that are specific to
-particle tracing: the `TraceProblem` container, the boundary callback, and the
-field and work columns.
+particle tracing: the `TraceProblem` container, the `isoutside` boundary callback,
+and post-processing helpers such as `get_fields(sol)` and `get_work_rates(sol)`.
 
 Used directly, the solvers only need a parameter container with the properties
 `q2m`, `E(x, t)` and `B(x, t)`, such as the `NamedTuple` that `prepare` produces:
@@ -233,10 +233,10 @@ from `p`, and `(u, p, t) -> nothing` is enough. Adaptivity is selected by the
 follow the local gyroperiod rather than an error estimate, since a Boris step
 forms none.
 
-What TestParticle.jl still owns is the layer around the loop, in
-`src/boris/boris_solve.jl`: the conversion of a `TraceProblem` into an
-`ODEProblem`, the gyroperiod-based initial step of the adaptive methods, the
-`isoutside` callback, and the appended field and work columns.
+What TestParticle.jl still owns is the extension layer in
+`ext/TestParticleBorisPushersExt.jl`: converting a `TraceProblem` into an
+`ODEProblem`, choosing the gyroperiod-based initial step for adaptive methods,
+and hooking up the `isoutside` callback.
 
 To maximize performance, fixed-step Boris solves on standard domains automatically take
 a specialized fast path inside `solve!`. This eliminates generic SciML integrator loop

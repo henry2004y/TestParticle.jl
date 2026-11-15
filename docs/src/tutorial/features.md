@@ -134,7 +134,7 @@ By default, `batch_size` is automatically optimized for the current environment:
 
 ```julia
 # Explicitly setting batch_size for distributed simulation
-sols = solve(prob, EnsembleSplitThreads(); trajectories=10000, batch_size=1000)
+sols = solve(prob, Boris(), EnsembleSplitThreads(); dt, trajectories = 10000, batch_size = 1000)
 ```
 
 ### Efficiency Considerations

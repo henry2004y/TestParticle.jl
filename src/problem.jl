@@ -80,6 +80,31 @@ throws on those of another. Custom `f` keeps `M`.
 
 Normalized units need no separate equations: prepare `p` with `q = 1, m = 1`, and
 `c = 1` for the relativistic case.
+
+# Examples
+```jldoctest
+julia> B(x) = SA[0.0, 0.0, 1.0e-8];
+
+julia> p = prepare(; B, species = Electron);
+
+julia> prob = TraceProblem(SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 0.0], (0.0, 1.0e-3), p);
+
+julia> solve(prob, Vern7()).retcode == TestParticle.ReturnCode.Success
+true
+
+julia> v0 = SA[0.6 * TestParticle.c, 0.0, 0.0];
+
+julia> γ = inv(sqrt(1 - sum(abs2, v0) / TestParticle.c^2));
+
+julia> u0_rel = SA[0.0, 0.0, 0.0, (γ * v0)...];
+
+julia> prob_rel = TraceProblem{RelativisticOrbit}(u0_rel, (0.0, 1.0e-3), p);
+
+julia> sol_rel = solve(prob_rel, Vern7());
+
+julia> isapprox(sum(abs2, sol_rel.u[end][4:6]), sum(abs2, γ * v0); rtol = 1.0e-6)
+true
+```
 """
 TraceProblem(u0, tspan, p; kw...) = TraceProblem{FullOrbit}(u0, tspan, p; kw...)
 TraceProblem(f, u0, tspan, p; kw...) =

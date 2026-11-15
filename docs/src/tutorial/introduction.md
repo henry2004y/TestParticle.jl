@@ -36,26 +36,23 @@ When the characteristic scale of field variations $L$ is much larger than the La
 
 To get started with `TestParticle.jl`, you can trace a simple proton in a uniform magnetic field:
 
-```julia
-using TestParticle, OrdinaryDiffEq, StaticArrays
+```jldoctest
+julia> using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 
-# 1. Define Fields
-B(x, t) = SA[0, 0, 1e-8]  # Magnetic field (Tesla)
+julia> B(x) = SA[0.0, 0.0, 1.0e-8];
 
-# 2. Define Initial Conditions
-x0 = [1.0, 0.0, 0.0]      # Initial position (m)
-v0 = [0.0, 1.0, 0.1]      # Initial velocity (m/s)
-stateinit = [x0..., v0...]
-tspan = (0, 20)           # Time span (s)
+julia> stateinit = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1];
 
-# 3. Prepare and Solve
-param = prepare(; B, species = Proton)
-prob = ODEProblem(trace!, stateinit, tspan, param)
-sol = solve(prob, Vern9())
+julia> tspan = (0.0, 20.0);
 
-# 4. Visualize (Requires Makie or Plots)
-# using GLMakie
-# plot(sol, idxs=(1, 2, 3))
+julia> param = prepare(; B, species = Proton);
+
+julia> prob = TraceProblem(stateinit, tspan, param);
+
+julia> sol = solve(prob, Vern7());
+
+julia> sol.retcode == TestParticle.ReturnCode.Success
+true
 ```
 
-For more complex scenarios and detailed explanations, please refer to the following sections.
+You can then plot the trajectory with Makie (`using GLMakie; plot(sol; idxs = (1, 2, 3))`) or Plots. For more complex scenarios and detailed explanations, please refer to the following sections.
