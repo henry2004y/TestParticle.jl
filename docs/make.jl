@@ -1,5 +1,5 @@
 using Documenter, DocumenterVitepress
-using TestParticle, BorisPushers, OrdinaryDiffEqVerner, StaticArrays
+using TestParticle
 using SHA: sha256, bytes2hex
 
 using Literate
