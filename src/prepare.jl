@@ -89,6 +89,29 @@ Omitted fields are zero. Each callable accepts `x` or `(x, t)` and returns three
 Construct numerical fields with [`build_interpolator`](@ref) before calling `prepare`.
 See [`Field`](@ref) to select the calling convention. `q` and `m` override `species`;
 `c` sets the relativistic speed of light. `type` converts particle constants.
+
+# Examples
+```jldoctest
+julia> B(x) = SA[0.0, 0.0, 1.0e-8];
+
+julia> p = prepare(; B, species = Proton);
+
+julia> P = TestParticle.get_gyroperiod(1.0e-8);
+
+julia> u0 = SA[1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+
+julia> prob = TraceProblem(u0, (0.0, P), p);
+
+julia> sol1 = solve(prob, Vern7(); reltol = 1.0e-9, abstol = 1.0e-9);
+
+julia> sol2 = solve(prob, Boris(); dt = P / 1000);
+
+julia> isapprox(sol1.u[end], u0; atol = 1.0e-6)
+true
+
+julia> isapprox(sol2.u[end], u0; atol = 1.0e-4)
+true
+```
 """
 function prepare(;
         E = nothing, B = nothing, F = nothing, species = Proton,
@@ -173,6 +196,27 @@ end
     prepare_canonical(; phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing, kwargs...)
 
 [`PotentialField`](@ref) and [`prepare`](@ref) in one call, for `TraceCanonicalProblem`.
+
+# Examples
+```jldoctest
+julia> A(x) = SA[0.0, 1.0e-8 * x[1], 0.0];
+
+julia> p = prepare_canonical(; A, species = Proton);
+
+julia> x0 = SA[0.0, 0.0, 0.0]; v0 = SA[0.0, 1.0, 0.0];
+
+julia> u0 = TestParticle.velocity_to_canonical(x0, v0, p);
+
+julia> prob = TraceCanonicalProblem(u0, (0.0, 1.0), p);
+
+julia> sol = solve(prob, Vern7(); reltol = 1.0e-9, abstol = 1.0e-9);
+
+julia> sol.retcode == TestParticle.ReturnCode.Success
+true
+
+julia> isapprox(sol.u[end][5], u0[5]; rtol = 1.0e-9)
+true
+```
 """
 prepare_canonical(;
     phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing,

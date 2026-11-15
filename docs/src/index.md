@@ -4,38 +4,63 @@ CurrentModule = TestParticle
 
 # TestParticle.jl
 
-TestParticle.jl is a flexible tool for tracing charged particles in electromagnetic or body force fields. It supports three-dimensional particle tracking in both relativistic and non-relativistic regimes.
-
-The package handles field definitions in two ways:
-
-- *Analytical Fields*: User-defined functions that calculate field values at specific spatial coordinates.
-
-- *Numerical Fields*: Discretized fields constructed directly with coordinates or using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and interpolated via [FastInterpolations.jl](https://projecttorreypines.github.io/FastInterpolations.jl/stable/).
-
-The core trajectory integration is powered by and tight to the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) ecosystem, solving the Ordinary Differential Equations (ODEs) of motion.
-
-To accommodate different performance needs, the API provides:
-
-- *In-place versions*: Functions ending in `!`.
-
-- *Out-of-place versions*: Functions optimized with StaticArrays. Note that this requires the initial conditions to be passed as a static vector.
-
-For a theoretical background on the physics involved, please refer to [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html).
+Test-particle tracing in analytical or numerical fields (via [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) and [FastInterpolations.jl](https://projecttorreypines.github.io/FastInterpolations.jl/stable/)) using [SciML](https://docs.sciml.ai/DiffEqDocs/stable/) ODE solvers and native particle pushers. For theoretical background, see [Single-Particle Motions](https://henry2004y.github.io/KeyNotes/contents/single.html).
 
 ## Installation
 
 ```julia
-julia> ]
-pkg> add TestParticle
+using Pkg
+Pkg.add("TestParticle")
 ```
+
+Load a solver package (`OrdinaryDiffEqVerner` / `OrdinaryDiffEq` or `BorisPushers`) for integration, and `GLMakie` / `CairoMakie` / `Plots` when plotting trajectories.
 
 ## Usage
 
-Familiarity with the [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl) workflow is recommended, as TestParticle.jl builds directly upon its ecosystem.
+Trace a proton in a 10 nT uniform magnetic field (SI units by default) using `TraceProblem` with either a SciML ODE solver or native [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers):
 
-The primary role of this package is to automate the construction of the ODE system based on Newton's second law. This allows users to focus on defining the field configurations and particle initial conditions. For practical demonstrations, please refer to the examples.
+```jldoctest
+julia> using TestParticle, OrdinaryDiffEqVerner, BorisPushers, StaticArrays
 
-In addition to standard integrators, TestParticle.jl works with a native implementation of the Boris solver from [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers), loaded with `using BorisPushers`. It exposes an interface similar to DifferentialEquations.jl for ease of adoption. Further details are provided in the subsequent sections. Check more in [examples](@ref).
+julia> B(x) = SA[0.0, 0.0, 1.0e-8];
+
+julia> u0 = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1];
+
+julia> tspan = (0.0, 20.0);
+
+julia> param = prepare(; B, species = Proton);
+
+julia> prob = TraceProblem(u0, tspan, param);
+
+julia> sol = solve(prob, Vern7());
+
+julia> dt = 1.0e-2;
+
+julia> sol_boris = solve(prob, Boris(); dt, saveat = 10 * dt);
+
+julia> sol_hyper = solve(prob, MultistepBoris6(; n = 4); dt);
+
+julia> sol_adapt = solve(prob, AdaptiveBoris(; safety = 0.1));
+
+julia> all(s -> s.retcode == TestParticle.ReturnCode.Success, (sol, sol_boris, sol_hyper, sol_adapt))
+true
+```
+
+Pass a `Vector` `u0` for in-place RHS evaluation or an `SVector` for out-of-place evaluation.
+
+## Models and Solvers
+
+| Model | Setup & Problem | State `u0` | Solvers | Guide |
+| :--- | :--- | :--- | :--- | :--- |
+| `FullOrbit` (default) | `p = prepare(; E, B, F)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `Boris`, `MultistepBoris6`, `AdaptiveBoris`, SciML ODE | [Boris Pusher](@ref Boris-Pusher) |
+| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | SciML ODE (`Vern7`, `Vern9`, ...) | [Numerical Methods](@ref) |
+| `GuidingCenter` | `u0_gc, p_gc = prepare_gc(u0; E, B)`<br>`TraceGCProblem(u0_gc, tspan, p_gc)` | `[X..., v∥]` | SciML ODE (`Vern7`, `RK4`, ...) | [Guiding Center](@ref) |
+| Hybrid GC–FO | `p = prepare(; E, B)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `AdaptiveHybrid(; dtmax)` | [Hybrid GC-FO Solver](@ref) |
+| `Canonical` / `RelativisticCanonical` | `p = prepare_canonical(; phi, A)`<br>`TraceCanonicalProblem(u0, tspan, p)` | `[x..., p...]` | SciML ODE / symplectic | [Canonical Tracing Form](@ref) |
+
+- **Numerical grids**: interpolate array fields with [`build_interpolator`](@ref) before [`prepare`](@ref).
+- **Ensembles & GPUs**: pass `EnsembleThreads()`, `EnsembleDistributed()`, or a `KernelAbstractions` GPU backend to `solve`.
+- **Examples**: browse worked cases under [Examples](@ref examples) or the sidebar sections.
 
 ## Performance and Scaling
 

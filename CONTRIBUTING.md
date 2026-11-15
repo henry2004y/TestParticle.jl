@@ -64,6 +64,12 @@ julia --project=docs -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
 julia --project=docs docs/make.jl
 ```
 
+To run doctests only (without rebuilding VitePress):
+
+```bash
+julia --project=docs docs/make.jl doctest
+```
+
 The generated HTML files will be in `docs/build/`.
 
 ---

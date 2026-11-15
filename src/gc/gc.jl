@@ -117,6 +117,22 @@ end
 Initial guiding-center state `[X..., vpar]` from full-orbit state `xv` and parameters
 `(; q, q2m, μ, E, B)` for tracing it. Omitted fields are zero. `xv` is
 `[x, y, z, vx, vy, vz]`. Field arguments and keywords mirror [`prepare`](@ref).
+
+# Examples
+```jldoctest
+julia> B(x) = SA[0.0, 0.0, 1.0e-8];
+
+julia> u0 = SA[1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+
+julia> u0_gc, p_gc = prepare_gc(u0; B, species = Proton);
+
+julia> prob_gc = TraceGCProblem(u0_gc, (0.0, 1.0), p_gc);
+
+julia> sol_gc = solve(prob_gc, Vern7());
+
+julia> isapprox(sol_gc.u[end], u0_gc; atol = 1.0e-12)
+true
+```
 # TODO: support external forces
 """
 function prepare_gc(xv; species = Proton, q = nothing, m = nothing, t = 0, kw...)

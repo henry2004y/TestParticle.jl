@@ -8,76 +8,58 @@
 
 <img src="https://github.com/henry2004y/TestParticle.jl/blob/master/docs/src/assets/logo.png" align="right" style="padding-left:10px;" width="100"/>
 
-This package provides test particle tracing in an analytical/numerical field via [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) and native solvers that are compatible with the DifferentialEquations interface.
+Test-particle tracing in analytical or numerical fields via [SciML](https://docs.sciml.ai/DiffEqDocs/stable/) ODE solvers and native particle pushers.
 
 ## Installation
 
-In the Julia REPL,
-
 ```julia
-julia> ]
-pkg> add TestParticle
+using Pkg
+Pkg.add("TestParticle")
 ```
 
-Visualization via [Makie](https://makie.juliaplots.org/stable/) and [Plots](https://docs.juliaplots.org/stable/) are supported via recipes. Please refer to each visualization library's documentation for installations.
+Load a solver package (`OrdinaryDiffEqVerner` / `OrdinaryDiffEq` or `BorisPushers`) for integration, and `GLMakie` / `CairoMakie` / `Plots` when plotting trajectories.
 
 ## Usage
 
-TestParticle.jl is designed to work together with [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
-For example, a proton in a static magnetic field can be traced in SI units via
+Trace a proton in a 10 nT uniform magnetic field (SI units by default) using `TraceProblem` with either a SciML ODE solver or native [BorisPushers.jl](lib/BorisPushers):
 
 ```julia
-using TestParticle, OrdinaryDiffEq, StaticArrays
-# Magnetic field
-B(x) = SA[0.0, 0.0, 1e-8]
-# Electric field
-E(x) = SA[0.0, 0.0, 0.0]
-# Initial conditions
-stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 1.0, 0.1]
-   [x0..., v0...]
-end
-# Time span
-tspan = (0, 20)
-# Assemble particle + fields
-param = prepare(; E, B, species = Proton)
-prob = ODEProblem(trace!, stateinit, tspan, param)
-# Trace trajectory and save positions & velocities
+using TestParticle, OrdinaryDiffEqVerner, BorisPushers, StaticArrays
+
+B(x) = SA[0.0, 0.0, 1.0e-8]
+u0 = [1.0, 0.0, 0.0, 0.0, 1.0, 0.1]
+tspan = (0.0, 20.0)
+
+param = prepare(; B, species = Proton)
+prob = TraceProblem(u0, tspan, param)
+
+# Adaptive SciML ODE solver
 sol = solve(prob, Vern7())
+
+# Native Boris pushers (fixed-step, multistep Hyper-Boris, or gyroperiod-adaptive)
+dt = 1.0e-2
+sol_boris = solve(prob, Boris(); dt, saveat = 10 * dt)
+sol_hyper = solve(prob, MultistepBoris6(; n = 4); dt)
+sol_adapt = solve(prob, AdaptiveBoris(; safety = 0.1))
 ```
 
-The native Boris particle pushers are provided by [BorisPushers.jl](lib/BorisPushers)
-and follow a similar interface once it is loaded:
-
-```julia
-using BorisPushers
-dt = 1e-2 # fixed time step, about 1/650 of the gyroperiod (≈ 6.6 s)
-prob = TraceProblem(stateinit, tspan, param)
-# Standard Boris solver
-sol = solve(prob, Boris(); dt, saveat = 10 * dt)
-```
-
-Besides the standard Boris method, we also support various advanced Boris solvers:
-
-- **Adaptive Boris**: Automatic time step selection based on local gyroperiod.
-- **Multistep Boris**: Sub-cycling and higher-order gyrophase correction ([Zenitani & Kato 2025](https://arxiv.org/abs/2505.02270)).
-
-```julia
-# Adaptive Boris
-sol_adaptive = solve(prob, AdaptiveBoris(safety=0.1))
-
-# 4th-order Multistep Boris with 2 substeps
-sol_multi = solve(prob, MultistepBoris4(n=2); dt)
-
-# Adaptive 4th-order Multistep Boris
-sol_adaptive_multi = solve(prob, AdaptiveMultistepBoris{4}(n=2, safety=0.1))
-```
-
-For plotting with Makie,
+Plot the orbit with Makie:
 
 ```julia
 using GLMakie
-
-plot(sol, idxs=(1, 2, 3))
+plot(sol; idxs = (1, 2, 3))
 ```
 
-More tutorials and examples can be found in the [documentation](https://henry2004y.github.io/TestParticle.jl/dev/).
+## Models and Solvers
+
+| Model | Setup & Problem | State `u0` | Solvers | Guide |
+| :--- | :--- | :--- | :--- | :--- |
+| `FullOrbit` (default) | `p = prepare(; E, B, F)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `Boris`, `MultistepBoris6`, `AdaptiveBoris`, SciML ODE | [Boris Pusher](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/boris) |
+| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | SciML ODE (`Vern7`, `Vern9`, ...) | [Numerical Methods](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/numerical_methods) |
+| `GuidingCenter` | `u0_gc, p_gc = prepare_gc(u0; E, B)`<br>`TraceGCProblem(u0_gc, tspan, p_gc)` | `[X..., v∥]` | SciML ODE (`Vern7`, `RK4`, ...) | [Guiding Center](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/guiding_center) |
+| Hybrid GC–FO | `p = prepare(; E, B)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `AdaptiveHybrid(; dtmax)` | [Hybrid Solver](https://henry2004y.github.io/TestParticle.jl/dev/features/demo_hybrid) |
+| `Canonical` / `RelativisticCanonical` | `p = prepare_canonical(; phi, A)`<br>`TraceCanonicalProblem(u0, tspan, p)` | `[x..., p...]` | SciML ODE / symplectic | [Canonical Form](https://henry2004y.github.io/TestParticle.jl/dev/features/demo_canonical) |
+
+- **Numerical grids**: interpolate array fields with `build_interpolator(A, grids; bc)` before `prepare`.
+- **Ensembles & GPUs**: pass `EnsembleThreads()`, `EnsembleDistributed()`, or a `KernelAbstractions` GPU backend to `solve`.
+- **Documentation & Contributing**: see the [Documentation](https://henry2004y.github.io/TestParticle.jl/dev/) and [CONTRIBUTING.md](CONTRIBUTING.md).
