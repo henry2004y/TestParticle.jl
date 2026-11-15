@@ -9,6 +9,7 @@ is_time_dependent(f) = applicable(f, zeros(3), 0.0) || applicable(f, zeros(6), 0
 
 is_time_dependent(::AbstractField{itd}) where {itd} = itd
 is_time_dependent(::AbstractFieldInterpolator) = false
+is_time_dependent(::Union{LazyTimeInterpolator, _LazyFieldComponent}) = true
 
 """
     Field(f; time_dependent=is_time_dependent(f))
