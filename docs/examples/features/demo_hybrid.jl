@@ -10,7 +10,7 @@
 # (`ε` small, adiabatic → GC).
 
 import DisplayAs #hide
-using TestParticle, OrdinaryDiffEq, StaticArrays
+using TestParticle, OrdinaryDiffEqVerner, StaticArrays
 using BorisPushers
 using TestParticle: get_adiabaticity
 import TestParticle as TP
@@ -73,8 +73,8 @@ T_gyro = 2π / Ω
 tspan = (0.0, 30 * T_gyro)
 
 param_fo = prepare(; B = bottle_B, species = Proton)
-prob_fo = ODEProblem(trace, u0, tspan, param_fo)
-sol_fo = solve(prob_fo, Vern6())
+prob_fo = TraceProblem(u0, tspan, param_fo)
+sol_fo = solve(prob_fo, Vern7())
 
 ## Verify trapping: z should oscillate, not diverge
 z_fo = [u[3] for u in sol_fo.u]
@@ -92,8 +92,8 @@ bottle_B_static(x) = bottle_B(x, 0.0)
 stateinit_gc, param_gc = TP.prepare_gc(
     u0; B = bottle_B_static, species = Proton
 )
-prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern6());
+prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
+sol_gc = solve(prob_gc, Vern7());
 
 # ## Step 3: Hybrid Solver
 #
@@ -112,7 +112,7 @@ alg = AdaptiveHybrid(;
 )
 
 # Both modes adapt their step to the local field: the full-orbit mode follows
-# the gyroperiod, the guiding-center mode uses an embedded RK45 estimate. The
+# the gyroperiod, and the guiding-center mode uses `Vern7`. The
 # adiabaticity is checked after every `check_interval` accepted steps *or*
 # every `check_dt` of simulated time, whichever comes first — a guiding-center
 # step can otherwise span many gyroperiods and enter a non-adiabatic region
@@ -141,9 +141,9 @@ clims = extrema(log10.(clamp.(vcat(ε_fo, ε_gc, ε_hybrid), ε_clamp_lo, Inf)))
 # ## Visualization
 #
 # All three trajectories are sampled on the same uniform time grid before plotting.
-# `sol_fo` and `sol_gc` are Vern6 ODE solutions with high-order dense output; the
-# native hybrid solution interpolates linearly between its saved nodes, so its
-# curve keeps the straight segments of its much coarser output. Sampling more
+# `sol_fo` and `sol_gc` are `Vern7` ODE solutions; the native hybrid solution
+# interpolates linearly between its saved nodes, so its curve keeps the straight
+# segments of its much coarser output. Sampling more
 # densely does not add information: that coarseness is the point of the hybrid
 # solver — it saves far fewer points — not a measure of accuracy. Shared axis
 # limits are taken from the drawn curves, so no trajectory is clipped.
@@ -290,11 +290,12 @@ f = DisplayAs.PNG(f) #hide
 
 # ## Performance Comparison
 #
-# Finally, we compare the execution time, memory and output size of the three
-# solvers. Pointwise position differences are a poor accuracy measure in this
-# bottle: the gyrophase and the bounce phase are exponentially sensitive, and the
-# guiding-center equations describe a different curve from the particle. The drift
-# of the kinetic energy is the robust numerical accuracy measure here.
+# Finally, we compare the execution time, memory and output size of the
+# solvers (including native [`AdaptiveBoris`](@ref) alongside `Vern7`). Pointwise
+# position differences are a poor accuracy measure in this bottle: the gyrophase
+# and the bounce phase are exponentially sensitive, and the guiding-center
+# equations describe a different curve from the particle. The drift of the
+# kinetic energy is the robust numerical accuracy measure here.
 
 "Largest relative energy drift over the trajectory."
 function energy_drift(sol)
@@ -308,20 +309,29 @@ function energy_drift(sol)
     return (maximum(e) - minimum(e)) / e[1]
 end
 
-b_fo = @be solve(prob_fo, Vern6())
-b_gc = @be solve(prob_gc, Vern6())
+alg_boris = AdaptiveBoris(; safety = 0.1)
+sol_boris = solve(prob_fo, alg_boris; dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro)
+
+b_fo = @be solve(prob_fo, Vern7())
+b_boris = @be solve(prob_fo, alg_boris; dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro)
+b_gc = @be solve(prob_gc, Vern7())
 b_hy = @be solve(prob_hybrid, alg; verbose = false)
 
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Allocations | Saved points | Energy drift |") #hide
 println(io, "| :--- | :--- | :--- | ---: | ---: |") #hide
 Printf.@printf(
-    io, "| Full Orbit | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    io, "| Full Orbit (Vern7) | %.2f μs | %.2f KiB | %d | %.1e |\n",
     median(b_fo).time * 1.0e6, median(b_fo).bytes / 1024,
     length(sol_fo.t), energy_drift(sol_fo)
 ) #hide
 Printf.@printf(
-    io, "| Guiding Center | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    io, "| Full Orbit (AdaptiveBoris) | %.2f μs | %.2f KiB | %d | %.1e |\n",
+    median(b_boris).time * 1.0e6, median(b_boris).bytes / 1024,
+    length(sol_boris.t), energy_drift(sol_boris)
+) #hide
+Printf.@printf(
+    io, "| Guiding Center (Vern7) | %.2f μs | %.2f KiB | %d | %.1e |\n",
     median(b_gc).time * 1.0e6, median(b_gc).bytes / 1024,
     length(sol_gc.t), energy_drift(sol_gc)
 ) #hide

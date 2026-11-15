@@ -89,34 +89,35 @@ Returns `Inf` if the field is zero or the field lines are straight.
 end
 
 """
-    get_adiabaticity(r, Bfunc, q, m, μ, t=0.0)
-    get_adiabaticity(r, Bfunc, μ, t=0.0; species = Proton)
+    get_adiabaticity(r, Bfunc, q, m, μ, t=0.0; vpar=0)
+    get_adiabaticity(r, Bfunc, μ, t=0.0; species = Proton, vpar=0)
 
 Calculate the adiabaticity parameter `ϵ = ρ / Rc` at position `r` and time `t`.
-`ρ` is the gyroradius and `Rc` is the radius of curvature of the magnetic field.
+`ρ = √(vpar² + 2μ|B|/m) / (|q/m| |B|)` is the total-speed gyroradius and `Rc` is
+the radius of curvature of the magnetic field.
 """
-@inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0)
+@inline function get_adiabaticity(r, Bfunc, q, m, μ, t = 0.0; vpar = 0)
     (; κ, Bmag) = get_magnetic_properties(r, t, Bfunc)
     iszero(Bmag) && return Inf
 
-    ρ = sqrt(2 * μ * m / Bmag) / abs(q) # Gyroradius
+    q2m = q / m
+    ρ = hypot(vpar, sqrt(2 * (μ / m) * Bmag)) / (abs(q2m) * Bmag) # Gyroradius
 
     return ρ * norm(κ)
 end
 
-function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton)
-    return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t)
+function get_adiabaticity(r, Bfunc, μ, t::Number = 0.0; species = Proton, vpar = 0)
+    return get_adiabaticity(r, Bfunc, species.q, species.m, μ, t; vpar)
 end
 
 # At the particle, not its guiding center: near a field null `x - ρ` lands far away in the
 # strong field, and `ϵ` there would read as adiabatic.
 function get_adiabaticity(xv, p::NamedTuple, t; model = _param_model(p))
     x = get_x(xv)
-    B = p.B(x, t)
-    Bmag = norm(B)
-    iszero(Bmag) && return Inf
-    q, m, _, μ = _adiabatic_particle(model, xv, p, p.E(x, t), B / Bmag, Bmag)
-    return get_adiabaticity(x, p.B, q, m, μ, t)
+    mp = get_magnetic_properties(x, t, p.B)
+    iszero(mp.Bmag) && return Inf
+    q, m, vpar, μ = _adiabatic_particle(model, xv, p, p.E(x, t), mp.b̂, mp.Bmag)
+    return _adiabaticity_components(mp, q, m, μ, vpar)[1]
 end
 
 """
@@ -142,8 +143,8 @@ function get_adiabaticity(sol::AbstractODESolution, t)
 end
 
 """
-    adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
-    adiabaticity_components(x, Bfunc, μ, t = 0.0; species = Proton)
+    adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0; vpar = 0)
+    adiabaticity_components(x, Bfunc, μ, t = 0.0; species = Proton, vpar = 0)
 
 Return the tuple `(ε_curv, ε_gradB, ε_jac)` of first-order adiabaticity
 parameters at position `x` and time `t`:
@@ -159,25 +160,26 @@ parameters at position `x` and time `t`:
   direction rotates in space with constant magnitude). It always satisfies
   `ε_jac ≥ max(ε_curv, ε_gradB)`.
 
-`ρ = √(2 μ m / |B|) / |q|` is the gyroradius. When `|B| = 0` all three
-components are `Inf`.
+`ρ = √(vpar² + 2 μ |B| / m) / (|q/m| |B|)` is the total-speed gyroradius. When
+`|B| = 0` all three components are `Inf`.
 """
-@inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0)
-    return _adiabaticity_components(get_magnetic_properties(x, t, Bfunc), q, m, μ)
+@inline function adiabaticity_components(x, Bfunc, q, m, μ, t = 0.0; vpar = 0)
+    return _adiabaticity_components(get_magnetic_properties(x, t, Bfunc), q, m, μ, vpar)
 end
 
 """
-    _adiabaticity_components(mp, q, m, μ)
+    _adiabaticity_components(mp, q, m, μ, vpar = 0)
 
 Same as [`adiabaticity_components`](@ref) but taking the
 [`get_magnetic_properties`](@ref) output `mp` instead of recomputing it, for
 callers that already have the field derivatives in hand.
 """
-@inline function _adiabaticity_components(mp, q, m, μ)
+@inline function _adiabaticity_components(mp, q, m, μ, vpar = 0)
     (; ∇B, κ, Bmag, JB) = mp
     iszero(Bmag) && return (Inf, Inf, Inf)
 
-    ρ = sqrt(2 * μ * m / Bmag) / abs(q)
+    q2m = q / m
+    ρ = hypot(vpar, sqrt(2 * (μ / m) * Bmag)) / (abs(q2m) * Bmag)
     ε_curv = ρ * norm(κ)
     ε_gradB = ρ * norm(∇B) / Bmag
 
@@ -188,6 +190,6 @@ callers that already have the field derivatives in hand.
     return (ε_curv, ε_gradB, ε_jac)
 end
 
-function adiabaticity_components(x, Bfunc, μ, t::Number = 0.0; species = Proton)
-    return adiabaticity_components(x, Bfunc, species.q, species.m, μ, t)
+function adiabaticity_components(x, Bfunc, μ, t::Number = 0.0; species = Proton, vpar = 0)
+    return adiabaticity_components(x, Bfunc, species.q, species.m, μ, t; vpar)
 end
