@@ -55,17 +55,18 @@ ignore `t`.
 end
 
 """
-    _gc_adia_parameters(xv, E, B, q, m, t) -> (X, μ)
+    _gc_adia_parameters(xv, E, B, q, m, t) -> (X, vpar, μ)
 
-Guiding-center position and magnetic moment of the full-orbit state `xv` — the
-two quantities an adiabaticity estimate needs. The gyrophase (`get_perp_vector`
-and an `atan2`) is skipped because the estimate never uses it; the values
-match those of [`_get_gc_parameters`](@ref).
+Guiding-center position, parallel velocity, and magnetic moment of the
+full-orbit state `xv` — the quantities an adiabaticity estimate needs. The
+gyrophase (`get_perp_vector` and an `atan2`) is skipped because the estimate
+never uses it; the values match those of [`_get_gc_parameters`](@ref).
 """
 @inline function _gc_adia_parameters(xv, E, B, q, m, t)
     x, v = _split_xv(xv)
     X = _gc_position(x, v, B, q, m, t)
-    return X, _gc_frame(X, v, E, B, m, t).μ
+    f = _gc_frame(X, v, E, B, m, t)
+    return X, f.vpar, f.μ
 end
 
 """
@@ -200,7 +201,7 @@ end
     v_E = (E × b̂) * inv_Bmag
 
     # perp speed, μ = m * w^2 / (2B)
-    w = sqrt(2 * μ * Bmag / m)
+    w = sqrt(2 * (μ / m) * Bmag)
 
     # perp vector
     e1, e2 = _unit_perp_vectors(b̂)

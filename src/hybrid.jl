@@ -19,7 +19,8 @@ _needs_fsal_init(::Any) = true
 
 Hybrid algorithm that switches between adaptive Boris (FO) and a guiding-center ODE
 solver `gc_alg` (defaulting to `Vern7()` when `OrdinaryDiffEqVerner` is loaded), used as
-`solve(TraceProblem(u0, tspan, p), alg)` with the full-orbit state `u0`.
+`solve(TraceProblem(u0, tspan, p), alg)` with the full-orbit state `u0`. Both forward
+(`tspan[2] > tspan[1]`) and backward (`tspan[2] < tspan[1]`) time spans are supported.
 
 Mode switching uses hysteresis with two adiabaticity thresholds to avoid
 rapid GC ↔ FO chattering near a single bound:
@@ -29,9 +30,11 @@ With `α ≥ β` the band `β ≤ ε < α` forms a buffer where the current mode
 retained, so a particle hovering near the boundary does not oscillate.
 
 The adiabaticity parameter `ε` compared against the thresholds is selected by
-the `adiabaticity` field, which may be:
-- `:curvature` (default) → `ε_curv = ρ_L / R_c` (curvature drift; reproduces
-  the legacy `get_adiabaticity` behavior exactly),
+the `adiabaticity` field, using the total drift-frame gyroradius
+`ρ_L = √(v_∥² + 2 μ |B| / m) / (|q/m| |B|)` so field-aligned (`μ ≈ 0`)
+particles still switch at curved or sheared current sheets:
+- `:curvature` (default) → `ε_curv = ρ_L / R_c` (curvature drift; matches
+  `get_adiabaticity` in full-orbit checks),
 - `:gradB` → `ε_gradB = ρ_L / L_B`, with `L_B = |B| / |∇B|`,
 - `:both` → OR of the two criteria: the solver switches to the full orbit
   whenever *either* `ε_curv ≥ α` *or* `ε_gradB ≥ α` (equivalently
@@ -42,6 +45,10 @@ the `adiabaticity` field, which may be:
   shear at once, so it switches to full orbit in non-adiabatic regions that
   `:curvature`/`:gradB` miss (e.g. a field whose direction rotates in space
   while keeping constant magnitude).
+
+Full-orbit checks evaluate `max(ε(x), ε(X))` across the particle position `x`
+and its candidate guiding center `X` so magnetic nulls cannot map `X` into a
+distant adiabatic region.
 
 Both modes adapt their step size to the local field. The full-orbit mode uses a
 Boris step `dt = 2π * safety_fo / (|q/m| * |B|)` clipped to `[dtmin, dtmax]` and
@@ -80,9 +87,10 @@ mode.
 On the switch to the guiding center, the state is refined by up to
 `switch_correction` fixed-point iterations of `X = x - ρ(X)` instead of the
 zeroth-order `X = x - ρ(x)` map, which removes the `O(ε)` jump that the switch
-would otherwise introduce. That map is the exact inverse of the reconstruction
-back to the full orbit, so the round trip through a switch returns the particle
-where it was. Set `switch_correction = 0` for the legacy behavior.
+would otherwise introduce. The fixed point of `X = x - ρ(X)` is the inverse
+of the reconstruction back to the full orbit, so when the fixed-point map
+converges a round trip through a switch returns the particle close to where it
+started. Set `switch_correction = 0` for the legacy behavior.
 
 Each check point records only the adiabaticity value used by the selected
 `adiabaticity` mode (a single scalar per check) together with the active mode
@@ -200,9 +208,11 @@ function gc_step!(
         integrator::SciMLBase.DEIntegrator, t_limit, isoutside::F, p, tspan_end
     ) where {F}
     t_before = integrator.t
+    tdir = integrator.tdir
     dt_max = t_limit - t_before
     dt_next = integrator.iter == 0 ? integrator.dt : SciMLBase.get_proposed_dt(integrator)
-    if zero(dt_max) < dt_max < dt_next && t_limit < tspan_end
+    if zero(dt_max) < tdir * dt_max < tdir * dt_next &&
+            tdir * (tspan_end - t_limit) > zero(dt_max)
         if integrator.iter == 0
             integrator.dt = dt_max
         else

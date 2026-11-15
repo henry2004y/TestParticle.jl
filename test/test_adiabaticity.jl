@@ -105,6 +105,30 @@ fo_frac(sol) = count(==(:FO), sol.stats.adiabaticity.mode) /
         @test comps[3] ≈ ρ * k rtol = 1.0e-6  # ε_jac = ρ ‖JB‖_F / |B| = ρ k
         @test comps[3] > 0.0
     end
+
+    @testset "parallel velocity contribution" begin
+        x = SA[0.5, 0.0, 0.2]
+        vpar = 1.0e5
+        Bfunc = TP.Field(curved_B_t)
+        B_val = Bfunc(x, 0.0)
+        Bmag = sqrt(sum(abs2, B_val))
+        b = B_val / Bmag
+        μ_eq = m * vpar^2 / (2 * Bmag)
+
+        comps_par = TP.adiabaticity_components(x, Bfunc, q, m, 0.0, 0.0; vpar)
+        comps_perp = TP.adiabaticity_components(x, Bfunc, q, m, μ_eq, 0.0)
+        @test all(c -> isapprox(c[1], c[2]; rtol = 1.0e-12), zip(comps_par, comps_perp))
+        @test comps_par[1] > 0.0
+
+        ε_par = TP.get_adiabaticity(x, Bfunc, q, m, 0.0, 0.0; vpar)
+        ε_perp = TP.get_adiabaticity(x, Bfunc, q, m, μ_eq, 0.0)
+        @test ε_par ≈ ε_perp rtol = 1.0e-12
+        @test ε_par ≈ max(comps_par[1], comps_par[2]) rtol = 1.0e-12
+
+        xv = vcat(x, vpar * b)
+        p_curv = (; q2m = q / m, m, E = TP.ZeroField(), B = Bfunc, F = TP.ZeroField())
+        @test TP.get_adiabaticity(xv, p_curv, 0.0) ≈ ε_par rtol = 1.0e-12
+    end
 end
 
 @testset "AdaptiveHybrid adiabaticity selection" begin

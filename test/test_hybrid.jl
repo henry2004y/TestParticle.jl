@@ -25,6 +25,36 @@ const E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 "Uniform 0.01 T field along +z, flat enough to stay adiabatic."
 B_flat(x, t) = SA[0.0, 0.0, 0.01]
 
+"Harris-type current sheet with weak normal guide component."
+function harris_B(x, t)
+    B0 = 2.0e-8
+    Bn = 2.0e-9
+    L = 2.0e4
+    return SA[B0 * tanh(x[3] / L), 0.0, Bn]
+end
+
+"Thin reversing sheet with weak normal field so X_gc teleports far into uniform lobes."
+near_null_sheet_B(x, t) = SA[1.0e-5 * tanh(x[3] / 1.0e3), 0.0, 1.0e-11]
+
+"Thin reversing sheet with an exact magnetic null at z = 0."
+exact_null_sheet_B(x, t) = SA[1.0e-5 * tanh(x[3] / 1.0e3), 0.0, 0.0]
+
+"Float32-preserving sheared magnetic field."
+function sheared_B32(x, t)
+    T = eltype(x)
+    return SA[T(1.0e-4), T(5.0e-4) * x[3], T(0)]
+end
+
+"Float32-preserving magnetic bottle."
+function bottle_B32(x, t)
+    T = eltype(x)
+    B0 = T(1.0e-6)
+    L = T(100.0)
+    k = one(T) + (x[3] / L)^2
+    dk = T(2) * x[3] / L^2
+    return SA[-T(0.5) * B0 * x[1] * dk, -T(0.5) * B0 * x[2] * dk, B0 * k]
+end
+
 const B_field_flat = TP.Field(B_flat)
 const B_field_bottle = TP.Field(bottle_B)
 const B_field_sheared = TP.Field(sheared_B)
@@ -241,7 +271,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test_throws ArgumentError solve(
             TraceProblem(SA[0.0, 0.0, 0.0], (0.0, 1.0), p_dummy), alg
         )
-        @test_throws ArgumentError solve(TraceProblem(u0_6, (1.0, 0.0), p_dummy), alg)
+        @test_throws ArgumentError solve(TraceProblem(u0_6, (1.0, 1.0), p_dummy), alg)
     end
 
     # 10. Early termination with isoutside and maxiters
@@ -495,13 +525,16 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         # The paths compared below compile separately, and `muladd` is free to fuse
         # differently in each, so they agree only up to rounding on some CPUs.
 
-        # The lean two-element version used by the check drops the gyrophase but
-        # returns the same guiding center and magnetic moment.
-        X_check, μ_check = TP._gc_adia_parameters(u, E_field, B_field_bottle, q, m, 0.0)
-        X_full, _, _, _, μ_full, _ = TP._get_gc_parameters(
+        # The lean three-element version used by the check drops the gyrophase but
+        # returns the same guiding center, parallel velocity, and magnetic moment.
+        X_check, vpar_check, μ_check = TP._gc_adia_parameters(
+            u, E_field, B_field_bottle, q, m, 0.0
+        )
+        X_full, vpar_full, _, _, μ_full, _ = TP._get_gc_parameters(
             u, E_field, B_field_bottle, q, m, 0.0
         )
         @test X_check ≈ X_full
+        @test vpar_check ≈ vpar_full
         @test μ_check ≈ μ_full
 
         # Custom `gc_alg` can be passed to `AdaptiveHybrid`.
@@ -566,8 +599,25 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
 
         @test sol_flat.retcode == TP.ReturnCode.Success
         @test sol_long.retcode == TP.ReturnCode.Success
-        @test length(sol_long.stats.adiabaticity.t) <
-            length(sol_flat.stats.adiabaticity.t)
+        @test sol_long.stats.adiabaticity.t[2] > 2 * sol_flat.stats.adiabaticity.t[2]
+
+        u0_sh = SA[0.0, 0.0, 0.0, 1.0e5, 0.0, 1.0e5]
+        p_sh = (; q2m, m, E = E_field, B = B_field_sheared, F = TP.ZeroField())
+        prob_sh = TraceProblem(u0_sh, (0.0, 1.0e-4), p_sh)
+        base_sh = (;
+            threshold = 0.1, dtmax = 1.0e-6, adiabaticity = :jacobian,
+            check_interval = 10,
+        )
+        sol_sh_flat = solve(
+            prob_sh, AdaptiveHybrid(; base_sh..., check_margin_max = 1.0)
+        ).u[1]
+        sol_sh_long = solve(
+            prob_sh, AdaptiveHybrid(; base_sh..., check_margin_max = 10.0)
+        ).u[1]
+        @test sol_sh_flat.retcode == TP.ReturnCode.Success
+        @test sol_sh_long.retcode == TP.ReturnCode.Success
+        @test length(sol_sh_long.stats.adiabaticity.t) <
+            length(sol_sh_flat.stats.adiabaticity.t)
     end
 
     # 19. Validation of the new keywords.
@@ -584,6 +634,206 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test_throws ArgumentError AdaptiveHybrid(;
             threshold = 0.1, dtmax = 1.0, check_margin_max = 0.5
         )
+    end
+
+    @testset "field-aligned current sheet" begin
+        L = 2.0e4
+        r0 = SA[0.0, 0.0, -5 * L]
+        B_init = harris_B(r0, 0.0)
+        b_init = B_init / sqrt(sum(abs2, B_init))
+        v0 = 4.0e5 * b_init
+        u0 = vcat(r0, v0)
+        p = (; q2m, m, E = E_field, B = TP.Field(harris_B), F = TP.ZeroField())
+        prob = TraceProblem(u0, (0.0, 20.0), p)
+        alg = AdaptiveHybrid(; threshold = 0.05, dtmax = 0.5, check_interval = 5)
+        sol_hyb = solve(prob, alg).u[1]
+        sol_boris = solve(prob, Boris(); dt = 0.05)
+
+        @test sol_hyb.retcode == TP.ReturnCode.Success
+        @test :GC in sol_hyb.stats.adiabaticity.mode
+        @test :FO in sol_hyb.stats.adiabaticity.mode
+        _, _, μ_init = TP._gc_adia_parameters(u0, E_field, p.B, q, m, 0.0)
+        _, _, μ_boris = TP._gc_adia_parameters(
+            sol_boris.u[end], E_field, p.B, q, m, sol_boris.t[end]
+        )
+        _, _, μ_hyb = TP._gc_adia_parameters(
+            sol_hyb.u[end], E_field, p.B, q, m, sol_hyb.t[end]
+        )
+        @test μ_init < 1.0e-30
+        @test μ_boris > 1.0e-13
+        @test μ_hyb > 1.0e-13
+        @test sign(sol_hyb.u[end][3]) == sign(sol_boris.u[end][3])
+    end
+
+    @testset "current-sheet null guard" begin
+        # Near-null sheet where candidate X_gc teleports into uniform lobe (ε(X_gc) ≈ 0),
+        # while local ε(r) is huge.
+        u0_near = SA[0.0, 0.0, 1.0, 0.0, 1.0e5, 1.0e3]
+        p_near = (;
+            q2m, m, E = E_field, B = TP.Field(near_null_sheet_B), F = TP.ZeroField(),
+        )
+        alg_near = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 0.01, check_interval = 2,
+            adiabaticity = :both,
+        )
+        sol_near = solve(TraceProblem(u0_near, (0.0, 0.05), p_near), alg_near).u[1]
+        @test sol_near.retcode == TP.ReturnCode.Success
+        @test all(==(:FO), sol_near.stats.adiabaticity.mode)
+        @test all(>(0.1), sol_near.stats.adiabaticity.components)
+
+        # Exact null sheet crossing z = 0 and starting at z = 0 should produce no NaNs
+        # and stay in :FO.
+        u0_null = SA[0.0, 0.0, 1.0, 0.0, 1.0e5, -2.0e2]
+        p_null = (;
+            q2m, m, E = E_field, B = TP.Field(exact_null_sheet_B), F = TP.ZeroField(),
+        )
+        alg_null = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 0.005, check_interval = 1,
+            adiabaticity = :both,
+        )
+        sol_null = solve(TraceProblem(u0_null, (0.0, 0.02), p_null), alg_null).u[1]
+        @test sol_null.retcode == TP.ReturnCode.Success
+        @test all(==(:FO), sol_null.stats.adiabaticity.mode)
+        @test !any(isnan, sol_null.stats.adiabaticity.components)
+        @test !any(u -> any(isnan, u), sol_null.u)
+
+        u0_zero = SA[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
+        sol_zero = solve(TraceProblem(u0_zero, (0.0, 0.02), p_null), alg_null).u[1]
+        @test sol_zero.retcode == TP.ReturnCode.Success
+        @test all(==(:FO), sol_zero.stats.adiabaticity.mode)
+        @test !any(isnan, sol_zero.stats.adiabaticity.components)
+        @test !any(u -> any(isnan, u), sol_zero.u)
+    end
+
+    @testset "saveat in FO and mixed modes" begin
+        T_gyro = gyroperiod(bottle_B0)
+        u0_fo = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        p_bottle = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
+        ts_fo = collect(range(0.0, 5 * T_gyro; length = 6))
+        alg_fo = AdaptiveHybrid(;
+            threshold = 1.0e-5, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+        )
+        sol_fo = solve(
+            TraceProblem(u0_fo, (0.0, 5 * T_gyro), p_bottle), alg_fo; saveat = ts_fo
+        ).u[1]
+        @test sol_fo.retcode == TP.ReturnCode.Success
+        @test all(==(:FO), sol_fo.stats.adiabaticity.mode)
+        @test sol_fo.t ≈ ts_fo
+        @test length(sol_fo.u) == length(ts_fo)
+
+        ts_mix = collect(range(0.0, 30 * T_gyro; length = 16))
+        alg_mix = AdaptiveHybrid(;
+            threshold = 0.05, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            check_interval = 10,
+        )
+        sol_mix = solve(
+            TraceProblem(u0_fo, (0.0, 30 * T_gyro), p_bottle), alg_mix; saveat = ts_mix
+        ).u[1]
+        @test sol_mix.retcode == TP.ReturnCode.Success
+        @test :GC in sol_mix.stats.adiabaticity.mode
+        @test :FO in sol_mix.stats.adiabaticity.mode
+        @test sol_mix.t ≈ ts_mix
+        @test length(sol_mix.u) == length(ts_mix)
+    end
+
+    @testset "backward integration" begin
+        T_gyro = gyroperiod(bottle_B0)
+        p_bottle = (; q2m, m, E = E_field, B = B_field_bottle, F = TP.ZeroField())
+        p_flat = (; q2m, m, E = E_field, B = B_field_flat, F = TP.ZeroField())
+
+        # Pure FO backward + reversibility
+        u0_fo = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        alg_fo = AdaptiveHybrid(;
+            threshold = 1.0e-5, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+            safety_fo = 0.005,
+        )
+        t_fo = 2 * T_gyro
+        sol_fwd_fo = solve(TraceProblem(u0_fo, (0.0, t_fo), p_bottle), alg_fo).u[1]
+        sol_bwd_fo = solve(
+            TraceProblem(sol_fwd_fo.u[end], (t_fo, 0.0), p_bottle), alg_fo
+        ).u[1]
+        @test sol_bwd_fo.retcode == TP.ReturnCode.Success
+        @test all(==(:FO), sol_bwd_fo.stats.adiabaticity.mode)
+        @test sol_bwd_fo.t[1] == t_fo
+        @test sol_bwd_fo.t[end] == 0.0
+        @test issorted(sol_bwd_fo.t; rev = true)
+        @test sol_bwd_fo.u[end][SA[1, 2, 3]] ≈ u0_fo[SA[1, 2, 3]] rtol = 1.0e-3
+        @test sol_bwd_fo.u[end][SA[4, 5, 6]] ≈ u0_fo[SA[4, 5, 6]] rtol = 1.0e-3
+
+        # Pure GC backward with saveat, small check_dt deadline clipping, and reversibility
+        u0_gc = SA[1.0, 0.0, 0.0, 1.0e3, 0.0, 1.0e4]
+        t_gc = 5.0e-4
+        alg_gc = AdaptiveHybrid(;
+            threshold = 0.1, dtmax = 1.0e-4, check_dt = 2.0e-5, check_interval = 100,
+        )
+        sol_fwd_gc = solve(TraceProblem(u0_gc, (0.0, t_gc), p_flat), alg_gc).u[1]
+        ts_bwd_gc = collect(range(t_gc, 0.0; length = 6))
+        sol_bwd_gc = solve(
+            TraceProblem(sol_fwd_gc.u[end], (t_gc, 0.0), p_flat), alg_gc;
+            saveat = ts_bwd_gc,
+        ).u[1]
+        @test sol_bwd_gc.retcode == TP.ReturnCode.Success
+        @test all(==(:GC), sol_bwd_gc.stats.adiabaticity.mode)
+        @test sol_bwd_gc.t ≈ ts_bwd_gc
+        @test sol_bwd_gc.u[end][SA[1, 2, 3]] ≈ u0_gc[SA[1, 2, 3]] rtol = 1.0e-4
+        @test sol_bwd_gc.u[end][SA[4, 5, 6]] ≈ u0_gc[SA[4, 5, 6]] rtol = 1.0e-4
+
+        # Mixed FO/GC backward
+        u0_mix = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        t_mix = 30 * T_gyro
+        alg_mix = AdaptiveHybrid(;
+            threshold = 0.05, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro, check_interval = 10,
+        )
+        sol_bwd_mix = solve(TraceProblem(u0_mix, (t_mix, 0.0), p_bottle), alg_mix).u[1]
+        @test sol_bwd_mix.retcode == TP.ReturnCode.Success
+        @test sol_bwd_mix.t[1] == t_mix
+        @test sol_bwd_mix.t[end] == 0.0
+        @test issorted(sol_bwd_mix.t; rev = true)
+        @test :GC in sol_bwd_mix.stats.adiabaticity.mode
+        @test :FO in sol_bwd_mix.stats.adiabaticity.mode
+    end
+
+    @testset "Float32 preservation" begin
+        # Electron in sheared field (ensures μ * m32 never underflows to zero)
+        q_e32 = Float32(-abs(TP.qₑ))
+        m_e32 = Float32(TP.mₑ)
+        p_e32 = (;
+            q2m = q_e32 / m_e32, m = m_e32, E = TP.ZeroField(),
+            B = TP.Field(sheared_B32), F = TP.ZeroField(),
+        )
+        u0_e32 = Float32[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
+        alg_e32 = AdaptiveHybrid(;
+            threshold = 0.1f0, dtmax = 1.0f-9, adiabaticity = :jacobian,
+        )
+        sol_e32 = solve(TraceProblem(u0_e32, (0.0f0, 5.0f-9), p_e32), alg_e32).u[1]
+        @test sol_e32.retcode == TP.ReturnCode.Success
+        @test eltype(sol_e32.u[1]) == Float32
+        @test eltype(sol_e32.t) == Float32
+        @test eltype(sol_e32.stats.adiabaticity.t) == Float32
+        @test eltype(sol_e32.stats.adiabaticity.components) == Float32
+        @test !any(isnan, sol_e32.stats.adiabaticity.components)
+        @test all(>(0.0f0), sol_e32.stats.adiabaticity.components)
+        μ_e32 = Float32(0.5 * Float64(m_e32) * 1.0e10 / 1.0e-4)
+        @test TP.adiabaticity_components(
+            SA[0.0f0, 0.0f0, 0.0f0], sheared_B32, q_e32, m_e32, μ_e32, 0.0f0
+        )[3] > 0.0f0
+
+        # Proton in magnetic bottle
+        q_p32 = Float32(q)
+        m_p32 = Float32(m)
+        T_p32 = Float32(gyroperiod(1.0e-6))
+        p_p32 = (;
+            q2m = q_p32 / m_p32, m = m_p32, E = TP.ZeroField(),
+            B = TP.Field(bottle_B32), F = TP.ZeroField(),
+        )
+        u0_p32 = Float32[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+        alg_p32 = AdaptiveHybrid(;
+            threshold = 0.05f0, dtmax = T_p32, dtmin = 1.0f-4 * T_p32,
+        )
+        sol_p32 = solve(TraceProblem(u0_p32, (0.0f0, 5 * T_p32), p_p32), alg_p32).u[1]
+        @test sol_p32.retcode == TP.ReturnCode.Success
+        @test eltype(sol_p32.u[1]) == Float32
+        @test eltype(sol_p32.t) == Float32
     end
 end
 
