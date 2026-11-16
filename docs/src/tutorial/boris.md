@@ -129,6 +129,24 @@ alg = AdaptiveBoris(safety=0.05)
 sol = solve(prob, alg)
 ```
 
+### Relativistic Pushers
+
+When tracing relativistic particles with `TraceProblem{RelativisticOrbit}`, the velocity slots store the relativistic spatial momentum per unit mass $\mathbf{u} = \gamma \mathbf{v}$. All Boris-family solvers support `RelativisticOrbit`:
+
+- **`Boris()`** / **`MultistepBoris{N}()`**: relativistic Boris pusher (using $\gamma$-scaled fields and $\Delta\mathbf{x} = \mathbf{u}_{n+1/2}\,\Delta t / \gamma_{n+1/2}$) and its sub-cycled / Hyper-Boris variants.
+- **`Vay()`**: Vay (2008) Lorentz-invariant pusher that preserves $\mathbf{E} \times \mathbf{B}$ cancellation in relativistic flows.
+- **`HigueraCary()`**: Higuera-Cary (2017) volume-preserving pusher combining the Vay electric advance with exact energy conservation in pure magnetic fields.
+- **`AdaptiveBoris()`**, **`AdaptiveMultistepBoris{N}()`**, **`AdaptiveVay()`**, **`AdaptiveHigueraCary()`**: adaptive counterparts that scale the local gyroperiod by $\gamma = \sqrt{1 + |\mathbf{u}|^2 / c^2}$.
+
+```julia
+prob_rel = TraceProblem{RelativisticOrbit}(stateinit_rel, tspan, param)
+sol_vay = solve(prob_rel, Vay(); dt)
+sol_hc = solve(prob_rel, HigueraCary(); dt)
+sol_adap = solve(prob_rel, AdaptiveHigueraCary(; safety = 0.05))
+```
+
+Note that `Vay`, `HigueraCary`, `AdaptiveVay`, and `AdaptiveHigueraCary` require `TraceProblem{RelativisticOrbit}` and also work with `EnsembleThreads()` and kernel backends (`CPU()`, CUDA, etc.) for fixed-step variants.
+
 ### Ensembles
 
 Multiple particles are traced through a SciML [`EnsembleProblem`](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/), so the whole ensemble interface applies: `EnsembleThreads()`, `EnsembleDistributed()`, `EnsembleSplitThreads()`, `trajectories`, `seed`, `batch_size`, `pmap_batch_size`, and the `output_func` and `reduction` hooks.

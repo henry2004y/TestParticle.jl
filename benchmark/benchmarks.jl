@@ -208,6 +208,41 @@ isoutside(u, p, t) = hypot(u[1], u[2], u[3]) > 2.0
 SUITE["trace"]["numerical field"]["Boris kernel with isoutside"] = @benchmarkable solve(
     $prob_boris, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7, isoutside = $isoutside
 )
+@static if isdefined(BorisPushers, :Vay)
+    prob_boris_rel = TraceProblem{RelativisticOrbit}(stateinit, tspan_num, param_numeric)
+    SUITE["trace"]["numerical field"]["Relativistic Boris"] = @benchmarkable solve(
+        $prob_boris_rel, Boris(); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Relativistic Multistep Boris"] = @benchmarkable solve(
+        $prob_boris_rel, MultistepBoris2(; n = 2); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Vay"] = @benchmarkable solve(
+        $prob_boris_rel, Vay(); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Higuera-Cary"] = @benchmarkable solve(
+        $prob_boris_rel, HigueraCary(); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Adaptive Relativistic Boris"] = @benchmarkable solve(
+        $prob_boris_rel, $alg_adaptive
+    )
+    alg_adaptive_vay = AdaptiveVay(safety = 0.1)
+    SUITE["trace"]["numerical field"]["Adaptive Vay"] = @benchmarkable solve(
+        $prob_boris_rel, $alg_adaptive_vay
+    )
+    alg_adaptive_hc = AdaptiveHigueraCary(safety = 0.1)
+    SUITE["trace"]["numerical field"]["Adaptive Higuera-Cary"] = @benchmarkable solve(
+        $prob_boris_rel, $alg_adaptive_hc
+    )
+    SUITE["trace"]["numerical field"]["Relativistic Boris kernel"] = @benchmarkable solve(
+        $prob_boris_rel, Boris(), CPU(); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Vay kernel"] = @benchmarkable solve(
+        $prob_boris_rel, Vay(), CPU(); dt = 1 / 7, saveat = 10 / 7
+    )
+    SUITE["trace"]["numerical field"]["Higuera-Cary kernel"] = @benchmarkable solve(
+        $prob_boris_rel, HigueraCary(), CPU(); dt = 1 / 7, saveat = 10 / 7
+    )
+end
 
 # Time-Dependent Field
 param_td = prepare(; E = E_td, B = B_td, F = F_td)
