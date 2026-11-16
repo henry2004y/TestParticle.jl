@@ -1,7 +1,7 @@
 name: Benchmarks
 
 on:
-  pull_request_target:
+  pull_request:
     branches: [ master ]
     paths-ignore:
       - 'README.md'
@@ -10,8 +10,21 @@ on:
       - 'test/**'
       - 'docs/**'
       - 'examples/**'
+      - 'bindings/**'
+      - '.github/workflows/CI.yml'
+      - '.github/workflows/DocPreviewCleanup.yml'
+      - '.github/workflows/Documenter.yml'
+      - '.github/workflows/Format.yml'
+      - '.github/workflows/TagBot.yml'
+      - '.github/workflows/publish-python.yml'
+      - '.github/workflows/python-wrapper.yml'
+
 permissions:
-  pull-requests: write    # action needs to post a comment
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   bench:
@@ -20,3 +33,4 @@ jobs:
       - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
           julia-version: '1'
+          job-summary: 'true'
