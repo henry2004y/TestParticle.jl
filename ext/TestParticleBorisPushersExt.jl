@@ -14,8 +14,16 @@ import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
 
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
-    AdaptiveMultistepBoris, Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary,
-    update_velocity, adapt_field_to_gpu, _node_fields
+    AdaptiveMultistepBoris, update_velocity, adapt_field_to_gpu, _node_fields
+
+@static if isdefined(BorisPushers, :Vay)
+    import BorisPushers: Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary
+    const RelOnlyBoris = Union{Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary}
+    const BorisOrbitModels = (FullOrbit, RelativisticOrbit)
+else
+    const RelOnlyBoris = Union{}
+    const BorisOrbitModels = (FullOrbit,)
+end
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
@@ -36,7 +44,6 @@ using PrecompileTools: @setup_workload, @compile_workload
 const FOProblem = TraceProblem{FullOrbit}
 const RelFOProblem = TraceProblem{RelativisticOrbit}
 const BorisProblem = Union{FOProblem, RelFOProblem}
-const RelOnlyBoris = Union{Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary}
 
 _boris_rhs(u, p, t) = nothing
 _boris_rel_rhs(u, p, t) = nothing
@@ -47,7 +54,7 @@ _equations_model(::typeof(_boris_rel_rhs)) = RelativisticOrbit
 # relativistic orbits); `AdaptiveHybrid` only supports `FullOrbit`.
 function _check_boris_problem(prob, alg::AbstractBoris = Boris())
     M = _equations_model(prob.f)
-    M in (FullOrbit, RelativisticOrbit) && prob.p.F isa ZeroField || throw(
+    M in BorisOrbitModels && prob.p.F isa ZeroField || throw(
         ArgumentError(
             "Boris solvers need the default `FullOrbit` or `RelativisticOrbit` " *
                 "equations without `F`."

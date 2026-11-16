@@ -18,6 +18,7 @@ on:
       - '.github/workflows/python-wrapper.yml'
 env:
   JULIA_NUM_THREADS: 2
+  PYTHON_JULIACALL_HANDLE_SIGNALS: 'yes'
 jobs:
   test:
     name: Python ${{ matrix.python }} - ${{ matrix.os }} - ${{ github.event_name }}
