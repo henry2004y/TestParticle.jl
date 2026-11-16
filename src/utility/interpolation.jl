@@ -478,109 +478,533 @@ end
 
 # Time-dependent field interpolation.
 
+# Preallocated per-thread active-slab slot and flat LRU snapshot cache avoid heap
+# allocations on both L1 slab hits and L1/L2 switches when `F` is stored inline.
+mutable struct _ThreadSlot{T, F}
+    @atomic idx::Int
+    idx2::Int
+    t1::T
+    t2::T
+    inv_dt::T
+    const fields::Vector{F}
+end
+
+mutable struct _LRUCache{F}
+    const capacity::Int
+    const idxs::Vector{Int}
+    const fields::Vector{F}
+    const stamps::Vector{Int}
+    tick::Int
+end
+
+function _lru_get!(cache::_LRUCache, idx::Int)
+    @inbounds for k in eachindex(cache.idxs)
+        if cache.idxs[k] == idx
+            t = cache.tick + 1
+            cache.tick = t
+            cache.stamps[k] = t
+            return k
+        end
+    end
+    return 0
+end
+
+function _invalidate_slots!(
+        slots::Vector{_ThreadSlot{T, F}}, evicted_idx::Int
+    ) where {T, F}
+    @inbounds for s in slots
+        idx = @atomic :acquire s.idx
+        if idx != 0 && (idx == evicted_idx || s.idx2 == evicted_idx)
+            @atomic :release s.idx = 0
+        end
+    end
+    return nothing
+end
+
+function _lru_put!(
+        cache::_LRUCache{F}, idx::Int, field, slots::Vector{_ThreadSlot{T, F}}
+    ) where {T, F}
+    victim = 1
+    min_stamp = typemax(Int)
+    @inbounds for k in eachindex(cache.idxs)
+        ik = cache.idxs[k]
+        if ik == 0
+            victim = k
+            break
+        end
+        sk = cache.stamps[k]
+        if sk < min_stamp
+            min_stamp = sk
+            victim = k
+        end
+    end
+    evicted = @inbounds cache.idxs[victim]
+    evicted != 0 && _invalidate_slots!(slots, evicted)
+    t = cache.tick + 1
+    cache.tick = t
+    @inbounds begin
+        cache.idxs[victim] = idx
+        cache.fields[victim] = field
+        cache.stamps[victim] = t
+    end
+    return victim
+end
+
+_own_time_grid(times::AbstractRange) = float(times)
+_own_time_grid(times::AbstractVector) = collect(float(eltype(times)), times)
+
+function _validate_times(t_grid::AbstractVector{T}) where {T <: AbstractFloat}
+    n = length(t_grid)
+    n >= 2 || throw(ArgumentError("Time grid must contain at least 2 points."))
+    @inbounds begin
+        all(isfinite, t_grid) ||
+            throw(ArgumentError("Time grid points must be finite."))
+        for i in 1:(n - 1)
+            t_grid[i + 1] > t_grid[i] ||
+                throw(ArgumentError("Time grid points must be strictly increasing."))
+        end
+    end
+    return t_grid
+end
+
+function _resolve_time_end(t_grid::AbstractVector{T}, bc) where {T}
+    t_first = first(t_grid)
+    t_last = last(t_grid)
+    if bc isa Union{ClampExtrap, FillExtrap, WrapExtrap}
+        return t_last
+    elseif bc isa PeriodicBC{:inclusive}
+        isnothing(bc.period) || throw(
+            ArgumentError("Inclusive PeriodicBC does not accept an explicit period.")
+        )
+        return t_last
+    elseif bc isa PeriodicBC{:exclusive}
+        span = t_last - t_first
+        period = if isnothing(bc.period)
+            if t_grid isa AbstractRange
+                span + T(step(t_grid))
+            else
+                dt0 = @inbounds t_grid[2] - t_grid[1]
+                @inbounds for i in 2:(length(t_grid) - 1)
+                    isapprox(t_grid[i + 1] - t_grid[i], dt0) || throw(
+                        ArgumentError(
+                            "Nonuniform exclusive PeriodicBC requires an explicit period."
+                        )
+                    )
+                end
+                span + dt0
+            end
+        else
+            bc.period isa Real && isfinite(bc.period) ||
+                throw(ArgumentError("PeriodicBC period must be finite."))
+            p = T(bc.period)
+            p > span || throw(
+                ArgumentError("Exclusive PeriodicBC period must exceed time span.")
+            )
+            p
+        end
+        return t_first + period
+    else
+        throw(
+            ArgumentError(
+                "Unsupported time boundary policy $bc. Use ClampExtrap, " *
+                    "FillExtrap, WrapExtrap, or PeriodicBC."
+            )
+        )
+    end
+end
+
 """
-    LazyTimeInterpolator{T, F, L}
+    LazyTimeInterpolator(times, loader; cache_size = ..., bc = ClampExtrap())
 
-A callable struct for handling time-dependent fields with lazy loading and linear time interpolation.
+Callable interpolator for time-dependent fields with lazy loading and linear interpolation
+between consecutive snapshots on `times`.
 
-# Fields
+# Arguments
+- `times::AbstractVector`: Strictly increasing finite real time nodes (`length >= 2`).
+- `loader`: Callable `i -> field` loading snapshot `i` (or a `Tuple`/`NamedTuple` of fields
+  for shared multi-field caching via unpacking, e.g. `E, B = LazyTimeInterpolator(...)`).
+- `cache_size::Int`: Maximum LRU snapshot capacity (`>= 2`, default
+  `max(2, 2 * Threads.nthreads())`).
+- `bc`: Time boundary policy (`ClampExtrap()`, `FillExtrap(val)`, `WrapExtrap()`, or
+  `PeriodicBC()`).
 
-- `times::Vector{T}`: Sorted vector of time points.
-- `loader::L`: Function `i -> field` that loads the field at index `i`.
-- `buffer::Dict{Int, F}`: Cache for loaded fields.
-- `lock::ReentrantLock`: Lock for thread safety.
+# Examples
+```jldoctest
+julia> times = 0.0:1.0:2.0;
+
+julia> loader(i) = x -> SA[x[1] * times[i], x[2], x[3]];
+
+julia> itp = TestParticle.LazyTimeInterpolator(times, loader);
+
+julia> itp(SA[2.0, 0.0, 0.0], 0.5) ≈ SA[1.0, 0.0, 0.0]
+true
+```
 """
-struct LazyTimeInterpolator{T, F, L} <: Function
-    times::Vector{T}
+struct LazyTimeInterpolator{T, F, L, V <: AbstractVector{T}, B} <: Function
+    times::V
+    t_first::T
+    t_last::T
+    t_end::T
     loader::L
-    buffer::Dict{Int, F}
+    bc::B
+    slots::Vector{_ThreadSlot{T, F}}
+    slot_mask::Int
+    cache::_LRUCache{F}
     lock::ReentrantLock
 end
 
-function LazyTimeInterpolator(times::AbstractVector, loader::Function)
-    # Determine the field type by loading the first field
+function LazyTimeInterpolator(
+        times::AbstractVector, loader;
+        cache_size::Int = max(2, 2 * Threads.nthreads()),
+        bc = ClampExtrap()
+    )
+    eltype(times) <: Real || throw(ArgumentError("Time grid points must be real."))
+    cache_size >= 2 || throw(ArgumentError("cache_size must be at least 2."))
+
+    t_grid = _validate_times(_own_time_grid(times))
+    t_first = first(t_grid)
+    t_last = last(t_grid)
+    t_end = _resolve_time_end(t_grid, bc)
+
     f1 = loader(1)
-    return _LazyTimeInterpolator(times, loader, f1)
+    if f1 isa Union{Tuple, NamedTuple}
+        isempty(f1) &&
+            throw(ArgumentError("Multi-field loader cannot return empty fields."))
+    end
+
+    return _LazyTimeInterpolator(t_grid, t_first, t_last, t_end, loader, bc, cache_size, f1)
 end
 
-function _LazyTimeInterpolator(times::AbstractVector, loader::Function, f1::F) where {F}
-    buffer = Dict{Int, F}(1 => f1)
-    lock = ReentrantLock()
-    return LazyTimeInterpolator{eltype(times), F, typeof(loader)}(
-        times, loader, buffer, lock
+function _LazyTimeInterpolator(
+        t_grid::AbstractVector{T}, t_first::T, t_last::T, t_end::T,
+        loader, bc, cache_size::Int, f1::F
+    ) where {T, F}
+    nslots = nextpow(2, max(16, 2 * Threads.maxthreadid()))
+    slots = [
+        _ThreadSlot{T, F}(0, 0, zero(T), zero(T), zero(T), Vector{F}(undef, 2))
+            for _ in 1:nslots
+    ]
+    cache = _LRUCache{F}(
+        cache_size, zeros(Int, cache_size), Vector{F}(undef, cache_size),
+        zeros(Int, cache_size), 0
+    )
+    _lru_put!(cache, 1, f1, slots)
+    return LazyTimeInterpolator{T, F, typeof(loader), typeof(t_grid), typeof(bc)}(
+        t_grid, t_first, t_last, t_end, loader, bc,
+        slots, nslots - 1, cache, ReentrantLock()
     )
 end
 
-function (itp::LazyTimeInterpolator)(x, t)
-    # Find the time interval [t1, t2] such that t1 <= t <= t2 (assume times is sorted)
-    idx = searchsortedlast(itp.times, t)
+struct _WholeField end
+struct _ComponentSel{K} end
+struct _OpValue end
+struct _OpJacobian end
+struct _OpDerivT end
 
-    # Handle out-of-bounds
-    if idx == 0
-        return _get_field!(itp, 1)(x) # clamp to start
-    elseif idx >= length(itp.times)
-        return _get_field!(itp, length(itp.times))(x) # clamp to end
-    end
-
-    t1 = itp.times[idx]
-    t2 = itp.times[idx + 1]
-
-    w = (t - t1) / (t2 - t1) # linear weights
-
-    # Load fields (lazily)
-    f1 = _get_field!(itp, idx)
-    f2 = _get_field!(itp, idx + 1)
-
-    return (1 - w) * f1(x) + w * f2(x)
+# Component view returned when indexing or unpacking a multi-field LazyTimeInterpolator so
+# E and B can be passed separately to prepare(; E, B) while sharing one snapshot cache.
+struct _LazyFieldComponent{K, I <: LazyTimeInterpolator} <: Function
+    parent::I
 end
 
-function _get_field!(itp::LazyTimeInterpolator, idx::Int)
-    return lock(itp.lock) do
-        if !haskey(itp.buffer, idx)
-            # Remove far-away indices
-            filter!(p -> abs(p.first - idx) <= 1, itp.buffer)
+function Base.length(::LazyTimeInterpolator{T, F}) where {T, F <: Union{Tuple, NamedTuple}}
+    return fieldcount(F)
+end
 
-            field = itp.loader(idx)
-            itp.buffer[idx] = field
+@inline function Base.getindex(
+        itp::LazyTimeInterpolator{T, F}, k::Int
+    ) where {T, F <: Union{Tuple, NamedTuple}}
+    1 <= k <= fieldcount(F) || throw(BoundsError(itp, k))
+    return _LazyFieldComponent{k, typeof(itp)}(itp)
+end
+
+@inline function Base.iterate(
+        itp::LazyTimeInterpolator{T, F}, state::Int = 1
+    ) where {T, F <: Union{Tuple, NamedTuple}}
+    state > fieldcount(F) && return nothing
+    return (itp[state], state + 1)
+end
+
+@inline function Base.indexed_iterate(
+        itp::LazyTimeInterpolator{T, F}, i::Int, state::Int = 1
+    ) where {T, F <: Union{Tuple, NamedTuple}}
+    return (itp[i], i + 1)
+end
+
+Base.keys(::LazyTimeInterpolator{T, F}) where {T, F <: NamedTuple} = fieldnames(F)
+
+@inline function Base.getindex(
+        itp::LazyTimeInterpolator{T, F}, sym::Symbol
+    ) where {T, F <: NamedTuple}
+    k = Base.fieldindex(F, sym, false)
+    k == 0 && throw(KeyError(sym))
+    return _LazyFieldComponent{k, typeof(itp)}(itp)
+end
+
+@inline function Base.getproperty(
+        itp::LazyTimeInterpolator{T, F}, sym::Symbol
+    ) where {T, F <: NamedTuple}
+    hasfield(typeof(itp), sym) && return getfield(itp, sym)
+    return itp[sym]
+end
+
+function Base.propertynames(itp::LazyTimeInterpolator{T, F}) where {T, F <: NamedTuple}
+    return (fieldnames(typeof(itp))..., fieldnames(F)...)
+end
+
+@inline _select(::_WholeField, f) = f
+@inline _select(::_ComponentSel{K}, f) where {K} = getfield(f, K)
+@inline _lincomb(y1, y2, w) = (one(w) - w) * y1 + w * y2
+
+@inline function _fill_value_for(v::V, fill_val) where {V <: StaticArray}
+    fill_val isa V && return fill_val
+    E = eltype(V)
+    el = fill_val isa Number ? E(fill_val) : E(NaN)
+    return V(ntuple(_ -> el, Val(length(V))))
+end
+
+@inline function _eval_slab(::_OpValue, sel, slot::_ThreadSlot, x, t)
+    w = (t - slot.t1) * slot.inv_dt
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
+    iszero(w) && return f1(x)
+    isone(w) && return f2(x)
+    return _lincomb(f1(x), f2(x), w)
+end
+
+@inline function _eval_slab(::_OpJacobian, sel, slot::_ThreadSlot, x, t)
+    w = (t - slot.t1) * slot.inv_dt
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
+    iszero(w) && return jacobian(f1, x)
+    isone(w) && return jacobian(f2, x)
+    return _lincomb(jacobian(f1, x), jacobian(f2, x), w)
+end
+
+@inline function _eval_slab(::_OpDerivT, sel, slot::_ThreadSlot, x, t)
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
+    return (f2(x) - f1(x)) * slot.inv_dt
+end
+
+@inline _eval_single(::_OpValue, sel, field, x) = _select(sel, field)(x)
+@inline _eval_single(::_OpJacobian, sel, field, x) = jacobian(_select(sel, field), x)
+@inline _eval_single(::_OpDerivT, sel, field, x) = zero(_select(sel, field)(x))
+
+@inline function _eval_fill_oob(::_OpValue, sel, field, x, fill_val)
+    return _fill_value_for(_select(sel, field)(x), fill_val)
+end
+
+@inline function _eval_fill_oob(::_OpJacobian, sel, field, x, fill_val)
+    sample = jacobian(_select(sel, field), x)
+    return any(isnan, fill_val) ? _fill_value_for(sample, NaN) : zero(sample)
+end
+
+@inline function _eval_fill_oob(::_OpDerivT, sel, field, x, fill_val)
+    sample = _select(sel, field)(x)
+    return any(isnan, fill_val) ? _fill_value_for(sample, NaN) : zero(sample)
+end
+
+@inline function _current_slot(itp::LazyTimeInterpolator)
+    tid = Threads.threadid()
+    return @inbounds itp.slots[((tid - 1) & itp.slot_mask) + 1]
+end
+
+@inline function _in_slab(
+        slot::_ThreadSlot{T}, tv::Real, t_end::T, ::Union{ClampExtrap, FillExtrap}
+    ) where {T}
+    return slot.t1 <= tv && (tv < slot.t2 || (tv == t_end && slot.t2 == t_end))
+end
+
+@inline function _in_slab(slot::_ThreadSlot, tv::Real, t_end, bc)
+    return slot.t1 <= tv && tv < slot.t2
+end
+
+@inline function _find_slab_index(times::AbstractRange, tv::Real)
+    n = length(times)
+    u = (tv - first(times)) / step(times)
+    i = clamp(unsafe_trunc(Int, floor(u)) + 1, 1, n - 1)
+    @inbounds return ifelse(
+        tv < times[i] && i > 1, i - 1,
+        ifelse(tv >= times[i + 1] && i < n - 1, i + 1, i)
+    )
+end
+
+@inline function _find_slab_index(times::AbstractVector, tv::Real)
+    return clamp(searchsortedlast(times, tv), 1, length(times) - 1)
+end
+
+function _fetch_slab!(
+        itp::LazyTimeInterpolator{T, F}, slot::_ThreadSlot{T, F},
+        idx::Int, idx2::Int, t1::T, t2::T
+    ) where {T, F}
+    lock(itp.lock)
+    try
+        # Promote cached endpoints before loading missing ones so cache_size = 2 never
+        # evicts a sibling endpoint that is needed for the same slab.
+        p1 = _lru_get!(itp.cache, idx)
+        p2 = _lru_get!(itp.cache, idx2)
+        if p1 == 0
+            f1 = itp.loader(idx)
+            p1 = _lru_put!(itp.cache, idx, f1, itp.slots)
         end
-        return itp.buffer[idx]
+        if p2 == 0
+            f2 = itp.loader(idx2)
+            p2 = _lru_put!(itp.cache, idx2, f2, itp.slots)
+        end
+        @atomic :release slot.idx = 0
+        @inbounds begin
+            slot.fields[1] = itp.cache.fields[p1]
+            slot.fields[2] = itp.cache.fields[p2]
+        end
+        slot.idx2 = idx2
+        slot.t1 = t1
+        slot.t2 = t2
+        slot.inv_dt = inv(t2 - t1)
+        @atomic :release slot.idx = idx
+        return slot
+    finally
+        unlock(itp.lock)
     end
 end
 
-function jacobian(itp::LazyTimeInterpolator, x, t)
-    idx = searchsortedlast(itp.times, t)
-
-    # Handle out-of-bounds (clamp)
-    if idx <= 0
-        return jacobian(_get_field!(itp, 1), x)
-    elseif idx >= length(itp.times)
-        return jacobian(_get_field!(itp, length(itp.times)), x)
-    end
-
-    t1 = itp.times[idx]
-    t2 = itp.times[idx + 1]
-    w = (t - t1) / (t2 - t1)
-
-    # Loading the fields here so we can get their jacobians
-    f1 = _get_field!(itp, idx)
-    f2 = _get_field!(itp, idx + 1)
-
-    # Jacobian is linear combination of step jacobians
-    return (1 - w) * jacobian(f1, x) + w * jacobian(f2, x)
+@inline function _get_slab!(
+        itp::LazyTimeInterpolator, slot::_ThreadSlot, idx::Int, idx2::Int
+    )
+    t1 = @inbounds itp.times[idx]
+    t2 = @inbounds itp.times[idx2]
+    return _fetch_slab!(itp, slot, idx, idx2, t1, t2)
 end
 
-function derivative_t(itp::LazyTimeInterpolator, x, t)
-    idx = searchsortedlast(itp.times, t)
-
-    if idx <= 0 || idx >= length(itp.times)
-        return zero(_get_field!(itp, 1)(x))
+@inline function _get_single_field!(
+        itp::LazyTimeInterpolator, slot::_ThreadSlot, slot_idx::Int, idx::Int
+    )
+    if slot_idx != 0
+        slot_idx == idx && return @inbounds slot.fields[1]
+        slot.idx2 == idx && return @inbounds slot.fields[2]
     end
+    return _get_single_field_locked!(itp, idx)
+end
 
-    t1 = itp.times[idx]
-    t2 = itp.times[idx + 1]
+function _get_single_field_locked!(itp::LazyTimeInterpolator, idx::Int)
+    lock(itp.lock)
+    try
+        p = _lru_get!(itp.cache, idx)
+        if p == 0
+            field = itp.loader(idx)
+            p = _lru_put!(itp.cache, idx, field, itp.slots)
+        end
+        return @inbounds itp.cache.fields[p]
+    finally
+        unlock(itp.lock)
+    end
+end
 
-    f1 = _get_field!(itp, idx)
-    f2 = _get_field!(itp, idx + 1)
+function _eval_lazy_slow(
+        op, sel, itp::LazyTimeInterpolator{T, F, L, V, <:ClampExtrap},
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
+    ) where {T, F, L, V}
+    if tv < itp.t_first
+        return _eval_single(op, sel, _get_single_field!(itp, slot, slot_idx, 1), x)
+    elseif tv > itp.t_last
+        n = length(itp.times)
+        return _eval_single(op, sel, _get_single_field!(itp, slot, slot_idx, n), x)
+    end
+    idx = tv == itp.t_last ? length(itp.times) - 1 : _find_slab_index(itp.times, tv)
+    _fetch = _get_slab!(itp, slot, idx, idx + 1)
+    return _eval_slab(op, sel, _fetch, x, t)
+end
 
-    return (f2(x) - f1(x)) / (t2 - t1)
+function _eval_lazy_slow(
+        op, sel, itp::LazyTimeInterpolator{T, F, L, V, <:FillExtrap},
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
+    ) where {T, F, L, V}
+    tol = 4 * eps(T) * max(abs(itp.t_first), abs(itp.t_last))
+    if tv < itp.t_first - tol || tv > itp.t_last + tol
+        field1 = _get_single_field!(itp, slot, slot_idx, 1)
+        return _eval_fill_oob(op, sel, field1, x, itp.bc.fill_value)
+    end
+    t_clamped = clamp(tv, itp.t_first, itp.t_last)
+    t_q = t_clamped == tv ? t : zero(t) + t_clamped
+    tv_q = ForwardDiff.value(t_q)
+    idx = tv_q == itp.t_last ? length(itp.times) - 1 : _find_slab_index(itp.times, tv_q)
+    _fetch = _get_slab!(itp, slot, idx, idx + 1)
+    return _eval_slab(op, sel, _fetch, x, t_q)
+end
+
+function _eval_lazy_slow(
+        op, sel,
+        itp::LazyTimeInterpolator{
+            T, F, L, V, <:Union{WrapExtrap, PeriodicBC{:inclusive}, PeriodicBC{:exclusive}},
+        },
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
+    ) where {T, F, L, V}
+    period = itp.t_end - itp.t_first
+    if itp.t_first <= tv < itp.t_end
+        t_q = t
+        tv_q = tv
+    else
+        t_q = mod(t - itp.t_first, period) + itp.t_first
+        tv_q = ForwardDiff.value(t_q)
+        if tv_q >= itp.t_end
+            t_q -= period
+            tv_q = ForwardDiff.value(t_q)
+        end
+    end
+    if slot_idx != 0 && slot.t1 <= tv_q < slot.t2
+        return _eval_slab(op, sel, slot, x, t_q)
+    end
+    _fetch = if itp.bc isa PeriodicBC{:exclusive} && tv_q >= itp.t_last
+        _fetch_slab!(itp, slot, length(itp.times), 1, itp.t_last, itp.t_end)
+    else
+        idx = _find_slab_index(itp.times, tv_q)
+        _get_slab!(itp, slot, idx, idx + 1)
+    end
+    return _eval_slab(op, sel, _fetch, x, t_q)
+end
+
+@inline function _eval_lazy(op, sel, itp::LazyTimeInterpolator, x, t)
+    tv = ForwardDiff.value(t)
+    slot = _current_slot(itp)
+    slot_idx = @atomic :acquire slot.idx
+    if isnan(tv)
+        return _eval_fill_oob(op, sel, _get_single_field!(itp, slot, slot_idx, 1), x, NaN)
+    end
+    if slot_idx != 0 && _in_slab(slot, tv, itp.t_end, itp.bc)
+        return _eval_slab(op, sel, slot, x, t)
+    end
+    return _eval_lazy_slow(op, sel, itp, slot, slot_idx, x, t, tv)
+end
+
+@inline (itp::LazyTimeInterpolator)(x, t) = _eval_lazy(_OpValue(), _WholeField(), itp, x, t)
+@inline function (itp::LazyTimeInterpolator{T, F})(x, t) where {T, F <: Tuple}
+    return ntuple(k -> itp[k](x, t), Val(fieldcount(F)))
+end
+@inline function (itp::LazyTimeInterpolator{T, F})(
+        x, t
+    ) where {T, K, F <: NamedTuple{K}}
+    return NamedTuple{K}(ntuple(k -> itp[k](x, t), Val(fieldcount(F))))
+end
+@inline function (c::_LazyFieldComponent{K})(x, t) where {K}
+    return _eval_lazy(_OpValue(), _ComponentSel{K}(), c.parent, x, t)
+end
+
+@inline function jacobian(itp::LazyTimeInterpolator, x, t)
+    return _eval_lazy(_OpJacobian(), _WholeField(), itp, x, t)
+end
+@inline function jacobian(c::_LazyFieldComponent{K}, x, t) where {K}
+    return _eval_lazy(_OpJacobian(), _ComponentSel{K}(), c.parent, x, t)
+end
+
+@inline function derivative_t(itp::LazyTimeInterpolator, x, t)
+    return _eval_lazy(_OpDerivT(), _WholeField(), itp, x, t)
+end
+@inline function derivative_t(c::_LazyFieldComponent{K}, x, t) where {K}
+    return _eval_lazy(_OpDerivT(), _ComponentSel{K}(), c.parent, x, t)
 end

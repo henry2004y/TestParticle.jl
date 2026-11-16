@@ -44,6 +44,11 @@ end
     return s.u[i] .+ f .* (s.u[i + 1] .- s.u[i])
 end
 
+struct _TestFieldLoader
+    scale::Float64
+end
+(l::_TestFieldLoader)(i::Int) = x -> SA[l.scale * i * x[1], l.scale * i * x[2], x[3]]
+
 function interpolation_construction_allocations(B, x, order, store)
     build_interpolator(B, x, x, x, order; store)
     GC.gc()
@@ -468,7 +473,7 @@ end
             return x -> SVector{3}(x[1] * t_val, x[2] * t_val, x[3] * t_val)
         end
 
-        itp = LazyTimeInterpolator(times, loader)
+        itp = LazyTimeInterpolator(times, loader; cache_size = 2)
 
         x = SVector(1.0, 2.0, 3.0)
 
@@ -493,6 +498,9 @@ end
         # Test extrapolation/clamping
         @test itp(x, 3.0) ≈ itp(x, 2.0) # Should clamp to end
         @test itp(x, -1.0) ≈ itp(x, 0.0) # Should clamp to start
+        # L1 slot hit on slot_idx == 1 during clamped read
+        @test itp(x, 0.5) ≈ SVector(0.5, 1.0, 1.5)
+        @test itp(x, -1.0) ≈ SVector(0.0, 0.0, 0.0)
 
         # 2. Numerical field time-dependent test
         let
@@ -538,6 +546,270 @@ end
 
             # t=0.25 -> 0.75*B0 + 0.25*B1 = [0.75, 0.5, 0]
             @test itp_num(pt, 0.25) ≈ SA[0.75, 0.5, 0.0]
+
+            # Warm L1 slab fast path should allocate zero bytes
+            @test (@allocated itp_num(pt, 0.5)) == 0
+
+            # Switching between cached slabs vs full LRU reload allocates 0 wrapper bytes
+            B_fields = ntuple(_ -> copy(B0), 4)
+            function loader_4(i)
+                return build_interpolator(
+                    CartesianGrid, B_fields[i], x_grid, y_grid, z_grid
+                )
+            end
+            eval_pair(itp, x, a, b) = itp(x, a) + itp(x, b)
+
+            itp_cached = LazyTimeInterpolator(0.0:1.0:3.0, loader_4; cache_size = 4)
+            eval_pair(itp_cached, pt, 0.5, 2.5)
+            @test (@allocated eval_pair(itp_cached, pt, 0.5, 2.5)) == 0
+
+            itp_thrash = LazyTimeInterpolator(0.0:1.0:3.0, loader_4; cache_size = 2)
+            eval_pair(itp_thrash, pt, 0.5, 2.5)
+            loader_allocs = (@allocated loader_4(1))
+            @test (@allocated eval_pair(itp_thrash, pt, 0.5, 2.5)) == 4 * loader_allocs
+        end
+
+        # 3. Default cache capacity and custom LRU eviction order
+        let
+            t_lru = 0.0:1.0:3.0
+            counts = zeros(Int, 4)
+            function lru_loader(i)
+                counts[i] += 1
+                v = Float64(i)
+                return r -> SA[v * r[1], 0.0, 0.0]
+            end
+
+            itp_default = LazyTimeInterpolator(t_lru, i -> (r -> SA[Float64(i), 0.0, 0.0]))
+            @test itp_default.cache.capacity == max(2, 2 * Threads.nthreads())
+
+            itp_lru = LazyTimeInterpolator(t_lru, lru_loader; cache_size = 3)
+            pt = SA[2.0, 0.0, 0.0]
+            @test itp_lru(pt, 0.5) ≈ SA[3.0, 0.0, 0.0]
+            @test itp_lru(pt, 1.5) ≈ SA[5.0, 0.0, 0.0]
+            @test itp_lru(pt, 0.5) ≈ SA[3.0, 0.0, 0.0] # promotes 1 and 2; 3 is LRU
+            @test counts == [1, 1, 1, 0]
+            @test itp_lru(pt, 1.2) ≈ SA[4.4, 0.0, 0.0] # promotes 2 and 3; 1 is now LRU
+            @test itp_lru(pt, 2.5) ≈ SA[7.0, 0.0, 0.0] # loads 4, evicts 1
+            @test counts == [1, 1, 1, 1]
+            @test itp_lru(pt, 1.5) ≈ SA[5.0, 0.0, 0.0] # hits {2, 3} without reload
+            @test counts == [1, 1, 1, 1]
+            @test itp_lru(pt, 0.5) ≈ SA[3.0, 0.0, 0.0] # reloads evicted 1
+            @test counts == [2, 1, 1, 1]
+        end
+
+        # 4. Range O(1) lookup, integer range, mutation isolation, and functor loader
+        let
+            functor = _TestFieldLoader(2.0)
+            pt = SA[1.0, 2.0, 3.0]
+
+            t_range = 0.0:0.5:2.0
+            t_vec = collect(t_range)
+            itp_range = LazyTimeInterpolator(t_range, functor)
+            itp_vec = LazyTimeInterpolator(t_vec, functor)
+
+            t_vec[2] = 99.0 # Caller mutation must not alter internal grid
+            for tq in (-0.5, 0.0, prevfloat(0.5), 0.5, nextfloat(0.5), 1.25, 2.0, 2.5)
+                @test itp_range(pt, tq) ≈ itp_vec(pt, tq)
+            end
+
+            itp_lin = LazyTimeInterpolator(LinRange(0.0, 2.0, 5), functor)
+            @test itp_lin(pt, 0.75) ≈ itp_vec(pt, 0.75)
+
+            itp_int = LazyTimeInterpolator(0:2, functor)
+            @test itp_int(pt, 0.5) ≈ SA[3.0, 6.0, 3.0]
+            @test itp_int(pt, 1.5) ≈ SA[5.0, 10.0, 3.0]
+        end
+
+        # 5. Input validation before calling loader(1)
+        let
+            calls = Ref(0)
+            function counted_loader(i)
+                calls[] += 1
+                return r -> SA[0.0, 0.0, 0.0]
+            end
+
+            @test_throws ArgumentError LazyTimeInterpolator([0.0], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator(["a", "b"], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator([0.0, NaN], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator([0.0, Inf], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator([0.0, 2.0, 1.0], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator([0.0, 1.0, 1.0], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0], counted_loader; cache_size = 1
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0], counted_loader; bc = :clamp
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 0.4, 1.0], counted_loader; bc = PeriodicBC(endpoint = :exclusive)
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], counted_loader;
+                bc = PeriodicBC(endpoint = :exclusive, period = 2.0),
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], counted_loader;
+                bc = PeriodicBC(endpoint = :exclusive, period = NaN),
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], counted_loader; bc = PeriodicBC(period = 2.0)
+            )
+            @test calls[] == 0
+            @test_throws ArgumentError LazyTimeInterpolator([0.0, 1.0], _ -> ())
+        end
+
+        # 6. Time boundary policies: FillExtrap, WrapExtrap, PeriodicBC
+        let
+            t_grid = 0.0:1.0:2.0
+            vals = (SA[1.0, 0.0, 0.0], SA[2.0, 0.0, 0.0], SA[3.0, 0.0, 0.0])
+            val_loader(i) = _ -> vals[i]
+            pt = SA[0.0, 0.0, 0.0]
+
+            itp_nan = LazyTimeInterpolator(t_grid, val_loader; bc = FillExtrap(NaN))
+            @test itp_nan(pt, 0.0) == SA[1.0, 0.0, 0.0]
+            @test itp_nan(pt, -1.0e-16) == SA[1.0, 0.0, 0.0]
+            @test itp_nan(pt, 2.0 + 1.0e-16) == SA[3.0, 0.0, 0.0]
+            @test all(isnan, itp_nan(pt, -1.0e-6))
+            @test all(isnan, itp_nan(pt, 2.0 + 1.0e-6))
+
+            itp_zero = LazyTimeInterpolator(t_grid, val_loader; bc = FillExtrap(0.0))
+            @test itp_zero(pt, -0.1) == SA[0.0, 0.0, 0.0]
+            @test itp_zero(pt, 2.1) == SA[0.0, 0.0, 0.0]
+            @test itp_zero(pt, 1.5) ≈ SA[2.5, 0.0, 0.0]
+
+            itp_svec = LazyTimeInterpolator(
+                t_grid, val_loader; bc = FillExtrap(SA[9.0, 8.0, 7.0])
+            )
+            @test itp_svec(pt, -0.5) == SA[9.0, 8.0, 7.0]
+
+            for periodic_bc in (WrapExtrap(), PeriodicBC())
+                itp_wrap = LazyTimeInterpolator(t_grid, val_loader; bc = periodic_bc)
+                @test itp_wrap(pt, 2.0) == SA[1.0, 0.0, 0.0]
+                @test itp_wrap(pt, 2.5) ≈ SA[1.5, 0.0, 0.0]
+                @test itp_wrap(pt, 0.5) ≈ SA[1.5, 0.0, 0.0]
+                @test itp_wrap(pt, 2.5) ≈ SA[1.5, 0.0, 0.0] # reuses L1 slot after wrap
+                @test itp_wrap(pt, -0.25) ≈ SA[2.75, 0.0, 0.0]
+                @test itp_wrap(pt, -1.0e-18) ≈ SA[1.0, 0.0, 0.0]
+            end
+
+            itp_excl = LazyTimeInterpolator(
+                t_grid, val_loader; bc = PeriodicBC(endpoint = :exclusive)
+            )
+            @test itp_excl(pt, 2.0) == SA[3.0, 0.0, 0.0]
+            @test itp_excl(pt, 2.5) ≈ SA[2.0, 0.0, 0.0]
+            @test itp_excl(pt, 3.5) ≈ SA[1.5, 0.0, 0.0]
+            @test itp_excl(pt, -0.5) ≈ SA[2.0, 0.0, 0.0]
+
+            itp_excl_vec = LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], val_loader; bc = PeriodicBC(endpoint = :exclusive)
+            )
+            @test itp_excl_vec(pt, 2.5) ≈ SA[2.0, 0.0, 0.0]
+
+            itp_excl_nu = LazyTimeInterpolator(
+                [0.0, 0.8, 2.0], val_loader;
+                bc = PeriodicBC(endpoint = :exclusive, period = 3.5),
+            )
+            @test itp_excl_nu(pt, 2.75) ≈ SA[2.0, 0.0, 0.0]
+            @test itp_excl_nu(pt, -0.75) ≈ SA[2.0, 0.0, 0.0]
+        end
+
+        # 7. Exact-node NaN safety and t = NaN handling
+        let
+            pt = SA[1.0, 2.0, 3.0]
+            nan_v = SA[NaN, NaN, NaN]
+            itp_a = LazyTimeInterpolator(
+                [0.0, 1.0],
+                i -> let v = i == 1 ? SA[1.0, 2.0, 3.0] : nan_v
+                    _ -> v
+                end,
+            )
+            @test itp_a(pt, 0.0) == SA[1.0, 2.0, 3.0]
+            @test all(isnan, itp_a(pt, NaN))
+
+            itp_b = LazyTimeInterpolator(
+                [0.0, 1.0],
+                i -> let v = i == 1 ? nan_v : SA[4.0, 5.0, 6.0]
+                    _ -> v
+                end,
+            )
+            @test itp_b(pt, 1.0) == SA[4.0, 5.0, 6.0]
+        end
+
+        # 8. Shared multi-field loader (Tuple & NamedTuple) and particle tracing
+        let
+            t_grid = 0.0:1.0:2.0
+            counts = zeros(Int, 3)
+            function tuple_loader(i)
+                counts[i] += 1
+                s = t_grid[i]
+                return (
+                    r -> SA[1.0e-3 * s, 0.0, 0.0],
+                    r -> SA[0.0, 0.0, 1.0e-8 * (1.0 + s)],
+                )
+            end
+
+            multi = LazyTimeInterpolator(t_grid, tuple_loader)
+            @test length(multi) == 2
+            E_itp, B_itp = multi
+            @test E_itp === multi[1]
+            @test B_itp === multi[2]
+            @test collect(multi) == [E_itp, B_itp]
+            @test_throws BoundsError multi[3]
+
+            pt = SA[0.1, 0.2, 0.3]
+            @test E_itp(pt, 0.5) ≈ SA[0.5e-3, 0.0, 0.0]
+            @test B_itp(pt, 0.5) ≈ SA[0.0, 0.0, 1.5e-8]
+            @test multi(pt, 0.5) == (E_itp(pt, 0.5), B_itp(pt, 0.5))
+            @test counts == [1, 1, 0]
+
+            param = prepare(; E = E_itp, B = B_itp, species = Proton)
+            param_erased = prepare_erased(; E = E_itp, B = B_itp, species = Proton)
+            state0 = SA[0.0, 0.0, 0.0, 0.0, 1.0e4, 0.0]
+            prob = TraceProblem(state0, (0.0, 1.5), param)
+            prob_e = TraceProblem(state0, (0.0, 1.5), param_erased)
+            sol = solve(prob, Tsit5())
+            sol_e = solve(prob_e, Tsit5())
+            @test sol[end] ≈ sol_e[end]
+            @test all(c -> c <= 1, counts)
+
+            nt_itp = LazyTimeInterpolator(
+                t_grid,
+                i -> (
+                    E = r -> SA[Float64(i), 0.0, 0.0],
+                    B = r -> SA[0.0, 0.0, 2.0 * i],
+                ),
+            )
+            (; E, B) = nt_itp
+            @test E === nt_itp[:E]
+            @test B === nt_itp[:B]
+            @test keys(nt_itp) == (:E, :B)
+            @test :E in propertynames(nt_itp)
+            @test nt_itp.times == t_grid
+            @test_throws KeyError nt_itp[:C]
+            @test E(pt, 0.5) ≈ SA[1.5, 0.0, 0.0]
+            @test B(pt, 0.5) ≈ SA[0.0, 0.0, 3.0]
+            @test nt_itp(pt, 0.5) == (E = E(pt, 0.5), B = B(pt, 0.5))
+        end
+
+        # 9. Multi-threaded evaluation without cache thrashing
+        let
+            t_grid = 0.0:1.0:7.0
+            counts = [Threads.Atomic{Int}(0) for _ in eachindex(t_grid)]
+            function mt_loader(i)
+                Threads.atomic_add!(counts[i], 1)
+                v = Float64(i - 1)
+                return r -> SA[v * r[1], v * r[2], v * r[3]]
+            end
+
+            itp_mt = LazyTimeInterpolator(t_grid, mt_loader; cache_size = 8)
+            pt = SA[1.0, -2.0, 0.5]
+            t_queries = [mod(0.37 * k, 7.0) for k in 1:400]
+            results = Vector{SVector{3, Float64}}(undef, length(t_queries))
+            Threads.@threads for k in eachindex(t_queries)
+                results[k] = itp_mt(pt, t_queries[k])
+            end
+            @test all(k -> results[k] ≈ t_queries[k] * pt, eachindex(t_queries))
+            @test all(c -> c[] == 1, counts)
         end
     end
 
