@@ -498,6 +498,9 @@ end
         # Test extrapolation/clamping
         @test itp(x, 3.0) ≈ itp(x, 2.0) # Should clamp to end
         @test itp(x, -1.0) ≈ itp(x, 0.0) # Should clamp to start
+        # L1 slot hit on slot_idx == 1 during clamped read
+        @test itp(x, 0.5) ≈ SVector(0.5, 1.0, 1.5)
+        @test itp(x, -1.0) ≈ SVector(0.0, 0.0, 0.0)
 
         # 2. Numerical field time-dependent test
         let
@@ -626,6 +629,7 @@ end
             end
 
             @test_throws ArgumentError LazyTimeInterpolator([0.0], counted_loader)
+            @test_throws ArgumentError LazyTimeInterpolator(["a", "b"], counted_loader)
             @test_throws ArgumentError LazyTimeInterpolator([0.0, NaN], counted_loader)
             @test_throws ArgumentError LazyTimeInterpolator([0.0, Inf], counted_loader)
             @test_throws ArgumentError LazyTimeInterpolator([0.0, 2.0, 1.0], counted_loader)
@@ -644,6 +648,10 @@ end
                 bc = PeriodicBC(endpoint = :exclusive, period = 2.0),
             )
             @test_throws ArgumentError LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], counted_loader;
+                bc = PeriodicBC(endpoint = :exclusive, period = NaN),
+            )
+            @test_throws ArgumentError LazyTimeInterpolator(
                 [0.0, 1.0, 2.0], counted_loader; bc = PeriodicBC(period = 2.0)
             )
             @test calls[] == 0
@@ -660,6 +668,7 @@ end
             itp_nan = LazyTimeInterpolator(t_grid, val_loader; bc = FillExtrap(NaN))
             @test itp_nan(pt, 0.0) == SA[1.0, 0.0, 0.0]
             @test itp_nan(pt, -1.0e-16) == SA[1.0, 0.0, 0.0]
+            @test itp_nan(pt, 2.0 + 1.0e-16) == SA[3.0, 0.0, 0.0]
             @test all(isnan, itp_nan(pt, -1.0e-6))
             @test all(isnan, itp_nan(pt, 2.0 + 1.0e-6))
 
@@ -668,10 +677,17 @@ end
             @test itp_zero(pt, 2.1) == SA[0.0, 0.0, 0.0]
             @test itp_zero(pt, 1.5) ≈ SA[2.5, 0.0, 0.0]
 
+            itp_svec = LazyTimeInterpolator(
+                t_grid, val_loader; bc = FillExtrap(SA[9.0, 8.0, 7.0])
+            )
+            @test itp_svec(pt, -0.5) == SA[9.0, 8.0, 7.0]
+
             for periodic_bc in (WrapExtrap(), PeriodicBC())
                 itp_wrap = LazyTimeInterpolator(t_grid, val_loader; bc = periodic_bc)
                 @test itp_wrap(pt, 2.0) == SA[1.0, 0.0, 0.0]
                 @test itp_wrap(pt, 2.5) ≈ SA[1.5, 0.0, 0.0]
+                @test itp_wrap(pt, 0.5) ≈ SA[1.5, 0.0, 0.0]
+                @test itp_wrap(pt, 2.5) ≈ SA[1.5, 0.0, 0.0] # reuses L1 slot after wrap
                 @test itp_wrap(pt, -0.25) ≈ SA[2.75, 0.0, 0.0]
                 @test itp_wrap(pt, -1.0e-18) ≈ SA[1.0, 0.0, 0.0]
             end
@@ -683,6 +699,11 @@ end
             @test itp_excl(pt, 2.5) ≈ SA[2.0, 0.0, 0.0]
             @test itp_excl(pt, 3.5) ≈ SA[1.5, 0.0, 0.0]
             @test itp_excl(pt, -0.5) ≈ SA[2.0, 0.0, 0.0]
+
+            itp_excl_vec = LazyTimeInterpolator(
+                [0.0, 1.0, 2.0], val_loader; bc = PeriodicBC(endpoint = :exclusive)
+            )
+            @test itp_excl_vec(pt, 2.5) ≈ SA[2.0, 0.0, 0.0]
 
             itp_excl_nu = LazyTimeInterpolator(
                 [0.0, 0.8, 2.0], val_loader;
@@ -732,6 +753,7 @@ end
             E_itp, B_itp = multi
             @test E_itp === multi[1]
             @test B_itp === multi[2]
+            @test collect(multi) == [E_itp, B_itp]
             @test_throws BoundsError multi[3]
 
             pt = SA[0.1, 0.2, 0.3]

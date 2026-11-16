@@ -76,6 +76,9 @@ ramp_field(i, j, k = 0) = SA[Float64(i), Float64(j), Float64(k)]
             itp_r = LazyTimeInterpolator(0.0:1.0:2.0, loader)
             fr = TP.Field(itp_r)
             @test TP.jacobian(fr, pos, 0.0) ≈ TP.ForwardDiff.jacobian(r -> fr(r, 0.0), pos)
+            @test TP.jacobian(fr, pos, 2.0) ≈ TP.ForwardDiff.jacobian(r -> fr(r, 2.0), pos)
+            @test all(isnan, TP.jacobian(fr, pos, NaN))
+            @test all(isnan, TP.derivative_t(fr, pos, NaN))
             @test TP.derivative_t(fr, pos, 0.0) ≈
                 TP.ForwardDiff.derivative(τ -> fr(pos, τ), 0.0)
             @test TP.derivative_t(fr, pos, 1.0) ≈

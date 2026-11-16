@@ -528,15 +528,8 @@ function _lru_put!(
     min_stamp = typemax(Int)
     @inbounds for k in eachindex(cache.idxs)
         ik = cache.idxs[k]
-        if ik == idx
-            t = cache.tick + 1
-            cache.tick = t
-            cache.fields[k] = field
-            cache.stamps[k] = t
-            return k
-        elseif ik == 0
+        if ik == 0
             victim = k
-            min_stamp = 0
             break
         end
         sk = cache.stamps[k]
@@ -761,71 +754,13 @@ end
 
 @inline _select(::_WholeField, f) = f
 @inline _select(::_ComponentSel{K}, f) where {K} = getfield(f, K)
-
-@inline _call_field(f, x) = f(x)
-@inline _call_field(fs::Tuple, x) = map(f -> f(x), fs)
-@inline _call_field(fs::NamedTuple{K}, x) where {K} =
-    NamedTuple{K}(_call_field(Tuple(fs), x))
-
-@inline _call_jacobian(f, x) = jacobian(f, x)
-@inline _call_jacobian(fs::Tuple, x) = map(f -> jacobian(f, x), fs)
-@inline _call_jacobian(fs::NamedTuple{K}, x) where {K} =
-    NamedTuple{K}(_call_jacobian(Tuple(fs), x))
-
 @inline _lincomb(y1, y2, w) = (one(w) - w) * y1 + w * y2
-@inline _lincomb(y1::Tuple, y2::Tuple, w) = map((a, b) -> _lincomb(a, b, w), y1, y2)
-@inline _lincomb(y1::NamedTuple{K}, y2::NamedTuple{K}, w) where {K} =
-    NamedTuple{K}(_lincomb(Tuple(y1), Tuple(y2), w))
-
-@inline _scale_diff(y2, y1, inv_dt) = (y2 - y1) * inv_dt
-@inline _scale_diff(y2::Tuple, y1::Tuple, inv_dt) =
-    map((b, a) -> _scale_diff(b, a, inv_dt), y2, y1)
-@inline _scale_diff(y2::NamedTuple{K}, y1::NamedTuple{K}, inv_dt) where {K} =
-    NamedTuple{K}(_scale_diff(Tuple(y2), Tuple(y1), inv_dt))
-
-@inline _zero_like(v) = zero(v)
-@inline _zero_like(v::Tuple) = map(_zero_like, v)
-@inline _zero_like(v::NamedTuple{K}) where {K} = NamedTuple{K}(_zero_like(Tuple(v)))
-
-@inline _has_nan(v::Number) = isnan(v)
-@inline _has_nan(v) = any(_has_nan, v)
 
 @inline function _fill_value_for(v::V, fill_val) where {V <: StaticArray}
-    if fill_val isa V
-        return fill_val
-    elseif fill_val isa AbstractVector && length(fill_val) == length(V)
-        return V(fill_val)
-    elseif fill_val isa Number
-        E = eltype(V)
-        return V(ntuple(_ -> E(fill_val), Val(length(V))))
-    else
-        E = eltype(V)
-        return V(ntuple(_ -> E(NaN), Val(length(V))))
-    end
-end
-
-@inline function _fill_value_for(v::V, fill_val) where {V <: Number}
-    return fill_val isa Number ? V(fill_val) : V(NaN)
-end
-
-@inline function _fill_value_for(v::AbstractArray, fill_val)
-    E = eltype(v)
-    fill_el = fill_val isa Number ? E(fill_val) : E(NaN)
-    out = similar(v)
-    fill!(out, fill_el)
-    return out
-end
-
-@inline function _fill_value_for(v::Tuple, fill_val)
-    if fill_val isa Tuple && length(fill_val) == length(v)
-        return map(_fill_value_for, v, fill_val)
-    else
-        return map(x -> _fill_value_for(x, fill_val), v)
-    end
-end
-
-@inline function _fill_value_for(v::NamedTuple{K}, fill_val) where {K}
-    return NamedTuple{K}(_fill_value_for(Tuple(v), fill_val))
+    fill_val isa V && return fill_val
+    E = eltype(V)
+    el = fill_val isa Number ? E(fill_val) : E(NaN)
+    return V(ntuple(_ -> el, Val(length(V))))
 end
 
 @inline function _eval_slab(::_OpValue, sel, slot::_ThreadSlot, x, t)
@@ -834,9 +769,9 @@ end
         f1 = _select(sel, slot.fields[1])
         f2 = _select(sel, slot.fields[2])
     end
-    iszero(w) && return _call_field(f1, x)
-    isone(w) && return _call_field(f2, x)
-    return _lincomb(_call_field(f1, x), _call_field(f2, x), w)
+    iszero(w) && return f1(x)
+    isone(w) && return f2(x)
+    return _lincomb(f1(x), f2(x), w)
 end
 
 @inline function _eval_slab(::_OpJacobian, sel, slot::_ThreadSlot, x, t)
@@ -845,9 +780,9 @@ end
         f1 = _select(sel, slot.fields[1])
         f2 = _select(sel, slot.fields[2])
     end
-    iszero(w) && return _call_jacobian(f1, x)
-    isone(w) && return _call_jacobian(f2, x)
-    return _lincomb(_call_jacobian(f1, x), _call_jacobian(f2, x), w)
+    iszero(w) && return jacobian(f1, x)
+    isone(w) && return jacobian(f2, x)
+    return _lincomb(jacobian(f1, x), jacobian(f2, x), w)
 end
 
 @inline function _eval_slab(::_OpDerivT, sel, slot::_ThreadSlot, x, t)
@@ -855,26 +790,25 @@ end
         f1 = _select(sel, slot.fields[1])
         f2 = _select(sel, slot.fields[2])
     end
-    return _scale_diff(_call_field(f2, x), _call_field(f1, x), slot.inv_dt)
+    return (f2(x) - f1(x)) * slot.inv_dt
 end
 
-@inline _eval_single(::_OpValue, sel, field, x) = _call_field(_select(sel, field), x)
-@inline _eval_single(::_OpJacobian, sel, field, x) = _call_jacobian(_select(sel, field), x)
-@inline _eval_single(::_OpDerivT, sel, field, x) =
-    _zero_like(_call_field(_select(sel, field), x))
+@inline _eval_single(::_OpValue, sel, field, x) = _select(sel, field)(x)
+@inline _eval_single(::_OpJacobian, sel, field, x) = jacobian(_select(sel, field), x)
+@inline _eval_single(::_OpDerivT, sel, field, x) = zero(_select(sel, field)(x))
 
 @inline function _eval_fill_oob(::_OpValue, sel, field, x, fill_val)
-    return _fill_value_for(_call_field(_select(sel, field), x), fill_val)
+    return _fill_value_for(_select(sel, field)(x), fill_val)
 end
 
 @inline function _eval_fill_oob(::_OpJacobian, sel, field, x, fill_val)
-    sample = _call_jacobian(_select(sel, field), x)
-    return _has_nan(fill_val) ? _fill_value_for(sample, NaN) : _zero_like(sample)
+    sample = jacobian(_select(sel, field), x)
+    return any(isnan, fill_val) ? _fill_value_for(sample, NaN) : zero(sample)
 end
 
 @inline function _eval_fill_oob(::_OpDerivT, sel, field, x, fill_val)
-    sample = _call_field(_select(sel, field), x)
-    return _has_nan(fill_val) ? _fill_value_for(sample, NaN) : _zero_like(sample)
+    sample = _select(sel, field)(x)
+    return any(isnan, fill_val) ? _fill_value_for(sample, NaN) : zero(sample)
 end
 
 @inline function _current_slot(itp::LazyTimeInterpolator)
@@ -895,19 +829,11 @@ end
 @inline function _find_slab_index(times::AbstractRange, tv::Real)
     n = length(times)
     u = (tv - first(times)) / step(times)
-    i = if u <= 0
-        1
-    elseif u >= n - 1
-        n - 1
-    else
-        clamp(unsafe_trunc(Int, floor(u)) + 1, 1, n - 1)
-    end
-    @inbounds if tv < times[i] && i > 1
-        i -= 1
-    elseif tv >= times[i + 1] && i < n - 1
-        i += 1
-    end
-    return i
+    i = clamp(unsafe_trunc(Int, floor(u)) + 1, 1, n - 1)
+    @inbounds return ifelse(
+        tv < times[i] && i > 1, i - 1,
+        ifelse(tv >= times[i + 1] && i < n - 1, i + 1, i)
+    )
 end
 
 @inline function _find_slab_index(times::AbstractVector, tv::Real)
@@ -920,14 +846,10 @@ function _fetch_slab!(
     ) where {T, F}
     lock(itp.lock)
     try
-        cur_idx = @atomic :acquire slot.idx
-        if cur_idx == idx && slot.idx2 == idx2 && slot.t1 == t1 && slot.t2 == t2
-            return slot
-        end
         # Promote cached endpoints before loading missing ones so cache_size = 2 never
         # evicts a sibling endpoint that is needed for the same slab.
         p1 = _lru_get!(itp.cache, idx)
-        p2 = idx2 == idx ? p1 : _lru_get!(itp.cache, idx2)
+        p2 = _lru_get!(itp.cache, idx2)
         if p1 == 0
             f1 = itp.loader(idx)
             p1 = _lru_put!(itp.cache, idx, f1, itp.slots)
@@ -1008,13 +930,8 @@ function _eval_lazy_slow(
         field1 = _get_single_field!(itp, slot, slot_idx, 1)
         return _eval_fill_oob(op, sel, field1, x, itp.bc.fill_value)
     end
-    t_q = if tv < itp.t_first
-        zero(t) + itp.t_first
-    elseif tv > itp.t_last
-        zero(t) + itp.t_last
-    else
-        t
-    end
+    t_clamped = clamp(tv, itp.t_first, itp.t_last)
+    t_q = t_clamped == tv ? t : zero(t) + t_clamped
     tv_q = ForwardDiff.value(t_q)
     idx = tv_q == itp.t_last ? length(itp.times) - 1 : _find_slab_index(itp.times, tv_q)
     _fetch = _get_slab!(itp, slot, idx, idx + 1)
@@ -1038,10 +955,6 @@ function _eval_lazy_slow(
         if tv_q >= itp.t_end
             t_q -= period
             tv_q = ForwardDiff.value(t_q)
-        end
-        if tv_q < itp.t_first
-            t_q = zero(t) + itp.t_first
-            tv_q = itp.t_first
         end
     end
     if slot_idx != 0 && slot.t1 <= tv_q < slot.t2
@@ -1070,6 +983,14 @@ end
 end
 
 @inline (itp::LazyTimeInterpolator)(x, t) = _eval_lazy(_OpValue(), _WholeField(), itp, x, t)
+@inline function (itp::LazyTimeInterpolator{T, F})(x, t) where {T, F <: Tuple}
+    return ntuple(k -> itp[k](x, t), Val(fieldcount(F)))
+end
+@inline function (itp::LazyTimeInterpolator{T, F})(
+        x, t
+    ) where {T, K, F <: NamedTuple{K}}
+    return NamedTuple{K}(ntuple(k -> itp[k](x, t), Val(fieldcount(F))))
+end
 @inline function (c::_LazyFieldComponent{K})(x, t) where {K}
     return _eval_lazy(_OpValue(), _ComponentSel{K}(), c.parent, x, t)
 end
