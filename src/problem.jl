@@ -72,7 +72,8 @@ Problem specification for particle tracing in the model `M`: `FullOrbit` (the de
 `RelativisticOrbit`, `Canonical`, `RelativisticCanonical` or `GuidingCenter`, also written
 `TraceCanonicalProblem` and `TraceGCProblem`. Supports the native solvers of each model and
 standard ODE solvers (e.g. Tsit5, Vern7). `RelativisticOrbit` states hold `γv` in place of
-`v`. Boris and hybrid solvers accept only the default `FullOrbit` equations without `F`.
+`v`. Boris solvers accept the default `FullOrbit` and `RelativisticOrbit` equations
+without `F`; `AdaptiveHybrid` accepts `FullOrbit` without `F`.
 
 When `f` is not provided, the model's equations are used: in-place for mutable arrays,
 out-of-place for `StaticArray`s. The default equations of a model imply it, and `TraceProblem{M}`

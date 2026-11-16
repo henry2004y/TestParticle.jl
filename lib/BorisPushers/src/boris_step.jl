@@ -30,7 +30,8 @@ only visible once the fields move in time.
 """
 @inline @muladd function advance_boris(v_half, r, dt, t, p, alg)
     v_half_new = update_velocity(v_half, r, dt, t, p, alg)
-    r_new = r + v_half_new * dt
+    γ = _lorentz_factor(v_half_new, _speed_of_light(p))
+    r_new = r + v_half_new * (dt / γ)
 
     return r_new, v_half_new
 end

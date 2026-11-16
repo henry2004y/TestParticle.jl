@@ -23,7 +23,8 @@ function adapt_params(p, backend::Backend)
     E = adapt_field_to_gpu(p.E, backend)
     B = adapt_field_to_gpu(p.B, backend)
     q2m = p.q2m
-    return (; q2m, E, B)
+    c = _speed_of_light(p)
+    return c === nothing ? (; q2m, E, B) : (; q2m, E, B, c)
 end
 
 @inline function boris_update_xv!(i, xv_in, xv_out, p, dt, t, alg)

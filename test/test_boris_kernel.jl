@@ -354,4 +354,44 @@ end
     @test sols.u == 1:3
 end
 
+@testset "Relativistic Kernel Solver" begin
+    backend = CPU()
+    Bz(x, t) = SA[0.0, 0.0, 1.0]
+    p_rel = prepare(; B = Bz, q = 1.0, m = 1.0, c = 1.0)
+    β = 0.8
+    γ = inv(sqrt(1 - β^2))
+    u0 = SA[0.0, 0.0, 0.0, γ * β, 0.0, 0.0]
+    T_g = 2π * γ
+    dt = T_g / 100
+    prob_rel = TraceProblem{RelativisticOrbit}(u0, (0.0, T_g), p_rel)
+
+    for alg in (Boris(), MultistepBoris4(; n = 2), Vay(), HigueraCary())
+        sol_kern = solve(
+            prob_rel, alg, backend; dt, trajectories = 2, saveat = T_g / 10
+        ).u[1]
+        sol_cpu = solve(prob_rel, alg; dt, saveat = T_g / 10)
+        @test sol_kern.u[end] ≈ sol_cpu.u[end] rtol = 1.0e-10 atol = 1.0e-10
+    end
+
+    # ExB force-free drift with raw_output and isoutside
+    vd = 0.85
+    γd = inv(sqrt(1 - vd^2))
+    p_exb = prepare(; E = (x, t) -> SA[0.0, vd, 0.0], B = Bz, q = 1.0, m = 1.0, c = 1.0)
+    prob_exb = TraceProblem{RelativisticOrbit}(
+        SA[0.0, 0.0, 0.0, γd * vd, 0.0, 0.0], (0.0, 10.0), p_exb
+    )
+    raw = solve(
+        prob_exb, Vay(), backend;
+        dt = 0.5, trajectories = 1, raw_output = true,
+        isoutside = (u, p, t) -> u[1] > 4.3,
+    )
+    @test raw.terminated == [true]
+    @test raw.u[1, 1, end] <= 4.3
+    sol_end = solve(
+        prob_exb, HigueraCary(), backend;
+        dt = 0.5, trajectories = 1, save_everystep = false
+    ).u[1]
+    @test sol_end.u[end][1] ≈ 10.0 * vd atol = 1.0e-11
+end
+
 end # module test_boris_kernel
