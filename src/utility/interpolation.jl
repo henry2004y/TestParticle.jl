@@ -478,111 +478,83 @@ end
 
 # Time-dependent field interpolation.
 
-# Wrapped in a mutable struct with const fields so atomic slot swaps exchange a single
-# pointer even when `F` is an isbits callable or tuple.
-mutable struct _TimeSlab{T, F}
-    const idx::Int
-    const idx2::Int
-    const t1::T
-    const t2::T
-    const inv_dt::T
-    const f1::F
-    const f2::F
-end
-
-mutable struct _AtomicSlab{T, F}
-    @atomic slab::Union{Nothing, _TimeSlab{T, F}}
-end
-
-mutable struct _LRUNode{F}
-    const idx::Int
-    const field::F
-    prev::Union{Nothing, _LRUNode{F}}
-    next::Union{Nothing, _LRUNode{F}}
+# Preallocated per-thread active-slab slot and flat LRU snapshot cache avoid heap
+# allocations on both L1 slab hits and L1/L2 switches when `F` is stored inline.
+mutable struct _ThreadSlot{T, F}
+    @atomic idx::Int
+    idx2::Int
+    t1::T
+    t2::T
+    inv_dt::T
+    const fields::Vector{F}
 end
 
 mutable struct _LRUCache{F}
     const capacity::Int
-    const map::Dict{Int, _LRUNode{F}}
-    head::Union{Nothing, _LRUNode{F}}
-    tail::Union{Nothing, _LRUNode{F}}
+    const idxs::Vector{Int}
+    const fields::Vector{F}
+    const stamps::Vector{Int}
+    tick::Int
 end
 
-function _detach!(cache::_LRUCache{F}, node::_LRUNode{F}) where {F}
-    p = node.prev
-    n = node.next
-    if p === nothing
-        cache.head = n
-    else
-        p.next = n
+function _lru_get!(cache::_LRUCache, idx::Int)
+    @inbounds for k in eachindex(cache.idxs)
+        if cache.idxs[k] == idx
+            t = cache.tick + 1
+            cache.tick = t
+            cache.stamps[k] = t
+            return k
+        end
     end
-    if n === nothing
-        cache.tail = p
-    else
-        n.prev = p
-    end
-    node.prev = nothing
-    node.next = nothing
-    return node
-end
-
-function _push_tail!(cache::_LRUCache{F}, node::_LRUNode{F}) where {F}
-    t = cache.tail
-    node.prev = t
-    node.next = nothing
-    if t === nothing
-        cache.head = node
-    else
-        t.next = node
-    end
-    cache.tail = node
-    return node
-end
-
-function _lru_get!(cache::_LRUCache{F}, idx::Int) where {F}
-    node = get(cache.map, idx, nothing)
-    node === nothing && return nothing
-    if node !== cache.tail
-        _detach!(cache, node)
-        _push_tail!(cache, node)
-    end
-    return node
+    return 0
 end
 
 function _invalidate_slots!(
-        slots::Vector{_AtomicSlab{T, F}}, evicted_idx::Int
+        slots::Vector{_ThreadSlot{T, F}}, evicted_idx::Int
     ) where {T, F}
     @inbounds for s in slots
-        slab = @atomic :acquire s.slab
-        if slab !== nothing && (slab.idx == evicted_idx || slab.idx2 == evicted_idx)
-            @atomic :release s.slab = nothing
+        idx = @atomic :acquire s.idx
+        if idx != 0 && (idx == evicted_idx || s.idx2 == evicted_idx)
+            @atomic :release s.idx = 0
         end
     end
     return nothing
 end
 
 function _lru_put!(
-        cache::_LRUCache{F}, idx::Int, field, slots::Vector{_AtomicSlab{T, F}}
+        cache::_LRUCache{F}, idx::Int, field, slots::Vector{_ThreadSlot{T, F}}
     ) where {T, F}
-    existing = get(cache.map, idx, nothing)
-    if existing !== nothing
-        if existing !== cache.tail
-            _detach!(cache, existing)
-            _push_tail!(cache, existing)
+    victim = 1
+    min_stamp = typemax(Int)
+    @inbounds for k in eachindex(cache.idxs)
+        ik = cache.idxs[k]
+        if ik == idx
+            t = cache.tick + 1
+            cache.tick = t
+            cache.fields[k] = field
+            cache.stamps[k] = t
+            return k
+        elseif ik == 0
+            victim = k
+            min_stamp = 0
+            break
         end
-        return existing
-    end
-    if length(cache.map) >= cache.capacity
-        victim = cache.head
-        if victim !== nothing
-            _detach!(cache, victim)
-            delete!(cache.map, victim.idx)
-            _invalidate_slots!(slots, victim.idx)
+        sk = cache.stamps[k]
+        if sk < min_stamp
+            min_stamp = sk
+            victim = k
         end
     end
-    node = _LRUNode{F}(idx, field, nothing, nothing)
-    cache.map[idx] = node
-    return _push_tail!(cache, node)
+    evicted = @inbounds cache.idxs[victim]
+    evicted != 0 && _invalidate_slots!(slots, evicted)
+    t = cache.tick + 1
+    cache.tick = t
+    @inbounds begin
+        cache.idxs[victim] = idx
+        cache.fields[victim] = field
+        cache.stamps[victim] = t
+    end
+    return victim
 end
 
 _own_time_grid(times::AbstractRange) = float(times)
@@ -682,7 +654,7 @@ struct LazyTimeInterpolator{T, F, L, V <: AbstractVector{T}, B} <: Function
     t_end::T
     loader::L
     bc::B
-    slots::Vector{_AtomicSlab{T, F}}
+    slots::Vector{_ThreadSlot{T, F}}
     slot_mask::Int
     cache::_LRUCache{F}
     lock::ReentrantLock
@@ -715,8 +687,14 @@ function _LazyTimeInterpolator(
         loader, bc, cache_size::Int, f1::F
     ) where {T, F}
     nslots = nextpow(2, max(16, 2 * Threads.maxthreadid()))
-    slots = [_AtomicSlab{T, F}(nothing) for _ in 1:nslots]
-    cache = _LRUCache{F}(cache_size, Dict{Int, _LRUNode{F}}(), nothing, nothing)
+    slots = [
+        _ThreadSlot{T, F}(0, 0, zero(T), zero(T), zero(T), Vector{F}(undef, 2))
+            for _ in 1:nslots
+    ]
+    cache = _LRUCache{F}(
+        cache_size, zeros(Int, cache_size), Vector{F}(undef, cache_size),
+        zeros(Int, cache_size), 0
+    )
     _lru_put!(cache, 1, f1, slots)
     return LazyTimeInterpolator{T, F, typeof(loader), typeof(t_grid), typeof(bc)}(
         t_grid, t_first, t_last, t_end, loader, bc,
@@ -850,28 +828,34 @@ end
     return NamedTuple{K}(_fill_value_for(Tuple(v), fill_val))
 end
 
-@inline function _eval_slab(::_OpValue, sel, slab::_TimeSlab, x, t)
-    w = (t - slab.t1) * slab.inv_dt
-    f1 = _select(sel, slab.f1)
-    f2 = _select(sel, slab.f2)
+@inline function _eval_slab(::_OpValue, sel, slot::_ThreadSlot, x, t)
+    w = (t - slot.t1) * slot.inv_dt
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
     iszero(w) && return _call_field(f1, x)
     isone(w) && return _call_field(f2, x)
     return _lincomb(_call_field(f1, x), _call_field(f2, x), w)
 end
 
-@inline function _eval_slab(::_OpJacobian, sel, slab::_TimeSlab, x, t)
-    w = (t - slab.t1) * slab.inv_dt
-    f1 = _select(sel, slab.f1)
-    f2 = _select(sel, slab.f2)
+@inline function _eval_slab(::_OpJacobian, sel, slot::_ThreadSlot, x, t)
+    w = (t - slot.t1) * slot.inv_dt
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
     iszero(w) && return _call_jacobian(f1, x)
     isone(w) && return _call_jacobian(f2, x)
     return _lincomb(_call_jacobian(f1, x), _call_jacobian(f2, x), w)
 end
 
-@inline function _eval_slab(::_OpDerivT, sel, slab::_TimeSlab, x, t)
-    f1 = _select(sel, slab.f1)
-    f2 = _select(sel, slab.f2)
-    return _scale_diff(_call_field(f2, x), _call_field(f1, x), slab.inv_dt)
+@inline function _eval_slab(::_OpDerivT, sel, slot::_ThreadSlot, x, t)
+    @inbounds begin
+        f1 = _select(sel, slot.fields[1])
+        f2 = _select(sel, slot.fields[2])
+    end
+    return _scale_diff(_call_field(f2, x), _call_field(f1, x), slot.inv_dt)
 end
 
 @inline _eval_single(::_OpValue, sel, field, x) = _call_field(_select(sel, field), x)
@@ -899,13 +883,13 @@ end
 end
 
 @inline function _in_slab(
-        slab::_TimeSlab{T}, tv::Real, t_end::T, ::Union{ClampExtrap, FillExtrap}
+        slot::_ThreadSlot{T}, tv::Real, t_end::T, ::Union{ClampExtrap, FillExtrap}
     ) where {T}
-    return slab.t1 <= tv && (tv < slab.t2 || (tv == t_end && slab.t2 == t_end))
+    return slot.t1 <= tv && (tv < slot.t2 || (tv == t_end && slot.t2 == t_end))
 end
 
-@inline function _in_slab(slab::_TimeSlab, tv::Real, t_end, bc)
-    return slab.t1 <= tv && tv < slab.t2
+@inline function _in_slab(slot::_ThreadSlot, tv::Real, t_end, bc)
+    return slot.t1 <= tv && tv < slot.t2
 end
 
 @inline function _find_slab_index(times::AbstractRange, tv::Real)
@@ -931,35 +915,45 @@ end
 end
 
 function _fetch_slab!(
-        itp::LazyTimeInterpolator{T, F}, slot::_AtomicSlab{T, F},
+        itp::LazyTimeInterpolator{T, F}, slot::_ThreadSlot{T, F},
         idx::Int, idx2::Int, t1::T, t2::T
     ) where {T, F}
-    return lock(itp.lock) do
-        cur = @atomic :acquire slot.slab
-        if cur !== nothing && cur.idx == idx && cur.idx2 == idx2 &&
-                cur.t1 == t1 && cur.t2 == t2
-            return cur
+    lock(itp.lock)
+    try
+        cur_idx = @atomic :acquire slot.idx
+        if cur_idx == idx && slot.idx2 == idx2 && slot.t1 == t1 && slot.t2 == t2
+            return slot
         end
         # Promote cached endpoints before loading missing ones so cache_size = 2 never
         # evicts a sibling endpoint that is needed for the same slab.
-        n1 = _lru_get!(itp.cache, idx)
-        n2 = idx2 == idx ? n1 : _lru_get!(itp.cache, idx2)
-        if n1 === nothing
+        p1 = _lru_get!(itp.cache, idx)
+        p2 = idx2 == idx ? p1 : _lru_get!(itp.cache, idx2)
+        if p1 == 0
             f1 = itp.loader(idx)
-            n1 = _lru_put!(itp.cache, idx, f1, itp.slots)
+            p1 = _lru_put!(itp.cache, idx, f1, itp.slots)
         end
-        if n2 === nothing
+        if p2 == 0
             f2 = itp.loader(idx2)
-            n2 = _lru_put!(itp.cache, idx2, f2, itp.slots)
+            p2 = _lru_put!(itp.cache, idx2, f2, itp.slots)
         end
-        slab = _TimeSlab{T, F}(idx, idx2, t1, t2, inv(t2 - t1), n1.field, n2.field)
-        @atomic :release slot.slab = slab
-        return slab
+        @atomic :release slot.idx = 0
+        @inbounds begin
+            slot.fields[1] = itp.cache.fields[p1]
+            slot.fields[2] = itp.cache.fields[p2]
+        end
+        slot.idx2 = idx2
+        slot.t1 = t1
+        slot.t2 = t2
+        slot.inv_dt = inv(t2 - t1)
+        @atomic :release slot.idx = idx
+        return slot
+    finally
+        unlock(itp.lock)
     end
 end
 
 @inline function _get_slab!(
-        itp::LazyTimeInterpolator, slot::_AtomicSlab, idx::Int, idx2::Int
+        itp::LazyTimeInterpolator, slot::_ThreadSlot, idx::Int, idx2::Int
     )
     t1 = @inbounds itp.times[idx]
     t2 = @inbounds itp.times[idx2]
@@ -967,48 +961,51 @@ end
 end
 
 @inline function _get_single_field!(
-        itp::LazyTimeInterpolator, slab::Union{Nothing, _TimeSlab}, idx::Int
+        itp::LazyTimeInterpolator, slot::_ThreadSlot, slot_idx::Int, idx::Int
     )
-    if slab !== nothing
-        slab.idx == idx && return slab.f1
-        slab.idx2 == idx && return slab.f2
+    if slot_idx != 0
+        slot_idx == idx && return @inbounds slot.fields[1]
+        slot.idx2 == idx && return @inbounds slot.fields[2]
     end
     return _get_single_field_locked!(itp, idx)
 end
 
 function _get_single_field_locked!(itp::LazyTimeInterpolator, idx::Int)
-    return lock(itp.lock) do
-        node = _lru_get!(itp.cache, idx)
-        if node === nothing
+    lock(itp.lock)
+    try
+        p = _lru_get!(itp.cache, idx)
+        if p == 0
             field = itp.loader(idx)
-            node = _lru_put!(itp.cache, idx, field, itp.slots)
+            p = _lru_put!(itp.cache, idx, field, itp.slots)
         end
-        return node.field
+        return @inbounds itp.cache.fields[p]
+    finally
+        unlock(itp.lock)
     end
 end
 
 function _eval_lazy_slow(
         op, sel, itp::LazyTimeInterpolator{T, F, L, V, <:ClampExtrap},
-        slot::_AtomicSlab, cached_slab::Union{Nothing, _TimeSlab}, x, t, tv::Real
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
     ) where {T, F, L, V}
     if tv < itp.t_first
-        return _eval_single(op, sel, _get_single_field!(itp, cached_slab, 1), x)
+        return _eval_single(op, sel, _get_single_field!(itp, slot, slot_idx, 1), x)
     elseif tv > itp.t_last
         n = length(itp.times)
-        return _eval_single(op, sel, _get_single_field!(itp, cached_slab, n), x)
+        return _eval_single(op, sel, _get_single_field!(itp, slot, slot_idx, n), x)
     end
     idx = tv == itp.t_last ? length(itp.times) - 1 : _find_slab_index(itp.times, tv)
-    slab = _get_slab!(itp, slot, idx, idx + 1)
-    return _eval_slab(op, sel, slab, x, t)
+    _fetch = _get_slab!(itp, slot, idx, idx + 1)
+    return _eval_slab(op, sel, _fetch, x, t)
 end
 
 function _eval_lazy_slow(
         op, sel, itp::LazyTimeInterpolator{T, F, L, V, <:FillExtrap},
-        slot::_AtomicSlab, cached_slab::Union{Nothing, _TimeSlab}, x, t, tv::Real
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
     ) where {T, F, L, V}
     tol = 4 * eps(T) * max(abs(itp.t_first), abs(itp.t_last))
     if tv < itp.t_first - tol || tv > itp.t_last + tol
-        field1 = _get_single_field!(itp, cached_slab, 1)
+        field1 = _get_single_field!(itp, slot, slot_idx, 1)
         return _eval_fill_oob(op, sel, field1, x, itp.bc.fill_value)
     end
     t_q = if tv < itp.t_first
@@ -1020,8 +1017,8 @@ function _eval_lazy_slow(
     end
     tv_q = ForwardDiff.value(t_q)
     idx = tv_q == itp.t_last ? length(itp.times) - 1 : _find_slab_index(itp.times, tv_q)
-    slab = _get_slab!(itp, slot, idx, idx + 1)
-    return _eval_slab(op, sel, slab, x, t_q)
+    _fetch = _get_slab!(itp, slot, idx, idx + 1)
+    return _eval_slab(op, sel, _fetch, x, t_q)
 end
 
 function _eval_lazy_slow(
@@ -1029,7 +1026,7 @@ function _eval_lazy_slow(
         itp::LazyTimeInterpolator{
             T, F, L, V, <:Union{WrapExtrap, PeriodicBC{:inclusive}, PeriodicBC{:exclusive}},
         },
-        slot::_AtomicSlab, cached_slab::Union{Nothing, _TimeSlab}, x, t, tv::Real
+        slot::_ThreadSlot, slot_idx::Int, x, t, tv::Real
     ) where {T, F, L, V}
     period = itp.t_end - itp.t_first
     if itp.t_first <= tv < itp.t_end
@@ -1047,29 +1044,29 @@ function _eval_lazy_slow(
             tv_q = itp.t_first
         end
     end
-    if cached_slab !== nothing && cached_slab.t1 <= tv_q < cached_slab.t2
-        return _eval_slab(op, sel, cached_slab, x, t_q)
+    if slot_idx != 0 && slot.t1 <= tv_q < slot.t2
+        return _eval_slab(op, sel, slot, x, t_q)
     end
-    slab = if itp.bc isa PeriodicBC{:exclusive} && tv_q >= itp.t_last
+    _fetch = if itp.bc isa PeriodicBC{:exclusive} && tv_q >= itp.t_last
         _fetch_slab!(itp, slot, length(itp.times), 1, itp.t_last, itp.t_end)
     else
         idx = _find_slab_index(itp.times, tv_q)
         _get_slab!(itp, slot, idx, idx + 1)
     end
-    return _eval_slab(op, sel, slab, x, t_q)
+    return _eval_slab(op, sel, _fetch, x, t_q)
 end
 
 @inline function _eval_lazy(op, sel, itp::LazyTimeInterpolator, x, t)
     tv = ForwardDiff.value(t)
     slot = _current_slot(itp)
-    slab = @atomic :acquire slot.slab
+    slot_idx = @atomic :acquire slot.idx
     if isnan(tv)
-        return _eval_fill_oob(op, sel, _get_single_field!(itp, slab, 1), x, NaN)
+        return _eval_fill_oob(op, sel, _get_single_field!(itp, slot, slot_idx, 1), x, NaN)
     end
-    if slab !== nothing && _in_slab(slab, tv, itp.t_end, itp.bc)
-        return _eval_slab(op, sel, slab, x, t)
+    if slot_idx != 0 && _in_slab(slot, tv, itp.t_end, itp.bc)
+        return _eval_slab(op, sel, slot, x, t)
     end
-    return _eval_lazy_slow(op, sel, itp, slot, slab, x, t, tv)
+    return _eval_lazy_slow(op, sel, itp, slot, slot_idx, x, t, tv)
 end
 
 @inline (itp::LazyTimeInterpolator)(x, t) = _eval_lazy(_OpValue(), _WholeField(), itp, x, t)

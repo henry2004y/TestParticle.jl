@@ -546,6 +546,24 @@ end
 
             # Warm L1 slab fast path should allocate zero bytes
             @test (@allocated itp_num(pt, 0.5)) == 0
+
+            # Switching between cached slabs vs full LRU reload allocates 0 wrapper bytes
+            B_fields = ntuple(_ -> copy(B0), 4)
+            function loader_4(i)
+                return build_interpolator(
+                    CartesianGrid, B_fields[i], x_grid, y_grid, z_grid
+                )
+            end
+            eval_pair(itp, x, a, b) = itp(x, a) + itp(x, b)
+
+            itp_cached = LazyTimeInterpolator(0.0:1.0:3.0, loader_4; cache_size = 4)
+            eval_pair(itp_cached, pt, 0.5, 2.5)
+            @test (@allocated eval_pair(itp_cached, pt, 0.5, 2.5)) == 0
+
+            itp_thrash = LazyTimeInterpolator(0.0:1.0:3.0, loader_4; cache_size = 2)
+            eval_pair(itp_thrash, pt, 0.5, 2.5)
+            loader_allocs = (@allocated loader_4(1))
+            @test (@allocated eval_pair(itp_thrash, pt, 0.5, 2.5)) == 4 * loader_allocs
         end
 
         # 3. Default cache capacity and custom LRU eviction order
