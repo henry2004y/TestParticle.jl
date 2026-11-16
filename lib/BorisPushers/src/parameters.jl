@@ -1,5 +1,13 @@
+@inline _speed_of_light(p) = hasproperty(p, :c) ? p.c : nothing
+
+@inline _lorentz_factor(u, ::Nothing) = one(eltype(u))
+@inline function _lorentz_factor(u, c::Real)
+    T = float(eltype(u))
+    return sqrt(one(T) + sum(abs2, u) / T(c)^2)
+end
+
 """
-    CachedFields(q2m, E, B, r, t)
+    CachedFields(q2m, E, B, r, t, c)
 
 A parameter container whose field functions return the values already taken at
 `(r, t)`.
@@ -10,19 +18,20 @@ the next one from the same node. Carrying the values across the step boundary
 saves the second evaluation, and it does so without the step functions having to
 know where the fields came from, since they read them in the same way.
 """
-struct CachedFields{Q, E, B, R, T}
+struct CachedFields{Q, E, B, R, T, C}
     q2m::Q
     E::Returns{E}
     B::Returns{B}
     r::R
     t::T
+    c::C
 end
 
 @inline function _node_fields(p, r, t)
     T = eltype(r)
     E = SVector{3, T}(p.E(r, t))
     B = SVector{3, T}(p.B(r, t))
-    return CachedFields(p.q2m, Returns(E), Returns(B), r, t)
+    return CachedFields(p.q2m, Returns(E), Returns(B), r, t, _speed_of_light(p))
 end
 
 """

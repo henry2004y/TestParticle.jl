@@ -417,4 +417,93 @@ end
             @test eltype(sol.t) === Float32
         end
     end
+
+    @testset "Relativistic Boris, Vay, and Higuera-Cary" begin
+        # Cyclotron motion with normalized c = 1, q/m = 1, Bz = 1:
+        # v0 = 0.8c -> γ = 5/3, relativistic gyroperiod T_g = 2π γ.
+        c0 = 1.0
+        β = 0.8
+        γ0 = inv(sqrt(1 - β^2))
+        u_mag = γ0 * β
+        T_g = 2π * γ0
+        param_gyro = (; q2m = 1.0, E = ZeroField(), B = constant_Bz, c = c0)
+        u0_gyro = SA[0.0, 0.0, 0.0, u_mag, 0.0, 0.0]
+        prob_gyro = ODEProblem(dummy_f, u0_gyro, (0.0, T_g), param_gyro)
+
+        for alg in (
+                Boris(), MultistepBoris2(; n = 2), MultistepBoris4(; n = 2),
+                MultistepBoris6(; n = 2), Vay(), HigueraCary(),
+            )
+            sol = solve(prob_gyro, alg; dt = T_g / 200)
+            @test hypot(sol.u[end][1], sol.u[end][2], sol.u[end][3]) < 1.0e-2
+            @test norm(sol.u[end][4:6]) ≈ u_mag rtol = 1.0e-11
+        end
+
+        # Force-free relativistic ExB drift: E = -v_d × B = (0, vd, 0) for v_d = (vd, 0, 0).
+        # Vay and HigueraCary cancel E + v × B identically at arbitrary time step dt.
+        vd = 0.9
+        γd = inv(sqrt(1 - vd^2))
+        ud = γd * vd
+        E_exb(x, t) = SA[0.0, vd, 0.0]
+        param_exb = (; q2m = 1.0, E = E_exb, B = constant_Bz, c = c0)
+        u0_exb = SA[0.0, 0.0, 0.0, ud, 0.0, 0.0]
+        prob_exb = ODEProblem(dummy_f, u0_exb, (0.0, 10.0), param_exb)
+
+        for alg in (Vay(), HigueraCary())
+            sol = solve(prob_exb, alg; dt = 0.5)
+            @test sol.u[end][1] ≈ 10.0 * vd atol = 1.0e-11
+            @test sol.u[end][2] ≈ 0.0 atol = 1.0e-11
+            @test sol.u[end][4:6] ≈ SA[ud, 0.0, 0.0] atol = 1.0e-11
+        end
+        sol_boris_exb = solve(prob_exb, Boris(); dt = 0.5)
+        @test abs(sol_boris_exb.u[end][2]) > 1.0e-3
+
+        # Adaptive relativistic gyroperiod stepping scales with γ / B
+        gradient_B_rel(x, t) = SA[0.0, 0.0, 1.0 + 0.1 * x[1]]
+        param_grad = (; q2m = 1.0, E = ZeroField(), B = gradient_B_rel, c = c0)
+        prob_grad = ODEProblem(dummy_f, u0_gyro, (0.0, 2 * T_g), param_grad)
+        for alg in (
+                AdaptiveBoris(; safety = 0.05),
+                AdaptiveMultistepBoris{4}(; n = 2, safety = 0.05),
+                AdaptiveVay(; safety = 0.05),
+                AdaptiveHigueraCary(; safety = 0.05),
+            )
+            dt_init = 0.05 * 2π * γ0
+            sol_adp = solve(prob_grad, alg; dt = dt_init)
+            @test sol_adp.t[end] ≈ 2 * T_g
+            @test norm(sol_adp.u[end][4:6]) ≈ u_mag rtol = 1.0e-11
+            dts = diff(sol_adp.t)
+            @test !all(y -> isapprox(y, dts[1]; rtol = 1.0e-6), dts)
+        end
+
+        # EnsembleKernel execution for relativistic pushers
+        backend = CPU()
+        for alg in (Boris(), MultistepBoris4(; n = 2), Vay(), HigueraCary())
+            sol_kern = solve(
+                prob_exb, alg, backend; dt = 0.25, trajectories = 1, saveat = 2.0
+            ).u[1]
+            sol_cpu = solve(prob_exb, alg; dt = 0.25, saveat = 2.0)
+            @test sol_kern.u[end] ≈ sol_cpu.u[end] atol = 1.0e-10
+        end
+
+        # Validation & Float32 preservation
+        @test_throws ArgumentError AdaptiveVay(; safety = 0.0)
+        @test_throws ArgumentError AdaptiveHigueraCary(; safety = -0.1)
+        param_nr = (; q2m = 1.0, E = ZeroField(), B = constant_Bz)
+        prob_nr = ODEProblem(dummy_f, u0_gyro, (0.0, 1.0), param_nr)
+        @test_throws ArgumentError solve(prob_nr, Vay(); dt = 0.1)
+        @test_throws ArgumentError solve(prob_nr, HigueraCary(); dt = 0.1)
+
+        p_rel32 = (; q2m = 1.0f0, E = ZeroField(), B = constant_Bz, c = 1.0f0)
+        u0_rel32 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0]
+        prob_rel32 = ODEProblem(dummy_f, u0_rel32, (0.0f0, 1.0f0), p_rel32)
+        for alg in (
+                Vay(), HigueraCary(),
+                AdaptiveVay(; safety = 0.1f0), AdaptiveHigueraCary(; safety = 0.1f0),
+            )
+            sol32 = solve(prob_rel32, alg; dt = 0.1f0)
+            @test eltype(sol32.u[1]) === Float32
+            @test eltype(sol32.t) === Float32
+        end
+    end
 end

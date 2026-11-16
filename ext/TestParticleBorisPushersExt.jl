@@ -1,7 +1,8 @@
 module TestParticleBorisPushersExt
 
 using TestParticle
-import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid, _equations_model,
+import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
+    _equations_model, _speed_of_light, _lorentz_factor, _model,
     SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
@@ -14,6 +15,15 @@ import TestParticle: TraceProblem, FullOrbit, AdaptiveHybrid, _equations_model,
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
     AdaptiveMultistepBoris, update_velocity, adapt_field_to_gpu, _node_fields
+
+@static if isdefined(BorisPushers, :Vay)
+    import BorisPushers: Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary
+    const RelOnlyBoris = Union{Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary}
+    const BorisOrbitModels = (FullOrbit, RelativisticOrbit)
+else
+    const RelOnlyBoris = Union{}
+    const BorisOrbitModels = (FullOrbit,)
+end
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
@@ -32,69 +42,122 @@ using PrecompileTools: @setup_workload, @compile_workload
 # --- Boris ODE Problem Adaptation ---
 
 const FOProblem = TraceProblem{FullOrbit}
+const RelFOProblem = TraceProblem{RelativisticOrbit}
+const BorisProblem = Union{FOProblem, RelFOProblem}
 
 _boris_rhs(u, p, t) = nothing
+_boris_rel_rhs(u, p, t) = nothing
+_equations_model(::typeof(_boris_rhs)) = FullOrbit
+_equations_model(::typeof(_boris_rel_rhs)) = RelativisticOrbit
 
-# Boris and hybrid solvers build their own update from `p.q2m`, `p.E` and `p.B`, so anything
-# else in the problem would be silently ignored.
-function _check_boris_problem(prob)
+# Boris solvers build their own update from `p.q2m`, `p.E` and `p.B` (plus `c` for
+# relativistic orbits); `AdaptiveHybrid` only supports `FullOrbit`.
+function _check_boris_problem(prob, alg::AbstractBoris = Boris())
+    M = _equations_model(prob.f)
+    M in BorisOrbitModels && prob.p.F isa ZeroField || throw(
+        ArgumentError(
+            "Boris solvers need the default `FullOrbit` or `RelativisticOrbit` " *
+                "equations without `F`."
+        )
+    )
+    if alg isa RelOnlyBoris && M !== RelativisticOrbit
+        throw(
+            ArgumentError(
+                "$(nameof(typeof(alg))) requires `TraceProblem{RelativisticOrbit}`."
+            )
+        )
+    end
+    return
+end
+
+function _check_hybrid_problem(prob)
     _equations_model(prob.f) === FullOrbit && prob.p.F isa ZeroField || throw(
         ArgumentError(
-            "Boris and hybrid solvers need the default `FullOrbit` equations without `F`."
+            "AdaptiveHybrid needs the default `FullOrbit` equations without `F`."
         )
     )
     return
+end
+
+@inline function _boris_promote_p(::FOProblem, ::Type{T}, p) where {T}
+    p_T = _promote_p(T, p)
+    p_T isa NamedTuple || return (; q2m = T(p.q2m), E = p.E, B = p.B)
+    return hasproperty(p_T, :c) ? (; p_T..., c = nothing) : p_T
+end
+
+@inline function _boris_promote_p(::RelFOProblem, ::Type{T}, p) where {T}
+    p_T = _promote_p(T, p)
+    c_val = T(_speed_of_light(p))
+    return p_T isa NamedTuple ? (; p_T..., c = c_val) :
+        (; q2m = T(p.q2m), E = p.E, B = p.B, c = c_val)
 end
 
 function SciMLBase.__solve(
         eprob::EnsembleProblem{<:TraceProblem}, alg::AbstractBoris, ens::EnsembleKernel;
         kwargs...
     )
-    _check_boris_problem(eprob.prob)
+    base_prob = eprob.prob
+    _check_boris_problem(base_prob, alg)
+    base_model = _equations_model(base_prob.f)
+    T = eltype(base_prob.u0)
+    adapted_base = TraceProblem{base_model}(
+        base_prob.f, base_prob.u0, base_prob.tspan,
+        _boris_promote_p(base_prob, T, base_prob.p);
+        prob_func = base_prob.prob_func
+    )
     prob_func = eprob.prob_func
-    if prob_func !== DEFAULT_PROB_FUNC
-        eprob = EnsembleProblem(
-            eprob.prob;
-            prob_func = (prob, ctx) -> (
-                new_prob = prob_func(prob, ctx);
-                _check_boris_problem(new_prob);
-                new_prob
-            ),
-            output_func = eprob.output_func,
-            reduction = eprob.reduction,
-            u_init = eprob.u_init,
-            safetycopy = eprob.safetycopy
+    wrapped_prob_func = if prob_func === DEFAULT_PROB_FUNC
+        DEFAULT_PROB_FUNC
+    else
+        (prob, ctx) -> (
+            new_prob = prob_func(prob, ctx);
+            _check_boris_problem(new_prob, alg);
+            _equations_model(new_prob.f) === base_model || throw(
+                ArgumentError("prob_func cannot change the orbit model in EnsembleKernel.")
+            );
+            new_prob
         )
     end
+    eprob_adapted = EnsembleProblem(
+        adapted_base;
+        prob_func = wrapped_prob_func,
+        output_func = eprob.output_func,
+        reduction = eprob.reduction,
+        u_init = eprob.u_init,
+        safetycopy = eprob.safetycopy
+    )
     return invoke(
         SciMLBase.__solve,
         Tuple{SciMLBase.AbstractEnsembleProblem, AbstractBoris, EnsembleKernel},
-        eprob, alg, ens; kwargs...
+        eprob_adapted, alg, ens; kwargs...
     )
 end
 
-function _boris_problem(prob::FOProblem)
+function _boris_problem(prob::BorisProblem)
     T = eltype(prob.u0)
     tspan = (T(prob.tspan[1]), T(prob.tspan[2]))
-    p = _promote_p(T, prob.p)
+    p = _boris_promote_p(prob, T, prob.p)
+    rhs = prob isa RelFOProblem ? _boris_rel_rhs : _boris_rhs
     return ODEProblem{false, FullSpecialize}(
-        _boris_rhs, SVector{6, T}(prob.u0), tspan, p
+        rhs, SVector{6, T}(prob.u0), tspan, p
     )
 end
 
-function _boris_initial_dt(prob::FOProblem, alg)
+function _boris_initial_dt(prob::BorisProblem, alg)
     hasproperty(alg, :safety) ||
         throw(ArgumentError("$(nameof(typeof(alg))) needs a time step `dt`."))
     q2m = prob.p.q2m
     u0 = prob.u0
     r0 = SVector{3}(u0[1], u0[2], u0[3])
+    v0 = SVector{3}(u0[4], u0[5], u0[6])
     Bmag = norm(prob.p.B(r0, prob.tspan[1]))
     tdir = sign(prob.tspan[2] - prob.tspan[1])
+    γ = _lorentz_factor(v0, _model(prob), prob.p)
 
-    return tdir * (2π * alg.safety) / (abs(q2m) * Bmag)
+    return tdir * (2π * alg.safety * γ) / (abs(q2m) * Bmag)
 end
 
-function _boris_check_limits(prob::FOProblem, dt, alg, maxiters)
+function _boris_check_limits(prob::BorisProblem, dt, alg, maxiters)
     T = typeof(dt)
     tspan = prob.tspan
     timescale = max(abs(tspan[1]), abs(tspan[2]), abs(tspan[2] - tspan[1]))
@@ -145,7 +208,7 @@ function SciMLBase.solve(
         seed = nothing,
         kwargs...
     ) where {F}
-    _check_boris_problem(prob)
+    _check_boris_problem(prob, alg)
     T = eltype(prob.u0)
     step = dt === nothing ? T(_boris_initial_dt(prob, alg)) : T(dt)
     _boris_check_limits(prob, step, alg, maxiters)
@@ -178,7 +241,7 @@ end
         save_everystep::Bool = true, verbose::Bool = false,
         seed::Union{Nothing, Integer} = nothing
     ) where {EA <: BasicEnsembleAlgorithm, F}
-    _check_boris_problem(prob)
+    _check_hybrid_problem(prob)
     length(prob.u0) == 6 ||
         throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
     prob.tspan[2] != prob.tspan[1] ||
@@ -350,6 +413,7 @@ end
     ) where {F, SaveAdia}
     (; tspan, p, u0) = prob
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
+    p_fo = (; q2m, m, E = Efunc, B = Bfunc)
     q = q2m * m
     T = eltype(u0)
     Tt = typeof(tspan[1])
@@ -367,7 +431,7 @@ end
             sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
             rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
             p_i = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
-            _check_boris_problem(p_i)
+            _check_hybrid_problem(p_i)
             p_i
         end
         xv_fo = SVector{6, T}(new_prob.u0)
@@ -375,7 +439,7 @@ end
         v = xv_fo[SVector(4, 5, 6)]
         t = tspan[1]
 
-        fields = _node_fields(p, r, t)
+        fields = _node_fields(p_fo, r, t)
         ϵ_init, Bmag_r = _fo_adia_value(
             r, v, fields.E(r, t), Efunc, Bfunc, q, m, t, alg
         )
@@ -481,7 +545,7 @@ end
                         r = xv_fo[SVector(1, 2, 3)]
                         v = xv_fo[SVector(4, 5, 6)]
 
-                        fields = _node_fields(p, r, t)
+                        fields = _node_fields(p_fo, r, t)
                         # Clip the guiding-center step to the full-orbit
                         # stability limit instead of resetting it.
                         dt = tdir * Tt(
@@ -538,7 +602,7 @@ end
             else # Mode == :FO
                 # One field evaluation per step serves the adiabaticity check,
                 # the step-size update and the saved node velocity.
-                fields = _node_fields(p, r, t)
+                fields = _node_fields(p_fo, r, t)
                 it_eff = max(1, round(Int, check_scale * check_interval))
                 deadline = t_last_check + tdir * check_scale * check_dt
                 if _check_due(it, t, t_last_check, it_eff, deadline, tdir)
@@ -640,7 +704,7 @@ end
         end
 
         if mode == :FO && use_saveat(plan) && t != t_last
-            v_final = update_velocity_node(v, r, dt, t, p, Boris())
+            v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
             y_final = vcat(r, v_final)
             isave, t_last, y_last = _hybrid_save!(
                 traj, tsave, plan, isave, t_last, y_last, t, y_final
@@ -653,7 +717,7 @@ end
             if mode == :GC
                 push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
-                v_final = update_velocity_node(v, r, dt, t, p, Boris())
+                v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
                 push!(traj, vcat(r, v_final))
             end
             push!(tsave, t)

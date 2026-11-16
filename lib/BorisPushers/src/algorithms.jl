@@ -4,9 +4,13 @@
 Abstract supertype for all Boris particle-pusher algorithms in this package:
 
 - `Boris()`: standard Boris method, second order, fixed step.
+- `Vay()`: relativistic pusher of Vay (2008), second order, fixed step.
+- `HigueraCary()`: relativistic pusher of Higuera & Cary (2017), second order, fixed step.
 - `MultistepBoris{N}(; n=1)`: `n` sub-cycles per step with gyrophase correction
   of order `N` (`N = 2, 4, 6`), fixed step.
 - `AdaptiveBoris(; safety=0.1)`: Boris method with gyroperiod-tracking time step.
+- `AdaptiveVay(; safety=0.1)`: Vay method with relativistic gyroperiod-tracking step.
+- `AdaptiveHigueraCary(; safety=0.1)`: Higuera–Cary with relativistic gyroperiod step.
 - `AdaptiveMultistepBoris{N}(; n=1, safety=0.1)`: `MultistepBoris{N}` with
   gyroperiod-tracking time step.
 """
@@ -16,10 +20,30 @@ abstract type AbstractBoris <: OrdinaryDiffEqAlgorithm end
     Boris()
 
 The standard Boris method for particle pushing in electric and magnetic fields.
+Advances relativistic trajectories when parameter `c` is provided.
 
 The time step is fixed and must be supplied with the `dt` keyword.
 """
 struct Boris <: AbstractBoris end
+
+"""
+    Vay()
+
+Relativistic particle pusher of [Vay (2008)](https://doi.org/10.1063/1.2837054).
+Preserves the exact `E × B` drift velocity at arbitrary Lorentz factor `γ`.
+Requires a relativistic problem (`c` in `p`) and a fixed time step `dt`.
+"""
+struct Vay <: AbstractBoris end
+
+"""
+    HigueraCary()
+
+Structure-preserving relativistic particle pusher of
+[Higuera & Cary (2017)](https://doi.org/10.1063/1.4979989). Preserves both phase-space
+volume and the exact `E × B` drift velocity. Requires a relativistic problem (`c` in `p`)
+and a fixed time step `dt`.
+"""
+struct HigueraCary <: AbstractBoris end
 
 """
     MultistepBoris{N}(; n=1)
@@ -72,6 +96,36 @@ struct AdaptiveBoris{T} <: AbstractBoris
     end
 end
 AdaptiveBoris(; safety = 0.1) = AdaptiveBoris(safety)
+
+"""
+    AdaptiveVay(; safety = 0.1)
+
+[`Vay`](@ref) pusher with a time step that tracks the relativistic gyroperiod
+`Δt = safety * 2π γ / |q B / m|`.
+"""
+struct AdaptiveVay{T} <: AbstractBoris
+    safety::T
+    function AdaptiveVay(safety::T) where {T}
+        safety > 0 || throw(ArgumentError("safety must be positive; got $safety."))
+        return new{T}(safety)
+    end
+end
+AdaptiveVay(; safety = 0.1) = AdaptiveVay(safety)
+
+"""
+    AdaptiveHigueraCary(; safety = 0.1)
+
+[`HigueraCary`](@ref) pusher with a time step that tracks the relativistic gyroperiod
+`Δt = safety * 2π γ / |q B / m|`.
+"""
+struct AdaptiveHigueraCary{T} <: AbstractBoris
+    safety::T
+    function AdaptiveHigueraCary(safety::T) where {T}
+        safety > 0 || throw(ArgumentError("safety must be positive; got $safety."))
+        return new{T}(safety)
+    end
+end
+AdaptiveHigueraCary(; safety = 0.1) = AdaptiveHigueraCary(safety)
 
 """
     AdaptiveMultistepBoris{N}(; n=1, safety=0.1)

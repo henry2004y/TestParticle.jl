@@ -470,9 +470,18 @@ end
                 p = prepare(; B = B_z)
 
                 rel = TraceProblem{RelativisticOrbit}(u0, tspan, p)
-                @test_throws ArgumentError solve(rel, Boris(); dt = 1.0e-4)
-                @test_throws ArgumentError solve(rel, Boris(), EnsembleSerial(); dt = 1.0e-4)
-                @test_throws ArgumentError solve(rel, Boris(), BorisPushers.CPU(); dt = 1.0e-4)
+                fo = TraceProblem(u0, tspan, p)
+                for alg in (
+                        Vay(), AdaptiveVay(), HigueraCary(), AdaptiveHigueraCary(),
+                    )
+                    @test_throws ArgumentError solve(fo, alg; dt = 1.0e-4)
+                    @test_throws ArgumentError solve(
+                        fo, alg, EnsembleSerial(); dt = 1.0e-4
+                    )
+                    @test_throws ArgumentError solve(
+                        fo, alg, BorisPushers.CPU(); dt = 1.0e-4
+                    )
+                end
 
                 custom = TraceProblem((u, p, t) -> zero(u), SVector{6}(u0), tspan, p)
                 @test_throws ArgumentError solve(custom, Boris(); dt = 1.0e-4)
@@ -480,10 +489,11 @@ end
                 forced = TraceProblem(u0, tspan, prepare(; B = B_z, F = x -> SA[0.0, 0.0, 1.0]))
                 @test_throws ArgumentError solve(forced, Boris(); dt = 1.0e-4)
 
-                @test_throws ArgumentError solve(TraceProblem(u0, tspan, p), Boris())
+                @test_throws ArgumentError solve(fo, Boris())
 
                 hybrid = AdaptiveHybrid(; threshold = 0.1, dtmax = 1.0e-4)
-                for bad in (rel, custom, forced)
+                @test_throws ArgumentError solve(rel, hybrid)
+                for bad in (custom, forced)
                     @test_throws ArgumentError solve(bad, hybrid)
                     via_cb = TraceProblem(u0, tspan, p; prob_func = (prob, ctx) -> bad)
                     @test_throws ArgumentError solve(
@@ -491,10 +501,13 @@ end
                     )
                     @test_throws ArgumentError solve(via_cb, hybrid)
                 end
-                via_cb = TraceProblem(u0, tspan, p; prob_func = (prob, ctx) -> rel)
+                via_cb_model = TraceProblem(u0, tspan, p; prob_func = (prob, ctx) -> rel)
+                @test_throws ArgumentError solve(
+                    via_cb_model, Boris(), BorisPushers.CPU(); dt = 1.0e-4
+                )
                 @test length(
                     solve(
-                        via_cb, Boris(), BorisPushers.CPU();
+                        via_cb_model, Boris(), BorisPushers.CPU();
                         dt = 1.0e-4, u0 = reshape(u0, 1, 6)
                     ).u
                 ) == 1
@@ -579,6 +592,72 @@ end
         for (k, t) in enumerate(sol_at.t)
             @test sol_at.u[k] ≈ sol_all(t)
         end
+    end
+
+    @testset "Relativistic Boris Family" begin
+        B0 = 1.0
+        Bz_rel(x, t) = SA[0.0, 0.0, B0]
+        p_si = prepare(; B = Bz_rel, species = Proton)
+
+        β = 0.6
+        v0 = β * TP.c
+        γ0 = inv(sqrt(1 - β^2))
+        u0_rel = SA[0.0, 0.0, 0.0, γ0 * v0, 0.0, 0.0]
+        T_rel = γ0 * TP.get_gyroperiod(B0; q = TP.qᵢ, m = TP.mᵢ)
+        prob_rel = TraceProblem{RelativisticOrbit}(u0_rel, (0.0, T_rel), p_si)
+        prob_flag = TraceProblem(u0_rel, (0.0, T_rel), p_si; relativistic = true)
+        sol_ref = solve(prob_rel, Vern7(); reltol = 1.0e-10, abstol = 1.0e-10)
+
+        for alg in (
+                Boris(), MultistepBoris2(; n = 2), MultistepBoris4(; n = 2),
+                MultistepBoris6(; n = 2), Vay(), HigueraCary(),
+            )
+            sol = solve(prob_rel, alg; dt = T_rel / 400)
+            @test sol.u[end][1:3] ≈ sol_ref.u[end][1:3] atol = 1.0e-3
+            @test sol.u[end][4:6] ≈ sol_ref.u[end][4:6] rtol = 2.0e-4
+            @test norm(TP.get_velocity(sol)[:, end]) ≈ v0 rtol = 1.0e-8
+            E_hist = TP.get_energy(sol)
+            @test E_hist[end] ≈ E_hist[1] rtol = 1.0e-8
+        end
+
+        for alg in (
+                AdaptiveBoris(; safety = 0.01),
+                AdaptiveMultistepBoris{4}(; n = 2, safety = 0.01),
+                AdaptiveVay(; safety = 0.01),
+                AdaptiveHigueraCary(; safety = 0.01),
+            )
+            sol = solve(prob_flag, alg)
+            @test sol.u[end][1:3] ≈ sol_ref.u[end][1:3] atol = 1.0e-2
+            @test sol.u[end][4:6] ≈ sol_ref.u[end][4:6] rtol = 3.0e-3
+            @test length(sol.t) ≈ 101 atol = 2
+        end
+
+        # Normalized c = 1 force-free relativistic E × B drift
+        vd = 0.85
+        γd = inv(sqrt(1 - vd^2))
+        p_norm = prepare(;
+            E = (x, t) -> SA[0.0, vd, 0.0], B = Bz_rel, q = 1.0, m = 1.0, c = 1.0
+        )
+        u0_drift = SA[0.0, 0.0, 0.0, γd * vd, 0.0, 0.0]
+        prob_drift = TraceProblem{RelativisticOrbit}(u0_drift, (0.0, 10.0), p_norm)
+        for alg in (Vay(), HigueraCary())
+            sol = solve(prob_drift, alg; dt = 0.5)
+            @test sol.u[end][1] ≈ 10.0 * vd atol = 1.0e-11
+            @test sol.u[end][2] ≈ 0.0 atol = 1.0e-11
+        end
+
+        # FullOrbit must remain non-relativistic even when p carries `c`.
+        p_fo = prepare(; B = Bz_rel, q = 1.0, m = 1.0, c = 1.0)
+        prob_fo = TraceProblem(SA[0.0, 0.0, 0.0, 0.8, 0.0, 0.0], (0.0, 2π), p_fo)
+        sol_fo = solve(prob_fo, Boris(); dt = 2π / 200)
+        @test hypot(sol_fo.u[end][1], sol_fo.u[end][2]) < 1.0e-3
+
+        # EnsembleThreads
+        sols_threads = solve(
+            prob_drift, HigueraCary(), EnsembleThreads(); dt = 0.5, trajectories = 4
+        )
+        u_expected = SA[10.0 * vd, 0.0, 0.0, γd * vd, 0.0, 0.0]
+        @test all(s -> s.u[end] ≈ u_expected, sols_threads.u)
     end
 end
 

@@ -160,6 +160,69 @@ end
             end
         end
     end
+
+    @testset "relativistic step API" begin
+        c0 = 2.99792458e8
+        param_rel = (; q2m = -1.75882001076e11, E = zero_E, B = uniform_B, c = c0)
+        u_init = 0.6 * c0 / sqrt(1 - 0.6^2)
+        u0_rel = SA[0.0, 0.0, 0.0, u_init, 0.0, 0.0]
+        dt = 1.0e-11
+        tspan = (0.0, 1.0e-8)
+
+        for alg in (
+                Boris(), MultistepBoris2(; n = 2), MultistepBoris4(; n = 2),
+                Vay(), HigueraCary(),
+            )
+            sol = solve(ODEProblem((u, p, t) -> nothing, u0_rel, tspan, param_rel), alg; dt)
+
+            r = SA[u0_rel[1], u0_rel[2], u0_rel[3]]
+            v = SA[u0_rel[4], u0_rel[5], u0_rel[6]]
+            t = tspan[1]
+            v_half = update_velocity_half(v, r, dt, t, param_rel, alg)
+
+            for n in 1:(length(sol.t) - 1)
+                r, v_half = advance_boris(v_half, r, dt, t, param_rel, alg)
+                t += dt
+                v_node = update_velocity_node(v_half, r, dt, t, param_rel, alg)
+                @test vcat(r, v_node) ≈ sol.u[n + 1] rtol = 1.0e-10
+            end
+        end
+
+        for alg in (Boris(), MultistepBoris6(; n = 3), Vay(), HigueraCary())
+            v = SA[u_init, 0.2 * c0, -0.3 * c0]
+            r = SA[0.0, 0.0, 0.0]
+            v_half = update_velocity_half(v, r, dt, 0.0, param_rel, alg)
+            for new_dt in (dt, 2dt, dt / 4)
+                recentered = update_velocity_resync(
+                    v_half, r, dt, new_dt, 0.0, param_rel, alg
+                )
+                v_node = update_velocity_node(recentered, r, new_dt, 0.0, param_rel, alg)
+                @test sum(abs2, v_node) ≈ sum(abs2, v) rtol = 1.0e-12
+            end
+        end
+
+        param_td = (; q2m = 1.0, E = oscillating_E, B = uniform_B, c = 1.0)
+        u0_td = SA[0.0, 0.0, 0.0, 0.8, 0.0, 0.0]
+        T_td = 1.0
+        for alg in (Boris(), Vay(), HigueraCary())
+            final_state_rel(step) = solve(
+                ODEProblem((u, p, t) -> nothing, u0_td, (0.0, T_td), param_td), alg;
+                dt = step, save_everystep = false, save_start = false
+            ).u[end]
+            ref = final_state_rel(T_td / 4000)
+            errs = [
+                norm(final_state_rel(step) - ref)
+                    for step in (T_td / 200, T_td / 400, T_td / 800)
+            ]
+            orders = [log2(errs[i] / errs[i + 1]) for i in 1:(length(errs) - 1)]
+            @test all(>(1.8), orders)
+        end
+
+        for alg in (Boris(), MultistepBoris4(; n = 2), Vay(), HigueraCary())
+            integrate(alg, param_rel, 0.0, dt, 10)
+            @test @allocated(integrate(alg, param_rel, 0.0, dt, 1000)) == 0
+        end
+    end
 end
 
 end

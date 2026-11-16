@@ -18,7 +18,10 @@ mutable struct BorisControllerCache{QT, EEstT, UT} <: AbstractControllerCache
 end
 
 function default_controller(
-        ::Type{QT}, alg::Union{AdaptiveBoris, AdaptiveMultistepBoris}
+        ::Type{QT},
+        alg::Union{
+            AdaptiveBoris, AdaptiveMultistepBoris, AdaptiveVay, AdaptiveHigueraCary,
+        }
     ) where {QT}
     return BorisController(QT(alg.safety))
 end
@@ -34,17 +37,19 @@ end
 """
     gyroperiod_dt(integrator, safety)
 
-Return `safety * 2π / |q B / m|` evaluated at the position and time the last
+Return `safety * 2π γ / |q B / m|` evaluated at the position and time the last
 step landed on, or `nothing` when the magnetic field vanishes there.
 """
 function gyroperiod_dt(integrator, safety)
-    q2m = integrator.p.q2m
-    Bfunc = integrator.p.B
+    p = integrator.p
+    q2m = p.q2m
+    Bfunc = p.B
     u = integrator.u
     Bmag = norm(Bfunc(SVector(u[1], u[2], u[3]), integrator.t + integrator.dt))
     iszero(Bmag) && return nothing
+    γ = _lorentz_factor(SVector(u[4], u[5], u[6]), _speed_of_light(p))
 
-    return integrator.tdir * (2π * safety) / (abs(q2m) * Bmag)
+    return integrator.tdir * (2π * safety * γ) / (abs(q2m) * Bmag)
 end
 
 function stepsize_controller!(integrator, cache::BorisControllerCache, alg)

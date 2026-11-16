@@ -12,5 +12,10 @@ isfsal(::AdaptiveBoris) = false
 alg_order(::AdaptiveMultistepBoris{N}) where {N} = N
 isfsal(::AdaptiveMultistepBoris{N}) where {N} = false
 
-SciMLBase.isadaptive(::Union{AdaptiveBoris, AdaptiveMultistepBoris}) = true
-SciMLBase.isadaptive(::Union{Boris, MultistepBoris}) = false
+alg_order(::Union{Vay, HigueraCary, AdaptiveVay, AdaptiveHigueraCary}) = 2
+isfsal(::Union{Vay, HigueraCary, AdaptiveVay, AdaptiveHigueraCary}) = false
+
+SciMLBase.isadaptive(
+    ::Union{AdaptiveBoris, AdaptiveMultistepBoris, AdaptiveVay, AdaptiveHigueraCary}
+) = true
+SciMLBase.isadaptive(::Union{Boris, MultistepBoris, Vay, HigueraCary}) = false
