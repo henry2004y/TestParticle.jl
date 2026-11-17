@@ -449,8 +449,8 @@ end
     ) where {T}
     phase_next = T(mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2))
     xv_full = need_full ? _gc_to_full(
-        y_next, Efunc, B_next, Bmag_next, q, m, μ, t_next, phase_next
-    ) : zero(SVector{6, T})
+            y_next, Efunc, B_next, Bmag_next, q, m, μ, t_next, phase_next
+        ) : zero(SVector{6, T})
     return phase_next, xv_full
 end
 
@@ -600,7 +600,7 @@ function _hybrid_one(
             tol = scale isa AbstractFloat ? 4 * eps(scale) : zero(scale)
             if tdir * (t - t_last_check) > zero(Tt) && (
                     _check_due(it, t, t_last_check, it_gc, deadline, tdir) ||
-                    tdir * (t + dt_try - deadline) > tol
+                        tdir * (t + dt_try - deadline) > tol
                 )
                 t_last_check = t
                 mp = get_magnetic_properties(get_x(xv_gc), t, Bfunc)
