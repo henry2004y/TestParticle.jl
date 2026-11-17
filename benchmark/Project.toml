@@ -13,4 +13,4 @@ TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 TestParticle = {path = ".."}
 
 [compat]
-BorisPushers = "0.2"
+BorisPushers = "0.2.1"
