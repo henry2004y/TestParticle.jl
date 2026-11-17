@@ -39,6 +39,16 @@ near_null_sheet_B(x, t) = SA[1.0e-5 * tanh(x[3] / 1.0e3), 0.0, 1.0e-11]
 "Thin reversing sheet with an exact magnetic null at z = 0."
 exact_null_sheet_B(x, t) = SA[1.0e-5 * tanh(x[3] / 1.0e3), 0.0, 0.0]
 
+"Adiabatic magnetic bottle (α = 1e-8) for testing step preservation."
+function adia_bottle_B(x, t)
+    B0 = 1.0e-4
+    α = 1.0e-8
+    return SA[-B0 * α * x[1] * x[3], -B0 * α * x[2] * x[3], B0 * (1 + α * x[3]^2)]
+end
+
+"Harris current sheet from benchmark suite for overshoot/reflection checks."
+sheet_bench_B(x, t) = SA[1.0e-7 * tanh(x[3] / 2.0e4), 0.0, 2.0e-8]
+
 "Float32-preserving sheared magnetic field."
 function sheared_B32(x, t)
     T = eltype(x)
@@ -834,6 +844,89 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         @test sol_p32.retcode == TP.ReturnCode.Success
         @test eltype(sol_p32.u[1]) == Float32
         @test eltype(sol_p32.t) == Float32
+    end
+
+    # issue #667: check deadlines must preserve the GC integrator's proposed step
+    # instead of crushing Vern7 back down to a remainder sliver.
+    @testset "adiabatic step preservation" begin
+        let
+            T_gyro = gyroperiod(1.0e-4)
+            u0 = SA[10.0, 0.0, 0.0, 5.0e4, 0.0, 1.0e5]
+            tspan = (0.0, 20_000 * T_gyro)
+            B_adia = TP.Field(adia_bottle_B)
+            p = (; q2m, m, E = E_field, B = B_adia, F = TP.ZeroField())
+            prob = TraceProblem(u0, tspan, p)
+
+            u0_gc, p_gc = TP.prepare_gc(u0; B = B_adia, species = Proton)
+            sol_gc = solve(
+                TraceGCProblem(u0_gc, tspan, p_gc), Vern7();
+                abstol = 1.0e-6, reltol = 1.0e-6,
+            )
+
+            alg_def = AdaptiveHybrid(;
+                threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+                maxiters = 100_000,
+            )
+            sol_hyb = solve(prob, alg_def).u[1]
+            @test sol_hyb.retcode == TP.ReturnCode.Success
+            @test all(==(:GC), sol_hyb.stats.adiabaticity.mode)
+            @test length(sol_hyb.t) <= ceil(Int, 1.15 * length(sol_gc.t))
+
+            alg_clip = AdaptiveHybrid(;
+                threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
+                check_dt = 50 * T_gyro, maxiters = 100_000,
+            )
+            sol_clip = solve(prob, alg_clip).u[1]
+            @test sol_clip.retcode == TP.ReturnCode.Success
+            @test length(sol_clip.t) <= 430
+        end
+    end
+
+    # issue #667: detect sheet entry early enough to reflect and capture the
+    # non-adiabatic magnetic moment jump.
+    @testset "current-sheet overshoot rollback" begin
+        let
+            B0 = 1.0e-7
+            L = 2.0e4
+            T_gyro = gyroperiod(B0)
+            tspan = (0.0, 200 * T_gyro)
+            v = 2.0e5
+            B_sheet = TP.Field(sheet_bench_B)
+            p = (; q2m, m, E = E_field, B = B_sheet, F = TP.ZeroField())
+            dt_b = T_gyro / 20
+            alg = AdaptiveHybrid(;
+                threshold = 0.1, dtmax = dt_b, dtmin = 1.0e-4 * T_gyro,
+                maxiters = 500_000, check_interval = 10,
+            )
+
+            u0 = vcat(SA[0.0, 0.0, -2 * L], SA[0.0, 0.95 * v, 0.3 * v])
+            prob = TraceProblem(u0, tspan, p)
+            sol_hyb = solve(prob, alg).u[1]
+            sol_boris = solve(prob, Boris(); dt = dt_b)
+
+            @test sol_hyb.retcode == TP.ReturnCode.Success
+            idx_fo = findfirst(==(:FO), sol_hyb.stats.adiabaticity.mode)
+            @test idx_fo !== nothing
+            @test sol_hyb.stats.adiabaticity.components[idx_fo] <= 0.5
+            @test sign(sol_hyb.u[end][3]) == sign(sol_boris.u[end][3]) == -1.0
+
+            _, _, μ_boris = TP._gc_adia_parameters(
+                sol_boris.u[end], E_field, B_sheet, q, m, tspan[2]
+            )
+            _, _, μ_hyb = TP._gc_adia_parameters(
+                sol_hyb.u[end], E_field, B_sheet, q, m, tspan[2]
+            )
+            @test isapprox(μ_hyb, μ_boris; rtol = 0.2)
+
+            # Starting deeper in the lobe exercises the GC -> FO crossing path.
+            u0_lobe = vcat(SA[0.0, 0.0, -10 * L], SA[0.0, 0.95 * v, 0.3 * v])
+            sol_lobe = solve(TraceProblem(u0_lobe, tspan, p), alg).u[1]
+            @test sol_lobe.retcode == TP.ReturnCode.Success
+            @test sol_lobe.stats.adiabaticity.mode[1] === :GC
+            idx_lobe_fo = findfirst(==(:FO), sol_lobe.stats.adiabaticity.mode)
+            @test idx_lobe_fo !== nothing
+            @test sol_lobe.stats.adiabaticity.components[idx_lobe_fo] <= 0.5
+        end
     end
 end
 
