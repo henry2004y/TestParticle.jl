@@ -1,6 +1,6 @@
 name = "TestParticle"
 uuid = "953b605b-f162-4481-8f7f-a191c2bb40e3"
-version = "0.26.0"
+version = "0.27.0"
 authors = ["Hongyang Zhou <hyzhou@umich.edu>, Tiancheng Liu <liutc@mail.nankai.edu.cn>, and Zijin Zhang <zijin@ucla.edu>"]
 
 [workspace]
@@ -40,7 +40,7 @@ TestParticleVernerExt = "OrdinaryDiffEqVerner"
 
 [compat]
 Adapt = "4.4"
-BorisPushers = "0.2"
+BorisPushers = "0.2.1"
 ChunkSplitters = "3"
 DiffResults = "1"
 FastInterpolations = "0.4.15"
