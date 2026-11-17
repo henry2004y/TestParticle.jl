@@ -129,6 +129,38 @@ alg = AdaptiveBoris(safety=0.05)
 sol = solve(prob, alg)
 ```
 
+### Relativistic Pushers
+
+When tracing relativistic particles with `TraceProblem{RelativisticOrbit}`, the velocity slots store the relativistic spatial momentum per unit mass $\mathbf{u} = \gamma \mathbf{v}$, where $\gamma = \sqrt{1 + |\mathbf{u}|^2 / c^2}$. All Boris-family solvers support `RelativisticOrbit`, differing in how they advance the electric and magnetic half-steps and evaluate $\gamma$:
+
+- **`Boris()`** / **`MultistepBoris{N}()`**: Standard relativistic Boris pusher (using the midpoint Lorentz factor after the first electric half-step and $\Delta\mathbf{x} = \mathbf{u}_{n+1/2}\,\Delta t / \gamma_{n+1/2}$) and its sub-cycled / Hyper-Boris gyrophase-corrected variants.
+- **`Vay()`**: Vay (2008) Lorentz-invariant pusher that combines the electric and magnetic terms so $\mathbf{E} + \mathbf{v} \times \mathbf{B} = \mathbf{0}$ cancels exactly in relativistic $\mathbf{E} \times \mathbf{B}$ flows.
+- **`HigueraCary()`**: Higuera-Cary (2017) pusher that retains the Vay electric advance while solving a quadratic for the rotation Lorentz factor, making it simultaneously volume-preserving, energy-conserving in pure $\mathbf{B}$, and exact for relativistic $\mathbf{E} \times \mathbf{B}$ drift.
+- **`AdaptiveBoris()`**, **`AdaptiveMultistepBoris{N}()`**, **`AdaptiveVay()`**, **`AdaptiveHigueraCary()`**: Adaptive counterparts that dynamically scale the local gyroperiod by $\gamma$.
+
+| Solver | Volume Preserving | Pure-$\mathbf{B}$ Energy Conserved | Exact $\mathbf{E} \times \mathbf{B}$ Cancellation | Gyrophase Order | Relative Cost per Step |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `Boris()` | Yes | Exact (round-off) | Approximate | 2nd | Lowest (baseline) |
+| `MultistepBoris{N}()` | Yes | Exact (round-off) | Approximate | 2nd / 4th / 6th | Low–moderate ($n$ sub-rotations, 1 field eval) |
+| `Vay()` | No | Exact (round-off) | Exact | 2nd | Low (~10–20% over `Boris`) |
+| `HigueraCary()` | Yes | Exact (round-off) | Exact | 2nd | Low (~10–20% over `Boris`) |
+
+**When to use which:**
+
+- **`HigueraCary()` / `AdaptiveHigueraCary()` (recommended default for electromagnetic fields)**: Best all-round choice whenever both $\mathbf{E}$ and $\mathbf{B}$ matter—for example, relativistic reconnection, pulsar/black-hole magnetospheres, or laser–plasma acceleration—because it combines phase-space volume preservation with exact $\mathbf{E} \times \mathbf{B}$ cancellation.
+- **`Vay()` / `AdaptiveVay()`**: A classic choice for ultra-relativistic beams, shock fronts, and counter-streaming plasmas dominated by strong crossed $\mathbf{E}$ and $\mathbf{B}$ fields where Lorentz-invariant force-free cancellation is the primary requirement.
+- **`MultistepBoris6(; n = 4)` / `Boris()` / `AdaptiveBoris()`**: Best when $\mathbf{E} = \mathbf{0}$ (or $|\mathbf{E}| \ll |\mathbf{v} \times \mathbf{B}|$), such as cosmic-ray propagation in magnetostatic turbulence, where high-order gyrophase accuracy (`MultistepBoris4` / `MultistepBoris6`) or minimal per-step cost (`Boris`) is more important than relativistic $\mathbf{E} \times \mathbf{B}$ cancellation.
+
+```julia
+prob_rel = TraceProblem{RelativisticOrbit}(stateinit_rel, tspan, param)
+sol_boris = solve(prob_rel, Boris(); dt)
+sol_vay = solve(prob_rel, Vay(); dt)
+sol_hc = solve(prob_rel, HigueraCary(); dt)
+sol_adap = solve(prob_rel, AdaptiveHigueraCary(; safety = 0.05))
+```
+
+Note that `Vay`, `HigueraCary`, `AdaptiveVay`, and `AdaptiveHigueraCary` require `TraceProblem{RelativisticOrbit}` and also support `EnsembleThreads()` and kernel backends (`CPU()`, CUDA, etc.) for fixed-step variants. See [Relativistic vs Non-relativistic Tracing](@ref) for an interactive comparison.
+
 ### Ensembles
 
 Multiple particles are traced through a SciML [`EnsembleProblem`](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/), so the whole ensemble interface applies: `EnsembleThreads()`, `EnsembleDistributed()`, `EnsembleSplitThreads()`, `trajectories`, `seed`, `batch_size`, `pmap_batch_size`, and the `output_func` and `reduction` hooks.

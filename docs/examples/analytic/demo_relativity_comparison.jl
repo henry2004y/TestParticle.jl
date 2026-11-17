@@ -2,9 +2,10 @@
 #
 # This example compares the particle trajectories of `trace!` (non-relativistic)
 # and relativistic (`RelativisticOrbit`) equations.
-# We demonstrate two cases:
+# We demonstrate three cases:
 # 1. Uniform magnetic field (Cyclotron motion)
 # 2. Uniform ExB field (ExB drift)
+# 3. Force-free relativistic ExB beam (Boris vs Vay vs Higuera-Cary)
 #
 # Relativistic effects become significant when the particle velocity approaches the speed of light $c$.
 # In the relativistic regime, the mass increases by a factor of $\gamma = 1/\sqrt{1-v^2/c^2}$,
@@ -12,7 +13,8 @@
 
 import DisplayAs #hide
 using TestParticle
-using OrdinaryDiffEq
+using BorisPushers
+using OrdinaryDiffEqVerner
 using StaticArrays
 using CairoMakie
 
@@ -151,8 +153,75 @@ axislegend(ax2; position = :rb, backgroundcolor = :transparent)
 
 f2 = DisplayAs.PNG(f2) #hide
 
+# ## Case 3: Relativistic Pusher Comparison (Boris vs Vay vs Higuera-Cary)
+#
+# When tracing a fast beam across perpendicular $\mathbf{E}$ and $\mathbf{B}$ fields such that
+# $\mathbf{E} + \mathbf{v}_0 \times \mathbf{B} = \mathbf{0}$, the exact Lorentz force vanishes
+# and the particle should move in a straight line at constant velocity. With a large time step,
+# the standard relativistic `Boris()` scheme introduces a slight phase mismatch between the
+# electric acceleration and the magnetic rotation, generating spurious transverse motion,
+# whereas `Vay()` and `HigueraCary()` cancel the crossed-field forces exactly.
+
+const v_beam = 0.9 * c
+getB3(x) = SA[0.0, 0.0, B0]
+getE3(x) = SA[0.0, v_beam * B0, 0.0]
+
+param3 = prepare(; E = getE3, B = getB3, species = Proton)
+γ_beam = 1 / sqrt(1 - (v_beam / c)^2)
+u0_beam = [0.0, 0.0, 0.0, γ_beam * v_beam, 0.0, 0.0]
+
+dt_rel = T_non / 5
+tspan_beam = (0.0, 10 * T_non)
+prob_beam = TraceProblem{RelativisticOrbit}(u0_beam, tspan_beam, param3)
+
+sol_boris_rel = solve(prob_beam, Boris(); dt = dt_rel)
+sol_vay_rel = solve(prob_beam, Vay(); dt = dt_rel)
+sol_hc_rel = solve(prob_beam, HigueraCary(); dt = dt_rel);
+
+# Extract the transverse velocity error $|v_y| / c$ from the relativistic momentum state $\mathbf{u} = \gamma\mathbf{v}$:
+function transverse_speed_error(sol, c)
+    return map(sol.u) do state
+        ux, uy, uz = state[4], state[5], state[6]
+        γ = hypot(ux, uy, uz, c) / c
+        return max(abs(uy / γ) / c, 1.0e-16)
+    end
+end
+
+f3 = Figure(size = (800, 400), fontsize = 20)
+ax3 = Axis(
+    f3[1, 1];
+    title = "Force-free relativistic E×B beam (v = 0.9c)",
+    xlabel = "t / T_non",
+    ylabel = "|v_y| / c",
+    yscale = log10
+)
+
+lines!(
+    ax3, sol_boris_rel.t ./ T_non, transverse_speed_error(sol_boris_rel, c);
+    color = :crimson, linewidth = 2, label = "Boris"
+)
+lines!(
+    ax3, sol_vay_rel.t ./ T_non, transverse_speed_error(sol_vay_rel, c);
+    color = :darkcyan, linewidth = 2, label = "Vay"
+)
+lines!(
+    ax3, sol_hc_rel.t ./ T_non, transverse_speed_error(sol_hc_rel, c);
+    color = :darkorange, linestyle = :dash, linewidth = 2, label = "HigueraCary"
+)
+
+axislegend(ax3; position = :rc, backgroundcolor = :transparent)
+
+f3 = DisplayAs.PNG(f3) #hide
+
+# **Choosing a relativistic solver:**
+#
+# * **`HigueraCary()`** (or `AdaptiveHigueraCary()`): Recommended general default for relativistic $\mathbf{E}$ and $\mathbf{B}$ fields—volume-preserving, energy-conserving in pure $\mathbf{B}$, and exact for force-free $\mathbf{E} \times \mathbf{B}$ drift.
+# * **`Vay()`** (or `AdaptiveVay()`): Well suited for ultra-relativistic beams and strong $\mathbf{E} \times \mathbf{B}$ cancellation.
+# * **`Boris()` / `MultistepBoris6(; n = 4)`**: Best when $\mathbf{E} \approx \mathbf{0}$ and pure-magnetic gyrophase accuracy or minimum per-step cost is the priority.
+
 # ## Summary
 #
 # * **Case 1**: Relativistic particles have larger gyroradii due to the relativistic factor $\gamma$.
 # * **Case 2**: Under strong electric fields, relativistic kinematics limit the velocity to $c$,
 #   whereas non-relativistic dynamics would predict velocities exceeding $c$ (if $E/B$ is large enough or during the gyro-phase).
+# * **Case 3**: In force-free crossed fields ($\mathbf{E} + \mathbf{v}_0 \times \mathbf{B} = \mathbf{0}$), `Vay()` and `HigueraCary()` maintain machine-precision cancellation while `Boris()` develops spurious transverse velocity at finite $\Delta t$.

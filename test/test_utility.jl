@@ -87,7 +87,7 @@ end
     @test TP.get_energy(solve(TraceProblem(trace_gc!, gc0, tspan, p_gc), Tsit5()))[1] ≈ energy
     @test_throws ArgumentError TraceProblem{RelativisticOrbit}(trace!, γv, tspan, electron)
     @test remake(rel; f = trace!) isa TraceProblem{FullOrbit}
-    @test TraceProblem(γv, tspan, electron; relativistic = true) isa
+    @test (@test_deprecated TraceProblem(γv, tspan, electron; relativistic = true)) isa
         TraceProblem{RelativisticOrbit}
 
     # Without a velocity part, these must not read the canonical momentum as one.
@@ -748,7 +748,7 @@ end
                 )
             end
 
-            multi = LazyTimeInterpolator(t_grid, tuple_loader)
+            multi = LazyTimeInterpolator(t_grid, tuple_loader; cache_size = 3)
             @test length(multi) == 2
             E_itp, B_itp = multi
             @test E_itp === multi[1]

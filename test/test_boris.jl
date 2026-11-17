@@ -605,7 +605,6 @@ end
         u0_rel = SA[0.0, 0.0, 0.0, γ0 * v0, 0.0, 0.0]
         T_rel = γ0 * TP.get_gyroperiod(B0; q = TP.qᵢ, m = TP.mᵢ)
         prob_rel = TraceProblem{RelativisticOrbit}(u0_rel, (0.0, T_rel), p_si)
-        prob_flag = TraceProblem(u0_rel, (0.0, T_rel), p_si; relativistic = true)
         sol_ref = solve(prob_rel, Vern7(); reltol = 1.0e-10, abstol = 1.0e-10)
 
         for alg in (
@@ -626,7 +625,7 @@ end
                 AdaptiveVay(; safety = 0.01),
                 AdaptiveHigueraCary(; safety = 0.01),
             )
-            sol = solve(prob_flag, alg)
+            sol = solve(prob_rel, alg)
             @test sol.u[end][1:3] ≈ sol_ref.u[end][1:3] atol = 1.0e-2
             @test sol.u[end][4:6] ≈ sol_ref.u[end][4:6] rtol = 3.0e-3
             @test length(sol.t) ≈ 101 atol = 2
