@@ -27,4 +27,5 @@ TestParticle = {path = ".."}
 
 [compat]
 BorisPushers = "0.2"
+Magnetostatics = "0.1.0 - 0.1.13, 0.1.15 - 0.1"
 OrdinaryDiffEq = "6, 7"

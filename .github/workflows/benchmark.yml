@@ -36,3 +36,4 @@ jobs:
         with:
           julia-version: '1'
           job-summary: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          extra-pkgs: '${{ github.event.pull_request.head.repo.clone_url }}#${{ github.event.pull_request.head.sha }}:lib/BorisPushers'
