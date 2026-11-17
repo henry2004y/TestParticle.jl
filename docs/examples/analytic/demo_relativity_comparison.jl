@@ -14,7 +14,7 @@
 import DisplayAs #hide
 using TestParticle
 using BorisPushers
-using OrdinaryDiffEq
+using OrdinaryDiffEqVerner
 using StaticArrays
 using CairoMakie
 
