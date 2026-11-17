@@ -655,7 +655,7 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
         u0 = vcat(r0, v0)
         p = (; q2m, m, E = E_field, B = TP.Field(harris_B), F = TP.ZeroField())
         prob = TraceProblem(u0, (0.0, 20.0), p)
-        alg = AdaptiveHybrid(; threshold = 0.05, dtmax = 0.5, check_interval = 5)
+        alg = AdaptiveHybrid(; threshold = 0.05, dtmax = 0.05, check_interval = 5)
         sol_hyb = solve(prob, alg).u[1]
         sol_boris = solve(prob, Boris(); dt = 0.05)
 
@@ -919,13 +919,16 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
             @test isapprox(μ_hyb, μ_boris; rtol = 0.2)
 
             # Starting deeper in the lobe exercises the GC -> FO crossing path.
-            u0_lobe = vcat(SA[0.0, 0.0, -10 * L], SA[0.0, 0.95 * v, 0.3 * v])
-            sol_lobe = solve(TraceProblem(u0_lobe, tspan, p), alg).u[1]
-            @test sol_lobe.retcode == TP.ReturnCode.Success
-            @test sol_lobe.stats.adiabaticity.mode[1] === :GC
-            idx_lobe_fo = findfirst(==(:FO), sol_lobe.stats.adiabaticity.mode)
-            @test idx_lobe_fo !== nothing
-            @test sol_lobe.stats.adiabaticity.components[idx_lobe_fo] <= 0.5
+            for s in (-10.5, -10.0, -9.95, -9.5)
+                u0_lobe = vcat(SA[0.0, 0.0, s * L], SA[0.0, 0.95 * v, 0.3 * v])
+                sol_lobe = solve(TraceProblem(u0_lobe, tspan, p), alg).u[1]
+                @test sol_lobe.retcode == TP.ReturnCode.Success
+                @test sol_lobe.stats.adiabaticity.mode[1] === :GC
+                @test all(diff(sol_lobe.stats.adiabaticity.t) .> 0)
+                idx_lobe_fo = findfirst(==(:FO), sol_lobe.stats.adiabaticity.mode)
+                @test idx_lobe_fo !== nothing
+                @test sol_lobe.stats.adiabaticity.components[idx_lobe_fo] <= 0.5
+            end
         end
     end
 end

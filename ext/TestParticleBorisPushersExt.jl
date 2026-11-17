@@ -467,6 +467,105 @@ end
     return r, v, dt
 end
 
+struct _GCCheckpoint{Tt, T}
+    t::Tt
+    xv_gc::SVector{4, T}
+    phase::T
+    Bmag::T
+    ϵ::T
+    dt::Tt
+    steps::Int
+    isave::Int
+    t_last::Tt
+    y_last::SVector{6, T}
+    ntraj::Int
+end
+
+@inline function _restore_gc_checkpoint!(gc_chk::_GCCheckpoint, traj, tsave)
+    resize!(traj, gc_chk.ntraj)
+    resize!(tsave, gc_chk.ntraj)
+    return (
+        gc_chk.t, gc_chk.xv_gc, gc_chk.phase, gc_chk.Bmag, gc_chk.ϵ,
+        gc_chk.dt, gc_chk.steps, gc_chk.isave, gc_chk.t_last, gc_chk.y_last,
+    )
+end
+
+@inline function _bisect_gc_to_fo!(
+        integrator_gc, t::Tt, t_hi::Tt, xv_gc::SVector{4, T}, phase::T, Bmag_curr::T,
+        ϵ::T, p_gc, q2m, q, m, μ::T, Efunc, Bfunc, alg::AdaptiveHybrid,
+        tspan_end::Tt, isoutside::F, need_save_gc::Bool,
+        traj, tsave, plan, isave::Int, t_last::Tt, y_last::SVector{6, T},
+        v_save::Val{SaveAdia}, adia_t, adia_vals, adia_mode,
+        steps::Int, overshoot_limit::T
+    ) where {Tt, T, F, SaveAdia}
+    switched_at_boundary = false
+    xv_fo = zero(SVector{6, T})
+    for _ in 1:16
+        dt_fo_loc = Tt(_fo_dt(alg, q2m, Bmag_curr))
+        abs(t_hi - t) <= dt_fo_loc / 2 && break
+        dt_mid = (t_hi - t) / 2
+        reinit_gc_integrator!(integrator_gc, xv_gc, (t, tspan_end), p_gc, dt_mid)
+        code_m = gc_step!(integrator_gc, t + dt_mid, isoutside, p_gc, tspan_end)
+        if code_m == ReturnCode.Terminated
+            return (
+                t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+                isave, t_last, y_last, steps, false, code_m,
+            )
+        end
+        code_m != ReturnCode.Success && break
+        t_m = Tt(integrator_gc.t)
+        y_m = SVector{4, T}(integrator_gc.u)
+        mp_m = get_magnetic_properties(get_x(y_m), t_m, Bfunc)
+        ϵ_m = T(_adia_value(mp_m, q, m, y_m[4], μ, alg))
+        if ϵ_m < alg.threshold_gc_to_fo
+            Bmag_m = T(mp_m.Bmag)
+            phase, y_out = _advance_gc_state(
+                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
+                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+            )
+            Bmag_curr = Bmag_m
+            t = t_m
+            xv_gc = y_m
+            ϵ = ϵ_m
+            if need_save_gc
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, y_out
+                )
+            end
+            _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
+            steps += 1
+            steps >= alg.maxiters && break
+        elseif ϵ_m <= overshoot_limit
+            Bmag_m = T(mp_m.Bmag)
+            phase, xv_fo = _advance_gc_state(
+                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
+                phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+            )
+            Bmag_curr = Bmag_m
+            t = t_m
+            xv_gc = y_m
+            ϵ = ϵ_m
+            if need_save_gc
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, xv_fo
+                )
+            end
+            steps += 1
+            switched_at_boundary = true
+            break
+        else
+            t_hi = t_m
+        end
+    end
+    if !switched_at_boundary
+        xv_fo = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+    end
+    return (
+        t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+        isave, t_last, y_last, steps, switched_at_boundary, ReturnCode.Success,
+    )
+end
+
 function _hybrid_one(
         prob::FOProblem, i::Int, alg::AdaptiveHybrid,
         plan, isoutside::F,
@@ -584,6 +683,9 @@ function _hybrid_one(
     _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, mode)
 
     need_save_gc = use_saveat(plan) || save_everystep
+    gc_chk = _GCCheckpoint(
+        t, xv_gc, phase, Bmag_curr, ϵ, dt, steps, isave, t_last, y_last, length(traj)
+    )
 
     while tdir * (tspan[2] - t) > zero(Tt) && steps < alg.maxiters
         if mode == :GC
@@ -602,10 +704,44 @@ function _hybrid_one(
                     _check_due(it, t, t_last_check, it_gc, deadline, tdir) ||
                         tdir * (t + dt_try - deadline) > tol
                 )
-                t_last_check = t
                 mp = get_magnetic_properties(get_x(xv_gc), t, Bfunc)
-                ϵ = T(_adia_value(mp, q, m, xv_gc[4], μ, alg))
-                if ϵ ≥ alg.threshold_gc_to_fo
+                ϵ_curr = T(_adia_value(mp, q, m, xv_gc[4], μ, alg))
+                if ϵ_curr > overshoot_limit
+                    t_hi = t
+                    t, xv_gc, phase, Bmag_curr, ϵ, dt, steps, isave, t_last, y_last =
+                        _restore_gc_checkpoint!(gc_chk, traj, tsave)
+                    t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+                        isave, t_last, y_last, steps, switched_at_boundary, code_b =
+                        _bisect_gc_to_fo!(
+                        integrator_gc, t, t_hi, xv_gc, phase, Bmag_curr,
+                        ϵ, p_gc, q2m, q, m, μ, Efunc, Bfunc, alg,
+                        tspan[2], isoutside, need_save_gc,
+                        traj, tsave, plan, isave, t_last, y_last,
+                        v_save, adia_t, adia_vals, adia_mode,
+                        steps, overshoot_limit
+                    )
+                    if code_b == ReturnCode.Terminated
+                        retcode = code_b
+                        break
+                    end
+                    if steps >= alg.maxiters && !switched_at_boundary
+                        break
+                    end
+                    mode = :FO
+                    it = 1
+                    t_last_check = t
+                    t_fo_holdoff = switched_at_boundary ? t : t_hi
+                    check_scale = Tt(_check_scale(ϵ, alg, mode))
+                    verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
+                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                    r, v, dt = _enter_fo_from_gc(
+                        xv_fo, p_fo, q2m, t, dt, tdir, alg, switched_at_boundary
+                    )
+                    dt_fixed = true
+                    continue
+                elseif ϵ_curr ≥ alg.threshold_gc_to_fo
+                    ϵ = ϵ_curr
+                    t_last_check = t
                     mode = :FO
                     it = 1
                     t_fo_holdoff = t
@@ -621,8 +757,14 @@ function _hybrid_one(
                     dt_fixed = true
                     continue
                 else
+                    ϵ = ϵ_curr
+                    t_last_check = t
                     deadline = t + tdir * check_dt
                     _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
+                    gc_chk = _GCCheckpoint(
+                        t, xv_gc, phase, Bmag_curr, ϵ, dt,
+                        steps, isave, t_last, y_last, length(traj)
+                    )
                 end
             end
 
@@ -644,129 +786,103 @@ function _hybrid_one(
                 mp_next = get_magnetic_properties(get_x(y_next), t_next, Bfunc)
                 ϵ_next = T(_adia_value(mp_next, q, m, y_next[4], μ, alg))
 
-                if ϵ_next > overshoot_limit
-                    # issue #667: bisect/roll back when a GC step jumps deep into
-                    # a non-adiabatic region instead of crossing it with frozen μ.
+                if ϵ_next ≥ alg.threshold_gc_to_fo
+                    # issue #667: bisect/roll back when GC steps cross deep into
+                    # a non-adiabatic region instead of crossing with frozen μ.
+                    need_bisect = ϵ_next > overshoot_limit
                     t_hi = t_next
-                    ϵ_hi = ϵ_next
-                    switched_at_boundary = false
-                    terminated = false
-                    for _ in 1:4
-                        dt_fo_loc = Tt(_fo_dt(alg, q2m, Bmag_curr))
-                        abs(t_hi - t) <= 4 * dt_fo_loc && break
-                        dt_mid = (t_hi - t) / 2
-                        reinit_gc_integrator!(
-                            integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt_mid
-                        )
-                        code_m = gc_step!(
-                            integrator_gc, t + dt_mid, isoutside, p_gc, tspan[2]
-                        )
-                        if code_m == ReturnCode.Terminated
-                            retcode = code_m
-                            terminated = true
-                            break
-                        end
-                        code_m != ReturnCode.Success && break
-                        t_m = Tt(integrator_gc.t)
-                        y_m = SVector{4, T}(integrator_gc.u)
-                        mp_m = get_magnetic_properties(get_x(y_m), t_m, Bfunc)
-                        ϵ_m = T(_adia_value(mp_m, q, m, y_m[4], μ, alg))
-                        if ϵ_m < alg.threshold_gc_to_fo
-                            Bmag_m = T(mp_m.Bmag)
-                            phase, y_out = _advance_gc_state(
-                                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
-                                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+                    if t != gc_chk.t
+                        mp_t = get_magnetic_properties(get_x(xv_gc), t, Bfunc)
+                        ϵ_t = T(_adia_value(mp_t, q, m, xv_gc[4], μ, alg))
+                        if ϵ_t > overshoot_limit
+                            need_bisect = true
+                            t_hi = t
+                            t, xv_gc, phase, Bmag_curr, ϵ, dt, steps, isave,
+                                t_last, y_last = _restore_gc_checkpoint!(
+                                gc_chk, traj, tsave
                             )
-                            Bmag_curr = Bmag_m
-                            t = t_m
-                            xv_gc = y_m
-                            ϵ = ϵ_m
-                            t_last_check = t_m
-                            if need_save_gc
-                                isave, t_last, y_last = _hybrid_save!(
-                                    traj, tsave, plan, isave, t_last, y_last, t, y_out
-                                )
-                            end
-                            _record_adia!(
-                                v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC
+                        elseif ϵ_t ≥ alg.threshold_gc_to_fo
+                            ϵ = ϵ_t
+                            t_last_check = t
+                            t_fo_holdoff = t
+                            mode = :FO
+                            it = 1
+                            check_scale = Tt(_check_scale(ϵ, alg, mode))
+                            verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
+                            _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                            xv_fo = _gc_to_full(
+                                xv_gc, Efunc, mp_t.B, mp_t.Bmag, q, m, μ, t, phase
                             )
-                            steps += 1
-                            steps >= alg.maxiters && break
-                        elseif ϵ_m <= overshoot_limit
-                            Bmag_m = T(mp_m.Bmag)
-                            phase, xv_fo = _advance_gc_state(
-                                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
-                                phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+                            r, v, dt = _enter_fo_from_gc(
+                                xv_fo, p_fo, q2m, t, dt, tdir, alg, true
                             )
-                            Bmag_curr = Bmag_m
-                            t = t_m
-                            xv_gc = y_m
-                            ϵ = ϵ_m
-                            t_last_check = t_m
-                            if need_save_gc
-                                isave, t_last, y_last = _hybrid_save!(
-                                    traj, tsave, plan, isave, t_last, y_last, t, xv_fo
-                                )
-                            end
-                            steps += 1
-                            switched_at_boundary = true
-                            break
+                            dt_fixed = true
+                            continue
                         else
-                            t_hi = t_m
-                            ϵ_hi = ϵ_m
+                            ϵ = ϵ_t
                         end
                     end
-                    terminated && break
-                    if steps >= alg.maxiters && !switched_at_boundary
-                        break
-                    end
-                    mode = :FO
-                    it = 1
-                    t_last_check = t
-                    if !switched_at_boundary
-                        ϵ = ϵ_hi
-                        t_fo_holdoff = t_hi
-                        xv_fo = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
-                    else
-                        t_fo_holdoff = t
-                    end
-                    check_scale = Tt(_check_scale(ϵ, alg, mode))
-                    verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
-                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
-                    r, v, dt = _enter_fo_from_gc(
-                        xv_fo, p_fo, q2m, t, dt, tdir, alg, switched_at_boundary
-                    )
-                    dt_fixed = true
-                    continue
-                elseif ϵ_next ≥ alg.threshold_gc_to_fo
-                    Bmag_next = T(mp_next.Bmag)
-                    phase, xv_fo = _advance_gc_state(
-                        t_next, t_next - t, y_next, mp_next.B, Bmag_next,
-                        phase, Bmag_curr, q2m, q, m, μ, Efunc, true
-                    )
-                    Bmag_curr = Bmag_next
-                    t = t_next
-                    xv_gc = y_next
-                    dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
-                    if need_save_gc
-                        isave, t_last, y_last = _hybrid_save!(
-                            traj, tsave, plan, isave, t_last, y_last, t, xv_fo
+
+                    if need_bisect
+                        t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+                            isave, t_last, y_last, steps, switched_at_boundary, code_b =
+                            _bisect_gc_to_fo!(
+                            integrator_gc, t, t_hi, xv_gc, phase, Bmag_curr,
+                            ϵ, p_gc, q2m, q, m, μ, Efunc, Bfunc, alg,
+                            tspan[2], isoutside, need_save_gc,
+                            traj, tsave, plan, isave, t_last, y_last,
+                            v_save, adia_t, adia_vals, adia_mode,
+                            steps, overshoot_limit
                         )
+                        if code_b == ReturnCode.Terminated
+                            retcode = code_b
+                            break
+                        end
+                        if steps >= alg.maxiters && !switched_at_boundary
+                            break
+                        end
+                        mode = :FO
+                        it = 1
+                        t_last_check = t
+                        t_fo_holdoff = switched_at_boundary ? t : t_hi
+                        check_scale = Tt(_check_scale(ϵ, alg, mode))
+                        verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
+                        _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                        r, v, dt = _enter_fo_from_gc(
+                            xv_fo, p_fo, q2m, t, dt, tdir, alg, switched_at_boundary
+                        )
+                        dt_fixed = true
+                        continue
+                    else
+                        Bmag_next = T(mp_next.Bmag)
+                        phase, xv_fo = _advance_gc_state(
+                            t_next, t_next - t, y_next, mp_next.B, Bmag_next,
+                            phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+                        )
+                        Bmag_curr = Bmag_next
+                        t = t_next
+                        xv_gc = y_next
+                        dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
+                        if need_save_gc
+                            isave, t_last, y_last = _hybrid_save!(
+                                traj, tsave, plan, isave, t_last, y_last, t, xv_fo
+                            )
+                        end
+                        steps += 1
+                        ϵ = ϵ_next
+                        t_last_check = t
+                        t_fo_holdoff = t
+                        mode = :FO
+                        it = 1
+                        check_scale = Tt(_check_scale(ϵ, alg, mode))
+                        verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
+                        _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                        r, v, dt = _enter_fo_from_gc(
+                            xv_fo, p_fo, q2m, t, dt, tdir, alg, true
+                        )
+                        dt_fixed = true
+                        continue
                     end
-                    steps += 1
-                    ϵ = ϵ_next
-                    t_last_check = t
-                    t_fo_holdoff = t
-                    mode = :FO
-                    it = 1
-                    check_scale = Tt(_check_scale(ϵ, alg, mode))
-                    verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
-                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
-                    r, v, dt = _enter_fo_from_gc(
-                        xv_fo, p_fo, q2m, t, dt, tdir, alg, true
-                    )
-                    dt_fixed = true
-                    continue
                 else
                     Bmag_next = T(mp_next.Bmag)
                     phase, y_out = _advance_gc_state(
@@ -787,6 +903,10 @@ function _hybrid_one(
                     _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
                     steps += 1
                     it = it_next
+                    gc_chk = _GCCheckpoint(
+                        t, xv_gc, phase, Bmag_curr, ϵ, dt,
+                        steps, isave, t_last, y_last, length(traj)
+                    )
                     continue
                 end
             end
@@ -870,6 +990,10 @@ function _hybrid_one(
                                 integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt
                             )
                         end
+                        gc_chk = _GCCheckpoint(
+                            t, xv_gc, phase, Bmag_curr, ϵ, dt,
+                            steps, isave, t_last, y_last, length(traj)
+                        )
                         continue
                     end
                     check_scale = one(Tt)

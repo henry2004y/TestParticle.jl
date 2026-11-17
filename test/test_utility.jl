@@ -69,7 +69,7 @@ end
     γv = [0.0, 0.0, 0.0, 2 * TP.c, 0.0, 0.0]
     rel = TraceProblem{RelativisticOrbit}(γv, tspan, electron)
     @test remake(rel; u0 = SVector{6}(γv)) isa TraceProblem{RelativisticOrbit}
-    sol_rel = solve(rel, Tsit5())
+    sol_rel = solve(rel, Tsit5(); dt = 1.0e-10)
     @test TP.get_velocity(sol_rel)[1, 1] ≈ 2 * TP.c / √5
     @test TP.get_energy(sol_rel)[1] ≈ (√5 - 1) * TP.mₑ * TP.c^2 / TP.qᵢ
 
