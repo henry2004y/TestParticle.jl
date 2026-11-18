@@ -8,14 +8,14 @@ import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
     get_x, get_magnetic_properties, _promote_p,
-    _gc_to_full, _gc_state_at_switch,
+    _gc_to_full, _gc_state_at_switch, _gc_switch_state_checked,
     init_gc_integrator, reinit_gc_integrator!, gc_step!,
     is_time_dependent, _foreach_chunk, ODE_DEFAULT_ISOUTOFDOMAIN, DEFAULT_PROB_FUNC
 
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
     AdaptiveMultistepBoris, Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary,
-    update_velocity, adapt_field_to_gpu, _node_fields
+    CachedFields, update_velocity, adapt_field_to_gpu, _node_fields
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
@@ -253,19 +253,28 @@ end
         ensemblealg::Union{EnsembleSerial, EnsembleThreads}, prob::FOProblem,
         trajectories, alg::AdaptiveHybrid,
         plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, seed, ::Val{SaveAdia}
+        save_start, save_end, save_everystep, verbose, seed, v_save::Val{SaveAdia}
     ) where {F, SaveAdia}
-    sample_stats = _adia_sample_stats(prob, SaveAdia)
-    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
-    sols = Vector{sol_type}(undef, trajectories)
     # The seeds of SciMLBase's ensemble solve, so every solver draws the same states.
     sim_seeds = (isnothing(seed) || prob.prob_func === DEFAULT_PROB_FUNC) ? nothing :
         SciMLBase.generate_sim_seeds(nothing, seed, trajectories)
+    if trajectories == 1
+        t0 = time_ns()
+        sol_1 = _hybrid_one(
+            prob, 1, alg, plan, isoutside, save_start, save_end, save_everystep,
+            verbose, sim_seeds, nothing, v_save, Val(false)
+        )
+        elapsed_time = (time_ns() - t0) * 1.0e-9
+        return EnsembleSolution([sol_1], elapsed_time, true)
+    end
+    sample_stats = _adia_sample_stats(prob, SaveAdia)
+    sol_type = _get_sol_type(prob, zero(eltype(prob.tspan)), sample_stats)
+    sols = Vector{sol_type}(undef, trajectories)
 
     elapsed_time = @elapsed _foreach_chunk(ensemblealg, trajectories) do irange
         _hybrid_adaptive!(
             sols, prob, irange, alg, plan, isoutside,
-            save_start, save_end, save_everystep, verbose, sim_seeds, Val(SaveAdia)
+            save_start, save_end, save_everystep, verbose, sim_seeds, v_save
         )
     end
 
@@ -313,22 +322,31 @@ end
 # Check both the particle and its candidate guiding center: near a field null
 # `r - ρ(r)` can land far away in an adiabatic field, while on a symmetry axis
 # `κ(r)` can vanish even though `X_gc` sits in strong curvature.
-@inline function _fo_adia_value(
-        r::SVector{3, T}, v, E_r, Efunc, Bfunc, q, m, t, alg::AdaptiveHybrid
+@inline function _fo_adia_from_mp(
+        r::SVector{3, T}, v, E_r, mp_r, Efunc, Bfunc, q, m, t, alg::AdaptiveHybrid,
+        short_circuit::Bool
     ) where {T}
-    mp_r = get_magnetic_properties(r, t, Bfunc)
-    iszero(mp_r.Bmag) && return oftype(mp_r.Bmag, Inf), mp_r.Bmag
+    iszero(mp_r.Bmag) && return oftype(mp_r.Bmag, Inf)
     vpar_r, μ_r = _frame_vpar_μ(v, E_r, mp_r.b̂, mp_r.Bmag, m)
     ϵ_r = _adia_value(mp_r, q, m, vpar_r, μ_r, alg)
+    short_circuit && ϵ_r >= T(alg.threshold_fo_to_gc) && return ϵ_r
 
     q2m = q / m
     X_gc = r - (mp_r.B × v) / (q2m * (mp_r.B ⋅ mp_r.B))
     mp_gc = get_magnetic_properties(X_gc, t, Bfunc)
-    iszero(mp_gc.Bmag) && return oftype(mp_gc.Bmag, Inf), mp_r.Bmag
+    iszero(mp_gc.Bmag) && return oftype(mp_gc.Bmag, Inf)
     E_gc = SVector{3, T}(Efunc(X_gc, t))
     vpar_gc, μ_gc = _frame_vpar_μ(v, E_gc, mp_gc.b̂, mp_gc.Bmag, m)
     ϵ_gc = _adia_value(mp_gc, q, m, vpar_gc, μ_gc, alg)
-    return max(ϵ_r, ϵ_gc), mp_r.Bmag
+    return max(ϵ_r, ϵ_gc)
+end
+
+@inline function _fo_adia_value(
+        r::SVector{3, T}, v, E_r, Efunc, Bfunc, q, m, t, alg::AdaptiveHybrid
+    ) where {T}
+    mp_r = get_magnetic_properties(r, t, Bfunc)
+    ϵ = _fo_adia_from_mp(r, v, E_r, mp_r, Efunc, Bfunc, q, m, t, alg, false)
+    return ϵ, mp_r.Bmag
 end
 
 function _adia_sample_stats(prob::FOProblem, save_adiabaticity::Bool)
@@ -399,235 +417,479 @@ end
 @noinline _log_mode(msg, ϵ, t) = @info msg ϵ t
 @noinline _log_mode(msg, ϵ, t, r) = @info msg ϵ t r
 
-@inline function _hybrid_adaptive!(
-        sols, prob::FOProblem, irange, alg,
+@inline _record_adia!(::Val{false}, adia_t, adia_vals, adia_mode, tc, ec, mc) = nothing
+@inline function _record_adia!(::Val{true}, adia_t, adia_vals, adia_mode, tc, ec, mc)
+    if !isempty(adia_t) && adia_t[end] == tc
+        adia_vals[end] = ec
+        adia_mode[end] = mc
+    else
+        push!(adia_t, tc)
+        push!(adia_vals, ec)
+        push!(adia_mode, mc)
+    end
+    return nothing
+end
+
+# Tighten the guiding-center step check cadence down to every step once ε exceeds
+# a quarter of `threshold_gc_to_fo`, leaving deeply adiabatic runs at the nominal
+# `check_interval`.
+@inline function _gc_check_interval(ϵ::T, alg::AdaptiveHybrid) where {T}
+    α = T(alg.threshold_gc_to_fo)
+    iszero(α) && return 1
+    r = ϵ / α
+    r <= T(1 // 4) && return alg.check_interval
+    scale = clamp((T(2 // 5) - r) / T(3 // 20), zero(T), one(T))
+    return max(1, round(Int, alg.check_interval * scale))
+end
+
+@inline function _advance_gc_state(
+        t_next, dt_step, y_next::SVector{4, T}, B_next, Bmag_next::T,
+        phase::T, Bmag_curr::T, q2m, q, m, μ, Efunc, need_full::Bool
+    ) where {T}
+    phase_next = T(mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2))
+    xv_full = need_full ? _gc_to_full(
+            y_next, Efunc, B_next, Bmag_next, q, m, μ, t_next, phase_next
+        ) : zero(SVector{6, T})
+    return phase_next, xv_full
+end
+
+@inline function _enter_fo_from_gc(
+        xv_fo, p_fo, q2m, t, dt_gc, tdir, alg, clip_dt::Bool
+    )
+    r = xv_fo[SVector(1, 2, 3)]
+    v = xv_fo[SVector(4, 5, 6)]
+    fields = _node_fields(p_fo, r, t)
+    Tt = typeof(t)
+    dt_lim = Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
+    dt = clip_dt ? tdir * Tt(clamp(abs(dt_gc), alg.dtmin, dt_lim)) : tdir * dt_lim
+    v = update_velocity_half(v, r, dt, t, fields, Boris())
+    return r, v, dt
+end
+
+struct _GCCheckpoint{Tt, T}
+    t::Tt
+    xv_gc::SVector{4, T}
+    phase::T
+    Bmag::T
+    ϵ::T
+    dt::Tt
+    steps::Int
+    isave::Int
+    t_last::Tt
+    y_last::SVector{6, T}
+    ntraj::Int
+end
+
+@inline function _restore_gc_checkpoint!(gc_chk::_GCCheckpoint, traj, tsave)
+    resize!(traj, gc_chk.ntraj)
+    resize!(tsave, gc_chk.ntraj)
+    return (
+        gc_chk.t, gc_chk.xv_gc, gc_chk.phase, gc_chk.Bmag, gc_chk.ϵ,
+        gc_chk.dt, gc_chk.steps, gc_chk.isave, gc_chk.t_last, gc_chk.y_last,
+    )
+end
+
+@inline function _bisect_gc_to_fo!(
+        integrator_gc, t::Tt, t_hi::Tt, xv_gc::SVector{4, T}, phase::T, Bmag_curr::T,
+        ϵ::T, p_gc, q2m, q, m, μ::T, Efunc, Bfunc, alg::AdaptiveHybrid,
+        tspan_end::Tt, isoutside::F, need_save_gc::Bool,
+        traj, tsave, plan, isave::Int, t_last::Tt, y_last::SVector{6, T},
+        v_save::Val{SaveAdia}, adia_t, adia_vals, adia_mode,
+        steps::Int, overshoot_limit::T
+    ) where {Tt, T, F, SaveAdia}
+    switched_at_boundary = false
+    xv_fo = zero(SVector{6, T})
+    for _ in 1:16
+        dt_fo_loc = Tt(_fo_dt(alg, q2m, Bmag_curr))
+        abs(t_hi - t) <= dt_fo_loc / 2 && break
+        dt_mid = (t_hi - t) / 2
+        reinit_gc_integrator!(integrator_gc, xv_gc, (t, tspan_end), p_gc, dt_mid)
+        code_m = gc_step!(integrator_gc, t + dt_mid, isoutside, p_gc, tspan_end)
+        if code_m == ReturnCode.Terminated
+            return (
+                t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+                isave, t_last, y_last, steps, false, code_m,
+            )
+        end
+        code_m != ReturnCode.Success && break
+        t_m = Tt(integrator_gc.t)
+        y_m = SVector{4, T}(integrator_gc.u)
+        mp_m = get_magnetic_properties(get_x(y_m), t_m, Bfunc)
+        ϵ_m = T(_adia_value(mp_m, q, m, y_m[4], μ, alg))
+        if ϵ_m < alg.threshold_gc_to_fo
+            Bmag_m = T(mp_m.Bmag)
+            phase, y_out = _advance_gc_state(
+                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
+                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+            )
+            Bmag_curr = Bmag_m
+            t = t_m
+            xv_gc = y_m
+            ϵ = ϵ_m
+            if need_save_gc
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, y_out
+                )
+            end
+            _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
+            steps += 1
+            steps >= alg.maxiters && break
+        elseif ϵ_m <= overshoot_limit
+            Bmag_m = T(mp_m.Bmag)
+            phase, xv_fo = _advance_gc_state(
+                t_m, t_m - t, y_m, mp_m.B, Bmag_m,
+                phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+            )
+            Bmag_curr = Bmag_m
+            t = t_m
+            xv_gc = y_m
+            ϵ = ϵ_m
+            if need_save_gc
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, xv_fo
+                )
+            end
+            steps += 1
+            switched_at_boundary = true
+            break
+        else
+            t_hi = t_m
+        end
+    end
+    if !switched_at_boundary
+        xv_fo = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+    end
+    return (
+        t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+        isave, t_last, y_last, steps, switched_at_boundary, ReturnCode.Success,
+    )
+end
+
+function _hybrid_one(
+        prob::FOProblem, i::Int, alg::AdaptiveHybrid,
         plan, isoutside::F,
-        save_start, save_end, save_everystep, verbose, sim_seeds, ::Val{SaveAdia}
-    ) where {F, SaveAdia}
-    (; tspan, p, u0) = prob
+        save_start::Bool, save_end::Bool, save_everystep::Bool, verbose::Bool,
+        sim_seeds, integrator_gc, v_save::Val{SaveAdia},
+        ::Val{KeepInteg} = Val(true)
+    ) where {F, SaveAdia, KeepInteg}
+    (; tspan, p) = prob
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
     p_fo = (; q2m, m, E = Efunc, B = Bfunc)
     q = q2m * m
-    T = eltype(u0)
+    T = eltype(prob.u0)
     Tt = typeof(tspan[1])
     tdir = Tt(_span_direction(tspan))
 
     check_interval = alg.check_interval
     check_dt = Tt(alg.check_dt)
     n_correct = alg.switch_correction
-    integrator_gc = nothing
+    overshoot_limit = T(2) * T(alg.threshold_gc_to_fo)
 
-    @inbounds for i in irange
-        new_prob = if prob.prob_func === DEFAULT_PROB_FUNC
-            prob
-        else
-            sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
-            rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
-            p_i = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
-            _check_hybrid_problem(p_i)
-            p_i
-        end
-        xv_fo = SVector{6, T}(new_prob.u0)
-        r = xv_fo[SVector(1, 2, 3)]
-        v = xv_fo[SVector(4, 5, 6)]
-        t = tspan[1]
+    new_prob = if prob.prob_func === DEFAULT_PROB_FUNC
+        prob
+    else
+        sim_seed = isnothing(sim_seeds) ? nothing : sim_seeds[i]
+        rng = isnothing(sim_seed) ? default_rng() : Xoshiro(sim_seed)
+        p_i = prob.prob_func(prob, EnsembleContext(i, 1, 0, sim_seed, rng, nothing))
+        _check_hybrid_problem(p_i)
+        p_i
+    end
+    xv_fo = SVector{6, T}(new_prob.u0)
+    r = xv_fo[SVector(1, 2, 3)]
+    v = xv_fo[SVector(4, 5, 6)]
+    t = tspan[1]
 
-        fields = _node_fields(p_fo, r, t)
-        ϵ_init, Bmag_r = _fo_adia_value(
-            r, v, fields.E(r, t), Efunc, Bfunc, q, m, t, alg
+    fields = _node_fields(p_fo, r, t)
+    ϵ_init, Bmag_r = _fo_adia_value(r, v, fields.E(r, t), Efunc, Bfunc, q, m, t, alg)
+    ϵ = T(ϵ_init)
+    if ϵ < alg.threshold_gc_to_fo
+        X_gc, vpar, μ_init, phase_init, valid_gc = _gc_switch_state_checked(
+            xv_fo, Efunc, Bfunc, q, m, t, n_correct
         )
-        ϵ = T(ϵ_init)
-        is_adiabatic = ϵ < alg.threshold_gc_to_fo
+    else
+        X_gc = r
+        vpar = zero(T)
+        μ_init = zero(T)
+        phase_init = zero(T)
+        valid_gc = false
+    end
+    is_adiabatic = valid_gc
 
-        if is_adiabatic
-            mode = :GC
-            X_gc, vpar, μ_init, phase_init = _gc_state_at_switch(
-                xv_fo, Efunc, Bfunc, q, m, t, n_correct
-            )
-            xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-            μ = T(μ_init)
-            phase = T(phase_init)
-            p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
+    if is_adiabatic
+        mode = :GC
+        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
+        μ = T(μ_init)
+        phase = T(phase_init)
+        p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
 
-            Bmag_curr = T(norm(Bfunc(X_gc, t)))
-            ω = abs(q2m * Bmag_curr)
-            dt = tdir * Tt(0.5 * 2π / ω)
-            if integrator_gc === nothing
-                integrator_gc = init_gc_integrator(xv_gc, (t, tspan[2]), p_gc, dt, alg)
-            else
-                reinit_gc_integrator!(integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt)
+        Bmag_curr = T(norm(Bfunc(X_gc, t)))
+        ω = abs(q2m * Bmag_curr)
+        dt = tdir * Tt(0.5 * 2π / ω)
+        if integrator_gc === nothing
+            integrator_gc = init_gc_integrator(xv_gc, (t, tspan[2]), p_gc, dt, alg)
+        else
+            reinit_gc_integrator!(integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt)
+        end
+        verbose && _log_mode("Initial mode: GC", ϵ, t)
+    else
+        mode = :FO
+        xv_gc = zero(SVector{4, T})
+        μ = zero(T)
+        phase = zero(T)
+        p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
+        dt = tdir * Tt(_fo_dt(alg, q2m, Bmag_r))
+        v = update_velocity_half(v, r, dt, t, fields, Boris())
+        Bmag_curr = zero(T)
+        verbose && _log_mode("Initial mode: FO", ϵ, t)
+    end
+
+    initial_capacity = if use_saveat(plan)
+        length(plan.times) + 2
+    elseif !save_everystep
+        2
+    elseif is_adiabatic
+        64
+    else
+        estimated_steps = ceil(Int, abs((tspan[2] - tspan[1]) / dt))
+        max_cap = iszero(alg.threshold_fo_to_gc) ? 10000 : 512
+        clamp(estimated_steps + div(estimated_steps, 10), 10, max_cap)
+    end
+    tsave = sizehint!(Vector{Tt}(undef, 0), initial_capacity)
+    traj = sizehint!(Vector{SVector{6, T}}(undef, 0), initial_capacity)
+
+    if save_start
+        push!(traj, xv_fo)
+        push!(tsave, t)
+    end
+
+    isave = 1
+    t_last = t
+    y_last = xv_fo
+    steps = 0
+    it = 1
+    retcode = ReturnCode.Success
+    t_last_check = t
+    t_fo_holdoff = t
+    check_scale = Tt(_check_scale(ϵ, alg, mode))
+    # A step chosen by a switch must be the one actually taken, otherwise the
+    # staggered velocity and the step disagree.
+    dt_fixed = false
+
+    adia_cap = SaveAdia ? max(8, div(initial_capacity, check_interval) + 2) : 0
+    adia_t = SaveAdia ? sizehint!(Vector{Tt}(undef, 0), adia_cap) : Vector{Tt}(undef, 0)
+    adia_vals = SaveAdia ? sizehint!(Vector{T}(undef, 0), adia_cap) : Vector{T}(undef, 0)
+    adia_mode = SaveAdia ? sizehint!(Vector{Symbol}(undef, 0), adia_cap) :
+        Vector{Symbol}(undef, 0)
+    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, mode)
+
+    need_save_gc = use_saveat(plan) || save_everystep
+    gc_chk = _GCCheckpoint(
+        t, xv_gc, phase, Bmag_curr, ϵ, dt, steps, isave, t_last, y_last, length(traj)
+    )
+
+    while tdir * (tspan[2] - t) > zero(Tt) && steps < alg.maxiters
+        if mode == :GC
+            deadline = t_last_check + tdir * check_dt
+
+            # Never step past the next check deadline: a long guiding-center
+            # step could otherwise enter a non-adiabatic region and only be
+            # examined after leaving it again.
+            code = gc_step!(integrator_gc, deadline, isoutside, p_gc, tspan[2])
+            if code != ReturnCode.Success
+                retcode = code
+                break
             end
-            verbose && _log_mode("Initial mode: GC", ϵ, t)
-        else
-            mode = :FO
-            μ = zero(T)
-            phase = zero(T)
-            dt = tdir * Tt(_fo_dt(alg, q2m, Bmag_r))
-            v = update_velocity_half(v, r, dt, t, fields, Boris())
-            Bmag_curr = zero(T)
-            verbose && _log_mode("Initial mode: FO", ϵ, t)
-        end
 
-        initial_capacity = if use_saveat(plan)
-            length(plan.times) + 2
-        elseif !save_everystep
-            2
-        elseif is_adiabatic
-            64
-        else
-            estimated_steps = ceil(Int, abs((tspan[2] - tspan[1]) / dt))
-            clamp(estimated_steps + div(estimated_steps, 10), 10, 10000)
-        end
-        tsave = Vector{Tt}(undef, 0)
-        sizehint!(tsave, initial_capacity)
-        traj = Vector{SVector{6, T}}(undef, 0)
-        sizehint!(traj, initial_capacity)
+            t_next = Tt(integrator_gc.t)
+            y_next = SVector{4, T}(integrator_gc.u)
+            it_next = it + 1
+            it_gc = _gc_check_interval(ϵ, alg)
+            # Also check right before clipping if the next natural GC step would
+            # exceed `deadline`, avoiding a short remainder step just to check.
+            dt_prop = SciMLBase.get_proposed_dt(integrator_gc)
+            dt_rem = tspan[2] - t_next
+            dt_try = tdir * dt_prop > tdir * dt_rem ? dt_rem : dt_prop
+            scale = max(abs(t_next), abs(t_last_check), abs(deadline))
+            tol = scale isa AbstractFloat ? 4 * eps(scale) : zero(scale)
+            pre_deadline = tdir * (t_next - t_last_check) > zero(Tt) &&
+                tdir * (t_next + dt_try - deadline) > tol
 
-        if save_start
-            push!(traj, xv_fo)
-            push!(tsave, t)
-        end
+            if _check_due(it_next, t_next, t_last_check, it_gc, deadline, tdir) ||
+                    pre_deadline
+                mp_next = get_magnetic_properties(get_x(y_next), t_next, Bfunc)
+                ϵ_next = T(_adia_value(mp_next, q, m, y_next[4], μ, alg))
 
-        isave = 1
-        t_last = t
-        y_last = xv_fo
-
-        steps = 0
-        it = 1
-        retcode = ReturnCode.Success
-        t_last_check = t
-        check_scale = Tt(_check_scale(ϵ, alg, mode))
-        # A step chosen by a switch must be the one actually taken, otherwise the
-        # staggered velocity and the step disagree.
-        dt_fixed = false
-
-        if SaveAdia
-            adia_cap = max(10, div(initial_capacity, check_interval) + 2)
-            adia_t = sizehint!(Vector{typeof(tspan[1])}(undef, 0), adia_cap)
-            adia_vals = sizehint!(Vector{T}(undef, 0), adia_cap)
-            adia_mode = sizehint!(Vector{Symbol}(undef, 0), adia_cap)
-            push!(adia_t, t)
-            push!(adia_vals, ϵ)
-            push!(adia_mode, mode)
-        end
-
-        while tdir * (tspan[2] - t) > zero(Tt) && steps < alg.maxiters
-            if mode == :GC
-                it_eff = max(1, round(Int, check_scale * check_interval))
-                deadline = t_last_check + tdir * check_scale * check_dt
-                if _check_due(it, t, t_last_check, it_eff, deadline, tdir)
-                    t_last_check = t
-                    mp = get_magnetic_properties(xv_gc[SVector(1, 2, 3)], t, Bfunc)
-                    ϵ = T(_adia_value(mp, q, m, xv_gc[4], μ, alg))
-                    if ϵ ≥ alg.threshold_gc_to_fo
-                        mode = :FO
-                        it = 1
-                        check_scale = Tt(_check_scale(ϵ, alg, mode))
-                        deadline = t + tdir * check_scale * check_dt
-                        verbose && _log_mode(
-                            "Switch GC → FO", ϵ, t, xv_gc[SVector(1, 2, 3)]
-                        )
-                        if SaveAdia
-                            push!(adia_t, t)
-                            push!(adia_vals, ϵ)
-                            push!(adia_mode, :FO)
-                        end
-                        xv_fo = _gc_to_full(
-                            xv_gc, Efunc, mp.B, mp.Bmag, q, m, μ, t, phase
-                        )
-                        r = xv_fo[SVector(1, 2, 3)]
-                        v = xv_fo[SVector(4, 5, 6)]
-
-                        fields = _node_fields(p_fo, r, t)
-                        # Clip the guiding-center step to the full-orbit
-                        # stability limit instead of resetting it.
-                        dt = tdir * Tt(
-                            clamp(
-                                abs(dt), alg.dtmin,
-                                Tt(_fo_dt(alg, q2m, norm(fields.B(r, t)))),
+                if ϵ_next ≥ alg.threshold_gc_to_fo
+                    # issue #667: bisect/roll back when GC steps cross deep into
+                    # a non-adiabatic region instead of crossing with frozen μ.
+                    need_bisect = ϵ_next > overshoot_limit
+                    switched_at_prev = false
+                    xv_fo = zero(SVector{6, T})
+                    t_hi = t_next
+                    if t != gc_chk.t
+                        mp_t = get_magnetic_properties(get_x(xv_gc), t, Bfunc)
+                        ϵ_t = T(_adia_value(mp_t, q, m, xv_gc[4], μ, alg))
+                        if ϵ_t > overshoot_limit
+                            need_bisect = true
+                            t_hi = t
+                            t, xv_gc, phase, Bmag_curr, ϵ, dt, steps, isave,
+                                t_last, y_last = _restore_gc_checkpoint!(
+                                gc_chk, traj, tsave
                             )
-                        )
-                        v = update_velocity_half(v, r, dt, t, fields, Boris())
-                        dt_fixed = true
-                        continue
-                    else
-                        check_scale = one(Tt)
-                        deadline = t + tdir * check_dt
-                        if SaveAdia
-                            push!(adia_t, t)
-                            push!(adia_vals, ϵ)
-                            push!(adia_mode, :GC)
+                        elseif ϵ_t ≥ alg.threshold_gc_to_fo
+                            ϵ = ϵ_t
+                            xv_fo = _gc_to_full(
+                                xv_gc, Efunc, mp_t.B, mp_t.Bmag, q, m, μ, t, phase
+                            )
+                            switched_at_prev = true
+                        else
+                            ϵ = ϵ_t
                         end
                     end
-                end
 
-                # Never step past the next check deadline: a long guiding-center
-                # step could otherwise enter a non-adiabatic region and only be
-                # examined after leaving it again.
-                code = gc_step!(integrator_gc, deadline, isoutside, p_gc, tspan[2])
-                if code != ReturnCode.Success
-                    retcode = code
-                    break
-                end
+                    if switched_at_prev
+                        t_fo_holdoff = t
+                        clip_dt = true
+                    elseif need_bisect
+                        t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
+                            isave, t_last, y_last, steps, switched_at_boundary, code_b =
+                            _bisect_gc_to_fo!(
+                            integrator_gc, t, t_hi, xv_gc, phase, Bmag_curr,
+                            ϵ, p_gc, q2m, q, m, μ, Efunc, Bfunc, alg,
+                            tspan[2], isoutside, need_save_gc,
+                            traj, tsave, plan, isave, t_last, y_last,
+                            v_save, adia_t, adia_vals, adia_mode,
+                            steps, overshoot_limit
+                        )
+                        if code_b == ReturnCode.Terminated
+                            retcode = code_b
+                            break
+                        end
+                        if steps >= alg.maxiters && !switched_at_boundary
+                            break
+                        end
+                        t_fo_holdoff = switched_at_boundary ? t : t_hi
+                        clip_dt = switched_at_boundary
+                    else
+                        Bmag_next = T(mp_next.Bmag)
+                        phase, xv_fo = _advance_gc_state(
+                            t_next, t_next - t, y_next, mp_next.B, Bmag_next,
+                            phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+                        )
+                        Bmag_curr = Bmag_next
+                        t = t_next
+                        xv_gc = y_next
+                        dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
+                        if need_save_gc
+                            isave, t_last, y_last = _hybrid_save!(
+                                traj, tsave, plan, isave, t_last, y_last, t, xv_fo
+                            )
+                        end
+                        steps += 1
+                        ϵ = ϵ_next
+                        t_fo_holdoff = t
+                        clip_dt = true
+                    end
 
-                t_next = Tt(integrator_gc.t)
-                y_next = SVector{4, T}(integrator_gc.u)
-                dt_step = t_next - t
-                t = t_next
-                xv_gc = y_next
-                B_next = Bfunc(get_x(xv_gc), t)
-                Bmag_next = T(norm(B_next))
-                phase = T(mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2))
-                Bmag_curr = Bmag_next
-                dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
-
-                if use_saveat(plan) || save_everystep
-                    y_out = _gc_to_full(
-                        xv_gc, Efunc, B_next, Bmag_next, q, m, μ, t, phase
-                    )
-                    isave, t_last, y_last = _hybrid_save!(
-                        traj, tsave, plan, isave, t_last, y_last, t, y_out
-                    )
-                end
-                steps += 1
-                it += 1
-
-            else # Mode == :FO
-                # One field evaluation per step serves the adiabaticity check,
-                # the step-size update and the saved node velocity.
-                fields = _node_fields(p_fo, r, t)
-                it_eff = max(1, round(Int, check_scale * check_interval))
-                deadline = t_last_check + tdir * check_scale * check_dt
-                if _check_due(it, t, t_last_check, it_eff, deadline, tdir)
+                    mode = :FO
+                    it = 1
                     t_last_check = t
-                    v_sync = update_velocity_node(v, r, dt, t, fields, Boris())
-                    xv_sync = SVector{6, T}(
-                        r[1], r[2], r[3], v_sync[1], v_sync[2], v_sync[3]
-                    )
-                    ϵ_fo, _ = _fo_adia_value(
-                        r, v_sync, fields.E(r, t), Efunc, Bfunc, q, m, t, alg
-                    )
-                    ϵ = T(ϵ_fo)
                     check_scale = Tt(_check_scale(ϵ, alg, mode))
-                    deadline = t + tdir * check_scale * check_dt
-                    if ϵ < alg.threshold_fo_to_gc
+                    verbose && _log_mode("Switch GC → FO", ϵ, t, get_x(xv_gc))
+                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                    r, v, dt = _enter_fo_from_gc(
+                        xv_fo, p_fo, q2m, t, dt, tdir, alg, clip_dt
+                    )
+                    dt_fixed = true
+                    continue
+                else
+                    Bmag_next = T(mp_next.Bmag)
+                    phase, y_out = _advance_gc_state(
+                        t_next, t_next - t, y_next, mp_next.B, Bmag_next,
+                        phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+                    )
+                    Bmag_curr = Bmag_next
+                    t = t_next
+                    xv_gc = y_next
+                    dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
+                    if need_save_gc
+                        isave, t_last, y_last = _hybrid_save!(
+                            traj, tsave, plan, isave, t_last, y_last, t, y_out
+                        )
+                    end
+                    ϵ = ϵ_next
+                    t_last_check = t
+                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
+                    steps += 1
+                    it = it_next
+                    gc_chk = _GCCheckpoint(
+                        t, xv_gc, phase, Bmag_curr, ϵ, dt,
+                        steps, isave, t_last, y_last, length(traj)
+                    )
+                    continue
+                end
+            end
+
+            B_next = Bfunc(get_x(y_next), t_next)
+            Bmag_next = T(norm(B_next))
+            phase, y_out = _advance_gc_state(
+                t_next, t_next - t, y_next, B_next, Bmag_next,
+                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+            )
+            Bmag_curr = Bmag_next
+            t = t_next
+            xv_gc = y_next
+            dt = Tt(SciMLBase.get_proposed_dt(integrator_gc))
+            if need_save_gc
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, y_out
+                )
+            end
+            steps += 1
+            it = it_next
+
+        else # Mode == :FO
+            it_eff = max(1, round(Int, check_scale * check_interval))
+            deadline = t_last_check + tdir * check_scale * check_dt
+            past_holdoff = tdir * (t - t_fo_holdoff) >= zero(Tt)
+            check_now = past_holdoff && _check_due(
+                it, t, t_last_check, it_eff, deadline, tdir
+            )
+
+            if check_now
+                t_last_check = t
+                E_r = SVector{3, T}(Efunc(r, t))
+                mp_r = get_magnetic_properties(r, t, Bfunc)
+                Bmag_r = T(mp_r.Bmag)
+                fields = CachedFields(
+                    q2m, Returns(E_r), Returns(SVector{3, T}(mp_r.B)), r, t, nothing
+                )
+                v_node = update_velocity_node(v, r, dt, t, fields, Boris())
+                have_v_node = true
+                short_circuit = !SaveAdia && alg.check_margin_max == 1
+                ϵ = T(
+                    _fo_adia_from_mp(
+                        r, v_node, E_r, mp_r, Efunc, Bfunc, q, m, t, alg, short_circuit
+                    )
+                )
+                check_scale = Tt(_check_scale(ϵ, alg, mode))
+                deadline = t + tdir * check_scale * check_dt
+                if ϵ < alg.threshold_fo_to_gc
+                    xv_sync = vcat(r, v_node)
+                    X_gc, vpar, μ_fo, phase_fo, valid_gc = _gc_switch_state_checked(
+                        xv_sync, Efunc, Bfunc, q, m, t, n_correct
+                    )
+                    if valid_gc
                         mode = :GC
                         it = 1
                         check_scale = one(Tt)
                         verbose && _log_mode("Switch FO → GC", ϵ, t, r)
-                        if SaveAdia
-                            push!(adia_t, t)
-                            push!(adia_vals, ϵ)
-                            push!(adia_mode, :GC)
-                        end
-                        if use_saveat(plan) || save_everystep
+                        _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :GC)
+                        if need_save_gc
                             isave, t_last, y_last = _hybrid_save!(
                                 traj, tsave, plan, isave, t_last, y_last, t, xv_sync
                             )
                         end
-                        X_gc, vpar, μ_fo, phase_fo = _gc_state_at_switch(
-                            xv_sync, Efunc, Bfunc, q, m, t, n_correct
-                        )
                         xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
                         μ = T(μ_fo)
                         phase = T(phase_fo)
@@ -647,87 +909,114 @@ end
                                 integrator_gc, xv_gc, (t, tspan[2]), p_gc, dt
                             )
                         end
+                        gc_chk = _GCCheckpoint(
+                            t, xv_gc, phase, Bmag_curr, ϵ, dt,
+                            steps, isave, t_last, y_last, length(traj)
+                        )
                         continue
-                    elseif SaveAdia
-                        push!(adia_t, t)
-                        push!(adia_vals, ϵ)
-                        push!(adia_mode, :FO)
                     end
+                    check_scale = one(Tt)
+                    deadline = t + tdir * check_dt
+                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
+                else
+                    _record_adia!(v_save, adia_t, adia_vals, adia_mode, t, ϵ, :FO)
                 end
-
-                dt_new = dt_fixed ? dt : tdir * Tt(_fo_dt(alg, q2m, norm(fields.B(r, t))))
-                dt_fixed = false
-                dt_rem = tspan[2] - t
-                if tdir * dt_new > tdir * dt_rem
-                    dt_new = dt_rem
-                end
-                # Never step past the next check deadline (see the GC branch).
-                dt_check = deadline - t
-                if zero(dt_check) < tdir * dt_check < tdir * dt_new
-                    dt_new = dt_check
-                end
-                if dt_new != dt
-                    v = BorisPushers.update_velocity_resync(
-                        v, r, dt, dt_new, t, fields, Boris()
-                    )
-                    dt = dt_new
-                end
-
-                v_prev = v
-                r_next, v = advance_boris(v, r, dt, t, fields, Boris())
-                t_next = t + dt
-                if isoutside(vcat(r_next, v), p, t_next)
-                    retcode = ReturnCode.Terminated
-                    v = v_prev
-                    break
-                end
-
-                if use_saveat(plan) || (save_everystep && (it - 1) > 0)
-                    v_save = update_velocity_node(v_prev, r, dt, t, fields, Boris())
-                    isave, t_last, y_last = _hybrid_save!(
-                        traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_save)
-                    )
-                end
-
-                r = r_next
-                t = t_next
-                it += 1
-                steps += 1
-            end
-        end
-
-        if mode == :FO && use_saveat(plan) && t != t_last
-            v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
-            y_final = vcat(r, v_final)
-            isave, t_last, y_last = _hybrid_save!(
-                traj, tsave, plan, isave, t_last, y_last, t, y_final
-            )
-            if save_end && (isempty(tsave) || tsave[end] != t)
-                push!(traj, y_final)
-                push!(tsave, t)
-            end
-        elseif save_end && (isempty(tsave) || tsave[end] != t)
-            if mode == :GC
-                push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
             else
-                v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
-                push!(traj, vcat(r, v_final))
+                fields = _node_fields(p_fo, r, t)
+                Bmag_r = T(norm(fields.B(r, t)))
+                v_node = v
+                have_v_node = false
             end
+
+            dt_new = dt_fixed ? dt : tdir * Tt(_fo_dt(alg, q2m, Bmag_r))
+            dt_fixed = false
+            dt_rem = tspan[2] - t
+            if tdir * dt_new > tdir * dt_rem
+                dt_new = dt_rem
+            end
+            # Never step past the next check deadline (see the GC branch).
+            dt_check = deadline - t
+            if zero(dt_check) < tdir * dt_check < tdir * dt_new
+                dt_new = dt_check
+            end
+
+            need_save = use_saveat(plan) || (save_everystep && it > 1)
+            need_resync = dt_new != dt
+            if (need_save || need_resync) && !have_v_node
+                v_node = update_velocity_node(v, r, dt, t, fields, Boris())
+            end
+            if need_resync
+                v = update_velocity_half(v_node, r, dt_new, t, fields, Boris())
+                dt = dt_new
+            end
+
+            v_prev = v
+            r_next, v = advance_boris(v, r, dt, t, fields, Boris())
+            t_next = t + dt
+            if isoutside(vcat(r_next, v), p, t_next)
+                retcode = ReturnCode.Terminated
+                v = v_prev
+                break
+            end
+
+            if need_save
+                isave, t_last, y_last = _hybrid_save!(
+                    traj, tsave, plan, isave, t_last, y_last, t, vcat(r, v_node)
+                )
+            end
+
+            r = r_next
+            t = t_next
+            it += 1
+            steps += 1
+        end
+    end
+
+    if mode == :FO && use_saveat(plan) && t != t_last
+        v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
+        y_final = vcat(r, v_final)
+        isave, t_last, y_last = _hybrid_save!(
+            traj, tsave, plan, isave, t_last, y_last, t, y_final
+        )
+        if save_end && (isempty(tsave) || tsave[end] != t)
+            push!(traj, y_final)
             push!(tsave, t)
         end
-
-        sol_alg = :hybrid
-        interp = LinearInterpolation(tsave, traj)
-        if steps >= alg.maxiters && retcode == ReturnCode.Success
-            retcode = ReturnCode.MaxIters
+    elseif save_end && (isempty(tsave) || tsave[end] != t)
+        if mode == :GC
+            push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
+        else
+            v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
+            push!(traj, vcat(r, v_final))
         end
-        stats = SaveAdia ?
-            (adiabaticity = (t = adia_t, components = adia_vals, mode = adia_mode),) :
-            nothing
+        push!(tsave, t)
+    end
 
-        sols[i] = build_solution(
-            prob, sol_alg, tsave, traj; interp, retcode, stats
+    sol_alg = :hybrid
+    interp = LinearInterpolation(tsave, traj)
+    if steps >= alg.maxiters && retcode == ReturnCode.Success
+        retcode = ReturnCode.MaxIters
+    end
+    stats = SaveAdia ?
+        (adiabaticity = (t = adia_t, components = adia_vals, mode = adia_mode),) :
+        nothing
+
+    sol = build_solution(prob, sol_alg, tsave, traj; interp, retcode, stats)
+    return KeepInteg ? (sol, integrator_gc) : sol
+end
+
+@inline function _hybrid_adaptive!(
+        sols, prob::FOProblem, irange, alg::AdaptiveHybrid,
+        plan, isoutside::F,
+        save_start, save_end, save_everystep, verbose, sim_seeds, v_save::Val{SaveAdia}
+    ) where {F, SaveAdia}
+    integrator_gc = nothing
+    @inbounds for i in irange
+        sol, integrator_gc = _hybrid_one(
+            prob, i, alg, plan, isoutside, save_start, save_end, save_everystep,
+            verbose, sim_seeds, integrator_gc, v_save
         )
+        sols[i] = sol
     end
     return
 end

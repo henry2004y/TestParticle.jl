@@ -60,13 +60,16 @@ span many gyroperiods.
 Because a guiding-center step can be long compared with the scale on which `ε`
 varies, the adiabaticity check is triggered by whichever comes first:
 `check_interval` accepted steps, or `check_dt` in simulation time since the
-previous check. A step is also clipped so that it never crosses the next check
-deadline, which makes `check_dt` a hard bound on the simulated time a particle
-can travel between examinations rather than a bound that a long step could
-overshoot. `check_dt` defaults to `100 * dtmax`: small enough to catch a
-transition that a long guiding-center step would otherwise jump over, and large
-enough that the clamp does not turn `check_dt` into a step-size cap that costs
-more than the monitoring saves. Lower it where `ε` changes on a shorter scale.
+previous check. Guiding-center checks also tighten automatically down to every
+step as `ε` approaches `threshold_gc_to_fo`, and steps that jump deep past the
+threshold are bisected/rolled back before switching to full orbit. A step is
+clipped so that it never crosses the next check deadline, which makes `check_dt`
+a hard bound on the simulated time a particle can travel between examinations
+rather than a bound that a long step could overshoot. `check_dt` defaults to
+`100 * dtmax`: small enough to catch a transition that a long guiding-center
+step would otherwise jump over, and large enough that the clamp does not turn
+`check_dt` into a step-size cap that costs more than the monitoring saves.
+Lower it where `ε` changes on a shorter scale.
 
 While the solver is in the full-orbit mode, `check_margin_max > 1` lengthens
 both bounds by up to that factor in proportion to how far `ε` sits above
@@ -90,7 +93,9 @@ zeroth-order `X = x - ρ(x)` map, which removes the `O(ε)` jump that the switch
 would otherwise introduce. The fixed point of `X = x - ρ(X)` is the inverse
 of the reconstruction back to the full orbit, so when the fixed-point map
 converges a round trip through a switch returns the particle close to where it
-started. Set `switch_correction = 0` for the legacy behavior.
+started. When `switch_correction > 0`, a switch to the guiding center is
+rejected if the fixed-point map fails to invert or `B` reverses across the
+gyro-orbit. Set `switch_correction = 0` for the legacy behavior.
 
 Each check point records only the adiabaticity value used by the selected
 `adiabaticity` mode (a single scalar per check) together with the active mode
@@ -211,8 +216,9 @@ function gc_step!(
     tdir = integrator.tdir
     dt_max = t_limit - t_before
     dt_next = integrator.iter == 0 ? integrator.dt : SciMLBase.get_proposed_dt(integrator)
-    if zero(dt_max) < tdir * dt_max < tdir * dt_next &&
-            tdir * (tspan_end - t_limit) > zero(dt_max)
+    clipped = zero(dt_max) < tdir * dt_max < tdir * dt_next &&
+        tdir * (tspan_end - t_limit) > zero(dt_max)
+    if clipped
         if integrator.iter == 0
             integrator.dt = dt_max
         else
@@ -220,6 +226,20 @@ function gc_step!(
         end
     end
     SciMLBase.step!(integrator)
+    # issue #667: restore the unclipped step proposal after a deadline-truncated step
+    if clipped && !integrator.last_stepfail
+        t_after = integrator.t
+        scale = max(abs(t_after), abs(t_limit))
+        tol = scale isa AbstractFloat ? 4 * eps(scale) : zero(scale)
+        if abs(t_after - (t_before + dt_max)) <= tol
+            prop = SciMLBase.get_proposed_dt(integrator)
+            if tdir * prop > tdir * dt_max
+                SciMLBase.set_proposed_dt!(
+                    integrator, tdir * max(tdir * prop, tdir * dt_next)
+                )
+            end
+        end
+    end
 
     y = SVector{4}(integrator.u)
     isoutside(y, p, integrator.t) && return ReturnCode.Terminated

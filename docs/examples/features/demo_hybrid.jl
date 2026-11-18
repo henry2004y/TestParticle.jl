@@ -74,7 +74,7 @@ tspan = (0.0, 30 * T_gyro)
 
 param_fo = prepare(; B = bottle_B, species = Proton)
 prob_fo = TraceProblem(u0, tspan, param_fo)
-sol_fo = solve(prob_fo, Vern7())
+sol_fo = solve(prob_fo, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6, dense = false)
 
 ## Verify trapping: z should oscillate, not diverge
 z_fo = [u[3] for u in sol_fo.u]
@@ -93,7 +93,7 @@ stateinit_gc, param_gc = TP.prepare_gc(
     u0; B = bottle_B_static, species = Proton
 )
 prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-sol_gc = solve(prob_gc, Vern7());
+sol_gc = solve(prob_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6);
 
 # ## Step 3: Hybrid Solver
 #
@@ -291,11 +291,11 @@ f = DisplayAs.PNG(f) #hide
 # ## Performance Comparison
 #
 # Finally, we compare the execution time, memory and output size of the
-# solvers (including native `AdaptiveBoris` alongside `Vern7`). Pointwise
-# position differences are a poor accuracy measure in this bottle: the gyrophase
-# and the bounce phase are exponentially sensitive, and the guiding-center
-# equations describe a different curve from the particle. The drift of the
-# kinetic energy is the robust numerical accuracy measure here.
+# solvers at matched `1.0e-6` tolerances (including native `AdaptiveBoris`
+# alongside `Vern7`). Pointwise position differences are a poor accuracy measure
+# in this bottle: the gyrophase and the bounce phase are exponentially sensitive,
+# and the guiding-center equations describe a different curve from the particle.
+# The drift of the kinetic energy is the robust numerical accuracy measure here.
 
 "Largest relative energy drift over the trajectory."
 function energy_drift(sol)
@@ -312,10 +312,12 @@ end
 alg_boris = AdaptiveBoris(; safety = 0.1)
 sol_boris = solve(prob_fo, alg_boris; dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro)
 
-b_fo = @be solve(prob_fo, Vern7())
-b_boris = @be solve(prob_fo, alg_boris; dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro)
-b_gc = @be solve(prob_gc, Vern7())
-b_hy = @be solve(prob_hybrid, alg; verbose = false)
+b_fo = @be solve($prob_fo, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6, dense = false)
+b_boris = @be solve(
+    $prob_fo, $alg_boris; dtmax = $T_gyro, dtmin = $(1.0e-4 * T_gyro)
+)
+b_gc = @be solve($prob_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6)
+b_hy = @be solve($prob_hybrid, $alg; verbose = false)
 
 io = IOBuffer() #hide
 println(io, "| Solver | Time | Allocations | Saved points | Energy drift |") #hide
@@ -341,6 +343,79 @@ Printf.@printf(
     length(sol.t), energy_drift(sol)
 ) #hide
 Markdown.parse(String(take!(io))) #hide
+
+# ### Multi-Scale Current Sheet Comparison
+#
+# The magnetic bottle above has only a single length scale (`T_bounce ≈ 1.9 T_gyro`
+# at `α = 1e-2`), so even pure guiding-center integration must take short steps
+# to resolve the bounce. Where scales separate — a thin non-adiabatic current
+# sheet embedded in large adiabatic lobes — `AdaptiveHybrid` resolves the
+# sheet crossing in full-orbit mode (capturing the non-adiabatic `μ` scatter that
+# standalone guiding-center tracing misses) and skips through the lobes with large
+# `Vern7` steps:
+
+const B0_s = 1.0e-7
+const L_s = 2.0e4
+const Bg_s = 2.0e-8
+sheet_B(x, t) = SA[B0_s * tanh(x[3] / L_s), 0.0, Bg_s]
+Tg_s = 2π / (abs(q2m) * B0_s)
+tspan_s = (0.0, 200 * Tg_s)
+v_s = 2.0e5
+u0_s = vcat(SA[0.0, 0.0, -2 * L_s], SA[0.0, 0.95 * v_s, 0.3 * v_s])
+
+prob_s = TraceProblem(u0_s, tspan_s, prepare(; B = sheet_B, species = Proton))
+u0_s_gc, p_s_gc = TP.prepare_gc(u0_s; B = sheet_B, species = Proton)
+prob_s_gc = TraceGCProblem(u0_s_gc, tspan_s, p_s_gc)
+
+dt_s = Tg_s / 20
+alg_s_ab = AdaptiveBoris(; safety = 0.05)
+alg_s_hy = AdaptiveHybrid(;
+    threshold = 0.1, dtmax = dt_s, dtmin = 1.0e-4 * Tg_s,
+    maxiters = 500_000, check_interval = 10,
+)
+
+sol_s_bo = solve(prob_s, Boris(); dt = dt_s)
+sol_s_ab = solve(prob_s, alg_s_ab; dtmax = Tg_s, dtmin = 1.0e-4 * Tg_s)
+sol_s_gc = solve(prob_s_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6)
+sol_s_hy = solve(prob_s, alg_s_hy; verbose = false, seed = 1234).u[1]
+
+b_s_bo = @be solve($prob_s, Boris(); dt = $dt_s)
+b_s_ab = @be solve(
+    $prob_s, $alg_s_ab; dtmax = $Tg_s, dtmin = $(1.0e-4 * Tg_s)
+)
+b_s_gc = @be solve($prob_s_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6)
+b_s_hy = @be solve($prob_s, $alg_s_hy; verbose = false)
+
+function _final_mu(sol, μ_gc) #hide
+    u = sol.u[end] #hide
+    length(u) == 4 && return μ_gc #hide
+    B = sheet_B(u[SA[1, 2, 3]], sol.t[end]) #hide
+    Bmag = norm(B) #hide
+    b = B / Bmag #hide
+    v = u[SA[4, 5, 6]] #hide
+    w = v - (b ⋅ v) * b #hide
+    return 0.5 * m * (w ⋅ w) / Bmag #hide
+end #hide
+
+io_s = IOBuffer() #hide
+println( #hide
+    io_s, #hide
+    "| Solver | Time | Allocations | Saved points | Final z [km] | Final μ [J/T] |" #hide
+) #hide
+println(io_s, "| :--- | :--- | :--- | ---: | ---: | ---: |") #hide
+for (label, b, s) in ( #hide
+        ("Full Orbit (Boris)", b_s_bo, sol_s_bo), #hide
+        ("Full Orbit (AdaptiveBoris)", b_s_ab, sol_s_ab), #hide
+        ("Guiding Center (Vern7)", b_s_gc, sol_s_gc), #hide
+        ("Hybrid", b_s_hy, sol_s_hy), #hide
+    ) #hide
+    Printf.@printf( #hide
+        io_s, "| %s | %.2f μs | %.2f KiB | %d | %.1f | %.2e |\n", #hide
+        label, median(b).time * 1.0e6, median(b).bytes / 1024, #hide
+        length(s.t), s.u[end][3] / 1.0e3, _final_mu(s, p_s_gc.μ) #hide
+    ) #hide
+end #hide
+Markdown.parse(String(take!(io_s))) #hide
 
 # ## AdaptiveHybrid: Adiabaticity Check Modes
 #

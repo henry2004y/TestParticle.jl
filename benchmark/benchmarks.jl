@@ -370,7 +370,7 @@ let
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["Vern7, magnetic bottle"] = @benchmarkable solve(
-        $prob_gc, Vern7()
+        $prob_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, full orbit"] = @benchmarkable solve(
         $prob, $alg_fo; verbose = false, seed = 1234
@@ -403,9 +403,9 @@ let
     p = (; q2m, m, E = E_zero, B = B_sheet, F = TP.ZeroField())
     prob_sheet = TraceProblem(u0, tspan, p)
     dt_boris = T_gyro / 20
-    dtmax_boris = dt_boris
+    dtmax_boris = T_gyro
     dtmin_boris = 1.0e-4 * T_gyro
-    alg_boris = AdaptiveBoris(safety = 0.1)
+    alg_boris = AdaptiveBoris(; safety = 0.05)
 
     alg_sheet = AdaptiveHybrid(;
         threshold = 0.1, dtmax = dt_boris, dtmin = 1.0e-4 * T_gyro,
@@ -414,12 +414,15 @@ let
     state_gc, param_gc = TP.prepare_gc(u0; B = B_sheet, species = Proton)
     prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
 
+    SUITE["trace"]["Hybrid"]["Boris, current sheet"] = @benchmarkable solve(
+        $prob_sheet, Boris(); dt = $dt_boris
+    )
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, current sheet"] = @benchmarkable solve(
         $prob_sheet, $alg_boris;
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["Vern7, current sheet"] = @benchmarkable solve(
-        $prob_gc, Vern7()
+        $prob_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, current sheet"] = @benchmarkable solve(
         $prob_sheet, $alg_sheet; verbose = false, seed = 1234
@@ -468,7 +471,7 @@ let
         dt = $dt_boris, dtmax = $dtmax_boris, dtmin = $dtmin_boris
     )
     SUITE["trace"]["Hybrid"]["Vern7, adiabatic bottle"] = @benchmarkable solve(
-        $prob_gc, Vern7()
+        $prob_gc, Vern7(); abstol = 1.0e-6, reltol = 1.0e-6
     )
     SUITE["trace"]["Hybrid"]["AdaptiveHybrid, adiabatic bottle"] = @benchmarkable solve(
         $prob_adia, $alg_adia; verbose = false, seed = 1234

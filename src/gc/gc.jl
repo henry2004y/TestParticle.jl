@@ -86,10 +86,10 @@ An iteration is kept only if it reduces the residual `‖x - (X + ρ(X))‖`, so
 strongly non-adiabatic crossing, where the fixed-point map stops contracting,
 cannot make the conversion worse than the zeroth-order one.
 """
-@inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
+@inline function _gc_switch_state_checked(xv, E, B, q, m, t, niter)
     x, v = _split_xv(xv)
     X, vpar, _, _, μ, phase = _get_gc_parameters(xv, E, B, q, m, t)
-    niter > 0 || return X, vpar, μ, phase
+    niter > 0 || return X, vpar, μ, phase, true
 
     x_rec = _gc_to_full(SVector(X[1], X[2], X[3], vpar), E, B, q, m, μ, t, phase)
     residual = norm(x - get_x(x_rec))
@@ -109,6 +109,21 @@ cannot make the conversion worse than the zeroth-order one.
         x_rec, residual = x_rec_next, residual_next
     end
 
+    # issue #667: reject the switch when the gyro-orbit spans a field reversal
+    # so `X = x - ρ(X)` fails to invert or `B` flips across `X ± ρ`.
+    T = typeof(residual)
+    ρ_len = norm(x - X)
+    tol_pos = 16 * eps(T) * max(norm(x), norm(X), one(T))
+    inv_ok = residual <= max(ρ_len / 4, tol_pos)
+    B_X = B(X, t)
+    B_opp = B(2 * X - x, t)
+    B_prod = norm(B_X) * norm(B_opp)
+    same_dir = !iszero(B_prod) && (B_X ⋅ B_opp) > (B_prod / 2)
+    return X, vpar, μ, phase, inv_ok && same_dir
+end
+
+@inline function _gc_state_at_switch(xv, E, B, q, m, t, niter)
+    X, vpar, μ, phase, _ = _gc_switch_state_checked(xv, E, B, q, m, t, niter)
     return X, vpar, μ, phase
 end
 

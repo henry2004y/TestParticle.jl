@@ -152,7 +152,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test sol.retcode == ReturnCode.Success
 
             # `maxiters` stops short of the span and the last state keeps its own time.
-            sol_cut = solve(
+            sol_cut = @test_logs (:warn, r"Larger maxiters is needed") solve(
                 prob, RK4(); dt, adaptive = false, maxiters = 10, save_everystep = false
             )
             @test sol_cut.t[end] ≈ 10 * dt
