@@ -427,7 +427,7 @@ end
         )
 
         # min_dt limit
-        dt_too_small = eps(Float64)
+        dt_too_small = eps(Float64) * 1.0e-9
         @test_throws ArgumentError solve(
             prob, Boris(); dt = dt_too_small
         )

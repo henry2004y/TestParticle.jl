@@ -929,6 +929,45 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
                 @test idx_lobe_fo !== nothing
                 @test sol_lobe.stats.adiabaticity.components[idx_lobe_fo] <= 0.5
             end
+
+            # Mode-switch info logging (`verbose = true`).
+            sol_verb = @test_logs (:info, r"Initial mode") (:info, r"Switch") match_mode = :any begin
+                solve(prob, alg; verbose = true).u[1]
+            end
+            @test sol_verb.retcode == TP.ReturnCode.Success
+
+            # `isoutside` termination inside GC -> FO bisection.
+            u0_s = SA[0.0, 0.0, -4.0 * L, 0.0, 0.95 * v, 0.3 * v]
+            alg_iso = AdaptiveHybrid(;
+                threshold = 0.05, dtmax = dt_b, dtmin = 1.0e-4 * T_gyro,
+                check_dt = 50 * T_gyro, check_interval = 5,
+            )
+            sol_iso = solve(
+                TraceProblem(u0_s, tspan, p), alg_iso;
+                isoutside = (u, p, t) -> -1.3 * L < u[3] < -1.1 * L,
+            ).u[1]
+            @test sol_iso.retcode == TP.ReturnCode.Terminated
+
+            # Direct switch at `t` when prior unchecked GC step sits in `[threshold, 2 * threshold]`.
+            alg_prev = AdaptiveHybrid(;
+                threshold = 0.15, dtmax = dt_b, dtmin = 1.0e-4 * T_gyro,
+                check_dt = 50 * T_gyro, check_interval = 5,
+            )
+            sol_prev = solve(TraceProblem(u0_s, tspan, p), alg_prev).u[1]
+            @test sol_prev.retcode == TP.ReturnCode.Success
+            idx_prev = findfirst(==(:FO), sol_prev.stats.adiabaticity.mode)
+            @test idx_prev !== nothing
+            @test 0.15 <= sol_prev.stats.adiabaticity.components[idx_prev] <= 0.3
+
+            # `maxiters` reached during GC -> FO bisection before reaching boundary.
+            u0_close = SA[0.0, 0.0, -2.4 * L, 0.0, 0.95 * v, 0.3 * v]
+            alg_mi = AdaptiveHybrid(;
+                threshold = 0.1, dtmax = dt_b, dtmin = 1.0e-4 * T_gyro,
+                check_dt = 50 * T_gyro, check_interval = 1, maxiters = 1,
+            )
+            sol_mi = solve(TraceProblem(u0_close, tspan, p), alg_mi).u[1]
+            @test sol_mi.retcode == TP.ReturnCode.MaxIters
+            @test all(==(:GC), sol_mi.stats.adiabaticity.mode)
         end
     end
 end
