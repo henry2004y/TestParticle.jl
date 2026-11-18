@@ -99,7 +99,7 @@ Julia field object directly.
   `TraceResult` (or a list of them when tracing multiple trajectories). The
   `alg` keyword selects the pusher, see [Solver selection](#solver-selection).
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
-  saveat=None, alg="rk4")` — guiding-center RK4/RK45 solver. Returns a `GCTraceResult`.
+  saveat=None, alg="rk4")` — guiding-center solver ("rk4", "vern7", or a SciML ODE algorithm). Returns a `GCTraceResult`.
 
 The `species` argument accepts the strings `"proton"`, `"electron"`, or `"ion"`,
 a `tp.Ion(m, q)`, or any Julia `Species` object.

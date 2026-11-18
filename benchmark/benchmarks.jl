@@ -297,13 +297,13 @@ stateinit_gc, param_gc = prepare_gc(
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 
-prob_native_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
+prob_trace_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["RK4"] = @benchmarkable solve(
-    $prob_native_gc, RK4();
+    $prob_trace_gc, RK4();
     dt = 2.0e-2, adaptive = false, saveat = 2.0, maxiters = 10000
 )
 SUITE["trace"]["GC"]["Vern7"] = @benchmarkable solve(
-    $prob_native_gc, Vern7();
+    $prob_trace_gc, Vern7();
     dt = 2.0e-2, saveat = 2.0, maxiters = 10000
 )
 

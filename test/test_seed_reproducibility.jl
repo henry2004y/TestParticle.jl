@@ -36,7 +36,7 @@ function prob_func(prob, ctx)
     vdf = TestParticle.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
     # Using ctx.rng is critical here!
     v = rand(ctx.rng, vdf)
-    # Rk4/Rk45 expects a 4-element state (x, y, z, vpar)
+    # Guiding-center equations expect a 4-element state (x, y, z, vpar)
     return remake(prob; u0 = [prob.u0[1:3]..., v[3]])
 end
 
@@ -61,18 +61,18 @@ end
         end
 
         # Test Vern7
-        sols1_rk45 = solve(
+        sols1_vern7 = solve(
             prob, Vern7(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
-        sols2_rk45 = solve(
+        sols2_vern7 = solve(
             prob, Vern7(), EnsembleSerial();
             trajectories = 3, dt = 1.0e-5, seed
         )
 
-        @test length(sols1_rk45.u) == 3
+        @test length(sols1_vern7.u) == 3
         for i in 1:3
-            @test sols1_rk45.u[i].u == sols2_rk45.u[i].u
+            @test sols1_vern7.u[i].u == sols2_vern7.u[i].u
         end
     end
 end

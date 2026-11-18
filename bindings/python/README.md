@@ -102,7 +102,7 @@ The high-level helpers are:
   saveat=None, save_fields=False, save_work=False, parallel=False,
   alg=None, init_func=None, q=None, m=None)` - Boris pusher.
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
-  saveat=None, alg="rk4")` - guiding-center RK4/RK45 solver.
+  saveat=None, alg="rk4")` - guiding-center solver ("rk4", "vern7", or a SciML ODE algorithm).
 
 Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `Proton`, `get_gyrofrequency`,
 ...) are re-exported under their Julia names; functions ending with `!` in Julia

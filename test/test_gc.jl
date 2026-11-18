@@ -21,7 +21,7 @@ using ..test_common: uniform_Ex, curved_B
 
 const Ek = 5.0e7 # [eV], for the dipole test case
 
-"Earth's dipole field, the workhorse for the native GC solvers."
+"Earth's dipole field for the TraceGCProblem solver tests."
 const dipole = MS.Dipole(TP.BMoment_Earth)
 
 dipole_field(r) = dipole(r)
@@ -126,7 +126,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
         end
     end
 
-    @testset "Native Solvers" begin
+    @testset "TraceGCProblem Solvers" begin
         # Setup simple dipole field
         m = TP.mᵢ
         q = TP.qᵢ
@@ -201,14 +201,14 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
 
             # Solve using fixed-step RK4
             dt = 1.0e-4
-            sol_native = solve(prob, RK4(); dt, adaptive = false)
-            u_native = sol_native.u[end]
+            sol_rk4 = solve(prob, RK4(); dt, adaptive = false)
+            u_rk4 = sol_rk4.u[end]
 
             # Position difference
-            @test norm(u_diffeq[1:3] - u_native[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
+            @test norm(u_diffeq[1:3] - u_rk4[1:3]) / norm(u_diffeq[1:3]) < 1.0e-3
 
             # Parallel velocity difference
-            @test abs(u_diffeq[4] - u_native[4]) / abs(u_diffeq[4]) < 1.0e-3
+            @test abs(u_diffeq[4] - u_rk4[4]) / abs(u_diffeq[4]) < 1.0e-3
         end
 
         @testset "Automatic Initial dt" begin
@@ -287,8 +287,8 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             end
 
             # The adaptive solver takes the same times.
-            sol_at45 = solve(prob, Vern7(); dt, saveat = ts)
-            @test sol_at45.t ≈ ts
+            sol_at_vern7 = solve(prob, Vern7(); dt, saveat = ts)
+            @test sol_at_vern7.t ≈ ts
 
             sol_interval = solve(prob, RK4(); dt, adaptive = false, saveat = 0.25)
             @test sol_interval.t ≈ collect(0.0:0.25:1.0)
