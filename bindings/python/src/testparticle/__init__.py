@@ -313,7 +313,7 @@ class TraceResult:
 
 @dataclass
 class GCTraceResult:
-    """Trajectory of a guiding center traced with the RK4/RK45 method."""
+    """Trajectory of a guiding center traced with :func:`trace_gc`."""
 
     t: np.ndarray
     state: np.ndarray
@@ -481,11 +481,12 @@ def trace_gc(
     q=None,
     m=None,
 ):
-    """Trace guiding-center trajectories with the RK4/RK45 method.
+    """Trace guiding-center trajectories with SciML ODE solvers.
 
     Parameters mirror :func:`trace`, with the addition of ``alg``
-    (``"rk4"``, ``"rk45"`` or a ``GCRK4``/``GCRK45`` object). The returned :class:`GCTraceResult` exposes the
-    guiding-center position ``R`` and parallel velocity ``vpar``.
+    (``"rk4"``, ``"vern7"``, legacy alias ``"rk45"``, or a SciML ODE algorithm
+    object). The returned :class:`GCTraceResult` exposes the guiding-center
+    position ``R`` and parallel velocity ``vpar``.
     """
     x0 = np.asarray(x0, dtype=float)
     v0 = np.asarray(v0, dtype=float)
