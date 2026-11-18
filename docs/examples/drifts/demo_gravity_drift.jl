@@ -63,7 +63,7 @@ B(x) = SA[0.0, 1.0e-8, 0.0]
 E(x) = SA[0.0, 0.0, 0.0]
 
 ## Earth's gravity
-F(x) = SA[0.0, 0.0, -TestParticle.mᵢ * 9.8]
+F(x) = SA[0.0, 0.0, -Proton.m * 9.8]
 
 ## Initial static particle
 stateinit = let x0 = [1.0, 0.0, 0.0], v0 = [0.0, 0.0, 0.0]

@@ -26,8 +26,8 @@ getB(xu) = MS.getB_tokamak_coil(xu[1], xu[2], xu[3], a, b, ICoil * N, IPlasma)
 
 
 ### Initialize particles
-m = TP.mᵢ
-q = TP.qᵢ
+m = Proton.m
+q = Proton.q
 c = TP.c
 
 ## initial velocity, [m/s]

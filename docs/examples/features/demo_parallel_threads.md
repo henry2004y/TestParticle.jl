@@ -12,7 +12,6 @@ that the *same* `ensemblealg` argument drives both.
 
 ```julia
 using TestParticle
-using TestParticle: Maxwellian
 import TestParticle as TP
 using BorisPushers
 using OrdinaryDiffEq

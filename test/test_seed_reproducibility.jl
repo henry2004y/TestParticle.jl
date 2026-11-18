@@ -15,7 +15,7 @@ using OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqVerner
 using KernelAbstractions: CPU
 using Random
 using LinearAlgebra
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian
 using ..test_common: uniform_B, zero_E, sheared_B
 
 # Set up simple fields that support ForwardDiff seamlessly
@@ -33,7 +33,7 @@ u0_gc, param = TestParticle.prepare_gc(
 )
 
 function prob_func(prob, ctx)
-    vdf = TestParticle.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
+    vdf = BiMaxwellian(; vth = 1.0)
     # Using ctx.rng is critical here!
     v = rand(ctx.rng, vdf)
     # Guiding-center equations expect a 4-element state (x, y, z, vpar)
@@ -79,8 +79,8 @@ end
 
 @testset "Hybrid Solver Seed Reproducibility" begin
     let
-        m = TestParticle.mᵢ
-        q = TestParticle.qᵢ
+        m = Proton.m
+        q = Proton.q
         q2m = q / m
 
         x0 = SA[0.0, 0.0, 0.0]
@@ -159,8 +159,8 @@ end
 
     # --- Hybrid ---
     let
-        m = TestParticle.mᵢ
-        q = TestParticle.qᵢ
+        m = Proton.m
+        q = Proton.q
         q2m = q / m
         u0 = SA[0.0, 0.0, 0.0, 1.0e4, 0.0, 1.0e3]
         p = (; q2m, m, E = E_zero, B = B_sheared, F = TestParticle.ZeroField())

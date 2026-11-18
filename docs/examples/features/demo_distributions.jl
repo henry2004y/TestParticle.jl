@@ -1,17 +1,17 @@
 # # Velocity Sampling
 #
-# This example demonstrates how to sample from various velocity distribution functions (VDFs)
-# including Maxwellian, Bi-Maxwellian, Kappa, and Bi-Kappa distributions.
-# We compare the sampled distributions with their theoretical probability density functions (PDFs).
+# This example samples initial velocities from velocity distribution functions (VDFs)
+# and compares the samples with the analytic marginal PDFs. The models come from
+# [PlasmaPopulations.jl](https://github.com/JuliaPlasma/PlasmaPopulations.jl): they are
+# parameterized by temperatures [eV] or thermal speeds `vth = √(2T/m)`, live in the
+# field-aligned frame (``\hat{z} \parallel \mathbf{B}``), and are placed in another frame
+# with `Oriented(vdf, B; u)`.
 
 using TestParticle
-using TestParticle: Kappa, Maxwellian
-import TestParticle as TP
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian, BiKappa, Oriented, vth_perp_para
 using Gamma: gamma
 using Random
 using StaticArrays
-using Statistics
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 import DisplayAs #hide
@@ -28,17 +28,11 @@ set_theme!(theme)
 # ## 1. Maxwellian Distribution
 # 1D projection:
 # ```math
-# v \propto \exp\left(-\frac{v^2}{v_{th}^2}\right)
+# f(v_x) \propto \exp\left(-\frac{v_x^2}{v_{th}^2}\right)
 # ```
 
-## Parameters
-u0 = [0.0, 0.0, 0.0]
-p = 1.0 # Thermal pressure
-n = 1.0 # Number density
-m = 1.0 # Mass
-
-## Construct distribution
-vdf = TP.Maxwellian(u0, p, n; m)
+## Isotropic proton Maxwellian at 10 eV
+vdf = BiMaxwellian(Proton; T = 10.0)
 println(vdf)
 
 ## Sample
@@ -46,7 +40,7 @@ vs = rand(rng, vdf, N)
 vx = [v[1] for v in vs]
 
 ## Theoretical PDF
-vth = vdf.vth
+vth = vdf.vth_perp
 v_grid = range(-4vth, 4vth, length = 100)
 pdf_maxwellian(v, vth) = exp(-v^2 / vth^2) / (sqrt(π) * vth)
 
@@ -63,41 +57,36 @@ f = DisplayAs.PNG(f) #hide
 
 # ## 2. Bi-Maxwellian Distribution
 # ```math
-# v_\parallel \propto \exp\left(-\frac{v_\parallel^2}{v_{th,\parallel}^2}\right)
+# f(v_\parallel) \propto \exp\left(-\frac{v_\parallel^2}{v_{th,\parallel}^2}\right)
 # ```
 # 2D magnitude:
 # ```math
-# v_\perp \propto \frac{v_\perp}{v_{th,\perp}^2} \exp\left(-\frac{v_\perp^2}{v_{th,\perp}^2}\right)
+# f(v_\perp) \propto \frac{v_\perp}{v_{th,\perp}^2}
+# \exp\left(-\frac{v_\perp^2}{v_{th,\perp}^2}\right)
 # ```
 
-## Parameters
-B = [0.0, 0.0, 1.0]
-ppar = 2.0
-pperp = 0.5
-
-## Construct distribution
-vdf_bi = TP.BiMaxwellian(B, u0, ppar, pperp, n; m)
+## Anisotropic, placed in the frame of a field along x
+B = SA[1.0, 0.0, 0.0]
+vdf_bi = Oriented(BiMaxwellian(Proton; T_perp = 5.0, T_para = 20.0), B)
 println(vdf_bi)
 
 ## Sample
 vs = rand(rng, vdf_bi, N)
-vpar = [v[3] for v in vs] # Since B is along Z
-vperp = [hypot(v[1], v[2]) for v in vs]
+vpar = [v[1] for v in vs] # B is along x
+vperp = [hypot(v[2], v[3]) for v in vs]
 
 ## Theoretical PDFs
-vthpar = vdf_bi.vth_para
-vthperp = vdf_bi.vth_perp
-## Bi-Maxwellian Parallel is identical to the 1D Maxwellian
-pdf_bi_par(v, vth) = pdf_maxwellian(v, vth)
-## Bi-Maxwellian Perpendicular (2D Speed / Rayleigh)
+vthperp, vthpar = vth_perp_para(vdf_bi)
 pdf_bi_perp(v, vth) = (2v / vth^2) * exp(-v^2 / vth^2)
 
 ## Visualization
 f = Figure(size = (800, 400))
-ax1 = Axis(f[1, 1], title = "Bi-Maxwellian Parallel (Z)", xlabel = "v_par", ylabel = "PDF")
+ax1 = Axis(f[1, 1], title = "Bi-Maxwellian Parallel", xlabel = "v_par", ylabel = "PDF")
 hist!(ax1, vpar, normalization = :pdf, bins = 50, label = "Sampled", color = (:blue, 0.5))
+v_grid_par = range(-4vthpar, 4vthpar, length = 100)
 lines!(
-    ax1, v_grid, pdf_bi_par.(v_grid, vthpar), label = "Theory", color = :red, linewidth = 2
+    ax1, v_grid_par, pdf_maxwellian.(v_grid_par, vthpar),
+    label = "Theory", color = :red, linewidth = 2
 )
 
 ax2 = Axis(
@@ -114,30 +103,30 @@ axislegend(ax2)
 f = DisplayAs.PNG(f) #hide
 
 # ## 3. Kappa Distribution
-# 1D projection
+#
 # ```math
-# v \propto \left(1 + \frac{v^2}{(\kappa - 1.5)v_{th}^2}\right)^{-\kappa-1}
+# f(\mathbf{v}) \propto \left(1 + \frac{v^2}{A}\right)^{-\kappa-1},
+# \quad A = (\kappa - 3/2)\, v_{th}^2,
+# ```
+# so the temperature ``T = m v_{th}^2 / 2`` does not depend on ``\kappa``.
+# Its 1D projection is
+# ```math
+# f(v_x) = \frac{\Gamma(\kappa)}{\sqrt{\pi A}\,\Gamma(\kappa - 1/2)}
+# \left(1 + \frac{v_x^2}{A}\right)^{-\kappa}.
 # ```
 
-## Parameters
 kappa = 3.0
-
-## Construct distribution
-vdf_kappa = TP.Kappa(u0, p, n, kappa; m)
+vdf_kappa = BiKappa(Proton; T = 10.0, kappa)
 println(vdf_kappa)
 
 ## Sample
 vs = rand(rng, vdf_kappa, N)
 vx = [v[1] for v in vs]
 
-## Theoretical PDF (1D projection of 3D Kappa)
-## The 1D projection of a 3D Kappa distribution with parameter kappa is a 1D Kappa with parameter kappa.
-## f(v) = A * (1 + v^2 / ((kappa - 1.5) * vth^2))^(-kappa)
-## Normalization constant A = Gamma(kappa) / (sqrt(pi) * vth * sqrt(kappa - 1.5) * Gamma(kappa - 0.5))
+## Theoretical PDF (1D projection)
 function pdf_kappa(v, vth, k)
-    theta2 = (k - 1.5) * vth^2
-    A = gamma(k) / (sqrt(π * theta2) * gamma(k - 0.5))
-    return A * (1 + v^2 / theta2)^(-k)
+    A = (k - 3 / 2) * vth^2
+    return gamma(k) / (sqrt(π * A) * gamma(k - 1 / 2)) * (1 + v^2 / A)^(-k)
 end
 
 ## Visualization
@@ -145,7 +134,7 @@ f = Figure()
 ax = Axis(f[1, 1], title = "Kappa (kappa=3)", xlabel = "vx", ylabel = "PDF", yscale = log10)
 hist!(ax, vx, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
 lines!(
-    ax, v_grid, pdf_kappa.(v_grid, vdf_kappa.vth, kappa),
+    ax, v_grid, pdf_kappa.(v_grid, vdf_kappa.vth_perp, kappa),
     label = "Theory", color = :red, linewidth = 2
 )
 axislegend(ax)
@@ -154,24 +143,16 @@ f = DisplayAs.PNG(f) #hide
 
 # ## 4. Bi-Kappa Distribution
 #
-# Similar to Bi-Maxwellian but with power-law tails.
+# Bi-Maxwellian anisotropy with power-law tails; each 1D projection has the kappa form
+# above with its own `vth`.
 
-## Parameters
-ppar = 1.0
-pperp = 1.0
 kappa = 4.0
-
-## Construct distribution
-vdf_bikappa = TP.BiKappa(B, u0, ppar, pperp, n, kappa; m)
+vdf_bikappa = BiKappa(Proton; T_perp = 5.0, T_para = 20.0, kappa)
 println(vdf_bikappa)
 
 ## Sample
 vs = rand(rng, vdf_bikappa, N)
 vpar = [v[3] for v in vs]
-
-## Theoretical PDF (1D projection)
-## Similar form to isotropic Kappa 1D projection
-pdf_bikappa_par(v, vth, k) = pdf_kappa(v, vth, k)
 
 ## Visualization
 f = Figure()
@@ -181,7 +162,7 @@ ax = Axis(
 )
 hist!(ax, vpar, normalization = :pdf, bins = 30, label = "Sampled", color = (:blue, 0.5))
 lines!(
-    ax, v_grid, pdf_bikappa_par.(v_grid, vdf_bikappa.vth_para, kappa),
+    ax, v_grid_par, pdf_kappa.(v_grid_par, vdf_bikappa.vth_para, kappa),
     label = "Theory", color = :red, linewidth = 2
 )
 axislegend(ax)

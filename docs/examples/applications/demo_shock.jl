@@ -5,9 +5,8 @@
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq
 using TestParticle: ClampExtrap
-using TestParticle: mᵢ, kB
 import TestParticle as TP
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian, Oriented, vth_perp_para
 using LinearAlgebra
 using Statistics: mean, std
 using Printf
@@ -62,8 +61,10 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁ = TP.Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
-vdf₂ = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
+## Isotropic, so the field only sets the frame; the total pressure is carried by the ions.
+maxwellian(V, Pth, n, B) = Oriented(BiMaxwellian(Proton; T = Pth / (n * TP.eV)), B; u = V)
+const vdf₁ = maxwellian(V₁, Pth₁, n₁, B₁)
+vdf₂ = maxwellian(V₂, Pth₂, n₂, B₂)
 
 println(vdf₁)
 println(vdf₂)
@@ -198,8 +199,8 @@ f = DisplayAs.PNG(f) #hide
 # Even with 400 particles, we are still able to statistically approximate the velocity moment downstream of the perpendicular shock.
 # While the upstream thermal speed is close to what we set, the downstream thermal speed is higher than our set value:
 
-println("Vth₁ = ", round(vdf₁.vth / 1.0e3, digits = 2), " km/s") #hide
-println("Vth₂ = ", round(vdf₂.vth / 1.0e3, digits = 2), " km/s") #hide
+println("Vth₁ = ", round(vth_perp_para(vdf₁)[1] / 1.0e3, digits = 2), " km/s") #hide
+println("Vth₂ = ", round(vth_perp_para(vdf₂)[1] / 1.0e3, digits = 2), " km/s") #hide
 
 # A nice way to present the 3d distributions in 2d is via the pair plots:
 
@@ -357,8 +358,8 @@ mid_ = length(x) ÷ 2
 B[:, 1:mid_] .= B₂
 E[:, 1:mid_] .= E₂
 
-const vdf₁_para = TP.Maxwellian(V₁, Pth₁, n₁; m = mᵢ)
-vdf₂_para = TP.Maxwellian(V₂, Pth₂, n₂; m = mᵢ)
+const vdf₁_para = maxwellian(V₁, Pth₁, n₁, B₁)
+vdf₂_para = maxwellian(V₂, Pth₂, n₂, B₂)
 
 trajectories = 2
 weight₁ = n₁ / trajectories

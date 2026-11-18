@@ -22,8 +22,8 @@ getB(xu) = MS.getB_zpinch(xu[1], xu[2], xu[3], I_current, a_wire)
 ### Initialize Particles
 
 ## Protons
-const m = TP.mᵢ
-const q = TP.qᵢ
+const m = Proton.m
+const q = Proton.q
 const c = TP.c
 
 ## Initial state

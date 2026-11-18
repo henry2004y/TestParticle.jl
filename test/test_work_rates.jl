@@ -109,7 +109,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         _, ∇B, _, b̂, Bmag = TP.get_magnetic_properties(x, t, Bf)
         E = Ef(x, t)
         μ = 1.0e-15
-        p = (; q = TP.qᵢ, q2m = TP.qᵢ / TP.mᵢ, μ, E = Ef, B = Bf)
+        p = (; q = Proton.q, q2m = Proton.q / Proton.m, μ, E = Ef, B = Bf)
         y = SA[x[1], x[2], x[3], 1.0e4]
 
         wr = TP.get_work_rates(y, p, t)
@@ -172,7 +172,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # A full-orbit parameter tuple carries the E field in slot 3, which selects
         # the full-orbit flavor.
         state_fo = SA[x[1], x[2], x[3], 4.0e4, -2.0e4, 3.0e4]
-        p_fo = (; q2m = TP.qᵢ / TP.mᵢ, m = TP.mᵢ, E = Ef, B = Bf, F = nothing)
+        p_fo = (; q2m = Proton.q / Proton.m, m = Proton.m, E = Ef, B = Bf, F = nothing)
         @test sum(TP.get_work_channels(state_fo, p_fo, t)) ≈
             sum(TP.get_work_rates(state_fo, p_fo, t))
     end
@@ -222,8 +222,8 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # rates must match the guiding-center prediction.
         stateinit = [0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4]
         param = TP.prepare(; E = uniform_Et, B = uniform_Bt, species = TP.Proton)
-        μ₀ = TP.mᵢ * (3.0e4^2) / (2 * B₀₀)
-        gyroperiod = 2π * TP.mᵢ / (TP.qᵢ * B₀₀)
+        μ₀ = Proton.m * (3.0e4^2) / (2 * B₀₀)
+        gyroperiod = 2π * Proton.m / (Proton.q * B₀₀)
         dt = gyroperiod / 200
 
         prob = TP.TraceProblem(stateinit, (0.0, 15 * gyroperiod), param)
@@ -249,7 +249,7 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         v_E = (E0 × SA[0.0, 0.0, 1.0]) / B₀₀
         wr = TP.get_work_rates(SA[0.0, 0.0, 0.0, v_E...], p, 0.0)
 
-        @test abs(wr[4]) < 1.0e-12 * TP.mᵢ * (v_E ⋅ v_E) * β / 2
+        @test abs(wr[4]) < 1.0e-12 * Proton.m * (v_E ⋅ v_E) * β / 2
     end
 
     @testset "relativistic full-orbit work rates" begin

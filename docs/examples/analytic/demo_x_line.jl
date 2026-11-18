@@ -45,7 +45,7 @@ sol_p = solve(prob_p, Vern9())
 ## Initialize electron
 x0_e = [-1.0Rₑ, 0.0, 0.1Rₑ]
 Ek_e = 1.0e3 # eV
-v_e = TP.energy2velocity(Ek_e, m = TP.mₑ, q = TP.qₑ) # magnitude
+v_e = TP.energy2velocity(Ek_e; species = Electron) # magnitude
 v0_e = [v_e, 0.0, 0.0]
 
 stateinit_e = [x0_e..., v0_e...]

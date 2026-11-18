@@ -34,14 +34,13 @@
 # shocks reflect only some ions; here the potential is enhanced so the reflection is easy to
 # see.)
 #
-# We trace a real *proton* (``m = mᵢ``, ``q = qᵢ``). The shock has a finite thickness (a
+# We trace a real *proton* (`Proton`). The shock has a finite thickness (a
 # smooth tanh ramp of order the proton gyroradius) so the gradient driving the drift is
 # resolved.
 
 import DisplayAs #hide
 using TestParticle
 using TestParticle: ClampExtrap
-using TestParticle: mᵢ, qᵢ
 using OrdinaryDiffEq
 using LinearAlgebra
 using StaticArrays: SVector
@@ -84,8 +83,8 @@ Em = hcat([[Ex(xq), E_y, 0.0] for xq in x]...)
 param = prepare(;
     E = build_interpolator(Em, (x,); bc = ClampExtrap()),
     B = build_interpolator(Bm, (x,); bc = ClampExtrap()),
-    q = qᵢ,
-    m = mᵢ
+    q = Proton.q,
+    m = Proton.m
 )
 
 function field_at(xq, Em, Bm)
@@ -136,8 +135,10 @@ sol_exb = solve(ODEProblem(trace!, u0_exb, (0.0, t_max), param), Vern9(); saveat
 X_exb = [u[1] for u in sol_exb.u]
 Y_exb = [u[2] for u in sol_exb.u]
 vs_exb = [u[4:6] for u in sol_exb.u]
-K_exb = [0.5 * mᵢ * dot(v, v) for v in vs_exb]
-work_exb = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol_exb.u, vs_exb)]
+K_exb = [0.5 * Proton.m * dot(v, v) for v in vs_exb]
+work_exb = [
+    Proton.q * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol_exb.u, vs_exb)
+]
 W_exb = [0.0; cumsum(0.5 .* (work_exb[1:(end - 1)] .+ work_exb[2:end]) .* diff(sol_exb.t))]
 W_exb_norm = W_exb ./ K_exb[1]              # normalized to its own initial KE
 
@@ -161,8 +162,8 @@ Y = [u[2] for u in sol.u]
 Z = [u[3] for u in sol.u]
 vs = [u[4:6] for u in sol.u]
 
-K_lab = [0.5 * mᵢ * dot(v, v) for v in vs]
-work_rates = [qᵢ * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol.u, vs)]
+K_lab = [0.5 * Proton.m * dot(v, v) for v in vs]
+work_rates = [Proton.q * dot(v, field_at(u[1], Em, Bm)[1]) for (u, v) in zip(sol.u, vs)]
 W_cum = [0.0; cumsum(0.5 .* (work_rates[1:(end - 1)] .+ work_rates[2:end]) .* diff(ts))]
 
 n_cross = count(i -> (X[i - 1] < 0 <= X[i] || X[i - 1] > 0 >= X[i]), 2:length(X))

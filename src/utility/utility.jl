@@ -207,56 +207,25 @@ This function is compatible with any spatial dimension.
 """
 @inline get_mean_magnitude(B) = norm(B) / sqrt(length(B) / size(B, 1))
 
-"""
-    get_gyrofrequency(B=5e-9; q=qᵢ, m=mᵢ)
-
-Return the gyrofrequency [rad/s].
-
-# Arguments
-
-  - `B`: Magnetic field magnitude [T]. Default is 5 nT.
-  - `q`: Charge [C]. Default is proton charge.
-  - `m`: Mass [kg]. Default is proton mass.
-"""
-get_gyrofrequency(B = 5.0e-9; q = qᵢ, m = mᵢ) = ω = q * B / m
-
 @inline _get_exb_drift(E, B, Bmag) = (E × B) / Bmag^2
 
 @inline _get_v_perp(v, b̂) = v - (v ⋅ b̂) * b̂
 
 """
-    get_gyroradius(V, B; q=qᵢ, m=mᵢ)
+    get_gyroradius(v⊥::Number, B::Number; species = Proton)
+    get_gyroradius(v, B, E = 0; species = Proton)
 
-Return the gyroradius [m].
-
-# Arguments
-
-  - `V`: Velocity magnitude [m/s] (usually perpendicular to the magnetic field).
-  - `B`: Magnetic field magnitude [T].
-  - `q`: Charge [C]. Default is proton charge.
-  - `m`: Mass [kg]. Default is proton mass.
+Gyroradius [m] of `species` with perpendicular speed `v⊥` [m/s] in a field of magnitude
+`B` [T], or with velocity `v` in fields `B`, `E`, after removing the E×B drift.
 """
-function get_gyroradius(V::Number, B::Number; q = qᵢ, m = mᵢ)
-    ω = get_gyrofrequency(B; q, m)
-    return r = V / ω
-end
+get_gyroradius(V::Number, B::Number; species = Proton) =
+    V / abs(gyrofrequency(species, B))
 
-function get_gyroradius(v, B, E = SA[0.0, 0.0, 0.0]; q = qᵢ, m = mᵢ)
+function get_gyroradius(v, B, E = SA[0.0, 0.0, 0.0]; species = Proton)
     Bmag = norm(B)
-    if Bmag == 0
-        return Inf
-    end
-
-    v_E = _get_exb_drift(E, B, Bmag) # ExB drift
-    v_gyro = v - v_E
-
-    # Calculate perpendicular component
-    b̂ = B / Bmag
-    v_gyro_perp = _get_v_perp(v_gyro, b̂)
-    V_gyro_perp = norm(v_gyro_perp)
-
-    q2m = q / m
-    return V_gyro_perp / abs(q2m * Bmag)
+    Bmag == 0 && return Inf
+    v_gyro = v - _get_exb_drift(E, B, Bmag)
+    return norm(_get_v_perp(v_gyro, B / Bmag)) / abs(gyrofrequency(species, Bmag))
 end
 
 """
@@ -299,20 +268,11 @@ function get_gyroradius(sol::AbstractODESolution, t)
 end
 
 """
-    get_gyroperiod(B=5e-9; q=qᵢ, m=mᵢ)
+    get_gyroperiod(B; species = Proton)
 
-Return the gyroperiod [s].
-
-# Arguments
-
-  - `B`: Magnetic field magnitude [T]. Default is 5 nT.
-  - `q`: Charge [C]. Default is proton charge.
-  - `m`: Mass [kg]. Default is proton mass.
+Gyroperiod `2π/|Ω|` [s] of `species` in a field of magnitude or vector `B` [T].
 """
-function get_gyroperiod(B = 5.0e-9; q = qᵢ, m = mᵢ)
-    ω = get_gyrofrequency(B; q, m)
-    return 2π / ω
-end
+get_gyroperiod(B; species = Proton) = 2π / abs(gyrofrequency(species, B))
 
 """
     get_velocity(sol) -> Matrix
@@ -355,9 +315,13 @@ function _energy(::GuidingCenter, u, p, t)
 end
 
 """
-Return velocity magnitude from energy in [eV].
+    energy2velocity(Ek; species = Proton)
+
+Relativistic speed [m/s] of `species` with kinetic energy per unit charge `Ek`
+[eV for `|q| = e`], the inverse of [`get_energy`](@ref).
 """
-energy2velocity(Ek; m = mᵢ, q = qᵢ) = c * sqrt(1 - 1 / (1 + Ek * abs(q) / (m * c^2))^2)
+energy2velocity(Ek; species = Proton) =
+    c * sqrt(1 - 1 / (1 + Ek * abs(species.q) / (species.m * c^2))^2)
 
 """
     sample_unit_sphere(rng::AbstractRNG=default_rng())
@@ -398,16 +362,6 @@ function generate_sphere(nθ = 64, nϕ = 64, radius = 1.0)
     end
     return x, y, z
 end
-
-"""
-    sample_maxwellian([rng], Tn, m; offset=0.0, u0=SA[0.0, 0.0, 0.0])
-    sample_maxwellian([rng], Tn, species::String; offset=0.0, u0=SA[0.0, 0.0, 0.0])
-
-Sample a velocity [m/s] from a Maxwellian distribution with temperature `Tn` [K], mass `m`
-[kg], energy offset `offset` [J], and bulk velocity `u0` [m/s].
-This function requires `VelocityDistributionFunctions.jl` to be loaded.
-"""
-function sample_maxwellian end
 
 """
     TerminateOutside(isoutofdomain)

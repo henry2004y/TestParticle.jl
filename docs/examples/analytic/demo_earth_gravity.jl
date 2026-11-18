@@ -24,7 +24,7 @@ E(x) = SA[0.0, 0.0, 0.0]
 function F(x)
     r = SA[x[1], x[2], x[3]]
     rmag = @views norm(r)
-    return -G * M * TestParticle.mᵢ / rmag^3 * r
+    return -G * M * Proton.m / rmag^3 * r
 end
 
 ## Initial static particle

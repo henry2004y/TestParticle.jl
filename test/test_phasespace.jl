@@ -3,7 +3,7 @@
 module test_phasespace
 
 using TestParticle
-using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
+using TestParticle: get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
     project_vdf, refine_vdf_window, relative_l2, sample_velocity_ball, vdf_backward,
     vdf_grid_problem, velocity_moments
@@ -13,7 +13,7 @@ using BorisPushers
 using StaticArrays
 using Random
 using LinearAlgebra: norm
-using VelocityDistributionFunctions
+using PlasmaPopulations: Oriented, BiMaxwellian, Population, pdf, thermal_speed
 using Test
 
 # ## Steady E×B drift of a bi-Maxwellian
@@ -35,15 +35,14 @@ get_B(r, t = 0.0) = B_vec
 const n0 = 3.0e6     # number density [m⁻³]
 const T_par = 15.0   # parallel temperature [eV]
 const T_perp = 45.0  # perpendicular temperature [eV]
-const p_par = n0 * TP.qᵢ * T_par
-const p_perp = n0 * TP.qᵢ * T_perp
-const vdf = TP.BiMaxwellian(
-    SA[0.0, 0.0, 1.0], SA[V_drift, 0.0, 0.0], p_par, p_perp, n0; m = TP.mᵢ
+const vdf = Oriented(
+    BiMaxwellian(Proton; T_perp, T_para = T_par), B_vec; u = SA[V_drift, 0.0, 0.0]
 )
 ## Source phase-space density [s³/m⁶]; `pdf` returns a normalized VDF.
 f_src(v) = n0 * pdf(vdf, v)
+const population = Population(Proton, vdf; n = n0)
 
-const vth_perp = sqrt(2 * p_perp / (n0 * TP.mᵢ))
+const vth_perp = thermal_speed(Proton, T_perp)
 const vradius = 3 * vth_perp     # velocity-space sampling radius [m/s]
 
 const x_source = SA[300.0e3, 0.0, 0.0]  # source plane [m]
@@ -329,7 +328,7 @@ end
 
     @testset "vdf_backward_trace and vdf_forward_trace" begin
         f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
-            param, x_detector, source_plane, f_src;
+            param, x_detector, source_plane, population;
             v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0),
             adaptive = false,
             isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
@@ -340,7 +339,7 @@ end
         @test relative_l2(f3d_bw, ref) < 0.05
 
         f3d_fw, proj_fw = vdf_forward_trace(
-            param, x_source[1], detector, vdf, n0;
+            param, x_source[1], detector, population;
             nparticles = 50000, vradius, tspan, dt, dv_km,
             center = SA[V_drift, 0.0, 0.0], alg = Boris()
         )

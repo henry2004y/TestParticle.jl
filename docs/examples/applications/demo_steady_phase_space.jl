@@ -31,7 +31,7 @@
 import DisplayAs #hide
 using TestParticle
 using BorisPushers
-using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
+using TestParticle: get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, project_vdf,
     relative_l2, sample_velocity_ball
 import TestParticle as TP
@@ -39,7 +39,7 @@ using LinearAlgebra: norm
 using StaticArrays
 using Random
 using Statistics: mean, var
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian, Oriented, pdf, thermal_speed
 using CairoMakie
 using Meshes
 CairoMakie.activate!(type = "png") #hide
@@ -69,11 +69,9 @@ end;
 const n0 = 3.0e6        # number density [m⁻³]
 const T_par_eV = 15.0   # parallel temperature [eV]
 const T_perp_eV = 45.0  # perpendicular temperature [eV]
-const p_par = n0 * TP.qᵢ * T_par_eV
-const p_perp = n0 * TP.qᵢ * T_perp_eV
-
-const vdf = TP.BiMaxwellian(
-    SA[0.0, 0.0, 1.0], SA[V_drift, 0.0, 0.0], p_par, p_perp, n0; m = TP.mᵢ
+const vdf = Oriented(
+    BiMaxwellian(Proton; T_perp = T_perp_eV, T_para = T_par_eV), B_vec;
+    u = SA[V_drift, 0.0, 0.0]
 );
 
 # ## Geometry and integration
@@ -193,7 +191,7 @@ function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0
 end
 
 nparticles_m2 = 50000
-const vth_perp = sqrt(2 * p_perp / (n0 * TP.mᵢ))
+const vth_perp = thermal_speed(Proton, T_perp_eV)
 const vradius_m2 = 3 * vth_perp
 
 function prob_func_m2(prob, ctx)

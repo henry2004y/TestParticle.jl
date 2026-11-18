@@ -21,13 +21,15 @@ using ChunkSplitters: index_chunks
 using FunctionWrappers: FunctionWrapper
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
+using PlasmaPopulations: Particle, Proton, Electron, Positron, Population, pdf,
+    gyrofrequency, C_SI, E_SI, MU0_SI, EPS0_SI, KB_SI
 
 import Adapt
 import Base: +, -, *, /
 import LinearAlgebra: ×
 
 export prepare, prepare_gc, prepare_canonical, prepare_erased, PotentialField
-export Proton, Electron, Ion
+export Particle, Proton, Electron, Positron
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
 export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical, GuidingCenter
 export trace!, trace_relativistic!, trace, trace_relativistic,
@@ -42,19 +44,18 @@ export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
 
-public ReturnCode, Field, ErasedField, ErasedFunction, Species, SpeciesDict,
+public ReturnCode, Field, ErasedField, ErasedFunction,
     ZeroField, ZeroVector,
     CartesianGrid, RectilinearGrid, StructuredGrid,
-    qₑ, mₑ, qᵢ, mᵢ, c, μ₀, ϵ₀, kB, Rₑ, BMoment_Earth, eV,
+    c, Rₑ, BMoment_Earth, eV,
     get_gc, get_gc_velocity,
     full_to_gc, gc_to_full, velocity_to_canonical, canonical_to_velocity,
     canonical_hamiltonian,
-    get_gyrofrequency, get_gyroperiod, get_gyroradius, get_energy,
+    get_gyroperiod, get_gyroradius, get_energy,
     energy2velocity, get_curvature_radius, get_adiabaticity,
     adiabaticity_components,
     get_particle_flux, get_particle_crossings, get_first_crossing,
-    Maxwellian, BiMaxwellian, Kappa, BiKappa,
-    sample_unit_sphere, sample_maxwellian, sample_velocity_ball, generate_sphere,
+    sample_unit_sphere, sample_velocity_ball, generate_sphere,
     jacobian, derivative_t,
     get_magnetic_properties, get_work_channels,
     get_dx!, get_dv!,
@@ -72,7 +73,6 @@ include("utility/field_geometry.jl")
 include("utility/work.jl")
 include("utility/interpolation.jl")
 include("utility/gpu_grid.jl")
-include("sampler.jl")
 include("prepare.jl")
 include("saveat.jl")
 include("gc/gc.jl")

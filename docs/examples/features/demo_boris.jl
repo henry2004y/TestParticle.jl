@@ -8,7 +8,6 @@ import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using BorisPushers
 using TestParticle: FillExtrap
-using TestParticle: qᵢ, mᵢ
 import TestParticle as TP
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -209,7 +208,7 @@ isoutside(u, p, t) = isnan(u[1])
 nx, ny = 4, 6
 ## Unit conversion factors between SI and dimensionless units
 B₀ = 10.0e-9            # [T]
-Ω = abs(qᵢ) * B₀ / mᵢ # [1/s]
+Ω = abs(Proton.q) * B₀ / Proton.m # [1/s]
 t₀ = 1 / Ω            # [s]
 U₀ = 1.0              # [m/s]
 l₀ = U₀ * t₀          # [m]

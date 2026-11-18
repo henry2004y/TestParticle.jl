@@ -52,7 +52,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: qᵢ, mᵢ, c
+using TestParticle: c
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -60,7 +60,7 @@ CairoMakie.activate!(type = "png") #hide
 B_dim = 1.0e-8             # [T]
 U_dim = c                # [m/s]
 E_dim = U_dim * B_dim    # [V/m]
-Ω_dim = abs(qᵢ) * B_dim / mᵢ # [1/s]
+Ω_dim = abs(Proton.q) * B_dim / Proton.m # [1/s]
 t_dim = 1 / Ω_dim        # [s]
 l_dim = U_dim * t_dim    # [m]
 ## Electric field magnitude in SI units

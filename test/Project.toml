@@ -12,6 +12,7 @@ OrdinaryDiffEqLowOrderRK = "1344f307-1e59-4825-a18e-ace9aa3fa4c6"
 OrdinaryDiffEqSDIRK = "2d112036-d095-4a1e-ab9a-08536f3ecdbf"
 OrdinaryDiffEqSymplecticRK = "fa646aed-7ef9-47eb-84c4-9443fc8cbfa8"
 OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
+PlasmaPopulations = "19fe0aba-210f-40e6-8711-72208e0968be"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
@@ -19,7 +20,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestParticle = "953b605b-f162-4481-8f7f-a191c2bb40e3"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
-VelocityDistributionFunctions = "63a0b508-f74a-48f7-b6e7-0e65849b0078"
 
 [sources]
 BorisPushers = {path = "../lib/BorisPushers"}

@@ -29,7 +29,7 @@ The table below summarizes the key features and tracing capabilities in `TestPar
 | | Spherical Device Grids | GPU-optimized trilinear spherical grid interpolator (`GPUGrid`) | [GPU Ensemble Tracing](@ref) |
 | | Dimensionless Units | Normalized scaling by gyrofrequency, gyroradius, etc. | [Dimensionless Units](@ref Dimensionless-Units-and-Normalization) |
 | | Unitful Support | Physical units tracking via `Unitful.jl` | [Unitful Integration](@ref Unit-support) |
-| | Velocity Distributions | Particle sampling (Maxwellian, Kappa) from distribution functions | [Velocity Sampling](@ref) |
+| | Velocity Distributions | Sampling and evaluating velocity distributions from PlasmaPopulations.jl | [Velocity Sampling](@ref) |
 
 ## Unit Conversions and Scaling
 
@@ -68,7 +68,6 @@ Used by the **Boris family** (both host CPU and native GPU `KernelAbstractions` 
 
 ```julia
 using TestParticle, BorisPushers, StaticArrays
-using TestParticle: Kappa, Maxwellian
 
 # Stop once the particle exits the region |x| <= 10 m
 isoutside(u, p, t) = abs(u[1]) > 10.0
@@ -93,7 +92,6 @@ Used by standard **SciML ODE solvers** (`OrdinaryDiffEq.jl`, e.g., `Tsit5()`, `V
 
 ```julia
 using TestParticle, OrdinaryDiffEq
-using TestParticle: Kappa, Maxwellian
 
 # Domain termination for SciML ODE solvers
 isoutside(u, p, t) = hypot(u[1], u[2], u[3]) > 10.0

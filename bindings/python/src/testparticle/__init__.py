@@ -88,7 +88,7 @@ jl.seval(
 # The high-level ``trace`` / ``trace_gc`` helpers call
 # the Julia runtime directly (e.g. ``TP.prepare``, ``TP.solve``), so none of
 # the names below are required for the wrapper itself to function. They are
-# convenience exports, including the ``Species`` types and the ``Proton`` /
+# convenience exports, including the ``Particle`` type and the ``Proton`` /
 # ``Electron`` constants used by the string-based ``species="proton"`` lookup.
 #
 # The Julia environment is resolved from ``juliapkg.json`` by UUID only (no
@@ -98,10 +98,10 @@ jl.seval(
 # ---------------------------------------------------------------------------
 _REEXPORTS = [
     ("SVector", "SVector"),
-    ("Species", "Species"),
+    ("Particle", "Particle"),
     ("Proton", "Proton"),
     ("Electron", "Electron"),
-    ("Ion", "Ion"),
+    ("Positron", "Positron"),
     ("prepare", "prepare"),
     ("prepare_gc", "prepare_gc"),
     ("get_gc", "get_gc"),
@@ -111,10 +111,6 @@ _REEXPORTS = [
     ("GCRK4", "GCRK4"),
     ("GCRK45", "GCRK45"),
     ("ZeroField", "ZeroField"),
-    ("Maxwellian", "Maxwellian"),
-    ("BiMaxwellian", "BiMaxwellian"),
-    ("Kappa", "Kappa"),
-    ("BiKappa", "BiKappa"),
     ("AdaptiveBoris", "AdaptiveBoris"),
     ("AdaptiveMultistepBoris", "AdaptiveMultistepBoris"),
     ("AdaptiveHybrid", "AdaptiveHybrid"),
@@ -127,7 +123,6 @@ _REEXPORTS = [
     ("MultistepBoris2", "MultistepBoris2"),
     ("MultistepBoris4", "MultistepBoris4"),
     ("MultistepBoris6", "MultistepBoris6"),
-    ("get_gyrofrequency", "get_gyrofrequency"),
     ("get_gyroperiod", "get_gyroperiod"),
     ("get_gyroradius", "get_gyroradius"),
     ("get_energy", "get_energy"),
@@ -137,7 +132,6 @@ _REEXPORTS = [
     ("adiabaticity_components", "adiabaticity_components"),
     ("sample_unit_sphere", "sample_unit_sphere"),
     ("generate_sphere", "generate_sphere"),
-    ("sample_maxwellian", "sample_maxwellian"),
     ("orbit", "orbit"),
     ("monitor", "monitor"),
     ("get_fields", "get_fields"),
@@ -171,7 +165,6 @@ for _py_name, _jl_name in _REEXPORTS:
 _SPECIES = {
     "proton": globals().get("Proton"),
     "electron": globals().get("Electron"),
-    "ion": globals().get("Ion"),
 }
 
 _field_counter = 0
@@ -385,9 +378,9 @@ def trace(
         Magnetic / electric field as a Python callable ``f(x)`` or
         ``f(x, t)`` returning a length-3 sequence, or a Julia field object.
         ``E`` may be ``None`` (no electric field).
-    species : str or Julia species, optional
-        ``"proton"`` (default), ``"electron"``, a ``tp.Ion(m, q)``, or any
-        Julia ``Species`` object.
+    species : str or Julia ``Particle``, optional
+        ``"proton"`` (default), ``"electron"``, or a Julia ``Particle`` such as
+        ``tp.Particle("O", 1)``.
     trajectories : int, optional
         Number of trajectories. Use ``init_func`` to vary the initial state
         of each trajectory.

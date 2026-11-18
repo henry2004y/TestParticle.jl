@@ -26,8 +26,8 @@ using TestParticle, OrdinaryDiffEq, StaticArrays
 using BorisPushers
 using TestParticle: ClampExtrap
 import TestParticle as TP
-using VelocityDistributionFunctions
-using TestParticle: mₑ, Rₑ, qₑ
+using PlasmaPopulations: BiMaxwellian
+using TestParticle: Rₑ
 using Random
 using FHist
 using CairoMakie, Printf
@@ -94,11 +94,7 @@ isoutside(u, p, t) = u[1] < 0 || u[1] > 2Rₑ
 
 function prob_func(prob, ctx)
     x0 = SA[(0.5 + rand(ctx.rng)) * Rₑ, 0.0, 0.0] # launched in the core region
-    u0 = SA[0.0, 0.0, 0.0]
-    T₀ = 10 # [eV]
-    vth = √(2T₀ * abs(qₑ) / mₑ) # [m/s]
-    vdf = TP.Maxwellian(u0, vth)
-    v0 = rand(ctx.rng, vdf)
+    v0 = rand(ctx.rng, BiMaxwellian(Electron; T = 10.0)) # T [eV]
 
     return prob = remake(prob, u0 = [x0..., v0...])
 end
@@ -109,7 +105,7 @@ Kinetic energy.
 get_kinetic_energy(dx, dy, dz) = 1 // 2 * (dx^2 + dy^2 + dz^2)
 
 function plot_multiple(sol)
-    energy = map(x -> get_kinetic_energy(x[4:6]...), sol.u) .* mₑ ./ abs(qₑ)
+    energy = map(x -> get_kinetic_energy(x[4:6]...), sol.u) .* Electron.m ./ abs(Electron.q)
     ## Obtain the EM fields along the particle trajectory
     ## [mV/m]
     Efield = sol.prob.p.E
@@ -239,8 +235,9 @@ function find_max_acceleration_index(sols; countall = true, tend = 40)
     end
     imax = argmax(ratio)
 
-    energy_init = get_kinetic_energy(sols.u[imax][4:6, 1]...) .* mₑ ./ abs(qₑ)
-    energy_final = get_kinetic_energy(sols.u[imax][4:6, end]...) .* mₑ ./ abs(qₑ)
+    m_per_q = Electron.m / abs(Electron.q)
+    energy_init = get_kinetic_energy(sols.u[imax][4:6, 1]...) .* m_per_q
+    energy_final = get_kinetic_energy(sols.u[imax][4:6, end]...) .* m_per_q
     @printf "Initial energy [eV]: %.2f " energy_init
     @printf "Final energy [eV]: %.2f " energy_final
     @printf "Kinetic energy change ratio: %.2f\n" ratio[imax]

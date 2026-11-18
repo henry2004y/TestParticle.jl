@@ -5,7 +5,6 @@ using Test
 include("test_common.jl")
 
 @testset "TestParticle.jl" begin
-    include("test_sampling.jl")
     include("test_numerical_field.jl")
     include("test_explicit_fields.jl")
     include("test_mixed_fields.jl")
@@ -29,7 +28,6 @@ if "makie" in ARGS
     include("test_Makie.jl")
 end
 
-include("test_distributions.jl")
 include("test_hybrid.jl")
 include("test_adiabaticity.jl")
 include("test_boris_kernel.jl")

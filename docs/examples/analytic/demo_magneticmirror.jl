@@ -51,8 +51,8 @@ end
 Et(xu) = sqrt(xu[4]^2 + xu[5]^2 + xu[6]^2)
 
 ### Initialize particles
-m = TP.mₑ
-q = TP.qₑ
+m = Electron.m
+q = Electron.q
 c = TP.c
 
 ## initial velocity, [m/s]

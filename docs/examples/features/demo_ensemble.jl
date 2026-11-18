@@ -10,9 +10,8 @@
 import DisplayAs #hide
 using TestParticle
 using BorisPushers
-using TestParticle: Maxwellian
 import TestParticle as TP
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian
 using OrdinaryDiffEq
 using StaticArrays
 using Statistics
@@ -58,16 +57,16 @@ f = DisplayAs.PNG(f) #hide
 # ## 2. Sampling from a Distribution
 #
 # Often we want to sample particle initial velocities from a distribution, such as a Maxwellian.
-# Here we demonstrate how to do this using `Maxwellian` from TestParticle.jl.
+# Here we sample a Maxwellian from
+# [PlasmaPopulations.jl](https://github.com/JuliaPlasma/PlasmaPopulations.jl).
 
 # Set seed for reproducibility
 seed = 1234
 
 ## Define a new prob_func that samples from a Maxwellian
 function prob_func_maxwellian(prob, ctx)
-    ## Sample from a Maxwellian with bulk speed 0 and thermal speed 1.0
-    vdf = TP.Maxwellian(SA[0.0, 0.0, 0.0], 1.0)
-    v = SVector{3}(rand(ctx.rng, vdf))
+    ## Maxwellian with zero bulk velocity and thermal speed 1
+    v = rand(ctx.rng, BiMaxwellian(; vth = 1.0))
     return remake(prob; u0 = vcat(SVector{3}(prob.u0[1:3]), v))
 end
 

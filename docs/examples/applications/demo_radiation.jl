@@ -61,7 +61,8 @@
 # All the above equations are shown in CGS units.
 
 import DisplayAs #hide
-using TestParticle: qᵢ as e, mₑ, c, ϵ₀
+using TestParticle: c, Electron
+using PlasmaPopulations: E_SI as e, EPS0_SI as ϵ₀
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
 
@@ -101,7 +102,7 @@ function radiated_power(B, β, α)
     ## Result: P = (e^4 * B^2 * γ^2 * β^2 * sin(α)^2) / (6 * π * ϵ₀ * m^2 * c)
 
     numerator = e^4 * B^2 * gamma^2 * β^2 * sin(α)^2
-    denominator = 6 * π * ϵ₀ * (mₑ^2) * c
+    denominator = 6 * π * ϵ₀ * (Electron.m^2) * c
 
     return numerator / denominator
 end

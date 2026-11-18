@@ -32,8 +32,8 @@ end
 
 "Total energy of a full-orbit state in the constant E and gradient B field."
 function total_energy(u)
-    K = 0.5 * TP.mₑ * norm(u[4:6])^2 # Kinetic Energy
-    U = TP.qₑ * (-1.0e5 * u[2])      # Potential Energy
+    K = 0.5 * Electron.m * norm(u[4:6])^2 # Kinetic Energy
+    U = Electron.q * (-1.0e5 * u[2])      # Potential Energy
     return K + U
 end
 
@@ -214,7 +214,7 @@ end
         v0 = [1.0e7, 0.0, 0.0]
         stateinit = [x0..., v0...]
 
-        tperiod = abs(TP.get_gyroperiod(0.01; q = TP.qₑ, m = TP.mₑ))
+        tperiod = TP.get_gyroperiod(0.01; species = Electron)
         tspan = (0.0, 200 * tperiod)
 
         alg_adaptive = AdaptiveBoris(safety = 0.1)
@@ -603,7 +603,7 @@ end
         v0 = β * TP.c
         γ0 = inv(sqrt(1 - β^2))
         u0_rel = SA[0.0, 0.0, 0.0, γ0 * v0, 0.0, 0.0]
-        T_rel = γ0 * TP.get_gyroperiod(B0; q = TP.qᵢ, m = TP.mᵢ)
+        T_rel = γ0 * TP.get_gyroperiod(B0)
         prob_rel = TraceProblem{RelativisticOrbit}(u0_rel, (0.0, T_rel), p_si)
         sol_ref = solve(prob_rel, Vern7(); reltol = 1.0e-10, abstol = 1.0e-10)
 

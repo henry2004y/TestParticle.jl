@@ -16,8 +16,8 @@ using LinearAlgebra
 using Test
 using ..test_common: bottle_B, bottle_B0, curved_B_t
 
-const m = TP.mᵢ
-const q = TP.qᵢ
+const m = Proton.m
+const q = Proton.q
 const q2m = q / m
 const μ = 1.0e-20
 

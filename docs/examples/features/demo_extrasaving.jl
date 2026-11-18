@@ -10,7 +10,6 @@
 using TestParticle, OrdinaryDiffEq, StaticArrays
 using BorisPushers
 using TestParticle: WrapExtrap
-using TestParticle: qᵢ, mᵢ
 using Statistics
 using LinearAlgebra: normalize, ×, ⋅
 using DiffEqCallbacks

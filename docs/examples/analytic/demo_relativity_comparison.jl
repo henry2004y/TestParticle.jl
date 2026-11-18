@@ -31,8 +31,8 @@ CairoMakie.activate!(type = "png") #hide
 const B0 = 1.0 # [T]
 getB1(x) = SA[0.0, 0.0, B0]
 
-m = TestParticle.mᵢ
-q = TestParticle.qᵢ
+m = Proton.m
+q = Proton.q
 c = TestParticle.c
 
 param = prepare(; B = getB1, species = Proton);

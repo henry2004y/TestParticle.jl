@@ -104,7 +104,7 @@ The high-level helpers are:
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
   saveat=None, alg="rk4")` - guiding-center solver ("rk4", "vern7", or a SciML ODE algorithm).
 
-Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `Proton`, `get_gyrofrequency`,
+Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `Proton`, `get_gyroperiod`,
 ...) are re-exported under their Julia names; functions ending with `!` in Julia
 are available with the `_b` suffix (e.g. `trace!` -> `trace_b`). The Boris
 algorithm objects (`Boris`, `MultistepBoris6`, `AdaptiveBoris`, ...) come from

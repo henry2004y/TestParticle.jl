@@ -51,7 +51,7 @@ function setup_normalized_field(x0, u0, tspan)
     B_dim = 1.0e-8             # [T]
     U_dim = TP.c               # [m/s]
     E_dim = U_dim * B_dim      # [V/m]
-    Ω_dim = abs(TP.qᵢ) * B_dim / TP.mᵢ # [1/s]
+    Ω_dim = abs(Proton.q) * B_dim / Proton.m # [1/s]
     t_dim = 1 / Ω_dim        # [s]
     l_dim = U_dim * t_dim    # [m]
 
@@ -328,7 +328,7 @@ let
     B_bottle = TP.Field(bottle_B_hybrid)
     E_bottle = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
 
-    m, q = TP.mᵢ, TP.qᵢ
+    m, q = Proton.m, Proton.q
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_hybrid)
     tspan = (0.0, 10 * T_gyro)
@@ -391,7 +391,7 @@ let
     Bg_sheet = 2.0e-8
     sheet_B(x, t) = SA[B0_sheet * tanh(x[3] / L_sheet), 0.0, Bg_sheet]
 
-    m, q = TP.mᵢ, TP.qᵢ
+    m, q = Proton.m, Proton.q
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_sheet)
     tspan = (0.0, 200 * T_gyro)
@@ -444,7 +444,7 @@ let
         B0_adia * (1 + α_adia * x[3]^2),
     ]
 
-    m, q = TP.mᵢ, TP.qᵢ
+    m, q = Proton.m, Proton.q
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_adia)
     tspan = (0.0, 1000 * T_gyro)

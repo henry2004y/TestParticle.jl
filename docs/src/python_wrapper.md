@@ -101,8 +101,8 @@ Julia field object directly.
 - `trace_gc(x0, v0, tspan, dt, B, E=None, *, species="proton", ...,
   saveat=None, alg="rk4")` — guiding-center solver ("rk4", "vern7", or a SciML ODE algorithm). Returns a `GCTraceResult`.
 
-The `species` argument accepts the strings `"proton"`, `"electron"`, or `"ion"`,
-a `tp.Ion(m, q)`, or any Julia `Species` object.
+The `species` argument accepts the strings `"proton"` or `"electron"`, or any Julia
+`Particle`, e.g. `tp.Particle("O", 1)` or `tp.Particle(q=q, m=m)`.
 
 ### Solver selection
 
@@ -142,7 +142,7 @@ position), `vpar` (parallel velocity), and the same optional `E`, `B`, `work`.
 
 ## Raw Julia API
 
-Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `get_gyrofrequency`, ...)
+Raw Julia objects (`prepare`, `TraceProblem`, `solve`, `get_gyroperiod`, ...)
 are re-exported under their Julia names. A name is looked up in `TestParticle`
 first and in `BorisPushers` second, so the pusher algorithms (`tp.Boris`,
 `tp.MultistepBoris6`, `tp.AdaptiveHybrid`, ...) are available even though they

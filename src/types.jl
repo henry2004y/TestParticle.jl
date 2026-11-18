@@ -1,18 +1,5 @@
 abstract type AbstractField{itd} <: Function end
 
-"""
-Type for the particles: `Proton`, `Electron`.
-"""
-struct Species{M, Q}
-    m::M
-    q::Q
-end
-
-Species{T}(m, q) where {T} = Species(T(m), T(q))
-Species{T}(s::Species) where {T} = Species(T(s.m), T(s.q))
-Base.convert(::Type{Species{T}}, s::Species) where {T} = Species{T}(s)
-
-
 const DEFAULT_PROB_FUNC(prob, ctx) = prob
 
 """
