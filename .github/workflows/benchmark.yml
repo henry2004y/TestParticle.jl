@@ -20,9 +20,7 @@ on:
       - '.github/workflows/python-wrapper.yml'
 
 permissions:
-  actions: write
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,4 +33,20 @@ jobs:
       - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
           julia-version: '1'
-          job-summary: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          job-summary: 'true'
+
+      - name: Prepare benchmark comment artifact
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p "${{ runner.temp }}/benchmark-comment"
+          cp body.md "${{ runner.temp }}/benchmark-comment/body.md"
+          printf '%s' "$PR_NUMBER" > "${{ runner.temp }}/benchmark-comment/pr_number.txt"
+
+      - name: Upload benchmark comment artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-comment
+          path: ${{ runner.temp }}/benchmark-comment
+          retention-days: 1
+          if-no-files-found: error
