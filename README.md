@@ -55,7 +55,7 @@ plot(sol; idxs = (1, 2, 3))
 | Model | Setup & Problem | State `u0` | Solvers | Guide |
 | :--- | :--- | :--- | :--- | :--- |
 | `FullOrbit` (default) | `p = prepare(; E, B, F)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `Boris`, `MultistepBoris6`, `AdaptiveBoris`, SciML ODE | [Boris Pusher](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/boris) |
-| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | SciML ODE (`Vern7`, `Vern9`, ...) | [Numerical Methods](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/numerical_methods) |
+| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | `HigueraCary`, `Vay`, `Boris`, `MultistepBoris6`, `Adaptive*`, SciML ODE | [Numerical Methods](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/numerical_methods) |
 | `GuidingCenter` | `u0_gc, p_gc = prepare_gc(u0; E, B)`<br>`TraceGCProblem(u0_gc, tspan, p_gc)` | `[X..., v∥]` | SciML ODE (`Vern7`, `RK4`, ...) | [Guiding Center](https://henry2004y.github.io/TestParticle.jl/dev/tutorial/guiding_center) |
 | Hybrid GC–FO | `p = prepare(; E, B)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `AdaptiveHybrid(; dtmax)` | [Hybrid Solver](https://henry2004y.github.io/TestParticle.jl/dev/features/demo_hybrid) |
 | `Canonical` / `RelativisticCanonical` | `p = prepare_canonical(; phi, A)`<br>`TraceCanonicalProblem(u0, tspan, p)` | `[x..., p...]` | SciML ODE / symplectic | [Canonical Form](https://henry2004y.github.io/TestParticle.jl/dev/features/demo_canonical) |

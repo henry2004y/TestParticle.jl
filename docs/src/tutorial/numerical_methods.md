@@ -46,11 +46,19 @@ stateinit = [x0..., (gamma .* v0)...]
 
 ## Choice of numerical algorithms
 
-By default `DifferentialEquations.jl` applies `Tsit5` to an ODE problem. If only `OrdinaryDiffEq.jl` is imported, then we need to explicitly select a solver.
+Explicit Runge--Kutta solvers (such as `Tsit5` or `Vern7`/`Vern9`) do not preserve phase-space volume and accumulate secular energy drift over hundreds of gyroperiods unless tight tolerances or small steps are enforced. Prefer volume-preserving pushers from [BorisPushers.jl](https://github.com/henry2004y/TestParticle.jl/tree/master/lib/BorisPushers) for long full-orbit integrations, and reserve SciML ODE solvers for guiding-center, canonical, custom-callback, or external-force problems:
 
-However, not all solvers are guaranteed to work. For example, some cases with strong magnetic fields are tested to work only with fixed timestep algorithms like `Euler` and the Adams-Bashforth family.
+| Plasma Regime | Recommended Solver(s) | Notes |
+| :--- | :--- | :--- |
+| **Non-relativistic full orbit** | `MultistepBoris6(; n = 4)` (phase accuracy), `Boris()` / `AdaptiveBoris()` (throughput / strong $\nabla B$) | Conserves energy to round-off; leapfrog pushers carry a half-step velocity offset in explicitly time-varying $\mathbf{E}(t)$. |
+| **Relativistic full orbit ($\mathbf{E} \neq 0$)** | `HigueraCary()` or `AdaptiveHigueraCary()` (or `Vay()` / `AdaptiveVay()`) | Exact $\mathbf{E}\times\mathbf{B}$ force cancellation; `HigueraCary` is also volume-preserving. |
+| **Relativistic full orbit ($\mathbf{E} = 0$)** | `MultistepBoris6(; n = 4)` or `Boris()` | High gyrophase fidelity in pure-$\mathbf{B}$ turbulence. |
+| **Globally adiabatic ($\rho_L \ll L_B$)** | `TraceGCProblem` with `Vern7()` | Averages out gyromotion; currently non-relativistic and omits the $\partial_t\hat{\mathbf{b}}$ geometric drift. |
+| **Multi-scale (adiabatic + non-adiabatic)** | `AdaptiveHybrid(; threshold = 0.1, dtmax)` on `TraceProblem` | Automatically switches between `AdaptiveBoris` (FO) and `Vern7()` (GC). |
+| **Canonical / generic force $\mathbf{F}$ / continuous callbacks** | `Vern7()`, `Vern9()`, or symplectic/implicit SciML ODE (`ImplicitMidpoint()`) | Supports `TraceCanonicalProblem`, non-EM forces $\mathbf{F}$, and arbitrary SciML callbacks. |
+| **Large GPU ensembles ($N \gtrsim 10^5$)** | `Boris()`, `MultistepBoris*`, `Vay()`, `HigueraCary()` with `raw_output = true` | Pass a contiguous $N \times 6$ `u0` matrix to avoid per-particle host wrapper overhead. |
 
-Currently we recommend `Vern9` as a starting point for adaptive timestepping, with additional fine tuning by changing `reltol` if needed.
+By default `DifferentialEquations.jl` applies `Tsit5` to an ODE problem. If only `OrdinaryDiffEqVerner.jl` (or `OrdinaryDiffEq.jl`) is imported, pass the solver explicitly (e.g., `Vern7()` or `Vern9()`, tuning `reltol`/`abstol` as needed).
 
 ## Native Boris solver
 
