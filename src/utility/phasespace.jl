@@ -209,7 +209,8 @@ traced-back states, as prescribed by Liouville's theorem.
 Each trajectory of `sols` is followed back to the surface `source` with
 [`get_first_crossing`](@ref) and `f_src` is evaluated on the velocity there; grid points
 whose trajectory never reaches `source` are left at zero. `f_src` takes a velocity in
-[m/s] and returns `f` in [s³/m⁶].
+[m/s] and returns `f` in [s³/m⁶], or is a PlasmaPopulations `Population`, evaluated as
+`n * pdf(vdf, v)`.
 """
 function vdf_backward(sols, source, f_src, dims)
     nx, ny, nz = dims
@@ -224,7 +225,7 @@ function vdf_backward(sols, source, f_src, dims)
         iz = (i - 1) % nz + 1
         iy = ((i - 1) ÷ nz) % ny + 1
         ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-        f[ix, iy, iz] = f_src(st[SA[4, 5, 6]]) * 1.0e18
+        f[ix, iy, iz] = _eval_f_src(f_src, st[SA[4, 5, 6]]) * 1.0e18
     end
 
     return f
@@ -296,7 +297,7 @@ function _run_backward_pass(
 
     function output_func(sol, i)
         st = get_first_crossing(sol, source)
-        val = any(isnan, st) ? 0.0 : f_src(st[SA[4, 5, 6]]) * 1.0e18
+        val = any(isnan, st) ? 0.0 : _eval_f_src(f_src, st[SA[4, 5, 6]]) * 1.0e18
         return (val, false)
     end
 
@@ -326,7 +327,8 @@ end
     ) -> (f_3d, (vx_grid, vy_grid, vz_grid))
 
 Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` by tracing a velocity
-grid backward in time to `source` and evaluating `f_src` on the traced-back states.
+grid backward in time to `source` and evaluating `f_src`, as in [`vdf_backward`](@ref),
+on the traced-back states.
 """
 function vdf_backward_trace(
         param, detector, source, f_src;
@@ -399,6 +401,7 @@ function embed_vdf(
 end
 
 _eval_f_src(f, v) = f(v)
+_eval_f_src(pop::Population, v) = pop.n * pdf(pop.vdf, v)
 
 """
     vdf_forward_trace(
@@ -411,7 +414,8 @@ _eval_f_src(f, v) = f(v)
     ) -> (f_3d, (f_xy, f_xz, f_yz))
 
 Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` using forward
-Liouville tracking from a uniformly sampled velocity ball at `source`.
+Liouville tracking from a uniformly sampled velocity ball at `source`, weighting each
+particle by `f_src` as in [`vdf_backward`](@ref).
 """
 function vdf_forward_trace(
         param, source, detector, f_src;
@@ -448,12 +452,4 @@ function vdf_forward_trace(
     f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
 
     return f_3d, (f_xy, f_xz, f_yz)
-end
-
-function vdf_forward_trace(
-        param, source, detector, vdf, n0::Real;
-        kwargs...
-    )
-    f_src = v -> _eval_f_src(vdf, v) * n0
-    return vdf_forward_trace(param, source, detector, f_src; kwargs...)
 end

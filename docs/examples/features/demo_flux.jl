@@ -18,11 +18,12 @@
 # In magnetosphere studies, to estimate the surface flux from ion precipitation, we can use a prescribed EM field to trace test particles originating from a closed source sphere. After a sufficiently long tracing time, each particle will either impact the surface or not.
 
 using TestParticle, OrdinaryDiffEq, StaticArrays, Meshes
-using TestParticle: Maxwellian, get_particle_crossings, get_particle_flux,
+using TestParticle: get_particle_crossings, get_particle_flux,
     sample_unit_sphere
 import TestParticle as TP
 using Meshes: Point, Plane, Sphere, Vec
-using VelocityDistributionFunctions, CairoMakie
+using PlasmaPopulations: BiMaxwellian
+using CairoMakie
 import DisplayAs
 
 # We define erfc using libopenlibm
@@ -113,12 +114,11 @@ vth = sqrt(2 * T_cloud / m)
 t_end_cloud = 2.0
 
 ## Maxwellian velocity distribution
-## u_bulk = 0, n=1 effectively for distribution shape
-vdf_cloud = TP.Maxwellian(SA[0.0, 0.0, 0.0], T_cloud, 1.0; m = m)
+vdf_cloud = BiMaxwellian(; vth)
 
 ## Create TraceProblem template
 function prob_func_cloud(prob, ctx)
-    v₀ = SVector{3}(rand(ctx.rng, vdf_cloud))
+    v₀ = rand(ctx.rng, vdf_cloud)
     return remake(prob; u0 = vcat(SA[0.0, 0.0, 0.0], v₀))
 end
 

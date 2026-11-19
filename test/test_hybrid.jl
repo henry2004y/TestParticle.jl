@@ -16,8 +16,8 @@ using OrdinaryDiffEqVerner
 using Test
 using ..test_common: bottle_B, bottle_B0, sheared_B
 
-const m = TP.mᵢ
-const q = TP.qᵢ
+const m = Proton.m
+const q = Proton.q
 const q2m = q / m
 
 const E_field = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
@@ -805,8 +805,8 @@ kinetic_energy(v) = 0.5 * m * sum(abs2, v)
 
     @testset "Float32 preservation" begin
         # Electron in sheared field (ensures μ * m32 never underflows to zero)
-        q_e32 = Float32(-abs(TP.qₑ))
-        m_e32 = Float32(TP.mₑ)
+        q_e32 = Float32(-abs(Electron.q))
+        m_e32 = Float32(Electron.m)
         p_e32 = (;
             q2m = q_e32 / m_e32, m = m_e32, E = TP.ZeroField(),
             B = TP.Field(sheared_B32), F = TP.ZeroField(),

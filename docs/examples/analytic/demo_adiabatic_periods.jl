@@ -10,7 +10,7 @@
 import DisplayAs #hide
 using TestParticle
 import TestParticle as TP
-using TestParticle: sph2cart, Rₑ, mᵢ, qᵢ, c
+using TestParticle: sph2cart, Rₑ, c
 import Magnetostatics as MS
 using OrdinaryDiffEq
 using LinearAlgebra
@@ -38,13 +38,13 @@ B₀ = 3.12e-5        # Dipole moment magnitude [T]
 
 ## Constants
 Ek = Ek_MeV * 1.0e6 * 1.602e-19 # Energy in Joules
-γ = 1 + Ek / (mᵢ * c^2)
+γ = 1 + Ek / (Proton.m * c^2)
 v = c * sqrt(1 - 1 / γ^2)       # Velocity [m/s]
 B_eq = B₀ / L^3               # Equatorial field [T]
 
 ## Theoretical periods
 ## 1. Gyro period (at equator)
-Ω_eq = qᵢ * B_eq / (mᵢ * γ)
+Ω_eq = Proton.q * B_eq / (Proton.m * γ)
 τ_g_theo = 2π / Ω_eq
 
 ## 2. Bounce period
@@ -55,7 +55,8 @@ B_eq = B₀ / L^3               # Equatorial field [T]
 ## Gradient drift v_d = ...
 ## Using approximation from literature (usually non-relativistic but we can adjust mass).
 ## Let's use the standard approximate formula.
-τ_d_theo = 2π * qᵢ * B₀ * Rₑ^2 / (3 * mᵢ * γ * v^2 * L * (0.35 + 0.15 * sin(α_eq)))
+τ_d_theo = 2π * Proton.q * B₀ * Rₑ^2 /
+    (3 * Proton.m * γ * v^2 * L * (0.35 + 0.15 * sin(α_eq)))
 
 println("Theoretical Gyro Period (Equator): $(round(τ_g_theo, digits = 4)) s")
 println("Theoretical Bounce Period:         $(round(τ_b_theo, digits = 4)) s")

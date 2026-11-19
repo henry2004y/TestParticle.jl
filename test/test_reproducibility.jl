@@ -8,11 +8,11 @@ end
 using Test
 using TestParticle
 using BorisPushers
-using TestParticle: sample_maxwellian, sample_unit_sphere
+using TestParticle: sample_unit_sphere
 using OrdinaryDiffEq
 using Random
 using StaticArrays
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian
 using ..test_common: uniform_B, zero_field
 
 @testset "Reproducibility" begin
@@ -49,9 +49,9 @@ using ..test_common: uniform_B, zero_field
     rng2 = Xoshiro(seed)
     @test sample_unit_sphere(rng1) == sample_unit_sphere(rng2)
 
-    # sample_maxwellian is only available when VDF is loaded
-    v1 = sample_maxwellian(rng1, 3000.0, TestParticle.mᵢ)
-    v2 = sample_maxwellian(rng2, 3000.0, TestParticle.mᵢ)
+    vdf = BiMaxwellian(Proton; T = 1.0)
+    v1 = rand(rng1, vdf)
+    v2 = rand(rng2, vdf)
     @test v1 == v2
 end
 

@@ -7,7 +7,7 @@ using TestParticle, OrdinaryDiffEq, OrdinaryDiffEqSDIRK
 using BorisPushers
 using TestParticle: get_adiabaticity
 import TestParticle as TP
-using TestParticle: mᵢ, qᵢ, c, Rₑ
+using TestParticle: c, Rₑ
 import Magnetostatics as MS
 using CairoMakie
 CairoMakie.activate!(type = "png") #hide
@@ -17,7 +17,7 @@ stateinit = let
     ## Initial particle energy
     Ek = 5.0e7 # [eV]
     ## initial velocity, [m/s]
-    v₀ = TP.sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
+    v₀ = TP.sph2cart(TP.energy2velocity(Ek), π / 4, 0.0)
     ## initial position, [m]
     r₀ = TP.sph2cart(2.5 * Rₑ, π / 2, 0.0)
     [r₀..., v₀...]

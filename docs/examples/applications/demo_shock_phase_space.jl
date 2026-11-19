@@ -8,13 +8,13 @@
 import DisplayAs #hide
 using TestParticle
 using BorisPushers
-using TestParticle: Maxwellian, get_gyroperiod, get_particle_crossings
+using TestParticle: get_gyroperiod, get_particle_crossings
 using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
     project_vdf, relative_l2, sample_velocity_ball, velocity_moments
 import TestParticle as TP
 using StaticArrays
 using Random
-using VelocityDistributionFunctions
+using PlasmaPopulations: BiMaxwellian, Oriented, pdf, MU0_SI
 using CairoMakie
 using Meshes
 CairoMakie.activate!(type = "png") #hide
@@ -35,7 +35,7 @@ seed = 42;
 # that was tuned to make the pictures look nicer.
 
 const T_ion = 20.0  # ion temperature [eV]
-const vth_ion = sqrt(2 * TP.qᵢ * T_ion / TP.mᵢ) # ion thermal speed [m/s]
+const vth_ion = sqrt(2 * Proton.q * T_ion / Proton.m) # ion thermal speed [m/s]
 const V_sw = -400.0e3; # solar wind bulk speed [m/s]
 
 # ### Shock structure parameters
@@ -50,7 +50,7 @@ const shock_width = 5.0e3; # shock ramp width [m]
 ## only through the pressure-gradient part of Ohm's law, `-∇p_e/(n_e q)`, with
 ## `p_e = n k_B T_e` and constant `T_e`, so `Δp_e = k_B T_e · n_jump`. It is *not* the solar
 ## wind dynamic pressure `n_up m_i V_sw² = 0.80 nPa`, two orders of magnitude larger.
-const Δp_e = TP.qᵢ * T_ion * n_jump; # electron pressure jump across the ramp [Pa]
+const Δp_e = Proton.q * T_ion * n_jump; # electron pressure jump across the ramp [Pa]
 
 # ### Magnetic field parameters
 
@@ -76,7 +76,7 @@ println("Shock normal angle θ_Bn = $(round(θ_Bn; digits = 1))°")
 # shock `B_normal → 0`, `M_{A,n} → ∞` and it reduces to the flux-freezing value `r`.
 
 const r_comp = n_down / n_up # density compression ratio
-const M_A_n = abs(V_sw) * sqrt(TP.μ₀ * n_up * TP.mᵢ) / B_normal # normal Alfvén Mach
+const M_A_n = abs(V_sw) * sqrt(MU0_SI * n_up * Proton.m) / B_normal # normal Alfvén Mach
 const r_Bt = r_comp * (M_A_n^2 - 1) / (M_A_n^2 - r_comp) # B_t,down / B_t,up
 println("Normal Alfvén Mach number M_A,n = $(round(M_A_n; digits = 2))")
 println("Tangential field jump B_t,down / B_t,up = $(round(r_Bt; digits = 3))")
@@ -136,10 +136,10 @@ function get_E_shock(r)
     sech_v = sech(xnorm)
 
     ni = -n_jump * tanh_v + n_avg
-    jz = -B_jump * sech_v^2 / (TP.μ₀ * shock_width) # Ampere's law
+    jz = -B_jump * sech_v^2 / (MU0_SI * shock_width) # Ampere's law
 
     by = -B_jump * tanh_v + B_avg
-    eni = TP.qᵢ * ni
+    eni = Proton.q * ni
 
     ex = -jz * by / eni + Δp_e * sech_v^2 / (eni * shock_width)
     ey = jz * B_normal / eni
@@ -169,8 +169,9 @@ param = prepare(; E = get_E_shock, B = get_B_shock, species = Proton)
 # ### Source distribution
 #
 # Isotropic Maxwellian carried by the solar wind bulk flow.
-const p_thermal = n_up * TP.qᵢ * T_ion
-const vdf = TP.Maxwellian(SA[V_sw, 0.0, 0.0], p_thermal, n_up; m = TP.mᵢ)
+const vdf = Oriented(
+    BiMaxwellian(Proton; T = T_ion), get_B_shock(x_source); u = SA[V_sw, 0.0, 0.0]
+)
 ## Source phase-space density [s³/m⁶]; `pdf` returns a normalized VDF.
 f_src(v) = n_up * pdf(vdf, v)
 

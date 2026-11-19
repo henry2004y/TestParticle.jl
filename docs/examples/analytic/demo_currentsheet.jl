@@ -27,7 +27,7 @@ stateinit = let
     ## initial particle energy, [eV]
     Ek = 8.0e3
     ## initial velocity, [m/s]
-    vmag = TP.c * √(1 - 1 / (1 + Ek * TP.qᵢ / (TP.mᵢ * TP.c^2))^2)
+    vmag = TP.c * √(1 - 1 / (1 + Ek * Proton.q / (Proton.m * TP.c^2))^2)
     θ = -60
     ϕ = 30
     v₀ = [vmag * cosd(θ), vmag * sind(θ) * sind(ϕ), vmag * sind(θ) * cosd(ϕ)]

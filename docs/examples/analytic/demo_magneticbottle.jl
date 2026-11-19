@@ -26,8 +26,8 @@ const b = 8.0 # radius of central coil
 getB(xu) = MS.getB_bottle(xu[1], xu[2], xu[3], distance, a, b, I1 * N1, I2 * N2)
 
 ### Initialize particles
-m = TP.mₑ
-q = TP.qₑ
+m = Electron.m
+q = Electron.q
 c = TP.c
 
 ## initial velocity, [m/s]

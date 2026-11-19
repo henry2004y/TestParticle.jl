@@ -31,7 +31,7 @@ The keyword argument `idxs` can be used to select the variables to be plotted; i
 If you want to plot a function of time, position or velocity, you can first define the function. For example,
 
 ```julia
-Eₖ(t, vx, vy, vz) = (t, mₑ*(vx^2 + vy^2 + vz^2)/2)
+Eₖ(t, vx, vy, vz) = (t, Electron.m*(vx^2 + vy^2 + vz^2)/2)
 lines(sol, idxs=(Eₖ, 0, 4, 5, 6))
 ```
 

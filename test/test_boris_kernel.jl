@@ -103,7 +103,7 @@ prob_func_gpu(prob, ctx) = remake(
         B_magnitude = 1.0e-8
         v_magnitude = 1.0e5
 
-        gyrofrequency = abs(TP.qᵢ) * B_magnitude / TP.mᵢ
+        gyrofrequency = abs(Proton.q) * B_magnitude / Proton.m
         gyroperiod = 2π / gyrofrequency
 
         tspan_gyro = (0.0, 2 * gyroperiod)

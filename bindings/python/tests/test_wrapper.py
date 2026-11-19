@@ -18,20 +18,20 @@ def test_import():
 def test_basic_types():
     import testparticle as tp
 
-    # `Species` stores mass and charge in the `m` and `q` fields.
+    # `Particle` stores mass and charge in the `m` and `q` fields.
     m_p = tp.Proton.m
     q_p = tp.Proton.q
     assert m_p > 0
     assert q_p > 0
 
 
-def test_gyrofrequency():
+def test_gyroperiod():
+    import math
     import testparticle as tp
 
-    # get_gyrofrequency(B; q, m): omega = q * B / m.
-    # With B = q = m = 1.0 the result is exactly 1.0.
-    omega = tp.get_gyrofrequency(1.0, q=1.0, m=1.0)
-    assert abs(float(omega) - 1.0) < 1e-12
+    # 2π / |qB/m| with B = 1, q = -1, m = 1.
+    T = tp.get_gyroperiod(1.0, species=tp.Particle(q=-1.0, m=1.0))
+    assert abs(float(T) - 2 * math.pi) < 1e-12
 
 
 def test_trace_gyroradius_circle():

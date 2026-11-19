@@ -56,9 +56,9 @@ end
     param = prepare(;
         E = build_interpolator(E, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
         B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
-        species = Ion(; q = 1, m = 16)
+        species = Particle(; q = Proton.q, m = 16 * Proton.m)
     ) # O+
-    @test param[2] ≈ 16 * TP.mᵢ
+    @test param[2] ≈ 16 * Proton.m
 
     callback = TerminateOutside(isoutside)
 
@@ -143,7 +143,7 @@ end
                 TestParticle.PeriodicBC(; endpoint = :inclusive),
             ), gridtype = StructuredGrid
         ),
-        species = Ion(; m = 16, q = 1)
+        species = Particle(; q = Proton.q, m = 16 * Proton.m)
     )
     @test param_vec[4](SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
 

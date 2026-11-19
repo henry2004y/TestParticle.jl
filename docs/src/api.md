@@ -7,9 +7,9 @@ but not exported. Access them through the module or an explicit import:
 
 ```julia
 using TestParticle
-using TestParticle: get_energy, Maxwellian, ClampExtrap
+using TestParticle: get_energy, ClampExtrap
 
-# Alternatively, use TestParticle.get_energy, TestParticle.Maxwellian, etc.
+# Alternatively, use TestParticle.get_energy, TestParticle.ClampExtrap, etc.
 ```
 
 Both exported and public-only names are supported API. If an unqualified name from

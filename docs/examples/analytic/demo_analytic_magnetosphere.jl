@@ -6,7 +6,7 @@
 
 import DisplayAs #hide
 using TestParticle, OrdinaryDiffEq, StaticArrays
-using TestParticle: sph2cart, mᵢ, qᵢ, c, Rₑ
+using TestParticle: sph2cart, c, Rₑ
 import Magnetostatics as MS
 using FieldTracer
 using CairoMakie
@@ -51,7 +51,7 @@ function prob_func_inner(prob, ctx)
     i = ctx.sim_id
     Ek = 2.0e4 # initial particle energy [eV]
     ## initial velocity, [m/s]
-    v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
+    v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * Proton.q / (Proton.m * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
     r₀ = sph2cart((10 - 2i) * Rₑ, π / 2, (i - 1.5) * π / 4)
 
@@ -63,7 +63,7 @@ function prob_func_tail(prob, ctx)
     i = ctx.sim_id
     Ek = 4.0e3 # initial particle energy [eV]
     ## initial velocity, [m/s]
-    v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * qᵢ / (mᵢ * c^2))^2), π / 4, 0.0)
+    v₀ = sph2cart(c * sqrt(1 - 1 / (1 + Ek * Proton.q / (Proton.m * c^2))^2), π / 4, 0.0)
     ## initial position, [m]
     r₀ = sph2cart(6 * Rₑ, π / 2, 2π * i)
 

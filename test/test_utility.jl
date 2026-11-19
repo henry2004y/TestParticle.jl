@@ -61,7 +61,7 @@ end
     u0 = [0.0, 0.0, 0.0, v...]
     tspan = (0.0, 1.0e-9)
     electron = prepare(; species = Electron, B = B_z)
-    energy = TP.mₑ * sum(abs2, v) / (2 * TP.qᵢ)
+    energy = Electron.m * sum(abs2, v) / (2 * Proton.q)
     sol = solve(TraceProblem(u0, tspan, electron), Tsit5())
     @test TP.get_energy(sol)[1] ≈ energy
     @test TP.get_velocity(sol)[:, 1] ≈ v
@@ -71,14 +71,14 @@ end
     @test remake(rel; u0 = SVector{6}(γv)) isa TraceProblem{RelativisticOrbit}
     sol_rel = solve(rel, Tsit5(); dt = 1.0e-10)
     @test TP.get_velocity(sol_rel)[1, 1] ≈ 2 * TP.c / √5
-    @test TP.get_energy(sol_rel)[1] ≈ (√5 - 1) * TP.mₑ * TP.c^2 / TP.qᵢ
+    @test TP.get_energy(sol_rel)[1] ≈ (√5 - 1) * Electron.m * TP.c^2 / Proton.q
 
     p_f32 = prepare(; B = B_z, type = Float32, c = TP.c)
     u0_f32 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f4, 0.0f0, 0.0f0]
     sol_f32 = solve(
         TraceProblem{RelativisticOrbit}(u0_f32, (0.0f0, 1.0f-9), p_f32), Tsit5()
     )
-    @test TP.get_energy(sol_f32)[1] ≈ Float32(1.0e8 / (2 * (TP.qᵢ / TP.mᵢ)))
+    @test TP.get_energy(sol_f32)[1] ≈ Float32(1.0e8 / (2 * (Proton.q / Proton.m)))
 
     # The default equations imply the model, and an explicit one must agree with them.
     @test TraceProblem(trace_relativistic!, γv, tspan, electron) isa
@@ -821,8 +821,8 @@ end
             B_func(x, t) = SA[0.0, 0.0, B0]
 
             # Particle parameters
-            q = TestParticle.qᵢ
-            m = TestParticle.mᵢ
+            q = Proton.q
+            m = Proton.m
 
             # Initial state: v perpendicular to B
             v_perp = 1.0e5
@@ -831,7 +831,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(; B = B_func, species = Ion(1, 1)) # Proton
+            param = prepare(; B = B_func, species = Proton) # Proton
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -849,8 +849,8 @@ end
             B_func(x, t) = SA[0.0, 0.0, B0]
 
             # Particle parameters
-            q = TestParticle.qₑ
-            m = TestParticle.mₑ
+            q = Electron.q
+            m = Electron.m
             c = TestParticle.c
 
             # Initial state: relativistic velocity
@@ -928,7 +928,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(; B = B_func, species = Ion(1, 1))
+            param = prepare(; B = B_func, species = Proton)
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -954,7 +954,7 @@ end
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0)
 
-            param = prepare(; E = E_func, B = B_func, species = Ion(1, 1))
+            param = prepare(; E = E_func, B = B_func, species = Proton)
             prob = ODEProblem(trace!, stateinit, tspan, param)
             sol = solve(prob, Tsit5(); dt = 1.0e-6)
 
@@ -964,16 +964,15 @@ end
         end
 
         @testset "Vector Dispatch" begin
-            q = TestParticle.qᵢ
-            m = TestParticle.mᵢ
+            species = Proton
             B0 = 1.0e-8
             v_perp = 1.0e5
 
             # Case 1: Vector inputs for V and B, same result as scalar
             V = SA[v_perp, 0.0, 0.0]
             B = SA[0.0, 0.0, B0]
-            r_scalar = get_gyroradius(v_perp, B0; q, m)
-            r_vector = get_gyroradius(V, B; q, m)
+            r_scalar = get_gyroradius(v_perp, B0; species)
+            r_vector = get_gyroradius(V, B; species)
             @test r_vector ≈ r_scalar
 
             # Case 2: Vector inputs with E field correction
@@ -984,12 +983,12 @@ end
             V_drift_vec = SA[v_drift, 0.0, 0.0]
 
             # Pure drift should give ~0 gyroradius
-            r_drift = get_gyroradius(V_drift_vec, B_vec, E; q, m)
+            r_drift = get_gyroradius(V_drift_vec, B_vec, E; species)
             @test r_drift ≈ 0.0 atol = 1.0e-3
 
             # Compare with explicit scalar calculation without E field (which would be wrong)
             # Without E, r would be m*v_drift / qB
-            r_wrong = get_gyroradius(v_drift, 10.0e-9; q, m)
+            r_wrong = get_gyroradius(v_drift, 10.0e-9; species)
             @test r_wrong > 0.1 # Should be large
         end
     end
@@ -1051,11 +1050,10 @@ end
             @test val ≈ ρ_expected / Rc_expected
 
             # Test dispatch
-            ts = TestParticle.Species(m, q)
+            ts = Particle(; q, m)
             @test get_adiabaticity(r, B_circular, μ, 0.0; species = ts) ≈ val
 
             # Test Default Proton
-            # Proton: q=qᵢ, m=mᵢ
             # val_p = get_adiabaticity(r, B_circular, 1e-19, 0.0) # μ ~ 1e-19
             # just check it runs
             @test isfinite(get_adiabaticity(r, B_circular, 1.0e-19, 0.0))
@@ -1082,7 +1080,7 @@ end
             v0 = SA[0.0, 1.0e5, 0.0]
             stateinit = [x0..., v0...]
             tspan = (0.0, 1.0e-4) # Short duration
-            param_fo = prepare(; B = B_func_disp, species = Ion(1, 1))
+            param_fo = prepare(; B = B_func_disp, species = Proton)
             prob_fo = ODEProblem(trace!, stateinit, tspan, param_fo)
             sol_fo = solve(prob_fo, Tsit5(); dt = 1.0e-6)
 
@@ -1098,7 +1096,7 @@ end
             @test ε_fo_scalar == 0.0
 
             # GC Solution
-            stateinit_gc, param_gc = prepare_gc(stateinit; B = B_func_disp, species = Ion(1, 1))
+            stateinit_gc, param_gc = prepare_gc(stateinit; B = B_func_disp, species = Proton)
             prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
             sol_gc = solve(prob_gc, Tsit5(); dt = 1.0e-6)
 
@@ -1404,7 +1402,7 @@ end
             E = build_interpolator(E, rect_grid; bc = TestParticle.FillExtrap(NaN)),
             B = build_interpolator(B, rect_grid; bc = TestParticle.FillExtrap(NaN))
         )
-        @test param[1] ≈ TP.qᵢ / TP.mᵢ
+        @test param[1] ≈ Proton.q / Proton.m
     end
 end
 

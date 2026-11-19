@@ -56,3 +56,11 @@ function _relativistic(::Type{M}) where {M}
     Base.depwarn("`relativistic = true` is deprecated, use `TraceProblem{$(nameof(N))}`.", :TraceProblem)
     return N
 end
+
+Base.@deprecate_binding qᵢ Proton.q false ", use `Proton.q` instead."
+Base.@deprecate_binding mᵢ Proton.m false ", use `Proton.m` instead."
+Base.@deprecate_binding qₑ Electron.q false ", use `Electron.q` instead."
+Base.@deprecate_binding mₑ Electron.m false ", use `Electron.m` instead."
+Base.@deprecate_binding μ₀ MU0_SI false ", use `PlasmaPopulations.MU0_SI` instead."
+Base.@deprecate_binding ϵ₀ EPS0_SI false ", use `PlasmaPopulations.EPS0_SI` instead."
+Base.@deprecate_binding kB KB_SI false ", use `PlasmaPopulations.KB_SI` instead."

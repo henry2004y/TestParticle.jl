@@ -52,8 +52,8 @@ function curved_B(x, t = 0.0)
     ]
 end
 
-m = TP.mᵢ
-q = TP.qᵢ
+m = Proton.m
+q = Proton.q
 q2m = q / m;
 
 # ## Step 1: Full-Orbit Reference Trace

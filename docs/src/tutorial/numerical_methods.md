@@ -8,13 +8,16 @@ The initial state of a particle is typically a 6-element vector or an `SVector` 
 
 ### Particle Types
 
-`TestParticle.jl` provides several predefined species that can be passed to the `prepare` function using the `species` keyword argument:
+The `species` keyword of `prepare` takes a `Particle` from
+[PlasmaPopulations.jl](https://github.com/JuliaPlasma/PlasmaPopulations.jl), re-exported by
+`TestParticle.jl`: `Proton`, `Electron`, `Positron`, an ion or molecule from its formula and
+charge number, or any charge and mass.
 
-- `Proton`: $m \approx 1.67 \times 10^{-27}$ kg, $q \approx 1.60 \times 10^{-19}$ C
-- `Electron`: $m \approx 9.11 \times 10^{-31}$ kg, $q \approx -1.60 \times 10^{-19}$ C
-- `Ion`: A generic ion type.
-
-You can also define custom species using the `Species(m, q)` struct.
+```julia
+Particle(:O, 1)                          # O⁺, standard atomic weight
+Particle("{4}He", 2)                     # α particle
+Particle(; q = -1.0e-16, m = 1.0e-15)    # charged grain [C], [kg]
+```
 
 ### Non-relativistic Case
 
