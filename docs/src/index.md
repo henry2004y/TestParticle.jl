@@ -53,7 +53,7 @@ Pass a `Vector` `u0` for in-place RHS evaluation or an `SVector` for out-of-plac
 | Model | Setup & Problem | State `u0` | Solvers | Guide |
 | :--- | :--- | :--- | :--- | :--- |
 | `FullOrbit` (default) | `p = prepare(; E, B, F)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `Boris`, `MultistepBoris6`, `AdaptiveBoris`, SciML ODE | [Boris Pusher](@ref Boris-Pusher) |
-| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | SciML ODE (`Vern7`, `Vern9`, ...) | [Numerical Methods](@ref) |
+| `RelativisticOrbit` | `p = prepare(; E, B, F)`<br>`TraceProblem{RelativisticOrbit}(u0, tspan, p)` | `[x..., γv...]` | `HigueraCary`, `Vay`, `Boris`, `MultistepBoris6`, `Adaptive*`, SciML ODE | [Numerical Methods](@ref) |
 | `GuidingCenter` | `u0_gc, p_gc = prepare_gc(u0; E, B)`<br>`TraceGCProblem(u0_gc, tspan, p_gc)` | `[X..., v∥]` | SciML ODE (`Vern7`, `RK4`, ...) | [Guiding Center](@ref) |
 | Hybrid GC–FO | `p = prepare(; E, B)`<br>`TraceProblem(u0, tspan, p)` | `[x..., v...]` | `AdaptiveHybrid(; dtmax)` | [Hybrid GC-FO Solver](@ref) |
 | `Canonical` / `RelativisticCanonical` | `p = prepare_canonical(; phi, A)`<br>`TraceCanonicalProblem(u0, tspan, p)` | `[x..., p...]` | SciML ODE / symplectic | [Canonical Tracing Form](@ref) |
