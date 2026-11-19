@@ -13,6 +13,7 @@ on:
       - '.github/workflows/Format.yml'
       - '.github/workflows/TagBot.yml'
       - '.github/workflows/benchmark.yml'
+      - '.github/workflows/benchmark-comment.yml'
       - '.github/workflows/publish-python.yml'
       - '.github/workflows/python-wrapper.yml'
   pull_request:
@@ -27,6 +28,7 @@ on:
       - '.github/workflows/Format.yml'
       - '.github/workflows/TagBot.yml'
       - '.github/workflows/benchmark.yml'
+      - '.github/workflows/benchmark-comment.yml'
       - '.github/workflows/publish-python.yml'
       - '.github/workflows/python-wrapper.yml'
 
