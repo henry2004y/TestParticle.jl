@@ -62,6 +62,7 @@ applications_order = [
     "demo_steady_phase_space.jl",
     "demo_fermi_foreshock.jl",
     "demo_compound_foreshock.jl",
+    "demo_pseudoheating.jl",
     "demo_cosmicray.jl",
     "demo_radiation.jl",
     "demo_gravitational_chaos.jl",
