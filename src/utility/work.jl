@@ -66,6 +66,12 @@ end
     return q, q / q2m, xv[4], μ
 end
 
+@inline function _adiabatic_particle(::RelativisticGuidingCenter, xv, p, E, b̂, Bmag)
+    (; q, q2m, μ) = p
+    γ = _gc_gamma(RelativisticGuidingCenter(), xv[4], Bmag, p)
+    return q, γ * (q / q2m), xv[4] / γ, μ / γ
+end
+
 @inline function _adiabatic_particle(model, xv, p, E, b̂, Bmag)
     u = get_v(xv)
     γ = _lorentz_factor(u, model, p)
