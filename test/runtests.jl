@@ -22,6 +22,7 @@ include("test_utility.jl")
 include("test_api_surface.jl")
 include("test_phasespace.jl")
 include("test_gc.jl")
+include("test_gc_relativistic.jl")
 include("test_work_rates.jl")
 
 if "makie" in ARGS

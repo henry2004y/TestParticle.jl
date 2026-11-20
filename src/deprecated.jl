@@ -51,7 +51,9 @@ function solve(prob::TraceGCProblem, alg::GCRK45; kwargs...)
 end
 
 function _relativistic(::Type{M}) where {M}
-    N = M === FullOrbit ? RelativisticOrbit : M === Canonical ? RelativisticCanonical :
+    N = M === FullOrbit ? RelativisticOrbit :
+        M === Canonical ? RelativisticCanonical :
+        M === GuidingCenter ? RelativisticGuidingCenter :
         throw(ArgumentError("$M has no relativistic equations."))
     Base.depwarn("`relativistic = true` is deprecated, use `TraceProblem{$(nameof(N))}`.", :TraceProblem)
     return N

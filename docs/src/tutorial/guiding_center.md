@@ -52,6 +52,27 @@ where ``B^*_{\parallel} = \mathbf{b} \cdot \mathbf{B}^*``.
 
 In theoretical treatments, individual drift terms are often derived separately (see below). By solving the GCA equations, all these drifts are captured self-consistently to first order.
 
+### Relativistic Guiding Center
+
+For relativistic particles (e.g., MeV radiation-belt electrons), [`trace_gc_relativistic!`](@ref) and `TraceProblem{RelativisticGuidingCenter}` evolve the 4D state ``[\mathbf{R}, u_\parallel]`` where ``u_\parallel = \gamma v_\parallel = p_\parallel / m`` is the parallel proper velocity and ``\mu = p_\perp^2 / (2 m B)`` is the relativistic magnetic moment. The Lorentz factor is
+
+```math
+\gamma = \sqrt{1 + \frac{u_\parallel^2 + 2\mu B / m}{c^2}}
+```
+
+and the effective fields and equations of motion are
+
+```math
+\begin{aligned}
+\mathbf{B}^* &= \mathbf{B} + \frac{m u_\parallel}{q} \nabla \times \mathbf{b}, \qquad
+\mathbf{E}^* = \mathbf{E} - \frac{\mu}{q \gamma} \nabla B \\
+\dot{\mathbf{R}} &= \frac{(u_\parallel / \gamma)\,\mathbf{B}^* + \mathbf{E}^* \times \mathbf{b}}{B_\parallel^*}, \qquad
+\dot{u}_\parallel = \frac{q}{m B_\parallel^*} \mathbf{B}^* \cdot \mathbf{E}^*
+\end{aligned}
+```
+
+Use `prepare_gc(xu; model = RelativisticGuidingCenter(), ...)` with a relativistic full-orbit state `xu = [x..., (γv)...]`.
+
 ## Summary of guiding center drifts
 
 General force:

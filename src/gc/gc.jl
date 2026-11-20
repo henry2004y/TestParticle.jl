@@ -14,20 +14,38 @@ the particle: the zeroth-order map.
     return x - (b × v) / ((q / m) * (b ⋅ b))
 end
 
+@inline _gc_lorentz_factor_full(u, ::Union{GuidingCenter, FullOrbit}, c_val) =
+    one(eltype(u))
+@inline function _gc_lorentz_factor_full(
+        u, ::Union{RelativisticGuidingCenter, RelativisticOrbit}, c_val
+    )
+    u² = u ⋅ u
+    return sqrt(1 + u² / oftype(float(u²), c_val)^2)
+end
+
+@inline _gc_to_full_gamma(::GuidingCenter, vpar, w², c_val) = one(w²)
+@inline function _gc_to_full_gamma(::RelativisticGuidingCenter, vpar, w², c_val)
+    u² = vpar^2 + w²
+    return sqrt(1 + u² / oftype(float(u²), c_val)^2)
+end
+
 """
-    _gc_frame(x, v, E, B, m, t) -> (; b̂, w, vpar, μ)
+    _gc_frame(x, v, E, B, m, t, model = GuidingCenter(), c_val = c) -> (; b̂, w, vpar, μ)
 
 Field-aligned frame at position `x`: unit field `b̂`, gyration velocity
-`w = v - vpar b̂ - v_E`, parallel velocity `vpar = b̂ ⋅ v` and magnetic moment
-`μ = m|w|² / (2|B|)`.
+`w = v - vpar b̂ - γ v_E`, parallel velocity `vpar = b̂ ⋅ v` and magnetic moment
+`μ = m|w|² / (2|B|)`. For `RelativisticGuidingCenter`, `v` is the proper velocity `γv_coord`.
 """
-@muladd @inline function _gc_frame(x, v, E, B, m, t)
+@muladd @inline function _gc_frame(
+        x, v, E, B, m, t, model = GuidingCenter(), c_val = c
+    )
     b = B(x, t)
     Bmag = norm(b)
     inv_Bmag = inv(Bmag)
     b̂ = b * inv_Bmag
     vpar = b̂ ⋅ v
-    w = v - vpar * b̂ - (E(x, t) × b̂) * inv_Bmag
+    γ = _gc_lorentz_factor_full(v, model, c_val)
+    w = v - vpar * b̂ - γ * ((E(x, t) × b̂) * inv_Bmag)
     return (; b̂, w, vpar, μ = m * (w ⋅ w) * (inv_Bmag / 2))
 end
 
@@ -38,19 +56,21 @@ end
 end
 
 """
-    _get_gc_parameters(xv, E, B, q, m, t) -> (X, vpar, q, q / m, μ, phase)
+    _get_gc_parameters(xv, E, B, q, m, t, model = GuidingCenter(), c_val = c)
 
-Extract the guiding-center position `X`, parallel velocity `vpar`, magnetic
+Extract the guiding-center position `X`, parallel (proper) velocity `vpar`, magnetic
 moment `μ`, and gyrophase `phase` from a full-particle state `xv` at time `t`.
 `E` and `B` must be callable as `E(x, t)` / `B(x, t)`; static fields simply
 ignore `t`.
 
 #TODO : support external forces
 """
-@inline function _get_gc_parameters(xv, E, B, q, m, t)
+@inline function _get_gc_parameters(
+        xv, E, B, q, m, t, model = GuidingCenter(), c_val = c
+    )
     x, v = _split_xv(xv)
     X = _gc_position(x, v, B, q, m, t)
-    f = _gc_frame(X, v, E, B, m, t)
+    f = _gc_frame(X, v, E, B, m, t, model, c_val)
     return X, f.vpar, q, q / m, f.μ, _gc_phase(f.b̂, f.w)
 end
 
@@ -128,11 +148,14 @@ end
 end
 
 """
-    prepare_gc(xv; E = nothing, B = nothing, kw...) -> (state_gc, param_gc)
+    prepare_gc(xv; E = nothing, B = nothing, model = GuidingCenter(), c = nothing, kw...)
+        -> (state_gc, param_gc)
 
 Initial guiding-center state `[X..., vpar]` from full-orbit state `xv` and parameters
-`(; q, q2m, μ, E, B)` for tracing it. Omitted fields are zero. `xv` is
-`[x, y, z, vx, vy, vz]`. Field arguments and keywords mirror [`prepare`](@ref).
+`(; q, q2m, μ, E, B)` (with `c` included when passed) for tracing it. Omitted fields are
+zero. `xv` is `[x, y, z, vx, vy, vz]` for `GuidingCenter()` and
+`[x, y, z, γvx, γvy, γvz]` for `RelativisticGuidingCenter()`. Field arguments and keywords
+mirror [`prepare`](@ref).
 
 # Examples
 ```jldoctest
@@ -151,42 +174,56 @@ true
 ```
 # TODO: support external forces
 """
-function prepare_gc(xv; species = Proton, q = nothing, m = nothing, t = 0, kw...)
+function prepare_gc(
+        xv; species = Proton, q = nothing, m = nothing, c = nothing,
+        t = 0, model = GuidingCenter(), kw...
+    )
     q = @something q species.q
     m = @something m species.m
     (; E, B) = prepare(; q, m, kw...)
-    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, E, B, q, m, t)
+    c_val = @something c TestParticle.c
+    X, vpar, q, q2m, μ, _ = _get_gc_parameters(xv, E, B, q, m, t, model, c_val)
 
-    return [X..., vpar], (; q, q2m, μ, E, B)
+    p = (; q, q2m, μ, E, B)
+    return [X..., vpar], isnothing(c) ? p : (; p..., c)
 end
 
 """
-    full_to_gc(xu, param)
+    full_to_gc(xu, param, t = 0; model = GuidingCenter())
 
 Convert full particle state `xu` to guiding center state `state_gc` and magnetic moment `μ`.
-Returns `(state_gc, μ)`, where `state_gc = [R..., vpar]`.
+Returns `(state_gc, μ)`, where `state_gc = [R..., vpar]` (or `[R..., γvpar]` for
+`model = RelativisticGuidingCenter()`, expecting `xu = [x..., (γv)...]`).
 """
-function full_to_gc(xu, param, t = 0)
+function full_to_gc(xu, param, t = 0; model = GuidingCenter())
     (; q2m, m, E, B) = param
-    X, vpar, _, _, μ, _ = _get_gc_parameters(xu, E, B, q2m * m, m, t)
+    c_val = _speed_of_light(param)
+    X, vpar, _, _, μ, _ = _get_gc_parameters(xu, E, B, q2m * m, m, t, model, c_val)
     state_gc = SVector{4}(X[1], X[2], X[3], vpar)
 
     return state_gc, μ
 end
 
 """
-    gc_to_full(state_gc, param, μ, phase=0)
+    gc_to_full(state_gc, param, μ, phase = 0; t = 0, model = GuidingCenter())
 
 Convert guiding center state `state_gc` to full particle state `xu`.
-Returns `xu = [x, y, z, vx, vy, vz]`.
+Returns `xu = [x, y, z, vx, vy, vz]` (or `[x, y, z, γvx, γvy, γvz]` for
+`model = RelativisticGuidingCenter()`).
 """
-function gc_to_full(state_gc, param, μ, phase = 0; t = 0)
+function gc_to_full(
+        state_gc, param, μ, phase = 0; t = 0, model = GuidingCenter()
+    )
     (; q2m, m, E, B) = param
-    return Vector(_gc_to_full(state_gc, E, B, q2m * m, m, μ, t, phase))
+    c_val = _speed_of_light(param)
+    return Vector(_gc_to_full(state_gc, E, B, q2m * m, m, μ, t, phase, model, c_val))
 end
 
 """
-    _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
+    _gc_to_full(
+        state_gc, E_field, B_field, q, m, μ, t, phase = 0,
+        model = GuidingCenter(), c_val = c
+    )
 
 Internal GC → full-orbit conversion taking the field functions and charges
 directly, so it can be shared by the GC and hybrid solvers. `E_field` and
@@ -197,14 +234,18 @@ Returns an `SVector{6}` so that it can be used in a hot loop and stored in a
 `Vector{SVector{6}}` without allocating; [`gc_to_full`](@ref) converts it to a
 `Vector` for the public API.
 """
-@inline function _gc_to_full(state_gc, E_field, B_field, q, m, μ, t, phase = 0)
+@inline function _gc_to_full(
+        state_gc, E_field, B_field, q, m, μ, t, phase = 0,
+        model = GuidingCenter(), c_val = c
+    )
     R = get_x(state_gc)
     B = B_field(R, t)
-    return _gc_to_full(state_gc, E_field, B, norm(B), q, m, μ, t, phase)
+    return _gc_to_full(state_gc, E_field, B, norm(B), q, m, μ, t, phase, model, c_val)
 end
 
 @muladd @inline function _gc_to_full(
-        state_gc, E_field, B::SVector{3}, Bmag::Real, q, m, μ, t, phase = 0
+        state_gc, E_field, B::SVector{3}, Bmag::Real, q, m, μ, t, phase = 0,
+        model = GuidingCenter(), c_val = c
     )
     R = get_x(state_gc)
     vpar = state_gc[4]
@@ -216,13 +257,15 @@ end
     v_E = (E × b̂) * inv_Bmag
 
     # perp speed, μ = m * w^2 / (2B)
-    w = sqrt(2 * (μ / m) * Bmag)
+    w² = 2 * (μ / m) * Bmag
+    w = sqrt(w²)
+    γ = _gc_to_full_gamma(model, vpar, w², c_val)
 
     # perp vector
     e1, e2 = _unit_perp_vectors(b̂)
-    s, c = sincos(phase)
-    v_gyr = w * (c * e1 + s * e2)
-    v_perp = v_gyr + v_E
+    s, c_ph = sincos(phase)
+    v_gyr = w * (c_ph * e1 + s * e2)
+    v_perp = v_gyr + γ * v_E
 
     v = vpar * b̂ + v_perp
 
@@ -236,7 +279,7 @@ end
 end
 
 """
-    get_gc(xu, param; use_vE = false)
+    get_gc(xu, param; use_vE = false, model = GuidingCenter())
     get_gc(x, y, z, vx, vy, vz, bx, by, bz, q2m)
 
 Calculate the coordinates of the guiding center according to the phase space coordinates of a particle.
@@ -248,6 +291,10 @@ Nonrelativistic definition:
 \\mathbf{X}=\\mathbf{x}-m\\frac{\\mathbf{b}\\times\\mathbf{v}}{qB}
 ```
 
+For relativistic states `xu = [x..., (γv)...]`, `ρ = (b × γv) / (qB / m)` has the same form
+when `use_vE = false`; with `use_vE = true` and `model = RelativisticGuidingCenter()` (or
+`RelativisticOrbit()`), the drift subtraction uses `γv - γv_E`.
+
 If `use_vE=true`, it calculates the guiding center relative to the E × B drift frame:
 
 ```math
@@ -256,7 +303,7 @@ If `use_vE=true`, it calculates the guiding center relative to the E × B drift 
 
 which is essential for correctly identifying the polarization drift in time-varying fields.
 """
-function get_gc(xu, param; use_vE::Bool = false)
+function get_gc(xu, param; use_vE::Bool = false, model = GuidingCenter())
     # TODO: support external forces
     q2m = param.q2m
     B_field = param.B
@@ -268,7 +315,8 @@ function get_gc(xu, param; use_vE::Bool = false)
     if use_vE
         E_field = param.E
         E = E_field(xu, t)
-        v = v - (E × B) / B²
+        γ = _gc_lorentz_factor_full(v, model, _speed_of_light(param))
+        v = v - γ * ((E × B) / B²)
     end
 
     # vector of Larmor radius

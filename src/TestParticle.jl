@@ -31,11 +31,13 @@ import LinearAlgebra: ×
 export prepare, prepare_gc, prepare_canonical, prepare_erased, PotentialField
 export Particle, Proton, Electron, Positron
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
-export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical, GuidingCenter
+export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical,
+    GuidingCenter, RelativisticGuidingCenter
 export trace!, trace_relativistic!, trace, trace_relativistic,
     trace_canonical!, trace_canonical,
     trace_canonical_relativistic!, trace_canonical_relativistic,
-    trace_gc!, trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
+    trace_gc!, trace_gc_relativistic!, trace_gc_relativistic,
+    trace_gc_drifts!, trace_gc_flr!, trace_gc_exb!
 export AdaptiveHybrid
 export vdf_backward_trace, vdf_forward_trace
 export orbit, monitor, save_trajectory

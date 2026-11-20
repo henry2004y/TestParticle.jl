@@ -91,27 +91,15 @@ function trace_gc_drifts!(dx, x, p, t)
     return
 end
 
-"""
-    trace_gc!(dy, y, p, t)
+@inline _gc_gamma(::GuidingCenter, u, Bmag, p) = one(u)
 
-Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
-Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
-"""
-trace_gc!(dy, y, p, t) = _store!(dy, @inline trace_gc(y, p, t))
+@inline function _gc_gamma(::RelativisticGuidingCenter, u, Bmag, p)
+    u² = u^2 + 2 * p.μ * Bmag * (p.q2m / p.q)
+    c_val = oftype(float(u²), _speed_of_light(p))
+    return sqrt(1 + u² / c_val^2)
+end
 
-"""
-    get_gc_velocity(y, p, t)
-
-Get the guiding center velocity.
-"""
-get_gc_velocity(y, p, t) = get_x(trace_gc(y, p, t))
-
-"""
-    trace_gc(y, p, t)
-
-Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
-"""
-@muladd @inline function trace_gc(y, p, t)
+@muladd @inline function _trace_gc(y, model, p, t)
     # TODO: support external forces
     (; q, q2m, μ) = p
     X = get_x(y)
@@ -131,23 +119,62 @@ Guiding center equations for nonrelativistic charged particle moving in EM field
     curlB = SVector{3}(JB[3, 2] - JB[2, 3], JB[1, 3] - JB[3, 1], JB[2, 1] - JB[1, 2])
     curlb = (curlB + b̂ × ∇B) * inv_Bmag
 
-    # effective EM fields
-    # B* = B + (m/q) u (∇ × b)
-    # E* = E - (μ/q) ∇B
-    # In CGS: B* = B + (c p_par / q) (∇ × b). In SI, c -> 1.
+    # Effective EM fields:
+    # B* = B + (m/q) u (∇ × b̂)
+    # E* = E - (μ / (q γ)) ∇B
+    # where u = v∥ (non-relativistic, γ = 1) or u = γv∥ (relativistic).
     u = y[4]
+    inv_γ = inv(_gc_gamma(model, u, Bmag, p))
     Bᵉ = B + (u / q2m) * curlb
-    Eᵉ = E - (μ / q) * ∇B
+    Eᵉ = E - (μ * inv_γ / q) * ∇B
 
     inv_Bparᵉ = inv(b̂ ⋅ Bᵉ)
 
-    # dx/dt = (p_par/m * B* +  E* × b ) / B*_par
-    #       = (u * B* + E* × b) / B*_par
-    # In CGS: c/q * q E* x b. In SI, c=1.
-    v = (u * Bᵉ + Eᵉ × b̂) * inv_Bparᵉ
+    # dX/dt = ((u / γ) B* + E* × b̂) / B*_par
+    v = ((u * inv_γ) * Bᵉ + Eᵉ × b̂) * inv_Bparᵉ
 
-    # dp_par/dt = q/B*_par * B* ⋅ E* => du/dt = (q/m)/B*_par * B* ⋅ E*
+    # du/dt = (q/m) (B* ⋅ E*) / B*_par
     du = q2m * inv_Bparᵉ * (Bᵉ ⋅ Eᵉ)
 
     return SVector{4}(v[1], v[2], v[3], du)
 end
+
+"""
+    trace_gc!(dy, y, p, t)
+
+Guiding center equations for nonrelativistic charged particle moving in EM field with in-place form.
+Variable `y = (x, y, z, u)`, where `u` is the velocity along the magnetic field at (x,y,z).
+"""
+trace_gc!(dy, y, p, t) = _store!(dy, @inline trace_gc(y, p, t))
+
+"""
+    trace_gc(y, p, t)
+
+Guiding center equations for nonrelativistic charged particle moving in EM field with out-of-place form.
+"""
+trace_gc(y, p, t) = _trace_gc(y, GuidingCenter(), p, t)
+
+"""
+    trace_gc_relativistic!(dy, y, p, t)
+
+Relativistic guiding-center equations in in-place form for state `y = (X_x, X_y, X_z, u_∥)`,
+where `u_∥ = γ v_∥` is the parallel proper velocity and `p.μ = p_⊥² / (2 m B)` is the
+relativistic magnetic moment. The speed of light is `p.c` when present, `c` in SI otherwise.
+"""
+trace_gc_relativistic!(dy, y, p, t) =
+    _store!(dy, @inline trace_gc_relativistic(y, p, t))
+
+"""
+    trace_gc_relativistic(y, p, t)
+
+Relativistic guiding-center equations in out-of-place form for state `y = (X_x, X_y, X_z, u_∥)`.
+"""
+trace_gc_relativistic(y, p, t) = _trace_gc(y, RelativisticGuidingCenter(), p, t)
+
+"""
+    get_gc_velocity(y, p, t; model = GuidingCenter())
+
+Get the guiding center velocity for `model` (`GuidingCenter()` or
+`RelativisticGuidingCenter()`).
+"""
+get_gc_velocity(y, p, t; model = GuidingCenter()) = get_x(_trace_gc(y, model, p, t))

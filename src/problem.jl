@@ -32,6 +32,7 @@ for (M, iip, oop) in (
         (Canonical, trace_canonical!, trace_canonical),
         (RelativisticCanonical, trace_canonical_relativistic!, trace_canonical_relativistic),
         (GuidingCenter, trace_gc!, trace_gc),
+        (RelativisticGuidingCenter, trace_gc_relativistic!, trace_gc_relativistic),
     )
     @eval begin
         _equations(::Type{$M}) = ($iip, $oop)
@@ -69,11 +70,12 @@ end
     TraceProblem{M}(...)
 
 Problem specification for particle tracing in the model `M`: `FullOrbit` (the default),
-`RelativisticOrbit`, `Canonical`, `RelativisticCanonical` or `GuidingCenter`, also written
-`TraceCanonicalProblem` and `TraceGCProblem`. Supports the native solvers of each model and
-standard ODE solvers (e.g. Tsit5, Vern7). `RelativisticOrbit` states hold `γv` in place of
-`v`. Boris solvers accept the default `FullOrbit` and `RelativisticOrbit` equations
-without `F`; `AdaptiveHybrid` accepts `FullOrbit` without `F`.
+`RelativisticOrbit`, `Canonical`, `RelativisticCanonical`, `GuidingCenter` or
+`RelativisticGuidingCenter`, also written `TraceCanonicalProblem` and `TraceGCProblem`.
+Supports the native solvers of each model and standard ODE solvers (e.g. Tsit5, Vern7).
+`RelativisticOrbit` states hold `γv` in place of `v`, and `RelativisticGuidingCenter`
+states hold `γv∥` in place of `v∥`. Boris solvers accept the default `FullOrbit` and
+`RelativisticOrbit` equations without `F`; `AdaptiveHybrid` accepts `FullOrbit` without `F`.
 
 When `f` is not provided, the model's equations are used: in-place for mutable arrays,
 out-of-place for `StaticArray`s. The default equations of a model imply it, and `TraceProblem{M}`
@@ -160,20 +162,31 @@ function solve(
     return solve(ensemble_prob, alg, ensemblealg; trajectories, seed, kwargs...)
 end
 
+const _GCModel = Union{GuidingCenter, RelativisticGuidingCenter}
 const _GC_ODE_FUNC = ODEFunction{false, FullSpecialize}(trace_gc)
+const _GC_REL_ODE_FUNC = ODEFunction{false, FullSpecialize}(trace_gc_relativistic)
+
+_gc_default_func(::Type{GuidingCenter}) = _GC_ODE_FUNC
+_gc_default_func(::Type{RelativisticGuidingCenter}) = _GC_REL_ODE_FUNC
 
 @inline function _gc_ode_problem(
-        u0::SVector{4, T}, tspan::Tuple{T, T}, p,
-        f::AbstractODEFunction = _GC_ODE_FUNC,
+        ::Type{M}, u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+        f::AbstractODEFunction = _gc_default_func(M),
         prob_func = DEFAULT_PROB_FUNC
-    ) where {T}
+    ) where {M <: _GCModel, T}
     return TraceProblem{
-        GuidingCenter, SVector{4, T}, Tuple{T, T}, false,
+        M, SVector{4, T}, Tuple{T, T}, false,
         typeof(p), typeof(f), typeof(prob_func),
     }(f, u0, tspan, p, prob_func)
 end
 
-function _gc_initial_dt(prob::TraceGCProblem, ::Type{T}) where {T}
+@inline _gc_ode_problem(
+    u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+    f::AbstractODEFunction = _GC_ODE_FUNC,
+    prob_func = DEFAULT_PROB_FUNC
+) where {T} = _gc_ode_problem(GuidingCenter, u0, tspan, p, f, prob_func)
+
+function _gc_initial_dt(prob::TraceProblem{M}, ::Type{T}) where {M <: _GCModel, T}
     q2m = prob.p.q2m
     Bmag = norm(prob.p.B(get_x(prob.u0), prob.tspan[1]))
     if Bmag == 0 || q2m == 0
@@ -181,7 +194,8 @@ function _gc_initial_dt(prob::TraceGCProblem, ::Type{T}) where {T}
     end
     tdir = sign(prob.tspan[2] - prob.tspan[1])
     tdir == 0 && (tdir = one(tdir))
-    return T(tdir * 0.5 * 2π / abs(q2m * Bmag))
+    γ = _gc_gamma(M(), prob.u0[4], Bmag, prob.p)
+    return T(tdir * 0.5 * 2π * γ / abs(q2m * Bmag))
 end
 
 function _isoutside_callback(isoutside::F) where {F}
@@ -197,14 +211,14 @@ function _isoutside_callback(isoutside::F) where {F}
 end
 
 function solve(
-        prob::TraceGCProblem, alg::SciMLBase.AbstractODEAlgorithm;
+        prob::TraceProblem{M}, alg::SciMLBase.AbstractODEAlgorithm;
         dt::Union{Nothing, Real} = nothing,
         adaptive::Bool = isadaptive(alg),
         dense::Bool = false,
         isoutside::F = ODE_DEFAULT_ISOUTOFDOMAIN,
         callback = nothing,
         kwargs...
-    ) where {F}
+    ) where {M <: _GCModel, F}
     T = eltype(prob.u0)
     if dt === nothing
         adaptive || throw(
@@ -224,16 +238,18 @@ function solve(
         step = T(dt)
     end
 
+    default_f = _gc_default_func(M)
+    default_eqs = _equations(M)
     ode_prob = if prob.u0 isa SVector{4, T} && prob.tspan isa Tuple{T, T} &&
-            prob.f === _GC_ODE_FUNC
+            prob.f === default_f
         prob
     else
         tspan = prob.tspan isa Tuple{T, T} ? prob.tspan :
             (T(prob.tspan[1]), T(prob.tspan[2]))
         p = prob.tspan isa Tuple{T, T} ? prob.p : _promote_p(T, prob.p)
-        f = prob.f.f in (trace_gc!, trace_gc) ? _GC_ODE_FUNC :
+        f = prob.f.f in default_eqs ? default_f :
             ODEFunction{false, FullSpecialize}(prob.f.f)
-        _gc_ode_problem(SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
+        _gc_ode_problem(M, SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
     end
 
     cb_out = _isoutside_callback(isoutside)
