@@ -65,6 +65,7 @@ applications_order = [
     "demo_pseudoheating.jl",
     "demo_cosmicray.jl",
     "demo_radiation.jl",
+    "demo_mercury_radiation_belt.jl",
     "demo_gravitational_chaos.jl",
     "demo_batsrus_3dstructured.md",
 ]
