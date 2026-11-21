@@ -480,7 +480,7 @@ ax_liouv = Axis(
     title = "20 MeV Liouville Check: Open Box vs. Unbounded Limit",
     xlabel = "Lunar Phase [hM]",
     ylabel = "Normalized Count (rel. to 16 hM)",
-    limits = ((7.5, 16.5), (0.70, 1.12)),
+    limits = ((7.5, 16.5), (0.7, 1.12)),
     xticks = 8:2:16,
 )
 vspan!(ax_liouv, 8.0, 10.0; color = (:gray, 0.18))
