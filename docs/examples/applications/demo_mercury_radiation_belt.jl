@@ -82,7 +82,7 @@ const ZSHIFT_CS = 3.5         # [R_M] image-sheet offset
 
 ## KT17 model coefficients (Korth et al., 2015, 2017)
 const F_TAILDISK = SA[
-    59048.35734, -135664.4246, -913.4507339, 209989.1008, -213142.9370,
+    59048.35734, -135664.4246, -913.4507339, 209989.1008, -213142.937,
 ]
 const B_TAILDISK = SA[
     19.69235037, -18.16704312, 12.69175932, -14.13692134, 14.13449724,
@@ -92,7 +92,7 @@ const C_TAILDISK = SA[
 ]
 
 const C_DIPSHLD = SA[
-    7.792407683, 74.37654983, 4.119647072, -131.3308600,
+    7.792407683, 74.37654983, 4.119647072, -131.33086,
     546.6006311, -1077.694401, 52.46268495, 1057.273707,
     -74.91550119, -141.8047123, 3.876004886, 156.2250932,
     -506.6470185, 1439.804381, -64.55225925, -1443.754088,
@@ -103,8 +103,8 @@ const C_DISKSHLD = SA[
     -398.4670279, -1143.001682, -1836.300383, -73.92180417, -326.3986853, -29.96868107,
     -1157.035602, -604.1846034, -52.04876183, -2030.691236, -1529.120337, -6.382209946,
     2587.666032, 213.8979183, -28.30225993, 630.1309859, 2968.552238, 888.6328623,
-    497.3863092, 2304.254471, 858.4176875, 1226.958595, 850.1684953, -20.90110940,
-    -203.9184239, -792.6099018, 1115.955690, 527.3226825, 22.47634041, -0.0704405637,
+    497.3863092, 2304.254471, 858.4176875, 1226.958595, 850.1684953, -20.9011094,
+    -203.9184239, -792.6099018, 1115.95569, 527.3226825, 22.47634041, -0.0704405637,
     -1405.093137, -97.20408343, 5.656730182, -138.7129102, -1979.755673, 5.407603749,
 ]
 const P_DISKSHLD = SA[
@@ -112,11 +112,11 @@ const P_DISKSHLD = SA[
 ]
 
 const C_SLABSHLD = SA[
-    -91.67686636, -87.31240824, 251.8848107, 95.65629983, -80.96810700, 198.1447476,
-    -283.1968987, -269.1514899, 504.6322310, 166.0272150, -214.9025413, 623.7920115,
-    -35.99544615, -322.8644690, 345.7105790, 928.8553184, 810.1295090, 19.62627762,
-    -12.70326428, 490.4662048, -814.0985363, -1781.184984, -1371.261326, 60.31364790,
-    116.6305510, -178.3347065, 604.0308838, 1155.151174, 770.3896601, -202.8545948,
+    -91.67686636, -87.31240824, 251.8848107, 95.65629983, -80.968107, 198.1447476,
+    -283.1968987, -269.1514899, 504.632231, 166.027215, -214.9025413, 623.7920115,
+    -35.99544615, -322.864469, 345.710579, 928.8553184, 810.129509, 19.62627762,
+    -12.70326428, 490.4662048, -814.0985363, -1781.184984, -1371.261326, 60.3136479,
+    116.630551, -178.3347065, 604.0308838, 1155.151174, 770.3896601, -202.8545948,
     298.6337705, 304.7964641, 33.70850254, 393.6080147, 308.1194271, -660.1691658,
 ]
 const P_SLABSHLD = SA[
@@ -262,7 +262,7 @@ function MercuryKT17Field(r_hel::Real; act::Real = 50.0, internal = MERCURY_INTE
     f = 2.06873 - 0.00279 * Float64(act)
     rss = f * cbrt(Float64(r_hel))
     κ_mp = R0_MP / rss
-    tamp1 = 6.4950 + 0.0229 * Float64(act)
+    tamp1 = 6.495 + 0.0229 * Float64(act)
     tamp2 = 1.6245 + 0.0088 * Float64(act)
     return MercuryKT17Field(internal, Float64(r_hel), rss, κ_mp, κ_mp^3, tamp1, tamp2)
 end
@@ -362,10 +362,12 @@ r_eq_planet = sqrt(1.0 - Z_OFFSET^2) # planetary cross-section at Z_MSM = 0
 
 rss_aph = round(B_aphelion.rss; digits = 2)
 rss_per = round(B_perihelion.rss; digits = 2)
-for (col, (Bmodel, title_str)) in enumerate([
-        (B_aphelion, "Aphelion (r_hel = 0.467 au, R_ss = $(rss_aph) R_M)"),
-        (B_perihelion, "Perihelion (r_hel = 0.307 au, R_ss = $(rss_per) R_M)"),
-    ])
+for (col, (Bmodel, title_str)) in enumerate(
+        [
+            (B_aphelion, "Aphelion (r_hel = 0.467 au, R_ss = $(rss_aph) R_M)"),
+            (B_perihelion, "Perihelion (r_hel = 0.307 au, R_ss = $(rss_per) R_M)"),
+        ]
+    )
     ax = Axis(
         f1[1, col];
         title = title_str,
@@ -588,16 +590,18 @@ xs_sph = [cos(u) * sin(v) for u in u_sph, v in v_sph]
 ys_sph = [sin(u) * sin(v) for u in u_sph, v in v_sph]
 zs_sph = [cos(v) - Z_OFFSET for u in u_sph, v in v_sph]
 
-for (col, (sol, Bmodel, title_str, col_line)) in enumerate([
-        (
-            sol_conv, B_aphelion,
-            "Conventional Drift Orbit (Aphelion, α = 43°)", :royalblue,
-        ),
-        (
-            sol_bifu, B_perihelion,
-            "Bifurcated Shabansky Orbit (Perihelion, α = 65°)", :crimson,
-        ),
-    ])
+for (col, (sol, Bmodel, title_str, col_line)) in enumerate(
+        [
+            (
+                sol_conv, B_aphelion,
+                "Conventional Drift Orbit (Aphelion, α = 43°)", :royalblue,
+            ),
+            (
+                sol_bifu, B_perihelion,
+                "Bifurcated Shabansky Orbit (Perihelion, α = 65°)", :crimson,
+            ),
+        ]
+    )
     ax = Axis3(
         f2[1, col];
         title = title_str,
@@ -804,9 +808,13 @@ end
 
 B_models_rhel = Dict(
     0.467 => (B_itp_aph, B_aphelion.rss),
-    0.427 => let m = MercuryKT17Field(0.427); (build_mercury_interpolator(m), m.rss) end,
+    0.427 => let m = MercuryKT17Field(0.427)
+        (build_mercury_interpolator(m), m.rss)
+    end,
     0.387 => (B_itp_mid, B_mid.rss),
-    0.347 => let m = MercuryKT17Field(0.347); (build_mercury_interpolator(m), m.rss) end,
+    0.347 => let m = MercuryKT17Field(0.347)
+        (build_mercury_interpolator(m), m.rss)
+    end,
     0.307 => (build_mercury_interpolator(B_perihelion), B_perihelion.rss),
 )
 
@@ -815,13 +823,13 @@ rhel_results = [
     let (Bitp, rss) = B_models_rhel[r_hel]
         (r_hel, run_survival_ensemble(Bitp, rss; seed = 1000 + k)...)
     end
-    for (k, r_hel) in enumerate(r_hel_list)
+        for (k, r_hel) in enumerate(r_hel_list)
 ]
 
 α_bins = [(48.0, 56.0), (56.0, 64.0), (64.0, 72.0), (72.0, 80.0), (80.0, 88.0)]
 α_results = [
     (α_bin, run_survival_ensemble(B_itp_mid, B_mid.rss; α_range = α_bin, seed = 2000 + k)...)
-    for (k, α_bin) in enumerate(α_bins)
+        for (k, α_bin) in enumerate(α_bins)
 ]
 
 f4 = Figure(size = (1120, 500), fontsize = 14)
