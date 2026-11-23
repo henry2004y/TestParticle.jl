@@ -541,11 +541,11 @@ W_gc = W_par .+ W_fermi .+ W_betatron
 
 ϵ0 = mean(
     get_adiabaticity(sol.u[1], param_em, sol.t[1]; model = RelativisticOrbit()) for
-    sol in sols_em.u
+        sol in sols_em.u
 )
 ϵ1 = mean(
     get_adiabaticity(sol.u[end], param_em, sol.t[end]; model = RelativisticOrbit()) for
-    sol in sols_em.u
+        sol in sols_em.u
 )
 println("max |W_par| = ", maximum(abs, W_par))
 println("Mean adiabaticity ϵ: initial = ", round(ϵ0; digits = 3), ", final = ", round(ϵ1; digits = 3))
