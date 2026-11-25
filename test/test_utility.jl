@@ -73,7 +73,7 @@ end
     @test TP.get_velocity(sol_rel)[1, 1] ≈ 2 * TP.c / √5
     @test TP.get_energy(sol_rel)[1] ≈ (√5 - 1) * Electron.m * TP.c^2 / Proton.q
 
-    p_f32 = prepare(; B = B_z, type = Float32, c = TP.c)
+    p_f32 = prepare(; B = B_z, c = TP.c)
     u0_f32 = SA[0.0f0, 0.0f0, 0.0f0, 1.0f4, 0.0f0, 0.0f0]
     sol_f32 = solve(
         TraceProblem{RelativisticOrbit}(u0_f32, (0.0f0, 1.0f-9), p_f32), Tsit5()

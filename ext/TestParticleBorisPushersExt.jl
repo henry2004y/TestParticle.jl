@@ -1100,8 +1100,8 @@ end
             tspan32 = (0.0f0, 1.0f0)
             dt32 = 0.5f0
             stateinit32 = Float32[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
-            param32_B = prepare(; B = B_analytic, type = Float32)
-            param32_EB = prepare(; E = E_analytic, B = B_analytic, type = Float32)
+            param32_B = prepare(; B = B_analytic)
+            param32_EB = prepare(; E = E_analytic, B = B_analytic)
 
             for param in (param32_B, param32_EB)
                 prob32 = TraceProblem(stateinit32, tspan32, param)
