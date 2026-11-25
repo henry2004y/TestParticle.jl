@@ -71,12 +71,9 @@ const TP = TestParticle
             @test !(p_default.B isa TP.ErasedField)
             @test p_default.B.field_function === B_func
 
-            p_erased = prepare_erased(; B = B_func)
+            p_erased = prepare(; B = B_func, erased = true)
             @test p_erased.B isa TP.ErasedField{false}
             @test p_erased.B.field_function === B_func
-
-            p_kw = prepare(; B = B_func, erased = true)
-            @test p_kw.B isa TP.ErasedField{false}
 
             # Idempotency
             field_erased = TP.ErasedField(p_erased.B)
@@ -108,7 +105,7 @@ const TP = TestParticle
         let
             # Velocity-dependent callback
             F_drag(xu) = SA[0.0, 0.0, -0.1 * xu[6]]
-            p = prepare_erased(; F = F_drag)
+            p = prepare(; F = F_drag, erased = true)
             y64 = SA[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
             val64 = @inferred p.F(y64, 0.0)
             @test val64 isa SVector{3, Float64}
@@ -124,13 +121,13 @@ const TP = TestParticle
 
             # Strictly 3-component typed signature fallback
             B_typed(r::SVector{3, Float64}) = SA[r[1], r[2], r[3]]
-            p_typed = prepare_erased(; B = B_typed)
+            p_typed = prepare(; B = B_typed, erased = true)
             val_typed = @inferred p_typed.B(y64, 0.0)
             @test val_typed ≈ SA[1.0, 2.0, 3.0]
 
             # ODE equations trace type stability
             B_func(r) = SA[0.0, 0.0, 1.0]
-            p_trace = prepare_erased(; B = B_func)
+            p_trace = prepare(; B = B_func, erased = true)
             trace_val = @inferred TestParticle.trace(y64, p_trace, 0.0)
             @test trace_val isa SVector{6, Float64}
 

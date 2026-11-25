@@ -761,7 +761,7 @@ end
             @test counts == [1, 1, 0]
 
             param = prepare(; E = E_itp, B = B_itp, species = Proton)
-            param_erased = prepare_erased(; E = E_itp, B = B_itp, species = Proton)
+            param_erased = prepare(; E = E_itp, B = B_itp, species = Proton, erased = true)
             state0 = SA[0.0, 0.0, 0.0, 0.0, 1.0e4, 0.0]
             prob = TraceProblem(state0, (0.0, 1.5), param)
             prob_e = TraceProblem(state0, (0.0, 1.5), param_erased)
