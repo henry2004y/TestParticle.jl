@@ -332,7 +332,7 @@ function trace_recorded_electron(
     L_outer = L_init[end]
     isoutside(u, p, t) = u[1] < -4.0 * w_bs || u[1] > (L_outer - vf * t) + 4.0 * w_ft
 
-    prob = TraceGCProblem(u0_gc, (0.0, t_end), p; relativistic = true)
+    prob = TraceProblem{RelativisticGuidingCenter}(u0_gc, (0.0, t_end), p)
     solve(
         prob, Tsit5();
         isoutside, callback = CallbackSet(cb_scat, cb_rec),
@@ -455,7 +455,7 @@ function run_ensemble(;
 
     cb_scat = (est || ww || msw) ?
         make_scatter_callback(L_init, vf; est, ww, msw) : nothing
-    prob = TraceGCProblem(SVector{4}(state0_gc), tspan, p0; relativistic = true, prob_func)
+    prob = TraceProblem{RelativisticGuidingCenter}(SVector{4}(state0_gc), tspan, p0; prob_func)
     sols = solve(
         prob, Tsit5(), EnsembleThreads();
         isoutside, callback = cb_scat, trajectories, seed,

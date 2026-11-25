@@ -1,8 +1,7 @@
 module TestParticleVernerExt
 
-# Vern7 backing for the default guiding-center solver in AdaptiveHybrid and the
-# deprecated GCRK45 stub. Kept out of the package proper so that `using TestParticle`
-# does not pay for OrdinaryDiffEqVerner.
+# Vern7 backing for the default guiding-center solver in AdaptiveHybrid. Kept out of
+# the package proper so that `using TestParticle` does not pay for OrdinaryDiffEqVerner.
 
 using TestParticle
 import TestParticle: default_gc_alg, _needs_fsal_init

@@ -439,10 +439,10 @@ f1 = DisplayAs.PNG(f1) #hide
 # ## Relativistic Guiding-Center Tracing: Conventional vs. Bifurcated Orbits
 #
 # Following Zhao et al. (2026, Eqs. 3–6), we trace energetic electrons using
-# `TestParticle.jl`'s `RelativisticGuidingCenter` formulation (`TraceGCProblem(...,
-# relativistic = true)`), whose state is $\mathbf{y} = (X_x, X_y, X_z, u_\parallel)$ with
-# parallel proper velocity $u_\parallel = \gamma v_\parallel$ and conserved relativistic
-# magnetic moment $\mu = p_\perp^2 / (2 m_e B)$.
+# `TestParticle.jl`'s `RelativisticGuidingCenter` formulation, whose state is
+# $\mathbf{y} = (X_x, X_y, X_z, u_\parallel)$ with parallel proper velocity
+# $u_\parallel = \gamma v_\parallel$ and conserved relativistic magnetic moment
+# $\mu = p_\perp^2 / (2 m_e B)$.
 #
 # Each particle is initialized on the midnight magnetic equator ($X = -r_0, Y = Z = 0$) with
 # kinetic energy $E_k$ and equatorial pitch angle $\alpha_0$. We monitor three physical loss
@@ -565,7 +565,7 @@ function trace_single_orbit(
         terminate!;
         save_positions = (false, false),
     )
-    prob = TraceGCProblem(u0_gc, tspan, p_gc; relativistic = true)
+    prob = TraceProblem{RelativisticGuidingCenter}(u0_gc, tspan, p_gc)
     sol = solve(
         prob, Vern7();
         callback = cb, reltol = 1.0e-6, abstol = GC_ABSTOL, maxiters = 200_000,
@@ -679,7 +679,7 @@ function sample_equatorial_footprints(
             terminate!;
             save_positions = (false, false),
         )
-        prob = TraceGCProblem(u0_gc, (0.0, t_max), p_gc; relativistic = true)
+        prob = TraceProblem{RelativisticGuidingCenter}(u0_gc, (0.0, t_max), p_gc)
         sol = solve(
             prob, Vern6();
             callback = cb_loss, reltol = 1.0e-5, abstol = GC_ABSTOL, maxiters = 100_000,
@@ -759,7 +759,7 @@ function run_survival_ensemble(
         seed::Int = 2026,
     ) where {F}
     u0_dummy, p_dummy = init_equatorial_electron(Bfield, r0_RM, 300.0, 67.5)
-    base_prob = TraceGCProblem(u0_dummy, (0.0, T_END_ENS), p_dummy; relativistic = true)
+    base_prob = TraceProblem{RelativisticGuidingCenter}(u0_dummy, (0.0, T_END_ENS), p_dummy)
 
     loss_times = fill(Inf, n_particles)
     loss_reasons = fill(SURVIVED, n_particles)

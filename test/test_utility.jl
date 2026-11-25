@@ -87,8 +87,6 @@ end
     @test TP.get_energy(solve(TraceProblem(trace_gc!, gc0, tspan, p_gc), Tsit5()))[1] ≈ energy
     @test_throws ArgumentError TraceProblem{RelativisticOrbit}(trace!, γv, tspan, electron)
     @test remake(rel; f = trace!) isa TraceProblem{FullOrbit}
-    @test (@test_deprecated TraceProblem(γv, tspan, electron; relativistic = true)) isa
-        TraceProblem{RelativisticOrbit}
 
     # Without a velocity part, these must not read the canonical momentum as one.
     p_can = prepare_canonical(; A = x -> SA[0.0, 0.0, 0.0])
