@@ -77,6 +77,7 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             xu = gc_to_full(gc_state, param; phase)
             @test length(xu) == 6
             @test full_to_gc(xu, param) ≈ gc_state rtol = 1.0e-5
+            @test_throws ArgumentError gc_to_full(gc_state[1:4], param)
         end
 
         @testset "With E-field (ExB drift)" begin

@@ -177,6 +177,11 @@ Full-orbit state `[x, y, z, vx, vy, vz]` (`[x..., (γv)...]` for
 `phase` and time `t`: the inverse of [`full_to_gc`](@ref).
 """
 function gc_to_full(state_gc, p; phase = 0, t = 0, model = GuidingCenter())
+    length(state_gc) == 5 || throw(
+        ArgumentError(
+            "A guiding-center state is `[X..., v∥, μ]`, not of length $(length(state_gc))."
+        )
+    )
     return Vector(
         _gc_to_full(
             state_gc, p.E, p.B, p.q, p.m, t, phase, model,
