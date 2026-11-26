@@ -4,16 +4,16 @@ module test_phasespace
 
 using TestParticle
 using TestParticle: get_gyroperiod, get_particle_crossings
-using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
-    project_vdf, refine_vdf_window, relative_l2, sample_velocity_ball, vdf_backward,
-    vdf_grid_problem, velocity_moments
+using TestParticle: bin_velocity_space, project_vdf, refine_vdf_window, sample_velocity_ball
 import TestParticle as TP
 using Meshes
 using BorisPushers
 using StaticArrays
 using Random
-using LinearAlgebra: norm
-using PlasmaPopulations: Oriented, BiMaxwellian, Population, pdf, thermal_speed
+using LinearAlgebra: norm, ⋅
+using Statistics: mean
+using PlasmaPopulations: Oriented, BiMaxwellian, CartesianGridVDF, Population, pdf,
+    thermal_speed
 using Test
 
 # ## Steady E×B drift of a bi-Maxwellian
@@ -55,9 +55,15 @@ const param = prepare(; E = get_E, B = get_B, species = Proton)
 const detector = Meshes.Plane(Meshes.Point(x_detector, 0.0, 0.0), Meshes.Vec(1.0, 0.0, 0.0))
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-const dv_km = 50.0                      # velocity bin width [km/s]
-const v_edges = -1000:dv_km:1000        # [km/s]
-const v_centers = bin_centers(v_edges)  # [km/s]
+const dv = 50.0e3                         # velocity bin width [m/s]
+const v_edges = -1.0e6:dv:1.0e6           # [m/s]
+const v_centers = (v_edges[1:(end - 1)] .+ v_edges[2:end]) ./ 2
+
+"`‖rec − ref‖ / ‖ref‖` over the cells where `ref` exceeds `1e-4` of its maximum."
+function relative_l2(rec, ref)
+    m = ref .> maximum(ref) * 1.0e-4
+    return norm(rec[m] .- ref[m]) / norm(ref[m])
+end
 
 const u0_dummy = SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -72,12 +78,11 @@ function prob_func_liouville(prob, ctx)
     return remake(prob; u0 = SA[x_source..., v...])
 end
 
-"Analytic 2-D projections on the bin centers shared by the three methods."
-ana_projections() = (
-    analytic_projection(f_src, 3, v_centers, v_centers, v_centers, dv_km),
-    analytic_projection(f_src, 2, v_centers, v_centers, v_centers, dv_km),
-    analytic_projection(f_src, 1, v_centers, v_centers, v_centers, dv_km),
-)
+"Projections of `f_src` by the midpoint rule on the bin centers, as for reconstructions."
+function ana_projections()
+    f = [f_src(SA[a, b, c]) for a in v_centers, b in v_centers, c in v_centers]
+    return project_vdf(f, dv)
+end
 
 @testset "phase space utilities" begin
 
@@ -92,74 +97,29 @@ ana_projections() = (
         @test sample_velocity_ball(Xoshiro(1), R) == sample_velocity_ball(Xoshiro(1), R)
     end
 
-    @testset "bin_centers" begin
-        @test bin_centers(0:10:100) == 5:10:95
-        @test length(v_centers) == length(v_edges) - 1
-    end
-
     @testset "bin_velocity_space" begin
-        edges = -100.0:20.0:100.0  # [km/s]
+        edges = -100.0e3:20.0e3:100.0e3
         ## The first sample sits at the center of bin (1, 1, 1); the second is outside.
-        vs = [SA[-90.0e3, -90.0e3, -90.0e3], SA[1.0e6, 0.0, 0.0]]  # [m/s]
+        vs = [SA[-90.0e3, -90.0e3, -90.0e3], SA[1.0e6, 0.0, 0.0]]
         A = bin_velocity_space(vs, [2.0, 5.0], edges)
         @test A[1, 1, 1] == 2.0
         @test sum(A) == 2.0
-        ## `vx_source` rescales by |v_x,src| / |v_x,det| = 2.
-        B = bin_velocity_space(vs, [2.0, 5.0], edges; vx_source = [-180.0e3, 0.0])
-        @test B[1, 1, 1] == 4.0
         ## `average` takes the mean of the weights landing in a bin instead of their sum.
         C = bin_velocity_space([vs[1], vs[1]], [2.0, 4.0], edges; average = true)
         @test C[1, 1, 1] == 3.0
         @test C[1, 1, 2] == 0.0
+        ## One range per axis
+        D = bin_velocity_space(vs, [2.0, 5.0], (edges, -100.0e3:40.0e3:100.0e3, edges))
+        @test size(D) == (10, 5, 10) && D[1, 1, 1] == 2.0
     end
 
     @testset "project_vdf" begin
-        f_xy, f_xz, f_yz = project_vdf(ones(4, 5, 6), 2.0)
-        @test size(f_xy) == (4, 5) && all(==(6 * 2.0), f_xy)
+        f_xy, f_xz, f_yz = project_vdf(ones(4, 5, 6), (1.0, 2.0, 3.0))
+        @test size(f_xy) == (4, 5) && all(==(6 * 3.0), f_xy)
         @test size(f_xz) == (4, 6) && all(==(5 * 2.0), f_xz)
-        @test size(f_yz) == (5, 6) && all(==(4 * 2.0), f_yz)
-    end
-
-    @testset "analytic_projection" begin
-        vth = 100.0e3  # [m/s]
-        f_gauss(v) = exp(-(v[1]^2 + v[2]^2 + v[3]^2) / (2 * vth^2))
-        g = -400.0:50.0:400.0
-        ## `k` selects the integrated axis; the remaining two follow as `i < j`.
-        for (k, i, j) in ((3, 1, 2), (2, 1, 3), (1, 2, 3))
-            M = analytic_projection(f_gauss, k, g, g, g, 50.0)
-            ref = zeros(length(g), length(g))
-            for (bi, a) in enumerate(g), (bj, b) in enumerate(g)
-                s = 0.0
-                for c in g
-                    v1 = i == 1 ? a : (j == 1 ? b : c)
-                    v2 = i == 2 ? a : (j == 2 ? b : c)
-                    v3 = i == 3 ? a : (j == 3 ? b : c)
-                    s += f_gauss(SA[v1, v2, v3] * 1.0e3)
-                end
-                ref[bi, bj] = s * 1.0e18 * 50.0
-            end
-            @test M ≈ ref
-        end
-        @test_throws ArgumentError analytic_projection(f_gauss, 4, g, g, g, 50.0)
-
-        ## Integrating a projection of the source VDF over velocity returns `n0` [m⁻³]
-        ## and its first moment returns `n0·V_x` [m⁻³·km/s]. The grid has to cover the
-        ## bulk velocity on both sides, hence the wide symmetric range.
-        g = -1000.0:25.0:1000.0
-        M = analytic_projection(f_src, 3, g, g, g, 25.0)
-        m = velocity_moments(g, M; dv = 25.0)
-        @test m.n ≈ n0 rtol = 1.0e-6
-        @test m.nV ≈ n0 * V_drift * 1.0e-3 rtol = 1.0e-6
-        @test velocity_moments((g, g, M); dv = 25.0).n == m.n
-    end
-
-    @testset "relative_l2" begin
-        A = [0.0 1.0; 1.0 2.0]
-        @test relative_l2(A, A) == 0.0
-        @test relative_l2(2A, A) ≈ 1.0
-        ## Cells below `thresh` of the reference maximum are left out, including the
-        ## empty cell where the two disagree.
-        @test relative_l2([5.0 1.0; 1.0 2.0], A) == 0.0
+        @test size(f_yz) == (5, 6) && all(==(4 * 1.0), f_yz)
+        d = CartesianGridVDF(0:3, 0:2:8, 0:3:15, ones(4, 5, 6))
+        @test project_vdf(d) == (f_xy, f_xz, f_yz)
     end
 
     @testset "refine_vdf_window" begin
@@ -195,45 +155,15 @@ end
         )
         vxi = [s.u[1][4] for s in sols.u]
         vs, ws_init = get_particle_crossings(sols, detector, vxi)
-        @test !isempty(vs)
         ## Each macro-particle stands for `n0 / N` of the source density spread over one
-        ## bin volume, hence `n0 [km⁻³] / (N · dv³)`.
-        w = fill(n0 * 1.0e9 / (n * dv_km^3), length(vs))
-        f3d = bin_velocity_space(vs, w, v_edges; vx_source = ws_init)
-        rec = project_vdf(f3d, dv_km)
-        ## The reconstruction integrates the third axis with the same midpoint rule as
-        ## `analytic_projection`, so both share the same quadrature error.
+        ## bin volume, and |v_x,src| / |v_x,det| turns its crossing flux into a density.
+        w = n0 / (n * dv^3) .* abs.(ws_init) ./ abs.(first.(vs))
+        f3d = bin_velocity_space(vs, w, v_edges)
+        rec = project_vdf(f3d, dv)
         for i in 1:3
             @test relative_l2(rec[i], ana[i]) < 0.15
         end
-        @test velocity_moments(v_centers, rec[1]; dv = dv_km).n ≈ n0 rtol = 0.1
-    end
-
-    @testset "forward Liouville" begin
-        n = 50000
-        prob = TraceProblem(u0_dummy, tspan, param; prob_func = prob_func_liouville)
-        sols = solve(
-            prob, Boris(), EnsembleThreads(); dt,
-            trajectories = n, seed = 42
-        )
-        ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
-        vxi = [s.u[1][4] for s in sols.u]
-        vs, ws = get_particle_crossings(sols, detector, ws0)
-        _, ws_vxi = get_particle_crossings(sols, detector, vxi)
-        vs_tup, (ws_tup, ws_vxi_tup) = get_particle_crossings(sols, detector, (ws0, vxi))
-        @test vs_tup == vs
-        @test ws_tup == ws
-        @test ws_vxi_tup == ws_vxi
-        ## Each sample stands for the source velocity volume `V_ball / N`.
-        V_ball = (4 / 3) * π * (vradius * 1.0e-3)^3  # [km³/s³]
-        f3d = bin_velocity_space(
-            vs_tup, ws_tup .* (V_ball * 1.0e18 / (n * dv_km^3)), v_edges; vx_source = ws_vxi_tup
-        )
-        rec = project_vdf(f3d, dv_km)
-        for i in 1:3
-            @test relative_l2(rec[i], ana[i]) < 0.15
-        end
-        @test velocity_moments(v_centers, rec[1]; dv = dv_km).n ≈ n0 rtol = 0.1
+        @test sum(f3d) * dv^3 ≈ n0 rtol = 0.1
     end
 
     @testset "get_particle_crossings serially" begin
@@ -262,90 +192,64 @@ end
         @test ws_unit == fill(1.0, length(vs_t))
     end
 
-    @testset "backward Liouville" begin
-        ## Tracing the detector velocity grid back to the source and evaluating the
-        ## source VDF there returns `f` on the grid, which here equals `f_src` itself.
-        v = -300.0e3:50.0e3:300.0e3
-        dims = (length(v), length(v), length(v))
-        prob = vdf_grid_problem(v, v, v, SA[x_detector, 0.0, 0.0], param, (0.0, -8.0))
-        sols = solve(
-            prob, Boris(), EnsembleThreads(); dt = -dt, trajectories = prod(dims),
-            isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
-                u[1] > x_source[1] + 1.0e5
-        )
-        f3d = vdf_backward(sols, source_plane, f_src, dims)
-        ref = [f_src(SA[a, b, c]) * 1.0e18 for a in v, b in v, c in v]
-        @test relative_l2(f3d, ref) < 0.05
-    end
+    isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 || u[1] > x_source[1] + 1.0e5
+    backward(; kw...) = vdf_backward_trace(
+        param, x_detector, source_plane, f_src;
+        merge(
+            (; v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0), isoutside),
+            (; alg = Boris(), kw...)
+        )...
+    )
+    ## Backward tracing returns `f_src` itself on its grid.
+    on_grid(d) = [f_src(SA[a, b, c]) for a in d.vx, b in d.vy, c in d.vz]
 
-    @testset "vdf_backward_trace adaptive refinement" begin
-        dv_bw = 50.0e3                # [m/s]
-        v0_bw = -300.0e3 + dv_bw / 2  # first bin center shared by every fine grid
-        full = range(v0_bw, -v0_bw; step = dv_bw)
-        isoutside_bw = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
-            u[1] > x_source[1] + 1.0e5
+    @testset "vdf_backward_trace" begin
+        d = backward(; adaptive = false)
+        full = -275.0e3:50.0e3:275.0e3
+        @test d.vx ≈ full && d.vy ≈ full && d.vz ≈ full
+        @test relative_l2(d.f, on_grid(d)) < 0.05
 
-        f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
-            param, x_detector, source_plane, f_src;
-            v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
-            isoutside = isoutside_bw, alg = Boris()
-        )
-        ## The coarse pass only locates the support: the second pass retraces that
-        ## region on the requested spacing, snapped onto the full grid lattice.
-        @test step(vx_bw) == dv_bw && step(vy_bw) == dv_bw && step(vz_bw) == dv_bw
-        @test rem(first(vy_bw) - v0_bw, dv_bw) ≈ 0 atol = 1.0e-6
-        @test rem(first(vz_bw) - v0_bw, dv_bw) ≈ 0 atol = 1.0e-6
-        @test first(vx_bw) ≥ first(full) && last(vx_bw) ≤ last(full)
-        ## The source drifts towards -x, hence the empty +x half is dropped.
-        @test length(vx_bw) < length(full)
-        ## Backward tracing returns `f_src` on whichever grid it is sampled.
-        ref_bw = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
-        @test size(f3d_bw) == (length(vx_bw), length(vy_bw), length(vz_bw))
-        @test relative_l2(f3d_bw, ref_bw) < 0.05
+        ## The coarse pass only locates the support: the populated window of the full grid
+        ## is retraced, dropping the empty +x half as the source drifts towards -x.
+        da = backward()
+        @test step(da.vx) == step(da.vz) == 50.0e3
+        @test da.vx ⊆ d.vx && da.vy ⊆ d.vy && da.vz ⊆ d.vz
+        @test length(da.vx) < length(full)
+        @test relative_l2(da.f, on_grid(da)) < 0.05
 
         ## `bounds` clamps the refinement to a prescribed instead of the probed box.
-        yz_bounds = (-100.0e3, 100.0e3)
-        _, (vx_cl, vy_cl, vz_cl) = vdf_backward_trace(
-            param, x_detector, source_plane, f_src;
-            v_range = 300.0e3, dv = dv_bw, dt, tspan = (0.0, -8.0),
-            bounds = ((first(full), last(full)), yz_bounds, yz_bounds),
-            isoutside = isoutside_bw, alg = Boris()
-        )
-        @test step(vz_cl) == dv_bw
-        @test first(vy_cl) ≥ yz_bounds[1] && last(vy_cl) ≤ yz_bounds[2]
-        @test first(vz_cl) ≥ yz_bounds[1] && last(vz_cl) ≤ yz_bounds[2]
-        @test length(vz_cl) < length(full)
-    end
+        yz = (-100.0e3, 100.0e3)
+        dc = backward(; bounds = ((first(full), last(full)), yz, yz))
+        @test first(dc.vy) ≥ yz[1] && last(dc.vy) ≤ yz[2]
+        @test first(dc.vz) ≥ yz[1] && last(dc.vz) ≤ yz[2]
 
-    @testset "embed_vdf" begin
-        sub_centers = -50.0:20.0:50.0
-        full_centers = -100.0:20.0:100.0
-        M = ones(length(sub_centers), length(sub_centers))
-        full_M = embed_vdf(sub_centers, sub_centers, full_centers, M)
-        @test size(full_M) == (length(full_centers), length(full_centers))
-        @test sum(full_M) == sum(M)
-    end
-
-    @testset "vdf_backward_trace and vdf_forward_trace" begin
-        f3d_bw, (vx_bw, vy_bw, vz_bw) = vdf_backward_trace(
+        @test vdf_backward_trace(
             param, x_detector, source_plane, population;
-            v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0),
-            adaptive = false,
-            isoutside = (u, p, t) -> u[1] < x_detector - 1.0e5 ||
-                u[1] > x_source[1] + 1.0e5,
-            alg = Boris()
+            v_range = 300.0e3, dv = 50.0e3, dt, tspan = (0.0, -8.0), isoutside,
+            adaptive = false, alg = Boris()
+        ).f == d.f
+        @test_throws "no trajectory reached" backward(;
+            tspan = (0.0, -0.01), adaptive = false
         )
-        ref = [f_src(SA[a, b, c]) * 1.0e18 for a in vx_bw, b in vy_bw, c in vz_bw]
-        @test relative_l2(f3d_bw, ref) < 0.05
 
-        f3d_fw, proj_fw = vdf_forward_trace(
+        ## A grid covering the whole beam recovers its moments.
+        dw = backward(; v_range = 800.0e3)
+        @test dw.n ≈ n0 rtol = 0.02
+        @test mean(dw) ≈ [V_drift, 0, 0] atol = 2.0e3
+    end
+
+    @testset "vdf_forward_trace" begin
+        d = vdf_forward_trace(
             param, x_source[1], detector, population;
-            nparticles = 50000, vradius, tspan, dt, dv_km,
+            nparticles = 50000, vradius, tspan, dt, dv,
             center = SA[V_drift, 0.0, 0.0], alg = Boris()
         )
+        @test d.vx ≈ v_centers
         for i in 1:3
-            @test relative_l2(proj_fw[i], ana[i]) < 0.15
+            @test relative_l2(project_vdf(d)[i], ana[i]) < 0.15
         end
+        @test d.n ≈ n0 rtol = 0.1
+        @test mean(d) ≈ [V_drift, 0, 0] atol = 10.0e3
     end
 end
 

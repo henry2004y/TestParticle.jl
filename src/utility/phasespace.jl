@@ -1,25 +1,11 @@
-# Phase-space (VDF) reconstruction utilities.
-#
-# These are the building blocks shared by the three ways of reconstructing a distribution
-# function from traced trajectories: forward Monte-Carlo binning, forward Liouville
-# tracking and backward Liouville tracing. They deliberately depend on no histogram
-# package, so that all methods return the same `(vi, vj, f)` tuples and can be compared
-# bin by bin.
-#
-# Convention: velocities are accepted in [m/s] and returned in [km/s]. Phase-space
-# densities are returned in [s³/km⁶] on 3-D grids and in [s²/km⁵] for 2-D projections.
-# Source distributions are passed as callables taking a velocity in [m/s] and returning
-# `f` in [s³/m⁶], e.g. `v -> n * pdf(vdf, v)`.
+# Phase-space density reconstruction from traced trajectories. SI units throughout:
+# velocities [m/s], phase-space densities [s³/m⁶], 2-D projections [s²/m⁵].
 
 """
     sample_velocity_ball([rng], radius; center = SA[0.0, 0.0, 0.0]) -> SVector{3}
 
-Sample a velocity [m/s] uniformly from the ball of `radius` [m/s] centered on `center`
-[m/s].
-
-Uniformity is what makes the sample usable as a quadrature rule in velocity space: each
-draw stands for the same volume `4πR³ / (3N)`, which forward Liouville tracking needs in
-order to convert a sampled `f` into a contribution to a detector bin.
+Velocity drawn uniformly from the ball of `radius` around `center`, so that each of `N`
+draws stands for the velocity volume `4πR³ / (3N)`.
 """
 function sample_velocity_ball(rng::AbstractRNG, radius::Real; center = SA[0.0, 0.0, 0.0])
     return center .+ radius .* cbrt(rand(rng)) .* sample_unit_sphere(rng)
@@ -30,150 +16,58 @@ function sample_velocity_ball(radius::Real; center = SA[0.0, 0.0, 0.0])
 end
 
 """
-    bin_centers(edges)
+    bin_velocity_space(vs, weights, edges; average = false)
 
-Centers of the 1-D bins delimited by `edges`, in the same unit as `edges`.
-"""
-bin_centers(edges) = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
+Accumulate the velocities `vs` with `weights` into the 3-D bins delimited by `edges`, a
+range shared by the three axes or one range per axis. Samples outside the bins are
+dropped; empty bins are zero.
 
-"""
-    bin_velocity_space(vs, weights, edges; vx_source = nothing, average = false)
-
-Accumulate velocity-space samples into a 3-D grid.
-
-`vs` are sample velocities in [m/s] as returned by [`get_particle_crossings`](@ref) and
-`weights` the weight of each sample. `edges` are the bin edges in [km/s], shared by all
-three velocity axes. Samples outside the binned range are discarded, and the returned
-array carries the unit of `weights`. Empty bins are zero.
-
-Two estimators are available, and they differ in how the samples that land in a bin are
-combined:
-
-  * `average = false` (default) *sums* the weights, which is the histogram estimator of
-    the bin-averaged `f`: feeding `f·ΔV/dv³` with `f` in [s³/km⁶] returns `f` in
-    [s³/km⁶], and feeding the constant `n/(N·dv³)` turns binned counts into a
-    Monte-Carlo estimate of `f`. Its error carries the counting noise `∝ 1/√n` of the
+  - `average = false` sums the weights: for weights `f ΔV / Δv³` the result is the
+    histogram estimate of the bin-averaged `f`, with counting noise `∝ 1/√n` for `n`
     samples per bin.
-  * `average = true` takes the *mean* of the weights, a ratio estimator of the local `f`
-    that divides out the counting noise. It is the better choice when the sampling spreads
-    only a handful of samples over each bin, e.g. forward Liouville tracking of a
-    uniformly sampled velocity sphere onto a fine detector grid.
+  - `average = true` averages them: a ratio estimate of `f` without the counting noise,
+    for weights `f`.
 
-Either way [`project_vdf`](@ref) turns the result into 2-D projections in [s²/km⁵].
-
-If `vx_source` is given, each sample is rescaled by `|vx_source| / |vx|`. A trajectory
-maps a source velocity-space volume onto a detector volume that differs by exactly that
-ratio, so the rescale turns a source-referred weight into the detector-referred one. This
-is what makes a flux-weighted launch ensemble consistent with the crossing flux recorded
-at the detector.
+For crossings of a detector plane, `ΔV` is the source velocity volume mapped onto the
+detector, which brings in the flux ratio described in [`vdf_forward_trace`](@ref).
 """
-function bin_velocity_space(
-        vs, weights, edges::AbstractRange; vx_source = nothing, average = false
-    )
-    nb = length(edges) - 1
-    lo, dv = first(edges), step(edges)
-    A = zeros(float(eltype(weights)), nb, nb, nb)
-    n = average ? zeros(Int, nb, nb, nb) : nothing
+function bin_velocity_space(vs, weights, edges; average = false)
+    es = _triple(edges)
+    nb = map(e -> length(e) - 1, es)
+    A = zeros(float(eltype(weights)), nb)
+    counts = average ? zeros(Int, nb) : nothing
 
-    @inbounds for i in eachindex(vs)
+    @inbounds for i in eachindex(vs, weights)
         v = vs[i]
-        ix = floor(Int, (v[1] * 1.0e-3 - lo) / dv) + 1
-        iy = floor(Int, (v[2] * 1.0e-3 - lo) / dv) + 1
-        iz = floor(Int, (v[3] * 1.0e-3 - lo) / dv) + 1
-        (1 ≤ ix ≤ nb && 1 ≤ iy ≤ nb && 1 ≤ iz ≤ nb) || continue
-        w = weights[i]
-        vx_source === nothing || (w *= abs(vx_source[i]) / abs(v[1]))
-        A[ix, iy, iz] += w
-        n === nothing || (n[ix, iy, iz] += 1)
+        I = map((e, x) -> floor(Int, (x - first(e)) / step(e)) + 1, es, (v[1], v[2], v[3]))
+        all(map((k, n) -> 1 ≤ k ≤ n, I, nb)) || continue
+        A[I...] += weights[i]
+        counts === nothing || (counts[I...] += 1)
     end
 
-    if n !== nothing
+    if counts !== nothing
         @inbounds for i in eachindex(A)
-            n[i] > 0 && (A[i] /= n[i])
+            counts[i] > 0 && (A[i] /= counts[i])
         end
     end
-
     return A
 end
 
 """
-    project_vdf(f3d, dv) -> (f_xy, f_xz, f_yz)
+    project_vdf(f, dv) -> (f_xy, f_xz, f_yz)
+    project_vdf(d::CartesianGridVDF) -> (f_xy, f_xz, f_yz)
 
-Integrate a 3-D phase-space density `f3d` in [s³/km⁶] over each velocity axis in turn,
-returning the projections `f(vᵢ, vⱼ) = ∫ f dvₖ` in [s²/km⁵]. `dv` is the bin width in
-[km/s]. The array axes are ordered `(v₁, v₂, v₃)`, so the projections come out as
-`(v₁, v₂)`, `(v₁, v₃)` and `(v₂, v₃)`.
+Projections `∫ f dv_k` of a 3-D phase-space density on each pair of velocity axes, for
+the bin width `dv` (or one per axis). For a `CartesianGridVDF` on uniform grids, `f` is
+`d.f` and `dv` its grid steps.
 """
-function project_vdf(f3d::AbstractArray{T, 3}, dv::Real) where {T}
-    f_xy = dropdims(sum(f3d; dims = 3); dims = 3) .* dv
-    f_xz = dropdims(sum(f3d; dims = 2); dims = 2) .* dv
-    f_yz = dropdims(sum(f3d; dims = 1); dims = 1) .* dv
-
-    return f_xy, f_xz, f_yz
+function project_vdf(f::AbstractArray{<:Any, 3}, dv)
+    dx, dy, dz = _triple(dv)
+    proj(k, d) = dropdims(sum(f; dims = k); dims = k) .* d
+    return proj(3, dz), proj(2, dy), proj(1, dx)
 end
 
-"""
-    analytic_projection(f, k, vi, vj, vk, dvk) -> Matrix
-
-Analytic 2-D projection `f(vᵢ, vⱼ) = ∫ f dvₖ` in [s²/km⁵] of a 3-D phase-space density,
-evaluated on the velocity grids `vi` and `vj` in [km/s] while the `k`-th axis is
-integrated over `vk` in [km/s] with the midpoint rule at spacing `dvk`. The two remaining
-axes follow from `k` as `i < j`: `k = 3` projects onto Vx–Vy, `k = 2` onto Vx–Vz and
-`k = 1` onto Vy–Vz.
-
-`f` takes a velocity in [m/s] and returns `f` in [s³/m⁶].
-"""
-function analytic_projection(f::F, k::Integer, vi, vj, vk, dvk::Real) where {F}
-    k in (1, 2, 3) || throw(ArgumentError("integration axis k must be 1, 2 or 3, got $k"))
-    T = float(promote_type(eltype(vi), eltype(vj), eltype(vk)))
-    M = zeros(T, length(vi), length(vj))
-    i, j = k == 1 ? (2, 3) : k == 2 ? (1, 3) : (1, 2)
-    v = MVector{3, T}(0.0, 0.0, 0.0)
-
-    @inbounds for (bi, a) in enumerate(vi), (bj, b) in enumerate(vj)
-        v[i] = a
-        v[j] = b
-        s = zero(T)
-        for c in vk
-            v[k] = c
-            s += f(SVector(v[1], v[2], v[3]) * 1.0e3)
-        end
-        M[bi, bj] = s * 1.0e18 * dvk
-    end
-
-    return M
-end
-
-"""
-    relative_l2(rec, ref; thresh = 1.0e-4)
-
-Relative L2 difference `‖rec − ref‖ / ‖ref‖`, evaluated over the entries where `ref` is
-above `thresh` times its own maximum and `rec` is finite. Restricting to the populated
-cells keeps the metric from being dominated by the empty tails of a reconstruction.
-"""
-function relative_l2(rec, ref; thresh = 1.0e-4)
-    m = (ref .> maximum(ref) * thresh) .& isfinite.(rec)
-
-    return norm(rec[m] .- ref[m]) / norm(ref[m])
-end
-
-"""
-    velocity_moments(v, A; dv)
-    velocity_moments(proj::Tuple; dv)
-
-Density `n` [m⁻³] and momentum density `n·V` [m⁻³·km/s] of a 2-D velocity distribution
-`A` in [s²/km⁵], sampled on the first-axis bin centers `v` in [km/s] with bin width `dv`
-in [km/s]. Since the momentum is taken along the first axis, pass the Vx–Vy or the Vx–Vz
-projection to obtain `n·Vx`.
-"""
-function velocity_moments(v, A; dv::Real)
-    Af = Float64.(A)
-    c = float(dv)^2 * 1.0e-9 # [s²/km⁵] · [km/s]² → [m⁻³]
-
-    return (n = sum(Af) * c, nV = sum(Af .* v) * c)
-end
-
-velocity_moments(proj::Tuple; dv::Real) = velocity_moments(proj[1], proj[3]; dv)
+project_vdf(d::CartesianGridVDF) = project_vdf(d.f, map(step, (d.vx, d.vy, d.vz)))
 
 """
     vdf_grid_problem(vx, vy, vz, x0, param, tspan) -> TraceProblem
@@ -202,21 +96,21 @@ _solutions(sols) = sols
 """
     vdf_backward(sols, source, f_src, dims) -> Array{T, 3}
 
-Phase-space density [s³/km⁶] on a velocity grid of size `dims = (nx, ny, nz)`, obtained
-by tracing that grid backward in time and evaluating the source distribution on the
-traced-back states, as prescribed by Liouville's theorem.
+Phase-space density on a velocity grid of size `dims = (nx, ny, nz)`, obtained by tracing
+that grid backward in time and evaluating the source distribution on the traced-back
+states, as prescribed by Liouville's theorem.
 
 Each trajectory of `sols` is followed back to the surface `source` with
 [`get_first_crossing`](@ref) and `f_src` is evaluated on the velocity there; grid points
-whose trajectory never reaches `source` are left at zero. `f_src` takes a velocity in
-[m/s] and returns `f` in [s³/m⁶], or is a PlasmaPopulations `Population`, evaluated as
-`n * pdf(vdf, v)`.
+whose trajectory never reaches `source` are left at zero. `f_src` is as in
+[`vdf_backward_trace`](@ref).
 """
 function vdf_backward(sols, source, f_src, dims)
     nx, ny, nz = dims
     states = _solutions(sols)
     T = float(eltype(first(states).u[1]))
     f = zeros(T, nx, ny, nz)
+    fs = _density(f_src)
 
     Threads.@threads for i in eachindex(states)
         sol = states[i]
@@ -225,7 +119,7 @@ function vdf_backward(sols, source, f_src, dims)
         iz = (i - 1) % nz + 1
         iy = ((i - 1) ÷ nz) % ny + 1
         ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-        f[ix, iy, iz] = _eval_f_src(f_src, st[SA[4, 5, 6]]) * 1.0e18
+        f[ix, iy, iz] = fs(st[SA[4, 5, 6]])
     end
 
     return f
@@ -269,9 +163,6 @@ function refine_vdf_window(
     end
 end
 
-_triple(x::Tuple) = x
-_triple(x) = (x, x, x)
-
 _bounds(::Nothing, vs) = map(g -> (first(g), last(g)), vs)
 _bounds(b::Tuple{<:Tuple, <:Tuple, <:Tuple}, _) = b
 _bounds(b::Tuple, _) = (b, b, b)
@@ -281,10 +172,6 @@ function _refine_range(lo, hi, bound_lo, bound_hi, v0, dv)
 
     return range(max(bound_lo, snap(lo, floor)), min(bound_hi, snap(hi, ceil)); step = dv)
 end
-
-_detector_point(x::Real) = SA[Float64(x), 0.0, 0.0]
-_detector_point(p::SVector{3}) = Float64.(p)
-_detector_point(p) = SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]
 
 function _run_backward_pass(
         vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
@@ -297,7 +184,7 @@ function _run_backward_pass(
 
     function output_func(sol, i)
         st = get_first_crossing(sol, source)
-        val = any(isnan, st) ? 0.0 : _eval_f_src(f_src, st[SA[4, 5, 6]]) * 1.0e18
+        val = any(isnan, st) ? 0.0 : f_src(st[SA[4, 5, 6]])
         return (val, false)
     end
 
@@ -317,18 +204,27 @@ function _run_backward_pass(
 end
 
 """
-    vdf_backward_trace(
-        param, detector, source, f_src;
-        v_range = 1000.0e3, vy_range = v_range, vz_range = v_range,
-        dv = 20.0e3, dt, alg, tspan = (0.0, -20.0),
-        adaptive = true, dv_coarse = 3 * dv, margin = 3 * dv,
-        relthresh = 1.0e-5, bounds = nothing, isoutside = nothing,
-        ensemblealg = EnsembleThreads()
-    ) -> (f_3d, (vx_grid, vy_grid, vz_grid))
+    vdf_backward_trace(param, detector, source, f_src; dt, alg, kw...) -> CartesianGridVDF
 
-Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` by tracing a velocity
-grid backward in time to `source` and evaluating `f_src`, as in [`vdf_backward`](@ref),
-on the traced-back states.
+Phase-space density at the point `detector` by backward Liouville tracing: each velocity
+of the grid of bin centers of `-v_range:dv:v_range` (per axis) is traced backward over
+`tspan` to its first crossing of the surface `source`, where `f_src` gives `f`. Grid
+points that never reach `source` get `f = 0`.
+
+`detector` is an x coordinate, a 3-vector or a Meshes `Point`. `f_src` maps a velocity to
+`f`, or is a PlasmaPopulations `Population`.
+
+With `adaptive = true`, a first pass at spacing `dv_coarse` locates where `f` exceeds
+`relthresh` times its maximum; only that box, widened by `margin` and clamped to `bounds`
+(see [`refine_vdf_window`](@ref)), is retraced at `dv`.
+
+# Keywords
+
+  - `v_range = 1000.0e3`, `vy_range = v_range`, `vz_range = v_range`, `dv = 20.0e3`
+  - `tspan = (0.0, -20.0)`
+  - `adaptive = true`, `dv_coarse = 3dv`, `margin = 3dv`, `relthresh = 1.0e-5`,
+    `bounds = nothing` (the full grid)
+  - `isoutside = nothing`, `ensemblealg = EnsembleThreads()`: passed to `solve`
 """
 function vdf_backward_trace(
         param, detector, source, f_src;
@@ -339,99 +235,71 @@ function vdf_backward_trace(
         alg, ensemblealg = EnsembleThreads()
     )
     x0 = _detector_point(detector)
+    f = _density(f_src)
     v0x = -v_range + dv / 2
     v0y = -vy_range + dv / 2
     v0z = -vz_range + dv / 2
+    pass(vx, vy, vz) = _run_backward_pass(
+        vx, vy, vz, x0, param, tspan, dt, source, f, isoutside, alg, ensemblealg
+    )
 
     if adaptive
         vx_c = range(-v_range, v_range; step = dv_coarse)
         vy_c = range(-vy_range, vy_range; step = dv_coarse)
         vz_c = range(-vz_range, vz_range; step = dv_coarse)
-
-        f_coarse = _run_backward_pass(
-            vx_c, vy_c, vz_c, x0, param, tspan, dt, source, f_src, isoutside,
-            alg, ensemblealg
-        )
+        f_coarse = pass(vx_c, vy_c, vz_c)
+        all(iszero, f_coarse) && throw(_unreached("source"))
 
         bnds = bounds === nothing ? ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z)) : bounds
-        vx_grid, vy_grid, vz_grid = refine_vdf_window(
+        grids = refine_vdf_window(
             f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0z), dv;
             margin, relthresh, bounds = bnds
         )
-
-        f_3d = _run_backward_pass(
-            vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
-            alg, ensemblealg
-        )
     else
-        vx_grid = range(v0x, -v0x; step = dv)
-        vy_grid = range(v0y, -v0y; step = dv)
-        vz_grid = range(v0z, -v0z; step = dv)
-
-        f_3d = _run_backward_pass(
-            vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
-            alg, ensemblealg
+        grids = (
+            range(v0x, -v0x; step = dv), range(v0y, -v0y; step = dv),
+            range(v0z, -v0z; step = dv),
         )
     end
-
-    return f_3d, (vx_grid, vy_grid, vz_grid)
+    f3d = pass(grids...)
+    all(iszero, f3d) && throw(_unreached("source"))
+    return CartesianGridVDF(grids..., f3d)
 end
 
 """
-    embed_vdf(g1, g2, full_centers, M) -> Matrix
+    vdf_forward_trace(param, source, detector, f_src; vradius, dt, alg, kw...)
 
-Embed a 2-D sub-grid projection `M` onto a canvas defined by `full_centers`.
-`g1` and `g2` are bin centers along the two axes in [km/s], and `full_centers`
-is the target full grid of bin centers.
-"""
-function embed_vdf(
-        g1::AbstractRange, g2::AbstractRange, full_centers::AbstractRange,
-        M::AbstractMatrix{T}
-    ) where {T}
-    dv = step(full_centers)
-    full_M = zeros(T, length(full_centers), length(full_centers))
-    i1 = round(Int, (first(g1) - first(full_centers)) / dv) + 1
-    i2 = round(Int, (first(g2) - first(full_centers)) / dv) + 1
-    i1_end = min(length(full_centers), i1 + length(g1) - 1)
-    i2_end = min(length(full_centers), i2 + length(g2) - 1)
-    len1 = i1_end - i1 + 1
-    len2 = i2_end - i2 + 1
-    full_M[i1:i1_end, i2:i2_end] .= @view M[1:len1, 1:len2]
-    return full_M
-end
+Phase-space density at `detector` by forward Liouville tracking, as a `CartesianGridVDF`
+on the bin centers of `-v_range:dv:v_range` (per axis).
 
-_eval_f_src(f, v) = f(v)
-_eval_f_src(pop::Population, v) = pop.n * pdf(pop.vdf, v)
+`nparticles` velocities drawn uniformly from the ball of `vradius` around `center` are
+launched from the point `source` (as `detector` in [`vdf_backward_trace`](@ref)) over
+`tspan`. By Liouville's theorem a crossing at `v` carries `f = f_src(v₀)`; it deposits
+`f ΔV / Δv³` into its bin, with `ΔV` the ball volume per particle mapped onto the
+detector, `ΔV = 4πR³/(3N) · |v₀ₓ| / |vₓ|`, which holds for a steady state that varies only
+along x. `f_src` is as in [`vdf_backward_trace`](@ref).
 
-"""
-    vdf_forward_trace(
-        param, source, detector, f_src;
-        nparticles = 50000, vradius, tspan = (0.0, 20.0), dt, alg,
-        center = SA[0.0, 0.0, 0.0], dv_km = 20.0,
-        v_edges = -1000.0:dv_km:1000.0,
-        isoutside = nothing, ensemblealg = EnsembleThreads(),
-        seed = 42
-    ) -> (f_3d, (f_xy, f_xz, f_yz))
+# Keywords
 
-Reconstruct the 3-D phase-space density [s³/km⁶] at `detector` using forward
-Liouville tracking from a uniformly sampled velocity ball at `source`, weighting each
-particle by `f_src` as in [`vdf_backward`](@ref).
+  - `nparticles = 50000`, `center = SA[0.0, 0.0, 0.0]`, `seed = 42`
+  - `v_range = 1000.0e3`, `vy_range = v_range`, `vz_range = v_range`, `dv = 20.0e3`
+  - `tspan = (0.0, 20.0)`
+  - `isoutside = nothing`, `ensemblealg = EnsembleThreads()`: passed to `solve`
 """
 function vdf_forward_trace(
         param, source, detector, f_src;
-        nparticles::Int = 50000, vradius::Real, tspan = (0.0, 20.0), dt::Real,
-        center = SA[0.0, 0.0, 0.0], dv_km::Real = 20.0,
-        v_edges::AbstractRange = -1000.0:dv_km:1000.0,
-        isoutside = nothing, alg, ensemblealg = EnsembleThreads(),
-        seed = 42
+        nparticles::Int = 50000, vradius::Real, center = SA[0.0, 0.0, 0.0],
+        v_range::Real = 1000.0e3, vy_range::Real = v_range, vz_range::Real = v_range,
+        dv::Real = 20.0e3, tspan = (0.0, 20.0), dt::Real,
+        isoutside = nothing, alg, ensemblealg = EnsembleThreads(), seed = 42
     )
     x_source = _detector_point(source)
     v_center = SVector{3, Float64}(center)
+    f = _density(f_src)
 
     function prob_func(prob, ctx)
         v = sample_velocity_ball(ctx.rng, vradius; center = v_center)
-        u0 = SA[x_source..., v...]
-        return remake(prob; u0)
+        return remake(prob; u0 = vcat(x_source, v))
     end
 
     prob = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func)
@@ -441,15 +309,32 @@ function vdf_forward_trace(
         dt, trajectories = nparticles, seed, solve_kwargs...
     )
 
-    ws0 = [_eval_f_src(f_src, s.u[1][SA[4, 5, 6]]) for s in sols.u]
+    ws0 = [f(s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vxi = [s.u[1][4] for s in sols.u]
-
     vs, (ws, ws_vxi) = get_particle_crossings(sols, detector, (ws0, vxi))
 
-    vsphere = (4 / 3) * π * (vradius * 1.0e-3)^3
-    scale = vsphere * 1.0e18 / (nparticles * dv_km^3)
-    f_3d = bin_velocity_space(vs, ws .* scale, v_edges; vx_source = ws_vxi)
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-
-    return f_3d, (f_xy, f_xz, f_yz)
+    ΔV = 4π * vradius^3 / (3 * nparticles)
+    w = ws .* (ΔV / dv^3) .* abs.(ws_vxi) ./ abs.(first.(vs))
+    edges = map(r -> range(-r, r; step = dv), (v_range, vy_range, vz_range))
+    f3d = bin_velocity_space(vs, w, edges)
+    all(iszero, f3d) && throw(_unreached("detector"))
+    return CartesianGridVDF(map(_bin_centers, edges)..., f3d)
 end
+
+_density(f) = f
+_density(p::Population) = let n = p.n, g = pdf(p.vdf)
+    v -> n * g(v)
+end
+
+_unreached(what) = ArgumentError(
+    "no trajectory reached `$what` with f > 0; widen `tspan` or the velocity range"
+)
+
+_bin_centers(e) = range(first(e) + step(e) / 2; step = step(e), length = length(e) - 1)
+
+_triple(x::Tuple) = x
+_triple(x) = (x, x, x)
+
+_detector_point(x::Real) = SA[Float64(x), 0.0, 0.0]
+_detector_point(p::SVector{3}) = Float64.(p)
+_detector_point(p) = SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]
