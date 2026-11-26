@@ -311,12 +311,12 @@ function _energy(model::RelativisticOrbit, u, p, t)
 end
 
 function _energy(::GuidingCenter, u, p, t)
-    return u[4]^2 / (2 * abs(p.q2m)) + p.μ * norm(p.B(get_x(u), t)) / abs(p.q)
+    return u[4]^2 / (2 * abs(p.q2m)) + u[5] * norm(p.B(get_x(u), t)) / abs(p.q)
 end
 
 function _energy(::RelativisticGuidingCenter, u, p, t)
     Bmag = norm(p.B(get_x(u), t))
-    u² = u[4]^2 + 2 * p.μ * Bmag * (p.q2m / p.q)
+    u² = u[4]^2 + 2 * u[5] * Bmag * (p.q2m / p.q)
     c_val = oftype(float(u²), _speed_of_light(p))
     γ = sqrt(1 + u² / c_val^2)
     return u² / ((γ + 1) * abs(p.q2m))

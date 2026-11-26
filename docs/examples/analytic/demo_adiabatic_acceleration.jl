@@ -123,8 +123,11 @@ end
 # below is exact along the GC trajectory, so whatever mismatch is left comes from
 # the time integration and must be resolved for the check to be meaningful.
 
-stateinit_gc, param_gc = prepare_gc(stateinit; E = mirror_E, B = mirror_B, species)
-q, q2m, μ, Efunc, Bfunc = param_gc
+param_gc = prepare(; E = mirror_E, B = mirror_B, species)
+stateinit_gc = TP.full_to_gc(stateinit, param_gc)
+(; q, q2m) = param_gc
+μ = stateinit_gc[5]
+Efunc, Bfunc = param_gc.E, param_gc.B
 m = q / q2m
 
 sol_gc = solve(
@@ -166,7 +169,8 @@ Instantaneous work rates, their trapezoidal time integrals, the GC kinetic energ
 `K = ½ m v∥² + μ B`, and `|B|` along `sol`.
 """
 function accumulate_work(sol, p)
-    q, q2m, μ, _, Bf = p
+    (; q, q2m) = p
+    Bf = p.B
     mass = q / q2m
     ts = sol.t
     n = length(ts)
@@ -178,7 +182,7 @@ function accumulate_work(sol, p)
         u = sol.u[i]
         X = SA[u[1], u[2], u[3]]
         Bmag[i] = norm(Bf(X, t))
-        K[i] = 0.5 * mass * u[4]^2 + μ * Bmag[i]
+        K[i] = 0.5 * mass * u[4]^2 + u[5] * Bmag[i]
         P[i, :] .= TP.get_work_rates(u, p, t)
     end
 
@@ -199,9 +203,9 @@ compressed at rate `βv`, and return `(ts, W, ΔK)` in SI units.
 """
 function trace_case(x0v, pitch, tspanv; βv = β, nout = 4001)
     B, E = make_fields(βv)
-    sigc, p = prepare_gc(init_state(x0v, pitch, B); E, B, species)
+    p = prepare(; E, B, species)
     sol = solve(
-        ODEProblem(trace_gc!, sigc, tspanv, p), Vern9();
+        ODEProblem(trace_gc!, TP.full_to_gc(init_state(x0v, pitch, B), p), tspanv, p), Vern9();
         saveat = range(tspanv..., length = nout), reltol = 1.0e-12, abstol = 1.0e-10
     )
     ts, _, W, K, _ = accumulate_work(sol, p)

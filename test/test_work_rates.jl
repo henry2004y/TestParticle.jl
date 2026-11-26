@@ -71,10 +71,12 @@ from the very right-hand side that `trace_gc!` integrates, without any time
 integration in between.
 """
 function gc_energy_derivative(y, p, t)
-    q, q2m, μ, _, Bfunc = p
+    (; q, q2m) = p
+    μ = y[5]
+    Bfunc = p.B
     m = q / q2m
     X = SA[y[1], y[2], y[3]]
-    v1, v2, v3, du = TP.trace_gc(y, p, t)
+    v1, v2, v3, du, _ = TP.trace_gc(y, p, t)
     _, ∇B, _, b̂, _ = TP.get_magnetic_properties(X, t, Bfunc)
     dBdt_local = TP.derivative_t(Bfunc, X, t) ⋅ b̂
 
@@ -109,8 +111,8 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         _, ∇B, _, b̂, Bmag = TP.get_magnetic_properties(x, t, Bf)
         E = Ef(x, t)
         μ = 1.0e-15
-        p = (; q = Proton.q, q2m = Proton.q / Proton.m, μ, E = Ef, B = Bf)
-        y = SA[x[1], x[2], x[3], 1.0e4]
+        p = (; q = Proton.q, q2m = Proton.q / Proton.m, E = Ef, B = Bf)
+        y = SA[x[1], x[2], x[3], 1.0e4, μ]
 
         wr = TP.get_work_rates(y, p, t)
         v_E = (E × b̂) / Bmag
@@ -122,17 +124,16 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # Axisymmetric with B_φ = 0 ⇒ b̂ ⋅ (∇×b̂) = 0 ⇒ B*_∥ = |B|, and the
         # decomposition is exact rather than O(ε) accurate.
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
-        state_gc, p = TP.prepare_gc(
-            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
-        )
-        μ = p.μ
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], p)
+        μ = state_gc[5]
         @test μ > 0
 
         states = (
-            SA[8.0, 4.0, 3.0, 3.0e4],
-            SA[8.0, 4.0, 3.0, -3.0e4],
-            SA[-2.0, 6.0, -7.0, -1.5e4],
-            SA[0.5, 0.0, 10.0, 5.0e4],
+            SA[8.0, 4.0, 3.0, 3.0e4, μ],
+            SA[8.0, 4.0, 3.0, -3.0e4, μ],
+            SA[-2.0, 6.0, -7.0, -1.5e4, μ],
+            SA[0.5, 0.0, 10.0, 5.0e4, μ],
         )
         for t in (0.0, 0.4, 1.2), y in states
             dKdt = gc_energy_derivative(y, p, t)
@@ -144,8 +145,9 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         x = SA[3.0, -2.0, 5.0]
         t = 0.3
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
-        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton)
-        y = SA[x[1], x[2], x[3], 2.0e4]
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], p)
+        y = SA[x[1], x[2], x[3], 2.0e4, state_gc[5]]
 
         mp = TP.get_magnetic_properties(x, t, Bf)
         ref = TP.get_work_rates(y, p, t)
@@ -158,8 +160,9 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         x = SA[3.0, -2.0, 5.0]
         t = 0.3
         Bf, Ef = TP.Field(mirror_B), TP.Field(mirror_E)
-        _, p = TP.prepare_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton)
-        y = SA[x[1], x[2], x[3], 2.0e4]
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], p)
+        y = SA[x[1], x[2], x[3], 2.0e4, state_gc[5]]
 
         wr = TP.get_work_rates(y, p, t)
         ch = TP.get_work_channels(y, p, t)
@@ -179,10 +182,9 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
     @testset "static field with E = 0 does no work" begin
         Bf, Ef = TP.Field(mirror_B_static), TP.Field(E_zero)
-        state_gc, p = TP.prepare_gc(
-            [8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4]; E = Ef, B = Bf, species = TP.Proton
-        )
-        y = SA[state_gc[1], state_gc[2], state_gc[3], state_gc[4]]
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([8.0, 4.0, 3.0, 4.0e4, -2.0e4, 3.0e4], p)
+        y = SVector{5}(state_gc)
 
         for t in (0.0, 0.7)
             @test all(abs.(TP.get_work_rates(y, p, t)) .< 1.0e-30)
@@ -192,12 +194,12 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
 
     @testset "pure betatron: uniform B(t) with the induced E" begin
         Bf, Ef = TP.Field(uniform_Bt), TP.Field(uniform_Et)
-        state_gc, p = TP.prepare_gc(
-            [0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4]; E = Ef, B = Bf, species = TP.Proton
-        )
-        q, q2m, μ, _, _ = p
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([0.0, 0.0, 0.0, 3.0e4, 0.0, 1.0e4], p)
+        (; q, q2m) = p
+        μ = state_gc[5]
         m = q / q2m
-        y = SA[state_gc[1], state_gc[2], state_gc[3], state_gc[4]]
+        y = SVector{5}(state_gc)
 
         # κ = 0 and ∇B = 0 kill Fermi and grad-B; E ⟂ b̂ kills the parallel term.
         wr = TP.get_work_rates(y, p, 0.0)
@@ -285,10 +287,10 @@ curl_from_jacobian(J) = SA[J[3, 2] - J[2, 3], J[1, 3] - J[3, 1], J[2, 1] - J[1, 
         # `bottle_B` from the shared fixtures is the same axisymmetric mirror,
         # frozen in time, so tracing it with E = 0 must leave K untouched.
         Bf, Ef = TP.Field(bottle_B), TP.Field(E_zero)
-        state_gc, p = TP.prepare_gc(
-            [5.0, 0.0, 2.0, 2.0e4, 1.0e4, 4.0e4]; E = Ef, B = Bf, species = TP.Proton
-        )
-        q, q2m, μ, _, _ = p
+        p = TP.prepare(; E = Ef, B = Bf, species = TP.Proton)
+        state_gc = TP.full_to_gc([5.0, 0.0, 2.0, 2.0e4, 1.0e4, 4.0e4], p)
+        (; q, q2m) = p
+        μ = state_gc[5]
         m = q / q2m
 
         prob = ODEProblem(TP.trace_gc!, state_gc, (0.0, 1.0e-3), p)

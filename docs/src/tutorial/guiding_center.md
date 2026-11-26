@@ -14,14 +14,13 @@ These methods require a full particle trajectory solution to calculate drifts. T
 
 [`trace_gc!`](@ref) solves the 1st order Guiding Center Approximation (GCA) equations. This approximation holds when the characteristic scale of field variations ``L`` (often represented by the curvature radius) is much larger than the Larmor radius ``\rho`` (``L \gg \rho``).
 
-**State Variables**: The solver evolves the 4D state ``[\mathbf{R}, v_\parallel]``:
+**State Variables**: The solver evolves the state ``[\mathbf{R}, v_\parallel, \mu]``:
 
 - ``\mathbf{R}``: The spatial position of the guiding center.
 - ``v_{\parallel}``: The velocity parallel to the magnetic field.
+- ``\mu = p_{\perp}^2 / (2mB)``: The magnetic moment (adiabatic invariant), constant under the equations. Keeping it in the state lets particles share the parameters from [`prepare`](@ref), and lets callbacks change it, e.g. for pitch-angle scattering.
 
-**Parameters**:
-
-- ``\mu = p_{\perp}^2 / (2mB)``: The magnetic moment (adiabatic invariant). It is calculated from initial conditions and treated as a constant parameter.
+`TraceGCProblem(u0, tspan, p)` takes either this state or a full-orbit state `[x..., v...]`, which it converts with [`TestParticle.full_to_gc`](@ref) at `tspan[1]`.
 
 **Effective Fields**:
 
@@ -54,7 +53,7 @@ In theoretical treatments, individual drift terms are often derived separately (
 
 ### Relativistic Guiding Center
 
-For relativistic particles (e.g., MeV radiation-belt electrons), [`trace_gc_relativistic!`](@ref) and `TraceProblem{RelativisticGuidingCenter}` evolve the 4D state ``[\mathbf{R}, u_\parallel]`` where ``u_\parallel = \gamma v_\parallel = p_\parallel / m`` is the parallel proper velocity and ``\mu = p_\perp^2 / (2 m B)`` is the relativistic magnetic moment. The Lorentz factor is
+For relativistic particles (e.g., MeV radiation-belt electrons), [`trace_gc_relativistic!`](@ref) and `TraceProblem{RelativisticGuidingCenter}` evolve the state ``[\mathbf{R}, u_\parallel, \mu]`` where ``u_\parallel = \gamma v_\parallel = p_\parallel / m`` is the parallel proper velocity and ``\mu = p_\perp^2 / (2 m B)`` is the constant relativistic magnetic moment. The Lorentz factor is
 
 ```math
 \gamma = \sqrt{1 + \frac{u_\parallel^2 + 2\mu B / m}{c^2}}
@@ -71,7 +70,7 @@ and the effective fields and equations of motion are
 \end{aligned}
 ```
 
-Use `prepare_gc(xu; model = RelativisticGuidingCenter(), ...)` with a relativistic full-orbit state `xu = [x..., (γv)...]`.
+The state is `[R..., u∥, μ]`, with `μ` constant. `TraceProblem{RelativisticGuidingCenter}(xu, tspan, p)` converts a relativistic full-orbit state `xu = [x..., (γv)...]` to it.
 
 ## Summary of guiding center drifts
 

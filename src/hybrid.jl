@@ -171,7 +171,7 @@ function AdaptiveHybrid(;
 end
 
 function init_gc_integrator(
-        xv::SVector{4, T}, tspan, p, dt, alg::AdaptiveHybrid
+        xv::SVector{5, T}, tspan, p, dt, alg::AdaptiveHybrid
     ) where {T}
     gc_alg = alg.gc_alg === nothing ? default_gc_alg() : alg.gc_alg
     prob = _gc_ode_problem(xv, (T(tspan[1]), T(tspan[2])), p)
@@ -183,7 +183,7 @@ function init_gc_integrator(
 end
 
 function reinit_gc_integrator!(
-        integrator::SciMLBase.DEIntegrator, xv::SVector{4, T}, tspan, p, dt
+        integrator::SciMLBase.DEIntegrator, xv::SVector{5, T}, tspan, p, dt
     ) where {T}
     t0 = typeof(integrator.t)(tspan[1])
     tf = typeof(integrator.t)(tspan[2])
@@ -241,7 +241,7 @@ function gc_step!(
         end
     end
 
-    y = SVector{4}(integrator.u)
+    y = SVector{5}(integrator.u)
     isoutside(y, p, integrator.t) && return ReturnCode.Terminated
 
     code = SciMLBase.check_error(integrator)

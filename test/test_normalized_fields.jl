@@ -59,8 +59,8 @@ zero_normalized(sz...) = zeros(3, sz...)
         B = build_interpolator(B, grid; bc = WrapExtrap()),
         species = Proton
     )
-    @test param[3] isa TP.Field
-    @test startswith(repr(param[3]), "Field with")
+    @test param.E isa TP.Field
+    @test startswith(repr(param.E), "Field with")
     param = prepare(;
         E = build_interpolator(E, (x, y); bc = WrapExtrap()),
         B = build_interpolator(B, (x, y); bc = WrapExtrap()),

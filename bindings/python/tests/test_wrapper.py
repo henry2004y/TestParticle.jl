@@ -110,9 +110,11 @@ def test_trace_gc():
         get_B,
         species="proton",
     )
-    # Guiding-center state is (R_x, R_y, R_z, v_par).
-    assert res.state.shape[1] == 4
+    # Guiding-center state is (R_x, R_y, R_z, v_par, mu).
+    assert res.state.shape[1] == 5
     assert res.R.shape == (res.t.size, 3)
+    # Uniform B conserves mu = m v_perp^2 / (2B) with v_perp = 1e5 m/s.
+    assert np.allclose(res.mu, 1.67262192e-27 * 1.0e10 / (2 * 1.0e-8), rtol=1e-6)
 
 
 def test_trace_ensemble_init_func():

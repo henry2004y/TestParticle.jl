@@ -96,8 +96,7 @@ sol_boris = solve(
 # Standalone guiding-center integration evolves ``(\mathbf{X}, v_\parallel)`` assuming the
 # first adiabatic invariant ``\mu`` remains strictly constant across the weak-field apex.
 
-u0_gc, param_gc = prepare_gc(u0; B = (x) -> curved_B(x), species = Proton)
-prob_gc = TraceGCProblem(SVector{4}(u0_gc), tspan, param_gc)
+prob_gc = TraceGCProblem(u0, tspan, prepare(; B = (x) -> curved_B(x), species = Proton))
 sol_gc = solve(prob_gc, Vern7(); abstol = 1.0e-7, reltol = 1.0e-7, dense = true);
 
 # ## Step 3: Adaptive Hybrid Solver
@@ -326,7 +325,7 @@ function energy_drift(s)
     e = map(s.u) do u
         length(u) == 6 && return 0.5 * m * sum(abs2, u[SA[4, 5, 6]])
         x = SA[u[1], u[2], u[3]]
-        return 0.5 * m * u[4]^2 + param_gc.μ * norm(curved_B(x))
+        return 0.5 * m * u[4]^2 + u[5] * norm(curved_B(x))
     end
     return (maximum(e) - minimum(e)) / e[1]
 end

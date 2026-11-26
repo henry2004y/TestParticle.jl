@@ -59,12 +59,6 @@ using LinearAlgebra: norm
             @test param_A[1] == 1.0
             @test param_A[4].phi isa ZeroField
 
-            # prepare with explicit type promotion
-            param_f32 = prepare(pf; type = Float32)
-            @test param_f32[1] isa Float32
-            @test param_f32[2] isa Float32
-            @test param_f32[3] isa Float32
-
             # prepare with single positional field
             B_func(x, t) = SA[0.0, 0.0, 1.0]
             param_b = prepare(; B = B_func, q = 1.0, m = 1.0)

@@ -443,12 +443,12 @@ end
 end
 
 @inline function _advance_gc_state(
-        t_next, dt_step, y_next::SVector{4, T}, B_next, Bmag_next::T,
-        phase::T, Bmag_curr::T, q2m, q, m, μ, Efunc, need_full::Bool
+        t_next, dt_step, y_next::SVector{5, T}, B_next, Bmag_next::T,
+        phase::T, Bmag_curr::T, q2m, q, m, Efunc, need_full::Bool
     ) where {T}
     phase_next = T(mod2pi(phase - dt_step * (q2m * (Bmag_curr + Bmag_next)) / 2))
     xv_full = need_full ? _gc_to_full(
-            y_next, Efunc, B_next, Bmag_next, q, m, μ, t_next, phase_next
+            y_next, Efunc, B_next, Bmag_next, q, m, t_next, phase_next
         ) : zero(SVector{6, T})
     return phase_next, xv_full
 end
@@ -468,7 +468,7 @@ end
 
 struct _GCCheckpoint{Tt, T}
     t::Tt
-    xv_gc::SVector{4, T}
+    xv_gc::SVector{5, T}
     phase::T
     Bmag::T
     ϵ::T
@@ -490,8 +490,8 @@ end
 end
 
 @inline function _bisect_gc_to_fo!(
-        integrator_gc, t::Tt, t_hi::Tt, xv_gc::SVector{4, T}, phase::T, Bmag_curr::T,
-        ϵ::T, p_gc, q2m, q, m, μ::T, Efunc, Bfunc, alg::AdaptiveHybrid,
+        integrator_gc, t::Tt, t_hi::Tt, xv_gc::SVector{5, T}, phase::T, Bmag_curr::T,
+        ϵ::T, p_gc, q2m, q, m, Efunc, Bfunc, alg::AdaptiveHybrid,
         tspan_end::Tt, isoutside::F, need_save_gc::Bool,
         traj, tsave, plan, isave::Int, t_last::Tt, y_last::SVector{6, T},
         v_save::Val{SaveAdia}, adia_t, adia_vals, adia_mode,
@@ -513,14 +513,14 @@ end
         end
         code_m != ReturnCode.Success && break
         t_m = Tt(integrator_gc.t)
-        y_m = SVector{4, T}(integrator_gc.u)
+        y_m = SVector{5, T}(integrator_gc.u)
         mp_m = get_magnetic_properties(get_x(y_m), t_m, Bfunc)
-        ϵ_m = T(_adia_value(mp_m, q, m, y_m[4], μ, alg))
+        ϵ_m = T(_adia_value(mp_m, q, m, y_m[4], y_m[5], alg))
         if ϵ_m < alg.threshold_gc_to_fo
             Bmag_m = T(mp_m.Bmag)
             phase, y_out = _advance_gc_state(
                 t_m, t_m - t, y_m, mp_m.B, Bmag_m,
-                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+                phase, Bmag_curr, q2m, q, m, Efunc, need_save_gc
             )
             Bmag_curr = Bmag_m
             t = t_m
@@ -538,7 +538,7 @@ end
             Bmag_m = T(mp_m.Bmag)
             phase, xv_fo = _advance_gc_state(
                 t_m, t_m - t, y_m, mp_m.B, Bmag_m,
-                phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+                phase, Bmag_curr, q2m, q, m, Efunc, true
             )
             Bmag_curr = Bmag_m
             t = t_m
@@ -557,7 +557,7 @@ end
         end
     end
     if !switched_at_boundary
-        xv_fo = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase)
+        xv_fo = _gc_to_full(xv_gc, Efunc, Bfunc, q, m, t, phase)
     end
     return (
         t, t_hi, xv_gc, phase, Bmag_curr, ϵ, xv_fo,
@@ -576,6 +576,7 @@ function _hybrid_one(
     q2m, m, Efunc, Bfunc = p.q2m, p.m, p.E, p.B
     p_fo = (; q2m, m, E = Efunc, B = Bfunc)
     q = q2m * m
+    p_gc = (; q, q2m, E = Efunc, B = Bfunc)
     T = eltype(prob.u0)
     Tt = typeof(tspan[1])
     tdir = Tt(_span_direction(tspan))
@@ -603,13 +604,11 @@ function _hybrid_one(
     ϵ_init, Bmag_r = _fo_adia_value(r, v, fields.E(r, t), Efunc, Bfunc, q, m, t, alg)
     ϵ = T(ϵ_init)
     if ϵ < alg.threshold_gc_to_fo
-        X_gc, vpar, μ_init, phase_init, valid_gc = _gc_switch_state_checked(
+        state_init, phase_init, valid_gc = _gc_switch_state_checked(
             xv_fo, Efunc, Bfunc, q, m, t, n_correct
         )
     else
-        X_gc = r
-        vpar = zero(T)
-        μ_init = zero(T)
+        state_init = zero(SVector{5, T})
         phase_init = zero(T)
         valid_gc = false
     end
@@ -617,12 +616,10 @@ function _hybrid_one(
 
     if is_adiabatic
         mode = :GC
-        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-        μ = T(μ_init)
+        xv_gc = SVector{5, T}(state_init)
         phase = T(phase_init)
-        p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
 
-        Bmag_curr = T(norm(Bfunc(X_gc, t)))
+        Bmag_curr = T(norm(Bfunc(get_x(xv_gc), t)))
         ω = abs(q2m * Bmag_curr)
         dt = tdir * Tt(0.5 * 2π / ω)
         if integrator_gc === nothing
@@ -633,10 +630,8 @@ function _hybrid_one(
         verbose && _log_mode("Initial mode: GC", ϵ, t)
     else
         mode = :FO
-        xv_gc = zero(SVector{4, T})
-        μ = zero(T)
+        xv_gc = zero(SVector{5, T})
         phase = zero(T)
-        p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
         dt = tdir * Tt(_fo_dt(alg, q2m, Bmag_r))
         v = update_velocity_half(v, r, dt, t, fields, Boris())
         Bmag_curr = zero(T)
@@ -701,7 +696,7 @@ function _hybrid_one(
             end
 
             t_next = Tt(integrator_gc.t)
-            y_next = SVector{4, T}(integrator_gc.u)
+            y_next = SVector{5, T}(integrator_gc.u)
             it_next = it + 1
             it_gc = _gc_check_interval(ϵ, alg)
             # Also check right before clipping if the next natural GC step would
@@ -717,7 +712,7 @@ function _hybrid_one(
             if _check_due(it_next, t_next, t_last_check, it_gc, deadline, tdir) ||
                     pre_deadline
                 mp_next = get_magnetic_properties(get_x(y_next), t_next, Bfunc)
-                ϵ_next = T(_adia_value(mp_next, q, m, y_next[4], μ, alg))
+                ϵ_next = T(_adia_value(mp_next, q, m, y_next[4], y_next[5], alg))
 
                 if ϵ_next ≥ alg.threshold_gc_to_fo
                     # issue #667: bisect/roll back when GC steps cross deep into
@@ -728,7 +723,7 @@ function _hybrid_one(
                     t_hi = t_next
                     if t != gc_chk.t
                         mp_t = get_magnetic_properties(get_x(xv_gc), t, Bfunc)
-                        ϵ_t = T(_adia_value(mp_t, q, m, xv_gc[4], μ, alg))
+                        ϵ_t = T(_adia_value(mp_t, q, m, xv_gc[4], xv_gc[5], alg))
                         if ϵ_t > overshoot_limit
                             need_bisect = true
                             t_hi = t
@@ -739,7 +734,7 @@ function _hybrid_one(
                         elseif ϵ_t ≥ alg.threshold_gc_to_fo
                             ϵ = ϵ_t
                             xv_fo = _gc_to_full(
-                                xv_gc, Efunc, mp_t.B, mp_t.Bmag, q, m, μ, t, phase
+                                xv_gc, Efunc, mp_t.B, mp_t.Bmag, q, m, t, phase
                             )
                             switched_at_prev = true
                         else
@@ -755,7 +750,7 @@ function _hybrid_one(
                             isave, t_last, y_last, steps, switched_at_boundary, code_b =
                             _bisect_gc_to_fo!(
                             integrator_gc, t, t_hi, xv_gc, phase, Bmag_curr,
-                            ϵ, p_gc, q2m, q, m, μ, Efunc, Bfunc, alg,
+                            ϵ, p_gc, q2m, q, m, Efunc, Bfunc, alg,
                             tspan[2], isoutside, need_save_gc,
                             traj, tsave, plan, isave, t_last, y_last,
                             v_save, adia_t, adia_vals, adia_mode,
@@ -774,7 +769,7 @@ function _hybrid_one(
                         Bmag_next = T(mp_next.Bmag)
                         phase, xv_fo = _advance_gc_state(
                             t_next, t_next - t, y_next, mp_next.B, Bmag_next,
-                            phase, Bmag_curr, q2m, q, m, μ, Efunc, true
+                            phase, Bmag_curr, q2m, q, m, Efunc, true
                         )
                         Bmag_curr = Bmag_next
                         t = t_next
@@ -806,7 +801,7 @@ function _hybrid_one(
                     Bmag_next = T(mp_next.Bmag)
                     phase, y_out = _advance_gc_state(
                         t_next, t_next - t, y_next, mp_next.B, Bmag_next,
-                        phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+                        phase, Bmag_curr, q2m, q, m, Efunc, need_save_gc
                     )
                     Bmag_curr = Bmag_next
                     t = t_next
@@ -834,7 +829,7 @@ function _hybrid_one(
             Bmag_next = T(norm(B_next))
             phase, y_out = _advance_gc_state(
                 t_next, t_next - t, y_next, B_next, Bmag_next,
-                phase, Bmag_curr, q2m, q, m, μ, Efunc, need_save_gc
+                phase, Bmag_curr, q2m, q, m, Efunc, need_save_gc
             )
             Bmag_curr = Bmag_next
             t = t_next
@@ -876,7 +871,7 @@ function _hybrid_one(
                 deadline = t + tdir * check_scale * check_dt
                 if ϵ < alg.threshold_fo_to_gc
                     xv_sync = vcat(r, v_node)
-                    X_gc, vpar, μ_fo, phase_fo, valid_gc = _gc_switch_state_checked(
+                    state_fo, phase_fo, valid_gc = _gc_switch_state_checked(
                         xv_sync, Efunc, Bfunc, q, m, t, n_correct
                     )
                     if valid_gc
@@ -890,12 +885,10 @@ function _hybrid_one(
                                 traj, tsave, plan, isave, t_last, y_last, t, xv_sync
                             )
                         end
-                        xv_gc = SVector{4, T}(X_gc[1], X_gc[2], X_gc[3], vpar)
-                        μ = T(μ_fo)
+                        xv_gc = SVector{5, T}(state_fo)
                         phase = T(phase_fo)
-                        p_gc = (; q, q2m, μ, E = Efunc, B = Bfunc)
 
-                        Bmag_curr = T(norm(Bfunc(X_gc, t)))
+                        Bmag_curr = T(norm(Bfunc(get_x(xv_gc), t)))
                         # Carry the full-orbit step over instead of resetting
                         # it, capped at half a gyroperiod.
                         omega = abs(q2m * Bmag_curr)
@@ -984,7 +977,7 @@ function _hybrid_one(
         end
     elseif save_end && (isempty(tsave) || tsave[end] != t)
         if mode == :GC
-            push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, μ, t, phase))
+            push!(traj, _gc_to_full(xv_gc, Efunc, Bfunc, q, m, t, phase))
         else
             v_final = update_velocity_node(v, r, dt, t, p_fo, Boris())
             push!(traj, vcat(r, v_final))
@@ -1100,8 +1093,8 @@ end
             tspan32 = (0.0f0, 1.0f0)
             dt32 = 0.5f0
             stateinit32 = Float32[0.0, 0.0, 0.0, 0.0, 1.0e5, 0.0]
-            param32_B = prepare(; B = B_analytic, type = Float32)
-            param32_EB = prepare(; E = E_analytic, B = B_analytic, type = Float32)
+            param32_B = prepare(; B = B_analytic)
+            param32_EB = prepare(; E = E_analytic, B = B_analytic)
 
             for param in (param32_B, param32_EB)
                 prob32 = TraceProblem(stateinit32, tspan32, param)

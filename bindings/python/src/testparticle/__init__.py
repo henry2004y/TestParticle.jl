@@ -103,7 +103,6 @@ _REEXPORTS = [
     ("Electron", "Electron"),
     ("Positron", "Positron"),
     ("prepare", "prepare"),
-    ("prepare_gc", "prepare_gc"),
     ("get_gc", "get_gc"),
     ("solve", "solve"),
     ("TraceProblem", "TraceProblem"),
@@ -322,22 +321,26 @@ class GCTraceResult:
         return self.state[:, 3]
 
     @property
+    def mu(self) -> np.ndarray:
+        return self.state[:, 4]
+
+    @property
     def E(self) -> np.ndarray:
         if not self.save_fields:
             raise AttributeError("E field was not saved; pass save_fields=True")
-        return self.state[:, 4:7]
+        return self.state[:, 5:8]
 
     @property
     def B(self) -> np.ndarray:
         if not self.save_fields:
             raise AttributeError("B field was not saved; pass save_fields=True")
-        return self.state[:, 7:10]
+        return self.state[:, 8:11]
 
     @property
     def work(self) -> np.ndarray:
         if not self.save_work:
             raise AttributeError("work was not saved; pass save_work=True")
-        start = 10 if self.save_fields else 4
+        start = 11 if self.save_fields else 5
         return self.state[:, start : start + 4]
 
 
@@ -479,7 +482,7 @@ def trace_gc(
     Parameters mirror :func:`trace`, with the addition of ``alg``
     (``"rk4"``, ``"vern7"``, legacy alias ``"rk45"``, or a SciML ODE algorithm
     object). The returned :class:`GCTraceResult` exposes the guiding-center
-    position ``R`` and parallel velocity ``vpar``.
+    position ``R``, parallel velocity ``vpar``, and magnetic moment ``mu``.
     """
     x0 = np.asarray(x0, dtype=float)
     v0 = np.asarray(v0, dtype=float)
@@ -496,11 +499,8 @@ def trace_gc(
     if m is not None:
         prepare_kw["m"] = float(m)
 
-    stateinit_gc, param = TP.prepare_gc(
-        _to_svector(np.concatenate([x0, v0])),
-        B=B_jl, E=E_jl, species=species_jl, **prepare_kw
-    )
-    u0 = _to_svector(stateinit_gc)
+    param = TP.prepare(B=B_jl, E=E_jl, species=species_jl, **prepare_kw)
+    u0 = _to_svector(np.concatenate([x0, v0]))
     prob = TP.TraceGCProblem(u0, tuple(tspan), param)
 
     solve_kw = dict(
