@@ -8,9 +8,27 @@ const TN_MAG_THRESHOLD = 1.0e-4
     return u⁻ + (u′ × s_rotate)
 end
 
+"""
+    update_velocity_boris(v, E, B, qdt2m)
+    update_velocity_boris(u, E, B, qdt2m, inv_c2)
+
+Single-step Boris velocity update given field values `(E, B)` and half-step factor
+`qdt2m = (q / m) * (dt / 2)`.
+
+The 4-argument method advances non-relativistic velocity `v`. The 5-argument method
+advances relativistic proper velocity `u = γ v` using `inv_c2 = 1 / c^2`.
+"""
 @inline @muladd function update_velocity_boris(v, E, B, qdt2m)
     qE2m = qdt2m * E
     return _boris_rotate(v + qE2m, qdt2m * B) + qE2m
+end
+
+@inline @muladd function update_velocity_boris(u, E, B, qdt2m, inv_c2)
+    T = eltype(u)
+    qE2m = qdt2m * E
+    u⁻ = u + qE2m
+    γ⁻ = sqrt(one(T) + sum(abs2, u⁻) * inv_c2)
+    return _boris_rotate(u⁻, (qdt2m / γ⁻) * B) + qE2m
 end
 
 @inline @muladd function _quadratic_gamma(σ::T, τ2_plus_ustar2::T) where {T}
@@ -150,11 +168,7 @@ fields at `(r, t)`.
     B = SVector{3, T}(p.B(r, t))
     c = _speed_of_light(p)
     c === nothing && return update_velocity_boris(v, E, B, qdt2m)
-
-    qE2m = qdt2m * E
-    u⁻ = v + qE2m
-    γ⁻ = sqrt(one(T) + sum(abs2, u⁻) / T(c)^2)
-    return _boris_rotate(u⁻, (qdt2m / γ⁻) * B) + qE2m
+    return update_velocity_boris(v, E, B, qdt2m, inv(T(c)^2))
 end
 
 @inline @muladd function update_velocity(
