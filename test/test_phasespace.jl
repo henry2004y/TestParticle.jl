@@ -208,6 +208,8 @@ end
         full = -275.0e3:50.0e3:275.0e3
         @test d.vx ≈ full && d.vy ≈ full && d.vz ≈ full
         @test relative_l2(d.f, on_grid(d)) < 0.05
+        @test backward(; adaptive = false, v_range = (300.0e3, 300.0e3, 100.0e3)).vz ≈
+            -75.0e3:50.0e3:75.0e3
 
         ## The coarse pass only locates the support: the populated window of the full grid
         ## is retraced, dropping the empty +x half as the source drifts towards -x.

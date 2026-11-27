@@ -150,7 +150,7 @@ end
     vdf_backward_trace(param, detector, source, f_src; dt, alg, kw...) -> CartesianGridVDF
 
 Phase-space density at the point `detector` by backward Liouville tracing: each velocity
-of the grid of bin centers of `-v_range:dv:v_range` (per axis) is traced backward over
+of the grid of bin centers of `-v_range:dv:v_range` is traced backward over
 `tspan` to its first crossing of the surface `source`, where `f_src` gives `f`. Grid
 points that never reach `source` get `f = 0`.
 
@@ -163,7 +163,7 @@ With `adaptive = true`, a first pass at spacing `dv_coarse` locates where `f` ex
 
 # Keywords
 
-  - `v_range = 1000.0e3`, `vy_range = v_range`, `vz_range = v_range`, `dv = 20.0e3`
+  - `v_range = 1000.0e3` (or one per axis), `dv = 20.0e3`
   - `tspan = (0.0, -20.0)`
   - `adaptive = true`, `dv_coarse = 3dv`, `margin = 3dv`, `relthresh = 1.0e-5`,
     `bounds = nothing` (the full grid)
@@ -171,7 +171,7 @@ With `adaptive = true`, a first pass at spacing `dv_coarse` locates where `f` ex
 """
 function vdf_backward_trace(
         param, detector, source, f_src;
-        v_range::Real = 1000.0e3, vy_range::Real = v_range, vz_range::Real = v_range,
+        v_range = 1000.0e3,
         dv::Real = 20.0e3, dt::Real, tspan = (0.0, -20.0),
         adaptive::Bool = true, dv_coarse::Real = 3 * dv, margin::Real = 3 * dv,
         relthresh::Real = 1.0e-5, bounds = nothing, isoutside = nothing,
@@ -179,30 +179,22 @@ function vdf_backward_trace(
     )
     x0 = _detector_point(detector)
     f = _density(f_src)
-    v0x = -v_range + dv / 2
-    v0y = -vy_range + dv / 2
-    v0z = -vz_range + dv / 2
+    v0 = map(r -> -r + dv / 2, _triple(v_range))  # first bin center per axis
     pass(vx, vy, vz) = _run_backward_pass(
         vx, vy, vz, x0, param, tspan, dt, source, f, isoutside, alg, ensemblealg
     )
 
     if adaptive
-        vx_c = range(-v_range, v_range; step = dv_coarse)
-        vy_c = range(-vy_range, vy_range; step = dv_coarse)
-        vz_c = range(-vz_range, vz_range; step = dv_coarse)
-        f_coarse = pass(vx_c, vy_c, vz_c)
+        coarse = map(r -> range(-r, r; step = dv_coarse), _triple(v_range))
+        f_coarse = pass(coarse...)
         all(iszero, f_coarse) && throw(_unreached("source"))
 
-        bnds = bounds === nothing ? ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z)) : bounds
+        bnds = bounds === nothing ? map(a -> (a, -a), v0) : bounds
         grids = refine_vdf_window(
-            f_coarse, vx_c, vy_c, vz_c, (v0x, v0y, v0z), dv;
-            margin, relthresh, bounds = bnds
+            f_coarse, coarse..., v0, dv; margin, relthresh, bounds = bnds
         )
     else
-        grids = (
-            range(v0x, -v0x; step = dv), range(v0y, -v0y; step = dv),
-            range(v0z, -v0z; step = dv),
-        )
+        grids = map(a -> range(a, -a; step = dv), v0)
     end
     f3d = pass(grids...)
     all(iszero, f3d) && throw(_unreached("source"))
@@ -213,7 +205,7 @@ end
     vdf_forward_trace(param, source, detector, f_src; vradius, dt, alg, kw...)
 
 Phase-space density at `detector` by forward Liouville tracking, as a `CartesianGridVDF`
-on the bin centers of `-v_range:dv:v_range` (per axis).
+on the bin centers of `-v_range:dv:v_range`.
 
 `nparticles` velocities drawn uniformly from the ball of `vradius` around `center` are
 launched from the point `source` (as `detector` in [`vdf_backward_trace`](@ref)) over
@@ -225,14 +217,14 @@ along x. `f_src` is as in [`vdf_backward_trace`](@ref).
 # Keywords
 
   - `nparticles = 50000`, `center = SA[0.0, 0.0, 0.0]`, `seed = 42`
-  - `v_range = 1000.0e3`, `vy_range = v_range`, `vz_range = v_range`, `dv = 20.0e3`
+  - `v_range = 1000.0e3` (or one per axis), `dv = 20.0e3`
   - `tspan = (0.0, 20.0)`
   - `isoutside = nothing`, `ensemblealg = EnsembleThreads()`: passed to `solve`
 """
 function vdf_forward_trace(
         param, source, detector, f_src;
         nparticles::Int = 50000, vradius::Real, center = SA[0.0, 0.0, 0.0],
-        v_range::Real = 1000.0e3, vy_range::Real = v_range, vz_range::Real = v_range,
+        v_range = 1000.0e3,
         dv::Real = 20.0e3, tspan = (0.0, 20.0), dt::Real,
         isoutside = nothing, alg, ensemblealg = EnsembleThreads(), seed = 42
     )
@@ -258,7 +250,7 @@ function vdf_forward_trace(
 
     ΔV = 4π * vradius^3 / (3 * nparticles)
     w = ws .* (ΔV / dv^3) .* abs.(ws_vxi) ./ abs.(first.(vs))
-    edges = map(r -> range(-r, r; step = dv), (v_range, vy_range, vz_range))
+    edges = map(r -> range(-r, r; step = dv), _triple(v_range))
     f3d = _histogram(vs, w, edges, false)
     all(iszero, f3d) && throw(_unreached("detector"))
     return CartesianGridVDF(map(_bin_centers, edges)..., f3d)

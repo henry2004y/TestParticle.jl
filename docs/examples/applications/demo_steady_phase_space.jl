@@ -209,7 +209,7 @@ const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0
 function reconstruct_backward(detector_x, dt, param)
     t_solve = @elapsed d = vdf_backward_trace(
         param, detector_x, source_plane, f_src;
-        v_range = 1000.0e3, vy_range = 400.0e3, dv, dt, tspan = (0.0, -8.0),
+        v_range = (1000.0e3, 400.0e3, 1000.0e3), dv, dt, tspan = (0.0, -8.0),
         dv_coarse = 80.0e3, margin = 150.0e3, relthresh = 1.0e-5,
         isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
             u[1] > x_source[1] + 100.0e3,
