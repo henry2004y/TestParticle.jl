@@ -214,13 +214,6 @@ E_const(x, t) = SA[1.0e-9, 0.0, 0.0]
             @test length(sol_auto.t) > 10
         end
 
-        @testset "Deprecated GCRK4 and GCRK45" begin
-            sol_dep_rk4 = @test_deprecated solve(prob, GCRK4(); dt = 0.25)
-            @test sol_dep_rk4.retcode == ReturnCode.Success
-            sol_dep_rk45 = @test_deprecated solve(prob, GCRK45(); dt = 1.0e-4)
-            @test sol_dep_rk45.retcode == ReturnCode.Success
-        end
-
         @testset "Ensemble" begin
             trajectories = 10
 

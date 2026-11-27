@@ -28,7 +28,7 @@ import Adapt
 import Base: +, -, *, /
 import LinearAlgebra: ×
 
-export prepare, prepare_canonical, prepare_erased, PotentialField
+export prepare, prepare_canonical, PotentialField
 export Particle, Proton, Electron, Positron
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
 export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical,
@@ -46,8 +46,7 @@ export build_interpolator
 export EnsembleProblem, EnsembleSerial, EnsembleThreads, EnsembleDistributed,
     EnsembleSplitThreads, remake, DiscreteCallback, TerminateOutside
 
-public ReturnCode, Field, ErasedField, ErasedFunction,
-    ZeroField, ZeroVector,
+public ReturnCode, Field, ErasedField, ZeroField,
     CartesianGrid, RectilinearGrid, StructuredGrid,
     c, Rₑ, BMoment_Earth, eV,
     get_gc, get_gc_velocity,

@@ -107,8 +107,6 @@ _REEXPORTS = [
     ("solve", "solve"),
     ("TraceProblem", "TraceProblem"),
     ("TraceGCProblem", "TraceGCProblem"),
-    ("GCRK4", "GCRK4"),
-    ("GCRK45", "GCRK45"),
     ("ZeroField", "ZeroField"),
     ("AdaptiveBoris", "AdaptiveBoris"),
     ("AdaptiveMultistepBoris", "AdaptiveMultistepBoris"),
