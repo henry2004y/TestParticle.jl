@@ -9,7 +9,7 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, FullSpecialize, ODEFunction, ODEProblem, remake,
-    LinearInterpolation, build_solution, EnsembleSolution,
+    LinearInterpolation, build_solution,
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import SciMLBase
 import SciMLBase: solve
@@ -65,7 +65,7 @@ public ReturnCode, Field, ErasedField, ErasedFunction,
     LazyTimeInterpolator,
     GPUGrid, GPUUniformAxis, GPUNonUniformAxis,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec,
-    bin_velocity_space, project_vdf, vdf_grid_problem, vdf_backward, refine_vdf_window,
+    bin_velocity_space, project_vdf, vdf_grid_problem, refine_vdf_window,
     FillExtrap, ClampExtrap, WrapExtrap, PeriodicBC, OnTheFly, PreCompute, StorePolicy
 
 include("types.jl")

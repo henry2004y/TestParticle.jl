@@ -90,41 +90,6 @@ function vdf_grid_problem(vx, vy, vz, x0, param, tspan)
     return TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func)
 end
 
-_solutions(sols::EnsembleSolution) = sols.u
-_solutions(sols) = sols
-
-"""
-    vdf_backward(sols, source, f_src, dims) -> Array{T, 3}
-
-Phase-space density on a velocity grid of size `dims = (nx, ny, nz)`, obtained by tracing
-that grid backward in time and evaluating the source distribution on the traced-back
-states, as prescribed by Liouville's theorem.
-
-Each trajectory of `sols` is followed back to the surface `source` with
-[`get_first_crossing`](@ref) and `f_src` is evaluated on the velocity there; grid points
-whose trajectory never reaches `source` are left at zero. `f_src` is as in
-[`vdf_backward_trace`](@ref).
-"""
-function vdf_backward(sols, source, f_src, dims)
-    nx, ny, nz = dims
-    states = _solutions(sols)
-    T = float(eltype(first(states).u[1]))
-    f = zeros(T, nx, ny, nz)
-    fs = _density(f_src)
-
-    Threads.@threads for i in eachindex(states)
-        sol = states[i]
-        st = get_first_crossing(sol, source)
-        any(isnan, st) && continue
-        iz = (i - 1) % nz + 1
-        iy = ((i - 1) ÷ nz) % ny + 1
-        ix = ((i - 1) ÷ (nz * ny)) % nx + 1
-        f[ix, iy, iz] = fs(st[SA[4, 5, 6]])
-    end
-
-    return f
-end
-
 """
     refine_vdf_window(f, vx, vy, vz, v0, dv; margin = 0.0, relthresh = 1.0e-5,
         bounds = nothing)
@@ -336,5 +301,4 @@ _triple(x::Tuple) = x
 _triple(x) = (x, x, x)
 
 _detector_point(x::Real) = SA[Float64(x), 0.0, 0.0]
-_detector_point(p::SVector{3}) = Float64.(p)
 _detector_point(p) = SA[Float64(p[1]), Float64(p[2]), Float64(p[3])]

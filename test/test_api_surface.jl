@@ -57,7 +57,6 @@ end
         :bin_velocity_space,
         :project_vdf,
         :vdf_grid_problem,
-        :vdf_backward,
         :refine_vdf_window,
         :sample_velocity_ball,
         :PeriodicBC,
