@@ -73,8 +73,7 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol_non = solve(prob, AB4(); dt = 3.0e-9)
 
 ## GC Tracing
-stateinit_gc, param_gc = prepare_gc(stateinit; B = getB, species = Electron)
-prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+prob_gc = ODEProblem(trace_gc!, TP.full_to_gc(stateinit, param), tspan, param)
 sol_gc = solve(prob_gc, Vern7(); dt = 1.0e-9) # Adaptivity should work well for GC
 
 

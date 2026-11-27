@@ -58,7 +58,7 @@ end
         B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
         species = Particle(; q = Proton.q, m = 16 * Proton.m)
     ) # O+
-    @test param[2] ≈ 16 * Proton.m
+    @test param.m ≈ 16 * Proton.m
 
     callback = TerminateOutside(isoutside)
 
@@ -86,16 +86,15 @@ end
     @test sol[1, end] ≈ 0.79411 rtol = 1.0e-2
 
     # GC prepare
-    stateinit_gc,
-        param_gc = prepare_gc(
-        stateinit;
+    param_gc = prepare(;
         E = build_interpolator(E, (x, y, z); bc = TestParticle.FillExtrap(NaN), order = 1),
         B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN), order = 1),
         species = Proton
     )
+    stateinit_gc = TestParticle.full_to_gc(stateinit, param_gc)
     @test stateinit_gc[2] ≈ -1.0439684914853153
     # μ = m * v_perp^2 / (2B)
-    @test param_gc[3] ≈ 8.36310961845e-20 rtol = 1.0e-6
+    @test stateinit_gc[5] ≈ 8.36310961845e-20 rtol = 1.0e-6
 
     param = prepare(;
         E = build_interpolator(E, grid; bc = TestParticle.FillExtrap(NaN)),
@@ -132,7 +131,7 @@ end
         )
     )
     # Check field interpolation Bz
-    @test param[4](SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
+    @test param.B(SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
 
     # Vector inputs for the spherical grid follow the same path
     param_vec = prepare(;
@@ -145,7 +144,7 @@ end
         ),
         species = Particle(; q = Proton.q, m = 16 * Proton.m)
     )
-    @test param_vec[4](SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
+    @test param_vec.B(SA[1.0, 1.0, 1.0])[3] ≈ 9.888387888463716e-9
 
 end
 

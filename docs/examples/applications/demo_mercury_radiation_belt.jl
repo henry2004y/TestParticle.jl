@@ -477,7 +477,7 @@ end
     (isnan(Bmag) || Bmag <= 0.0) && return CURVATURE_SCATTERING
     κ_mag = norm(mp.κ)
     κ_mag <= 0.0 && return SURVIVED
-    rg = sqrt(2.0 * p.μ * Electron.m * Bmag) / (abs(p.q) * Bmag)
+    rg = sqrt(2.0 * u[5] * Electron.m * Bmag) / (abs(p.q) * Bmag)
     ## κ_BZ = sqrt(R_c / r_g) < 3  <=>  r_g * |κ| > 1/9
     rg * κ_mag > 1.0 / 9.0 && return CURVATURE_SCATTERING
     return SURVIVED
@@ -539,12 +539,12 @@ function init_equatorial_electron(
     u_par = u_tot * cα
     u_perp = u_tot * sα
     μ = 0.5 * m * u_perp^2 / B0
-    u0_gc = SA[x0[1], x0[2], x0[3], u_par]
-    p_gc = (; q, q2m = q / m, μ, E = TP.ZeroField(), B = B_wrap, sim_id)
+    u0_gc = SA[x0[1], x0[2], x0[3], u_par, μ]
+    p_gc = (; q, q2m = q / m, c, E = TP.ZeroField(), B = B_wrap, sim_id)
     return u0_gc, p_gc
 end
 
-const GC_ABSTOL = SA[1.0e2, 1.0e2, 1.0e2, 1.0e3]
+const GC_ABSTOL = SA[1.0e2, 1.0e2, 1.0e2, 1.0e3, Inf] # μ is constant
 
 function trace_single_orbit(
         Bmodel::MercuryKT17Field;

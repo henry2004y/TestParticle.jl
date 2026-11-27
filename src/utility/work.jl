@@ -1,5 +1,5 @@
 """
-    get_work_rates(xv, p, t; model = _param_model(p), magnetic_properties = nothing, E = nothing)
+    get_work_rates(xv, p, t; model = _state_model(xv), magnetic_properties = nothing, E = nothing)
         -> SVector{4}
 
 Calculate the leading-order adiabatic work rates [W] `(P_par, P_fermi, P_grad, P_betatron)`
@@ -17,7 +17,7 @@ particle picks up by being convected across `∇B` at fixed `μ`, while `P_betat
 the heating from the local change of `|B|`. Together they are `μ (∂_t + v_E⋅∇) B`.
 See [`get_work_channels`](@ref) for the grouping into physical acceleration channels.
 
-`model` defaults to `GuidingCenter()` when `p` carries a magnetic moment `μ` and to
+`model` defaults to `GuidingCenter()` for a guiding-center state `[X..., v∥, μ]` and to
 `FullOrbit()` otherwise. Full-orbit `μ` uses the gyration velocity `v⊥ - v_E`. For
 `RelativisticOrbit()`, the state holds `γv` and the drifts use the mass `γm`.
 
@@ -41,7 +41,7 @@ All four terms are zero in a magnetic null.
 Reference: Northrop, T. G. (1963), *The Adiabatic Motion of Charged Particles*.
 """
 @inline function get_work_rates(
-        xv, p, t; model = _param_model(p), magnetic_properties = nothing, E = nothing
+        xv, p, t; model = _state_model(xv), magnetic_properties = nothing, E = nothing
     )
     r = get_x(xv)
     (; ∇B, κ, b̂, Bmag) = @something magnetic_properties get_magnetic_properties(r, t, p.B)
@@ -62,13 +62,14 @@ end
 # Charge, mass, parallel velocity and magnetic moment of a state. Full-orbit `μ` uses the
 # gyration velocity, and relativistic states the velocity and the mass `γm`.
 @inline function _adiabatic_particle(::GuidingCenter, xv, p, E, b̂, Bmag)
-    (; q, q2m, μ) = p
-    return q, q / q2m, xv[4], μ
+    (; q, q2m) = p
+    return q, q / q2m, xv[4], xv[5]
 end
 
 @inline function _adiabatic_particle(::RelativisticGuidingCenter, xv, p, E, b̂, Bmag)
-    (; q, q2m, μ) = p
-    γ = _gc_gamma(RelativisticGuidingCenter(), xv[4], Bmag, p)
+    (; q, q2m) = p
+    μ = xv[5]
+    γ = _gc_gamma(RelativisticGuidingCenter(), xv[4], μ, Bmag, p)
     return q, γ * (q / q2m), xv[4] / γ, μ / γ
 end
 

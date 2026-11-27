@@ -17,7 +17,7 @@
     gc_init = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
     tspan = (0.0, 1.0)
     t = 0.0
-    out6, out4 = zeros(6), zeros(4)
+    out6, out5 = zeros(6), zeros(5)
 
     @compile_workload begin
         param = prepare(;
@@ -30,13 +30,8 @@
         trace_relativistic(stateinit_s, param, t)
         trace_relativistic!(out6, stateinit, param, t)
 
-        stateinit_gc, param_gc = prepare_gc(
-            gc_init;
-            E = build_interpolator(E, (x, y, z); bc = FillExtrap(NaN)),
-            B = build_interpolator(B, (x, y, z); bc = FillExtrap(NaN))
-        )
-        prob_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
-        trace_gc(stateinit_gc, param_gc, t)
-        trace_gc!(out4, stateinit_gc, param_gc, t)
+        prob_gc = TraceGCProblem(gc_init, tspan, param)
+        trace_gc(SVector{5}(prob_gc.u0), param, t)
+        trace_gc!(out5, prob_gc.u0, param, t)
     end
 end

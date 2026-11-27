@@ -150,13 +150,12 @@ using ..test_common: uniform_B, uniform_Ex
         prob_switched = remake(prob_f64; u0 = u0_f32)
         @test eltype(prob_switched.u0) === Float32
         @test eltype(prob_switched.tspan) === Float32
-        @test prob_switched.p[1] isa Float32
+        @test prob_switched.p.q2m isa Float32
 
-        # prepare with type = Float32
-        param_f32 = prepare(; E = uniform_Ex, B = uniform_B, species = Proton, type = Float32)
-        @test param_f32[1] isa Float32
-        @test param_f32[2] isa Float32
-        prob_direct_f32 = TraceProblem(u0_f32, tspan_f32, param_f32)
+        param = prepare(; E = uniform_Ex, B = uniform_B, species = Proton)
+        prob_direct_f32 = TraceProblem(u0_f32, tspan_f32, param)
+        @test prob_direct_f32.p.q2m isa Float32
+        @test prob_direct_f32.p.m isa Float32
         sol_direct = solve(prob_direct_f32, Boris(); dt = dt_f32)
         @test eltype(sol_direct.t) === Float32
         @test eltype(sol_direct.u[end]) === Float32

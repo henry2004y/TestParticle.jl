@@ -4,7 +4,7 @@
 
 # Only the particle constants follow the state's float type; other entries of `p`, such as
 # user data, keep theirs.
-const PARTICLE_CONSTANTS = (:q, :q2m, :m, :c, :μ)
+const PARTICLE_CONSTANTS = (:q, :q2m, :m, :c)
 
 @inline _promote_p(::Type{T}, p::NamedTuple{K}) where {T <: AbstractFloat, K} = NamedTuple{K}(
     map((k, x) -> k in PARTICLE_CONSTANTS && x isa Real ? T(x) : x, K, values(p))
@@ -44,24 +44,16 @@ _default_f(::Type{M}, isinplace) where {M} = ODEFunction{isinplace, DEFAULT_SPEC
     _equations(M)[isinplace ? 1 : 2]
 )
 
-"""
-    _param_model(p)
+# Default model where neither a problem nor its equations name one. Relativistic states have
+# the same lengths, so they always need the model named.
+@inline _state_model(u) = length(u) == 5 ? GuidingCenter() : FullOrbit()
 
-Model that the parameters `p` are written for: the default where neither a problem nor the
-equations name the model.
-"""
-@inline _param_model(p) = hasproperty(p, :μ) ? GuidingCenter() : FullOrbit()
-
-"""
-    _model(prob)
-
-Model of `prob`. A plain `ODEProblem` has none of its own, so it follows from the equations
-and the parameters.
-"""
+# A plain `ODEProblem` has no model of its own: it follows from the equations, else from
+# the state.
 _model(::TraceProblem{M}) where {M} = M()
 function _model(prob)
     M = _equations_model(prob.f)
-    return isnothing(M) ? _param_model(prob.p) : M()
+    return isnothing(M) ? _state_model(prob.u0) : M()
 end
 
 """
@@ -127,6 +119,7 @@ function TraceProblem{M}(
     ) where {M, iip}
     _equations_model(f) in (nothing, M) ||
         throw(ArgumentError("The equations of $(_equations_model(f)) do not fit the model $M."))
+    u0 = _initial_state(M, u0, tspan, p)
     tspan, p = _promote_trace_args(u0, tspan, p)
     return TraceProblem{
         M, typeof(u0), typeof(tspan), iip, typeof(p), typeof(f), typeof(prob_func),
@@ -166,19 +159,36 @@ const _GC_REL_ODE_FUNC = ODEFunction{false, FullSpecialize}(trace_gc_relativisti
 _gc_default_func(::Type{GuidingCenter}) = _GC_ODE_FUNC
 _gc_default_func(::Type{RelativisticGuidingCenter}) = _GC_REL_ODE_FUNC
 
+# A guiding-center problem converts a full-orbit `u0` with its own model, so the model is
+# named once, also for the `u0` of `prob_func` and `remake`.
+_initial_state(::Type, u0, tspan, p) = u0
+function _initial_state(::Type{M}, u0, tspan, p) where {M <: _GCModel}
+    hasproperty(p, :F) && !(p.F isa ZeroField) && throw(
+        ArgumentError("Guiding-center equations do not support the external force `F`.")
+    )
+    length(u0) == 6 && return full_to_gc(u0, p; t = tspan[1], model = M())
+    length(u0) == 5 || throw(
+        ArgumentError(
+            "A guiding-center `u0` is `[X..., v∥, μ]` or a full-orbit state, " *
+                "not of length $(length(u0))."
+        )
+    )
+    return u0
+end
+
 @inline function _gc_ode_problem(
-        ::Type{M}, u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+        ::Type{M}, u0::SVector{5, T}, tspan::Tuple{T, T}, p,
         f::AbstractODEFunction = _gc_default_func(M),
         prob_func = DEFAULT_PROB_FUNC
     ) where {M <: _GCModel, T}
     return TraceProblem{
-        M, SVector{4, T}, Tuple{T, T}, false,
+        M, SVector{5, T}, Tuple{T, T}, false,
         typeof(p), typeof(f), typeof(prob_func),
     }(f, u0, tspan, p, prob_func)
 end
 
 @inline _gc_ode_problem(
-    u0::SVector{4, T}, tspan::Tuple{T, T}, p,
+    u0::SVector{5, T}, tspan::Tuple{T, T}, p,
     f::AbstractODEFunction = _GC_ODE_FUNC,
     prob_func = DEFAULT_PROB_FUNC
 ) where {T} = _gc_ode_problem(GuidingCenter, u0, tspan, p, f, prob_func)
@@ -191,7 +201,7 @@ function _gc_initial_dt(prob::TraceProblem{M}, ::Type{T}) where {M <: _GCModel, 
     end
     tdir = sign(prob.tspan[2] - prob.tspan[1])
     tdir == 0 && (tdir = one(tdir))
-    γ = _gc_gamma(M(), prob.u0[4], Bmag, prob.p)
+    γ = _gc_gamma(M(), prob.u0[4], prob.u0[5], Bmag, prob.p)
     return T(tdir * 0.5 * 2π * γ / abs(q2m * Bmag))
 end
 
@@ -237,7 +247,7 @@ function solve(
 
     default_f = _gc_default_func(M)
     default_eqs = _equations(M)
-    ode_prob = if prob.u0 isa SVector{4, T} && prob.tspan isa Tuple{T, T} &&
+    ode_prob = if prob.u0 isa SVector{5, T} && prob.tspan isa Tuple{T, T} &&
             prob.f === default_f
         prob
     else
@@ -246,7 +256,7 @@ function solve(
         p = prob.tspan isa Tuple{T, T} ? prob.p : _promote_p(T, prob.p)
         f = prob.f.f in default_eqs ? default_f :
             ODEFunction{false, FullSpecialize}(prob.f.f)
-        _gc_ode_problem(M, SVector{4, T}(prob.u0), tspan, p, f, prob.prob_func)
+        _gc_ode_problem(M, SVector{5, T}(prob.u0), tspan, p, f, prob.prob_func)
     end
 
     cb_out = _isoutside_callback(isoutside)

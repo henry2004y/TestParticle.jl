@@ -28,7 +28,7 @@ import Adapt
 import Base: +, -, *, /
 import LinearAlgebra: ×
 
-export prepare, prepare_gc, prepare_canonical, PotentialField
+export prepare, prepare_canonical, PotentialField
 export Particle, Proton, Electron, Positron
 export TraceProblem, TraceCanonicalProblem, TraceGCProblem, solve
 export FullOrbit, RelativisticOrbit, Canonical, RelativisticCanonical,

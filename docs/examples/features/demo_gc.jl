@@ -44,14 +44,14 @@ prob = ODEProblem(trace!, stateinit, tspan, param)
 sol = solve(prob, Vern9())
 
 ## 2. Guiding Center Simulations
-stateinit_gc, param_gc = TP.prepare_gc(
-    stateinit; E = uniform_E, B = curved_B, species = Proton
-)
-prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+## The same parameters serve every model; plain DiffEq needs the guiding-center state.
+stateinit_gc = TP.full_to_gc(stateinit, param)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param)
 sol_gc = solve(prob_gc, Vern9())
 
 ## TraceGCProblem Solvers
-prob_trace_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
+## `TraceGCProblem` converts the full-orbit state itself.
+prob_trace_gc = TraceGCProblem(stateinit, tspan, param)
 sol_gc_rk4 = solve(prob_trace_gc, RK4(); dt = 0.1, adaptive = false)
 sol_gc_vern7 = solve(prob_trace_gc, Vern7())
 
@@ -66,14 +66,13 @@ for k in eachindex(zrange), j in eachindex(yrange), i in eachindex(xrange)
     B_numerical[:, i, j, k] = curved_B(x)
 end
 
-stateinit_gc_num, param_gc_num = TP.prepare_gc(
-    stateinit;
+param_gc_num = TP.prepare(;
     E = uniform_E,
     B = build_interpolator(B_numerical, (xrange, yrange, zrange); bc = TestParticle.FillExtrap(NaN), order = 3),
     species = Proton
 )
 
-prob_gc_num = ODEProblem(trace_gc!, stateinit_gc_num, tspan, param_gc_num)
+prob_gc_num = TraceGCProblem(stateinit, tspan, param_gc_num)
 sol_gc_numericBfield = solve(prob_gc_num, Vern9())
 
 ## 3. Analytic Guiding Center Drift
@@ -90,7 +89,7 @@ saved_values = SavedValues(Float64, SVector{3, Float64})
 cb = SavingCallback((u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values)
 
 ## Reuse the parameters from the previous GC simulation
-prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+prob_gc_saving = ODEProblem(trace_gc!, stateinit_gc, tspan, param)
 sol_gc_saving = solve(prob_gc_saving, Vern9(), callback = cb)
 
 ## 5. Trace Magnetic Field Lines
@@ -222,11 +221,7 @@ function run_grad_B_sim(B_func, tspan)
     sol = solve(prob, Vern9())
 
     ## GC (Trace)
-    stateinit_gc,
-        param_gc = TP.prepare_gc(
-        stateinit; E = uniform_E, B = B_func, species = Proton
-    )
-    prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
+    prob_gc = ODEProblem(trace_gc!, TP.full_to_gc(stateinit, param), tspan, param)
     sol_gc = solve(prob_gc, Vern9())
 
     ## GC (Analytic)
@@ -298,19 +293,16 @@ param_full = prepare(; E = uniform_E, B = grad_B_small, species = Proton)
 prob_full = ODEProblem(trace!, stateinit, tspan_bench, param_full)
 
 ## Guiding Center Problem
-stateinit_gc,
-    param_gc = TP.prepare_gc(
-    stateinit; E = uniform_E, B = grad_B_small, species = Proton
-)
+stateinit_gc = TP.full_to_gc(stateinit, param_full)
 ## Save the perpendicular velocities on-the-fly.
 saved_values = SavedValues(Float64, SVector{3, Float64})
 cb = SavingCallback(
     (u, t, integrator) -> get_gc_velocity(u, integrator.p, t), saved_values
 )
-prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan_bench, param_gc)
+prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan_bench, param_full)
 
 ## TraceGCProblem
-prob_trace_gc = TraceGCProblem(stateinit_gc, tspan_bench, param_gc)
+prob_trace_gc = TraceGCProblem(stateinit, tspan_bench, param_full)
 
 ## Run simulations for plotting
 sol_full = solve(prob_full, Vern9())

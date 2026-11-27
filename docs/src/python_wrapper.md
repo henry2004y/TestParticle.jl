@@ -84,6 +84,7 @@ B_sol = res.B    # shape (n, 3)
 gc = tp.trace_gc(x0, v0, (0.0, 1e-7), 5e-10, get_B, species="proton")
 R = gc.R         # guiding-center position, shape (n, 3)
 vpar = gc.vpar   # parallel velocity, shape (n,)
+mu = gc.mu       # magnetic moment, shape (n,)
 
 ```
 
@@ -138,7 +139,7 @@ instead, as in the hybrid [examples](@ref).
 `TraceResult` exposes the trajectory as numpy arrays via properties: `t`, `x`,
 `v`, and — when the corresponding keyword is enabled — `E`, `B` (`save_fields=True`)
 and `work` (`save_work=True`). `GCTraceResult` exposes `t`, `R` (guiding-center
-position), `vpar` (parallel velocity), and the same optional `E`, `B`, `work`.
+position), `vpar` (parallel velocity), `mu` (magnetic moment), and the same optional `E`, `B`, `work`.
 
 ## Raw Julia API
 

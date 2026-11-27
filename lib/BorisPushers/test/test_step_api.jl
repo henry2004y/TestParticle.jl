@@ -2,9 +2,16 @@ module test_step_api
 
 using Test
 using BorisPushers
-import BorisPushers: update_velocity_resync
+import BorisPushers: update_velocity_resync, update_velocity_boris
 using StaticArrays
 using LinearAlgebra: norm
+
+function _loop_update_velocity_boris_rel(u, E, B, qdt2m, inv_c2, n)
+    for _ in 1:n
+        u = update_velocity_boris(u, E, B, qdt2m, inv_c2)
+    end
+    return u
+end
 
 zero_E(x, t) = SA[0.0, 0.0, 0.0]
 uniform_B(x, t) = SA[0.0, 0.0, 0.01]
@@ -221,6 +228,40 @@ end
         for alg in (Boris(), MultistepBoris4(; n = 2), Vay(), HigueraCary())
             integrate(alg, param_rel, 0.0, dt, 10)
             @test @allocated(integrate(alg, param_rel, 0.0, dt, 1000)) == 0
+        end
+
+        @testset "relativistic update_velocity_boris" begin
+            let r = SA[0.0, 0.0, 0.0],
+                    B_si = uniform_B(r, 0.0),
+                    E0 = zero_E(r, 0.0),
+                    qdt2m_si = param_rel.q2m * 0.5 * dt,
+                    inv_c2_si = inv(c0^2),
+                    u_si = SA[u_init, 0.2 * c0, -0.3 * c0]
+                u_step = update_velocity_boris(u_si, E0, B_si, qdt2m_si, inv_c2_si)
+                u_alg = update_velocity(u_si, r, dt, 0.0, param_rel, Boris())
+                @test u_step ≈ u_alg rtol = 1.0e-14
+                @test sum(abs2, u_step) ≈ sum(abs2, u_si) rtol = 1.0e-14
+
+                E_n = SA[0.05, -0.02, 0.01]
+                B_n = SA[0.0, 0.0, 1.0]
+                for FT in (Float64, Float32)
+                    u_n = SVector{3, FT}(0.4, -0.3, 0.2)
+                    E_T = SVector{3, FT}(E_n)
+                    B_T = SVector{3, FT}(B_n)
+                    qdt2m_T = FT(0.05)
+                    u_nonrel = update_velocity_boris(u_n, E_T, B_T, qdt2m_T)
+                    u_c_inf = update_velocity_boris(u_n, E_T, B_T, qdt2m_T, zero(FT))
+                    @test u_c_inf == u_nonrel
+
+                    u_B = update_velocity_boris(u_n, zero(E_T), B_T, qdt2m_T, one(FT))
+                    @test sum(abs2, u_B) ≈ sum(abs2, u_n) rtol = 10 * eps(FT)
+                end
+
+                _loop_update_velocity_boris_rel(u_si, E0, B_si, qdt2m_si, inv_c2_si, 10)
+                @test @allocated(
+                    _loop_update_velocity_boris_rel(u_si, E0, B_si, qdt2m_si, inv_c2_si, 100)
+                ) == 0
+            end
         end
     end
 end

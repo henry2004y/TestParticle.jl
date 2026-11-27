@@ -73,25 +73,24 @@ end
 
 include("erased.jl")
 
-prepare_field(f; erased = false, kwargs...) = erased ? ErasedField(f) : Field(f)
-prepare_field(
-    f::Field{itd, ErasedFunction}; erased = false, kwargs...
-) where {itd} = f
-prepare_field(f::Field; erased = false, kwargs...) = erased ? ErasedField(f) : f
-prepare_field(f::ZeroField; kwargs...) = f
-prepare_field(::Nothing; kwargs...) = ZeroField()
+prepare_field(f; erased = false) = erased ? ErasedField(f) : Field(f)
+prepare_field(f::Field{itd, ErasedFunction}; erased = false) where {itd} = f
+prepare_field(f::Field; erased = false) = erased ? ErasedField(f) : f
+prepare_field(f::ZeroField; erased = false) = f
+prepare_field(::Nothing; erased = false) = ZeroField()
 
 
 """
-    prepare(; E=nothing, B=nothing, F=nothing, species=Proton, q, m, c, type, erased=false)
+    prepare(; E=nothing, B=nothing, F=nothing, species=Proton, q, m, c, erased=false)
 
-Build particle parameters from callable electric, magnetic, and external force fields.
-Omitted fields are zero. Each callable accepts `x` or `(x, t)` and returns three components.
-Construct numerical fields with [`build_interpolator`](@ref) before calling `prepare`.
-See [`Field`](@ref) to select the calling convention. `q` and `m` override `species`;
-`c` sets the relativistic speed of light. `type` converts particle constants.
-`erased = true` wraps each field in an [`ErasedField`](@ref), whose type does not depend on
-the field function, for uniform dispatch and static compilation.
+Build particle parameters `(; q, q2m, m, E, B, F)` from callable electric, magnetic, and
+external force fields, for every model. Omitted fields are zero. Each callable accepts `x` or
+`(x, t)` and returns three components. Construct numerical fields with
+[`build_interpolator`](@ref) before calling `prepare`. See [`Field`](@ref) to select the
+calling convention. `q` and `m` override `species`; `c` sets the relativistic speed of light.
+Particle constants take the float type of the state when traced. `erased = true` wraps each
+field in an [`ErasedField`](@ref), whose type does not depend on the field function, for
+uniform dispatch and static compilation.
 
 # Examples
 ```jldoctest
@@ -118,7 +117,7 @@ true
 """
 function prepare(;
         E = nothing, B = nothing, F = nothing, species = Proton,
-        q = nothing, m = nothing, c = nothing, type = nothing, erased::Bool = false
+        q = nothing, m = nothing, c = nothing, erased::Bool = false
     )
     any(f -> f isa AbstractArray, (E, B, F)) && throw(
         ArgumentError(
@@ -127,13 +126,10 @@ function prepare(;
     )
     q = @something q species.q
     m = @something m species.m
-    if !isnothing(type)
-        q, m = type(q), type(m)
-    end
     E, B, F = map(f -> prepare_field(f; erased), (E, B, F))
-    p = (; q2m = q / m, m, E, B, F)
+    p = (; q, q2m = q / m, m, E, B, F)
     isnothing(c) && return p
-    return (; p..., c = isnothing(type) ? c : type(c))
+    return (; p..., c)
 end
 
 """
@@ -152,39 +148,36 @@ _prepare_potential_scalar(::Nothing, erased) = ZeroField()
 
 function PotentialField(;
         phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing,
-        erased::Bool = false, kw...
+        erased::Bool = false
     )
-    f_phi, f_A = _prepare_potential_scalar(phi, erased), prepare_field(A; erased, kw...)
+    f_phi, f_A = _prepare_potential_scalar(phi, erased), prepare_field(A; erased)
     return PotentialField(
-        f_phi, f_A, _grad_phi(grad_phi, f_phi; erased, kw...),
-        _grad_A(grad_A, f_A; erased, kw...)
+        f_phi, f_A, _grad_phi(grad_phi, f_phi; erased), _grad_A(grad_A, f_A; erased)
     )
 end
 
-_grad_phi(g, phi; erased = false, kw...) = prepare_field(g; erased, kw...)
-_grad_phi(::Nothing, ::ZeroField; kw...) = ZeroField()
-_grad_phi(::Nothing, phi; kw...) =
+_grad_phi(g, phi; erased = false) = prepare_field(g; erased)
+_grad_phi(::Nothing, ::ZeroField; erased = false) = ZeroField()
+_grad_phi(::Nothing, phi; erased = false) =
     (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
 
-_grad_A(g::ZeroField, A; kw...) = g
-_grad_A(g, A; erased = false, kw...) = erased ? ErasedField(g) : Field(g)
-_grad_A(::Nothing, ::ZeroField; kw...) = ZeroField()
-_grad_A(::Nothing, A; kw...) =
+_grad_A(g::ZeroField, A; erased = false) = g
+_grad_A(g, A; erased = false) = erased ? ErasedField(g) : Field(g)
+_grad_A(::Nothing, ::ZeroField; erased = false) = ZeroField()
+_grad_A(::Nothing, A; erased = false) =
     (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
 
 """
-    prepare(pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c, type = nothing)
+    prepare(pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c)
 
 Return parameters `(; q, m, c, pf)` for `TraceCanonicalProblem`.
 """
 function prepare(
-        pf::PotentialField;
-        species = Proton, q = nothing, m = nothing, c = c, type = nothing, kw...
+        pf::PotentialField; species = Proton, q = nothing, m = nothing, c = c
     )
     q = @something q species.q
     m = @something m species.m
-    p = (; q, m, c, pf)
-    return isnothing(type) ? p : _promote_p(type, p)
+    return (; q, m, c, pf)
 end
 
 """

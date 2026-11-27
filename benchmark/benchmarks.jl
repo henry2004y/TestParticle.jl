@@ -291,13 +291,12 @@ SUITE["interpolation"]["time-dependent"] = @benchmarkable begin
 end
 
 # GC
-stateinit_gc, param_gc = prepare_gc(
-    stateinit; E = E_analytic, B = B_analytic, species = Proton
-)
+param_gc = prepare(; E = E_analytic, B = B_analytic, species = Proton)
+stateinit_gc = TestParticle.full_to_gc(stateinit, param_gc)
 prob_gc = ODEProblem(trace_gc!, stateinit_gc, tspan, param_gc)
 SUITE["trace"]["GC"]["DiffEq Vern6"] = @benchmarkable solve($prob_gc, Vern6())
 
-prob_trace_gc = TraceGCProblem(stateinit_gc, tspan, param_gc)
+prob_trace_gc = TraceGCProblem(stateinit, tspan, param_gc)
 SUITE["trace"]["GC"]["RK4"] = @benchmarkable solve(
     $prob_trace_gc, RK4();
     dt = 2.0e-2, adaptive = false, saveat = 2.0, maxiters = 10000
@@ -332,7 +331,7 @@ let
     q2m = q / m
     T_gyro = 2π / (abs(q2m) * B0_hybrid)
     tspan = (0.0, 10 * T_gyro)
-    p = (; q2m, m, E = E_bottle, B = B_bottle, F = TP.ZeroField())
+    p = prepare(; E = E_bottle, B = B_bottle)
     v0 = SA[5.0e4, 0.0, 1.0e5]
     dt_boris = 0.1 * T_gyro
     dtmax_boris = T_gyro
@@ -362,8 +361,7 @@ let
         threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
         maxiters = 10000, check_interval = 10,
     )
-    state_gc, param_gc = TP.prepare_gc(u0_mixed; B = B_bottle, species = Proton)
-    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
+    prob_gc = TraceGCProblem(u0_mixed, tspan, TP.prepare(; B = B_bottle, species = Proton))
 
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, magnetic bottle"] = @benchmarkable solve(
         $prob_mixed, $alg_boris;
@@ -400,7 +398,7 @@ let
     u0 = vcat(SA[0.0, 0.0, -2L_sheet], SA[0.0, 0.95v, 0.3v])
     B_sheet = TP.Field(sheet_B)
     E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-    p = (; q2m, m, E = E_zero, B = B_sheet, F = TP.ZeroField())
+    p = prepare(; E = E_zero, B = B_sheet)
     prob_sheet = TraceProblem(u0, tspan, p)
     dt_boris = T_gyro / 20
     dtmax_boris = T_gyro
@@ -411,8 +409,7 @@ let
         threshold = 0.1, dtmax = dt_boris, dtmin = 1.0e-4 * T_gyro,
         maxiters = 500_000, check_interval = 10,
     )
-    state_gc, param_gc = TP.prepare_gc(u0; B = B_sheet, species = Proton)
-    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
+    prob_gc = TraceGCProblem(u0, tspan, TP.prepare(; B = B_sheet, species = Proton))
 
     SUITE["trace"]["Hybrid"]["Boris, current sheet"] = @benchmarkable solve(
         $prob_sheet, Boris(); dt = $dt_boris
@@ -452,7 +449,7 @@ let
     u0 = vcat(SA[1.0, 0.0, 0.0], SA[5.0e4, 0.0, 1.0e5])
     B_adia = TP.Field(adia_B)
     E_zero = TP.Field((x, t) -> SA[0.0, 0.0, 0.0])
-    p = (; q2m, m, E = E_zero, B = B_adia, F = TP.ZeroField())
+    p = prepare(; E = E_zero, B = B_adia)
     prob_adia = TraceProblem(u0, tspan, p)
     dt_boris = 0.1 * T_gyro
     dtmax_boris = T_gyro
@@ -463,8 +460,7 @@ let
         threshold = 0.1, dtmax = T_gyro, dtmin = 1.0e-4 * T_gyro,
         maxiters = 10000, check_interval = 10,
     )
-    state_gc, param_gc = TP.prepare_gc(u0; B = B_adia, species = Proton)
-    prob_gc = TraceGCProblem(state_gc, tspan, param_gc)
+    prob_gc = TraceGCProblem(u0, tspan, TP.prepare(; B = B_adia, species = Proton))
 
     SUITE["trace"]["Hybrid"]["AdaptiveBoris, adiabatic bottle"] = @benchmarkable solve(
         $prob_adia, $alg_boris;

@@ -24,12 +24,11 @@ _needs_fsal_init(::Vern7) = false
     tspan = (0.0, 1.0)
 
     @compile_workload begin
-        stateinit_gc, param_gc = prepare_gc(
-            gc_init;
+        param = prepare(;
             E = build_interpolator(E, (x, y, z); bc = TestParticle.FillExtrap(NaN)),
             B = build_interpolator(B, (x, y, z); bc = TestParticle.FillExtrap(NaN))
         )
-        solve(TraceGCProblem(stateinit_gc, tspan, param_gc), Vern7())
+        solve(TraceGCProblem(gc_init, tspan, param), Vern7())
     end
 end
 

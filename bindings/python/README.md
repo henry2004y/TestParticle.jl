@@ -86,6 +86,7 @@ B_sol = res.B    # shape (n, 3)
 gc = tp.trace_gc(x0, v0, (0.0, 1e-7), 5e-10, get_B, species="proton")
 R = gc.R         # guiding-center position, shape (n, 3)
 vpar = gc.vpar   # parallel velocity, shape (n,)
+mu = gc.mu       # magnetic moment, shape (n,)
 
 ```
 
