@@ -56,8 +56,6 @@ end
         :cart2sphvec,
         :bin_velocity_space,
         :project_vdf,
-        :vdf_grid_problem,
-        :refine_vdf_window,
         :sample_velocity_ball,
         :PeriodicBC,
         :OnTheFly,

@@ -65,7 +65,7 @@ public ReturnCode, Field, ErasedField, ErasedFunction,
     LazyTimeInterpolator,
     GPUGrid, GPUUniformAxis, GPUNonUniformAxis,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec,
-    bin_velocity_space, project_vdf, vdf_grid_problem, refine_vdf_window,
+    bin_velocity_space, project_vdf,
     FillExtrap, ClampExtrap, WrapExtrap, PeriodicBC, OnTheFly, PreCompute, StorePolicy
 
 include("types.jl")

@@ -72,27 +72,6 @@ function project_vdf(d::CartesianGridVDF)
 end
 
 """
-    vdf_grid_problem(vx, vy, vz, x0, param, tspan) -> TraceProblem
-
-Build a `TraceProblem` that traces a velocity-space grid: trajectory `i` starts at
-position `x0` [m] with the grid velocity `(vx[ix], vy[iy], vz[iz])` [m/s], the `z` index
-varying fastest. This is the setup of the backward Liouville method, where the grid sits
-at the detector and `tspan` runs backward in time.
-"""
-function vdf_grid_problem(vx, vy, vz, x0, param, tspan)
-    nx, ny, nz = length(vx), length(vy), length(vz)
-
-    function prob_func(prob, ctx)
-        iz = (ctx.sim_id - 1) % nz + 1
-        iy = ((ctx.sim_id - 1) ÷ nz) % ny + 1
-        ix = ((ctx.sim_id - 1) ÷ (nz * ny)) % nx + 1
-        return remake(prob; u0 = SA[x0[1], x0[2], x0[3], vx[ix], vy[iy], vz[iz]])
-    end
-
-    return TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func)
-end
-
-"""
     refine_vdf_window(f, vx, vy, vz, v0, dv; margin = 0.0, relthresh = 1.0e-5,
         bounds = nothing)
 
@@ -140,34 +119,31 @@ function _refine_range(lo, hi, bound_lo, bound_hi, v0, dv)
     return range(max(bound_lo, snap(lo, floor)), min(bound_hi, snap(hi, ceil)); step = dv)
 end
 
+# `f_src` at the first crossing of `source` by the trajectory traced backward from `x0`
+# with each velocity of the grid, zero for those that never cross
 function _run_backward_pass(
-        vx_grid, vy_grid, vz_grid, x0, param, tspan, dt, source, f_src, isoutside,
-        alg, ensemblealg
+        vx, vy, vz, x0, param, tspan, dt, source, f_src, isoutside, alg, ensemblealg
     )
-    nx, ny, nz = length(vx_grid), length(vy_grid), length(vz_grid)
-    ntraj = nx * ny * nz
+    grid = CartesianIndices((length(vx), length(vy), length(vz)))
 
-    prob = vdf_grid_problem(vx_grid, vy_grid, vz_grid, x0, param, tspan)
+    function prob_func(prob, ctx)
+        ix, iy, iz = Tuple(grid[ctx.sim_id])
+        return remake(prob; u0 = SA[x0[1], x0[2], x0[3], vx[ix], vy[iy], vz[iz]])
+    end
 
     function output_func(sol, i)
         st = get_first_crossing(sol, source)
-        val = any(isnan, st) ? 0.0 : f_src(st[SA[4, 5, 6]])
-        return (val, false)
+        return (any(isnan, st) ? 0.0 : f_src(st[SA[4, 5, 6]]), false)
     end
 
-    ensemble_prob = EnsembleProblem(
-        prob; prob_func = prob.prob_func, output_func, safetycopy = false
-    )
-
+    prob = TraceProblem(SA[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], tspan, param; prob_func)
+    ensemble_prob = EnsembleProblem(prob; prob_func, output_func, safetycopy = false)
     solve_kwargs = isoutside === nothing ? (;) : (; isoutside)
     sols = solve(
         ensemble_prob, alg, ensemblealg;
-        dt = -abs(dt), trajectories = ntraj, solve_kwargs...
+        dt = -abs(dt), trajectories = length(grid), solve_kwargs...
     )
-
-    f_linear = sols.u
-    f_perm = permutedims(reshape(f_linear, nz, ny, nx), (3, 2, 1))
-    return f_perm
+    return reshape(sols.u, size(grid))
 end
 
 """
