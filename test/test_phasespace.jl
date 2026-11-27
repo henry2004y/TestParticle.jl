@@ -81,7 +81,7 @@ end
 "Projections of `f_src` by the midpoint rule on the bin centers, as for reconstructions."
 function ana_projections()
     f = [f_src(SA[a, b, c]) for a in v_centers, b in v_centers, c in v_centers]
-    return project_vdf(f, dv)
+    return project_vdf(CartesianGridVDF(v_centers, v_centers, v_centers, f))
 end
 
 @testset "phase space utilities" begin
@@ -102,24 +102,24 @@ end
         ## The first sample sits at the center of bin (1, 1, 1); the second is outside.
         vs = [SA[-90.0e3, -90.0e3, -90.0e3], SA[1.0e6, 0.0, 0.0]]
         A = bin_velocity_space(vs, [2.0, 5.0], edges)
-        @test A[1, 1, 1] == 2.0
-        @test sum(A) == 2.0
+        @test A.vx ≈ -90.0e3:20.0e3:90.0e3
+        @test A.f[1, 1, 1] == 2.0
+        @test sum(A.f) == 2.0
+        @test_throws ArgumentError bin_velocity_space(vs[2:2], [5.0], edges)
         ## `average` takes the mean of the weights landing in a bin instead of their sum.
         C = bin_velocity_space([vs[1], vs[1]], [2.0, 4.0], edges; average = true)
-        @test C[1, 1, 1] == 3.0
-        @test C[1, 1, 2] == 0.0
+        @test C.f[1, 1, 1] == 3.0
+        @test C.f[1, 1, 2] == 0.0
         ## One range per axis
         D = bin_velocity_space(vs, [2.0, 5.0], (edges, -100.0e3:40.0e3:100.0e3, edges))
-        @test size(D) == (10, 5, 10) && D[1, 1, 1] == 2.0
+        @test size(D.f) == (10, 5, 10) && D.f[1, 1, 1] == 2.0
     end
 
     @testset "project_vdf" begin
-        f_xy, f_xz, f_yz = project_vdf(ones(4, 5, 6), (1.0, 2.0, 3.0))
+        f_xy, f_xz, f_yz = project_vdf(CartesianGridVDF(0:3, 0:2:8, 0:3:15, ones(4, 5, 6)))
         @test size(f_xy) == (4, 5) && all(==(6 * 3.0), f_xy)
         @test size(f_xz) == (4, 6) && all(==(5 * 2.0), f_xz)
         @test size(f_yz) == (5, 6) && all(==(4 * 1.0), f_yz)
-        d = CartesianGridVDF(0:3, 0:2:8, 0:3:15, ones(4, 5, 6))
-        @test project_vdf(d) == (f_xy, f_xz, f_yz)
     end
 
     @testset "refine_vdf_window" begin
@@ -158,12 +158,12 @@ end
         ## Each macro-particle stands for `n0 / N` of the source density spread over one
         ## bin volume, and |v_x,src| / |v_x,det| turns its crossing flux into a density.
         w = n0 / (n * dv^3) .* abs.(ws_init) ./ abs.(first.(vs))
-        f3d = bin_velocity_space(vs, w, v_edges)
-        rec = project_vdf(f3d, dv)
+        d = bin_velocity_space(vs, w, v_edges)
+        rec = project_vdf(d)
         for i in 1:3
             @test relative_l2(rec[i], ana[i]) < 0.15
         end
-        @test sum(f3d) * dv^3 ≈ n0 rtol = 0.1
+        @test d.n ≈ n0 rtol = 0.1
     end
 
     @testset "get_particle_crossings serially" begin

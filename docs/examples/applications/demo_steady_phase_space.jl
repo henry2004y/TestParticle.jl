@@ -159,8 +159,7 @@ function reconstruct_mc(sols, detector, n0)
     ## density-weighted launch ensemble into the crossing flux recorded at the detector and
     ## back into a density.
     w = n0 / (length(sols.u) * dv^3) .* abs.(ws_init) ./ abs.(first.(vs))
-    f_3d = bin_velocity_space(vs, w, v_edges)
-    return CartesianGridVDF(centers, centers, centers, f_3d)
+    return bin_velocity_space(vs, w, v_edges)
 end
 
 hists_down = km_projections(reconstruct_mc(sols, detector_down, n0));
@@ -180,8 +179,7 @@ hists_down = km_projections(reconstruct_mc(sols, detector_down, n0));
 function reconstruct_liouville(sols, detector, vdf, n0)
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vs, ws = get_particle_crossings(sols, detector, ws0)
-    f_3d = bin_velocity_space(vs, ws, v_edges; average = true)
-    return CartesianGridVDF(centers, centers, centers, f_3d)
+    return bin_velocity_space(vs, ws, v_edges; average = true)
 end
 
 nparticles_m2 = 50000

@@ -16,11 +16,12 @@ function sample_velocity_ball(radius::Real; center = SA[0.0, 0.0, 0.0])
 end
 
 """
-    bin_velocity_space(vs, weights, edges; average = false)
+    bin_velocity_space(vs, weights, edges; average = false) -> CartesianGridVDF
 
-Accumulate the velocities `vs` with `weights` into the 3-D bins delimited by `edges`, a
-range shared by the three axes or one range per axis. Samples outside the bins are
-dropped; empty bins are zero.
+Phase-space density on the bin centers of `edges` from the velocities `vs` with
+`weights`; `edges` is a range shared by the three axes or one range per axis. Samples
+outside the bins are dropped; empty bins are zero. Throws an `ArgumentError` when no
+weight lands in a bin.
 
   - `average = false` sums the weights: for weights `f ΔV / Δv³` the result is the
     histogram estimate of the bin-averaged `f`, with counting noise `∝ 1/√n` for `n`
@@ -33,6 +34,12 @@ detector, which brings in the flux ratio described in [`vdf_forward_trace`](@ref
 """
 function bin_velocity_space(vs, weights, edges; average = false)
     es = _triple(edges)
+    A = _histogram(vs, weights, es, average)
+    all(iszero, A) && throw(ArgumentError("no weight lands in the velocity bins"))
+    return CartesianGridVDF(map(_bin_centers, es)..., A)
+end
+
+function _histogram(vs, weights, es, average)
     nb = map(e -> length(e) - 1, es)
     A = zeros(float(eltype(weights)), nb)
     counts = average ? zeros(Int, nb) : nothing
@@ -54,20 +61,15 @@ function bin_velocity_space(vs, weights, edges; average = false)
 end
 
 """
-    project_vdf(f, dv) -> (f_xy, f_xz, f_yz)
     project_vdf(d::CartesianGridVDF) -> (f_xy, f_xz, f_yz)
 
-Projections `∫ f dv_k` of a 3-D phase-space density on each pair of velocity axes, for
-the bin width `dv` (or one per axis). For a `CartesianGridVDF` on uniform grids, `f` is
-`d.f` and `dv` its grid steps.
+Projections `∫ f dv_k` of `d` on each pair of velocity axes, by the midpoint rule on its
+uniform grids.
 """
-function project_vdf(f::AbstractArray{<:Any, 3}, dv)
-    dx, dy, dz = _triple(dv)
-    proj(k, d) = dropdims(sum(f; dims = k); dims = k) .* d
-    return proj(3, dz), proj(2, dy), proj(1, dx)
+function project_vdf(d::CartesianGridVDF)
+    proj(k, g) = dropdims(sum(d.f; dims = k); dims = k) .* step(g)
+    return proj(3, d.vz), proj(2, d.vy), proj(1, d.vx)
 end
-
-project_vdf(d::CartesianGridVDF) = project_vdf(d.f, map(step, (d.vx, d.vy, d.vz)))
 
 """
     vdf_grid_problem(vx, vy, vz, x0, param, tspan) -> TraceProblem
@@ -281,7 +283,7 @@ function vdf_forward_trace(
     ΔV = 4π * vradius^3 / (3 * nparticles)
     w = ws .* (ΔV / dv^3) .* abs.(ws_vxi) ./ abs.(first.(vs))
     edges = map(r -> range(-r, r; step = dv), (v_range, vy_range, vz_range))
-    f3d = bin_velocity_space(vs, w, edges)
+    f3d = _histogram(vs, w, edges, false)
     all(iszero, f3d) && throw(_unreached("detector"))
     return CartesianGridVDF(map(_bin_centers, edges)..., f3d)
 end

@@ -365,8 +365,7 @@ function reconstruct_mc(sols, detector, n0)
     ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
     ## volume `dv³`.
     S = n0 / (length(sols.u) * dv^3)
-    f_3d = bin_velocity_space(vs, S .* abs.(ws_init) ./ abs.(first.(vs)), v_edges)
-    return CartesianGridVDF(centers, centers, centers, f_3d)
+    return bin_velocity_space(vs, S .* abs.(ws_init) ./ abs.(first.(vs)), v_edges)
 end;
 
 mc_up = reconstruct_mc(sols, detector_up, n_up)
@@ -405,8 +404,7 @@ function reconstruct_liouville(sols, detector, vdf, n0)
     ## Summing keeps the `∝ 1/√n` counting noise; `average = true` divides it out instead.
     vsphere = (4 / 3) * π * vradius_m2^3
     scale = vsphere / (length(sols.u) * dv^3)
-    f_3d = bin_velocity_space(vs, ws .* scale .* abs.(ws_vxi) ./ abs.(first.(vs)), v_edges)
-    return CartesianGridVDF(centers, centers, centers, f_3d)
+    return bin_velocity_space(vs, ws .* scale .* abs.(ws_vxi) ./ abs.(first.(vs)), v_edges)
 end
 
 nparticles_m2 = 100000
