@@ -239,9 +239,7 @@ end
         throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
     prob.tspan[2] != prob.tspan[1] ||
         throw(ArgumentError("tspan[2] must not equal tspan[1]."))
-    plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
-    )
+    plan = SavingPlan(saveat, prob.tspan, typeof(prob.tspan[1]))
     args = (
         ensemblealg, prob, trajectories, alg,
         plan, isoutside, save_start, save_end, save_everystep, verbose, seed,

@@ -1,10 +1,10 @@
 # `saveat` plan for native and GPU solvers.
 
 """
-    SavingPlan(saveat, tspan, dir, ::Type{T})
+    SavingPlan(saveat, tspan, ::Type{T})
 
 The times at which a solve reports the state, ordered along the direction
-of integration `dir`. An empty plan means `saveat` was not used and every step is
+of integration. An empty plan means `saveat` was not used and every step is
 reported.
 """
 struct SavingPlan{T}
@@ -15,13 +15,9 @@ end
 
 use_saveat(plan::SavingPlan) = plan.has_saveat
 
-function SavingPlan(saveat, tspan, dir, ::Type{T}) where {T}
-    has_saveat = !isempty(saveat)
-    return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir, has_saveat)
-end
-
 function SavingPlan(saveat, tspan, ::Type{T}) where {T}
-    return SavingPlan(saveat, tspan, _span_direction(tspan), T)
+    dir = _span_direction(tspan)
+    return SavingPlan{T}(_saveat_times(saveat, tspan, dir, T), dir, !isempty(saveat))
 end
 
 """
