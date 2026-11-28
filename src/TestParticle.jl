@@ -9,12 +9,12 @@ using SciMLBase: AbstractODEProblem, AbstractODEFunction, AbstractODESolution, R
     BasicEnsembleAlgorithm, EnsembleProblem,
     EnsembleThreads, EnsembleSerial, EnsembleDistributed, EnsembleSplitThreads,
     DEFAULT_SPECIALIZATION, FullSpecialize, ODEFunction, ODEProblem, remake,
-    LinearInterpolation, build_solution, EnsembleSolution,
+    LinearInterpolation, build_solution,
     DiscreteCallback, terminate!, EnsembleContext, isadaptive
 import SciMLBase
 import SciMLBase: solve
 using Random: default_rng, AbstractRNG, Xoshiro
-using StaticArrays: SVector, MVector, SA, StaticArray, SMatrix
+using StaticArrays: SVector, SA, StaticArray, SMatrix
 import ForwardDiff
 import DiffResults
 using ChunkSplitters: index_chunks
@@ -22,6 +22,7 @@ using FunctionWrappers: FunctionWrapper
 using PrecompileTools: @setup_workload, @compile_workload
 using MuladdMacro: @muladd
 using PlasmaPopulations: Particle, Proton, Electron, Positron, Population, pdf,
+    CartesianGridVDF,
     gyrofrequency, C_SI, E_SI, MU0_SI, EPS0_SI, KB_SI
 
 import Adapt
@@ -63,9 +64,7 @@ public ReturnCode, Field, ErasedField, ZeroField,
     LazyTimeInterpolator,
     GPUGrid, GPUUniformAxis, GPUNonUniformAxis,
     sph2cart, cart2sph, sph2cartvec, cart2sphvec,
-    bin_centers, bin_velocity_space, project_vdf, analytic_projection, relative_l2,
-    velocity_moments, vdf_grid_problem, vdf_backward, refine_vdf_window,
-    embed_vdf,
+    bin_velocity_space, project_vdf,
     FillExtrap, ClampExtrap, WrapExtrap, PeriodicBC, OnTheFly, PreCompute, StorePolicy
 
 include("types.jl")

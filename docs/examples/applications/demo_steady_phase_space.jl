@@ -32,14 +32,13 @@ import DisplayAs #hide
 using TestParticle
 using BorisPushers
 using TestParticle: get_gyroperiod, get_particle_crossings
-using TestParticle: analytic_projection, bin_centers, bin_velocity_space, project_vdf,
-    relative_l2, sample_velocity_ball
+using TestParticle: bin_velocity_space, project_vdf, sample_velocity_ball
 import TestParticle as TP
 using LinearAlgebra: norm
 using StaticArrays
 using Random
 using Statistics: mean, var
-using PlasmaPopulations: BiMaxwellian, Oriented, pdf, thermal_speed
+using PlasmaPopulations: BiMaxwellian, CartesianGridVDF, Oriented, pdf, thermal_speed
 using CairoMakie
 using Meshes
 CairoMakie.activate!(type = "png") #hide
@@ -90,36 +89,40 @@ param = prepare(; E, B, species = Proton);
 
 # ## Analytic reference and error metric
 # The exact detector VDF is the source bi-Maxwellian evaluated at the detector
-# velocity. All three methods reconstruct the 2-D projections
-# $f_{2D}(v_i, v_j) = \int f_{3D}(v_i, v_j, v_k) \mathrm{d}v_k$,
-# which we evaluate analytically in two ways:
-#
-# 1. `analytic_projection` integrates over an arbitrary grid, which is used for the 1-D
-#    slice and for the grid-based backward method;
-# 2. `project_vdf` applied to the analytic `f` sampled on the bin centers reproduces the
-#    binning of the two forward methods, so those are compared bin for bin.
+# velocity. All three methods reconstruct `f` on a velocity grid as a `CartesianGridVDF`,
+# which we compare through the 2-D projections
+# $f_{2D}(v_i, v_j) = \int f_{3D}(v_i, v_j, v_k) \mathrm{d}v_k$ returned by `project_vdf`.
+# The analytic reference is `f` sampled on the same bin centers and projected the same way,
+# so the methods are compared bin for bin.
 #
 # All reconstructions are then scored with the same relative L2 norm
 # $\|f_{\mathrm{rec}} - f_{\mathrm{ana}}\| / \|f_{\mathrm{ana}}\|$, evaluated over the
 # populated cells of each projection.
 
-const vlim = 1000.0
-const z_int = range(-vlim, vlim; step = 10.0)    # km/s, integration axis
 ## Source phase-space density [s³/m⁶].
 f_src(v) = n0 * pdf(vdf, v)
 
-const v_edges = -1000:20:1000
-const centers = bin_centers(v_edges)
-const ana_f3d = [
-    f_src(SA[vx, vy, vz] * 1.0e3) * 1.0e18 for vx in centers, vy in centers, vz in centers
-]
+const dv = 20.0e3 # bin width [m/s]
+const v_edges = -1.0e6:dv:1.0e6 # [m/s]
+const centers = (v_edges[1:(end - 1)] .+ v_edges[2:end]) ./ 2
 
-f_xy_ana, f_xz_ana, f_yz_ana = project_vdf(ana_f3d, 20.0)
-const ana_hists = (
-    (centers, centers, f_xy_ana),
-    (centers, centers, f_xz_ana),
-    (centers, centers, f_yz_ana),
-);
+function on_grid(vx, vy, vz)
+    return CartesianGridVDF(vx, vy, vz, [f_src(SA[a, b, c]) for a in vx, b in vy, c in vz])
+end
+
+function relative_l2(rec, ref; thresh = 1.0e-4)
+    m = ref .> maximum(ref) * thresh
+    return norm(rec[m] .- ref[m]) / norm(ref[m])
+end
+
+## Projections in plotting units: `(vi, vj, f)` with velocities [km/s] and `f` [s²/km⁵].
+function km_projections(d)
+    f_xy, f_xz, f_yz = project_vdf(d)
+    vx, vy, vz = d.vx .* 1.0e-3, d.vy .* 1.0e-3, d.vz .* 1.0e-3
+    return ((vx, vy, f_xy .* 1.0e15), (vx, vz, f_xz .* 1.0e15), (vy, vz, f_yz .* 1.0e15))
+end
+
+const ana_hists = km_projections(on_grid(centers, centers, centers));
 
 # ## Method 1: Forward Monte Carlo
 #
@@ -147,24 +150,19 @@ t_mc = @elapsed sols = solve(
     trajectories = nparticles, seed
 );
 
-function reconstruct_mc_projections(sols, detector, n0, dv_km)
+function reconstruct_mc(sols, detector, n0)
     vxi = [s.u[1][4] for s in sols.u]
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
-    v_edges = -1000:dv_km:1000
-    centers = bin_centers(v_edges)
     ## Each macro-particle stands for $n_0/N$ of the source density spread over one bin
-    ## volume $dv^3$; the $|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|$ rescale carried by
-    ## `bin_velocity_space` turns the density-weighted launch ensemble into the crossing
-    ## flux recorded at the detector and back into a density.
-    w = fill(n0 * 1.0e9 / (length(sols.u) * dv_km^3), length(vs))
-    f_3d = bin_velocity_space(vs, w, v_edges; vx_source = ws_init)
-
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
+    ## volume $dv^3$; the $|v_{x,\mathrm{src}}|/|v_{x,\mathrm{det}}|$ rescale turns the
+    ## density-weighted launch ensemble into the crossing flux recorded at the detector and
+    ## back into a density.
+    w = n0 / (length(sols.u) * dv^3) .* abs.(ws_init) ./ abs.(first.(vs))
+    return bin_velocity_space(vs, w, v_edges)
 end
 
-hists_down = reconstruct_mc_projections(sols, detector_down, n0, 20.0);
+hists_down = km_projections(reconstruct_mc(sols, detector_down, n0));
 
 # ## Method 2: Forward Liouville Tracking
 #
@@ -178,16 +176,10 @@ hists_down = reconstruct_mc_projections(sols, detector_down, n0, 20.0);
 # places a handful of samples in each bin, so the counting noise dominates and we average
 # here.
 
-function reconstruct_liouville_projections(sols, detector, vdf, n0; dv_km = 20.0)
+function reconstruct_liouville(sols, detector, vdf, n0)
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vs, ws = get_particle_crossings(sols, detector, ws0)
-
-    v_edges = -1000:dv_km:1000
-    centers = bin_centers(v_edges)
-    f_3d = bin_velocity_space(vs, ws .* 1.0e18, v_edges; average = true)
-
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
+    return bin_velocity_space(vs, ws, v_edges; average = true)
 end
 
 nparticles_m2 = 50000
@@ -208,52 +200,33 @@ t_liou = @elapsed sols_m2 = solve(
     trajectories = nparticles_m2, seed
 );
 
-hists_down_m2 = reconstruct_liouville_projections(
-    sols_m2, detector_down, vdf, n0
-);
+hists_down_m2 = km_projections(reconstruct_liouville(sols_m2, detector_down, vdf, n0));
 
 # ## Method 3: Backward Liouville Tracing
 
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-function reconstruct_backward_projections(
-        detector_x, dt, param;
-        v_range = 1000.0e3, vy_range = 400.0e3, dv_km = 20.0,
-        adaptive = true, dv_coarse_km = 80.0, margin_km = 150.0
+function reconstruct_backward(detector_x, dt, param)
+    t_solve = @elapsed d = vdf_backward_trace(
+        param, detector_x, source_plane, f_src;
+        v_range = (1000.0e3, 400.0e3, 1000.0e3), dv, dt, tspan = (0.0, -8.0),
+        dv_coarse = 80.0e3, margin = 150.0e3, relthresh = 1.0e-5,
+        isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
+            u[1] > x_source[1] + 100.0e3,
+        alg = Boris()
     )
-    dv = dv_km * 1.0e3
-    bounds = ((-v_range, v_range), (-vy_range, vy_range), (-v_range, v_range))
-
-    t_solve = @elapsed begin
-        f_3d_km, (vx_grid, vy_grid, vz_grid) = vdf_backward_trace(
-            param, detector_x, source_plane, f_src;
-            v_range, vy_range, vz_range = v_range, dv, dt, tspan = (0.0, -8.0),
-            adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
-            relthresh = 1.0e-5, bounds,
-            isoutside = (u, p, t) -> u[1] < detector_x - 1.0e5 ||
-                u[1] > x_source[1] + 100.0e3,
-            alg = Boris()
-        )
-    end
-    nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
-
-    f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
-    ## Drop the negligible tail. Zeroing rather than `NaN`-ing keeps those cells at the
-    ## floor of the log colour scale below (a `NaN` would render transparent, unlike the
-    ## empty bins of the other three rows) and keeps them out of the log-scaled slice.
-    for f in (f_xy, f_xz, f_yz)
-        f[f .< maximum(f) * 1.0e-6] .= 0.0
-    end
-
-    return (
-            (vx_grid .* 1.0e-3, vy_grid .* 1.0e-3, f_xy),
-            (vx_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_xz),
-            (vy_grid .* 1.0e-3, vz_grid .* 1.0e-3, f_yz),
-        ), t_solve, nparticles_bw
+    return d, t_solve, length(d.f)
 end
 
-res_down_bw, t_bw_down, n_bw_down =
-    reconstruct_backward_projections(x_downstream, dt, param);
+## The adaptive pass returns `f` on the populated window of the full grid.
+bw_down, t_bw_down, n_bw_down = reconstruct_backward(x_downstream, dt, param)
+res_down_bw = km_projections(bw_down)
+## Drop the negligible tail. Zeroing rather than `NaN`-ing keeps those cells at the floor
+## of the log colour scale below (a `NaN` would render transparent, unlike the empty bins
+## of the other three rows) and keeps them out of the log-scaled slice.
+for (_, _, f) in res_down_bw
+    f[f .< maximum(f) * 1.0e-6] .= 0.0
+end
 
 # ## Phase space comparison
 # The three reconstructions are shown next to the analytic reference for each 2-D
@@ -315,9 +288,12 @@ function slice_at(h, second::Bool, val)
     end
 end
 
-const fine_x = range(-vlim, vlim; step = 10.0)
+const vlim = 1000.0 # plot range [km/s]
+const fine_x = range(-vlim, vlim; step = 10.0) # [km/s]
+const y_int = range(-1.0e6, 1.0e6; step = 10.0e3) # integration axis [m/s]
 const fana_slice = [
-    analytic_projection(f_src, 2, [vx], [0.0], z_int, step(z_int))[1] for vx in fine_x
+    sum(f_src(SA[vx * 1.0e3, vy, 0.0]) for vy in y_int) * step(y_int) * 1.0e15
+        for vx in fine_x
 ]
 
 xc_f, fy_f = slice_at(hists_down[2], true, 0.0)
@@ -390,12 +366,10 @@ println(io, "| :--- | ---: | ---: | ---: | ---: |") #hide
     pooled_relative_l2(mats(hists_down_m2), mats(ana_hists)), #hide
     nparticles_m2, t_liou, t_per_liou #hide
 ) #hide
-ana_bw_xy = analytic_projection(f_src, 3, res_down_bw[1][1], res_down_bw[1][2], z_int, step(z_int)) #hide
-ana_bw_xz = analytic_projection(f_src, 2, res_down_bw[2][1], res_down_bw[2][2], z_int, step(z_int)) #hide
-ana_bw_yz = analytic_projection(f_src, 1, res_down_bw[3][1], res_down_bw[3][2], z_int, step(z_int)) #hide
+ana_bw = km_projections(on_grid(bw_down.vx, bw_down.vy, bw_down.vz)) #hide
 @printf( #hide
     io, "| **Backward Liouville** | %.4f | %d | %.2f | %.1f |\n", #hide
-    pooled_relative_l2(mats(res_down_bw), (ana_bw_xy, ana_bw_xz, ana_bw_yz)), #hide
+    pooled_relative_l2(mats(res_down_bw), mats(ana_bw)), #hide
     n_bw_down, t_bw_down, t_per_bw #hide
 ) #hide
 Markdown.parse(String(take!(io))) #hide
@@ -441,7 +415,7 @@ function run_mc_N(N, rseed)
         prob, Boris(), EnsembleThreads(); dt,
         trajectories = N, seed = rseed
     )
-    return reconstruct_mc_projections(sols, detector_down, n0, 20.0)
+    return km_projections(reconstruct_mc(sols, detector_down, n0))
 end
 
 const Ns = [1000, 2000, 4000, 8000]

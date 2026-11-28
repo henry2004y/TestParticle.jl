@@ -9,12 +9,13 @@ import DisplayAs #hide
 using TestParticle
 using BorisPushers
 using TestParticle: get_gyroperiod, get_particle_crossings
-using TestParticle: analytic_projection, bin_centers, bin_velocity_space, embed_vdf,
-    project_vdf, relative_l2, sample_velocity_ball, velocity_moments
+using TestParticle: bin_velocity_space, project_vdf, sample_velocity_ball
 import TestParticle as TP
 using StaticArrays
 using Random
-using PlasmaPopulations: BiMaxwellian, Oriented, pdf, MU0_SI
+using LinearAlgebra: norm
+using Statistics: mean
+using PlasmaPopulations: BiMaxwellian, CartesianGridVDF, Oriented, pdf, MU0_SI
 using CairoMakie
 using Meshes
 CairoMakie.activate!(type = "png") #hide
@@ -319,14 +320,28 @@ end
 # ### What each method computes
 #
 # All three methods return the same physical quantity at the detector, the **phase-space
-# density** ``f``, in ``[\mathrm{s}^3/\mathrm{km}^6]`` (3D) or
-# ``[\mathrm{s}^2/\mathrm{km}^5]`` (2D projection), so their outputs are directly comparable:
+# density** ``f`` in ``[\mathrm{s}^3/\mathrm{m}^6]``, as a `CartesianGridVDF` on the same
+# velocity bins, so their outputs are directly comparable. The plots show its 2-D
+# projections in ``[\mathrm{s}^2/\mathrm{km}^5]`` against velocities in km/s.
+
+const dv = 20.0e3 # bin width [m/s]
+const v_edges = -1.0e6:dv:1.0e6 # [m/s]
+const centers = (v_edges[1:(end - 1)] .+ v_edges[2:end]) ./ 2
+
+## Projections in plotting units: `(vi, vj, f)` with velocities [km/s] and `f` [s²/km⁵].
+function km_projections(d)
+    f_xy, f_xz, f_yz = project_vdf(d)
+    vx, vy, vz = d.vx .* 1.0e-3, d.vy .* 1.0e-3, d.vz .* 1.0e-3
+    return ((vx, vy, f_xy .* 1.0e15), (vx, vz, f_xz .* 1.0e15), (vy, vz, f_yz .* 1.0e15))
+end
+
+# The methods differ in their input:
 #
 # | Method | Input | Output |
 # | :--- | :--- | :--- |
-# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted, hence the result carries sampling noise `∝ 1/√N`. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0_km³ / (N · dv²)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram) |
+# | **1. Forward Monte Carlo** | Macro-particles launched from `x_source` with velocities sampled from the source `Maxwellian` (`vdf`), i.e. density weighted, hence the result carries sampling noise `∝ 1/√N`. Each crossing is weighted by `S · \|v_x,src\| / \|v_x,det\|` with `S = n0 / (N · dv³)`: the first factor makes the ensemble flux weighted, the second converts the crossing flux back into a density. | 2-D projected ``f`` (histogram) |
 # | **2. Forward Liouville** | A uniform **sphere** of initial velocities at `x_source`, so the coverage is limited by the sphere radius; each sample carries the source ``f`` (`n0·pdf(vdf, v_source)`) *and* the velocity volume `vsphere/N` it represents. By Liouville's theorem `f_det(v_det) = f_source(v_source)`, so each crossing deposits `f·ΔV` into the detector bin it lands in, with `ΔV = (vsphere/N)·\|v_x,src\|/\|v_x,det\|`. Summing `f·ΔV` and dividing by the bin volume gives the bin-averaged ``f``. | 2-D projected ``f`` (histogram) |
-# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**, sampled uniformly and without noise, so every grid cell is filled; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated, i.e. only the PDF is evaluated per crossing, with no binning weights. | 3-D ``f`` on a grid, 2-D projections by summing |
+# | **3. Backward Liouville** | A regular **velocity grid** at the **detector**, sampled uniformly and without noise, so every grid cell is filled; each grid point is traced *backward* to `x_source` and `f_det = n0·pdf(vdf, v_traced)` is evaluated, i.e. only the PDF is evaluated per crossing, with no binning weights. | 3-D ``f`` on the populated window of the grid |
 
 # ### Method 1: Forward Monte Carlo
 #
@@ -339,7 +354,7 @@ end
 # particle crosses the detector once with an unchanged ``v_x`` — which is why the simple
 # constant weight is exact upstream but not downstream of the shock.
 
-function reconstruct_mc_projections(sols, detector, n0, dv_km)
+function reconstruct_mc(sols, detector, n0)
     ## The launch velocities are drawn from the source VDF, i.e. density weighted, whereas a
     ## steady beam crosses the source plane flux weighted. Carrying |v_x,src| as the sample
     ## weight turns the ensemble into the flux-weighted one; the detector then sees a
@@ -347,20 +362,15 @@ function reconstruct_mc_projections(sols, detector, n0, dv_km)
     vxi = [s.u[1][4] for s in sols.u]
     vs, ws_init = get_particle_crossings(sols, detector, vxi)
 
-    v_edges = -1000:dv_km:1000
-    centers = bin_centers(v_edges)
     ## Each macro-particle stands for `n0 / N` of the source density spread over one bin
-    ## volume `dv³`, hence `S = n0 [km⁻³] / (N · dv_km³)` for `f` in [s³/km⁶].
-    S = (n0 * 1.0e9) / (length(sols.u) * dv_km^3)
-
-    f_3d = bin_velocity_space(vs, fill(S, length(vs)), v_edges; vx_source = ws_init)
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-
-    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
+    ## volume `dv³`.
+    S = n0 / (length(sols.u) * dv^3)
+    return bin_velocity_space(vs, S .* abs.(ws_init) ./ abs.(first.(vs)), v_edges)
 end;
 
-hists_up = reconstruct_mc_projections(sols, detector_up, n_up, 20.0)
-hists_down = reconstruct_mc_projections(sols, detector_down, n_up, 20.0)
+mc_up = reconstruct_mc(sols, detector_up, n_up)
+mc_down = reconstruct_mc(sols, detector_down, n_up)
+hists_up, hists_down = km_projections(mc_up), km_projections(mc_down)
 
 fig_mc = plot_shock_vdf(hists_up, hists_down, x_upstream, x_downstream)
 fig_mc = DisplayAs.PNG(fig_mc) #hide
@@ -382,27 +392,19 @@ fig_mc = DisplayAs.PNG(fig_mc) #hide
 # Depositing ``f\,\Delta V`` into the detector bin and dividing by the bin volume gives the same
 # bin-averaged ``f`` as Method 3, without the sampling noise of Method 1.
 
-function reconstruct_liouville_projections(
-        sols, detector, vdf, n0;
-        dv_km = 20.0, vsphere = (4 / 3) * π * (vradius_m2 * 1.0e-3)^3
-    )
+function reconstruct_liouville(sols, detector, vdf, n0)
     ## Source f for every trajectory [s³/m⁶]
     ws0 = [n0 * pdf(vdf, s.u[1][SA[4, 5, 6]]) for s in sols.u]
     vxi = [s.u[1][4] for s in sols.u]
     ## Detector crossings carry the source f (Liouville) together with the launch |v_x|
     vs, (ws, ws_vxi) = get_particle_crossings(sols, detector, (ws0, vxi))
 
-    v_edges = -1000:dv_km:1000
-    centers = bin_centers(v_edges)
     ## Each sample stands for a source velocity volume `vsphere / N`, mapped onto the
     ## detector and spread over the bin volume, so the bin density is Σ f·ΔV / dv³.
     ## Summing keeps the `∝ 1/√n` counting noise; `average = true` divides it out instead.
-    scale = vsphere * 1.0e18 / (length(sols.u) * dv_km^3) # [s³/m⁶] → [s³/km⁶]
-
-    f_3d = bin_velocity_space(vs, ws .* scale, v_edges; vx_source = ws_vxi)
-    f_xy, f_xz, f_yz = project_vdf(f_3d, dv_km)
-
-    return ((centers, centers, f_xy), (centers, centers, f_xz), (centers, centers, f_yz))
+    vsphere = (4 / 3) * π * vradius_m2^3
+    scale = vsphere / (length(sols.u) * dv^3)
+    return bin_velocity_space(vs, ws .* scale .* abs.(ws_vxi) ./ abs.(first.(vs)), v_edges)
 end
 
 nparticles_m2 = 100000
@@ -423,8 +425,9 @@ t_liou = @elapsed sols_m2 = solve(
     trajectories = nparticles_m2, seed
 );
 
-hists_up_m2 = reconstruct_liouville_projections(sols_m2, detector_up, vdf, n_up)
-hists_down_m2 = reconstruct_liouville_projections(sols_m2, detector_down, vdf, n_up)
+liou_up = reconstruct_liouville(sols_m2, detector_up, vdf, n_up)
+liou_down = reconstruct_liouville(sols_m2, detector_down, vdf, n_up)
+hists_up_m2, hists_down_m2 = km_projections(liou_up), km_projections(liou_down)
 
 fig_forward = plot_shock_vdf(hists_up_m2, hists_down_m2, x_upstream, x_downstream)
 fig_forward = DisplayAs.PNG(fig_forward) #hide
@@ -452,48 +455,31 @@ fig_forward = DisplayAs.PNG(fig_forward) #hide
 
 const source_plane = Meshes.Plane(Meshes.Point(x_source...), Meshes.Vec(1.0, 0.0, 0.0))
 
-function reconstruct_backward_projections(
-        detector_x, dt, param;
-        v_range = 1000.0e3, vy_range = 1000.0e3, vz_range = 1000.0e3, dv_km = 20.0,
-        adaptive = true, dv_coarse_km = 60.0, margin_km = 150.0
+function reconstruct_backward(detector_x, dt, param)
+    t_solve = @elapsed d = vdf_backward_trace(
+        param, detector_x, source_plane, f_src;
+        v_range = 1000.0e3, dv, dt, tspan = (0.0, -10.0),
+        dv_coarse = 60.0e3, margin = 150.0e3, relthresh = 1.0e-6,
+        isoutside = (u, p, t) -> u[1] > x_source[1] + 100.0e3 ||
+            u[1] < detector_x - 600.0e3,
+        alg = Boris()
     )
-    dv = dv_km * 1.0e3
-    v0x = -v_range + dv / 2
-    v0y = -vy_range + dv / 2
-    v0z = -vz_range + dv / 2
-    bounds = ((v0x, -v0x), (v0y, -v0y), (v0z, -v0z))
-
-    t_solve = @elapsed begin
-        f_3d_km, (vx_grid, vy_grid, vz_grid) = vdf_backward_trace(
-            param, detector_x, source_plane, f_src;
-            v_range, vy_range, vz_range, dv, dt, tspan = (0.0, -10.0),
-            adaptive, dv_coarse = dv_coarse_km * 1.0e3, margin = margin_km * 1.0e3,
-            relthresh = 1.0e-6, bounds,
-            isoutside = (u, p, t) -> u[1] > x_source[1] + 100.0e3 ||
-                u[1] < detector_x - 600.0e3,
-            alg = Boris()
-        )
-    end
-    nparticles_bw = length(vx_grid) * length(vy_grid) * length(vz_grid)
-
-    f_xy, f_xz, f_yz = project_vdf(f_3d_km, dv_km)
-
-    ## `embed_vdf` places the sub-grid on the full grid by its step, so the centers
-    ## have to stay a range instead of a materialized vector.
-    full_centers = range(v0x, -v0x; step = dv) .* 1.0e-3
-    g1 = vx_grid .* 1.0e-3
-    g2 = vy_grid .* 1.0e-3
-    g3 = vz_grid .* 1.0e-3
-
-    return (
-            (full_centers, full_centers, embed_vdf(g1, g2, full_centers, f_xy)),
-            (full_centers, full_centers, embed_vdf(g1, g3, full_centers, f_xz)),
-            (full_centers, full_centers, embed_vdf(g2, g3, full_centers, f_yz)),
-        ), t_solve, nparticles_bw
+    return d, t_solve, length(d.f)
 end
 
-res_up_bw, t_bw_up, n_bw_up = reconstruct_backward_projections(x_upstream, dt, param)
-res_down_bw, t_bw_down, n_bw_down = reconstruct_backward_projections(x_downstream, dt, param)
+## The adaptive pass returns `f` on the populated window of the grid. Sampling it on the
+## full grid of bin centers puts it on the same footing as the forward methods; `pdf` of a
+## `CartesianGridVDF` is zero outside its grid.
+function on_centers(d)
+    g = pdf(d)
+    f = [d.n * g(SA[a, b, c]) for a in centers, b in centers, c in centers]
+    return CartesianGridVDF(centers, centers, centers, f)
+end
+
+bw_up, t_bw_up, n_bw_up = reconstruct_backward(x_upstream, dt, param)
+bw_down, t_bw_down, n_bw_down = reconstruct_backward(x_downstream, dt, param)
+res_up_bw = km_projections(on_centers(bw_up))
+res_down_bw = km_projections(on_centers(bw_down))
 t_bw = t_bw_up + t_bw_down
 n_bw = n_bw_up + n_bw_down
 
@@ -512,9 +498,10 @@ fig_cmp = DisplayAs.PNG(fig_cmp) #hide
 #
 # ### Moment check: density and momentum
 #
-# Integrating a 2-D projection over velocity returns the lowest moments of the reconstructed
-# distribution: the density ``n = \int f\,\mathrm{d}v_i\mathrm{d}v_j`` and the momentum
-# ``n\,V_i = \int v_i f\,\mathrm{d}v_i\mathrm{d}v_j``. Two different statements can be read
+# Integrating the reconstructed distribution over velocity returns its lowest moments, the
+# density ``n = \int f\,\mathrm{d}^3v`` (field `n` of a `CartesianGridVDF`) and the
+# momentum density ``n\,V_x = \int v_x f\,\mathrm{d}^3v`` (`n * mean(d)[1]`). Two
+# different statements can be read
 # off these numbers.
 #
 # 1. **The three methods must agree with each other.** They all reconstruct the same ``f`` in
@@ -539,12 +526,14 @@ using Markdown, Printf #hide
 io_m = IOBuffer() #hide
 println(io_m, "| Method | n up [10⁶ m⁻³] | n·Vx up [10⁹ m⁻³·km/s] | n down [10⁶ m⁻³] | n·Vx down [10⁹ m⁻³·km/s] |") #hide
 println(io_m, "| :--- | :---: | :---: | :---: | :---: |") #hide
-for (i, name) in enumerate(("Monte Carlo", "Forward Liouville", "Backward Liouville")) #hide
-    mu = velocity_moments(((hists_up, hists_up_m2, res_up_bw)[i])[1]; dv = 20.0) #hide
-    md = velocity_moments(((hists_down, hists_down_m2, res_down_bw)[i])[1]; dv = 20.0) #hide
+for (name, u, d) in zip( #hide
+        ("Monte Carlo", "Forward Liouville", "Backward Liouville"), #hide
+        (mc_up, liou_up, bw_up), (mc_down, liou_down, bw_down) #hide
+    ) #hide
     @printf( #hide
-        io_m, "| **%s** | %.2f | %.2f | %.2f | %.2f |\n", #hide
-        name, mu.n * 1.0e-6, mu.nV * 1.0e-9, md.n * 1.0e-6, md.nV * 1.0e-9 #hide
+        io_m, "| **%s** | %.2f | %.2f | %.2f | %.2f |\n", name, #hide
+        u.n * 1.0e-6, u.n * mean(u)[1] * 1.0e-12, #hide
+        d.n * 1.0e-6, d.n * mean(d)[1] * 1.0e-12 #hide
     ) #hide
 end #hide
 Markdown.parse(String(take!(io_m))) #hide
@@ -566,22 +555,15 @@ Markdown.parse(String(take!(io_m))) #hide
 # The last two rows are what each method needed to produce its ``f``: the number of
 # trajectories and the wall-clock time to trace them on this machine.
 
-## Analytic references come out as bare matrices, while the reconstructions are
-## `(vi, vj, f)` tuples; this normalizes both to the same matrix.
-matrix_of(h::Tuple) = h[3]
-matrix_of(M::AbstractMatrix) = M
+function relative_l2(rec, ref; thresh = 1.0e-4)
+    m = ref .> maximum(ref) * thresh
+    return norm(rec[m] .- ref[m]) / norm(ref[m])
+end
 
-const bin_edges = -1000.0:20.0:1000.0 # km/s, velocity bin edges of all three methods
-const v_centers = bin_centers(bin_edges)
-## Midpoint rule on the bin centers, i.e. the same quadrature the reconstructions use when
-## they collapse the third velocity axis.
-const v_int = range(-990.0, 990.0; step = 20.0) # km/s, integration axis
-
-ana_up = (
-    analytic_projection(f_src, 3, v_centers, v_centers, v_int, step(v_int)),
-    analytic_projection(f_src, 2, v_centers, v_centers, v_int, step(v_int)),
-    analytic_projection(f_src, 1, v_centers, v_centers, v_int, step(v_int)),
-)
+## `f` sampled on the bin centers and projected with the same midpoint rule as the
+## reconstructions.
+const f_ana = [f_src(SA[a, b, c]) for a in centers, b in centers, c in centers]
+ana_up = km_projections(CartesianGridVDF(centers, centers, centers, f_ana))
 
 const recs_up = (hists_up, hists_up_m2, res_up_bw) # reconstructions at x_upstream
 const recs_down = (hists_down, hists_down_m2) # forward reconstructions at x_downstream
@@ -590,8 +572,8 @@ io_s = IOBuffer() #hide
 println(io_s, "| Quantity | Monte Carlo | Forward Liouville | Backward Liouville |") #hide
 println(io_s, "| :--- | :---: | :---: | :---: |") #hide
 for (i, comp) in enumerate(("Vx–Vy", "Vx–Vz", "Vy–Vz")) #hide
-    up = [relative_l2(matrix_of(r[i]), matrix_of(ana_up[i])) for r in recs_up] #hide
-    dn = [relative_l2(matrix_of(r[i]), matrix_of(res_down_bw[i])) for r in recs_down] #hide
+    up = [relative_l2(r[i][3], ana_up[i][3]) for r in recs_up] #hide
+    dn = [relative_l2(r[i][3], res_down_bw[i][3]) for r in recs_down] #hide
     lbl_u = "Upstream rel. L2 error vs analytic solar wind, $comp" #hide
     lbl_d = "Downstream rel. L2 error vs backward Liouville, $comp" #hide
     @printf(io_s, "| %s | %.3f | %.3f | %.3f |\n", lbl_u, up...) #hide

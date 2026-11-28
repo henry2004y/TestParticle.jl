@@ -59,8 +59,8 @@ def _jl_symbol(name):
 jl.seval(
     """
     function _tp_extract(sols, save_fields = false, save_work = false)
-        sol_list = sols isa TestParticle.EnsembleSolution ? sols.u :
-            sols isa TestParticle.AbstractODESolution ? (sols,) : sols
+        sol_list = sols isa TestParticle.SciMLBase.EnsembleSolution ? sols.u :
+            sols isa TestParticle.SciMLBase.AbstractODESolution ? (sols,) : sols
         n = length(sol_list)
         ts = Vector{Vector{Float64}}(undef, n)
         us = Vector{Matrix{Float64}}(undef, n)
