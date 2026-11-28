@@ -30,7 +30,7 @@ struct BothCallable end
     r = SVector(2.0, 1.0, 0.0)
     p = prepare(; B = StaticCallable())
     @test jacobian(p.B, r, 0.0) ≈ [4 0 0; 0 1 0; 0 0 0]
-    @test prepare_erased(; B = StaticCallable()).B(r, 0.0) == p.B(r, 0.0)
+    @test prepare(; B = StaticCallable(), erased = true).B(r, 0.0) == p.B(r, 0.0)
     @test prepare(; B = Field(BothCallable(); time_dependent = false)).B(r, 3.0)[1] == 2
     @test prepare(; B = Field(BothCallable(); time_dependent = true)).B(r, 3.0)[1] == 5
     for order in (0, 3)

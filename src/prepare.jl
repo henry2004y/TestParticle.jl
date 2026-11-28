@@ -88,7 +88,9 @@ external force fields, for every model. Omitted fields are zero. Each callable a
 `(x, t)` and returns three components. Construct numerical fields with
 [`build_interpolator`](@ref) before calling `prepare`. See [`Field`](@ref) to select the
 calling convention. `q` and `m` override `species`; `c` sets the relativistic speed of light.
-Particle constants take the float type of the state when traced.
+Particle constants take the float type of the state when traced. `erased = true` wraps each
+field in an [`ErasedField`](@ref), whose type does not depend on the field function, for
+uniform dispatch and static compilation.
 
 # Examples
 ```jldoctest
@@ -129,14 +131,6 @@ function prepare(;
     isnothing(c) && return p
     return (; p..., c)
 end
-
-"""
-    prepare_erased(; E = nothing, B = nothing, F = nothing, kwargs...)
-
-Tracing parameters with type-erased fields for uniform dispatch and static compilation.
-Equivalent to `prepare(; erased = true, kwargs...)`.
-"""
-prepare_erased(; kw...) = prepare(; erased = true, kw...)
 
 """
     PotentialField(;

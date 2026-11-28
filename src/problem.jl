@@ -105,11 +105,8 @@ TraceProblem(u0, tspan, p; kw...) = TraceProblem{FullOrbit}(u0, tspan, p; kw...)
 TraceProblem(f, u0, tspan, p; kw...) =
     TraceProblem{something(_equations_model(f), FullOrbit)}(f, u0, tspan, p; kw...)
 
-function TraceProblem{M}(
-        u0, tspan, p; relativistic::Bool = false, prob_func = DEFAULT_PROB_FUNC
-    ) where {M}
-    N = relativistic ? _relativistic(M) : M
-    return TraceProblem{N}(_default_f(N, !(u0 isa StaticArray)), u0, tspan, p; prob_func)
+function TraceProblem{M}(u0, tspan, p; prob_func = DEFAULT_PROB_FUNC) where {M}
+    return TraceProblem{M}(_default_f(M, !(u0 isa StaticArray)), u0, tspan, p; prob_func)
 end
 
 function TraceProblem{M}(f, u0, tspan, p; prob_func = DEFAULT_PROB_FUNC) where {M}
