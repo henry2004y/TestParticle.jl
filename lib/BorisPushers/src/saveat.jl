@@ -35,6 +35,7 @@ integration `dir`. Times outside `tspan` are dropped, and the two ends are left
 out because `save_start` and `save_end` already report them.
 """
 function _saveat_times(saveat, tspan, dir, ::Type{T}) where {T}
+    isempty(saveat) && return T[]
     t0, t1 = T(tspan[1]), T(tspan[2])
 
     raw = if saveat isa Number
