@@ -36,6 +36,13 @@ using LinearAlgebra: norm
             @test pf_explicit.grad_phi(x0, 0.0) ≈ SA[2.0, 8.0, 0.0]
             @test pf_explicit.grad_A(x0, 0.0) ≈ expected_grad_A
 
+            pf_erased = PotentialField(;
+                phi, A, grad_phi = grad_phi_1arg, grad_A = grad_A_1arg, erased = true
+            )
+            @test pf_erased.phi(x0, 0.0) ≈ 9.0
+            @test pf_erased.grad_A(x0, 0.0) ≈ expected_grad_A
+            @test pf_erased.grad_phi(x0, 0.0) ≈ SA[2.0, 8.0, 0.0]
+
             # Absent potentials
             pf_zero_phi = PotentialField(; A)
             @test pf_zero_phi.grad_phi isa ZeroField
