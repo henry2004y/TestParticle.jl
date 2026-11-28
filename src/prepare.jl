@@ -74,7 +74,6 @@ end
 include("erased.jl")
 
 prepare_field(f; erased = false) = erased ? ErasedField(f) : Field(f)
-prepare_field(f::Field{itd, ErasedFunction}; erased = false) where {itd} = f
 prepare_field(f::Field; erased = false) = erased ? ErasedField(f) : f
 prepare_field(f::ZeroField; erased = false) = f
 prepare_field(::Nothing; erased = false) = ZeroField()
@@ -140,31 +139,28 @@ end
 Scalar potential `phi(x[, t])` and vector potential `A(x[, t])` for canonical tracing;
 `nothing` is an absent potential. Gradients that are not given are computed with
 `ForwardDiff`. `grad_A(x[, t])[i, j]` is ``∂A_j/∂x_i``, so that `grad_A * v` is
-``∇(\\mathbf{A} ⋅ \\mathbf{v})`` at fixed ``\\mathbf{v}``.
+``∇(\\mathbf{A} ⋅ \\mathbf{v})`` at fixed ``\\mathbf{v}``. `erased` applies to `A` and
+a given `grad_phi` only.
 """
-_prepare_potential_scalar(f, erased) = erased ? ErasedField(f) : Field(f)
-_prepare_potential_scalar(f::ZeroField, erased) = f
-_prepare_potential_scalar(::Nothing, erased) = ZeroField()
-
 function PotentialField(;
         phi = nothing, A = nothing, grad_phi = nothing, grad_A = nothing,
         erased::Bool = false
     )
-    f_phi, f_A = _prepare_potential_scalar(phi, erased), prepare_field(A; erased)
+    # `ErasedFunction` holds 3-vector fields; scalar `phi` and matrix `grad_A` stay plain.
+    f_phi, f_A = prepare_field(phi), prepare_field(A; erased)
     return PotentialField(
-        f_phi, f_A, _grad_phi(grad_phi, f_phi; erased), _grad_A(grad_A, f_A; erased)
+        f_phi, f_A, _grad_phi(grad_phi, f_phi; erased), _grad_A(grad_A, f_A)
     )
 end
 
-_grad_phi(g, phi; erased = false) = prepare_field(g; erased)
-_grad_phi(::Nothing, ::ZeroField; erased = false) = ZeroField()
-_grad_phi(::Nothing, phi; erased = false) =
+_grad_phi(g, phi; erased) = prepare_field(g; erased)
+_grad_phi(::Nothing, ::ZeroField; erased) = ZeroField()
+_grad_phi(::Nothing, phi; erased) =
     (x, t) -> SVector{3}(ForwardDiff.gradient(r -> phi(r, t), x))
 
-_grad_A(g::ZeroField, A; erased = false) = g
-_grad_A(g, A; erased = false) = erased ? ErasedField(g) : Field(g)
-_grad_A(::Nothing, ::ZeroField; erased = false) = ZeroField()
-_grad_A(::Nothing, A; erased = false) =
+_grad_A(g, A) = prepare_field(g)
+_grad_A(::Nothing, ::ZeroField) = ZeroField()
+_grad_A(::Nothing, A) =
     (x, t) -> SMatrix{3, 3}(ForwardDiff.jacobian(r -> A(r, t), x)')
 
 """

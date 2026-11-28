@@ -3,7 +3,6 @@ module TestParticleBorisPushersExt
 using TestParticle
 import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
     _equations_model, _speed_of_light, _lorentz_factor, _model,
-    SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
@@ -15,7 +14,8 @@ import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
     AdaptiveMultistepBoris, Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary,
-    CachedFields, update_velocity, adapt_field_to_gpu, _node_fields
+    CachedFields, update_velocity, adapt_field_to_gpu, _node_fields,
+    SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
@@ -239,9 +239,7 @@ end
         throw(ArgumentError("u0 must have 6 elements (full orbit state)."))
     prob.tspan[2] != prob.tspan[1] ||
         throw(ArgumentError("tspan[2] must not equal tspan[1]."))
-    plan = SavingPlan(
-        saveat, prob.tspan, _span_direction(prob.tspan), typeof(prob.tspan[1])
-    )
+    plan = SavingPlan(saveat, prob.tspan, typeof(prob.tspan[1]))
     args = (
         ensemblealg, prob, trajectories, alg,
         plan, isoutside, save_start, save_end, save_everystep, verbose, seed,
