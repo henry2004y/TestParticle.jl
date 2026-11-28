@@ -74,7 +74,6 @@ end
 include("erased.jl")
 
 prepare_field(f; erased = false) = erased ? ErasedField(f) : Field(f)
-prepare_field(f::Field{itd, ErasedFunction}; erased = false) where {itd} = f
 prepare_field(f::Field; erased = false) = erased ? ErasedField(f) : f
 prepare_field(f::ZeroField; erased = false) = f
 prepare_field(::Nothing; erased = false) = ZeroField()
