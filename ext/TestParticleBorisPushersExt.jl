@@ -3,7 +3,6 @@ module TestParticleBorisPushersExt
 using TestParticle
 import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
     _equations_model, _speed_of_light, _lorentz_factor, _model,
-    SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction,
     Field, ZeroField, FieldInterpolator, FieldInterpolator1D,
     FieldInterpolator2D, SphericalFieldInterpolator,
     _to_gpu_grid,
@@ -15,7 +14,8 @@ import TestParticle: TraceProblem, FullOrbit, RelativisticOrbit, AdaptiveHybrid,
 using BorisPushers
 import BorisPushers: AbstractBoris, Boris, AdaptiveBoris, MultistepBoris,
     AdaptiveMultistepBoris, Vay, AdaptiveVay, HigueraCary, AdaptiveHigueraCary,
-    CachedFields, update_velocity, adapt_field_to_gpu, _node_fields
+    CachedFields, update_velocity, adapt_field_to_gpu, _node_fields,
+    SavingPlan, use_saveat, saveat_reached, saveat_interpolate, _span_direction
 
 using SciMLBase: AbstractODEProblem, BasicEnsembleAlgorithm,
     DiscreteCallback, EnsembleProblem, EnsembleSolution, EnsembleContext,
